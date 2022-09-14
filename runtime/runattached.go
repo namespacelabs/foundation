@@ -7,6 +7,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
@@ -16,8 +17,6 @@ import (
 )
 
 func RunAttached(ctx context.Context, config planning.Configuration, cluster ClusterNamespace, spec DeployableSpec, io TerminalIO) error {
-	spec.Attachable = io.TTY
-
 	plan, err := cluster.Planner().PlanDeployment(ctx, DeploymentSpec{
 		Specs: []DeployableSpec{spec},
 	})
@@ -58,4 +57,13 @@ func RunAttached(ctx context.Context, config planning.Configuration, cluster Clu
 	}
 
 	return cluster.Cluster().AttachTerminal(ctx, mainContainers[0], io)
+}
+
+func RunAttachedStdio(ctx context.Context, config planning.Configuration, cluster ClusterNamespace, spec DeployableSpec) error {
+	return RunAttached(ctx, config, cluster, spec, TerminalIO{
+		TTY:    true,
+		Stdin:  os.Stdin,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	})
 }

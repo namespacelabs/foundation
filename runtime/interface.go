@@ -194,7 +194,7 @@ type DeployableSpec struct {
 	Location    fnerrors.Location
 	PackageName schema.PackageName
 	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
-	Attachable  bool // Set to true to be able to use AttachTerminal.
+	Attachable  AttachableKind
 
 	Class   schema.DeployableClass
 	Id      string // Must not be empty.
@@ -214,6 +214,13 @@ type DeployableSpec struct {
 	Endpoints         []*schema.Endpoint         // Owned by this deployable.
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
 }
+
+type AttachableKind string
+
+const (
+	AttachableKind_WITH_STDIN_ONLY AttachableKind = "stdin-only"
+	AttachableKind_WITH_TTY        AttachableKind = "with-tty"
+)
 
 var _ Deployable = DeployableSpec{}
 

@@ -63,11 +63,13 @@ func newPsql() *cobra.Command {
 					bind.Database.Name, "postgres",
 				}
 
-				return rt.RunAttached(ctx, "psql-"+ids.NewRandomBase32ID(8), opts, runtime.TerminalIO{
-					TTY:    true,
-					Stdin:  os.Stdin,
-					Stdout: os.Stdout,
-					Stderr: os.Stderr,
+				return runtime.RunAttachedStdio(ctx, res.Env.Configuration(), rt, runtime.DeployableSpec{
+					PackageName: schema.PackageName(bind.PackageName),
+					Attachable:  runtime.AttachableKind_WITH_TTY,
+					Class:       schema.DeployableClass_ONESHOT,
+					Id:          ids.NewRandomBase32ID(8),
+					Name:        "psql",
+					RunOpts:     opts,
 				})
 			})
 		})
@@ -113,7 +115,15 @@ func newPgdump() *cobra.Command {
 					"-U", "postgres",
 					bind.Database.Name,
 				}, " "))
-				return rt.RunAttached(ctx, "pgdump-"+ids.NewRandomBase32ID(8), opts, runtime.TerminalIO{
+
+				return runtime.RunAttached(ctx, res.Env.Configuration(), rt, runtime.DeployableSpec{
+					PackageName: schema.PackageName(bind.PackageName),
+					Attachable:  runtime.AttachableKind_WITH_STDIN_ONLY,
+					Class:       schema.DeployableClass_ONESHOT,
+					Id:          ids.NewRandomBase32ID(8),
+					Name:        "pgdump",
+					RunOpts:     opts,
+				}, runtime.TerminalIO{
 					Stdin:  cmd,
 					Stdout: outw,
 					Stderr: os.Stderr,
@@ -155,7 +165,14 @@ func newPgrestore() *cobra.Command {
 
 				defer f.Close()
 
-				return rt.RunAttached(ctx, "pgrestore-"+ids.NewRandomBase32ID(8), opts, runtime.TerminalIO{
+				return runtime.RunAttached(ctx, res.Env.Configuration(), rt, runtime.DeployableSpec{
+					PackageName: schema.PackageName(bind.PackageName),
+					Attachable:  runtime.AttachableKind_WITH_STDIN_ONLY,
+					Class:       schema.DeployableClass_ONESHOT,
+					Id:          ids.NewRandomBase32ID(8),
+					Name:        "pgrestore",
+					RunOpts:     opts,
+				}, runtime.TerminalIO{
 					Stdin:  f,
 					Stdout: os.Stdout,
 					Stderr: os.Stderr,
@@ -185,7 +202,7 @@ func determineConfiguration(res *hydrateResult) (*postgres.InstantiatedDatabases
 		}
 	}
 
-	return nil, nil
+	return nil, fnerrors.ExpectedError("%s: server has no databases", res.Focus)
 }
 
 func selectDatabase(ctx context.Context, index map[string]databaseBind, names []string) (string, error) {

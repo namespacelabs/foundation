@@ -158,7 +158,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		WithCommand(deployable.RunOpts.Command...).
 		WithSecurityContext(secCtx)
 
-	if deployable.Attachable {
+	switch deployable.Attachable {
+	case runtime.AttachableKind_WITH_STDIN_ONLY:
+		container = container.WithStdin(true).WithStdinOnce(true)
+
+	case runtime.AttachableKind_WITH_TTY:
 		container = container.WithStdin(true).WithStdinOnce(true).WithTTY(true)
 	}
 

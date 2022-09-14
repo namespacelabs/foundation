@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"context"
-	"os"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/binary"
@@ -93,20 +92,16 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 		}
 
-		return runtime.RunAttached(ctx, env.Configuration(), cluster, runtime.DeployableSpec{
+		return runtime.RunAttachedStdio(ctx, env.Configuration(), cluster, runtime.DeployableSpec{
 			PackageName: schema.PackageName(env.Workspace().ModuleName()),
 			Class:       schema.DeployableClass_ONESHOT,
 			Name:        "debug",
 			Id:          ids.NewRandomBase32ID(8),
+			Attachable:  runtime.AttachableKind_WITH_TTY,
 			RunOpts: runtime.ContainerRunOpts{
 				Image:   imageID,
 				Command: []string{"bash"},
 			},
-		}, runtime.TerminalIO{
-			TTY:    true,
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-			Stdin:  os.Stdin,
 		})
 	})
 }
