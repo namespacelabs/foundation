@@ -141,7 +141,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 
 			parts := strings.Split(test.TestRef.PackageName, "/")
 
-			testDriver := runtime.Deployable{
+			testDriver := runtime.DeployableSpec{
 				Location:    test.TestRef.AsPackageName(),
 				PackageName: test.TestRef.AsPackageName(),
 				Class:       schema.DeployableClass_ONESHOT,
@@ -150,7 +150,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				RunOpts:     testRun,
 			}
 
-			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.Deployment{Deployables: []runtime.Deployable{testDriver}})
+			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Deployables: []runtime.DeployableSpec{testDriver}})
 			if err != nil {
 				return err
 			}

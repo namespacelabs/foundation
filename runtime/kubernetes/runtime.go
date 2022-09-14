@@ -124,8 +124,8 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 	}, nil
 }
 
-func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server *schema.Server) (oci.ImageID, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.PackageName)),
+func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server runtime.Deployable) (oci.ImageID, error) {
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageName())),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
 			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})

@@ -62,7 +62,7 @@ type Planner interface {
 	// instantiate the required deployment resources to run the servers in the
 	// specified Deployment. This method is side-effect free; mutations are
 	// applied when the generated plan is applied.
-	PlanDeployment(context.Context, Deployment) (*DeploymentPlan, error)
+	PlanDeployment(context.Context, DeploymentSpec) (*DeploymentPlan, error)
 
 	// Plans an ingress deployment, i.e. produces a series of instructions that
 	// will instantiate the required deployment resources to run the servers in
@@ -121,10 +121,10 @@ type ClusterNamespace interface {
 	// DeployedConfigImageID retrieves the image reference of the "configuration
 	// image" used to deploy the specified server. Configuration images are only
 	// generated for production environments for now.
-	DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error)
+	DeployedConfigImageID(context.Context, Deployable) (oci.ImageID, error)
 
 	// Returns a list of containers that the server has deployed.
-	ResolveContainers(context.Context, DeployableObject) ([]*ContainerReference, error)
+	ResolveContainers(context.Context, Deployable) ([]*ContainerReference, error)
 
 	// Fetch environment diagnostics, e.g. event list.
 	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
@@ -148,10 +148,10 @@ type ClusterNamespace interface {
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.
-	Observe(context.Context, DeployableObject, ObserveOpts, func(ObserveEvent) error) error
+	Observe(context.Context, Deployable, ObserveOpts, func(ObserveEvent) error) error
 
 	// Waits until the specified containers are no longer running.
-	WaitForTermination(ctx context.Context, object DeployableObject) ([]ContainerStatus, error)
+	WaitForTermination(ctx context.Context, object Deployable) ([]ContainerStatus, error)
 
 	// RunAttached runs the specified container, and attaches to it.
 	RunAttached(context.Context, string, ContainerRunOpts, TerminalIO) error
@@ -167,18 +167,24 @@ type ClusterNamespace interface {
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
 }
 
-type DeployableObject interface {
+type Deployable interface {
+	// Returns a string to be compatible with the proto API.
+	GetPackageName() string // schema.PackageName
+
 	GetId() string
+
 	GetName() string
+
+	// Returns a string to be compatible with the proto API.
 	GetDeployableClass() string // schema.DeployableClass
 }
 
-type Deployment struct {
-	Deployables []Deployable
+type DeploymentSpec struct {
+	Deployables []DeployableSpec
 	Secrets     GroundedSecrets
 }
 
-type Deployable struct {
+type DeployableSpec struct {
 	Location    fnerrors.Location
 	PackageName schema.PackageName
 	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
@@ -202,11 +208,12 @@ type Deployable struct {
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
 }
 
-var _ DeployableObject = Deployable{}
+var _ Deployable = DeployableSpec{}
 
-func (d Deployable) GetId() string              { return d.Id }
-func (d Deployable) GetName() string            { return d.Name }
-func (d Deployable) GetDeployableClass() string { return string(d.Class) }
+func (d DeployableSpec) GetId() string              { return d.Id }
+func (d DeployableSpec) GetName() string            { return d.Name }
+func (d DeployableSpec) GetDeployableClass() string { return string(d.Class) }
+func (d DeployableSpec) GetPackageName() string     { return string(d.PackageName) }
 
 type GroundedSecrets struct {
 	Secrets []GroundedSecret

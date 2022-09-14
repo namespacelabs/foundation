@@ -370,14 +370,14 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			var serverRuns []runtime.Deployable
+			var serverRuns []runtime.DeployableSpec
 			for k, srv := range stack.Servers {
 				img, ok := imageIDs.get(srv.PackageRef())
 				if !ok {
 					return prepareAndBuildResult{}, fnerrors.InternalError("%s: missing an image to run", srv.PackageName())
 				}
 
-				var run runtime.Deployable
+				var run runtime.DeployableSpec
 
 				run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, img.Binary)
 				if err != nil {
@@ -415,7 +415,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 				serverRuns = append(serverRuns, run)
 			}
 
-			deployment, err := rc.PlanDeployment(ctx, runtime.Deployment{
+			deployment, err := rc.PlanDeployment(ctx, runtime.DeploymentSpec{
 				Deployables: serverRuns,
 				Secrets:     *secrets,
 			})
@@ -659,7 +659,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 	return stack, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.Deployable) error {
+func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.DeployableSpec) error {
 	srv := s.Proto()
 	out.Location = s.Location
 	out.PackageName = s.PackageName()

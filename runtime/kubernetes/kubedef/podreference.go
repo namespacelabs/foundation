@@ -20,7 +20,7 @@ func (cpr *ContainerPodReference) UniqueID() string {
 	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.PodName, cpr.Container)
 }
 
-func MakePodRef(ns, name, containerName string, obj runtime.DeployableObject) *runtime.ContainerReference {
+func MakePodRef(ns, name, containerName string, obj runtime.Deployable) *runtime.ContainerReference {
 	cpr := &ContainerPodReference{
 		Namespace: ns,
 		PodName:   name,
@@ -35,7 +35,7 @@ func MakePodRef(ns, name, containerName string, obj runtime.DeployableObject) *r
 	}
 }
 
-func decideKind(obj runtime.DeployableObject, containerName string) schema.ContainerKind {
+func decideKind(obj runtime.Deployable, containerName string) schema.ContainerKind {
 	if obj == nil {
 		return schema.ContainerKind_CONTAINER_KIND_UNSPECIFIED
 	}
@@ -47,6 +47,6 @@ func decideKind(obj runtime.DeployableObject, containerName string) schema.Conta
 	return schema.ContainerKind_SUPPORT
 }
 
-func ServerCtrName(obj runtime.DeployableObject) string {
+func ServerCtrName(obj runtime.Deployable) string {
 	return strings.ToLower(obj.GetName()) // k8s doesn't accept uppercase names.
 }

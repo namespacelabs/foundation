@@ -138,7 +138,7 @@ func deployAsPods(env *schema.Environment) bool {
 	return env.GetPurpose() == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
-func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.Deployable, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
+func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
 	if deployable.RunOpts.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.RunOpts.Image)
 	}
@@ -863,7 +863,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func deployEndpoint(ctx context.Context, r clusterTarget, srv runtime.DeployableObject, endpoint *schema.Endpoint, s *serverRunState) error {
+func deployEndpoint(ctx context.Context, r clusterTarget, srv runtime.Deployable, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
 
 	port := endpoint.Port

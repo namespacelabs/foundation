@@ -42,7 +42,7 @@ func (r Planner) Planner() runtime.Planner {
 	return r
 }
 
-func (r Planner) PlanDeployment(ctx context.Context, d runtime.Deployment) (*runtime.DeploymentPlan, error) {
+func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
 	return planDeployment(ctx, r.target, d)
 }
 
@@ -83,7 +83,7 @@ func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) 
 	return parsePlatforms(systemInfo.NodePlatform)
 }
 
-func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deployment) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 	deployOpts := deployOpts{
 		secrets: d.Secrets,

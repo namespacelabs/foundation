@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 )
 
-func MakeDeploymentId(srv runtime.DeployableObject) string {
+func MakeDeploymentId(srv runtime.Deployable) string {
 	if srv.GetName() == "" {
 		return srv.GetId()
 	}

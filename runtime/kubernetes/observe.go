@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.DeployableObject, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
+func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	// XXX use a watch
 	announced := map[string]*runtime.ContainerReference{}
 

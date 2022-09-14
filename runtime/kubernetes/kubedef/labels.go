@@ -37,7 +37,7 @@ const (
 	defaultEphemeralTimeout = time.Hour
 )
 
-func SelectById(srv runtime.DeployableObject) map[string]string {
+func SelectById(srv runtime.Deployable) map[string]string {
 	return map[string]string{
 		K8sServerId: srv.GetId(),
 	}
@@ -68,7 +68,7 @@ func ManagedByUs() map[string]string {
 }
 
 // Env may be nil.
-func MakeLabels(env *schema.Environment, srv runtime.DeployableObject) map[string]string {
+func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]string {
 	// XXX add recommended labels https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 	m := ManagedByUs()
 	if srv != nil && srv.GetId() != "" {
@@ -144,7 +144,7 @@ func MakeServiceAnnotations(endpoint *schema.Endpoint) (map[string]string, error
 	return m, nil
 }
 
-func MakeServiceLabels(env *schema.Environment, srv runtime.DeployableObject, endpoint *schema.Endpoint) map[string]string {
+func MakeServiceLabels(env *schema.Environment, srv runtime.Deployable, endpoint *schema.Endpoint) map[string]string {
 	m := MakeLabels(env, srv)
 
 	return m

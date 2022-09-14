@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-func (r *ClusterNamespace) ResolveContainers(ctx context.Context, srv runtime.DeployableObject) ([]*runtime.ContainerReference, error) {
+func (r *ClusterNamespace) ResolveContainers(ctx context.Context, srv runtime.Deployable) ([]*runtime.ContainerReference, error) {
 	pod, err := r.resolvePod(ctx, r.cluster.cli, io.Discard, srv)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (r *ClusterNamespace) ResolveContainers(ctx context.Context, srv runtime.De
 	return refs, nil
 }
 
-func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, obj runtime.DeployableObject) (corev1.Pod, error) {
+func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, obj runtime.Deployable) (corev1.Pod, error) {
 	return resolvePodByLabels(ctx, cli, w, r.target.namespace, map[string]string{
 		kubedef.K8sServerId: obj.GetId(),
 	})

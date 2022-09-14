@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.DeployableObject) ([]runtime.ContainerStatus, error) {
+func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.Deployable) ([]runtime.ContainerStatus, error) {
 	if object.GetDeployableClass() != string(schema.DeployableClass_ONESHOT) {
 		return nil, fnerrors.InternalError("WaitForTermination: only support one-shot deployments")
 	}
