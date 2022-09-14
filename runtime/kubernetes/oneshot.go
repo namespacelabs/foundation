@@ -32,56 +32,71 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	namespace := r.target.namespace
 	podName := kubedef.MakeDeploymentId(object)
 
-	debug := console.Debug(ctx)
+	return watchDeployable(ctx, cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
+		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
+			return nil, false
+		}
 
-	return tasks.Return(ctx, tasks.Action("kubernetes.wait-for-deployable").Arg("id", object.GetId()).Arg("name", object.GetName()),
-		func(ctx context.Context) ([]runtime.ContainerStatus, error) {
-			for {
-				w, err := cli.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(object))})
-				if err != nil {
-					return nil, fnerrors.InternalError("kubernetes: failed while waiting for pod: %w", err)
-				}
+		var all []corev1.ContainerStatus
+		all = append(all, pod.Status.ContainerStatuses...)
+		all = append(all, pod.Status.InitContainerStatuses...)
 
-				defer w.Stop()
+		var status []runtime.ContainerStatus
+		for _, container := range all {
+			st := runtime.ContainerStatus{
+				Reference: kubedef.MakePodRef(namespace, podName, container.Name, object),
+			}
 
-				for ev := range w.ResultChan() {
-					if ev.Object == nil {
-						continue
-					}
-
-					pod, ok := ev.Object.(*corev1.Pod)
-					if !ok {
-						fmt.Fprintf(debug, "received non-pod event: %v\n", reflect.TypeOf(ev.Object))
-						continue
-					}
-
-					if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
-						continue
-					}
-
-					var all []corev1.ContainerStatus
-					all = append(all, pod.Status.ContainerStatuses...)
-					all = append(all, pod.Status.InitContainerStatuses...)
-
-					var status []runtime.ContainerStatus
-					for _, container := range all {
-						st := runtime.ContainerStatus{
-							Reference: kubedef.MakePodRef(namespace, podName, container.Name, object),
-						}
-
-						if container.State.Terminated != nil {
-							if container.State.Terminated.ExitCode != 0 {
-								st.TerminationError = runtime.ErrContainerExitStatus{ExitCode: container.State.Terminated.ExitCode}
-							}
-						}
-
-						status = append(status, st)
-					}
-
-					return status, nil
+			if container.State.Terminated != nil {
+				if container.State.Terminated.ExitCode != 0 {
+					st.TerminationError = runtime.ErrContainerExitStatus{ExitCode: container.State.Terminated.ExitCode}
 				}
 			}
+
+			status = append(status, st)
+		}
+
+		return status, true
+	})
+}
+
+func watchDeployable[V any](ctx context.Context, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool)) (V, error) {
+	return tasks.Return(ctx, tasks.Action("kubernetes.wait-for-deployable").Arg("id", object.GetId()).Arg("name", object.GetName()),
+		func(ctx context.Context) (V, error) {
+			return watchPods(ctx, cli, namespace, kubedef.SelectById(object), callback)
 		})
+}
+
+func watchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string, labels map[string]string, callback func(corev1.Pod) (V, bool)) (V, error) {
+	var empty V
+
+	for {
+		w, err := cli.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(labels)})
+		if err != nil {
+			return empty, fnerrors.InternalError("kubernetes: failed while waiting for pod: %w", err)
+		}
+
+		defer w.Stop()
+
+		debug := console.Debug(ctx)
+
+		for ev := range w.ResultChan() {
+			if ev.Object == nil {
+				continue
+			}
+
+			pod, ok := ev.Object.(*corev1.Pod)
+			if !ok {
+				fmt.Fprintf(debug, "received non-pod event: %v\n", reflect.TypeOf(ev.Object))
+				continue
+			}
+
+			v, done := callback(*pod)
+			if done {
+				return v, nil
+			}
+		}
+	}
 }
 
 func (r *ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO) error {

@@ -20,24 +20,23 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-func (r *ClusterNamespace) ResolveContainers(ctx context.Context, srv runtime.Deployable) ([]*runtime.ContainerReference, error) {
-	pod, err := r.resolvePod(ctx, r.cluster.cli, io.Discard, srv)
-	if err != nil {
-		return nil, err
-	}
+func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtime.ContainerReference, error) {
+	return watchDeployable(ctx, r.cluster.cli, r.target.namespace, object, func(pod corev1.Pod) ([]*runtime.ContainerReference, bool) {
+		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
+			return nil, false
+		}
 
-	ps := pod.Status
+		var refs []*runtime.ContainerReference
 
-	var refs []*runtime.ContainerReference
+		for _, init := range pod.Status.InitContainerStatuses {
+			refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, object))
+		}
+		for _, container := range pod.Status.ContainerStatuses {
+			refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, object))
+		}
 
-	for _, init := range ps.InitContainerStatuses {
-		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, srv))
-	}
-	for _, container := range ps.ContainerStatuses {
-		refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, srv))
-	}
-
-	return refs, nil
+		return refs, true
+	})
 }
 
 func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, obj runtime.Deployable) (corev1.Pod, error) {

@@ -159,6 +159,9 @@ type ClusterNamespace interface {
 	// RunAttached runs the specified container, and attaches to it.
 	RunAttached(context.Context, string, ContainerRunOpts, TerminalIO) error
 
+	// Deletes a previously deployed DeployableSpec.
+	DeleteDeployment(ctx context.Context, deployable Deployable) error
+
 	// Deletes the scoped environment, and all of its associated resources (e.g.
 	// after a test invocation). If wait is true, waits until the target
 	// resources have been removed. Returns true if resources were deleted.
@@ -191,6 +194,7 @@ type DeployableSpec struct {
 	Location    fnerrors.Location
 	PackageName schema.PackageName
 	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
+	Attachable  bool // Set to true to be able to use AttachTerminal.
 
 	Class   schema.DeployableClass
 	Id      string // Must not be empty.

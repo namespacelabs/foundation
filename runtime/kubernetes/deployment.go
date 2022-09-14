@@ -158,6 +158,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		WithCommand(deployable.RunOpts.Command...).
 		WithSecurityContext(secCtx)
 
+	if deployable.Attachable {
+		container = container.WithStdin(true).WithStdinOnce(true).WithTTY(true)
+	}
+
 	var probes []*kubedef.ContainerExtension_Probe
 	for _, internal := range internalEndpoints {
 		for _, md := range internal.ServiceMetadata {
