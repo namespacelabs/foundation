@@ -13,9 +13,10 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
+// TODO: refactor to be consistent with "integrations"
+
 const (
 	serverKindDockerfile = "namespace.so/from-dockerfile"
-	serverKindGo         = "namespace.so/from-go"
 )
 
 type cueBuild struct {
