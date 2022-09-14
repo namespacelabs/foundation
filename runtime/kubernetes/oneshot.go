@@ -34,24 +34,26 @@ func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpt
 		return err
 	}
 
-	if err := spawnAndWaitPod(ctx, r.cli, namespace, name, spec, false); err != nil {
+	podName := name
+
+	if err := spawnAndWaitPod(ctx, r.cli, namespace, podName, spec, false); err != nil {
 		return err
 	}
 
 	defer func() {
-		if err := r.cli.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", namespace, name, err)
+		if err := r.cli.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{}); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", namespace, podName, err)
 		}
 	}()
 
 	if follow {
-		if err := fetchPodLogs(ctx, r.cli, logOutput, namespace, name, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
+		if err := fetchPodLogs(ctx, r.cli, logOutput, namespace, podName, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
 			return err
 		}
 	}
 
 	for k := 0; ; k++ {
-		finalState, err := r.cli.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+		finalState, err := r.cli.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return fnerrors.InvocationError("kubernetes: failed to fetch final pod status: %w", err)
 		}
@@ -72,7 +74,7 @@ func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpt
 						opts.TailLines = 50
 					}
 
-					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, namespace, name, "", opts)
+					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, namespace, podName, "", opts)
 				}
 
 				if term.ExitCode != 0 {
@@ -88,9 +90,9 @@ func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpt
 		}
 
 		if err := kubeobserver.WaitForCondition(ctx, r.cli,
-			tasks.Action("kubernetes.pod.wait").Arg("namespace", namespace).Arg("name", name).Arg("condition", "terminated"),
+			tasks.Action("kubernetes.pod.wait").Arg("namespace", namespace).Arg("name", podName).Arg("condition", "terminated"),
 			kubeobserver.WaitForPodConditition(
-				kubeobserver.PickPod(namespace, name),
+				kubeobserver.PickPod(namespace, podName),
 				func(status corev1.PodStatus) (bool, error) {
 					return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 				})); err != nil {

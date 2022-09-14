@@ -183,6 +183,7 @@ func registerApply() {
 			}.WaitUntilReady}}, nil
 		}
 
+		// XXX check gkv
 		switch header.Kind {
 		case "Deployment", "StatefulSet":
 			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
@@ -216,46 +217,45 @@ func registerApply() {
 			}
 
 		case "Pod":
-			var waiters []ops.Waiter
-			for _, sc := range scope {
-				sc := sc // Close sc.
-				waiters = append(waiters, func(ctx context.Context, ch chan *orchestration.Event) error {
-					if ch != nil {
-						defer close(ch)
-					}
+			waiters := []ops.Waiter{func(ctx context.Context, ch chan *orchestration.Event) error {
+				if ch != nil {
+					defer close(ch)
+				}
 
-					return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action(runtime.TaskServerStart).Scope(sc),
-						kobs.WaitForPodConditition(kobs.PickPod(header.Namespace, header.Name),
-							func(ps v1.PodStatus) (bool, error) {
-								meta, err := json.Marshal(ps)
-								if err != nil {
-									return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
-								}
+				return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action(runtime.TaskServerStart).Scope(scope...),
+					kobs.WaitForPodConditition(kobs.PickPod(header.Namespace, header.Name),
+						func(ps v1.PodStatus) (bool, error) {
+							meta, err := json.Marshal(ps)
+							if err != nil {
+								return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
+							}
 
-								ev := &orchestration.Event{
-									ResourceId:          fmt.Sprintf("%s/%s", header.Namespace, header.Name),
-									Kind:                header.Kind,
-									Category:            "Servers deployed",
-									Scope:               sc.String(),
-									Ready:               orchestration.Event_NOT_READY,
-									ImplMetadata:        meta,
-									RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", header.Namespace, header.Name),
-								}
+							ev := &orchestration.Event{
+								ResourceId:          fmt.Sprintf("%s/%s", header.Namespace, header.Name),
+								Kind:                header.Kind,
+								Category:            "Servers deployed",
+								Ready:               orchestration.Event_NOT_READY,
+								ImplMetadata:        meta,
+								RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", header.Namespace, header.Name),
+							}
 
-								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(header.Namespace, header.Name, ps))
+							// XXX this under-reports scope.
+							if len(scope) > 0 {
+								ev.Scope = scope[0].String()
+							}
 
-								ready, _ := kobs.MatchPodCondition(v1.PodReady)(ps)
-								if ready {
-									ev.Ready = orchestration.Event_READY
-								}
-								if ch != nil {
-									ch <- ev
-								}
-								return ready, nil
-							}))
-				})
+							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(header.Namespace, header.Name, ps))
 
-			}
+							ready, _ := kobs.MatchPodCondition(v1.PodReady)(ps)
+							if ready {
+								ev.Ready = orchestration.Event_READY
+							}
+							if ch != nil {
+								ch <- ev
+							}
+							return ready, nil
+						}))
+			}}
 
 			return &ops.HandleResult{
 				Waiters: waiters,
