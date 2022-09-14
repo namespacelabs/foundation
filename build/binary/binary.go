@@ -33,6 +33,7 @@ var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafe
 var BuildWeb func(pkggraph.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
+var BuildNodejs func(planning.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, bool /* isFocus */) (build.Spec, error)
 
 const LLBGenBinaryName = "llbgen"
 
@@ -185,7 +186,7 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, env planning.Co
 func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
-	spec, err := buildLayeredSpec(ctx, loc, bin, opts)
+	spec, err := buildLayeredSpec(ctx, loc, bin, env, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +204,7 @@ func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, e
 	return spec, nil
 }
 
-func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
@@ -211,14 +212,14 @@ func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Bi
 	}
 
 	if len(src.LayerBuildPlan) == 1 {
-		return buildSpec(ctx, loc, bin, src.LayerBuildPlan[0], opts)
+		return buildSpec(ctx, loc, bin, src.LayerBuildPlan[0], env, opts)
 	}
 
 	specs := make([]build.Spec, len(src.LayerBuildPlan))
 	platformIndependent := true
 	for k, plan := range src.LayerBuildPlan {
 		var err error
-		specs[k], err = buildSpec(ctx, loc, bin, plan, opts)
+		specs[k], err = buildSpec(ctx, loc, bin, plan, env, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +231,7 @@ func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Bi
 	return mergeSpecs{specs, platformIndependent}, nil
 }
 
-func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, opts BuildImageOpts) (build.Spec, error) {
+func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
 	if src == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}
@@ -258,6 +259,10 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 		return BuildGo(loc, src.GoBuild, false)
 	}
 
+	if src.NodejsBuild != nil {
+		return BuildNodejs(env, loc, src.NodejsBuild, opts.IsFocus)
+	}
+
 	if wb := src.WebBuild; wb != "" {
 		if wb != "." {
 			return nil, fnerrors.UserError(loc, "web_build: must be set to `.`")
@@ -266,7 +271,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 	}
 
 	if llb := src.LlbPlan; llb != nil {
-		spec, err := buildLayeredSpec(ctx, loc, llb.OutputOf, opts)
+		spec, err := buildLayeredSpec(ctx, loc, llb.OutputOf, env, opts)
 		if err != nil {
 			return nil, err
 		}
