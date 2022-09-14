@@ -28,6 +28,7 @@ const (
 	FnServiceReadyz = "foundation.namespacelabs.dev/readyz"
 )
 
+// ClusterInjection is used in ops.Execute to provide access to the cluster instance.
 var ClusterInjection = ops.Define[Cluster]("ns.cluster")
 
 // A runtime class represents a runtime implementation type, e.g. "kubernetes".
@@ -38,16 +39,34 @@ type Class interface {
 	// the provider used would have instantiated a new cluster.
 	AttachToCluster(context.Context, planning.Configuration) (Cluster, error)
 
-	// Ensures the cluster that would be targeted by this runtime class'
-	// configuration exists.
+	// Attaches to an existing cluster (if not is specified in the
+	// configuration), or creates a new cluster as needed.
 	EnsureCluster(context.Context, planning.Configuration) (Cluster, error)
 }
 
-// Represents an application deployment target within a cluster. Clusters may
-// provider one, or more co-existing Namespaces.
-type Namespace interface {
-	// XXX document guarantees.
-	UniqueID() string
+// A cluster represents a cluster where Namespace is capable of deployment one
+// or more applications.
+type Cluster interface {
+	// Returns a Planner implementation which emits deployment plans that target
+	// a namespace within this cluster.
+	Planner(planning.Context) Planner
+
+	// Returns a namespace'd cluster -- one for a particular application use,
+	// bound to the workspace identified by the planning.Context.
+	Bind(planning.Context) (ClusterNamespace, error)
+
+	// Fetch diagnostics of a particular container reference.
+	FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error)
+
+	// Fetch logs of a specific container reference.
+	FetchLogsTo(ctx context.Context, destination io.Writer, container *ContainerReference, opts FetchLogsOpts) error
+
+	// Attaches to a running container.
+	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
+
+	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
+	// XXX remove planning.Context, as it leaks environment bits.
+	EnsureState(context.Context, string, planning.Context) (any, error)
 }
 
 // A planner is capable of generating namespace-specific deployment plans. It
@@ -65,9 +84,9 @@ type Planner interface {
 	PlanDeployment(context.Context, DeploymentSpec) (*DeploymentPlan, error)
 
 	// Plans an ingress deployment, i.e. produces a series of instructions that
-	// will instantiate the required deployment resources to run the servers in
-	// the specified Ingresses. This method is side-effect free; mutations are
-	// applied when the generated plan is applied.
+	// will instantiate the required deployment resources to run the servers
+	// with the specified Ingresses. This method is side-effect free; mutations
+	// are applied when the generated plan is applied.
 	PlanIngress(context.Context, *schema.Stack, []*schema.IngressFragment) (*DeploymentPlan, error)
 
 	// PrepareProvision is called before invoking a provisioning tool, to offer
@@ -84,29 +103,11 @@ type Planner interface {
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
 }
 
-// A cluster represents a cluster where Namespace is capable of deployment one
-// or more applications.
-type Cluster interface {
-	// Returns a Planner implementation which emits deployment plans which
-	// target a namespace within this cluster.
-	Planner(planning.Context) Planner
-
-	// Returns a namespace'd cluster -- one for a particular application use,
-	// bound to the workspace identified by the planning.Context.
-	Bind(planning.Context) (ClusterNamespace, error)
-
-	// Fetch diagnostics of a particular container reference.
-	FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error)
-
-	// Fetch logs of a specific container reference.
-	FetchLogsTo(context.Context, io.Writer, *ContainerReference, FetchLogsOpts) error
-
-	// Attaches to a running container.
-	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
-
-	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
-	// XXX remove planning.Context, as it leaks environment bits.
-	EnsureState(context.Context, string, planning.Context) (any, error)
+// Represents an application deployment target within a cluster. Clusters may
+// provider one, or more co-existing Namespaces.
+type Namespace interface {
+	// XXX document guarantees.
+	UniqueID() string
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application
@@ -132,14 +133,16 @@ type ClusterNamespace interface {
 	// Starts a new shell in the container of a previously deployed server. The
 	// image of the server must contain the specified command. For ephemeral
 	// containers, see #329.
-	StartTerminal(ctx context.Context, server *schema.Server, io TerminalIO, command string, rest ...string) error
+	StartTerminal(ctx context.Context, server Deployable, io TerminalIO, command string, rest ...string) error
 
 	// Forwards a single port.
-	ForwardPort(ctx context.Context, server *schema.Server, containerPort int32, localAddrs []string, notify SinglePortForwardedFunc) (io.Closer, error)
+	// XXX remove; callers should instead implement their own TCP net.Listener
+	// and call DialServer as needed.
+	ForwardPort(ctx context.Context, server Deployable, containerPort int32, localAddrs []string, notify SinglePortForwardedFunc) (io.Closer, error)
 
 	// Dials a TCP port to one of the replicas of the target server. The
 	// lifecycle of the connection is bound to the specified context.
-	DialServer(ctx context.Context, server *schema.Server, containerPort int32) (net.Conn, error)
+	DialServer(ctx context.Context, server Deployable, containerPort int32) (net.Conn, error)
 
 	// Exposes the cluster's ingress, in the specified local address and port.
 	// This is used to create stable localhost-bound ingress addresses (for e.g.
@@ -150,7 +153,7 @@ type ClusterNamespace interface {
 	// Observe runs until the context is cancelled.
 	Observe(context.Context, Deployable, ObserveOpts, func(ObserveEvent) error) error
 
-	// Waits until the specified containers are no longer running.
+	// Waits until the specified deployable is no longer running (typically a one-shot).
 	WaitForTermination(ctx context.Context, object Deployable) ([]ContainerStatus, error)
 
 	// RunAttached runs the specified container, and attaches to it.
@@ -180,8 +183,8 @@ type Deployable interface {
 }
 
 type DeploymentSpec struct {
-	Deployables []DeployableSpec
-	Secrets     GroundedSecrets
+	Specs   []DeployableSpec
+	Secrets GroundedSecrets
 }
 
 type DeployableSpec struct {

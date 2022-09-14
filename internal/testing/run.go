@@ -150,7 +150,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				RunOpts:     testRun,
 			}
 
-			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Deployables: []runtime.DeployableSpec{testDriver}})
+			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Specs: []runtime.DeployableSpec{testDriver}})
 			if err != nil {
 				return err
 			}

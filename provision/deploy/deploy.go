@@ -416,8 +416,8 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			}
 
 			deployment, err := rc.PlanDeployment(ctx, runtime.DeploymentSpec{
-				Deployables: serverRuns,
-				Secrets:     *secrets,
+				Specs:   serverRuns,
+				Secrets: *secrets,
 			})
 			if err != nil {
 				return prepareAndBuildResult{}, err

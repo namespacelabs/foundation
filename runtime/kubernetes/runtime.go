@@ -151,7 +151,7 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server run
 		})
 }
 
-func (r *ClusterNamespace) StartTerminal(ctx context.Context, server *schema.Server, rio runtime.TerminalIO, command string, rest ...string) error {
+func (r *ClusterNamespace) StartTerminal(ctx context.Context, server runtime.Deployable, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
 	return r.startTerminal(ctx, r.cluster.cli, server, rio, cmd)
