@@ -1,0 +1,9 @@
+{
+	"name": "docker_web_app",
+	"version": "1.0.0",
+	"description": "Node.js on Docker",
+	"main": "sidecarserver.js",
+	"dependencies": {
+		"express": "^4.18.1"
+	}
+}
