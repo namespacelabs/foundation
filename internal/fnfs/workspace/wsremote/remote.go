@@ -92,7 +92,7 @@ func (lo localObserver) Observe(ctx context.Context, _ func(compute.ResultWithTi
 			case <-time.After(time.Second):
 				newSnapshot, err := checkSnapshot(ctx, last, lo.absPath, lo.sink)
 				if err != nil {
-					fmt.Fprintf(console.Errors(ctx), "FileSync failed while snapshotting: %v\n", err)
+					fmt.Fprintf(console.Errors(ctx), "FileSync failed while snapshotting %q: %v\n", lo.absPath, err)
 					return
 				}
 
