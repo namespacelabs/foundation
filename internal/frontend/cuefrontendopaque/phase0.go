@@ -11,6 +11,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	integrationapi "namespacelabs.dev/foundation/internal/integration/api"
+	imageintegration "namespacelabs.dev/foundation/internal/integration/image"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
@@ -130,14 +132,14 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		parsedPkg.Tests = append(parsedPkg.Tests, parsedTests...)
 	}
 
-	if integration := server.LookupPath("integration"); integration.Exists() {
-		if err := parseIntegration(ctx, loc, integration, parsedPkg); err != nil {
+	if i := server.LookupPath("integration"); i.Exists() {
+		if err := integrationapi.ParseIntegration(ctx, loc, i, parsedPkg); err != nil {
 			return nil, err
 		}
 	}
 
 	if image := server.LookupPath("image"); image.Exists() {
-		if err := parseImageIntegration(ctx, loc, image, parsedPkg); err != nil {
+		if err := imageintegration.ParseImageIntegration(ctx, loc, image, parsedPkg); err != nil {
 			return nil, err
 		}
 	}

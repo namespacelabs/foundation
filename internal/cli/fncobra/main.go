@@ -35,6 +35,9 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/git"
+	integrationapi "namespacelabs.dev/foundation/internal/integration/api"
+	dockerintegration "namespacelabs.dev/foundation/internal/integration/docker"
+	gointegration "namespacelabs.dev/foundation/internal/integration/golang"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/orchestration"
@@ -202,6 +205,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		nodeintegration.Register()
 		opaque.Register()
 		base.Register()
+
+		// Opaque integrations
+		integrationapi.Register(&dockerintegration.DockerIntegration{})
+		integrationapi.Register(&gointegration.GoIntegration{})
 
 		// Codegen
 		codegen.Register()
