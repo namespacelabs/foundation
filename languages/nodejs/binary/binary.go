@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/pins"
 )
 
@@ -42,7 +43,12 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	src := buildkit.MakeLocalState(local)
 
 	buildBase = prepareAndRunInstall(ctx, buildBase, src)
-	buildBase = runBuild(ctx, buildBase, src)
+
+	buildBase, err = runBuild(ctx, bnj.loc, buildBase, src)
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
 	buildBase = addRunScript(ctx, buildBase)
 
 	var out llb.State
@@ -88,14 +94,20 @@ func prepareAndRunInstall(ctx context.Context, base llb.State, src llb.State) ll
 	return state
 }
 
-func runBuild(ctx context.Context, base llb.State, src llb.State) llb.State {
+func runBuild(ctx context.Context, loc pkggraph.Location, base llb.State, src llb.State) (llb.State, error) {
 	state := base.With(llbutil.CopyFrom(src, ".", "."))
 
-	// TODO: use the detected package manager.
-	// TODO: detect if there is a "build" script
-	state = state.Run(llb.Shlex("npm run build")).Root()
+	pkgJson, err := readPackageJson(loc)
+	if err != nil {
+		return llb.State{}, err
+	}
 
-	return state
+	if _, ok := pkgJson.Scripts["build"]; ok {
+		// TODO: use the detected package manager.
+		state = state.Run(llb.Shlex("npm run build")).Root()
+	}
+
+	return state, nil
 }
 
 func addRunScript(ctx context.Context, base llb.State) llb.State {
