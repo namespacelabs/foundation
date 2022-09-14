@@ -6,11 +6,8 @@ package kubernetes
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"reflect"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,88 +22,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-func (r *ClusterNamespace) RunOneShot(ctx context.Context, name string, runOpts runtime.ContainerRunOpts, logOutput io.Writer, follow bool) error {
-	return r.cluster.RunOneShot(ctx, r.target.namespace, name, runOpts, logOutput, follow)
-}
-
-func (r *Cluster) RunOneShot(ctx context.Context, namespace, name string, runOpts runtime.ContainerRunOpts, logOutput io.Writer, follow bool) error {
-	spec, err := makePodSpec(name, runOpts)
-	if err != nil {
-		return err
-	}
-
-	podName := name
-
-	if err := spawnAndWaitPod(ctx, r.cli, namespace, podName, spec, false); err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := r.cli.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{}); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to delete pod %s/%s: %v\n", namespace, podName, err)
-		}
-	}()
-
-	if follow {
-		if err := fetchPodLogs(ctx, r.cli, logOutput, namespace, podName, "", runtime.FetchLogsOpts{Follow: true}); err != nil {
-			return err
-		}
-	}
-
-	for k := 0; ; k++ {
-		finalState, err := r.cli.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
-		if err != nil {
-			return fnerrors.InvocationError("kubernetes: failed to fetch final pod status: %w", err)
-		}
-
-		for _, containerStatus := range finalState.Status.ContainerStatuses {
-			if term := containerStatus.State.Terminated; term != nil {
-				var logErr error
-				if k > 0 || !follow {
-					if follow {
-						fmt.Fprintln(logOutput, "<Attempting to fetch the last 50 lines of test log.>")
-					}
-
-					ctxWithTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
-					defer cancel()
-
-					opts := runtime.FetchLogsOpts{}
-					if follow {
-						opts.TailLines = 50
-					}
-
-					logErr = fetchPodLogs(ctxWithTimeout, r.cli, logOutput, namespace, podName, "", opts)
-				}
-
-				if term.ExitCode != 0 {
-					return runtime.ErrContainerExitStatus{ExitCode: term.ExitCode}
-				}
-
-				return logErr
-			}
-		}
-
-		if follow {
-			fmt.Fprintln(logOutput, "<No longer streaming pod logs, but pod is still running, waiting for completion.>")
-		}
-
-		if err := kubeobserver.WaitForCondition(ctx, r.cli,
-			tasks.Action("kubernetes.pod.wait").Arg("namespace", namespace).Arg("name", podName).Arg("condition", "terminated"),
-			kubeobserver.WaitForPodConditition(
-				kubeobserver.PickPod(namespace, podName),
-				func(status corev1.PodStatus) (bool, error) {
-					return (status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
-				})); err != nil {
-			var e runtime.ErrContainerFailed
-			if errors.As(err, &e) {
-				return err
-			}
-
-			return fnerrors.InternalError("kubernetes: expected pod to have terminated, but didn't see termination status: %w", err)
-		}
-	}
-}
 
 func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.DeployableObject) ([]runtime.ContainerStatus, error) {
 	if object.GetDeployableClass() != string(schema.DeployableClass_ONESHOT) {

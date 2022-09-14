@@ -150,11 +150,6 @@ type ClusterNamespace interface {
 	// Observe runs until the context is cancelled.
 	Observe(context.Context, DeployableObject, ObserveOpts, func(ObserveEvent) error) error
 
-	// Runs the specified container as a one-shot, streaming it's output to the
-	// specified writer. This mechanism is targeted at invoking test runners
-	// within the runtime environment.
-	RunOneShot(ctx context.Context, name string, opts ContainerRunOpts, w io.Writer, follow bool) error
-
 	// Waits until the specified containers are no longer running.
 	WaitForTermination(ctx context.Context, object DeployableObject) ([]ContainerStatus, error)
 
