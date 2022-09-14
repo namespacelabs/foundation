@@ -38,6 +38,7 @@ import (
 	integrationapi "namespacelabs.dev/foundation/internal/integration/api"
 	dockerintegration "namespacelabs.dev/foundation/internal/integration/docker"
 	gointegration "namespacelabs.dev/foundation/internal/integration/golang"
+	nodejsintegration "namespacelabs.dev/foundation/internal/integration/nodejs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/orchestration"
@@ -48,6 +49,7 @@ import (
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages/base"
 	"namespacelabs.dev/foundation/languages/golang"
+	nodebinary "namespacelabs.dev/foundation/languages/nodejs/binary"
 	nodeintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
@@ -164,6 +166,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildWeb = web.WebBuilder
 		binary.BuildLLBGen = genbinary.LLBBinary
 		binary.BuildNix = genbinary.NixImageBuilder
+		binary.BuildNodejs = nodebinary.NodejsBuilder
 
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
@@ -209,6 +212,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Opaque integrations
 		integrationapi.Register(&dockerintegration.DockerIntegration{})
 		integrationapi.Register(&gointegration.GoIntegration{})
+		integrationapi.Register(&nodejsintegration.NodejsIntegration{})
 
 		// Codegen
 		codegen.Register()

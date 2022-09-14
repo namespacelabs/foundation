@@ -23,7 +23,7 @@ message Binary {
     LayeredImageBuildPlan build_plan = 8;
 }
 
-// Next ID: 8
+// Next ID: 9
 message ImageBuildPlan {
     string          go_package     = 1;  // Use go binary builder.
     GoBuild         go_build       = 7;  // Use go binary builder.
@@ -32,7 +32,8 @@ message ImageBuildPlan {
     LLBPlan         llb_plan       = 4;  // Build  binary which itself produces LLB.
     string          nix_flake      = 5;  // Build a docker image from a nix flake.
     repeated string snapshot_files = 6;  // Add all referenced files, and directories, recursively visiting their children.
-    string          image_id       = 8;  // Use an existingDocker image.
+    string          image_id       = 8;  // Use an existing image.
+    NodejsBuild     nodejs_build   = 9;
 
     message LLBPlan {
         Binary output_of = 1;
@@ -44,6 +45,10 @@ message ImageBuildPlan {
         bool   binary_only = 3;
         // Whether to observe changes to the file system.
         bool is_focus = 4;
+    }
+
+    message NodejsBuild {
+        string rel_path = 1;
     }
 }
 

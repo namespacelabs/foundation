@@ -41,5 +41,5 @@ func (i *DockerIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v 
 
 	return api.SetServerBinary(pkg, &schema.LayeredImageBuildPlan{
 		LayerBuildPlan: []*schema.ImageBuildPlan{{Dockerfile: bits.Dockerfile}},
-	})
+	}, nil)
 }

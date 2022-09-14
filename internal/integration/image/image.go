@@ -23,5 +23,5 @@ func ParseImageIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.
 
 	return api.SetServerBinary(pkg, &schema.LayeredImageBuildPlan{
 		LayerBuildPlan: []*schema.ImageBuildPlan{{ImageId: str}},
-	})
+	}, nil)
 }
