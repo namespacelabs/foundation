@@ -99,10 +99,6 @@ func watchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string,
 	}
 }
 
-func (r *ClusterNamespace) RunAttached(ctx context.Context, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO) error {
-	return r.cluster.RunAttachedOpts(ctx, r.target.namespace, name, runOpts, io, nil)
-}
-
 func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	spec, err := makePodSpec(name, runOpts)
 	if err != nil {

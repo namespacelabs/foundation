@@ -156,9 +156,6 @@ type ClusterNamespace interface {
 	// Waits until the specified deployable is no longer running (typically a one-shot).
 	WaitForTermination(ctx context.Context, object Deployable) ([]ContainerStatus, error)
 
-	// RunAttached runs the specified container, and attaches to it.
-	RunAttached(context.Context, string, ContainerRunOpts, TerminalIO) error
-
 	// Deletes a previously deployed DeployableSpec.
 	DeleteDeployment(ctx context.Context, deployable Deployable) error
 
