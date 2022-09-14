@@ -15,10 +15,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
 )
 
-func (r *ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
+func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.DeployableObject, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	// XXX use a watch
 	announced := map[string]*runtime.ContainerReference{}
 
@@ -52,14 +51,14 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv *schema.Server, opts
 					CreatedAt: pod.CreationTimestamp.Time,
 				})
 				newM[instance.UniqueId] = struct{}{}
-				labels[instance.UniqueId] = fmt.Sprintf("%s (%s)", srv.Name, pod.ResourceVersion)
+				labels[instance.UniqueId] = fmt.Sprintf("%s (%s)", srv.GetName(), pod.ResourceVersion)
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
 						instance := kubedef.MakePodRef(r.target.namespace, pod.Name, container.Name, srv)
 						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
 						newM[instance.UniqueId] = struct{}{}
-						labels[instance.UniqueId] = fmt.Sprintf("%s:%s (%s)", srv.Name, container.Name, pod.ResourceVersion)
+						labels[instance.UniqueId] = fmt.Sprintf("%s:%s (%s)", srv.GetName(), container.Name, pod.ResourceVersion)
 					}
 				}
 			}

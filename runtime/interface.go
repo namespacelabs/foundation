@@ -124,7 +124,7 @@ type ClusterNamespace interface {
 	DeployedConfigImageID(context.Context, *schema.Server) (oci.ImageID, error)
 
 	// Returns a list of containers that the server has deployed.
-	ResolveContainers(context.Context, *schema.Server) ([]*ContainerReference, error)
+	ResolveContainers(context.Context, DeployableObject) ([]*ContainerReference, error)
 
 	// Fetch environment diagnostics, e.g. event list.
 	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
@@ -148,12 +148,15 @@ type ClusterNamespace interface {
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.
-	Observe(context.Context, *schema.Server, ObserveOpts, func(ObserveEvent) error) error
+	Observe(context.Context, DeployableObject, ObserveOpts, func(ObserveEvent) error) error
 
 	// Runs the specified container as a one-shot, streaming it's output to the
 	// specified writer. This mechanism is targeted at invoking test runners
 	// within the runtime environment.
 	RunOneShot(ctx context.Context, name string, opts ContainerRunOpts, w io.Writer, follow bool) error
+
+	// Waits until the specified containers are no longer running.
+	WaitForTermination(ctx context.Context, object DeployableObject) ([]ContainerStatus, error)
 
 	// RunAttached runs the specified container, and attaches to it.
 	RunAttached(context.Context, string, ContainerRunOpts, TerminalIO) error
@@ -167,6 +170,12 @@ type ClusterNamespace interface {
 	// environment. If wait is true, waits until the target resources have been
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
+}
+
+type DeployableObject interface {
+	GetId() string
+	GetName() string
+	GetDeployableClass() string // schema.DeployableClass
 }
 
 type Deployment struct {
@@ -198,8 +207,11 @@ type Deployable struct {
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
 }
 
-func (d Deployable) GetId() string   { return d.Id }
-func (d Deployable) GetName() string { return d.Name }
+var _ DeployableObject = Deployable{}
+
+func (d Deployable) GetId() string              { return d.Id }
+func (d Deployable) GetName() string            { return d.Name }
+func (d Deployable) GetDeployableClass() string { return string(d.Class) }
 
 type GroundedSecrets struct {
 	Secrets []GroundedSecret
@@ -220,6 +232,11 @@ type ContainerRunOpts struct {
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
 	Mounts             []*schema.Mount
+}
+
+type ContainerStatus struct {
+	Reference        *ContainerReference
+	TerminationError error
 }
 
 type RunAs struct {

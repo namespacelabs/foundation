@@ -223,7 +223,8 @@ func registerApply() {
 				}
 
 				return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action(runtime.TaskServerStart).Scope(scope...),
-					kobs.WaitForPodConditition(kobs.PickPod(header.Namespace, header.Name),
+					kobs.WaitForPodConditition(
+						kobs.PickPod(header.Namespace, header.Name),
 						func(ps v1.PodStatus) (bool, error) {
 							meta, err := json.Marshal(ps)
 							if err != nil {
@@ -246,14 +247,21 @@ func registerApply() {
 
 							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(header.Namespace, header.Name, ps))
 
-							ready, _ := kobs.MatchPodCondition(v1.PodReady)(ps)
-							if ready {
-								ev.Ready = orchestration.Event_READY
+							var done bool
+							if ps.Phase == v1.PodFailed || ps.Phase == v1.PodSucceeded {
+								// If the pod is finished, then don't wait further.
+								done = true
+							} else {
+								done, _ = kobs.MatchPodCondition(v1.PodReady)(ps)
+								if done {
+									ev.Ready = orchestration.Event_READY
+								}
 							}
+
 							if ch != nil {
 								ch <- ev
 							}
-							return ready, nil
+							return done, nil
 						}))
 			}}
 

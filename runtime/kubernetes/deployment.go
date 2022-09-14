@@ -863,7 +863,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func deployEndpoint(ctx context.Context, r clusterTarget, srv kubedef.Deployable, endpoint *schema.Endpoint, s *serverRunState) error {
+func deployEndpoint(ctx context.Context, r clusterTarget, srv runtime.DeployableObject, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
 
 	port := endpoint.Port

@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration"
@@ -139,18 +140,64 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			defer cancelAll() // When the test is done, cancel logging.
 
 			parts := strings.Split(test.TestRef.PackageName, "/")
-			name := strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name + "-" + ids.NewRandomBase32ID(8)
 
-			if err := cluster.RunOneShot(ctx, name, testRun, testLog, true); err != nil {
+			testDriver := runtime.Deployable{
+				Location:    test.TestRef.AsPackageName(),
+				PackageName: test.TestRef.AsPackageName(),
+				Class:       schema.DeployableClass_ONESHOT,
+				Id:          ids.NewRandomBase32ID(8),
+				Name:        strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name,
+				RunOpts:     testRun,
+			}
+
+			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.Deployment{Deployables: []runtime.Deployable{testDriver}})
+			if err != nil {
+				return err
+			}
+
+			g := ops.NewPlan()
+			if err := g.Add(plan.Definitions...); err != nil {
+				return err
+			}
+
+			// Make sure that the cluster is accessible to a serialized invocation implementation.
+			if _, err := ops.Execute(ctx, env.Configuration(), "test.driver.deploy", g,
+				runtime.ClusterInjection.With(cluster.Cluster())); err != nil {
+				return fnerrors.New("failed to deploy: %w", err)
+			}
+
+			// We don't use WaitMultiple here, i.e. ignore the set of returned
+			// waiters, because we have our own custom waiting logic below in
+			// WaitForTermination.
+			containers, err := cluster.WaitForTermination(ctx, testDriver)
+			if err != nil {
+				return err
+			}
+
+			if len(containers) != 1 {
+				return fnerrors.InternalError("expected test driver to yield exactly one container, got %d", len(containers))
+			}
+
+			for _, container := range containers {
+				if err := cluster.Cluster().FetchLogsTo(ctx, testLog, container.Reference, runtime.FetchLogsOpts{}); err != nil {
+					if errors.Is(err, context.Canceled) {
+						return err
+					}
+
+					fmt.Fprintf(console.Errors(ctx), "%s: failed to fetch test log: %v\n", test.TestRef.Canonical(), err)
+				}
+			}
+
+			for _, container := range containers {
 				// XXX consolidate these two.
 				var e1 runtime.ErrContainerExitStatus
 				var e2 runtime.ErrContainerFailed
-				if errors.As(err, &e1) && e1.ExitCode > 0 {
+				if errors.As(container.TerminationError, &e1) && e1.ExitCode > 0 {
 					return errTestFailed
 				} else if errors.As(err, &e2) {
 					return errTestFailed
-				} else {
-					return err
+				} else if container.TerminationError != nil {
+					return container.TerminationError
 				}
 			}
 

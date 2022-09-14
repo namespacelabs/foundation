@@ -7,9 +7,11 @@ package kubedef
 import (
 	"fmt"
 	"strings"
+
+	"namespacelabs.dev/foundation/runtime"
 )
 
-func MakeDeploymentId(srv Deployable) string {
+func MakeDeploymentId(srv runtime.DeployableObject) string {
 	if srv.GetName() == "" {
 		return srv.GetId()
 	}
