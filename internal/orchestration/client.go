@@ -167,17 +167,19 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 	sink := tasks.SinkFrom(ctx)
 	for {
 		in, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		}
 		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
 			return err
 		}
+
 		if ch != nil && in.Event != nil {
 			ch <- in.Event
 		}
+
 		if sink != nil && in.Log != nil && in.Log.LogLevel <= maxLogLevel {
-			ra := tasks.ActionFromProto(ctx, in.Log.Task)
+			ra := tasks.ActionFromProto(ctx, "orchestrator", in.Log.Task)
 
 			switch in.Log.Purpose {
 			case protolog.Log_PURPOSE_WAITING:

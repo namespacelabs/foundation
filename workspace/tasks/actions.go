@@ -503,7 +503,7 @@ func (af *RunningAction) ID() ActionID                   { return af.Data.Action
 func (af *RunningAction) Proto() *protocol.Task          { return makeProto(&af.Data, af.attachments) }
 func (af *RunningAction) Attachments() *EventAttachments { return af.attachments }
 
-func ActionFromProto(ctx context.Context, in *protocol.Task) *RunningAction {
+func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *RunningAction {
 	sink := SinkFrom(ctx)
 	if sink == nil {
 		panic("compute: action sink required in the context")
@@ -515,6 +515,7 @@ func ActionFromProto(ctx context.Context, in *protocol.Task) *RunningAction {
 		HumanReadable: in.HumanReadableLabel,
 		Created:       time.Unix(0, in.CreatedTs),
 		State:         ActionState(in.State),
+		Category:      cat,
 	}
 
 	scope := schema.PackageList{}
