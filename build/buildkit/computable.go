@@ -319,18 +319,20 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 			return nil, err
 		}
 
-		if ForwardKeychain {
-			return solve(ctx, deps, l.reqBase, v.Keychain, exportToRegistry(v.Repository, v.InsecureRegistry))
-		} else if v.Keychain == nil {
-			// If the target needs permissions, we don't do the direct push
-			// optimization as we don't yet wire the keychain into buildkit.
-			tasks.Attachments(ctx).AddResult("push", v.Repository)
+		if !v.InsecureRegistry {
+			if ForwardKeychain {
+				return solve(ctx, deps, l.reqBase, v.Keychain, exportToRegistry(v.Repository, v.InsecureRegistry))
+			} else if v.Keychain == nil {
+				// If the target needs permissions, we don't do the direct push
+				// optimization as we don't yet wire the keychain into buildkit.
+				tasks.Attachments(ctx).AddResult("push", v.Repository)
 
-			img, err := solve(ctx, deps, l.reqBase, nil, exportToRegistry(v.Repository, v.InsecureRegistry))
-			if err != nil {
-				return nil, console.WithLogs(ctx, err)
+				img, err := solve(ctx, deps, l.reqBase, nil, exportToRegistry(v.Repository, v.InsecureRegistry))
+				if err != nil {
+					return nil, console.WithLogs(ctx, err)
+				}
+				return img, err
 			}
-			return img, err
 		}
 	}
 
