@@ -794,7 +794,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	shortenLabel := ""
 	if renderActions {
 		// Recurse through the line item tree.
-		c.renderLineRec(out, width, c.root, t, " => ", 0, maxDepth)
+		c.renderLineRec(out, width, c.root, t, 0, 0, maxDepth)
 	} else {
 		shortenLabel = "[...] "
 	}
@@ -946,7 +946,7 @@ func skipRendering(data tasks.EventData, maxLevel int) bool {
 	return skip
 }
 
-func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.Time, inputPrefix string, currDepth, maxDepth uint) {
+func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.Time, inputPrefix int, currDepth, maxDepth uint) {
 	if currDepth >= maxDepth {
 		return
 	}
@@ -974,7 +974,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.ActionID.String()[:8]+"]"))
 			}
 
-			fmt.Fprint(&lineb, prefix)
+			fmt.Fprint(&lineb, renderPrefix(prefix))
 
 			renderLine(&lineb, colors.WithColors, *child.item)
 
@@ -987,7 +987,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			}
 
 			c.writeLineWithMaxW(out, width, lineb.String(), suffix)
-			prefix += "=> "
+			prefix++
 		}
 
 		c.renderLineRec(out, width, child, t, prefix, currDepth+1, maxDepth)
