@@ -25,7 +25,7 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func MaybeRenderWait(env planning.Context, cluster runtime.Cluster, maybe bool) ops.WaitHandler {
+func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, maybe bool) ops.WaitHandler {
 	if !maybe {
 		return nil
 	}
