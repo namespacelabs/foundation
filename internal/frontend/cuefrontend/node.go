@@ -395,7 +395,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 			}
 		}
 
-		invBinary, err := callback.InvokeBinary.toFrontend()
+		invBinary, err := callback.InvokeBinary.ToFrontend()
 		if err != nil {
 			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision.invokeBinary`")
 		}

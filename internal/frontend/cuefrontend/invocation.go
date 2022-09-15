@@ -22,7 +22,7 @@ type CueInvokeBinary struct {
 	Inject       []string                         `json:"inject"`
 }
 
-func (cib CueInvokeBinary) toFrontend() (*schema.Invocation, error) {
+func (cib CueInvokeBinary) ToFrontend() (*schema.Invocation, error) {
 	binRef, err := schema.ParsePackageRef(cib.Binary)
 	if err != nil {
 		return nil, err

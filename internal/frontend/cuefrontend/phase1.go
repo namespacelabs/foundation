@@ -81,7 +81,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 			return pdata, err
 		}
 
-		inv, err := dec.toFrontend()
+		inv, err := dec.ToFrontend()
 		if err != nil {
 			return pdata, err
 		}
