@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/versions"
 )
 
 var EndpointAddress = "https://api.namespacelabs.net"
@@ -66,6 +68,8 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 			}
 		}
 	}
+
+	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.APIVersion))
 
 	reqBytes, err := json.Marshal(request)
 	if err != nil {
