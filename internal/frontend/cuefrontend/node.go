@@ -77,7 +77,7 @@ type cueInstantiate struct {
 
 type cueCallback struct {
 	InvokeInternal string          `json:"invokeInternal"`
-	InvokeBinary   cueInvokeBinary `json:"invokeBinary"`
+	InvokeBinary   CueInvokeBinary `json:"invokeBinary"`
 }
 
 type cueEnvironmentRequirements struct {

@@ -36,56 +36,6 @@ type cueStack struct {
 	Append []cueWithPackageName `json:"append"`
 }
 
-type cueInvocationSnapshot struct {
-	FromWorkspace string `json:"fromWorkspace"`
-	Optional      bool   `json:"optional"`
-	RequireFile   bool   `json:"requireFile"`
-}
-
-type cueInvokeBinary struct {
-	Binary       string                           `json:"binary"`
-	Args         *ArgsListOrMap                   `json:"args"`
-	WorkingDir   string                           `json:"workingDir"`
-	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
-	NoCache      bool                             `json:"noCache"`
-	RequiresKeys bool                             `json:"requiresKeys"`
-	Inject       []string                         `json:"inject"`
-}
-
-func (cib cueInvokeBinary) toFrontend() (*schema.Invocation, error) {
-	binRef, err := schema.ParsePackageRef(cib.Binary)
-	if err != nil {
-		return nil, err
-	}
-
-	inv := &schema.Invocation{
-		BinaryRef:    binRef,
-		Args:         cib.Args.Parsed(),
-		WorkingDir:   cib.WorkingDir,
-		NoCache:      cib.NoCache,
-		RequiresKeys: cib.RequiresKeys,
-	}
-
-	for _, inject := range cib.Inject {
-		inv.Inject = append(inv.Inject, &schema.Invocation_ValueInjection{
-			Type: inject,
-		})
-	}
-
-	for k, v := range cib.Snapshots {
-		if inv.Snapshots == nil {
-			inv.Snapshots = map[string]*schema.InvocationSnapshot{}
-		}
-		inv.Snapshots[k] = &schema.InvocationSnapshot{
-			FromWorkspace: v.FromWorkspace,
-			Optional:      v.Optional,
-			RequireFile:   v.RequireFile,
-		}
-	}
-
-	return inv, nil
-}
-
 type cueNaming struct {
 	DomainName           map[string][]string `json:"domainName"`
 	TLSManagedDomainName map[string][]string `json:"tlsManagedDomainName"`
@@ -126,7 +76,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 	}
 
 	if with := vv.LookupPath("configure.with"); with.Exists() {
-		var dec cueInvokeBinary
+		var dec CueInvokeBinary
 		if err := with.Val.Decode(&dec); err != nil {
 			return pdata, err
 		}
