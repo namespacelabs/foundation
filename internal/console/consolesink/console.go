@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/truncate"
@@ -564,7 +565,8 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 
 	var newLines [][]byte
 	if len(newFrame) > 0 {
-		newLines = bytes.Split(bytes.TrimSpace(newFrame), []byte("\n"))
+		newLines = bytes.Split(bytes.TrimRightFunc(newFrame, unicode.IsSpace), []byte("\n"))
+
 	}
 	c.previousLines = newLines
 
