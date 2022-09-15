@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"encoding/base32"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -19,8 +18,7 @@ const (
 )
 
 var (
-	validChars     = regexp.MustCompile("[a-z0-9]+")
-	base32encoding = base32.NewEncoding(lowerCaseEncodeBase32).WithPadding(base32.NoPadding)
+	validChars = regexp.MustCompile("[a-z0-9]+")
 )
 
 // We use namespaces to isolate deployments per workspace and environment.

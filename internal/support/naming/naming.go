@@ -6,24 +6,15 @@ package naming
 
 import (
 	"crypto/sha256"
-	"encoding/base32"
 	"fmt"
-)
 
-const (
-	lowerCaseEncodeBase32 = "0123456789abcdefghijklmnopqrstuv"
-)
-
-var (
-	base32encoding = base32.NewEncoding(lowerCaseEncodeBase32).WithPadding(base32.NoPadding)
+	"namespacelabs.dev/go-ids"
 )
 
 func StableID(str string) string {
 	h := sha256.New()
 	fmt.Fprint(h, str)
-	digest := h.Sum(nil)
-
-	return base32encoding.EncodeToString(digest)
+	return ids.EncodeToBase32String(h.Sum(nil))
 }
 
 func StableIDN(str string, n int) string {

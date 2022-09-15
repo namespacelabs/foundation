@@ -5,7 +5,6 @@
 package secrets
 
 import (
-	"encoding/base32"
 	"encoding/base64"
 	"fmt"
 	"io/fs"
@@ -44,8 +43,6 @@ type Generated struct {
 var (
 	validIdRe           = regexp.MustCompile("^[a-z][0123456789abcdefghijklmnopqrstuvwyxz]{7,15}$")
 	validNameRe         = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{0,31}$")
-	lowerCaseBase32Raw  = "0123456789abcdefghijklmnopqrstuv"
-	base32enc           = base32.NewEncoding(lowerCaseBase32Raw).WithPadding(base32.NoPadding)
 	reservedSecretNames = map[string]struct{}{"server": {}}
 )
 
