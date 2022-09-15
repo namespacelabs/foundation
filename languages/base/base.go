@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -29,6 +30,10 @@ type impl struct {
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	binRef := server.Proto().GetBinary().GetPackageRef()
+
+	if binRef == nil {
+		return nil, fnerrors.InternalError("server binary is not set at %s", server.Location)
+	}
 
 	binPkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
 	if err != nil {

@@ -33,6 +33,10 @@ func ValidateServerID(n *schema.Server) error {
 }
 
 func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
+	if srv.Name == "" {
+		return nil, fnerrors.UserError(pp.Location, "server name is required")
+	}
+
 	if srv.Id == "" {
 		srv.Id = naming.StableID(pp.Location.PackageName.String(), 16)
 	}
