@@ -94,6 +94,7 @@ func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map
 				Secret(name, ns).
 				WithType(corev1.SecretTypeTLS).
 				WithLabels(kubedef.ManagedByUs()).
+				WithAnnotations(kubedef.BaseAnnotations()).
 				WithData(map[string][]byte{
 					"tls.key": cert.PrivateKey,
 					"tls.crt": cert.CertificateBundle,

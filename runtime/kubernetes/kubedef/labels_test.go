@@ -39,6 +39,7 @@ func TestMakeAnnotations(t *testing.T) {
 
 	if d := cmp.Diff(map[string]string{
 		"k8s.namespacelabs.dev/server-package-name": "namespacelabs.dev/foundation/test",
+		"k8s.namespacelabs.dev/planner-version":     "1",
 		"k8s.namespacelabs.dev/env-timeout":         defaultEphemeralTimeout.String(),
 	}, got); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)

@@ -44,9 +44,10 @@ func RegisterCreateSecret() {
 
 		newSecret := &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      create.Name,
-				Namespace: create.Namespace,
-				Labels:    kubedef.MakeLabels(create.Environment, nil),
+				Name:        create.Name,
+				Namespace:   create.Namespace,
+				Labels:      kubedef.MakeLabels(create.Environment, nil),
+				Annotations: kubedef.BaseAnnotations(),
 			},
 		}
 

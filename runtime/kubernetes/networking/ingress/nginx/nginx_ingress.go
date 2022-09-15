@@ -148,10 +148,10 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 }
 
 func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb.Any) (map[string]string, error) {
-	annotations := map[string]string{
-		"kubernetes.io/ingress.class":                  "nginx",
-		"nginx.ingress.kubernetes.io/backend-protocol": strings.ToUpper(backendProtocol),
-	}
+	annotations := kubedef.BaseAnnotations()
+
+	annotations["kubernetes.io/ingress.class"] = "nginx"
+	annotations["nginx.ingress.kubernetes.io/backend-protocol"] = strings.ToUpper(backendProtocol)
 
 	if hasTLS {
 		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"

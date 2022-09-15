@@ -5,6 +5,7 @@
 package kubedef
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ const (
 	K8sConfigImage        = "k8s.namespacelabs.dev/config-image"
 	K8sKind               = "k8s.namespacelabs.dev/kind"
 	K8sRuntimeConfig      = "k8s.namespacelabs.dev/runtime-config"
+	K8sPlannerVersion     = "k8s.namespacelabs.dev/planner-version"
 
 	K8sStaticConfigKind  = "static-config"
 	K8sRuntimeConfigKind = "runtime-config"
@@ -35,6 +37,8 @@ const (
 	ManagerId               = "foundation.namespace.so" // #220 Update when product name is final
 	K8sFieldManager         = ManagerId
 	defaultEphemeralTimeout = time.Hour
+
+	PlannerVersion = 1
 )
 
 func SelectById(srv runtime.Deployable) map[string]string {
@@ -100,9 +104,15 @@ func HasFocusMark(labels map[string]string) bool {
 	return label == "true"
 }
 
+func BaseAnnotations() map[string]string {
+	return map[string]string{
+		K8sPlannerVersion: fmt.Sprintf("%d", PlannerVersion),
+	}
+}
+
 // Env may be nil.
 func MakeAnnotations(env *schema.Environment, pkg schema.PackageName) map[string]string {
-	m := map[string]string{}
+	m := BaseAnnotations()
 
 	if pkg != "" {
 		m[K8sServerPackageName] = pkg.String()
@@ -117,9 +127,9 @@ func MakeAnnotations(env *schema.Environment, pkg schema.PackageName) map[string
 }
 
 func MakeServiceAnnotations(endpoint *schema.Endpoint) (map[string]string, error) {
-	m := map[string]string{
-		K8sServicePackageName: endpoint.GetEndpointOwner(),
-	}
+	m := BaseAnnotations()
+
+	m[K8sServicePackageName] = endpoint.GetEndpointOwner()
 
 	var grpcServices []string
 	for _, p := range endpoint.ServiceMetadata {

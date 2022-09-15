@@ -29,31 +29,36 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Namespace",
-		Resource:    applycorev1.Namespace(kubedef.AdminNamespace),
+		Resource: applycorev1.Namespace(kubedef.AdminNamespace).
+			WithAnnotations(kubedef.BaseAnnotations()),
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Service Account",
-		Resource:    applycorev1.ServiceAccount(serviceAccount, kubedef.AdminNamespace),
+		Resource: applycorev1.ServiceAccount(serviceAccount, kubedef.AdminNamespace).
+			WithAnnotations(kubedef.BaseAnnotations()),
 	})
 
 	role := adminRole(serviceAccount)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role",
-		Resource: applyrbacv1.ClusterRole(role).WithRules(
-			// CRDs have their own API groups.
-			applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").
-				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			applyrbacv1.PolicyRule().WithNonResourceURLs("*").
-				WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
-			// TODO permissions should be declarative (each node should tell which setup permissions it needs)
-		),
+		Resource: applyrbacv1.ClusterRole(role).
+			WithAnnotations(kubedef.BaseAnnotations()).
+			WithRules(
+				// CRDs have their own API groups.
+				applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").
+					WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
+				applyrbacv1.PolicyRule().WithNonResourceURLs("*").
+					WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
+				// TODO permissions should be declarative (each node should tell which setup permissions it needs)
+			),
 	})
 
 	binding := adminBinding(serviceAccount)
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Admin Cluster Role Binding",
 		Resource: applyrbacv1.ClusterRoleBinding(binding).
+			WithAnnotations(kubedef.BaseAnnotations()).
 			WithRoleRef(applyrbacv1.RoleRef().
 				WithAPIGroup("rbac.authorization.k8s.io").
 				WithKind("ClusterRole").

@@ -91,11 +91,14 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	// XXX use immutable ConfigMaps.
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: "Network Gateway ConfigMap",
-		Resource: corev1.ConfigMap(configVolume, namespace).WithData(
-			map[string]string{
-				filename: bootstrapData.String(),
-			},
-		),
+		Resource: corev1.ConfigMap(configVolume, namespace).
+			WithLabels(kubedef.ManagedByUs()).
+			WithAnnotations(kubedef.BaseAnnotations()).
+			WithData(
+				map[string]string{
+					filename: bootstrapData.String(),
+				},
+			),
 	})
 
 	body, err := httpGrpcTranscoderCrd.ReadFile("httpgrpctranscodercrd.yaml")

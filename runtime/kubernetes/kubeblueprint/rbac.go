@@ -51,20 +51,26 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyO
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
 		Description: fmt.Sprintf("%s: Service Account", g.DescriptionBase),
-		Resource:    corev1.ServiceAccount(serviceAccount, namespace).WithLabels(labels),
+		Resource: corev1.ServiceAccount(serviceAccount, namespace).
+			WithLabels(labels).
+			WithAnnotations(kubedef.BaseAnnotations()),
 	})
 
 	switch g.Scope {
 	case NamespaceScope:
 		out.Invocations = append(out.Invocations, kubedef.Apply{
 			Description: fmt.Sprintf("%s: Role", g.DescriptionBase),
-			Resource:    rbacv1.Role(roleName, namespace).WithRules(g.Rules...).WithLabels(labels),
+			Resource: rbacv1.Role(roleName, namespace).
+				WithRules(g.Rules...).
+				WithLabels(labels).
+				WithAnnotations(kubedef.BaseAnnotations()),
 		})
 
 		out.Invocations = append(out.Invocations, kubedef.Apply{
 			Description: fmt.Sprintf("%s:  Role Binding", g.DescriptionBase),
 			Resource: rbacv1.RoleBinding(roleBinding, namespace).
 				WithLabels(labels).
+				WithAnnotations(kubedef.BaseAnnotations()).
 				WithRoleRef(rbacv1.RoleRef().
 					WithAPIGroup("rbac.authorization.k8s.io").
 					WithKind("Role").
@@ -78,13 +84,17 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyO
 	case ClusterScope:
 		out.Invocations = append(out.Invocations, kubedef.Apply{
 			Description: fmt.Sprintf("%s: Cluster Role", g.DescriptionBase),
-			Resource:    rbacv1.ClusterRole(roleName).WithRules(g.Rules...).WithLabels(labels),
+			Resource: rbacv1.ClusterRole(roleName).
+				WithRules(g.Rules...).
+				WithLabels(labels).
+				WithAnnotations(kubedef.BaseAnnotations()),
 		})
 
 		out.Invocations = append(out.Invocations, kubedef.Apply{
 			Description: fmt.Sprintf("%s: Cluster Role Binding", g.DescriptionBase),
 			Resource: rbacv1.ClusterRoleBinding(roleBinding).
 				WithLabels(labels).
+				WithAnnotations(kubedef.BaseAnnotations()).
 				WithRoleRef(rbacv1.RoleRef().
 					WithAPIGroup("rbac.authorization.k8s.io").
 					WithKind("ClusterRole").

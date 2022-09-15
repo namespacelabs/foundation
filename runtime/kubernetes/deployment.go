@@ -408,7 +408,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, operations, err := makePersistentVolume(target.namespace, target.env, deployable.Location, volume.Owner, name, pv.Id, pv.SizeBytes)
+			v, operations, err := makePersistentVolume(target.namespace, target.env, deployable.Location, volume.Owner, name, pv.Id, pv.SizeBytes, annotations)
 			if err != nil {
 				return err
 			}
@@ -782,7 +782,7 @@ func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *s
 	return applycorev1.KeyToPath().WithKey(key)
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {
+func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {
 	if sizeBytes >= math.MaxInt64 {
 		return nil, nil, fnerrors.UserError(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
@@ -809,6 +809,8 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 		operations = append(operations, kubedef.Apply{
 			Description: fmt.Sprintf("Persistent storage for %s (%s)", owner, humanize.Bytes(sizeBytes)),
 			Resource: applycorev1.PersistentVolumeClaim(persistentId, ns).
+				WithLabels(kubedef.ManagedByUs()).
+				WithAnnotations(annotations).
 				WithSpec(applycorev1.PersistentVolumeClaimSpec().
 					WithAccessModes(corev1.ReadWriteOnce).
 					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
