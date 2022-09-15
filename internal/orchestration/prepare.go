@@ -33,12 +33,12 @@ func RegisterPrepare() {
 
 	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target planning.Configuration, cluster runtime.Cluster) (any, error) {
 		return tasks.Return(ctx, tasks.Action("orchestrator.prepare"), func(ctx context.Context) (any, error) {
-			return prepare(ctx, target, cluster)
+			return PrepareOrchestrator(ctx, target, cluster, true)
 		})
 	})
 }
 
-func prepare(ctx context.Context, targetEnv planning.Configuration, cluster runtime.Cluster) (any, error) {
+func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, cluster runtime.Cluster, wait bool) (any, error) {
 	env, err := makeOrchEnv(ctx, targetEnv)
 	if err != nil {
 		return nil, err
@@ -67,8 +67,14 @@ func prepare(ctx context.Context, targetEnv planning.Configuration, cluster runt
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)
 	defer cancel()
 
-	if err := ops.Execute(ctx, env.Configuration(), "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, cluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
-		return nil, err
+	if wait {
+		if err := ops.Execute(ctx, env.Configuration(), "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, cluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := ops.RawExecute(ctx, env.Configuration(), "orchestrator.deploy", computed.Deployer, runtime.ClusterInjection.With(cluster)); err != nil {
+			return nil, err
+		}
 	}
 
 	var endpoint *schema.Endpoint

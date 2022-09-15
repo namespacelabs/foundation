@@ -23,6 +23,12 @@ func Execute(ctx context.Context, config planning.Configuration, actionName stri
 	return WaitMultipleWithHandler(ctx, waiters, channelHandler)
 }
 
+// Don't use this method if you don't have a use-case for it, use Execute.
+func RawExecute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, injected ...InjectionInstance) error {
+	_, err := rawExecute(ctx, config, actionName, g, injected...)
+	return err
+}
+
 func rawExecute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, injected ...InjectionInstance) ([]Waiter, error) {
 	injections := append([]InjectionInstance{ConfigurationInjection.With(config)}, injected...)
 

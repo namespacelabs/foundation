@@ -43,7 +43,8 @@ func newEksCmd() *cobra.Command {
 			aws = append(aws, prepare.PrepareAWSProfile(env, awsProfile))
 			aws = append(aws, prepare.PrepareEksCluster(env, clusterName))
 			prepares = append(prepares, aws...)
-			prepares = append(prepares, prepare.PrepareIngress(env, instantiateKube(env, aws)))
+			kube := instantiateKube(env, aws)
+			prepares = append(prepares, prepare.PrepareIngress(env, kube))
 			return collectPreparesAndUpdateDevhost(ctx, root, prepares)
 		}),
 	}
