@@ -67,7 +67,7 @@ func prepare(ctx context.Context, targetEnv planning.Context, cluster runtime.Cl
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)
 	defer cancel()
 
-	if err := ops.ExecuteAndWait(ctx, env.Configuration(), "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, cluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
+	if err := ops.Execute(ctx, env.Configuration(), "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, cluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
 		return nil, err
 	}
 

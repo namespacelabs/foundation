@@ -54,7 +54,7 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 		return err
 	}
 
-	if err := ops.ExecuteAndWait(ctx, env.Configuration(), "ingress.deploy", g, nil, runtime.ClusterInjection.With(kube)); err != nil {
+	if err := ops.Execute(ctx, env.Configuration(), "ingress.deploy", g, nil, runtime.ClusterInjection.With(kube)); err != nil {
 		return err
 	}
 

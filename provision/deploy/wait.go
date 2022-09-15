@@ -33,7 +33,7 @@ func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, maybe bool)
 	return func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
 		rwb := renderwait.NewBlock(ctx, "deploy")
 
-		return rwb.Ch(), func(waitErr error) error {
+		return observeContainers(ctx, env, cluster, rwb.Ch()), func(waitErr error) error {
 			// Make sure that rwb completes before further output below (for ordering purposes).
 			if err := rwb.Wait(ctx); err != nil {
 				if waitErr == nil {

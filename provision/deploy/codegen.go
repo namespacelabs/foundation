@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision"
@@ -90,22 +89,13 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 		return err
 	}
 
-	r, err := ops.NewPlan(codegen...)
+	r, err := ops.NewParallelPlan(codegen...)
 	if err != nil {
 		return err
 	}
 
-	waiters, err := ops.ExecuteParallel(ctx, srv.SealedContext().Configuration(), "workspace.codegen", r,
+	return ops.Execute(ctx, srv.SealedContext().Configuration(), "workspace.codegen", r, nil,
 		pkggraph.MutableModuleInjection.With(srv.Module()),
 		pkggraph.PackageLoaderInjection.With(srv.SealedContext()),
 	)
-	if err != nil {
-		return err
-	}
-
-	if len(waiters) > 0 {
-		return fnerrors.InternalError("unexpected waiters, got %d", len(waiters))
-	}
-
-	return nil
 }

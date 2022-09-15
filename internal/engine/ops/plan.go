@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -48,6 +47,7 @@ type Plan struct {
 	definitions []*schema.SerializedInvocation
 	nodes       []*rnode
 	scope       schema.PackageList
+	parallel    bool // Execute invocations in parallel regardless of dependency graph.
 }
 
 func NewEmptyPlan() *Plan {
@@ -56,6 +56,13 @@ func NewEmptyPlan() *Plan {
 
 func NewPlan(defs ...*schema.SerializedInvocation) (*Plan, error) {
 	p := NewEmptyPlan()
+	return p, p.Add(defs...)
+}
+
+// Don't use this if you don't know why you need it. Use NewPlan instead.
+func NewParallelPlan(defs ...*schema.SerializedInvocation) (*Plan, error) {
+	p := NewEmptyPlan()
+	p.parallel = true
 	return p, p.Add(defs...)
 }
 
@@ -82,35 +89,11 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 	return nil
 }
 
-func Execute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
-	ctx = injectValues(ctx, ConfigurationInjection.With(config))
-	ctx = injectValues(ctx, injected...)
-
-	err = tasks.Action(actionName).Scope(g.scope.PackageNames()...).Run(ctx,
-		func(ctx context.Context) (err error) {
-			waiters, err = g.apply(ctx, false)
-			return
-		})
-	return
-}
-
-func ExecuteParallel(ctx context.Context, config planning.Configuration, name string, g *Plan, injected ...InjectionInstance) (waiters []Waiter, err error) {
-	ctx = injectValues(ctx, ConfigurationInjection.With(config))
-	ctx = injectValues(ctx, injected...)
-
-	err = tasks.Action(name).Scope(g.scope.PackageNames()...).Run(ctx,
-		func(ctx context.Context) (err error) {
-			waiters, err = g.apply(ctx, true)
-			return
-		})
-	return
-}
-
 func Serialize(g *Plan) *schema.SerializedProgram {
 	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 
-func (g *Plan) apply(ctx context.Context, parallel bool) ([]Waiter, error) {
+func (g *Plan) apply(ctx context.Context) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -189,7 +172,7 @@ func (g *Plan) apply(ctx context.Context, parallel bool) ([]Waiter, error) {
 
 	var ex executor.ExecutorLike
 
-	if parallel {
+	if g.parallel {
 		ex = executor.New(ctx, "plan.apply")
 	} else {
 		ex = executor.NewSerial(ctx)

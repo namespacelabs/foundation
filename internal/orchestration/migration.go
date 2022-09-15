@@ -51,7 +51,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		}
 	} else {
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return ops.ExecuteAndWait(ctx, env.Configuration(), runtime.TaskServerDeploy, p,
+		return ops.Execute(ctx, env.Configuration(), runtime.TaskServerDeploy, p,
 			deploy.MaybeRenderBlock(env, cluster, outputProgress),
 			runtime.ClusterInjection.With(cluster))
 	}
