@@ -286,7 +286,7 @@ func (alloc *allocator) checkResolve(ctx context.Context, sch schema.PackageName
 			// Add dep and reload package loader for new deps
 			alloc.ws.Dep = append(alloc.ws.Dep, dep)
 
-			config, err := planning.MakeConfigurationCompat(alloc.root, alloc.root.Workspace().Proto(), alloc.root.DevHost(), alloc.env.Environment())
+			config, err := planning.MakeConfigurationCompat(alloc.root, alloc.root.Workspace(), alloc.root.DevHost(), alloc.env.Environment())
 			if err != nil {
 				return pkggraph.Location{}, err
 			}

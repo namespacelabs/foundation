@@ -37,7 +37,7 @@ type llbBinary struct {
 }
 
 func (l llbBinary) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	hostPlatform, err := tools.HostPlatform(ctx)
+	hostPlatform, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env planning.Context, conf bu
 				{Name: "TARGET_PLATFORM", Value: targetPlatform},
 			}
 
-			if err := tools.Run(ctx, run); err != nil {
+			if err := tools.Run(ctx, env.Configuration(), run); err != nil {
 				return nil, fnerrors.UserError(nil, "failed to call llbgen :%w", err)
 			}
 

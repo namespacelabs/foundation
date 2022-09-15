@@ -10,6 +10,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/runtime/rtypes"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 var UseKubernetesRuntime = false
@@ -20,23 +21,25 @@ type Runtime interface {
 	CanConsumePublicImages() bool // Whether this runtime implementation can use an ImageID directly if one is available.
 }
 
-func Run(ctx context.Context, opts rtypes.RunToolOpts) error {
-	return RunWithOpts(ctx, opts, nil)
+func Run(ctx context.Context, conf planning.Configuration, opts rtypes.RunToolOpts) error {
+	return RunWithOpts(ctx, conf, opts, nil)
 }
 
-func RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
-	return impl().RunWithOpts(ctx, opts, onStart)
+func RunWithOpts(ctx context.Context, conf planning.Configuration, opts rtypes.RunToolOpts, onStart func()) error {
+	return impl(conf).RunWithOpts(ctx, opts, onStart)
 }
 
-func HostPlatform(ctx context.Context) (specs.Platform, error) {
-	return impl().HostPlatform(ctx)
+func HostPlatform(ctx context.Context, conf planning.Configuration) (specs.Platform, error) {
+	return impl(conf).HostPlatform(ctx)
 }
 
-func CanConsumePublicImages() bool { return impl().CanConsumePublicImages() }
+func CanConsumePublicImages(conf planning.Configuration) bool {
+	return impl(conf).CanConsumePublicImages()
+}
 
-func impl() Runtime {
+func impl(conf planning.Configuration) Runtime {
 	if UseKubernetesRuntime {
-		return k8stools{}
+		return k8stools{conf}
 	}
 
 	return docker.Impl()

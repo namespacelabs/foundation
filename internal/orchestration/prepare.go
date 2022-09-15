@@ -31,14 +31,14 @@ func RegisterPrepare() {
 		return
 	}
 
-	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target planning.Context, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target planning.Configuration, cluster runtime.Cluster) (any, error) {
 		return tasks.Return(ctx, tasks.Action("orchestrator.prepare"), func(ctx context.Context) (any, error) {
 			return prepare(ctx, target, cluster)
 		})
 	})
 }
 
-func prepare(ctx context.Context, targetEnv planning.Context, cluster runtime.Cluster) (any, error) {
+func prepare(ctx context.Context, targetEnv planning.Configuration, cluster runtime.Cluster) (any, error) {
 	env, err := makeOrchEnv(ctx, targetEnv)
 	if err != nil {
 		return nil, err

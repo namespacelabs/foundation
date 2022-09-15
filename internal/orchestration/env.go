@@ -21,22 +21,16 @@ const (
 	toolPkg   = "namespacelabs.dev/foundation/internal/orchestration/server/tool"
 )
 
-func makeOrchEnv(ctx context.Context, env planning.Context) (planning.Context, error) {
+func makeOrchEnv(ctx context.Context, conf planning.Configuration) (planning.Context, error) {
 	// We use a static environment here, since the orchestrator has global scope.
 	envProto := &schema.Environment{
 		Name:      kubedef.AdminNamespace,
-		Runtime:   env.Environment().Runtime,
+		Runtime:   "kubernetes", // XXX should be an input.
 		Ephemeral: false,
 
 		// TODO - this can't be empty, since std/runtime/kubernetes/extension.cue checks it.
 		Purpose: schema.Environment_PRODUCTION,
 	}
-
-	// It is imperative that the original environment name is used as the key of
-	// the derived configuration, or else we create a completely separate set of
-	// resources for the admin environment. For example, with nscloud, we'd
-	// create a cluster for fn-admin, and another one for the actual workloads.
-	originalEnv := env.Environment().Name
 
 	var prebuilts []*schema.Workspace_BinaryDigest
 
@@ -52,7 +46,7 @@ func makeOrchEnv(ctx context.Context, env planning.Context) (planning.Context, e
 		})
 	}
 
-	cfg := env.Configuration().Derive(originalEnv, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
+	cfg := conf.Derive(kubedef.AdminNamespace, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
 		previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
 			&kubetool.KubernetesEnv{Namespace: kubedef.AdminNamespace}, // pin deployments to admin namespace
 			&binary.Prebuilts{PrebuiltBinary: prebuilts},
@@ -60,5 +54,5 @@ func makeOrchEnv(ctx context.Context, env planning.Context) (planning.Context, e
 		return previous
 	})
 
-	return planning.MakeUnverifiedContext(cfg, env.Workspace(), envProto, env.ErrorLocation()), nil
+	return planning.MakeUnverifiedContext(cfg, conf.Workspace(), envProto, conf.Workspace().ErrorLocation()), nil
 }

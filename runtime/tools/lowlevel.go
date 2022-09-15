@@ -58,7 +58,7 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 	}
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf planning.Configuration, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
 	// XXX security: think through whether it is OK or not to expose Snapshots here.
 	// For now, assume not.
 	attachToAction(ctx, "request", req, oo.RedactRequest)
@@ -99,7 +99,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, pkg schem
 		eg := executor.New(ctx, fmt.Sprintf("lowlevel.invoke(%s)", pkg))
 
 		eg.Go(func(ctx context.Context) error {
-			return RunWithOpts(ctx, opts, func() {
+			return RunWithOpts(ctx, conf, opts, func() {
 				version := LowLevelToolsProtocolVersion
 				if opts.SupportedToolVersion != 0 {
 					version = opts.SupportedToolVersion

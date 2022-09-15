@@ -125,6 +125,7 @@ type rawWorkspaceData struct {
 	parsed                  *schema.Workspace
 }
 
+func (r rawWorkspaceData) ErrorLocation() string    { return r.absPath }
 func (r rawWorkspaceData) ModuleName() string       { return r.parsed.ModuleName }
 func (r rawWorkspaceData) Proto() *schema.Workspace { return r.parsed }
 

@@ -422,7 +422,7 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
 	}
 
-	platform, err := tools.HostPlatform(ctx)
+	platform, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return nil, nil, err
 	}

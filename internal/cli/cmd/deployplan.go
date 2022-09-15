@@ -54,7 +54,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to prepare plan: %w", err)
 		}
 
-		config, err := planning.MakeConfigurationCompat(root, root.Workspace().Proto(), root.DevHost(), plan.Environment)
+		config, err := planning.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
 		if err != nil {
 			return err
 		}

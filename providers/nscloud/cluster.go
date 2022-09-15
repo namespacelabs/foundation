@@ -430,8 +430,8 @@ func (d *cluster) AttachTerminal(ctx context.Context, container *runtime.Contain
 	return d.cluster.AttachTerminal(ctx, container, io)
 }
 
-func (d *cluster) EnsureState(ctx context.Context, key string, env planning.Context) (any, error) {
-	return d.ClusterAttachedState.EnsureState(ctx, key, env, d)
+func (d *cluster) EnsureState(ctx context.Context, key string) (any, error) {
+	return d.ClusterAttachedState.EnsureState(ctx, key, d.cluster.HostConfig().Config, d)
 }
 
 func (d *cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {

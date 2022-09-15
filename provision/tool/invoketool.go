@@ -96,7 +96,7 @@ func (inv *cacheableInvocation) Inputs() *compute.In {
 		JSON("props", inv.props).
 		JSON("injections", inv.injections)
 
-	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && inv.handler.Invocation.PublicImageID != nil {
+	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && inv.handler.Invocation.PublicImageID != nil {
 		return in.JSON("publicImageID", *inv.handler.Invocation.PublicImageID)
 	} else {
 		return in.Computable("image", inv.handler.Invocation.Image)
@@ -179,7 +179,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		NoNetworking: true,
 	}
 
-	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages()) && r.Invocation.PublicImageID != nil {
+	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && r.Invocation.PublicImageID != nil {
 		opts.PublicImageID = r.Invocation.PublicImageID
 	} else {
 		opts.Image = compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
@@ -205,7 +205,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	err = backoff.Retry(func() error {
 		count++
 
-		res, err = invocation.Invoke(ctx, r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		res, err = invocation.Invoke(ctx, inv.env.Configuration(), r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 

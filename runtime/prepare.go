@@ -11,13 +11,13 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-var prepareRegistrations = map[string]func(context.Context, planning.Context, Cluster) (any, error){}
+var prepareRegistrations = map[string]func(context.Context, planning.Configuration, Cluster) (any, error){}
 
-func RegisterPrepare(key string, callback func(context.Context, planning.Context, Cluster) (any, error)) {
+func RegisterPrepare(key string, callback func(context.Context, planning.Configuration, Cluster) (any, error)) {
 	prepareRegistrations[key] = callback
 }
 
-func Prepare(ctx context.Context, key string, env planning.Context, cluster Cluster) (any, error) {
+func Prepare(ctx context.Context, key string, env planning.Configuration, cluster Cluster) (any, error) {
 	if prepareRegistrations[key] == nil {
 		return nil, fnerrors.InternalError("%s: no such runtime support", key)
 	}

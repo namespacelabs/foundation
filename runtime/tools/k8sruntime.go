@@ -21,7 +21,9 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-type k8stools struct{}
+type k8stools struct {
+	config planning.Configuration
+}
 
 const toolNamespace = "fn-pipeline-tools"
 
@@ -105,13 +107,13 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (k8stools) makeRuntime(ctx context.Context) (*kubernetes.Cluster, planning.Configuration, error) {
+func (kt k8stools) makeRuntime(ctx context.Context) (*kubernetes.Cluster, planning.Configuration, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ck := planning.MakeConfigurationWith("tools", planning.ConfigurationSlice{
+	ck := planning.MakeConfigurationWith("tools", kt.config.Workspace(), planning.ConfigurationSlice{
 		Configuration:         root.DevHost().ConfigureTools,
 		PlatformConfiguration: root.DevHost().ConfigurePlatform,
 	})

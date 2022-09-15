@@ -72,7 +72,7 @@ func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.
 
 			devhost := &schema.DevHost{Configure: computed.Value}
 
-			config, err := planning.MakeConfigurationCompat(env, env.Workspace().Proto(), devhost, env.Environment())
+			config, err := planning.MakeConfigurationCompat(env, env.Workspace(), devhost, env.Environment())
 			if err != nil {
 				return nil, err
 			}

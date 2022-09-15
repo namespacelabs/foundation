@@ -24,6 +24,8 @@ type Configuration interface {
 	// NOT be used as an authoritative cache key.
 	EnvKey() string
 
+	Workspace() Workspace
+
 	getMultiple(string) []*anypb.Any
 }
 
@@ -42,19 +44,19 @@ func GetMultiple[V proto.Message](config Configuration) ([]V, error) {
 	return result, nil
 }
 
-func MakeConfigurationCompat(errorloc fnerrors.Location, ws *schema.Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
+func MakeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	var base ConfigurationSlice
-	for _, spec := range ws.EnvSpec {
+	for _, spec := range ws.Proto().EnvSpec {
 		if spec.Name == env.Name {
 			base.Configuration = spec.Configuration
 			base.PlatformConfiguration = spec.PlatformConfiguration
 		}
 	}
 
-	return makeConfigurationCompat(errorloc, base, devHost, env)
+	return makeConfigurationCompat(errorloc, ws, base, devHost, env)
 }
 
-func makeConfigurationCompat(errorloc fnerrors.Location, base ConfigurationSlice, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
+func makeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, base ConfigurationSlice, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	rest := selectByEnv(devHost, env)
 	rest.PlatformConfiguration = append(rest.PlatformConfiguration, devHost.ConfigurePlatform...)
 
@@ -77,7 +79,7 @@ func makeConfigurationCompat(errorloc fnerrors.Location, base ConfigurationSlice
 		}
 	}
 
-	return MakeConfigurationWith(env.Name, merged), nil
+	return MakeConfigurationWith(env.Name, ws, merged), nil
 }
 
 func applyProvider(errorloc fnerrors.Location, merged []*anypb.Any) ([]*anypb.Any, error) {
@@ -104,8 +106,8 @@ func applyProvider(errorloc fnerrors.Location, merged []*anypb.Any) ([]*anypb.An
 	return parsed, nil
 }
 
-func MakeConfigurationWith(description string, merged ConfigurationSlice) Configuration {
-	return config{description, merged}
+func MakeConfigurationWith(description string, ws Workspace, merged ConfigurationSlice) Configuration {
+	return config{description, ws, merged}
 }
 
 type ConfigurationSlice struct {
@@ -114,8 +116,13 @@ type ConfigurationSlice struct {
 }
 
 type config struct {
-	envKey string
-	atoms  ConfigurationSlice
+	envKey    string
+	workspace Workspace
+	atoms     ConfigurationSlice
+}
+
+func (cfg config) Workspace() Workspace {
+	return cfg.workspace
 }
 
 func (cfg config) Get(msg proto.Message) bool {
@@ -165,8 +172,9 @@ func (cfg config) EnvKey() string {
 
 func (cfg config) Derive(envKey string, f func(ConfigurationSlice) ConfigurationSlice) Configuration {
 	return config{
-		envKey: envKey,
-		atoms:  f(cfg.atoms),
+		envKey:    envKey,
+		workspace: cfg.workspace,
+		atoms:     f(cfg.atoms),
 	}
 }
 

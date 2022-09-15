@@ -4,9 +4,14 @@
 
 package planning
 
-import "namespacelabs.dev/foundation/schema"
+import (
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema"
+)
 
 type Workspace interface {
+	fnerrors.Location
+
 	Proto() *schema.Workspace
 	ModuleName() string
 
@@ -22,6 +27,7 @@ func MakeWorkspace(proto *schema.Workspace, lf *schema.Workspace_LoadedFrom) Wor
 	return workspace{proto, lf}
 }
 
+func (w workspace) ErrorLocation() string                    { return w.proto.ModuleName }
 func (w workspace) Proto() *schema.Workspace                 { return w.proto }
 func (w workspace) ModuleName() string                       { return w.proto.ModuleName }
 func (w workspace) LoadedFrom() *schema.Workspace_LoadedFrom { return w.loadedFrom }

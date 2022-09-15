@@ -56,7 +56,7 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 		return nil, err
 	}
 
-	p, err := tools.HostPlatform(ctx)
+	p, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
 	}

@@ -20,7 +20,9 @@ func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) planning.Context {
 		messages = append(messages, awsConf)
 	}
 
-	cfg := planning.MakeConfigurationWith(plan.Environment.Name, planning.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
+	ws := planning.MakeWorkspace(plan.Workspace, nil)
 
-	return planning.MakeUnverifiedContext(cfg, planning.MakeWorkspace(plan.Workspace, nil), plan.Environment, plan.Workspace.ModuleName)
+	cfg := planning.MakeConfigurationWith(plan.Environment.Name, ws, planning.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
+
+	return planning.MakeUnverifiedContext(cfg, ws, plan.Environment, plan.Workspace.ModuleName)
 }

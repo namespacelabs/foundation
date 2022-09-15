@@ -33,7 +33,7 @@ type RunNodejsOpts struct {
 }
 
 func RunNodejs(ctx context.Context, env planning.Context, relPath string, command string, opts *RunNodejsOpts) error {
-	p, err := tools.HostPlatform(ctx)
+	p, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func RunNodejs(ctx context.Context, env planning.Context, relPath string, comman
 
 	abs := env.Workspace().LoadedFrom().AbsPath
 
-	return tools.Run(ctx, rtypes.RunToolOpts{
+	return tools.Run(ctx, env.Configuration(), rtypes.RunToolOpts{
 		IO:          io,
 		AllocateTTY: opts.IsInteractive,
 		Mounts: append(opts.Mounts, &rtypes.LocalMapping{

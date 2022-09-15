@@ -23,7 +23,7 @@ func DownloadPrebuilts(env planning.Context, pl pkggraph.PackageLoader, packages
 		compute.Inputs().Proto("env", env.Environment()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.Image, error) {
-			hostPlatform, err := tools.HostPlatform(ctx)
+			hostPlatform, err := tools.HostPlatform(ctx, env.Configuration())
 			if err != nil {
 				return nil, err
 			}

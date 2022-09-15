@@ -65,8 +65,7 @@ type Cluster interface {
 	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
 
 	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
-	// XXX remove planning.Context, as it leaks environment bits.
-	EnsureState(context.Context, string, planning.Context) (any, error)
+	EnsureState(context.Context, string) (any, error)
 
 	// Deletes any runtime resource deployed by this runtime, regardless of
 	// environment. If wait is true, waits until the target resources have been

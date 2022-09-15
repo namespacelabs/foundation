@@ -100,7 +100,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	if inv.image != nil {
 		run.Image = compute.MustGetDepValue(r, inv.image, "image")
 
-		resp, err = invoke.Invoke(ctx, inv.invocation.BinaryRef.AsPackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		resp, err = invoke.Invoke(ctx, inv.conf, inv.invocation.BinaryRef.AsPackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 	} else {

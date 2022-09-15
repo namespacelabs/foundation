@@ -195,6 +195,7 @@ type workspaceData struct {
 	source                  cue.Value
 }
 
+func (r workspaceData) ErrorLocation() string    { return r.absPath }
 func (r workspaceData) ModuleName() string       { return r.parsed.ModuleName }
 func (r workspaceData) Proto() *schema.Workspace { return r.parsed }
 

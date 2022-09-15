@@ -25,7 +25,7 @@ import (
 )
 
 func MakeProtoSrcs(ctx context.Context, conf planning.Configuration, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
-	platform, err := tools.HostPlatform(ctx)
+	platform, err := tools.HostPlatform(ctx, conf)
 	if err != nil {
 		return nil, err
 	}
