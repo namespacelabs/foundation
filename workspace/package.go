@@ -53,5 +53,11 @@ func SealPackage(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Packag
 		}
 	}
 
+	for _, r := range pp.ResourceInstances {
+		if err := transformResourceInstance(ctx, pl, pp, r); err != nil {
+			return nil, err
+		}
+	}
+
 	return pp, nil
 }

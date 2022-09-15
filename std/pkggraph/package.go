@@ -40,9 +40,11 @@ type Package struct {
 	// Resources defined by the node.
 	ResourceClasses   []*schema.ResourceClass
 	ResourceProviders []*schema.ResourceProvider
+	ResourceInstances []*schema.ResourceInstance
 
 	// Resources referenced by the node.
-	ProvidedResourceClasses []*schema.ResourceClass // key: PackageRef.Canonical
+	ProvidedResourceClasses   []*schema.ResourceClass
+	RequiredResourceProviders []*schema.ResourceProvider
 }
 
 type PrepareHook struct {
@@ -75,6 +77,24 @@ func (pr *Package) ProvidedResourceClass(pkgRef *schema.PackageRef) *schema.Reso
 	for _, rc := range pr.ProvidedResourceClasses {
 		if rc.PackageName == pkgRef.PackageName && rc.Name == pkgRef.Name {
 			return rc
+		}
+	}
+	return nil
+}
+
+func (pr *Package) ResourceProvider(resPkgRef *schema.PackageRef) *schema.ResourceProvider {
+	for _, p := range pr.ResourceProviders {
+		if p.ProvidesClass.Equals(resPkgRef) {
+			return p
+		}
+	}
+	return nil
+}
+
+func (pr *Package) RequiredResourceProvider(pkgRef *schema.PackageRef) *schema.ResourceProvider {
+	for _, p := range pr.RequiredResourceProviders {
+		if p.ProvidesClass.Equals(pkgRef) {
+			return p
 		}
 	}
 	return nil

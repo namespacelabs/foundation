@@ -166,6 +166,23 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
+	if r := v.LookupPath("resources"); r.Exists() {
+		it, err := r.Val.Fields()
+		if err != nil {
+			return nil, err
+		}
+
+		for it.Next() {
+			val := &fncue.CueV{Val: it.Value()}
+			parsedResource, err := parseResourceInstance(ctx, ft.loader, loc, it.Label(), val)
+			if err != nil {
+				return nil, err
+			}
+
+			parsedPkg.ResourceInstances = append(parsedPkg.ResourceInstances, parsedResource)
+		}
+	}
+
 	if i := server.LookupPath("integration"); i.Exists() {
 		if err := integrationapi.ParseIntegration(ctx, loc, i, parsedPkg); err != nil {
 			return nil, err
