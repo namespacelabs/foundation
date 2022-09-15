@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
+	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -51,6 +52,7 @@ type testRun struct {
 	Plan             compute.Computable[*deploy.Plan]
 	Debug            bool
 	OutputProgress   bool
+	RuntimeConfig    *stdruntime.RuntimeConfig
 
 	compute.LocalScoped[*storage.TestResultBundle]
 }
@@ -142,12 +144,13 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			parts := strings.Split(test.TestRef.PackageName, "/")
 
 			testDriver := runtime.DeployableSpec{
-				Location:    test.TestRef.AsPackageName(),
-				PackageName: test.TestRef.AsPackageName(),
-				Class:       schema.DeployableClass_ONESHOT,
-				Id:          ids.NewRandomBase32ID(8),
-				Name:        strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name,
-				RunOpts:     testRun,
+				Location:      test.TestRef.AsPackageName(),
+				PackageName:   test.TestRef.AsPackageName(),
+				Class:         schema.DeployableClass_ONESHOT,
+				Id:            ids.NewRandomBase32ID(8),
+				Name:          strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name,
+				RunOpts:       testRun,
+				RuntimeConfig: test.RuntimeConfig,
 			}
 
 			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Specs: []runtime.DeployableSpec{testDriver}})

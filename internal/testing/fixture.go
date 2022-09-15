@@ -135,6 +135,11 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 
 	packages := pl.Seal()
 
+	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
+	if err != nil {
+		return nil, err
+	}
+
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		SealedContext:    pkggraph.MakeSealedContext(env, packages),
 		Cluster:          cluster,
@@ -142,6 +147,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		Stack:            stack.Proto(),
+		RuntimeConfig:    runtimeConfig,
 		TestBinCommand:   testBin.Command,
 		TestBinImageID:   fixtureImage,
 		Debug:            opts.Debug,
