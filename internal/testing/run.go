@@ -155,8 +155,8 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				return err
 			}
 
-			g := ops.NewPlan()
-			if err := g.Add(plan.Definitions...); err != nil {
+			g, err := ops.NewPlan(plan.Definitions...)
+			if err != nil {
 				return err
 			}
 

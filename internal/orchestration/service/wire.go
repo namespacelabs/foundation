@@ -22,7 +22,7 @@ import (
 )
 
 type Service struct {
-	d deployer
+	deployer deployer
 }
 
 func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*proto.DeployResponse, error) {
@@ -37,41 +37,21 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 
 	env := makeEnv(req.Plan, req.Aws)
 	// TODO store target state (req.Plan + merged with history) ?
-	id, err := svc.d.Schedule(req.Plan, env, now)
+	id, err := svc.deployer.Schedule(req.Plan, env, now)
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to deploy plan: %w", err)
 	}
 
-	res := &proto.DeployResponse{Id: id}
-	log.Printf("Will respond with %+v", res)
+	res := &proto.DeployResponse{Id: id.ID}
 	return res, nil
 }
 
 func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream proto.OrchestrationService_DeploymentStatusServer) error {
-	log.Printf("new DeploymentStatus request for deployment %s\n", req.Id)
-
-	errch := make(chan error, 1)
-	ch := make(chan *proto.DeploymentStatusResponse)
-
-	go func() {
-		defer close(errch)
-		errch <- svc.d.Status(stream.Context(), req.Id, req.LogLevel, ch)
-	}()
-
-	for {
-		res, ok := <-ch
-		if !ok {
-			return <-errch
-		}
-
-		if err := stream.Send(res); err != nil {
-			log.Printf("failed to send status response: %v", err)
-		}
-	}
+	return svc.deployer.Status(stream.Context(), req.Id, req.LogLevel, stream.Send)
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
-	proto.RegisterOrchestrationServiceServer(srv, &Service{d: makeDeployer(ctx)})
+	proto.RegisterOrchestrationServiceServer(srv, &Service{deployer: newDeployer()})
 
 	kubernetes.Register()
 	kubeops.Register()

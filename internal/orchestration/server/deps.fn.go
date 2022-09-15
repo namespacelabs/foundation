@@ -10,11 +10,13 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/std/grpc/logging"
 )
 
 func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializers(metrics.Initializers__so2f3v...)
 	di.AddInitializers(legacycontroller.Initializers__6uudga...)
+	di.AddInitializers(logging.Initializers__16bc0q...)
 }
 
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {

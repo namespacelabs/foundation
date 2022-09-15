@@ -19,7 +19,7 @@ import (
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
 func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
-	g := ops.NewPlan()
+	g := ops.NewEmptyPlan()
 	for _, loc := range locs {
 		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
 		if err != nil {
@@ -49,7 +49,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
 func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
-	g := ops.NewPlan()
+	g := ops.NewEmptyPlan()
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
 		if err != nil {

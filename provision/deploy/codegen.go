@@ -90,8 +90,8 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 		return err
 	}
 
-	r := ops.NewPlan()
-	if err := r.Add(codegen...); err != nil {
+	r, err := ops.NewPlan(codegen...)
+	if err != nil {
 		return err
 	}
 

@@ -50,8 +50,13 @@ type Plan struct {
 	scope       schema.PackageList
 }
 
-func NewPlan() *Plan {
+func NewEmptyPlan() *Plan {
 	return &Plan{}
+}
+
+func NewPlan(defs ...*schema.SerializedInvocation) (*Plan, error) {
+	p := NewEmptyPlan()
+	return p, p.Add(defs...)
 }
 
 func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {

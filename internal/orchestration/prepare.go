@@ -64,22 +64,11 @@ func prepare(ctx context.Context, targetEnv planning.Context, cluster runtime.Cl
 		return nil, err
 	}
 
-	waiters, err := ops.Execute(ctx, env.Configuration(), runtime.TaskServerDeploy, computed.Deployer, runtime.ClusterInjection.With(cluster))
-	if err != nil {
-		return nil, err
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)
 	defer cancel()
 
-	if RenderOrchestratorDeployment {
-		if err := deploy.Wait(ctx, env, cluster, waiters); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
-			return nil, err
-		}
+	if err := ops.ExecuteAndWait(ctx, env.Configuration(), "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderWait(env, cluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
+		return nil, err
 	}
 
 	var endpoint *schema.Endpoint

@@ -11,6 +11,7 @@ server: fn.#Server & {
 	import: [
 		"namespacelabs.dev/foundation/internal/orchestration/service",
 		"namespacelabs.dev/foundation/internal/orchestration/legacycontroller", // TODO remove
+		"namespacelabs.dev/foundation/std/grpc/logging",
 	]
 }
 

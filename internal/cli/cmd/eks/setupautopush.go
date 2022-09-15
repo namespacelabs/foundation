@@ -66,7 +66,7 @@ func newSetupAutopushCmd() *cobra.Command {
 
 		stdout := console.Stdout(ctx)
 
-		p := ops.NewPlan()
+		p := ops.NewEmptyPlan()
 		for _, inv := range result {
 			def, err := inv.ToDefinition()
 			if err != nil {

@@ -49,19 +49,12 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 		return err
 	}
 
-	g := ops.NewPlan()
-	if err := g.Add(state.Definitions...); err != nil {
-		return err
-	}
-
-	waiters, err := ops.Execute(ctx, env.Configuration(), runtime.TaskServerDeploy, g,
-		runtime.ClusterInjection.With(kube),
-	)
+	g, err := ops.NewPlan(state.Definitions...)
 	if err != nil {
 		return err
 	}
 
-	if err := ops.WaitMultiple(ctx, waiters, nil); err != nil {
+	if err := ops.ExecuteAndWait(ctx, env.Configuration(), "ingress.deploy", g, nil, runtime.ClusterInjection.With(kube)); err != nil {
 		return err
 	}
 

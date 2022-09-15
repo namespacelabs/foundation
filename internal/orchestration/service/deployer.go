@@ -17,7 +17,7 @@ import (
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/engine/ops"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/orchestration/proto"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -37,46 +37,45 @@ const (
 )
 
 type deployer struct {
-	serverCtx context.Context
 	statusDir string
 	leaser    *leaser
 }
 
-func makeDeployer(ctx context.Context) deployer {
+func newDeployer() deployer {
 	statusDir := filepath.Join(os.Getenv("NSDATA"), "status")
 	if err := os.MkdirAll(statusDir, 0700|os.ModeDir); err != nil {
 		panic(fmt.Sprintf("unable to create dir %s: %v", statusDir, err))
 	}
 
 	return deployer{
-		serverCtx: ctx,
 		statusDir: statusDir,
 		leaser:    newLeaser(),
 	}
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arrival time.Time) (string, error) {
+type RunningDeployment struct {
+	ID string
+}
+
+func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arrival time.Time) (*RunningDeployment, error) {
 	id := ids.NewRandomBase32ID(16)
 
-	p := ops.NewPlan()
-	if err := p.Add(plan.GetProgram().GetInvocation()...); err != nil {
+	p, err := ops.NewPlan(plan.GetProgram().GetInvocation()...)
+	if err != nil {
 		log.Printf("id %s: failed to prepare plan: %v\n", id, err)
-		return "", err
+		return nil, err
 	}
 
 	dir := filepath.Join(d.statusDir, id)
-	if err := os.MkdirAll(dir, 0700|os.ModeDir); err != nil {
-		return "", fmt.Errorf("unable to create dir %s: %w", dir, err)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return nil, fmt.Errorf("unable to create dir %s: %w", dir, err)
 	}
 
 	eventPath := filepath.Join(dir, eventFile)
-	if err := ensureFile(eventPath); err != nil {
-		return "", err
-	}
-
 	taskPath := filepath.Join(dir, taskFile)
-	if err := ensureFile(taskPath); err != nil {
-		return "", err
+
+	if err := ensureFiles(eventPath, taskPath); err != nil {
+		return nil, err
 	}
 
 	go func() {
@@ -89,7 +88,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arriv
 		}()
 
 		// Use server context to not propagate context cancellation
-		if err := d.executeWithLog(eventPath, taskPath, p, env, arrival); err != nil {
+		if err := d.executeWithLog(context.Background(), eventPath, taskPath, p, env, arrival); err != nil {
 			status := status.Convert(err)
 			data, jsonErr := json.Marshal(status.Proto())
 			if jsonErr != nil {
@@ -103,25 +102,25 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arriv
 		}
 	}()
 
-	return id, nil
+	return &RunningDeployment{ID: id}, nil
 }
 
-func (d *deployer) executeWithLog(eventPath, taskPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
-	ch := make(chan *protolog.Log)
+func (d *deployer) executeWithLog(ctx context.Context, eventPath, taskPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
+	eg := executor.New(ctx, "orchestrator.executeWithLog")
 
-	errch := make(chan error, 1)
-	go func() {
+	ch := make(chan *protolog.Log)
+	eg.Go(func(ctx context.Context) error {
 		sink := protolog.NewSink(ch)
 		defer sink.Close()
 
-		ctx := tasks.WithSink(d.serverCtx, sink)
-		errch <- d.execute(ctx, eventPath, p, env, arrival)
-	}()
+		return d.execute(tasks.WithSink(ctx, sink), eventPath, p, env, arrival)
+	})
 
-	logErr := logProtos(taskPath, ch)
-	execErr := <-errch
+	eg.Go(func(ctx context.Context) error {
+		return logProtos(taskPath, ch)
+	})
 
-	return multierr.New(execErr, logErr)
+	return eg.Wait()
 }
 
 func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
@@ -142,32 +141,27 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	}
 	defer releaseLease()
 
-	// Make sure that the cluster is accessible to a serialized invocation implementation.
-	waiters, err := ops.Execute(ctx, env.Configuration(), runtime.TaskServerDeploy, p, runtime.ClusterInjection.With(cluster))
-	if err != nil {
-		return err
-	}
+	return ops.ExecuteAndWait(ctx, env.Configuration(), runtime.TaskServerDeploy, p, func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
+		ch := make(chan *orchestration.Event)
 
-	errch := make(chan error, 1)
-	ch := make(chan *orchestration.Event)
-	go func() {
-		defer close(errch)
-		errch <- ops.WaitMultiple(ctx, waiters, ch)
-	}()
+		logErrCh := make(chan error)
 
-	logErr := logProtos(eventPath, ch)
-	waitErr := <-errch
+		go func() {
+			logErrCh <- logProtos(eventPath, ch)
+		}()
 
-	return multierr.New(waitErr, logErr)
+		return ch, func(err error) error {
+			logErr := <-logErrCh // Wait for the logging go-routine to return.
+			if err != nil {
+				return err
+			}
+			return logErr
+		}
+	}, runtime.ClusterInjection.With(cluster))
 }
 
 func logProtos[V any](filename string, ch chan *V) error {
-	for {
-		ev, ok := <-ch
-		if !ok {
-			return nil
-		}
-
+	for ev := range ch {
 		data, err := json.Marshal(ev)
 		if err != nil {
 			return err
@@ -177,6 +171,8 @@ func logProtos[V any](filename string, ch chan *V) error {
 			return err
 		}
 	}
+
+	return nil
 }
 
 func appendLine(filename, line string) error {
@@ -199,19 +195,16 @@ func markEof(path string) {
 	}
 }
 
-func ensureFile(path string) error {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
+func ensureFiles(paths ...string) error {
+	for _, path := range paths {
+		if err := os.WriteFile(path, nil, 0644); err != nil {
+			return err
+		}
 	}
-	defer f.Close()
-
 	return nil
 }
 
-func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch chan *proto.DeploymentStatusResponse) error {
-	defer close(ch)
-
+func (d *deployer) Status(ctx context.Context, id string, loglevel int32, notify func(*proto.DeploymentStatusResponse) error) error {
 	dir := filepath.Join(d.statusDir, id)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		return fmt.Errorf("unknown deployment id: %s", id)
@@ -244,8 +237,10 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+
 		case <-time.After(updateTimeout):
 			return fmt.Errorf("deployment %s likely died: didn't receive any event/log update in %v", id, updateTimeout)
+
 		case line := <-events.Lines:
 			if line.Text == eof {
 				eventsDone = true
@@ -255,8 +250,11 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 					return err
 				}
 
-				ch <- &proto.DeploymentStatusResponse{Event: ev}
+				if err := notify(&proto.DeploymentStatusResponse{Event: ev}); err != nil {
+					return err
+				}
 			}
+
 		case line := <-tasks.Lines:
 			if line.Text == eof {
 				tasksDone = true
@@ -267,7 +265,9 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 				}
 
 				if log.LogLevel <= loglevel {
-					ch <- &proto.DeploymentStatusResponse{Log: log}
+					if err := notify(&proto.DeploymentStatusResponse{Log: log}); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -290,5 +290,6 @@ func (d *deployer) Status(ctx context.Context, id string, loglevel int32, ch cha
 	if err := json.Unmarshal(data, proto); err != nil {
 		return fmt.Errorf("unable to unmarshal deployment error: %w", err)
 	}
+
 	return status.FromProto(proto).Err()
 }

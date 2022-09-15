@@ -25,25 +25,25 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func Wait(ctx context.Context, env planning.Context, cluster runtime.Cluster, waiters []ops.Waiter) error {
-	return RenderAndWait(ctx, env, cluster, func(ch chan *orchestration.Event) error {
-		return ops.WaitMultiple(ctx, waiters, ch)
-	})
-}
-
-func RenderAndWait(ctx context.Context, env planning.Context, cluster runtime.Cluster, handle func(chan *orchestration.Event) error) error {
-	rwb := renderwait.NewBlock(ctx, "deploy")
-
-	waitErr := handle(observeContainers(ctx, env, cluster, rwb.Ch()))
-
-	// Make sure that rwb completes before further output below (for ordering purposes).
-	if err := rwb.Wait(ctx); err != nil {
-		if waitErr == nil {
-			return err
-		}
+func MaybeRenderWait(env planning.Context, cluster runtime.Cluster, maybe bool) ops.WaitHandler {
+	if !maybe {
+		return nil
 	}
 
-	return waitErr
+	return func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
+		rwb := renderwait.NewBlock(ctx, "deploy")
+
+		return rwb.Ch(), func(waitErr error) error {
+			// Make sure that rwb completes before further output below (for ordering purposes).
+			if err := rwb.Wait(ctx); err != nil {
+				if waitErr == nil {
+					return err
+				}
+			}
+
+			return waitErr
+		}
+	}
 }
 
 // observeContainers observes the deploy events (received from the returned channel) and updates the

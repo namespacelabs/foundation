@@ -36,13 +36,14 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		}
 
 		if wait {
+			var ch chan *orchpb.Event
+			var handler = func(err error) error { return err }
+
 			if outputProgress {
-				return deploy.RenderAndWait(ctx, env, cluster, func(ch chan *orchpb.Event) error {
-					return WireDeploymentStatus(ctx, conn, id, ch)
-				})
-			} else {
-				return WireDeploymentStatus(ctx, conn, id, nil)
+				ch, handler = deploy.MaybeRenderWait(env, cluster, true)(ctx)
 			}
+
+			return handler(WireDeploymentStatus(ctx, conn, id, ch))
 		}
 	} else {
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
@@ -53,11 +54,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		}
 
 		if wait {
-			if outputProgress {
-				return deploy.Wait(ctx, env, cluster, waiters)
-			} else {
-				return ops.WaitMultiple(ctx, waiters, nil)
-			}
+			return ops.WaitMultipleWithHandler(ctx, waiters, deploy.MaybeRenderWait(env, cluster, outputProgress))
 		}
 	}
 

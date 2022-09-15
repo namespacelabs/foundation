@@ -24,8 +24,8 @@ func RunAttached(ctx context.Context, config planning.Configuration, cluster Clu
 		return err
 	}
 
-	g := ops.NewPlan()
-	if err := g.Add(plan.Definitions...); err != nil {
+	g, err := ops.NewPlan(plan.Definitions...)
+	if err != nil {
 		return err
 	}
 

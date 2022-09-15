@@ -178,7 +178,7 @@ func (m *makeDeployGraph) Output() compute.Output {
 func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*Plan, error) {
 	pbr := compute.MustGetDepValue(deps, m.prepare, "prepare")
 
-	g := ops.NewPlan()
+	g := ops.NewEmptyPlan()
 
 	if err := g.Add(pbr.HandlerResult.Definitions...); err != nil {
 		return nil, err

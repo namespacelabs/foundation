@@ -46,7 +46,7 @@ func newComputeIrsaCmd() *cobra.Command {
 			return err
 		}
 
-		p := ops.NewPlan()
+		p := ops.NewEmptyPlan()
 		for _, inv := range result.Invocations {
 			def, err := inv.ToDefinition()
 			if err != nil {
