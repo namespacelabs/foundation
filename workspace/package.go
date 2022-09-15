@@ -47,5 +47,11 @@ func SealPackage(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Packag
 		return nil, err
 	}
 
+	for _, provider := range pp.ResourceProviders {
+		if err := transformResourceProvider(ctx, pl, pp, provider); err != nil {
+			return nil, err
+		}
+	}
+
 	return pp, nil
 }

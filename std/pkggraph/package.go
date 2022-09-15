@@ -32,11 +32,17 @@ type Package struct {
 	Services    map[string]*protos.FileDescriptorSetAndDeps // key: fully qualified service name
 	PackageData []*types.Resource
 
-	// Opaque-style resources.
-	ResourceClasses []*schema.ResourceClass
-
 	// Hooks
 	PrepareHooks []PrepareHook
+
+	// Opaque-style resources.
+
+	// Resources defined by the node.
+	ResourceClasses   []*schema.ResourceClass
+	ResourceProviders []*schema.ResourceProvider
+
+	// Resources referenced by the node.
+	ProvidedResourceClasses []*schema.ResourceClass // key: PackageRef.Canonical
 }
 
 type PrepareHook struct {
@@ -52,6 +58,24 @@ func (pr *Package) Node() *schema.Node {
 	}
 	if pr.Service != nil {
 		return pr.Service
+	}
+	return nil
+}
+
+func (pr *Package) ResourceClass(name string) *schema.ResourceClass {
+	for _, rc := range pr.ResourceClasses {
+		if rc.Name == name {
+			return rc
+		}
+	}
+	return nil
+}
+
+func (pr *Package) ProvidedResourceClass(pkgRef *schema.PackageRef) *schema.ResourceClass {
+	for _, rc := range pr.ProvidedResourceClasses {
+		if rc.PackageName == pkgRef.PackageName && rc.Name == pkgRef.Name {
+			return rc
+		}
 	}
 	return nil
 }

@@ -149,6 +149,23 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
+	if r := v.LookupPath("providers"); r.Exists() {
+		it, err := r.Val.Fields()
+		if err != nil {
+			return nil, err
+		}
+
+		for it.Next() {
+			val := &fncue.CueV{Val: it.Value()}
+			parsedProvider, err := parseResourceProvider(ctx, loc, it.Label(), val)
+			if err != nil {
+				return nil, err
+			}
+
+			parsedPkg.ResourceProviders = append(parsedPkg.ResourceProviders, parsedProvider)
+		}
+	}
+
 	if i := server.LookupPath("integration"); i.Exists() {
 		if err := integrationapi.ParseIntegration(ctx, loc, i, parsedPkg); err != nil {
 			return nil, err
