@@ -111,25 +111,35 @@ func (r *Cluster) PrepareCluster(ctx context.Context) (*runtime.DeploymentPlan, 
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
-	return r.ClusterAttachedState.EnsureState(ctx, key, r.host.Config, r)
+	return r.ClusterAttachedState.EnsureState(ctx, key, r.host.Config, r, nil)
 }
 
-func (r *ClusterAttachedState) EnsureState(ctx context.Context, key string, config planning.Configuration, cluster runtime.Cluster) (any, error) {
+func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config planning.Configuration, cluster runtime.Cluster, key *string) (any, error) {
 	r.mu.Lock()
 	if r.attachedState == nil {
 		r.attachedState = map[string]*state{}
 	}
-	if r.attachedState[key] == nil {
-		r.attachedState[key] = &state{}
+
+	computedKey := stateKey
+	if key != nil {
+		computedKey += ":" + *key
 	}
-	state := r.attachedState[key]
+
+	if r.attachedState[computedKey] == nil {
+		r.attachedState[computedKey] = &state{}
+	}
+	state := r.attachedState[computedKey]
 	r.mu.Unlock()
 
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
 	if !state.resolved {
-		state.value, state.err = runtime.Prepare(ctx, key, config, cluster)
+		if key != nil {
+			state.value, state.err = runtime.PrepareKeyed(ctx, stateKey, config, cluster, *key)
+		} else {
+			state.value, state.err = runtime.Prepare(ctx, stateKey, config, cluster)
+		}
 		state.resolved = true
 	}
 

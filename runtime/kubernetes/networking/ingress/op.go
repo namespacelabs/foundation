@@ -23,7 +23,9 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func RegisterGraphHandlers() {
+func Register() {
+	RegisterRuntimeState()
+
 	ops.RegisterFunc(func(ctx context.Context, g *schema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
 		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {

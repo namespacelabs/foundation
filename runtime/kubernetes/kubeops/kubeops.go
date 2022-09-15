@@ -18,5 +18,5 @@ func Register() {
 	registerDeleteList()
 	registerCleanup()
 
-	ingress.RegisterGraphHandlers()
+	ingress.Register()
 }

@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
-	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
+	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -131,11 +131,8 @@ func registerApply() {
 					}
 				}
 
-				// XXX don't wait multiple times.
 				if header.Kind == "Ingress" {
-					if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until nginx (ingress) is running").Run(ctx, func(ctx context.Context) error {
-						return nginx.IngressWaiter(cluster.RESTConfig()).WaitUntilReady(ctx, nil)
-					}); err != nil {
+					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
 					}
 				}
