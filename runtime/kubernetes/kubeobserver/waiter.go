@@ -176,8 +176,9 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 }
 
 type podWaiter struct {
-	selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error)
-	isOk     func(corev1.PodStatus) (bool, error)
+	namespace string
+	selector  metav1.ListOptions
+	isOk      func(corev1.PodStatus) (bool, error)
 
 	mu                   sync.Mutex
 	podCount, matchCount int
@@ -201,13 +202,13 @@ func (w *podWaiter) Prepare(ctx context.Context, c *k8s.Clientset) error {
 }
 
 func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
-	pods, err := w.selector(ctx, c)
+	list, err := c.CoreV1().Pods(w.namespace).List(ctx, w.selector)
 	if err != nil {
 		return false, err
 	}
 
 	var count int
-	for _, pod := range pods {
+	for _, pod := range list.Items {
 		// If the pod is configured to never restart, we check if it's in an unrecoverable state.
 		if pod.Spec.RestartPolicy == corev1.RestartPolicyNever {
 			var terminated [][2]string
@@ -258,14 +259,18 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	w.podCount = len(pods)
+	w.podCount = len(list.Items)
 	w.matchCount = count
 
-	return count > 0 && count == len(pods), nil
+	return count > 0 && count == len(list.Items), nil
 }
 
-func WaitForPodConditition(selector func(context.Context, *k8s.Clientset) ([]corev1.Pod, error), isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter[*k8s.Clientset] {
-	return &podWaiter{selector: selector, isOk: isOk}
+func WaitForPodConditition(namespace string, selector metav1.ListOptions, isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter[*k8s.Clientset] {
+	return NewPodCondititionWaiter(namespace, selector, isOk)
+}
+
+func NewPodCondititionWaiter(namespace string, selector metav1.ListOptions, isOk func(corev1.PodStatus) (bool, error)) *podWaiter {
+	return &podWaiter{namespace: namespace, selector: selector, isOk: isOk}
 }
 
 func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) (bool, error) {
@@ -283,25 +288,8 @@ func matchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) bool {
 	return false
 }
 
-func SelectPods(ns string, name *string, selector map[string]string) func(context.Context, *k8s.Clientset) ([]corev1.Pod, error) {
-	sel := kubedef.SerializeSelector(selector)
-
-	return func(ctx context.Context, c *k8s.Clientset) ([]corev1.Pod, error) {
-		pods, err := c.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: sel})
-		if err != nil {
-			return nil, fnerrors.Wrapf(nil, err, "unable to list pods")
-		}
-
-		if name != nil {
-			var filtered []corev1.Pod
-			for _, item := range pods.Items {
-				if item.GetName() == *name {
-					filtered = append(filtered, item)
-				}
-			}
-			return filtered, nil
-		}
-
-		return pods.Items, nil
-	}
+func SelectPods(selector map[string]string) metav1.ListOptions {
+	var m metav1.ListOptions
+	m.LabelSelector = kubedef.SerializeSelector(selector)
+	return m
 }

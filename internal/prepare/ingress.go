@@ -68,6 +68,7 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 
 func waitForIngress(ctx context.Context, kube *kubernetes.Cluster, action *tasks.ActionEvent) error {
 	return kubeobserver.WaitForCondition(ctx, kube.Client(), action, kubeobserver.WaitForPodConditition(
-		kubeobserver.SelectPods(nginx.IngressLoadBalancerService().Namespace, nil, nginx.ControllerSelector()),
+		nginx.IngressLoadBalancerService().Namespace,
+		kubeobserver.SelectPods(nginx.ControllerSelector()),
 		kubeobserver.MatchPodCondition(corev1.PodReady)))
 }

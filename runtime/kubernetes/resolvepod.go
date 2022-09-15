@@ -18,10 +18,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 )
 
 func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtime.ContainerReference, error) {
-	return watchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object, func(pod corev1.Pod) ([]*runtime.ContainerReference, bool) {
+	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object, func(pod corev1.Pod) ([]*runtime.ContainerReference, bool) {
 		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
 			return nil, false
 		}

@@ -223,7 +223,8 @@ func registerApply() {
 
 				return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action("pod.wait").Scope(scope...),
 					kobs.WaitForPodConditition(
-						kobs.PickPod(header.Namespace, header.Name),
+						header.Namespace,
+						kobs.PickPod(header.Name),
 						func(ps v1.PodStatus) (bool, error) {
 							meta, err := json.Marshal(ps)
 							if err != nil {

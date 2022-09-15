@@ -7,7 +7,6 @@ package kubernetes
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,7 +31,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	namespace := r.target.namespace
 	podName := kubedef.MakeDeploymentId(object)
 
-	return watchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
+	return kubeobserver.WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
 		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
 			return nil, false
 		}
@@ -58,45 +57,6 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 
 		return status, true
 	})
-}
-
-func watchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool)) (V, error) {
-	return tasks.Return(ctx, tasks.Action(actionName).Arg("id", object.GetId()).Arg("name", object.GetName()),
-		func(ctx context.Context) (V, error) {
-			return watchPods(ctx, cli, namespace, kubedef.SelectById(object), callback)
-		})
-}
-
-func watchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string, labels map[string]string, callback func(corev1.Pod) (V, bool)) (V, error) {
-	var empty V
-
-	for {
-		w, err := cli.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(labels)})
-		if err != nil {
-			return empty, fnerrors.InternalError("kubernetes: failed while waiting for pod: %w", err)
-		}
-
-		defer w.Stop()
-
-		debug := console.Debug(ctx)
-
-		for ev := range w.ResultChan() {
-			if ev.Object == nil {
-				continue
-			}
-
-			pod, ok := ev.Object.(*corev1.Pod)
-			if !ok {
-				fmt.Fprintf(debug, "received non-pod event: %v\n", reflect.TypeOf(ev.Object))
-				continue
-			}
-
-			v, done := callback(*pod)
-			if done {
-				return v, nil
-			}
-		}
-	}
 }
 
 func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
@@ -164,7 +124,7 @@ func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, c
 	}
 
 	if err := kubeobserver.WaitForCondition(ctx, cli, tasks.Action("kubernetes.pod.deploy").Arg("namespace", ns).Arg("name", name),
-		kubeobserver.WaitForPodConditition(kubeobserver.PickPod(ns, name), func(status corev1.PodStatus) (bool, error) {
+		kubeobserver.WaitForPodConditition(ns, kubeobserver.PickPod(name), func(status corev1.PodStatus) (bool, error) {
 			return (status.Phase == corev1.PodRunning || status.Phase == corev1.PodFailed || status.Phase == corev1.PodSucceeded), nil
 		})); err != nil {
 		if allErrors {
