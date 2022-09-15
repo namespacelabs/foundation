@@ -5,14 +5,13 @@
 package toolcommon
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -26,12 +25,6 @@ const (
 	basePath = "/postgres/init"
 	initPkg  = "namespacelabs.dev/foundation/universe/db/postgres/internal/init"
 )
-
-func makeKey(s string) string {
-	h := sha256.New()
-	h.Write([]byte(s))
-	return hex.EncodeToString(h.Sum(nil))
-}
 
 func configMapName(focus *schema.Server, name string) string {
 	return fmt.Sprintf("%s.%s.%s", focus.Id, name, id)
@@ -47,7 +40,7 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 
 	for name, db := range dbs {
 		schemaPath := filepath.Join(name, "schema", db.SchemaFile.Path)
-		schemaKey := makeKey(schemaPath)
+		schemaKey := naming.StableID(schemaPath)
 
 		data[schemaKey] = string(db.SchemaFile.Contents)
 		items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
@@ -56,7 +49,7 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 		})
 
 		configPath := filepath.Join(name, "config", db.Name)
-		configKey := makeKey(configPath)
+		configKey := naming.StableID(configPath)
 
 		db.SchemaFile = &types.Resource{
 			Path: filepath.Join(mountPath, schemaPath),

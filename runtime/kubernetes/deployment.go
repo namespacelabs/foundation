@@ -28,6 +28,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/storage"
@@ -747,9 +748,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 func makeVolumeName(deploymentId, name string) string {
 	if (len(deploymentId) + len(name) + 1) > 63 {
 		// Deployment id is too long, use an hash instead.
-		h := sha256.New()
-		fmt.Fprint(h, deploymentId)
-		deploymentId = ids.EncodeToBase32String(h.Sum(nil))[:8]
+		deploymentId = naming.StableIDN(deploymentId, 8)
 	}
 
 	return fmt.Sprintf("%s-%s", deploymentId, name)

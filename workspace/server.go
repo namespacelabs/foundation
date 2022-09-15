@@ -38,7 +38,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 	}
 
 	if srv.Id == "" {
-		srv.Id = naming.StableID(pp.Location.PackageName.String(), 16)
+		srv.Id = naming.StableIDN(pp.Location.PackageName.String(), 16)
 	}
 
 	if err := ValidateServerID(srv); err != nil {

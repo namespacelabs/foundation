@@ -6,7 +6,6 @@ package runtime
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"strings"
 
@@ -14,12 +13,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/go-ids"
 )
 
 const (
@@ -324,9 +323,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 			return nil, fnerrors.DoesNotMeetVersionRequirements("domain allocation", 0, 0)
 		}
 
-		h := sha256.New()
-		fmt.Fprintf(h, "%s:%s", env.Name, computed.MainModuleName)
-		x := ids.EncodeToBase32String(h.Sum(nil))[:6]
+		x := naming.StableIDN(fmt.Sprintf("%s:%s", env.Name, computed.MainModuleName), 6)
 		name := fmt.Sprintf("%s-%s", allocatedName.Alias, x)
 
 		if computed.DomainFragmentSuffix != "" {

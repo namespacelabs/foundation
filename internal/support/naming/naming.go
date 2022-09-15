@@ -18,10 +18,17 @@ var (
 	base32encoding = base32.NewEncoding(lowerCaseEncodeBase32).WithPadding(base32.NoPadding)
 )
 
-func StableID(str string, n int) string {
+func StableID(str string) string {
 	h := sha256.New()
 	fmt.Fprint(h, str)
 	digest := h.Sum(nil)
 
-	return base32encoding.EncodeToString(digest)[:n]
+	return base32encoding.EncodeToString(digest)
+}
+
+func StableIDN(str string, n int) string {
+	if n < 0 || n > 50 {
+		panic("invalid N")
+	}
+	return StableID(str)[:n]
 }

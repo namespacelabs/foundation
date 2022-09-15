@@ -34,12 +34,6 @@ func (v Digest) String() string {
 	return fmt.Sprintf("%s:%s", v.Algorithm, v.Hex)
 }
 
-func (v Digest) With(vals ...interface{}) (Digest, error) {
-	h := sha256.New()
-	fmt.Fprint(h, v.String())
-	return bits("sha256", h, vals...)
-}
-
 func (v Digest) Equals(rhs Digest) bool {
 	return v.Algorithm == rhs.Algorithm && v.Hex == rhs.Hex
 }

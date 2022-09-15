@@ -6,14 +6,13 @@ package toolcommon
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -27,12 +26,6 @@ const (
 	basePath = "/mariadb/init"
 )
 
-func makeKey(s string) string {
-	h := sha256.New()
-	h.Write([]byte(s))
-	return hex.EncodeToString(h.Sum(nil))
-}
-
 func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace string, name string, focus string, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
@@ -44,7 +37,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 	for packageName, dbs := range dbMap {
 		for _, db := range dbs {
 			schemaPath := filepath.Join(packageName.String(), "schema", db.SchemaFile.Path)
-			schemaKey := makeKey(schemaPath)
+			schemaKey := naming.StableID(schemaPath)
 
 			data[schemaKey] = string(db.SchemaFile.Contents)
 			items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
@@ -53,7 +46,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 			})
 
 			configPath := filepath.Join(packageName.String(), "config", db.Name)
-			configKey := makeKey(configPath)
+			configKey := naming.StableID(configPath)
 
 			config := &maria.Database{
 				Name: db.Name,

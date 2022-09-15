@@ -26,7 +26,7 @@ func NewByteStream(ctx context.Context) (*ByteStreamWriter, error) {
 	}
 
 	h := sha256.New()
-	bsw := &ByteStreamWriter{f: f, h: h, w: io.MultiWriter(h, f), result: &byteStream{path: f.Name()}}
+	bsw := &ByteStreamWriter{file: f, hash: h, writer: io.MultiWriter(h, f), result: &byteStream{path: f.Name()}}
 
 	On(ctx).Cleanup(tasks.Action("compute.output.cleanup"), func(ctx context.Context) error {
 		bsw.result.mu.Lock()
@@ -78,9 +78,9 @@ func (bsw *byteStream) MarshalJSON() ([]byte, error) {
 }
 
 type ByteStreamWriter struct {
-	f         *os.File
-	h         hash.Hash
-	w         io.Writer
+	file      *os.File
+	hash      hash.Hash
+	writer    io.Writer
 	byteCount uint64
 	result    *byteStream
 }
@@ -88,21 +88,21 @@ type ByteStreamWriter struct {
 var _ io.WriteCloser = &ByteStreamWriter{}
 
 func (bsw *ByteStreamWriter) Write(p []byte) (int, error) {
-	n, err := bsw.w.Write(p)
+	n, err := bsw.writer.Write(p)
 	bsw.byteCount += uint64(n)
 	return n, err
 }
 
 func (bsw *ByteStreamWriter) Close() error {
-	return bsw.f.Close()
+	return bsw.file.Close()
 }
 
 func (bsw *ByteStreamWriter) Complete() (bytestream.ByteStream, error) {
-	if err := bsw.f.Close(); err != nil {
+	if err := bsw.file.Close(); err != nil {
 		return nil, err
 	}
 
-	d := schema.FromHash("sha256", bsw.h)
+	d := schema.FromHash("sha256", bsw.hash)
 	bsw.result.digest = d
 	bsw.result.contentLength = bsw.byteCount
 	return bsw.result, nil

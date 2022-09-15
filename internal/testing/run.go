@@ -6,7 +6,6 @@ package testing
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/orchestration"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -141,9 +141,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		ex.Go(func(ctx context.Context) error {
 			defer cancelAll() // When the test is done, cancel logging.
 
-			h := sha256.New()
-			fmt.Fprint(h, test.TestRef.PackageName)
-			pkgId := ids.EncodeToBase32String(h.Sum(nil))[:8]
+			pkgId := naming.StableIDN(test.TestRef.PackageName, 8)
 
 			testDriver := runtime.DeployableSpec{
 				Location:      test.TestRef.AsPackageName(),

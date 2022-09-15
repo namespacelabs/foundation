@@ -5,7 +5,6 @@
 package secrets
 
 import (
-	"crypto/sha256"
 	"encoding/base32"
 	"encoding/base64"
 	"fmt"
@@ -18,6 +17,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -76,9 +76,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 
 					if secret.Generate != nil {
 						if secret.Generate.UniqueId == "" {
-							h := sha256.New()
-							fmt.Fprint(h, instance.InstanceOwner)
-							secret.Generate.UniqueId = base32enc.EncodeToString(h.Sum(nil)[:16])
+							secret.Generate.UniqueId = naming.StableIDN(instance.InstanceOwner, 16)
 						} else if _, ok := reservedSecretNames[secret.Generate.UniqueId]; ok {
 							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
 						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {

@@ -5,12 +5,12 @@
 package kubernetes
 
 import (
-	"crypto/sha256"
 	"encoding/base32"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -30,11 +30,8 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 	parts := []string{strings.ToLower(env.Name)}
 	parts = append(parts, validChars.FindAllString(filepath.Base(ws.ModuleName), -1)...)
 
-	h := sha256.New()
-	h.Write([]byte(ws.ModuleName)) // Write to a sha256 hash never fails.
-	digest := h.Sum(nil)
+	id := naming.StableIDN(ws.ModuleName, 5)
 
-	// A SHA256 is 32 bytes long, we're guarantee to always have at least 5 characters.
-	parts = append(parts, base32encoding.EncodeToString(digest)[:5])
+	parts = append(parts, id)
 	return strings.Join(parts, "-")
 }
