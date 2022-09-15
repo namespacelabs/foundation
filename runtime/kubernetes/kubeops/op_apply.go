@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
@@ -222,7 +221,7 @@ func registerApply() {
 					defer close(ch)
 				}
 
-				return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action(runtime.TaskServerStart).Scope(scope...),
+				return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action("pod.wait").Scope(scope...),
 					kobs.WaitForPodConditition(
 						kobs.PickPod(header.Namespace, header.Name),
 						func(ps v1.PodStatus) (bool, error) {

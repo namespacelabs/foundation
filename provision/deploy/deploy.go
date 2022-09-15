@@ -309,7 +309,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		}
 	}
 
-	imageIDs := compute.Map(tasks.Action(runtime.TaskServerBuild),
+	imageIDs := compute.Map(tasks.Action("server.build"),
 		binaryInputs, compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (builtImages, error) {
 			var built builtImages
@@ -353,7 +353,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		})
 
 	c1 := compute.Map(
-		tasks.Action(runtime.TaskServerProvision).
+		tasks.Action("server.plan-deployment").
 			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
 		finalInputs.
 			Indigestible("focus", focus).

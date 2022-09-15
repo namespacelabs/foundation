@@ -166,7 +166,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		}
 
 		server := focus[0]
-		if err := tasks.Action(runtime.TaskStackCompute).Scope(server.PackageName()).Run(ctx,
+		if err := tasks.Action("stack.rehydrate").Scope(server.PackageName()).Run(ctx,
 			func(ctx context.Context) error {
 				buildID, err := do.cluster.DeployedConfigImageID(ctx, server.Proto())
 				if err != nil {

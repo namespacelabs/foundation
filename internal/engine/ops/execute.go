@@ -15,7 +15,7 @@ import (
 type WaitHandler func(context.Context) (chan *orchestration.Event, func(error) error)
 
 func Execute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, channelHandler WaitHandler, injected ...InjectionInstance) error {
-	waiters, err := RawExecute(ctx, config, actionName, g, injected...)
+	waiters, err := rawExecute(ctx, config, actionName, g, injected...)
 	if err != nil {
 		return err
 	}
@@ -23,7 +23,7 @@ func Execute(ctx context.Context, config planning.Configuration, actionName stri
 	return WaitMultipleWithHandler(ctx, waiters, channelHandler)
 }
 
-func RawExecute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, injected ...InjectionInstance) ([]Waiter, error) {
+func rawExecute(ctx context.Context, config planning.Configuration, actionName string, g *Plan, injected ...InjectionInstance) ([]Waiter, error) {
 	injections := append([]InjectionInstance{ConfigurationInjection.With(config)}, injected...)
 
 	return tasks.Return(injectValues(ctx, injections...), tasks.Action(actionName).Scope(g.scope.PackageNames()...), func(ctx context.Context) ([]Waiter, error) {

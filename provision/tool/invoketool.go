@@ -78,7 +78,7 @@ type cacheableInvocation struct {
 }
 
 func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
-	return tasks.Action(runtime.TaskProvisionInvoke).
+	return tasks.Action("provision.invoke").
 		Scope(inv.handler.Source.PackageName).
 		Arg("target", inv.handler.TargetServer)
 }

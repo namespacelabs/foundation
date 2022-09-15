@@ -32,7 +32,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	namespace := r.target.namespace
 	podName := kubedef.MakeDeploymentId(object)
 
-	return watchDeployable(ctx, cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
+	return watchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
 		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
 			return nil, false
 		}
@@ -60,8 +60,8 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	})
 }
 
-func watchDeployable[V any](ctx context.Context, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool)) (V, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.wait-for-deployable").Arg("id", object.GetId()).Arg("name", object.GetName()),
+func watchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool)) (V, error) {
+	return tasks.Return(ctx, tasks.Action(actionName).Arg("id", object.GetId()).Arg("name", object.GetName()),
 		func(ctx context.Context) (V, error) {
 			return watchPods(ctx, cli, namespace, kubedef.SelectById(object), callback)
 		})

@@ -64,7 +64,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 		return err
 	}
 
-	ev := tasks.Action(runtime.TaskServerStart)
+	ev := tasks.Action(strings.ToLower(w.ResourceKind) + ".wait")
 	if w.Scope != "" {
 		ev = ev.Scope(w.Scope)
 	} else {

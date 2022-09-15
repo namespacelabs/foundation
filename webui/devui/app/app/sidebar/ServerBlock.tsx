@@ -101,9 +101,14 @@ function ServerList(props: { servers: Server[] }) {
 const taskHumanNames: { [key: string]: string } = {
 	"graph.compute": "computing",
 	"server.build": "building",
-	"server.provision": "provisioning",
+	"server.provision": "planning",
+	"server.plan-deployment": "planning",
 	"server.deploy": "deploying",
+	"deployment.execute": "deploying",
 	"server.start": "starting",
+	"deployment.wait": "starting",
+	"statefulset.wait": "starting",
+	"pod.wait": "starting",
 };
 
 function humanTaskName(name: string) {
