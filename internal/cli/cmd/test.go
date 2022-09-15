@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -189,6 +190,9 @@ func NewTestCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+				slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[testing.StoredTestResults]) bool {
+					return a.Value.Bundle.Result.Success && !b.Value.Bundle.Result.Success
+				})
 
 				for k, res := range results {
 					printResult(stderr, style, testRefs[k], res, true)
