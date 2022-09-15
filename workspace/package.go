@@ -13,7 +13,7 @@ import (
 
 // This function contains frontend-agnostic validation and processing code.
 // The "opaque integration" will be applied here.
-func SealPackage(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
+func SealPackage(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
 	var err error
 
 	if pp.Server != nil {
@@ -41,6 +41,10 @@ func SealPackage(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Pa
 		if err := transformBinary(pp.Location, binary); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := transformResourceClasses(ctx, pl, pp); err != nil {
+		return nil, err
 	}
 
 	return pp, nil
