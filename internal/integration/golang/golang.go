@@ -39,7 +39,9 @@ func (i *GoIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fnc
 		goPkg = "."
 	}
 
-	return api.SetServerBinary(pkg, &schema.LayeredImageBuildPlan{
-		LayerBuildPlan: []*schema.ImageBuildPlan{{GoPackage: goPkg}},
-	}, nil)
+	return api.SetServerBinary(pkg,
+		&schema.LayeredImageBuildPlan{
+			LayerBuildPlan: []*schema.ImageBuildPlan{{GoPackage: goPkg}},
+		},
+		[]string{"/" + pkg.Server.Name})
 }
