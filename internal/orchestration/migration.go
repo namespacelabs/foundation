@@ -22,7 +22,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 	}
 
 	if UseOrchestrator {
-		raw, err := cluster.EnsureState(ctx, key, env)
+		raw, err := cluster.EnsureState(ctx, orchestratorStateKey, env)
 		if err != nil {
 			return err
 		}

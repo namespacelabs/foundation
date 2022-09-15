@@ -20,10 +20,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -222,4 +224,15 @@ func IngressLoadBalancerService() *NameRef {
 
 func ControllerSelector() map[string]string {
 	return map[string]string{"app.kubernetes.io/component": "controller"}
+}
+
+func IngressWaiter(cfg *rest.Config) kubeobserver.WaitOnResource {
+	return kubeobserver.WaitOnResource{
+		RestConfig:   cfg,
+		Description:  "NGINX Ingress Controller",
+		Namespace:    IngressLoadBalancerService().Namespace,
+		Name:         IngressLoadBalancerService().ServiceName,
+		ResourceKind: "Deployment",
+		Scope:        "namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx",
+	}
 }

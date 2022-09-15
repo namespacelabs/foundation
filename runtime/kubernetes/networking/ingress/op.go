@@ -30,7 +30,7 @@ func RegisterGraphHandlers() {
 			return nil, err
 		}
 
-		return nil, tasks.Action("kubernetes.ingress.wait").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
+		return nil, tasks.Action("ingress.publish-address").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
 			ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
 
 			return waitForIngress(ctx, cluster.Client(), ingressSvc, op)

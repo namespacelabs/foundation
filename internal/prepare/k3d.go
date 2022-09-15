@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime/docker"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
 	kubeclient "namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -142,12 +141,9 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 		}
 	} else {
 		// Ensure that all of the nodes in the cluster are up and running.
-		healthyCluster := true
-
 		var errs []error
 		for _, node := range ours.Nodes {
 			if !node.State.Running {
-				healthyCluster = false
 				if err := p.k3dbin.StartNode(ctx, node.Name); err != nil {
 					errs = append(errs, err)
 				}
@@ -156,19 +152,6 @@ func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName str
 
 		if err := multierr.New(errs...); err != nil {
 			return fnerrors.InternalError("failed to start node(s) for cluster %q: %w", clusterName, err)
-		}
-
-		// Wait for the ingress to become available if we have an unhealthy cluster.
-		if !healthyCluster {
-			kube, err := kubernetes.ConnectToConfig(ctx, hostconf)
-			if err != nil {
-				return err
-			}
-
-			if err := waitForIngress(ctx, kube, tasks.Action("kubernetes.ingress.healthy").
-				HumanReadablef("Waiting for the ingress to become healthy after a k3d restart")); err != nil {
-				return fnerrors.InternalError("failed to ensure a healthy ingress after a k3d restart %w", err)
-			}
 		}
 	}
 

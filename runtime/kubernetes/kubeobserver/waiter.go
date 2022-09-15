@@ -86,7 +86,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			ev.Category = w.Description
 		}
 
-		if w.PreviousGen == w.ExpectedGen {
+		if w.PreviousGen > 0 && w.PreviousGen == w.ExpectedGen {
 			ev.AlreadyExisted = true
 		}
 
@@ -286,10 +286,4 @@ func matchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) bool {
 		}
 	}
 	return false
-}
-
-func SelectPods(selector map[string]string) metav1.ListOptions {
-	var m metav1.ListOptions
-	m.LabelSelector = kubedef.SerializeSelector(selector)
-	return m
 }

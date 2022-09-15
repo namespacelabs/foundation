@@ -7,13 +7,10 @@ package prepare
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/compute"
@@ -28,7 +25,7 @@ func PrepareIngressFromHostConfig(env planning.Context, k8sconfig compute.Comput
 
 func PrepareIngress(env planning.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
-		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller (may take up to 30 seconds)"),
+		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller"),
 		compute.Inputs().Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
@@ -58,17 +55,5 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 		return err
 	}
 
-	// XXX this should be part of WaitUntilReady.
-	if err := waitForIngress(ctx, kube, tasks.Action("kubernetes.ingress.deploy")); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-func waitForIngress(ctx context.Context, kube *kubernetes.Cluster, action *tasks.ActionEvent) error {
-	return kubeobserver.WaitForCondition(ctx, kube.Client(), action, kubeobserver.WaitForPodConditition(
-		nginx.IngressLoadBalancerService().Namespace,
-		kubeobserver.SelectPods(nginx.ControllerSelector()),
-		kubeobserver.MatchPodCondition(corev1.PodReady)))
 }

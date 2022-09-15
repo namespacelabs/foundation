@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const key = "foundation.orchestration"
+const orchestratorStateKey = "foundation.orchestration"
 
 var (
 	UseOrchestrator              = true
@@ -31,8 +31,8 @@ func RegisterPrepare() {
 		return
 	}
 
-	runtime.RegisterPrepare(key, func(ctx context.Context, target planning.Context, cluster runtime.Cluster) (any, error) {
-		return tasks.Return(ctx, tasks.Action("orchestrator.prepare").Arg("env", target.Environment().Name), func(ctx context.Context) (any, error) {
+	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target planning.Context, cluster runtime.Cluster) (any, error) {
+		return tasks.Return(ctx, tasks.Action("orchestrator.prepare"), func(ctx context.Context) (any, error) {
 			return prepare(ctx, target, cluster)
 		})
 	})
