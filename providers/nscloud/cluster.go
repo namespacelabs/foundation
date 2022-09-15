@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/providers/nscloud/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -43,8 +42,6 @@ const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nsc
 // const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal-c.namespacelabs.nscloud.dev"
 
 var (
-	clusterCache = tcache.NewCache[*CreateClusterResult]()
-
 	startCreateKubernetesCluster = fnapi.Call[CreateKubernetesClusterRequest]{
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/StartCreateKubernetesCluster",
@@ -148,9 +145,7 @@ type CreateClusterResult struct {
 }
 
 func CreateClusterForEnv(ctx context.Context, cfg planning.Configuration, ephemeral bool) (*CreateClusterResult, error) {
-	return clusterCache.Compute(cfg.EnvKey(), func() (*CreateClusterResult, error) {
-		return CreateCluster(ctx, ephemeral, cfg.EnvKey()) // The environment name is the best we can do right now as a documented purpose.
-	})
+	return CreateCluster(ctx, ephemeral, cfg.EnvKey()) // The environment name is the best we can do right now as a documented purpose.
 }
 
 func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*CreateClusterResult, error) {

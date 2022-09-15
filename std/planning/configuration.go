@@ -20,7 +20,8 @@ type Configuration interface {
 	Derive(string, func(ConfigurationSlice) ConfigurationSlice) Configuration
 
 	// When the configuration is loaded pinned to an environment, returns the
-	// environment name. Else, the return value is undefined.
+	// environment name. Else, the return value is undefined. This value MUST
+	// NOT be used as an authoritative cache key.
 	EnvKey() string
 
 	getMultiple(string) []*anypb.Any
