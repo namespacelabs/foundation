@@ -14,14 +14,22 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
-	if !UseOrchestrator && !wait {
-		return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
+	if !UseOrchestrator {
+		if !wait {
+			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
+		}
+
+		// Make sure that the cluster is accessible to a serialized invocation implementation.
+		return ops.Execute(ctx, env.Configuration(), "deployment.execute", p,
+			deploy.MaybeRenderBlock(env, cluster, outputProgress),
+			runtime.ClusterInjection.With(cluster))
 	}
 
-	if UseOrchestrator {
+	return tasks.Action("orchestrator.deploy").Run(ctx, func(ctx context.Context) error {
 		raw, err := cluster.EnsureState(ctx, orchestratorStateKey)
 		if err != nil {
 			return err
@@ -49,12 +57,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 
 			return handler(WireDeploymentStatus(ctx, conn, id, ch))
 		}
-	} else {
-		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return ops.Execute(ctx, env.Configuration(), "deployment.execute", p,
-			deploy.MaybeRenderBlock(env, cluster, outputProgress),
-			runtime.ClusterInjection.With(cluster))
-	}
 
-	return nil
+		return nil
+	})
 }
