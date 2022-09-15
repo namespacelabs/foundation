@@ -536,7 +536,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.InternalError("failed to digest runtime configuration: %w", err)
 		}
 
-		configId := deploymentId + "-rtconfig-" + configDigest.Hex[:8]
+		configId := makeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
 
 		// Needs to be declared before it's used.
 		s.operations = append(s.operations, kubedef.Apply{
@@ -742,6 +742,17 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	return nil
+}
+
+func makeVolumeName(deploymentId, name string) string {
+	if (len(deploymentId) + len(name) + 1) > 63 {
+		// Deployment id is too long, use an hash instead.
+		h := sha256.New()
+		fmt.Fprint(h, deploymentId)
+		deploymentId = ids.EncodeToBase32String(h.Sum(nil))[:8]
+	}
+
+	return fmt.Sprintf("%s-%s", deploymentId, name)
 }
 
 type collector struct {

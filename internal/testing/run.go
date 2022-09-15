@@ -6,10 +6,10 @@ package testing
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"time"
 
@@ -141,14 +141,16 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		ex.Go(func(ctx context.Context) error {
 			defer cancelAll() // When the test is done, cancel logging.
 
-			parts := strings.Split(test.TestRef.PackageName, "/")
+			h := sha256.New()
+			fmt.Fprint(h, test.TestRef.PackageName)
+			pkgId := ids.EncodeToBase32String(h.Sum(nil))[:8]
 
 			testDriver := runtime.DeployableSpec{
 				Location:      test.TestRef.AsPackageName(),
 				PackageName:   test.TestRef.AsPackageName(),
 				Class:         schema.DeployableClass_ONESHOT,
 				Id:            ids.NewRandomBase32ID(8),
-				Name:          strings.ToLower(parts[len(parts)-1]) + "-" + test.TestRef.Name,
+				Name:          fmt.Sprintf("%s-%s", test.TestRef.Name, pkgId),
 				RunOpts:       testRun,
 				RuntimeConfig: test.RuntimeConfig,
 			}
