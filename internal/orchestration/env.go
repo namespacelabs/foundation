@@ -54,5 +54,5 @@ func makeOrchEnv(ctx context.Context, conf planning.Configuration) (planning.Con
 		return previous
 	})
 
-	return planning.MakeUnverifiedContext(cfg, conf.Workspace(), envProto, conf.Workspace().ErrorLocation()), nil
+	return planning.MakeUnverifiedContext(cfg, envProto), nil
 }

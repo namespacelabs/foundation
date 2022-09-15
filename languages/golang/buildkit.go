@@ -29,12 +29,7 @@ var (
 	useSeparateGoModPhase = false
 )
 
-type buildConf interface {
-	build.BuildTarget
-	build.BuildWorkspace
-}
-
-func buildUsingBuildkit(ctx context.Context, env planning.Context, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
+func buildUsingBuildkit(ctx context.Context, env planning.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	local := buildkit.LocalContents{
 		Module:         conf.Workspace(),
 		Path:           bin.GoModulePath,

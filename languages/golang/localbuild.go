@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Build(ctx context.Context, env planning.Context, bin GoBinary, conf buildConf) (compute.Computable[oci.Image], error) {
+func Build(ctx context.Context, env planning.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	if conf.Workspace() == nil {
 		panic(conf)
 	}

@@ -59,13 +59,10 @@ type BuildTarget interface {
 	PublishName() compute.Computable[oci.AllocatedName]
 }
 
-type BuildWorkspace interface {
-	Workspace() Workspace
-}
-
 type Configuration interface {
 	BuildTarget
-	BuildWorkspace
+
+	Workspace() Workspace
 }
 
 type BuildPlatformsVar struct{}

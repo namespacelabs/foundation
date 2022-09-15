@@ -24,5 +24,5 @@ func makeEnv(plan *schema.DeployPlan, awsConf *aws.Conf) planning.Context {
 
 	cfg := planning.MakeConfigurationWith(plan.Environment.Name, ws, planning.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
 
-	return planning.MakeUnverifiedContext(cfg, ws, plan.Environment, plan.Workspace.ModuleName)
+	return planning.MakeUnverifiedContext(cfg, plan.Environment)
 }

@@ -59,7 +59,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		env := serializedEnvironment{root, config, plan.Environment}
+		env := serializedContext{root, config, plan.Environment}
 
 		cluster, err := runtime.ClusterFor(ctx, env)
 		if err != nil {
@@ -72,13 +72,13 @@ func NewDeployPlanCmd() *cobra.Command {
 	return cmd
 }
 
-type serializedEnvironment struct {
+type serializedContext struct {
 	root   *workspace.Root
 	config planning.Configuration
 	env    *schema.Environment
 }
 
-func (se serializedEnvironment) Workspace() planning.Workspace         { return se.root.Workspace() }
-func (se serializedEnvironment) Environment() *schema.Environment      { return se.env }
-func (se serializedEnvironment) ErrorLocation() string                 { return se.root.ErrorLocation() }
-func (se serializedEnvironment) Configuration() planning.Configuration { return se.config }
+func (se serializedContext) Workspace() planning.Workspace         { return se.root.Workspace() }
+func (se serializedContext) Environment() *schema.Environment      { return se.env }
+func (se serializedContext) ErrorLocation() string                 { return se.root.ErrorLocation() }
+func (se serializedContext) Configuration() planning.Configuration { return se.config }

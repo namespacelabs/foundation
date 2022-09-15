@@ -23,8 +23,8 @@ type Context interface {
 	Environment() *schema.Environment
 }
 
-func MakeUnverifiedContext(config Configuration, ws Workspace, env *schema.Environment, errorLocation string) Context {
-	return ctx{config: config, errorLocation: errorLocation, workspace: ws, env: env}
+func MakeUnverifiedContext(config Configuration, env *schema.Environment) Context {
+	return ctx{config: config, env: env}
 }
 
 func LoadContext(parent RootContext, name string) (Context, error) {
@@ -40,7 +40,7 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 				return nil, err
 			}
 
-			return MakeUnverifiedContext(cfg, parent.Workspace(), schemaEnv, parent.ErrorLocation()), nil
+			return MakeUnverifiedContext(cfg, schemaEnv), nil
 		}
 	}
 
@@ -73,13 +73,11 @@ func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*sche
 }
 
 type ctx struct {
-	config        Configuration
-	errorLocation string
-	workspace     Workspace
-	env           *schema.Environment
+	config Configuration
+	env    *schema.Environment
 }
 
-func (e ctx) ErrorLocation() string            { return e.errorLocation }
-func (e ctx) Workspace() Workspace             { return e.workspace }
+func (e ctx) ErrorLocation() string            { return e.config.Workspace().ErrorLocation() }
+func (e ctx) Workspace() Workspace             { return e.config.Workspace() }
 func (e ctx) Environment() *schema.Environment { return e.env }
 func (e ctx) Configuration() Configuration     { return e.config }

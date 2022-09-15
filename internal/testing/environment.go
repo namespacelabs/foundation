@@ -41,5 +41,5 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		return previous
 	})
 
-	return planning.MakeUnverifiedContext(newCfg, sourceEnv.Workspace(), testEnv, sourceEnv.ErrorLocation())
+	return planning.MakeUnverifiedContext(newCfg, testEnv)
 }
