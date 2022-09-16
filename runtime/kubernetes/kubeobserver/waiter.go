@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -46,10 +47,10 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 type WaitOnResource struct {
 	RestConfig *rest.Config
 
-	Name, Namespace string
-	Description     string
-	ResourceKind    string
-	Scope           schema.PackageName
+	Name, Namespace  string
+	Description      string
+	GroupVersionKind kubeschema.GroupVersionKind
+	Scope            schema.PackageName
 
 	PreviousGen, ExpectedGen int64
 }
@@ -64,23 +65,23 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 		return err
 	}
 
-	ev := tasks.Action(strings.ToLower(w.ResourceKind) + ".wait")
+	ev := tasks.Action(strings.ToLower(w.GroupVersionKind.Kind) + ".wait")
 	if w.Scope != "" {
 		ev = ev.Scope(w.Scope)
 	} else {
-		ev = ev.Arg("kind", w.ResourceKind).Arg("name", w.Name).Arg("namespace", w.Namespace)
+		ev = ev.Arg("kind", w.GroupVersionKind.Kind).Arg("name", w.Name).Arg("namespace", w.Namespace)
 	}
 
 	return ev.Run(ctx, func(ctx context.Context) error {
 		ev := &orchestration.Event{
 			ResourceId:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
-			Kind:                w.ResourceKind,
+			Kind:                w.GroupVersionKind.Kind,
 			Scope:               w.Scope.String(),
-			RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.ResourceKind), w.Name),
+			RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.GroupVersionKind.Kind), w.Name),
 		}
 
-		switch w.ResourceKind {
-		case "Deployment", "StatefulSet":
+		switch {
+		case kubedef.IsGVKDeployment(w.GroupVersionKind), kubedef.IsGVKStatefulSet(w.GroupVersionKind):
 			ev.Category = "Servers deployed"
 		default:
 			ev.Category = w.Description
@@ -98,8 +99,8 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			var observedGeneration int64
 			var readyReplicas, replicas, updatedReplicas int32
 
-			switch w.ResourceKind {
-			case "Deployment":
+			switch {
+			case kubedef.IsGVKDeployment(w.GroupVersionKind):
 				res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
 					// If the resource is not visible yet, wait anyway, as the
@@ -123,7 +124,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				}
 				ev.ImplMetadata = meta
 
-			case "StatefulSet":
+			case kubedef.IsGVKStatefulSet(w.GroupVersionKind):
 				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
 					// If the resource is not visible yet, wait anyway, as the
@@ -148,7 +149,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				ev.ImplMetadata = meta
 
 			default:
-				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.ResourceKind)
+				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.GroupVersionKind)
 			}
 
 			if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {

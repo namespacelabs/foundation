@@ -43,7 +43,6 @@ func registerApply() {
 		}
 
 		gv := parsed.GroupVersionKind().GroupVersion()
-
 		if gv.Version == "" {
 			return nil, fnerrors.InternalError("%s: APIVersion is required", d.Description)
 		}
@@ -55,7 +54,7 @@ func registerApply() {
 
 		resourceName := apply.GetResourceClass().GetResource()
 		if resourceName == "" {
-			resourceName = kubeparser.ResourceEndpointFromKind(parsed.GetKind())
+			resourceName = kubeparser.ResourceEndpointFromKind(&parsed)
 			if resourceName == "" {
 				return nil, fnerrors.InternalError("don't know the resource mapping for %q", parsed.GetKind())
 			}
@@ -98,8 +97,8 @@ func registerApply() {
 				// account actually exists. And creating the default service
 				// account takes a bit of time after creating a namespace.
 				var waitOnNamespace string
-				switch parsed.GetKind() {
-				case "Deployment":
+				switch {
+				case kubedef.IsDeployment(&parsed):
 					var d appsv1.Deployment
 					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
 						return false, err
@@ -107,7 +106,8 @@ func registerApply() {
 					if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
 						waitOnNamespace = parsed.GetNamespace()
 					}
-				case "Statefulset":
+
+				case kubedef.IsStatefulSet(&parsed):
 					var d appsv1.StatefulSet
 					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
 						return false, err
@@ -115,7 +115,8 @@ func registerApply() {
 					if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
 						waitOnNamespace = parsed.GetNamespace()
 					}
-				case "Pod":
+
+				case kubedef.IsPod(&parsed):
 					var d v1.Pod
 					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
 						return false, err
@@ -131,7 +132,7 @@ func registerApply() {
 					}
 				}
 
-				if parsed.GetKind() == "Ingress" {
+				if parsed.GetAPIVersion() == "networking.k8s.io/v1" && parsed.GetKind() == "Ingress" {
 					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
 					}
@@ -190,8 +191,8 @@ func registerApply() {
 		}
 
 		// XXX check gkv
-		switch parsed.GetKind() {
-		case "Deployment", "StatefulSet":
+		switch {
+		case kubedef.IsDeployment(&parsed), kubedef.IsStatefulSet(&parsed):
 			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 			observedGen, found2, err2 := unstructured.NestedInt64(res.Object, "status", "observedGeneration")
 			if err2 != nil || !found2 {
@@ -203,14 +204,14 @@ func registerApply() {
 				var waiters []ops.Waiter
 				for _, sc := range scope {
 					w := kobs.WaitOnResource{
-						RestConfig:   cluster.RESTConfig(),
-						Description:  d.Description,
-						Namespace:    parsed.GetNamespace(),
-						Name:         parsed.GetName(),
-						ResourceKind: parsed.GetKind(),
-						Scope:        sc,
-						PreviousGen:  observedGen,
-						ExpectedGen:  generation,
+						RestConfig:       cluster.RESTConfig(),
+						Description:      d.Description,
+						Namespace:        parsed.GetNamespace(),
+						Name:             parsed.GetName(),
+						GroupVersionKind: parsed.GroupVersionKind(),
+						Scope:            sc,
+						PreviousGen:      observedGen,
+						ExpectedGen:      generation,
 					}
 					waiters = append(waiters, w.WaitUntilReady)
 				}
@@ -222,7 +223,7 @@ func registerApply() {
 					parsed.GetKind(), err1, err2, found1, found2)
 			}
 
-		case "Pod":
+		case kubedef.IsPod(&parsed):
 			waiters := []ops.Waiter{func(ctx context.Context, ch chan *orchestration.Event) error {
 				if ch != nil {
 					defer close(ch)

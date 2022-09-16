@@ -18,6 +18,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/rest"
@@ -228,11 +229,11 @@ func ControllerSelector() map[string]string {
 
 func IngressWaiter(cfg *rest.Config) kubeobserver.WaitOnResource {
 	return kubeobserver.WaitOnResource{
-		RestConfig:   cfg,
-		Description:  "NGINX Ingress Controller",
-		Namespace:    IngressLoadBalancerService().Namespace,
-		Name:         IngressLoadBalancerService().ServiceName,
-		ResourceKind: "Deployment",
-		Scope:        "namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx",
+		RestConfig:       cfg,
+		Description:      "NGINX Ingress Controller",
+		Namespace:        IngressLoadBalancerService().Namespace,
+		Name:             IngressLoadBalancerService().ServiceName,
+		GroupVersionKind: kubeschema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+		Scope:            "namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx",
 	}
 }
