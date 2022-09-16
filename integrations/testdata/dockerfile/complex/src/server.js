@@ -7,16 +7,20 @@
 const express = require("express");
 const fs = require("fs");
 
-// Reading and parsing the Namespace runtime config to get the port.
-const nsConfig = JSON.parse(fs.readFileSync("/namespace/config/runtime.json"));
+const nsConfigRaw = fs.readFileSync("/namespace/config/runtime.json");
+const nsConfig = JSON.parse(nsConfigRaw);
+console.log(`Namespace config: ${JSON.stringify(nsConfig, null, 2)}`);
 
 // Constants
-const PORT = nsConfig.current.port[0].port;
+const PORT = nsConfig.current.port.find((s) => s.name === "webapi").port;
 const HOST = "0.0.0.0";
 
 // App
 const app = express();
-app.get("/", (_, res) => res.send(`Hello, world!`));
+app.get("/", (req, res) => {
+	// Accessing the env variables from cue file
+	res.send(`Hello, ${process.env.NAME}!`);
+});
 
 app.listen(PORT, HOST);
 
