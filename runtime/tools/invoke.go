@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -72,6 +73,7 @@ func (inv *invokeTool) Output() compute.Output {
 
 func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	req := &protocol.ToolRequest{
+		ApiVersion:  versions.APIVersion,
 		ToolPackage: inv.invocation.BinaryRef.AsPackageName().String(),
 		RequestType: &protocol.ToolRequest_InvokeRequest{
 			InvokeRequest: &protocol.InvokeRequest{},

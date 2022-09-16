@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/invocation"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
@@ -65,7 +66,6 @@ type ParsedNode struct {
 	Allocations   []pkggraph.ValueWithPath
 	PrepareProps  struct {
 		ProvisionInput  []*anypb.Any
-		Invocations     []*schema.SerializedInvocation
 		ServerExtension []*schema.ServerExtension
 		Extension       []*schema.DefExtension
 	}
@@ -305,8 +305,9 @@ func evalProvision(ctx context.Context, server provision.Server, node *pkggraph.
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
 
 			req := &protocol.PrepareRequest{
-				Env:    server.SealedContext().Environment(),
-				Server: server.Proto(),
+				Env:        server.SealedContext().Environment(),
+				Server:     server.Proto(),
+				ApiVersion: versions.APIVersion,
 			}
 
 			var resp *protocol.PrepareResponse
@@ -340,7 +341,6 @@ func evalProvision(ctx context.Context, server provision.Server, node *pkggraph.
 					Inits:        resp.GetPreparedProvisionPlan().GetInit(),
 				},
 				ProvisionInput:  resp.ProvisionInput,
-				Invocations:     resp.Invocation,
 				Extension:       resp.Extension,
 				ServerExtension: resp.ServerExtension,
 			})
@@ -373,7 +373,6 @@ func evalProvision(ctx context.Context, server provision.Server, node *pkggraph.
 
 	parsed := &ParsedNode{Package: node, ProvisionPlan: pdata}
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
-	parsed.PrepareProps.Invocations = combinedProps.Invocations
 	parsed.PrepareProps.Extension = combinedProps.Extension
 	parsed.PrepareProps.ServerExtension = combinedProps.ServerExtension
 

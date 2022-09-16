@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -113,6 +114,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	r := inv.handler
 
 	req := &protocol.ToolRequest{
+		ApiVersion:  versions.APIVersion,
 		ToolPackage: r.Source.PackageName.String(),
 		// XXX temporary.
 		Stack:         inv.stack,

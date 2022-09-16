@@ -10,20 +10,21 @@ option go_package = "namespacelabs.dev/foundation/provision/tool/protocol";
 
 import "google/protobuf/any.proto";
 import "schema/defextension.proto";
-import "schema/definition.proto";
 import "schema/provision.proto";
 import "schema/environment.proto";
 import "schema/server.proto";
 
 message PrepareRequest {
-    foundation.schema.Environment env    = 1;
-    foundation.schema.Server      server = 2;
+    foundation.schema.Environment env         = 1;
+    foundation.schema.Server      server      = 2;
+    int32                         api_version = 3;
 }
 
 message PrepareResponse {
+    reserved 3;
+
     PreparedProvisionPlan prepared_provision_plan               = 1;
     repeated google.protobuf.Any provision_input                = 2;
-    repeated foundation.schema.SerializedInvocation invocation  = 3;
     repeated foundation.schema.DefExtension extension           = 4;
     repeated foundation.schema.ServerExtension server_extension = 5;
 }

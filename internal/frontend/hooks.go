@@ -24,7 +24,6 @@ var registrations struct {
 type PrepareProps struct {
 	pkggraph.PreparedProvisionPlan
 	ProvisionInput  []*anypb.Any
-	Invocations     []*schema.SerializedInvocation
 	Extension       []*schema.DefExtension
 	ServerExtension []*schema.ServerExtension
 }
@@ -32,7 +31,6 @@ type PrepareProps struct {
 func (p *PrepareProps) AppendWith(rhs PrepareProps) {
 	p.PreparedProvisionPlan.AppendWith(rhs.PreparedProvisionPlan)
 	p.ProvisionInput = append(p.ProvisionInput, rhs.ProvisionInput...)
-	p.Invocations = append(p.Invocations, rhs.Invocations...)
 	p.Extension = append(p.Extension, rhs.Extension...)
 	p.ServerExtension = append(p.ServerExtension, rhs.ServerExtension...)
 }

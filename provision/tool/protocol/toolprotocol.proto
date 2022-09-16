@@ -19,6 +19,8 @@ import "std/types/resource.proto";
 message ToolRequest {
     reserved 3;
 
+    int32 api_version = 11;
+
     string   tool_package                 = 1;
     repeated google.protobuf.Any input    = 5;
     repeated Snapshot            snapshot = 9;

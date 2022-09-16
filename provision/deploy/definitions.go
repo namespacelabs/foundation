@@ -51,7 +51,6 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 			// XXX breaks isolation.
 			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, dep.PrepareProps.ProvisionInput...)
 
-			definitions = append(definitions, dep.PrepareProps.Invocations...)
 			extensions = append(extensions, dep.PrepareProps.Extension...)
 			serverExtensions = append(serverExtensions, dep.PrepareProps.ServerExtension...)
 		}
