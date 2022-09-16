@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -42,9 +43,9 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 		return err
 	}
 
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus ClusterRole",
-		Resource: rbacv1.ClusterRole(clusterRoleName).WithRules(
+	g := kubeblueprint.GrantKubeACLs{
+		DescriptionBase: "Prometheus",
+		Rules: []*rbacv1.PolicyRuleApplyConfiguration{
 			rbacv1.PolicyRule().
 				WithAPIGroups("").
 				WithResources("nodes", "nodes/proxy", "services", "endpoints", "pods").
@@ -56,28 +57,12 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 			rbacv1.PolicyRule().
 				WithNonResourceURLs("/metrics").
 				WithVerbs("get"),
-		),
-	})
+		},
+	}
 
-	serviceAccount := makeServiceAccount(r.Focus.Server)
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus ClusterRoleBinding",
-		Resource: rbacv1.ClusterRoleBinding(clusterRoleBindingName).
-			WithRoleRef(rbacv1.RoleRef().
-				WithAPIGroup("rbac.authorization.k8s.io").
-				WithKind("ClusterRole").
-				WithName(clusterRoleName)).
-			WithSubjects(rbacv1.Subject().
-				WithKind("ServiceAccount").
-				WithNamespace(kr.Namespace).
-				WithName(serviceAccount)),
-	})
-
-	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description:  "Prometheus Service Account",
-		SetNamespace: kr.CanSetNamespace,
-		Resource:     corev1.ServiceAccount(serviceAccount, kr.Namespace).WithLabels(map[string]string{}),
-	})
+	if err := g.Compile(r, kubeblueprint.ClusterScope, out); err != nil {
+		return err
+	}
 
 	configs := map[string]string{
 		promYaml: string(promYamlData),
@@ -91,7 +76,6 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{
-			ServiceAccount: serviceAccount,
 			Volume: []*kubedef.SpecExtension_Volume{{
 				Name: volumeName, // XXX generate unique names.
 				VolumeType: &kubedef.SpecExtension_Volume_ConfigMap_{
