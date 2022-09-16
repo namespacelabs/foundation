@@ -135,9 +135,12 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 func isNewSyntax(partial *fncue.Partial) bool {
 	// Detecting the simplified syntax to define opaque servers.
 	server := partial.CueV.LookupPath("server")
+	resources := partial.CueV.LookupPath("resources")
+	resourceClasses := partial.CueV.LookupPath("resourceClasses")
+	providers := partial.CueV.LookupPath("providers")
 
 	// There is at least one import: the file itself.
-	return len(partial.CueImports) <= 1 && server.Exists()
+	return len(partial.CueImports) <= 1 && (server.Exists() || resources.Exists() || resourceClasses.Exists() || providers.Exists())
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {

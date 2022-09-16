@@ -34,93 +34,8 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, err
 	}
 
-	phase1plan := &phase1plan{}
 	parsedPkg := &pkggraph.Package{
 		Location: loc,
-		Parsed:   phase1plan,
-	}
-
-	server := v.LookupPath("server")
-	if !server.Exists() {
-		return nil, fnerrors.UserError(loc, "Missing server field")
-	}
-
-	var parsedSecrets []*schema.SecretSpec
-	if secrets := v.LookupPath("secrets"); secrets.Exists() {
-		it, err := secrets.Val.Fields()
-		if err != nil {
-			return nil, err
-		}
-
-		for it.Next() {
-			parsedSecret, err := parseSecret(ctx, loc, it.Label(), it.Value())
-			if err != nil {
-				return nil, err
-			}
-
-			parsedSecrets = append(parsedSecrets, parsedSecret)
-		}
-	}
-
-	var parsedVolumes []*schema.Volume
-	if volumes := v.LookupPath("volumes"); volumes.Exists() {
-		var err error
-		parsedVolumes, err = cuefrontend.ParseVolumes(ctx, ft.loader, loc, volumes)
-		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
-		}
-	}
-
-	var parsedSidecars []*schema.SidecarContainer
-	var parsedInitContainers []*schema.SidecarContainer
-	if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
-		it, err := sidecars.Val.Fields()
-		if err != nil {
-			return nil, err
-		}
-
-		for it.Next() {
-			val := &fncue.CueV{Val: it.Value()}
-			parsedContainer, err := parseCueContainer(ctx, ft.loader, it.Label(), loc, val)
-			if err != nil {
-				return nil, err
-			}
-
-			parsedVolumes = append(parsedVolumes, parsedContainer.inlineVolumes...)
-			parsedPkg.Binaries = append(parsedPkg.Binaries, parsedContainer.inlineBinaries...)
-
-			if v, _ := val.LookupPath("init").Val.Bool(); v {
-				parsedInitContainers = append(parsedInitContainers, parsedContainer.container)
-			} else {
-				parsedSidecars = append(parsedSidecars, parsedContainer.container)
-			}
-		}
-	}
-
-	parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, server)
-	if err != nil {
-		return nil, fnerrors.Wrapf(loc, err, "parsing server")
-	}
-
-	parsedSrv.Volumes = append(parsedSrv.Volumes, parsedVolumes...)
-	parsedSrv.Secret = parsedSecrets
-
-	parsedPkg.Server = parsedSrv
-
-	if requires := v.LookupPath("requires"); requires.Exists() {
-		var bits []schema.PackageName
-		if err := requires.Val.Decode(&bits); err != nil {
-			return nil, err
-		}
-
-		phase1plan.declaredStack = bits
-
-		for _, p := range phase1plan.declaredStack {
-			err := workspace.Ensure(ctx, ft.loader, p)
-			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "loading package %s", p)
-			}
-		}
 	}
 
 	if tests := v.LookupPath("tests"); tests.Exists() {
@@ -183,38 +98,81 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
-	if i := server.LookupPath("integration"); i.Exists() {
-		if err := integrationapi.ParseIntegration(ctx, loc, i, parsedPkg); err != nil {
-			return nil, err
+	server := v.LookupPath("server")
+	if server.Exists() {
+		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, server)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}
-	}
 
-	if image := server.LookupPath("image"); image.Exists() {
-		if err := imageintegration.ParseImageIntegration(ctx, loc, image, parsedPkg); err != nil {
-			return nil, err
+		if volumes := v.LookupPath("volumes"); volumes.Exists() {
+			parsedVolumes, err := cuefrontend.ParseVolumes(ctx, ft.loader, loc, volumes)
+			if err != nil {
+				return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+			}
+			parsedSrv.Volumes = append(parsedSrv.Volumes, parsedVolumes...)
 		}
-	}
 
-	phase1plan.startupPlan = startupPlan
-	phase1plan.sidecars = parsedSidecars
-	phase1plan.initContainers = parsedInitContainers
+		var parsedSidecars []*schema.SidecarContainer
+		var parsedInitContainers []*schema.SidecarContainer
+		if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
+			it, err := sidecars.Val.Fields()
+			if err != nil {
+				return nil, err
+			}
+
+			for it.Next() {
+				val := &fncue.CueV{Val: it.Value()}
+				parsedContainer, err := parseCueContainer(ctx, ft.loader, it.Label(), loc, val)
+				if err != nil {
+					return nil, err
+				}
+
+				parsedSrv.Volumes = append(parsedSrv.Volumes, parsedContainer.inlineVolumes...)
+				parsedPkg.Binaries = append(parsedPkg.Binaries, parsedContainer.inlineBinaries...)
+
+				if v, _ := val.LookupPath("init").Val.Bool(); v {
+					parsedInitContainers = append(parsedInitContainers, parsedContainer.container)
+				} else {
+					parsedSidecars = append(parsedSidecars, parsedContainer.container)
+				}
+			}
+		}
+
+		if secrets := v.LookupPath("secrets"); secrets.Exists() {
+			parsedSrv.Secret, err = parseSecrets(ctx, loc, secrets)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		parsedPkg.Server = parsedSrv
+
+		if i := server.LookupPath("integration"); i.Exists() {
+			if err := integrationapi.ParseIntegration(ctx, loc, i, parsedPkg); err != nil {
+				return nil, err
+			}
+		}
+
+		if image := server.LookupPath("image"); image.Exists() {
+			if err := imageintegration.ParseImageIntegration(ctx, loc, image, parsedPkg); err != nil {
+				return nil, err
+			}
+		}
+
+		phase1plan := &phase1plan{
+			startupPlan:    startupPlan,
+			sidecars:       parsedSidecars,
+			initContainers: parsedInitContainers,
+		}
+		if requires := v.LookupPath("requires"); requires.Exists() {
+			phase1plan.declaredStack, err = parseRequires(ctx, ft.loader, loc, requires)
+			if err != nil {
+				return nil, err
+			}
+		}
+		parsedPkg.Parsed = phase1plan
+	}
 
 	return parsedPkg, nil
-}
-
-type cueSecret struct {
-	Description string `json:"description,omitempty"`
-}
-
-func parseSecret(ctx context.Context, loc pkggraph.Location, name string, v cue.Value) (*schema.SecretSpec, error) {
-	var bits cueSecret
-	if err := v.Decode(&bits); err != nil {
-		return nil, err
-	}
-
-	return &schema.SecretSpec{
-		Owner:       loc.PackageName.String(),
-		Name:        name,
-		Description: bits.Description,
-	}, nil
 }
