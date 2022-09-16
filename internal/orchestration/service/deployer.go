@@ -141,7 +141,7 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	}
 	defer releaseLease()
 
-	return ops.Execute(ctx, env.Configuration(), "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
+	return ops.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
 		ch := make(chan *orchestration.Event)
 
 		logErrCh := make(chan error)

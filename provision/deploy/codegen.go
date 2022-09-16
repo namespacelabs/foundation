@@ -94,7 +94,7 @@ func codegenServer(ctx context.Context, srv provision.Server) error {
 		return err
 	}
 
-	return ops.Execute(ctx, srv.SealedContext().Configuration(), "workspace.codegen", r, nil,
+	return ops.Execute(ctx, srv.SealedContext(), "workspace.codegen", r, nil,
 		pkggraph.MutableModuleInjection.With(srv.Module()),
 		pkggraph.PackageLoaderInjection.With(srv.SealedContext()),
 	)

@@ -24,7 +24,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 		}
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return ops.Execute(ctx, env.Configuration(), "deployment.execute", p,
+		return ops.Execute(ctx, env, "deployment.execute", p,
 			deploy.MaybeRenderBlock(env, cluster, outputProgress),
 			runtime.ClusterInjection.With(cluster))
 	}

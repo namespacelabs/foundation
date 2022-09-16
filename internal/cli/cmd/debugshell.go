@@ -92,7 +92,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 		}
 
-		return runtime.RunAttachedStdio(ctx, env.Configuration(), cluster, runtime.DeployableSpec{
+		return runtime.RunAttachedStdio(ctx, env, cluster, runtime.DeployableSpec{
 			PackageName: schema.PackageName(env.Workspace().ModuleName()),
 			Class:       schema.DeployableClass_ONESHOT,
 			Name:        "debug",

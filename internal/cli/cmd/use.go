@@ -62,7 +62,7 @@ func newPsql() *cobra.Command {
 					bind.Database.Name, "postgres",
 				}
 
-				return runtime.RunAttachedStdio(ctx, res.Env.Configuration(), rt, runtime.DeployableSpec{
+				return runtime.RunAttachedStdio(ctx, res.Env, rt, runtime.DeployableSpec{
 					PackageName: schema.PackageName(bind.PackageName),
 					Attachable:  runtime.AttachableKind_WITH_TTY,
 					Class:       schema.DeployableClass_ONESHOT,
@@ -115,7 +115,7 @@ func newPgdump() *cobra.Command {
 					bind.Database.Name,
 				}, " "))
 
-				return runtime.RunAttached(ctx, res.Env.Configuration(), rt, runtime.DeployableSpec{
+				return runtime.RunAttached(ctx, res.Env, rt, runtime.DeployableSpec{
 					PackageName: schema.PackageName(bind.PackageName),
 					Attachable:  runtime.AttachableKind_WITH_STDIN_ONLY,
 					Class:       schema.DeployableClass_ONESHOT,
@@ -164,7 +164,7 @@ func newPgrestore() *cobra.Command {
 
 				defer f.Close()
 
-				return runtime.RunAttached(ctx, res.Env.Configuration(), rt, runtime.DeployableSpec{
+				return runtime.RunAttached(ctx, res.Env, rt, runtime.DeployableSpec{
 					PackageName: schema.PackageName(bind.PackageName),
 					Attachable:  runtime.AttachableKind_WITH_STDIN_ONLY,
 					Class:       schema.DeployableClass_ONESHOT,

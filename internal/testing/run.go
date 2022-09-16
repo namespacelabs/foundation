@@ -164,7 +164,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			}
 
 			// Make sure that the cluster is accessible to a serialized invocation implementation.
-			if err := ops.Execute(ctx, env.Configuration(), "test.driver.deploy", g, nil,
+			if err := ops.Execute(ctx, env, "test.driver.deploy", g, nil,
 				runtime.ClusterInjection.With(cluster.Cluster())); err != nil {
 				return fnerrors.New("failed to deploy: %w", err)
 			}
