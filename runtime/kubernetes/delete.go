@@ -17,15 +17,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-func (r *ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
-	return DeleteAllRecursively(ctx, r.cluster.cli, wait, nil, r.target.namespace)
-}
 
 func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	namespaces, err := r.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
@@ -46,24 +40,6 @@ func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress 
 	}
 
 	return DeleteAllRecursively(ctx, r.cli, wait, progress, filtered...)
-}
-
-func (r *ClusterNamespace) DeleteDeployment(ctx context.Context, deployable runtime.Deployable) error {
-	listOpts := metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(deployable))}
-
-	switch deployable.GetDeployableClass() {
-	case string(schema.DeployableClass_ONESHOT):
-		return r.cluster.cli.CoreV1().Pods(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
-
-	case string(schema.DeployableClass_STATEFUL):
-		return r.cluster.cli.AppsV1().StatefulSets(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
-
-	case string(schema.DeployableClass_STATELESS):
-		return r.cluster.cli.AppsV1().Deployments(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
-
-	default:
-		return fnerrors.InternalError("%s: unsupported deployable class", deployable.GetDeployableClass())
-	}
 }
 
 func DeleteAllRecursively(ctx context.Context, cli *kubernetes.Clientset, wait bool, progress io.Writer, namespaces ...string) (bool, error) {

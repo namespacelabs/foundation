@@ -13,10 +13,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-const (
-	lowerCaseEncodeBase32 = "0123456789abcdefghijklmnopqrstuv"
-)
-
 var (
 	validChars = regexp.MustCompile("[a-z0-9]+")
 )

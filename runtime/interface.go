@@ -64,6 +64,11 @@ type Cluster interface {
 	// Attaches to a running container.
 	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
 
+	// Exposes the cluster's ingress, in the specified local address and port.
+	// This is used to create stable localhost-bound ingress addresses (for e.g.
+	// nslocal.host).
+	ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify PortForwardedFunc) (io.Closer, error)
+
 	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
 	EnsureState(context.Context, string) (any, error)
 
@@ -147,11 +152,6 @@ type ClusterNamespace interface {
 	// Dials a TCP port to one of the replicas of the target server. The
 	// lifecycle of the connection is bound to the specified context.
 	DialServer(ctx context.Context, server Deployable, containerPort int32) (net.Conn, error)
-
-	// Exposes the cluster's ingress, in the specified local address and port.
-	// This is used to create stable localhost-bound ingress addresses (for e.g.
-	// nslocal.host).
-	ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify PortForwardedFunc) (io.Closer, error)
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.

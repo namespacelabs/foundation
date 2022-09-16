@@ -9,9 +9,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
@@ -23,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (
@@ -122,39 +119,6 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
 		Invocation:     []*schema.SerializedInvocation{def},
 	}, nil
-}
-
-func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server runtime.Deployable) (oci.ImageID, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageName())),
-		func(ctx context.Context) (oci.ImageID, error) {
-			// XXX need a StatefulSet variant.
-			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
-			if err != nil {
-				// XXX better error messages.
-				return oci.ImageID{}, err
-			}
-
-			cfgimage, ok := d.Annotations[kubedef.K8sConfigImage]
-			if !ok {
-				return oci.ImageID{}, fnerrors.BadInputError("%s: %q is missing as an annotation in %q",
-					server.GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
-			}
-
-			imgid, err := oci.ParseImageID(cfgimage)
-			if err != nil {
-				return imgid, err
-			}
-
-			tasks.Attachments(ctx).AddResult("ref", imgid.ImageRef())
-
-			return imgid, nil
-		})
-}
-
-func (r *ClusterNamespace) StartTerminal(ctx context.Context, server runtime.Deployable, rio runtime.TerminalIO, command string, rest ...string) error {
-	cmd := append([]string{command}, rest...)
-
-	return r.startTerminal(ctx, r.cluster.cli, server, rio, cmd)
 }
 
 func (r *Cluster) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {

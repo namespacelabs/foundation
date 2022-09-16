@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 )
 
@@ -43,22 +42,6 @@ type StartAndBlockPortFwdArgs struct {
 }
 
 const PortForwardProtocolV1Name = "portforward.k8s.io"
-
-func (r *ClusterNamespace) ForwardPort(ctx context.Context, server runtime.Deployable, containerPort int32, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
-	if containerPort <= 0 {
-		return nil, fnerrors.BadInputError("invalid port number: %d", containerPort)
-	}
-
-	return r.cluster.RawForwardPort(ctx, server.GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
-}
-
-func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deployable, containerPort int32) (net.Conn, error) {
-	if containerPort <= 0 {
-		return nil, fnerrors.BadInputError("invalid port number: %d", containerPort)
-	}
-
-	return r.cluster.RawDialServer(ctx, r.target.namespace, kubedef.SelectById(server), int(containerPort))
-}
 
 func (u *Cluster) RawForwardPort(ctx context.Context, desc, ns string, podLabels map[string]string, containerPort int, localAddrs []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
 	ctxWithCancel, cancel := context.WithCancel(ctx)

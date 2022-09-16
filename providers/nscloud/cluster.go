@@ -430,6 +430,10 @@ func (d *cluster) AttachTerminal(ctx context.Context, container *runtime.Contain
 	return d.cluster.AttachTerminal(ctx, container, io)
 }
 
+func (d *cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify runtime.PortForwardedFunc) (io.Closer, error) {
+	return d.cluster.ForwardIngress(ctx, localAddrs, localPort, notify)
+}
+
 func (d *cluster) EnsureState(ctx context.Context, key string) (any, error) {
 	return d.ClusterAttachedState.EnsureState(ctx, key, d.cluster.HostConfig().Config, d, nil)
 }

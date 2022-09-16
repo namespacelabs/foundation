@@ -27,7 +27,7 @@ func NewPortFwd(ctx context.Context, obs *Session, env planning.Context, rt runt
 			return rt.ForwardPort(ctx, server, port, localAddr, callback)
 		},
 		ForwardIngress: func(localAddr []string, port int, callback runtime.PortForwardedFunc) (io.Closer, error) {
-			return rt.ForwardIngress(ctx, localAddr, port, callback)
+			return rt.Cluster().ForwardIngress(ctx, localAddr, port, callback)
 		},
 	}
 

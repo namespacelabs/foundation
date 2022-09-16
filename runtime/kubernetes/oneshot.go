@@ -13,51 +13,12 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
-
-func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.Deployable) ([]runtime.ContainerStatus, error) {
-	if object.GetDeployableClass() != string(schema.DeployableClass_ONESHOT) {
-		return nil, fnerrors.InternalError("WaitForTermination: only support one-shot deployments")
-	}
-
-	cli := r.cluster.cli
-	namespace := r.target.namespace
-	podName := kubedef.MakeDeploymentId(object)
-
-	return kubeobserver.WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
-		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
-			return nil, false
-		}
-
-		var all []corev1.ContainerStatus
-		all = append(all, pod.Status.ContainerStatuses...)
-		all = append(all, pod.Status.InitContainerStatuses...)
-
-		var status []runtime.ContainerStatus
-		for _, container := range all {
-			st := runtime.ContainerStatus{
-				Reference: kubedef.MakePodRef(namespace, podName, container.Name, object),
-			}
-
-			if container.State.Terminated != nil {
-				if container.State.Terminated.ExitCode != 0 {
-					st.TerminationError = runtime.ErrContainerExitStatus{ExitCode: container.State.Terminated.ExitCode}
-				}
-			}
-
-			status = append(status, st)
-		}
-
-		return status, true
-	})
-}
 
 func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	spec, err := makePodSpec(name, runOpts)

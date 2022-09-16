@@ -16,35 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 )
-
-func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtime.ContainerReference, error) {
-	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object, func(pod corev1.Pod) ([]*runtime.ContainerReference, bool) {
-		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
-			return nil, false
-		}
-
-		var refs []*runtime.ContainerReference
-
-		for _, init := range pod.Status.InitContainerStatuses {
-			refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, object))
-		}
-		for _, container := range pod.Status.ContainerStatuses {
-			refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, object))
-		}
-
-		return refs, true
-	})
-}
-
-func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, obj runtime.Deployable) (corev1.Pod, error) {
-	return resolvePodByLabels(ctx, cli, w, r.target.namespace, map[string]string{
-		kubedef.K8sServerId: obj.GetId(),
-	})
-}
 
 func resolvePodByLabels(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, ns string, labels map[string]string) (corev1.Pod, error) {
 	var kvs []string

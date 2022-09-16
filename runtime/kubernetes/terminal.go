@@ -23,21 +23,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 )
 
-func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Clientset, server runtime.Deployable, rio runtime.TerminalIO, cmd []string) error {
-	pod, err := r.resolvePod(ctx, cli, rio.Stderr, server)
-	if err != nil {
-		return err
-	}
-
-	return r.cluster.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
-		Command: cmd,
-		Stdin:   true,
-		Stdout:  true,
-		Stderr:  true,
-		TTY:     rio.TTY,
-	})
-}
-
 func (r *Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque *kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
 	return r.lowLevelAttachTerm(ctx, cli, opaque.Namespace, opaque.PodName, rio, "attach", &corev1.PodAttachOptions{
 		Container: opaque.Container,

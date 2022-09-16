@@ -57,18 +57,6 @@ func ConnectToCluster(ctx context.Context, cfg planning.Configuration) (*Cluster
 	return ConnectToConfig(ctx, hostConfig)
 }
 
-func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
-	cluster, err := ConnectToCluster(ctx, env.Configuration())
-	if err != nil {
-		return nil, err
-	}
-	bound, err := cluster.Bind(env)
-	if err != nil {
-		return nil, err
-	}
-	return bound.(*ClusterNamespace), nil
-}
-
 func (u *Cluster) Class() runtime.Class {
 	return kubernetesClass{}
 }
