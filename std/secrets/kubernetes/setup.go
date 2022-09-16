@@ -44,7 +44,10 @@ func main() {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
 	collection, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
@@ -90,9 +93,10 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	serverSecretName := secrets.ServerSecretName(r.Focus.Server)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "server secrets",
+		Description:  "server secrets",
+		SetNamespace: kr.CanSetNamespace,
 		Resource: applycorev1.
-			Secret(serverSecretName, namespace).
+			Secret(serverSecretName, kr.Namespace).
 			WithType(v1.SecretTypeOpaque).
 			WithAnnotations(kubedef.MakeAnnotations(r.Env, r.Focus.GetPackageName())).
 			WithLabels(kubedef.MakeLabels(r.Env, r.Focus.Server)).
@@ -178,7 +182,8 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			}
 
 			create := &kubedef.OpCreateSecretConditionally{
-				Namespace:         namespace,
+				Namespace:         kr.Namespace,
+				SetNamespace:      kr.CanSetNamespace,
 				Name:              generatedName,
 				UserSpecifiedName: gen.Secret.Name,
 				Environment:       r.Env,
@@ -208,7 +213,8 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 			}
 
 			create := &kubedef.OpCreateSecretConditionally{
-				Namespace:             namespace,
+				Namespace:             kr.Namespace,
+				SetNamespace:          kr.CanSetNamespace,
 				Name:                  generatedName,
 				UserSpecifiedName:     gen.Secret.Name,
 				SelfSignedCertificate: gen.Secret.SelfSignedTlsCertificate,
@@ -234,20 +240,19 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				data[gen.Secret.Name] = []byte(base64.RawStdEncoding.EncodeToString(raw))
 			}
 
-			newSecret := &v1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      generatedName,
-					Namespace: namespace,
-					Labels:    kubedef.MakeLabels(r.Env, nil),
-				},
-				Data: data,
-			}
-
 			out.Invocations = append(out.Invocations, kubedef.Create{
 				Description:         "Generated server secrets",
+				SetNamespace:        kr.CanSetNamespace,
 				SkipIfAlreadyExists: true,
 				Resource:            "secrets",
-				Body:                newSecret,
+				Body: &v1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      generatedName,
+						Namespace: kr.Namespace,
+						Labels:    kubedef.MakeLabels(r.Env, nil),
+					},
+					Data: data,
+				},
 			})
 		}
 	}
@@ -268,13 +273,17 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
 	out.Invocations = append(out.Invocations, kubedef.Delete{
-		Description: "server secrets",
-		Resource:    "secrets",
-		Namespace:   namespace,
-		Name:        secrets.ServerSecretName(r.Focus.Server),
+		Description:  "server secrets",
+		Resource:     "secrets",
+		SetNamespace: kr.CanSetNamespace,
+		Namespace:    kr.Namespace,
+		Name:         secrets.ServerSecretName(r.Focus.Server),
 	})
 
 	return nil

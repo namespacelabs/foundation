@@ -142,6 +142,11 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.UserError(nil, "failed to pack CORS' configuration: %v", err)
 	}
 
+	kr, err := kubetool.FromRequest(req)
+	if err != nil {
+		return err
+	}
+
 	for _, x := range endpoints {
 		fds, err := proto.Marshal(x.Transcoding.FileDescriptorSet)
 		if err != nil {
@@ -154,7 +159,8 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		}
 
 		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description: fmt.Sprintf("HTTP/gRPC transcoder: %s", x.ProtoService),
+			Description:  fmt.Sprintf("HTTP/gRPC transcoder: %s", x.ProtoService),
+			SetNamespace: kr.CanSetNamespace,
 			Resource: &httpGrpcTranscoder{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "HttpGrpcTranscoder",
@@ -162,7 +168,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        strings.ToLower(fmt.Sprintf("%s-%s", x.ProtoService, x.Server.Server.Id)),
-					Namespace:   kubetool.FromRequest(req).Namespace,
+					Namespace:   kr.Namespace,
 					Labels:      kubedef.MakeLabels(req.Env, x.Server.Server),
 					Annotations: annotations,
 				},

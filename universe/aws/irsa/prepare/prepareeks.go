@@ -52,9 +52,12 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 		return err
 	}
 
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.MustNamespace(r)
+	if err != nil {
+		return err
+	}
 
-	result, err := eks.PrepareIrsa(eksCluster, eksServerDetails.ComputedIamRoleName, namespace, serviceAccount.ServiceAccountName, r.Focus.Server)
+	result, err := eks.PrepareIrsa(eksCluster, eksServerDetails.ComputedIamRoleName, kr.Namespace, serviceAccount.ServiceAccountName, r.Focus.Server)
 	if err != nil {
 		return err
 	}

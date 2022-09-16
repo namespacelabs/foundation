@@ -37,7 +37,10 @@ func main() {
 }
 
 func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
 	configs := map[string]string{}
 	items := []*kubedef.SpecExtension_Volume_ConfigMap_Item{}
@@ -92,8 +95,9 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	}
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Grafana ConfigMap",
-		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(configs),
+		Description:  "Grafana ConfigMap",
+		SetNamespace: kr.CanSetNamespace,
+		Resource:     corev1.ConfigMap(configMapName, kr.Namespace).WithData(configs),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
@@ -124,13 +128,17 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 }
 
 func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
 	out.Invocations = append(out.Invocations, kubedef.Delete{
-		Description: "Grafana ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configMapName,
+		Description:  "Grafana ConfigMap",
+		Resource:     "configmaps",
+		SetNamespace: kr.CanSetNamespace,
+		Namespace:    kr.Namespace,
+		Name:         configMapName,
 	})
 
 	return nil

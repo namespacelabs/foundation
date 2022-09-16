@@ -30,7 +30,7 @@ func configMapName(focus *schema.Server, name string) string {
 	return fmt.Sprintf("%s.%s.%s", focus.Id, name, id)
 }
 
-func mountConfigs(dbs map[string]*postgres.Database, namespace string, name string, focus *schema.Server, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbs map[string]*postgres.Database, kr *kubetool.ContextualEnv, name string, focus *schema.Server, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -72,8 +72,9 @@ func mountConfigs(dbs map[string]*postgres.Database, namespace string, name stri
 	configMapName := configMapName(focus, name)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Postgres Init ConfigMap",
-		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(data),
+		Description:  "Postgres Init ConfigMap",
+		SetNamespace: kr.CanSetNamespace,
+		Resource:     corev1.ConfigMap(configMapName, kr.Namespace).WithData(data),
 	})
 
 	volumeName := strings.Replace(configMapName, ".", "-", -1)
@@ -115,9 +116,12 @@ func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, n
 		return nil
 	}
 
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
-	args, err := mountConfigs(dbs, namespace, name, r.Focus.Server, out)
+	args, err := mountConfigs(dbs, kr, name, r.Focus.Server, out)
 	if err != nil {
 		return err
 	}
@@ -138,13 +142,17 @@ func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) 
 		return nil
 	}
 
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
 	out.Invocations = append(out.Invocations, kubedef.Delete{
-		Description: "Postgres Delete ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        configMapName(r.Focus.Server, name),
+		Description:  "Postgres Delete ConfigMap",
+		Resource:     "configmaps",
+		SetNamespace: kr.CanSetNamespace,
+		Namespace:    kr.Namespace,
+		Name:         configMapName(r.Focus.Server, name),
 	})
 
 	return nil

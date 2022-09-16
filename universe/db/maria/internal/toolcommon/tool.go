@@ -26,7 +26,7 @@ const (
 	basePath = "/mariadb/init"
 )
 
-func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace string, name string, focus string, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, kr *kubetool.ContextualEnv, name string, focus string, out *configure.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -74,8 +74,9 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, namespace stri
 	configMapName := fmt.Sprintf("%s.%s.%s", focus, name, id)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "MariaDB Init ConfigMap",
-		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(data),
+		Description:  "MariaDB Init ConfigMap",
+		SetNamespace: kr.CanSetNamespace,
+		Resource:     corev1.ConfigMap(configMapName, kr.Namespace).WithData(data),
 	})
 
 	volumeName := strings.Replace(configMapName, ".", "-", -1)
@@ -113,9 +114,12 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 		return nil
 	}
 
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
-	args, err := mountConfigs(dbs, namespace, name, r.Focus.Server.Id, out)
+	args, err := mountConfigs(dbs, kr, name, r.Focus.Server.Id, out)
 	if err != nil {
 		return err
 	}
@@ -139,13 +143,17 @@ func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) 
 		return nil
 	}
 
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.FromRequest(r)
+	if err != nil {
+		return err
+	}
 
 	out.Invocations = append(out.Invocations, kubedef.Delete{
-		Description: "MariaDB Init ConfigMap",
-		Resource:    "configmaps",
-		Namespace:   namespace,
-		Name:        fmt.Sprintf("%s.%s", name, id),
+		Description:  "MariaDB Init ConfigMap",
+		Resource:     "configmaps",
+		SetNamespace: kr.CanSetNamespace,
+		Namespace:    kr.Namespace,
+		Name:         fmt.Sprintf("%s.%s", name, id),
 	})
 
 	return nil

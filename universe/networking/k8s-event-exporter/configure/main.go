@@ -49,11 +49,15 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.InternalError("failed to render config template: %w", err)
 	}
 
-	namespace := kubetool.FromRequest(req).Namespace
+	kr, err := kubetool.FromRequest(req)
+	if err != nil {
+		return err
+	}
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Kubernetes Event Exporter ConfigMap",
-		Resource: corev1.ConfigMap(configVolume, namespace).WithData(
+		Description:  "Kubernetes Event Exporter ConfigMap",
+		SetNamespace: kr.CanSetNamespace,
+		Resource: corev1.ConfigMap(configVolume, kr.Namespace).WithData(
 			map[string]string{
 				filename: config.String(),
 			},
@@ -62,7 +66,6 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	grant := kubeblueprint.GrantKubeACLs{
 		DescriptionBase: "Kubernetes Event Exporter Namespace Scoped ACLs",
-		Scope:           kubeblueprint.NamespaceScope,
 	}
 
 	grant.Rules = append(grant.Rules, rbacv1.PolicyRule().
@@ -70,7 +73,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		WithResources("deployments", "events", "pods", "replicasets").
 		WithVerbs("get", "list", "watch"))
 
-	if err := grant.Compile(req, out); err != nil {
+	if err := grant.Compile(req, kubeblueprint.NamespaceScope, out); err != nil {
 		return err
 	}
 

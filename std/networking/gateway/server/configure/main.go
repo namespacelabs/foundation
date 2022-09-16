@@ -86,12 +86,16 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		return fnerrors.InternalError("failed to render bootstrap template: %w", err)
 	}
 
-	namespace := kubetool.FromRequest(req).Namespace
+	kr, err := kubetool.FromRequest(req)
+	if err != nil {
+		return err
+	}
 
 	// XXX use immutable ConfigMaps.
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Network Gateway ConfigMap",
-		Resource: corev1.ConfigMap(configVolume, namespace).
+		Description:  "Network Gateway ConfigMap",
+		SetNamespace: kr.CanSetNamespace,
+		Resource: corev1.ConfigMap(configVolume, kr.Namespace).
 			WithLabels(kubedef.ManagedByUs()).
 			WithAnnotations(kubedef.BaseAnnotations()).
 			WithData(
@@ -120,7 +124,6 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 
 	grant := kubeblueprint.GrantKubeACLs{
 		DescriptionBase: "Network Gateway",
-		Scope:           kubeblueprint.NamespaceScope,
 	}
 
 	grant.Rules = append(grant.Rules, rbacv1.PolicyRule().
@@ -136,7 +139,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 		WithResources("events").
 		WithVerbs("create"))
 
-	if err := grant.Compile(req, out); err != nil {
+	if err := grant.Compile(req, kubeblueprint.NamespaceScope, out); err != nil {
 		return err
 	}
 

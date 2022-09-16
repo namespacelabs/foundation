@@ -7,12 +7,14 @@ package kubeblueprint
 import (
 	"fmt"
 
+	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/std/go/rpcerrors"
 )
 
 type Scope string
@@ -25,50 +27,76 @@ const (
 type GrantKubeACLs struct {
 	DescriptionBase string
 	ServiceAccount  string
-	Scope           Scope
 	Rules           []*rbacv1.PolicyRuleApplyConfiguration
 }
 
-func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyOutput) error {
-	serviceAccount := g.ServiceAccount
-	if serviceAccount == "" {
-		serviceAccount = kubedef.MakeDeploymentId(req.Focus.Server)
-	}
-
-	roleName := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
-	roleBinding := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
-
+func (g GrantKubeACLs) Compile(req configure.StackRequest, scope Scope, out *configure.ApplyOutput) error {
 	if g.Rules == nil {
 		return fnerrors.BadInputError("Rules is required")
 	}
 
-	if g.Scope != NamespaceScope && g.Scope != ClusterScope {
-		return fnerrors.BadInputError("Scope must be Namespace or Cluster")
+	if scope != NamespaceScope && scope != ClusterScope {
+		return fnerrors.BadInputError("%s: unsupported scope", scope)
 	}
 
-	namespace := kubetool.FromRequest(req).Namespace
+	roleName, roleBinding := makeRoles(req)
 	labels := kubedef.MakeLabels(req.Env, req.Focus.Server)
 
+	kr, err := kubetool.FromRequest(req)
+	if err != nil {
+		return err
+	}
+
+	serviceAccount := g.serviceAccount(req)
+
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: fmt.Sprintf("%s: Service Account", g.DescriptionBase),
-		Resource: corev1.ServiceAccount(serviceAccount, namespace).
-			WithLabels(labels).
+		Description:  fmt.Sprintf("%s: Service Account", g.DescriptionBase),
+		SetNamespace: kr.CanSetNamespace,
+		Resource: corev1.ServiceAccount(serviceAccount, kr.Namespace).
+			WithLabels(kubedef.MakeLabels(req.Env, req.Focus.Server)).
 			WithAnnotations(kubedef.BaseAnnotations()),
 	})
 
-	switch g.Scope {
+	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
+		With: &kubedef.SpecExtension{
+			ServiceAccount: serviceAccount,
+		},
+	})
+
+	if kr.Context.GetHasApplyRoleBinding() {
+		out.Invocations = append(out.Invocations, kubedef.ApplyRoleBinding{
+			Description:     fmt.Sprintf("%s: Role", g.DescriptionBase),
+			Namespaced:      scope == NamespaceScope,
+			RoleName:        roleName,
+			RoleBindingName: roleBinding,
+			Rules:           g.Rules,
+			Labels:          labels,
+			Annotations:     kubedef.BaseAnnotations(),
+			ServiceAccount:  serviceAccount,
+		})
+
+		return nil
+	}
+
+	if kr.Namespace == "" {
+		return rpcerrors.Errorf(codes.FailedPrecondition, "kubernetes namespace missing")
+	}
+
+	switch scope {
 	case NamespaceScope:
 		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description: fmt.Sprintf("%s: Role", g.DescriptionBase),
-			Resource: rbacv1.Role(roleName, namespace).
+			Description:  fmt.Sprintf("%s: Role", g.DescriptionBase),
+			SetNamespace: kr.CanSetNamespace,
+			Resource: rbacv1.Role(roleName, kr.Namespace).
 				WithRules(g.Rules...).
 				WithLabels(labels).
 				WithAnnotations(kubedef.BaseAnnotations()),
 		})
 
 		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description: fmt.Sprintf("%s:  Role Binding", g.DescriptionBase),
-			Resource: rbacv1.RoleBinding(roleBinding, namespace).
+			Description:  fmt.Sprintf("%s: Role Binding", g.DescriptionBase),
+			SetNamespace: kr.CanSetNamespace,
+			Resource: rbacv1.RoleBinding(roleBinding, kr.Namespace).
 				WithLabels(labels).
 				WithAnnotations(kubedef.BaseAnnotations()).
 				WithRoleRef(rbacv1.RoleRef().
@@ -77,7 +105,7 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyO
 					WithName(roleName)).
 				WithSubjects(rbacv1.Subject().
 					WithKind("ServiceAccount").
-					WithNamespace(namespace).
+					WithNamespace(kr.Namespace).
 					WithName(serviceAccount)),
 		})
 
@@ -101,16 +129,25 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, out *configure.ApplyO
 					WithName(roleName)).
 				WithSubjects(rbacv1.Subject().
 					WithKind("ServiceAccount").
-					WithNamespace(namespace).
+					WithNamespace(kr.Namespace).
 					WithName(serviceAccount)),
 		})
 	}
 
-	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
-		With: &kubedef.SpecExtension{
-			ServiceAccount: serviceAccount,
-		},
-	})
-
 	return nil
+}
+
+func makeRoles(req configure.StackRequest) (string, string) {
+	roleName := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
+	roleBinding := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
+
+	return roleName, roleBinding
+}
+
+func (g GrantKubeACLs) serviceAccount(req configure.StackRequest) string {
+	serviceAccount := g.ServiceAccount
+	if serviceAccount == "" {
+		serviceAccount = kubedef.MakeDeploymentId(req.Focus.Server)
+	}
+	return serviceAccount
 }

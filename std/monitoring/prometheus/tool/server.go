@@ -32,7 +32,10 @@ var (
 type configureServer struct{}
 
 func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
-	namespace := kubetool.FromRequest(r).Namespace
+	kr, err := kubetool.MustNamespace(r)
+	if err != nil {
+		return err
+	}
 
 	promYamlData, err := fs.ReadFile(embeddedData, promYaml)
 	if err != nil {
@@ -66,13 +69,14 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 				WithName(clusterRoleName)).
 			WithSubjects(rbacv1.Subject().
 				WithKind("ServiceAccount").
-				WithNamespace(namespace).
+				WithNamespace(kr.Namespace).
 				WithName(serviceAccount)),
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus Service Account",
-		Resource:    corev1.ServiceAccount(serviceAccount, namespace).WithLabels(map[string]string{}),
+		Description:  "Prometheus Service Account",
+		SetNamespace: kr.CanSetNamespace,
+		Resource:     corev1.ServiceAccount(serviceAccount, kr.Namespace).WithLabels(map[string]string{}),
 	})
 
 	configs := map[string]string{
@@ -80,8 +84,9 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	}
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
-		Description: "Prometheus ConfigMap",
-		Resource:    corev1.ConfigMap(configMapName, namespace).WithData(configs),
+		Description:  "Prometheus ConfigMap",
+		SetNamespace: kr.CanSetNamespace,
+		Resource:     corev1.ConfigMap(configMapName, kr.Namespace).WithData(configs),
 	})
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
@@ -116,6 +121,11 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 }
 
 func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+	kr, err := kubetool.MustNamespace(r)
+	if err != nil {
+		return err
+	}
+
 	out.Invocations = append(out.Invocations, kubedef.Delete{
 		Description: "Prometheus ClusterRoleBinding",
 		Resource:    "clusterrolebindings",
@@ -129,10 +139,11 @@ func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out
 	})
 
 	out.Invocations = append(out.Invocations, kubedef.Delete{
-		Description: "Prometheus Service Account",
-		Resource:    "serviceaccounts",
-		Name:        makeServiceAccount(r.Focus.Server),
-		Namespace:   kubetool.FromRequest(r).Namespace,
+		Description:  "Prometheus Service Account",
+		Resource:     "serviceaccounts",
+		Name:         makeServiceAccount(r.Focus.Server),
+		SetNamespace: kr.CanSetNamespace,
+		Namespace:    kr.Namespace,
 	})
 
 	return nil

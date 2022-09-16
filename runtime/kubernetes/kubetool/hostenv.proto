@@ -11,3 +11,9 @@ option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/kubetool";
 message KubernetesEnv {
     string namespace = 1;
 }
+
+message KubernetesToolContext {
+    string namespace            = 1;
+    bool can_set_namespace      = 2;
+    bool has_apply_role_binding = 3;
+}
