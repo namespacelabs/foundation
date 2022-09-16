@@ -14,7 +14,6 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
@@ -27,9 +26,6 @@ const (
 	FnServiceLivez  = "foundation.namespacelabs.dev/livez"
 	FnServiceReadyz = "foundation.namespacelabs.dev/readyz"
 )
-
-// ClusterInjection is used in ops.Execute to provide access to the cluster instance.
-var ClusterInjection = ops.Define[Cluster]("ns.cluster")
 
 // A runtime class represents a runtime implementation type, e.g. "kubernetes".
 // The codebase seldom interacts with Class, but instead of Cluster instances

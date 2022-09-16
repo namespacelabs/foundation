@@ -124,12 +124,12 @@ func (d *deployer) executeWithLog(ctx context.Context, eventPath, taskPath strin
 }
 
 func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, env planning.Context, arrival time.Time) error {
-	cluster, err := runtime.ClusterFor(ctx, env)
+	cluster, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
 		return err
 	}
 
-	ns := cluster.Planner(env).Namespace()
+	ns := cluster.Planner().Namespace()
 
 	releaseLease, err := d.leaser.acquireLease(ns.UniqueID(), arrival)
 	if err != nil {
@@ -157,7 +157,7 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 			}
 			return logErr
 		}
-	}, runtime.ClusterInjection.With(cluster))
+	}, runtime.InjectCluster(cluster)...)
 }
 
 func logProtos[V any](filename string, ch chan *V) error {

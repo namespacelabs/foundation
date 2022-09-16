@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
+func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if !UseOrchestrator {
 		if !wait {
 			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
@@ -25,12 +25,12 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
 		return ops.Execute(ctx, env, "deployment.execute", p,
-			deploy.MaybeRenderBlock(env, cluster, outputProgress),
-			runtime.ClusterInjection.With(cluster))
+			deploy.MaybeRenderBlock(env, cluster.Cluster(), outputProgress),
+			runtime.InjectCluster(cluster)...)
 	}
 
 	return tasks.Action("orchestrator.deploy").Run(ctx, func(ctx context.Context) error {
-		raw, err := cluster.EnsureState(ctx, orchestratorStateKey)
+		raw, err := cluster.Cluster().EnsureState(ctx, orchestratorStateKey)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.Cluster, 
 			var handler = func(err error) error { return err }
 
 			if outputProgress {
-				ch, handler = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
+				ch, handler = deploy.MaybeRenderBlock(env, cluster.Cluster(), true)(ctx)
 			}
 
 			return handler(WireDeploymentStatus(ctx, conn, id, ch))

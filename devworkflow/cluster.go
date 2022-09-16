@@ -21,7 +21,7 @@ import (
 
 type updateCluster struct {
 	env       planning.Context
-	cluster   runtime.Cluster
+	cluster   runtime.ClusterNamespace
 	observers []languages.DevObserver
 
 	plan  compute.Computable[*deploy.Plan]
@@ -31,7 +31,7 @@ type updateCluster struct {
 	pfw *endpointfwd.PortForward
 }
 
-func newUpdateCluster(env planning.Context, cluster runtime.Cluster, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan], pfw *endpointfwd.PortForward) *updateCluster {
+func newUpdateCluster(env planning.Context, cluster runtime.ClusterNamespace, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan], pfw *endpointfwd.PortForward) *updateCluster {
 	return &updateCluster{
 		env:       env,
 		cluster:   cluster,

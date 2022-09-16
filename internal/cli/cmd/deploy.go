@@ -65,7 +65,7 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			cluster, err := runtime.ClusterFor(ctx, env)
+			cluster, err := runtime.NamespaceFor(ctx, env)
 			if err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, env, cluster.Planner(env), stack, servers.Servers)
+			plan, err := deploy.PrepareDeployStack(ctx, env, cluster.Planner(), stack, servers.Servers)
 			if err != nil {
 				return err
 			}
@@ -116,7 +116,7 @@ type Ingress struct {
 	Protocol []string `json:"protocol"`
 }
 
-func completeDeployment(ctx context.Context, env planning.Context, cluster runtime.Cluster, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
+func completeDeployment(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
 	if err := orchestration.Deploy(ctx, env, cluster, p, plan, opts.alsoWait, true); err != nil {
 		return err
 	}

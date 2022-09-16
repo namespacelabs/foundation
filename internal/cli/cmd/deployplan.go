@@ -61,7 +61,7 @@ func NewDeployPlanCmd() *cobra.Command {
 
 		env := serializedContext{root, config, plan.Environment}
 
-		cluster, err := runtime.ClusterFor(ctx, env)
+		cluster, err := runtime.NamespaceFor(ctx, env)
 		if err != nil {
 			return err
 		}
