@@ -76,7 +76,7 @@ type Parsed struct {
 	Resource  interface{}
 }
 
-func Header(contents []byte) (ObjHeader, error) {
+func HeaderJsonOrYaml(contents []byte) (ObjHeader, error) {
 	var m ObjHeader
 	if err := yaml.Unmarshal(contents, &m); err != nil {
 		return ObjHeader{}, err
@@ -96,7 +96,7 @@ func Single(contents []byte) (Parsed, error) {
 	// For simplicity, we do a two pass parse, first we walk through all resource
 	// types to instantiate the appropriate types, and then we actually parse them.
 
-	m, err := Header(contents)
+	m, err := HeaderJsonOrYaml(contents)
 	if err != nil {
 		return Parsed{}, err
 	}

@@ -37,12 +37,12 @@ func registerApply() {
 			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 		}
 
-		header, err := kubeparser.Header([]byte(apply.BodyJson))
-		if err != nil {
+		var parsed unstructured.Unstructured
+		if err := json.Unmarshal([]byte(apply.BodyJson), &parsed); err != nil {
 			return nil, fnerrors.BadInputError("%s: kubernetes.apply: failed to parse resource: %w", d.Description, err)
 		}
 
-		gv := header.GetObjectKind().GroupVersionKind().GroupVersion()
+		gv := parsed.GroupVersionKind().GroupVersion()
 
 		if gv.Version == "" {
 			return nil, fnerrors.InternalError("%s: APIVersion is required", d.Description)
@@ -55,9 +55,9 @@ func registerApply() {
 
 		resourceName := apply.GetResourceClass().GetResource()
 		if resourceName == "" {
-			resourceName = kubeparser.ResourceEndpointFromKind(header.Kind)
+			resourceName = kubeparser.ResourceEndpointFromKind(parsed.GetKind())
 			if resourceName == "" {
-				return nil, fnerrors.InternalError("don't know the resource mapping for %q", header.Kind)
+				return nil, fnerrors.InternalError("don't know the resource mapping for %q", parsed.GetKind())
 			}
 		}
 
@@ -70,8 +70,8 @@ func registerApply() {
 		if err := tasks.Action("kubernetes.apply").Scope(scope...).
 			HumanReadablef(d.Description).
 			Arg("resource", resourceName).
-			Arg("name", header.Name).
-			Arg("namespace", header.Namespace).RunWithOpts(ctx, tasks.RunOpts{
+			Arg("name", parsed.GetName()).
+			Arg("namespace", parsed.GetNamespace()).RunWithOpts(ctx, tasks.RunOpts{
 			Wait: func(ctx context.Context) (bool, error) {
 				// CRDs are funky in that they take a moment to apply, and
 				// before that happens the api server doesn't accept patches
@@ -98,14 +98,14 @@ func registerApply() {
 				// account actually exists. And creating the default service
 				// account takes a bit of time after creating a namespace.
 				var waitOnNamespace string
-				switch header.Kind {
+				switch parsed.GetKind() {
 				case "Deployment":
 					var d appsv1.Deployment
 					if err := json.Unmarshal([]byte(apply.BodyJson), &d); err != nil {
 						return false, err
 					}
 					if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
-						waitOnNamespace = header.Namespace
+						waitOnNamespace = parsed.GetNamespace()
 					}
 				case "Statefulset":
 					var d appsv1.StatefulSet
@@ -113,7 +113,7 @@ func registerApply() {
 						return false, err
 					}
 					if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
-						waitOnNamespace = header.Namespace
+						waitOnNamespace = parsed.GetNamespace()
 					}
 				case "Pod":
 					var d v1.Pod
@@ -121,7 +121,7 @@ func registerApply() {
 						return false, err
 					}
 					if d.Spec.ServiceAccountName == "" || d.Spec.ServiceAccountName == "default" {
-						waitOnNamespace = header.Namespace
+						waitOnNamespace = parsed.GetNamespace()
 					}
 				}
 
@@ -131,7 +131,7 @@ func registerApply() {
 					}
 				}
 
-				if header.Kind == "Ingress" {
+				if parsed.GetKind() == "Ingress" {
 					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
 					}
@@ -147,12 +147,12 @@ func registerApply() {
 
 				patchOpts := kubedef.Ego().ToPatchOptions()
 				req := client.Patch(types.ApplyPatchType)
-				if header.Namespace != "" {
-					req = req.Namespace(header.Namespace)
+				if parsed.GetNamespace() != "" {
+					req = req.Namespace(parsed.GetNamespace())
 				}
 
 				prepReq := req.Resource(resourceName).
-					Name(header.Name).
+					Name(parsed.GetName()).
 					VersionedParams(&patchOpts, metav1.ParameterCodec).
 					Body([]byte(apply.BodyJson))
 
@@ -165,7 +165,7 @@ func registerApply() {
 			return nil, fnerrors.InvocationError("%s: failed to apply: %w", d.Description, err)
 		}
 
-		if header.Namespace == kubedef.AdminNamespace && !kubedef.HasFocusMark(header.Labels) {
+		if parsed.GetNamespace() == kubedef.AdminNamespace && !kubedef.HasFocusMark(parsed.GetLabels()) {
 			// don't wait for changes to admin namespace, unless they are in focus
 			return &ops.HandleResult{}, nil
 		}
@@ -181,8 +181,8 @@ func registerApply() {
 
 			return &ops.HandleResult{Waiters: []ops.Waiter{kobs.WaitOnGenerationCondition{
 				RestConfig:         cluster.RESTConfig(),
-				Namespace:          header.Namespace,
-				Name:               header.Name,
+				Namespace:          parsed.GetNamespace(),
+				Name:               parsed.GetName(),
 				ExpectedGeneration: generation,
 				ConditionType:      apply.CheckGenerationCondition.Type,
 				ResourceClass:      apply.ResourceClass,
@@ -190,7 +190,7 @@ func registerApply() {
 		}
 
 		// XXX check gkv
-		switch header.Kind {
+		switch parsed.GetKind() {
 		case "Deployment", "StatefulSet":
 			generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 			observedGen, found2, err2 := unstructured.NestedInt64(res.Object, "status", "observedGeneration")
@@ -205,9 +205,9 @@ func registerApply() {
 					w := kobs.WaitOnResource{
 						RestConfig:   cluster.RESTConfig(),
 						Description:  d.Description,
-						Namespace:    header.Namespace,
-						Name:         header.Name,
-						ResourceKind: header.Kind,
+						Namespace:    parsed.GetNamespace(),
+						Name:         parsed.GetName(),
+						ResourceKind: parsed.GetKind(),
 						Scope:        sc,
 						PreviousGen:  observedGen,
 						ExpectedGen:  generation,
@@ -219,7 +219,7 @@ func registerApply() {
 				}, nil
 			} else {
 				fmt.Fprintf(console.Warnings(ctx), "missing generation data from %s: %v / %v [found1=%v found2=%v]\n",
-					header.Kind, err1, err2, found1, found2)
+					parsed.GetKind(), err1, err2, found1, found2)
 			}
 
 		case "Pod":
@@ -230,8 +230,8 @@ func registerApply() {
 
 				return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action("pod.wait").Scope(scope...),
 					kobs.WaitForPodConditition(
-						header.Namespace,
-						kobs.PickPod(header.Name),
+						parsed.GetNamespace(),
+						kobs.PickPod(parsed.GetName()),
 						func(ps v1.PodStatus) (bool, error) {
 							meta, err := json.Marshal(ps)
 							if err != nil {
@@ -239,12 +239,12 @@ func registerApply() {
 							}
 
 							ev := &orchestration.Event{
-								ResourceId:          fmt.Sprintf("%s/%s", header.Namespace, header.Name),
-								Kind:                header.Kind,
+								ResourceId:          fmt.Sprintf("%s/%s", parsed.GetNamespace(), parsed.GetName()),
+								Kind:                parsed.GetKind(),
 								Category:            "Servers deployed",
 								Ready:               orchestration.Event_NOT_READY,
 								ImplMetadata:        meta,
-								RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", header.Namespace, header.Name),
+								RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", parsed.GetNamespace(), parsed.GetName()),
 							}
 
 							// XXX this under-reports scope.
@@ -252,7 +252,7 @@ func registerApply() {
 								ev.Scope = scope[0].String()
 							}
 
-							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(header.Namespace, header.Name, ps))
+							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(parsed.GetNamespace(), parsed.GetName(), ps))
 
 							var done bool
 							if ps.Phase == v1.PodFailed || ps.Phase == v1.PodSucceeded {
