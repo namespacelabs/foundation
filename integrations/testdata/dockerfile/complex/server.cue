@@ -18,6 +18,10 @@ server: {
 			}
 		}
 	}
+
+	resources: [
+		"namespacelabs.dev/foundation/integrations/testdata/resources/instances:withInput",
+	]
 }
 
 tests: {

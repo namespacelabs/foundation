@@ -23,7 +23,8 @@ type cueServer struct {
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
 
-	Services map[string]cueService `json:"services"`
+	Services  map[string]cueService `json:"services"`
+	Resources []string              `json:"resources"`
 }
 
 type cueService struct {
@@ -89,6 +90,14 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 		out.Volumes = append(out.Volumes, inlinedVolumes...)
 		out.Mounts = parsedMounts
+	}
+
+	for _, resource := range bits.Resources {
+		r, err := parseResourceRef(ctx, pl, loc, resource)
+		if err != nil {
+			return nil, nil, err
+		}
+		out.Resources = append(out.Resources, r)
 	}
 
 	return out, startupPlan, nil

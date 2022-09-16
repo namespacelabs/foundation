@@ -82,9 +82,9 @@ func (pr *Package) ProvidedResourceClass(pkgRef *schema.PackageRef) *schema.Reso
 	return nil
 }
 
-func (pr *Package) ResourceProvider(resPkgRef *schema.PackageRef) *schema.ResourceProvider {
+func (pr *Package) ResourceProvider(pkgRef *schema.PackageRef) *schema.ResourceProvider {
 	for _, p := range pr.ResourceProviders {
-		if p.ProvidesClass.Equals(resPkgRef) {
+		if p.ProvidesClass.Equals(pkgRef) {
 			return p
 		}
 	}
@@ -95,6 +95,15 @@ func (pr *Package) RequiredResourceProvider(pkgRef *schema.PackageRef) *schema.R
 	for _, p := range pr.RequiredResourceProviders {
 		if p.ProvidesClass.Equals(pkgRef) {
 			return p
+		}
+	}
+	return nil
+}
+
+func (pr *Package) ResourceInstance(name string) *schema.ResourceInstance {
+	for _, r := range pr.ResourceInstances {
+		if r.Name == name {
+			return r
 		}
 	}
 	return nil
