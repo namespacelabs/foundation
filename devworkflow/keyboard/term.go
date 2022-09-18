@@ -102,6 +102,13 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 		}
 		return nil
 	})
+	eg.Go(func(ctx context.Context) error {
+		// Since StartReturningModel doesn't take context and doesn't respect cancellation
+		// we need to quit the TUI explicitly in cases when opts.Handler itself causes an exit (errors out).
+		<-ctx.Done()
+		p.Quit()
+		return nil
+	})
 	eg.Go(opts.Handler)
 
 	return eg.Wait()
