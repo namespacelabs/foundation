@@ -27,7 +27,7 @@ type Apply struct {
 	Description   string
 	SetNamespace  bool
 	ResourceClass *ResourceClass
-	Resource      interface{}
+	Resource      any
 
 	// If set, we wait until a status.conditions entry of matching type exists,
 	// that matches the resource's generation.
@@ -61,7 +61,7 @@ type Create struct {
 	SetNamespace        bool
 	Resource            string
 	ResourceClass       *ResourceClass
-	Body                interface{}
+	Body                any
 }
 
 type ApplyRoleBinding struct {
@@ -288,4 +288,57 @@ func (rc *ResourceClass) GroupVersion() schema.GroupVersion {
 		Group:   rc.Group,
 		Version: rc.Version,
 	}
+}
+
+func PlanOrder(gvk schema.GroupVersionKind) *fnschema.ScheduleOrder {
+	var cats, after []string
+
+	// Ignore versions in ordering. They don't play much role.
+	cats = append(cats, MakeSchedCat(gvk.GroupKind()))
+
+	// All objects are created after namespaces, unless they're a namespace.
+	if !(gvk.GroupVersion().String() == "v1" && gvk.Kind == "Namespace") {
+		after = append(after, MakeSchedCat(schema.GroupKind{Kind: "Namespace"}))
+
+		// This is not strictly necessary but simplifies the rules below.
+		if !(gvk.GroupVersion().String() == "v1" && gvk.Kind == "ServiceAccount") {
+			after = append(after, MakeSchedCat(schema.GroupKind{Kind: "ServiceAccount"}))
+		}
+	}
+
+	afterForJobLike := []string{
+		MakeSchedCat(schema.GroupKind{Kind: "ConfigMap"}),
+		MakeSchedCat(schema.GroupKind{Kind: "Secret"}),
+		MakeSchedCat(schema.GroupKind{Kind: "PersistentVolumeClaim"}),
+	}
+
+	switch gvk.GroupVersion().String() {
+	case "v1":
+		switch gvk.Kind {
+		case "Pod":
+			after = append(after, afterForJobLike...)
+
+		case "Service":
+			after = append(after,
+				MakeSchedCat(schema.GroupKind{Kind: "Pod"}),
+				MakeSchedCat(schema.GroupKind{Group: "apps", Kind: "Deployment"}),
+				MakeSchedCat(schema.GroupKind{Group: "apps", Kind: "StatefulSet"}),
+			)
+		}
+
+	case "apps/v1":
+		after = append(after, afterForJobLike...)
+
+	case "networking.k8s.io/v1":
+		after = append(after, MakeSchedCat(schema.GroupKind{Kind: "Service"}))
+
+	case "batch/v1":
+		after = append(after, afterForJobLike...)
+	}
+
+	return &fnschema.ScheduleOrder{SchedCategory: cats, SchedAfterCategory: after}
+}
+
+func MakeSchedCat(gv schema.GroupKind) string {
+	return fmt.Sprintf("k8s:gv:%s:%s", gv.Group, gv.Kind)
 }

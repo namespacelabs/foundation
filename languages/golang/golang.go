@@ -40,32 +40,36 @@ func Register() {
 	languages.Register(schema.Framework_GO, impl{})
 	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
-		if err != nil {
-			return nil, err
-		}
+	ops.RegisterFuncs(ops.Funcs[*OpGenNode]{
+		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
+			loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+			if err != nil {
+				return nil, err
+			}
 
-		loc, err := loader.Resolve(ctx, schema.PackageName(x.Node.PackageName))
-		if err != nil {
-			return nil, err
-		}
+			loc, err := loader.Resolve(ctx, schema.PackageName(x.Node.PackageName))
+			if err != nil {
+				return nil, err
+			}
 
-		return nil, generateNode(ctx, loader, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+			return nil, generateNode(ctx, loader, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
+		},
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
-		if err != nil {
-			return nil, err
-		}
+	ops.RegisterFuncs(ops.Funcs[*OpGenServer]{
+		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
+			loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+			if err != nil {
+				return nil, err
+			}
 
-		loc, err := loader.Resolve(ctx, schema.PackageName(x.Server.PackageName))
-		if err != nil {
-			return nil, err
-		}
+			loc, err := loader.Resolve(ctx, schema.PackageName(x.Server.PackageName))
+			if err != nil {
+				return nil, err
+			}
 
-		return nil, generateServer(ctx, loader, loc, x.Server, loc.Module.ReadWriteFS())
+			return nil, generateServer(ctx, loader, loc, x.Server, loc.Module.ReadWriteFS())
+		},
 	})
 }
 

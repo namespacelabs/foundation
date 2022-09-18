@@ -15,24 +15,26 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*ops.HandleResult, error) {
-		cluster, err := kubedef.InjectedKubeCluster(ctx)
-		if err != nil {
-			return nil, err
-		}
+	ops.RegisterFuncs(ops.Funcs[*OpEnsureAwsAuth]{
+		Handle: func(ctx context.Context, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*ops.HandleResult, error) {
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-		awsAuth := awsauth.New(cluster.Client(), false)
-		args := &awsauth.MapperArguments{
-			MapRoles: true,
-			RoleARN:  a.Rolearn,
-			Username: a.Username,
-			Groups:   a.Group,
-		}
+			awsAuth := awsauth.New(cluster.Client(), false)
+			args := &awsauth.MapperArguments{
+				MapRoles: true,
+				RoleARN:  a.Rolearn,
+				Username: a.Username,
+				Groups:   a.Group,
+			}
 
-		if err := awsAuth.Upsert(args); err != nil {
-			return nil, fnerrors.New("unable to update AWS auth configmap: %w", err)
-		}
+			if err := awsAuth.Upsert(args); err != nil {
+				return nil, fnerrors.New("unable to update AWS auth configmap: %w", err)
+			}
 
-		return nil, nil
+			return nil, nil
+		},
 	})
 }

@@ -5,6 +5,7 @@
 package ops
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -20,10 +21,16 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+type Handler[M proto.Message] interface {
+	Handle(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
+}
+
 // A dispatcher provides the implementation for a particular type, i.e. it
 // handles the execution of a particular serialized invocation.
 type Dispatcher[M proto.Message] interface {
-	Handle(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
+	Handler[M]
+
+	PlanOrder(M) (*schema.ScheduleOrder, error)
 }
 
 // A BatchedDispatcher represents an implementation which batches the execution
@@ -34,7 +41,7 @@ type BatchedDispatcher[M proto.Message] interface {
 
 // A session represents a single batched invocation.
 type Session[M proto.Message] interface {
-	Dispatcher[M]
+	Handler[M]
 	Commit() error
 }
 
@@ -75,10 +82,28 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 			return fnerrors.InternalError("%v: no handler registered", key)
 		}
 
-		nodes = append(nodes, &rnode{
+		copy := proto.Clone(reg.tmpl)
+		if err := src.Impl.UnmarshalTo(copy); err != nil {
+			return fnerrors.InternalError("%v: failed to unmarshal: %w", key, err)
+		}
+
+		node := &rnode{
 			def: src,
 			reg: reg,
-		})
+			obj: copy,
+		}
+
+		if src.Order != nil {
+			node.order = src.Order
+		} else {
+			var err error
+			node.order, err = reg.planOrder(copy)
+			if err != nil {
+				return fnerrors.InternalError("%s: failed to compute order: %w", key, err)
+			}
+		}
+
+		nodes = append(nodes, node)
 
 		for _, scope := range src.Scope {
 			g.scope.Add(schema.PackageName(scope))
@@ -102,7 +127,7 @@ func (g *Plan) apply(ctx context.Context) ([]Waiter, error) {
 	sessions := map[string]dispatcherFunc{}
 	commits := map[string]commitSessionFunc{}
 
-	nodes, err := topoSortNodes(g.nodes)
+	nodes, err := topoSortNodes(ctx, g.nodes)
 	if err != nil {
 		return nil, err
 	}
@@ -134,19 +159,13 @@ func (g *Plan) apply(ctx context.Context) ([]Waiter, error) {
 			continue
 		}
 
-		copy := proto.Clone(n.reg.tmpl)
-		if err := n.def.Impl.UnmarshalTo(copy); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-
 		dispatcher := n.reg.dispatcher
 		typeUrl := n.def.Impl.GetTypeUrl()
 		if d, has := sessions[typeUrl]; has {
 			dispatcher = d
 		}
 
-		d, err := dispatcher(ctx, n.def, copy)
+		d, err := dispatcher(ctx, n.def, n.obj)
 		n.res = d
 		n.err = err
 		if err != nil {
@@ -205,7 +224,7 @@ func (g *Plan) Definitions() []*schema.SerializedInvocation {
 	return defs
 }
 
-func topoSortNodes(nodes []*rnode) ([]*rnode, error) {
+func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 	graph := toposort.NewGraph(len(nodes))
 
 	keyTypes := map[string]struct{}{}
@@ -214,37 +233,74 @@ func topoSortNodes(nodes []*rnode) ([]*rnode, error) {
 	}
 
 	for k := range keyTypes {
-		// key types are always prefixed by an underscore.
-		graph.AddNode("_" + k)
+		graph.AddNode("key:" + k)
+	}
+
+	categories := map[string]struct{}{}
+	for _, n := range nodes {
+		for _, cat := range n.order.GetSchedCategory() {
+			if _, has := categories[cat]; !has {
+				graph.AddNode("cat:" + cat)
+				categories[cat] = struct{}{}
+			}
+		}
+
+		for _, cat := range n.order.GetSchedAfterCategory() {
+			if _, has := categories[cat]; !has {
+				graph.AddNode("cat:" + cat)
+				categories[cat] = struct{}{}
+			}
+		}
 	}
 
 	// The idea is that a category is only done when all of its individual nodes are.
 	for k, n := range nodes {
-		ks := fmt.Sprintf("%d", k)
-		graph.AddNode(ks)
-		graph.AddEdge(ks, "_"+n.reg.key)
+		ks := fmt.Sprintf("iid:%d", k)
 
-		for _, after := range n.reg.after {
-			graph.AddEdge("_"+after, ks)
+		graph.AddNode(ks)
+		graph.AddEdge(ks, "key:"+n.reg.key)
+
+		for _, cat := range n.order.GetSchedCategory() {
+			graph.AddEdge(ks, "cat:"+cat)
+		}
+
+		for _, cat := range n.order.GetSchedAfterCategory() {
+			graph.AddEdge("cat:"+cat, ks)
 		}
 	}
 
-	result, solved := graph.Toposort()
+	sorted, solved := graph.Toposort()
 	if !solved {
 		return nil, fnerrors.InternalError("ops dependencies are not solvable")
 	}
 
+	var debug bytes.Buffer
+
 	end := make([]*rnode, 0, len(nodes))
-	for _, k := range result {
-		if strings.HasPrefix(k, "_") {
-			continue // Was a key.
+	for _, k := range sorted {
+		parsed := strings.TrimPrefix(k, "iid:")
+		if parsed == k {
+			fmt.Fprintf(&debug, " %s", k)
+			continue
 		}
-		i, err := strconv.ParseInt(k, 10, 64)
+
+		i, err := strconv.ParseInt(parsed, 10, 64)
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to parse serialized index")
 		}
 		end = append(end, nodes[i])
+
+		fmt.Fprintf(&debug, " %s (%s)", k, strBit(nodes[i].def.Description, 32))
 	}
 
+	fmt.Fprintf(console.Debug(ctx), "execution sorted:%s\n", debug.Bytes())
+
 	return end, nil
+}
+
+func strBit(str string, n int) string {
+	if len(str) > n {
+		return str[:n]
+	}
+	return str
 }

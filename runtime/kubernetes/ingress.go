@@ -15,10 +15,10 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 )
 
-func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allFragments []*schema.IngressFragment) (*runtime.DeploymentPlan, error) {
+func planIngress(ctx context.Context, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
 	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.namespace})
@@ -26,7 +26,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 		return nil, err
 	}
 
-	state.Definitions = append(state.Definitions, &schema.SerializedInvocation{
+	state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
 		Description: "Ingress migration cleanup",
 		Impl:        cleanup,
 	})
@@ -45,7 +45,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 	// XXX ensure that any single domain is only used by a single ingress.
 	var allManaged ingress.MapAddressList
 	for _, srv := range stack.Entry {
-		var frags []*schema.IngressFragment
+		var frags []*fnschema.IngressFragment
 		for _, fr := range allFragments {
 			if srv.GetPackageName().Equals(fr.Owner) {
 				frags = append(frags, fr)
@@ -85,7 +85,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *schema.Stack, allF
 			return nil, err
 		}
 
-		state.Definitions = append(state.Definitions, &schema.SerializedInvocation{
+		state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
 			Description: fmt.Sprintf("Update %s's address", frag.FQDN),
 			Impl:        impl,
 		})
@@ -114,9 +114,9 @@ func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 						LocalPort:     p.LocalPort,
 						ContainerPort: p.ContainerPort,
 					}},
-					Endpoint: &schema.Endpoint{
+					Endpoint: &fnschema.Endpoint{
 						ServiceName: runtime.IngressServiceName,
-						ServiceMetadata: []*schema.ServiceMetadata{{
+						ServiceMetadata: []*fnschema.ServiceMetadata{{
 							Protocol: "http",
 							Kind:     runtime.IngressServiceKind,
 						}},

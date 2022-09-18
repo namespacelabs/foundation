@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"sigs.k8s.io/yaml"
@@ -46,7 +46,7 @@ func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (
 	return planDeployment(ctx, r.target, d)
 }
 
-func (r Planner) PlanIngress(ctx context.Context, stack *schema.Stack, allFragments []*schema.IngressFragment) (*runtime.DeploymentPlan, error) {
+func (r Planner) PlanIngress(ctx context.Context, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	return planIngress(ctx, r.target, stack, allFragments)
 }
 
@@ -65,13 +65,13 @@ func (r Planner) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, 
 	return PrepareProvisionWith(r.target.env, r.target.namespace, systemInfo)
 }
 
-func (r Planner) ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error) {
+func (r Planner) ComputeBaseNaming(*fnschema.Naming) (*fnschema.ComputedNaming, error) {
 	// The default kubernetes integration has no assumptions regarding how ingress names are allocated.
 	return nil, nil
 }
 
 func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
-	if !UseNodePlatformsForProduction && r.target.env.Purpose == schema.Environment_PRODUCTION {
+	if !UseNodePlatformsForProduction && r.target.env.Purpose == fnschema.Environment_PRODUCTION {
 		return parsePlatforms(ProductionPlatforms)
 	}
 
@@ -138,7 +138,7 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 			return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)
 		}
 
-		state.Definitions = append(state.Definitions, &schema.SerializedInvocation{
+		state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
 			Description: "Kubernetes: cleanup unused resources",
 			Impl:        cleanup,
 		})

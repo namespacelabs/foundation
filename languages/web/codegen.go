@@ -58,6 +58,10 @@ func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg
 	})
 }
 
+func (generator) PlanOrder(*OpGenHttpBackend) (*schema.ScheduleOrder, error) {
+	return nil, nil
+}
+
 type genFunc func(context.Context, pkggraph.Location, *OpGenHttpBackend_Backend) (*backendDefinition, error)
 
 func generatePlaceholder(loader pkggraph.PackageLoader) genFunc {

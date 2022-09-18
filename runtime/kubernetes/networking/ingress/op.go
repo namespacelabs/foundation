@@ -11,6 +11,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -19,51 +20,67 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/runtime/naming"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Register() {
 	RegisterRuntimeState()
 
-	ops.RegisterFunc(func(ctx context.Context, g *schema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
-		cluster, err := kubedef.InjectedKubeCluster(ctx)
-		if err != nil {
-			return nil, err
-		}
+	ops.RegisterFuncs(ops.Funcs[*OpMapAddress]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-		return nil, tasks.Action("ingress.publish-address").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
-			ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
+			return nil, tasks.Action("ingress.publish-address").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
+				ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
 
-			return waitForIngress(ctx, cluster.Client(), ingressSvc, op)
-		})
+				return waitForIngress(ctx, cluster.Client(), ingressSvc, op)
+			})
+		},
+
+		PlanOrder: func(_ *OpMapAddress) (*fnschema.ScheduleOrder, error) {
+			return &fnschema.ScheduleOrder{
+				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
+			}, nil
+		},
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, g *schema.SerializedInvocation, op *OpCleanupMigration) (*ops.HandleResult, error) {
-		cluster, err := kubedef.InjectedKubeCluster(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
-			ingresses, err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
-			})
+	ops.RegisterFuncs(ops.Funcs[*OpCleanupMigration]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpCleanupMigration) (*ops.HandleResult, error) {
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
-				return fnerrors.Wrapf(nil, err, "unable to list ingresses")
+				return nil, err
 			}
 
-			// We no longer emit "-managed" ingresses.
-			for _, ingress := range ingresses.Items {
-				if strings.HasSuffix(ingress.Name, "-managed") {
-					if err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
-						return err
+			return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
+				ingresses, err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
+					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+				})
+				if err != nil {
+					return fnerrors.Wrapf(nil, err, "unable to list ingresses")
+				}
+
+				// We no longer emit "-managed" ingresses.
+				for _, ingress := range ingresses.Items {
+					if strings.HasSuffix(ingress.Name, "-managed") {
+						if err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
+							return err
+						}
 					}
 				}
-			}
 
-			return nil
-		})
+				return nil
+			})
+		},
+
+		PlanOrder: func(_ *OpCleanupMigration) (*fnschema.ScheduleOrder, error) {
+			return &fnschema.ScheduleOrder{
+				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
+			}, nil
+		},
 	})
 
 	nginx.RegisterGraphHandlers()

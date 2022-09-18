@@ -54,6 +54,10 @@ func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg
 	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
+func (generator) PlanOrder(*OpGenNode) (*schema.ScheduleOrder, error) {
+	return nil, nil
+}
+
 func ProtosForNode(pkg *pkggraph.Package) ([]*schema.SerializedInvocation, error) {
 	var allDefs []*schema.SerializedInvocation
 

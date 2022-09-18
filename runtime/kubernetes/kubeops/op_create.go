@@ -12,113 +12,134 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerCreate() {
-	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
-		if create.BodyJson == "" {
-			return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
-		}
-
-		var obj struct {
-			Metadata metav1.ObjectMeta `json:"metadata"`
-		}
-
-		if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
-			return nil, fnerrors.BadInputError("%s: kubernetes.create: failed to parse resource: %w", d.Description, err)
-		}
-
-		if create.Resource == "" {
-			return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
-		}
-
-		if obj.Metadata.Name == "" {
-			return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
-		}
-
-		cluster, err := kubedef.InjectedKubeCluster(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if create.SkipIfAlreadyExists || create.UpdateIfExisting {
-			obj, err := fetchResource(ctx, cluster.RESTConfig(), d.Description, create, obj.Metadata.Name,
-				obj.Metadata.Namespace, schema.PackageNames(d.Scope...))
-			if err != nil {
-				return nil, fnerrors.New("failed to fetch resource: %w", err)
+	ops.RegisterFuncs(ops.Funcs[*kubedef.OpCreate]{
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
+			if create.BodyJson == "" {
+				return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 			}
 
-			if obj != nil {
-				if create.SkipIfAlreadyExists {
-					return nil, nil // Nothing to do.
+			var obj struct {
+				Metadata metav1.ObjectMeta `json:"metadata"`
+			}
+
+			if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
+				return nil, fnerrors.BadInputError("%s: kubernetes.create: failed to parse resource: %w", d.Description, err)
+			}
+
+			if create.Resource == "" {
+				return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
+			}
+
+			if obj.Metadata.Name == "" {
+				return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
+			}
+
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			if create.SkipIfAlreadyExists || create.UpdateIfExisting {
+				obj, err := fetchResource(ctx, cluster.RESTConfig(), d.Description, create, obj.Metadata.Name,
+					obj.Metadata.Namespace, fnschema.PackageNames(d.Scope...))
+				if err != nil {
+					return nil, fnerrors.New("failed to fetch resource: %w", err)
 				}
 
-				if create.UpdateIfExisting {
-					msg := &unstructured.Unstructured{Object: map[string]interface{}{}}
-					if err := msg.UnmarshalJSON([]byte(create.BodyJson)); err != nil {
-						return nil, fnerrors.New("failed to parse create body: %w", err)
+				if obj != nil {
+					if create.SkipIfAlreadyExists {
+						return nil, nil // Nothing to do.
 					}
 
-					// This is not advised. Overwriting without reading.
-					msg.SetResourceVersion(obj.GetResourceVersion())
+					if create.UpdateIfExisting {
+						msg := &unstructured.Unstructured{Object: map[string]interface{}{}}
+						if err := msg.UnmarshalJSON([]byte(create.BodyJson)); err != nil {
+							return nil, fnerrors.New("failed to parse create body: %w", err)
+						}
 
-					return nil, updateResource(ctx, d, create, msg, cluster.RESTConfig())
+						// This is not advised. Overwriting without reading.
+						msg.SetResourceVersion(obj.GetResourceVersion())
+
+						return nil, updateResource(ctx, d, create, msg, cluster.RESTConfig())
+					}
 				}
 			}
-		}
 
-		if err := tasks.Action("kubernetes.create").Scope(schema.PackageNames(d.Scope...)...).
-			HumanReadablef(d.Description).
-			Arg("resource", resourceName(create)).
-			Arg("name", obj.Metadata.Name).
-			Arg("namespace", obj.Metadata.Namespace).Run(ctx, func(ctx context.Context) error {
-			client, err := client.MakeResourceSpecificClient(ctx, create, cluster.RESTConfig())
-			if err != nil {
-				return err
+			if err := tasks.Action("kubernetes.create").Scope(fnschema.PackageNames(d.Scope...)...).
+				HumanReadablef(d.Description).
+				Arg("resource", resourceName(create)).
+				Arg("name", obj.Metadata.Name).
+				Arg("namespace", obj.Metadata.Namespace).Run(ctx, func(ctx context.Context) error {
+				client, err := client.MakeResourceSpecificClient(ctx, create, cluster.RESTConfig())
+				if err != nil {
+					return err
+				}
+
+				req := client.Post()
+				opts := metav1.CreateOptions{
+					FieldManager: kubedef.K8sFieldManager,
+				}
+
+				if obj.Metadata.Namespace != "" {
+					req.Namespace(obj.Metadata.Namespace)
+				}
+
+				r := req.Resource(resourceName(create)).
+					VersionedParams(&opts, metav1.ParameterCodec).
+					Body([]byte(create.BodyJson))
+
+				if OutputKubeApiURLs {
+					fmt.Fprintf(console.Debug(ctx), "kubernetes: api post call %q\n", r.URL())
+				}
+
+				if err := r.Do(ctx).Error(); err != nil {
+					return err
+				}
+
+				return nil
+			}); err != nil {
+				if !errors.IsNotFound(err) {
+					return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
+				}
 			}
 
-			req := client.Post()
-			opts := metav1.CreateOptions{
-				FieldManager: kubedef.K8sFieldManager,
+			return nil, nil
+		},
+
+		PlanOrder: func(create *kubedef.OpCreate) (*fnschema.ScheduleOrder, error) {
+			if create.BodyJson == "" {
+				return nil, fnerrors.InternalError("create.Body is required")
 			}
 
-			if obj.Metadata.Namespace != "" {
-				req.Namespace(obj.Metadata.Namespace)
+			// XXX handle old versions of the secrets prebuilt which don't return a Kind within the body.
+			if create.Resource == "secrets" {
+				return kubedef.PlanOrder(schema.GroupVersionKind{Version: "v1", Kind: "Secret"}), nil
 			}
 
-			r := req.Resource(resourceName(create)).
-				VersionedParams(&opts, metav1.ParameterCodec).
-				Body([]byte(create.BodyJson))
-
-			if OutputKubeApiURLs {
-				fmt.Fprintf(console.Debug(ctx), "kubernetes: api post call %q\n", r.URL())
+			var parsed unstructured.Unstructured
+			if err := json.Unmarshal([]byte(create.BodyJson), &parsed); err != nil {
+				return nil, fnerrors.BadInputError("kubernetes.apply: failed to parse resource: %w", err)
 			}
 
-			if err := r.Do(ctx).Error(); err != nil {
-				return err
-			}
-
-			return nil
-		}); err != nil {
-			if !errors.IsNotFound(err) {
-				return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
-			}
-		}
-
-		return nil, nil
+			return kubedef.PlanOrder(parsed.GroupVersionKind()), nil
+		},
 	})
 }
 
-func updateResource(ctx context.Context, d *schema.SerializedInvocation, resourceClass client.ResourceClassLike, body *unstructured.Unstructured, restcfg *rest.Config) error {
-	return tasks.Action("kubernetes.update").Scope(schema.PackageNames(d.Scope...)...).
+func updateResource(ctx context.Context, d *fnschema.SerializedInvocation, resourceClass client.ResourceClassLike, body *unstructured.Unstructured, restcfg *rest.Config) error {
+	return tasks.Action("kubernetes.update").Scope(fnschema.PackageNames(d.Scope...)...).
 		HumanReadablef(d.Description).
 		Arg("resource", resourceName(resourceClass)).
 		Arg("name", body.GetName()).

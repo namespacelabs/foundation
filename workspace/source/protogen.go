@@ -49,6 +49,10 @@ func (statefulGen) Handle(ctx context.Context, _ *schema.SerializedInvocation, m
 	}, module.ReadWriteFS())
 }
 
+func (statefulGen) PlanOrder(*OpProtoGen) (*schema.ScheduleOrder, error) {
+	return nil, nil
+}
+
 func (statefulGen) StartSession(ctx context.Context) (ops.Session[*OpProtoGen], error) {
 	module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
 	if err != nil {

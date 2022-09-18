@@ -18,6 +18,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -28,7 +29,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -38,69 +39,79 @@ var (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFunc(func(ctx context.Context, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
-		cluster, err := kubedef.InjectedKubeCluster(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := tasks.Action("nginx.apply-namespace").Run(ctx, func(ctx context.Context) error {
-			_, err := cluster.Client().CoreV1().Namespaces().Apply(ctx, corev1.Namespace(op.Namespace).WithLabels(map[string]string{
-				"app.kubernetes.io/name":     "ingress-nginx",
-				"app.kubernetes.io/instance": "ingress-nginx",
-			}), kubedef.Ego())
-			return err
-		}); err != nil {
-			return nil, fnerrors.InvocationError("nginx: failed to ensure namespace: %w", err)
-		}
-
-		if err := tasks.Action("nginx.generate-webhook").HumanReadablef(g.Description).Run(ctx, func(ctx context.Context) error {
-			webhook := &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}
-			if err := json.Unmarshal(op.WebhookDefinition, webhook); err != nil {
-				return fnerrors.InternalError("nginx: failed to deserialize webhook definition: %w", err)
+	ops.RegisterFuncs(ops.Funcs[*OpGenerateWebhookCert]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
+			if err != nil {
+				return nil, err
 			}
 
-			secret, err := cluster.Client().CoreV1().Secrets(op.Namespace).Get(ctx, op.SecretName, metav1.GetOptions{})
-			if k8serrors.IsNotFound(err) {
-				newCa, newCert, newKey := certs.GenerateCerts(op.TargetHost)
-				newSecret := &v1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      op.SecretName,
-						Namespace: op.Namespace,
-					},
-					Data: map[string][]byte{"ca": newCa, "cert": newCert, "key": newKey},
+			if err := tasks.Action("nginx.apply-namespace").Run(ctx, func(ctx context.Context) error {
+				_, err := cluster.Client().CoreV1().Namespaces().Apply(ctx, corev1.Namespace(op.Namespace).WithLabels(map[string]string{
+					"app.kubernetes.io/name":     "ingress-nginx",
+					"app.kubernetes.io/instance": "ingress-nginx",
+				}), kubedef.Ego())
+				return err
+			}); err != nil {
+				return nil, fnerrors.InvocationError("nginx: failed to ensure namespace: %w", err)
+			}
+
+			if err := tasks.Action("nginx.generate-webhook").HumanReadablef(g.Description).Run(ctx, func(ctx context.Context) error {
+				webhook := &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}
+				if err := json.Unmarshal(op.WebhookDefinition, webhook); err != nil {
+					return fnerrors.InternalError("nginx: failed to deserialize webhook definition: %w", err)
 				}
 
-				_, err := cluster.Client().CoreV1().Secrets(op.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
-					FieldManager: kubedef.Ego().FieldManager,
-				})
-				if err != nil {
-					return fnerrors.InvocationError("nginx: failed to create secret: %w", err)
+				secret, err := cluster.Client().CoreV1().Secrets(op.Namespace).Get(ctx, op.SecretName, metav1.GetOptions{})
+				if k8serrors.IsNotFound(err) {
+					newCa, newCert, newKey := certs.GenerateCerts(op.TargetHost)
+					newSecret := &v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      op.SecretName,
+							Namespace: op.Namespace,
+						},
+						Data: map[string][]byte{"ca": newCa, "cert": newCert, "key": newKey},
+					}
+
+					_, err := cluster.Client().CoreV1().Secrets(op.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+						FieldManager: kubedef.Ego().FieldManager,
+					})
+					if err != nil {
+						return fnerrors.InvocationError("nginx: failed to create secret: %w", err)
+					}
+
+					secret = newSecret
+				} else if err != nil {
+					return fnerrors.InvocationError("nginx: failed to get secret: %w", err)
 				}
 
-				secret = newSecret
-			} else if err != nil {
-				return fnerrors.InvocationError("nginx: failed to get secret: %w", err)
+				for _, webhook := range webhook.Webhooks {
+					webhook.ClientConfig.WithCABundle(secret.Data["ca"]...)
+				}
+
+				if _, err := cluster.Client().AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
+					return fnerrors.InvocationError("nginx: failed to apply webhook: %w", err)
+				}
+
+				return nil
+			}); err != nil {
+				return nil, err
 			}
 
-			for _, webhook := range webhook.Webhooks {
-				webhook.ClientConfig.WithCABundle(secret.Data["ca"]...)
-			}
+			return nil, nil
+		},
 
-			if _, err := cluster.Client().AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
-				return fnerrors.InvocationError("nginx: failed to apply webhook: %w", err)
-			}
-
-			return nil
-		}); err != nil {
-			return nil, err
-		}
-
-		return nil, nil
+		PlanOrder: func(_ *OpGenerateWebhookCert) (*fnschema.ScheduleOrder, error) {
+			return &fnschema.ScheduleOrder{
+				SchedAfterCategory: []string{
+					kubedef.MakeSchedCat(schema.GroupKind{Kind: "Namespace"}),
+				},
+			}, nil
+		},
 	})
 }
 
-func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
+func Ensure(ctx context.Context) ([]*fnschema.SerializedInvocation, error) {
 	f, err := lib.Open("ingress.yaml")
 	if err != nil {
 		return nil, err
@@ -145,7 +156,7 @@ func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	}
 
 	// It's important that we create the webhook + CAbundle first, so it's available to the nginx deployment.
-	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
+	return append([]*fnschema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
 }
 
 func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb.Any) (map[string]string, error) {
@@ -162,11 +173,11 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 		annotations["nginx.ingress.kubernetes.io/force-ssl-redirect"] = "false"
 	}
 
-	var cors *schema.HttpCors
+	var cors *fnschema.HttpCors
 	var entityLimit *ProxyBodySize
 
 	for _, ext := range extensions {
-		corsConf := &schema.HttpCors{}
+		corsConf := &fnschema.HttpCors{}
 		entityLimitConf := &ProxyBodySize{}
 
 		switch {

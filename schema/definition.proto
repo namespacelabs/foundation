@@ -27,10 +27,17 @@ message SerializedInvocation {
     // Computed arguments that may be used by the implementation.
     repeated ComputedValue computed = 4;
 
+    ScheduleOrder order = 5;  // If not specified, is computed based on impl type.
+
     message ComputedValue {
         string              name  = 1;
         google.protobuf.Any value = 2;
     }
+}
+
+message ScheduleOrder {
+    repeated string sched_category       = 1;  // Category for scheduling purposes. Categories are shared by multiple invocations.
+    repeated string sched_after_category = 2;  // Run this invocation after all invocations of the specified category are run.
 }
 
 // An invocation that requires compilation, and will yield a SerializedInvocation.
@@ -46,6 +53,8 @@ message SerializedInvocationSource {
     google.protobuf.Any impl = 3;
     // Arguments to be computed to pass to the SerializedInvocation.
     repeated ComputableValue computable = 4;
+
+    ScheduleOrder order = 5;  // If not specified, is computed based on impl type.
 
     message ComputableValue {
         string              name  = 1;

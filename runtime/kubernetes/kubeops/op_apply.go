@@ -32,8 +32,22 @@ import (
 )
 
 func registerApply() {
-	ops.RegisterFunc(func(ctx context.Context, d *schema.SerializedInvocation, spec *kubedef.OpApply) (*ops.HandleResult, error) {
-		return apply(ctx, d.Description, schema.PackageNames(d.Scope...), spec)
+	ops.RegisterFuncs(ops.Funcs[*kubedef.OpApply]{
+		Handle: func(ctx context.Context, d *schema.SerializedInvocation, spec *kubedef.OpApply) (*ops.HandleResult, error) {
+			return apply(ctx, d.Description, schema.PackageNames(d.Scope...), spec)
+		},
+		PlanOrder: func(apply *kubedef.OpApply) (*schema.ScheduleOrder, error) {
+			if apply.BodyJson == "" {
+				return nil, fnerrors.InternalError("apply.Body is required")
+			}
+
+			var parsed unstructured.Unstructured
+			if err := json.Unmarshal([]byte(apply.BodyJson), &parsed); err != nil {
+				return nil, fnerrors.BadInputError("kubernetes.apply: failed to parse resource: %w", err)
+			}
+
+			return kubedef.PlanOrder(parsed.GroupVersionKind()), nil
+		},
 	})
 }
 

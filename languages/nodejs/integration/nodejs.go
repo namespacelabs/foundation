@@ -57,7 +57,7 @@ var ()
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
+	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
 		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
@@ -75,7 +75,7 @@ func Register() {
 		return nil, nil
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
+	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
 		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
@@ -89,7 +89,7 @@ func Register() {
 		return nil, generateNode(ctx, loader, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
+	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
 		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
@@ -103,7 +103,7 @@ func Register() {
 		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
 	})
 
-	ops.RegisterFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
+	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
 		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
@@ -500,6 +500,10 @@ type yarnRootStatefulGen struct{}
 // This is never called but ops.Register requires the Dispatcher.
 func (yarnRootStatefulGen) Handle(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
 	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
+}
+
+func (yarnRootStatefulGen) PlanOrder(*OpGenYarnRoot) (*schema.ScheduleOrder, error) {
+	return nil, nil
 }
 
 func (yarnRootStatefulGen) StartSession(ctx context.Context) (ops.Session[*OpGenYarnRoot], error) {

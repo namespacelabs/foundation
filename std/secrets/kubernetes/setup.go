@@ -246,6 +246,10 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 				SkipIfAlreadyExists: true,
 				Resource:            "secrets",
 				Body: &v1.Secret{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "Secret",
+						APIVersion: "v1",
+					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      generatedName,
 						Namespace: kr.Namespace,

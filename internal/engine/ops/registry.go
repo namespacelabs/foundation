@@ -13,21 +13,24 @@ import (
 )
 
 type rnode struct {
-	def *schema.SerializedInvocation
-	reg *registration
-	res *HandleResult
-	err error // Error captured from a previous run.
+	def   *schema.SerializedInvocation
+	obj   proto.Message
+	order *schema.ScheduleOrder
+	reg   *registration
+	res   *HandleResult
+	err   error // Error captured from a previous run.
 }
 
 type registration struct {
 	key          string
 	tmpl         proto.Message
 	dispatcher   dispatcherFunc
+	planOrder    planOrderFunc
 	startSession startSessionFunc
-	after        []string
 }
 
 type dispatcherFunc func(context.Context, *schema.SerializedInvocation, proto.Message) (*HandleResult, error)
+type planOrderFunc func(proto.Message) (*schema.ScheduleOrder, error)
 type startSessionFunc func(context.Context) (dispatcherFunc, commitSessionFunc, error)
 type commitSessionFunc func() error
 
@@ -51,26 +54,43 @@ func Register[M proto.Message](mr Dispatcher[M]) {
 
 	register[M](func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 		return mr.Handle(ctx, def, msg.(M))
+	}, func(m proto.Message) (*schema.ScheduleOrder, error) {
+		return mr.PlanOrder(m.(M))
 	}, startSession)
 }
 
-func RegisterFunc[M proto.Message](mr func(ctx context.Context, def *schema.SerializedInvocation, m M) (*HandleResult, error)) {
+func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)) {
 	register[M](func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
-		return mr(ctx, def, msg.(M))
+		return handle(ctx, def, msg.(M))
+	}, func(m proto.Message) (*schema.ScheduleOrder, error) {
+		return nil, nil
 	}, nil)
 }
 
-func RunAfter(base, after proto.Message) {
-	h := handlers[protos.TypeUrl(after)]
-	h.after = append(h.after, protos.TypeUrl(base))
+type Funcs[M proto.Message] struct {
+	Handle    func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
+	PlanOrder func(M) (*schema.ScheduleOrder, error)
 }
 
-func register[M proto.Message](dispatcher dispatcherFunc, startSession startSessionFunc) {
+func RegisterFuncs[M proto.Message](funcs Funcs[M]) {
+	register[M](func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
+		return funcs.Handle(ctx, def, msg.(M))
+	}, func(m proto.Message) (*schema.ScheduleOrder, error) {
+		if funcs.PlanOrder == nil {
+			return nil, nil
+		}
+
+		return funcs.PlanOrder(m.(M))
+	}, nil)
+}
+
+func register[M proto.Message](dispatcher dispatcherFunc, planOrder planOrderFunc, startSession startSessionFunc) {
 	tmpl := protos.NewFromType[M]()
 	reg := registration{
 		key:          protos.TypeUrl(tmpl),
 		tmpl:         tmpl,
 		dispatcher:   dispatcher,
+		planOrder:    planOrder,
 		startSession: startSession,
 	}
 
