@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/philopon/go-toposort"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -52,8 +54,13 @@ type HandleResult struct {
 // A plan collects a set of invocations which can then be executed as a batch.
 type Plan struct {
 	definitions []*schema.SerializedInvocation
-	nodes       []*rnode
 	scope       schema.PackageList
+	parallel    bool // Execute invocations in parallel regardless of dependency graph.
+}
+
+type parsedPlan struct {
+	definitions []*schema.SerializedInvocation
+	nodes       []*rnode
 	parallel    bool // Execute invocations in parallel regardless of dependency graph.
 }
 
@@ -61,30 +68,61 @@ func NewEmptyPlan() *Plan {
 	return &Plan{}
 }
 
-func NewPlan(defs ...*schema.SerializedInvocation) (*Plan, error) {
-	p := NewEmptyPlan()
-	return p, p.Add(defs...)
+func NewPlan(defs ...*schema.SerializedInvocation) *Plan {
+	return NewEmptyPlan().Add(defs...)
 }
 
 // Don't use this if you don't know why you need it. Use NewPlan instead.
-func NewParallelPlan(defs ...*schema.SerializedInvocation) (*Plan, error) {
+func NewParallelPlan(defs ...*schema.SerializedInvocation) *Plan {
 	p := NewEmptyPlan()
 	p.parallel = true
-	return p, p.Add(defs...)
+	return p.Add(defs...)
 }
 
-func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
+func (g *Plan) Add(defs ...*schema.SerializedInvocation) *Plan {
+	g.definitions = append(g.definitions, defs...)
+	for _, def := range defs {
+		g.scope.AddMultiple(schema.PackageNames(def.Scope...)...)
+	}
+	return g
+}
+
+func compile(srcs []*schema.SerializedInvocation, parallel bool) (*parsedPlan, error) {
+	g := &parsedPlan{parallel: parallel}
+
+	var defs []*schema.SerializedInvocation
+	tocompile := map[string][]*schema.SerializedInvocation{}
+
+	for _, src := range srcs {
+		if compilers[src.Impl.TypeUrl] != nil {
+			tocompile[src.Impl.TypeUrl] = append(tocompile[src.Impl.TypeUrl], src)
+		} else {
+			defs = append(defs, src)
+		}
+	}
+
+	compileKeys := maps.Keys(tocompile)
+	slices.Sort(compileKeys)
+
+	for _, key := range compileKeys {
+		compiled, err := compilers[key](tocompile[key])
+		if err != nil {
+			return nil, err
+		}
+		defs = append(defs, compiled...)
+	}
+
 	var nodes []*rnode
 	for _, src := range defs {
 		key := src.Impl.GetTypeUrl()
 		reg, ok := handlers[key]
 		if !ok {
-			return fnerrors.InternalError("%v: no handler registered", key)
+			return nil, fnerrors.InternalError("%v: no handler registered", key)
 		}
 
 		copy := proto.Clone(reg.tmpl)
 		if err := src.Impl.UnmarshalTo(copy); err != nil {
-			return fnerrors.InternalError("%v: failed to unmarshal: %w", key, err)
+			return nil, fnerrors.InternalError("%v: failed to unmarshal: %w", key, err)
 		}
 
 		node := &rnode{
@@ -99,26 +137,22 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) error {
 			var err error
 			node.order, err = reg.planOrder(copy)
 			if err != nil {
-				return fnerrors.InternalError("%s: failed to compute order: %w", key, err)
+				return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 			}
 		}
 
 		nodes = append(nodes, node)
-
-		for _, scope := range src.Scope {
-			g.scope.Add(schema.PackageName(scope))
-		}
 	}
 	g.definitions = append(g.definitions, defs...)
 	g.nodes = append(g.nodes, nodes...)
-	return nil
+	return g, nil
 }
 
 func Serialize(g *Plan) *schema.SerializedProgram {
 	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 
-func (g *Plan) apply(ctx context.Context) ([]Waiter, error) {
+func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -217,11 +251,7 @@ func (g *Plan) apply(ctx context.Context) ([]Waiter, error) {
 }
 
 func (g *Plan) Definitions() []*schema.SerializedInvocation {
-	var defs []*schema.SerializedInvocation
-	for _, n := range g.nodes {
-		defs = append(defs, n.def)
-	}
-	return defs
+	return g.definitions
 }
 
 func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {

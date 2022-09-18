@@ -49,10 +49,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to unmarshal %q: %w", args[0], err)
 		}
 
-		p, err := ops.NewPlan(plan.GetProgram().GetInvocation()...)
-		if err != nil {
-			return fnerrors.New("failed to prepare plan: %w", err)
-		}
+		p := ops.NewPlan(plan.GetProgram().GetInvocation()...)
 
 		config, err := planning.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
 		if err != nil {

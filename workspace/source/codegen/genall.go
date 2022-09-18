@@ -31,9 +31,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 			if err != nil {
 				onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "generate node", Err: err})
 			} else {
-				if err := g.Add(defs...); err != nil {
-					return err
-				}
+				g.Add(defs...)
 			}
 		}
 		if err := ops.Execute(ctx, env, "workspace.generate.phase.node", g, nil,
@@ -61,9 +59,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 			if err != nil {
 				onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "generate server", Err: err})
 			} else {
-				if err := g.Add(defs...); err != nil {
-					return err
-				}
+				g.Add(defs...)
 			}
 		} else {
 			var pkg *pkggraph.Package
@@ -83,9 +79,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 				onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "generate node", Err: err})
 				return err
 			} else {
-				if err := g.Add(defs...); err != nil {
-					return err
-				}
+				g.Add(defs...)
 			}
 		}
 	}

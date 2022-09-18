@@ -179,14 +179,8 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	pbr := compute.MustGetDepValue(deps, m.prepare, "prepare")
 
 	g := ops.NewEmptyPlan()
-
-	if err := g.Add(pbr.HandlerResult.Definitions...); err != nil {
-		return nil, err
-	}
-
-	if err := g.Add(pbr.DeploymentPlan.Definitions...); err != nil {
-		return nil, err
-	}
+	g.Add(pbr.HandlerResult.Definitions...)
+	g.Add(pbr.DeploymentPlan.Definitions...)
 
 	plan := &Plan{
 		Deployer:      g,
@@ -195,9 +189,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	if ingress, ok := compute.GetDep(deps, m.ingressPlan, "ingressPlan"); ok {
-		if err := g.Add(ingress.Value.Definitions...); err != nil {
-			return nil, err
-		}
+		g.Add(ingress.Value.Definitions...)
 	}
 
 	plan.IngressFragments = compute.MustGetDepValue(deps, m.ingressFragments, "ingress").Fragments

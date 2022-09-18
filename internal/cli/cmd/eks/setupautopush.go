@@ -76,9 +76,7 @@ func newSetupAutopushCmd() *cobra.Command {
 			if dryRun {
 				fmt.Fprintln(stdout, prototext.Format(def))
 			} else {
-				if err := p.Add(def); err != nil {
-					return err
-				}
+				p.Add(def)
 			}
 		}
 		if dryRun {

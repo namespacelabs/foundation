@@ -24,17 +24,13 @@ func RunAttached(ctx context.Context, config planning.Context, cluster ClusterNa
 		return err
 	}
 
-	g, err := ops.NewPlan(plan.Definitions...)
-	if err != nil {
-		return err
-	}
-
 	defer func() {
 		if err := cluster.DeleteDeployment(ctx, spec); err != nil {
 			fmt.Fprintf(console.Errors(ctx), "Deleting %s failed: %v\n", spec.Name, err)
 		}
 	}()
 
+	g := ops.NewPlan(plan.Definitions...)
 	// ResolveContainers will wait until the deployable is running, so we don't rely on the waiters returned by Execute.
 	if err := ops.Execute(ctx, config, "deployable.run-attached", g, nil, InjectCluster(cluster)...); err != nil {
 		return fnerrors.New("failed to deploy: %w", err)

@@ -158,10 +158,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				return err
 			}
 
-			g, err := ops.NewPlan(plan.Definitions...)
-			if err != nil {
-				return err
-			}
+			g := ops.NewPlan(plan.Definitions...)
 
 			// Make sure that the cluster is accessible to a serialized invocation implementation.
 			if err := ops.Execute(ctx, env, "test.driver.deploy", g, nil, runtime.InjectCluster(cluster)...); err != nil {

@@ -56,9 +56,7 @@ func newComputeIrsaCmd() *cobra.Command {
 			if dryRun {
 				fmt.Fprintln(console.Stdout(ctx), prototext.Format(def))
 			} else {
-				if err := p.Add(def); err != nil {
-					return err
-				}
+				p.Add(def)
 			}
 		}
 

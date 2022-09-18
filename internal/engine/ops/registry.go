@@ -33,8 +33,12 @@ type dispatcherFunc func(context.Context, *schema.SerializedInvocation, proto.Me
 type planOrderFunc func(proto.Message) (*schema.ScheduleOrder, error)
 type startSessionFunc func(context.Context) (dispatcherFunc, commitSessionFunc, error)
 type commitSessionFunc func() error
+type compilerFunc func([]*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error)
 
-var handlers = map[string]*registration{}
+var (
+	handlers  = map[string]*registration{}
+	compilers = map[string]compilerFunc{}
+)
 
 func Register[M proto.Message](mr Dispatcher[M]) {
 	var startSession startSessionFunc
@@ -65,6 +69,11 @@ func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.S
 	}, func(m proto.Message) (*schema.ScheduleOrder, error) {
 		return nil, nil
 	}, nil)
+}
+
+func Compile[M proto.Message](compiler func([]*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error)) {
+	tmpl := protos.NewFromType[M]()
+	compilers[protos.TypeUrl(tmpl)] = compiler
 }
 
 type Funcs[M proto.Message] struct {
