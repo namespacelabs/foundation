@@ -65,7 +65,7 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, scope Scope, out *con
 
 	if kr.Context.GetHasApplyRoleBinding() {
 		out.Invocations = append(out.Invocations, kubedef.ApplyRoleBinding{
-			Description:     fmt.Sprintf("%s: Role", g.DescriptionBase),
+			DescriptionBase: g.DescriptionBase,
 			Namespaced:      scope == NamespaceScope,
 			RoleName:        roleName,
 			RoleBindingName: roleBinding,
@@ -82,19 +82,30 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, scope Scope, out *con
 		return rpcerrors.Errorf(codes.FailedPrecondition, "kubernetes namespace missing")
 	}
 
+	for _, apply := range MakeInvocations(g.DescriptionBase, scope, kr,
+		roleName, roleBinding, labels, kubedef.BaseAnnotations(), serviceAccount, g.Rules) {
+		out.Invocations = append(out.Invocations, apply)
+	}
+
+	return nil
+}
+
+func MakeInvocations(descriptionBase string, scope Scope, kr *kubetool.ContextualEnv, roleName, roleBinding string, labels, annotations map[string]string, serviceAccount string, rules []*rbacv1.PolicyRuleApplyConfiguration) []kubedef.Apply {
+	var invocations []kubedef.Apply
+
 	switch scope {
 	case NamespaceScope:
-		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description:  fmt.Sprintf("%s: Role", g.DescriptionBase),
+		invocations = append(invocations, kubedef.Apply{
+			Description:  fmt.Sprintf("%s: Role", descriptionBase),
 			SetNamespace: kr.CanSetNamespace,
 			Resource: rbacv1.Role(roleName, kr.Namespace).
-				WithRules(g.Rules...).
+				WithRules(rules...).
 				WithLabels(labels).
-				WithAnnotations(kubedef.BaseAnnotations()),
+				WithAnnotations(annotations),
 		})
 
-		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description:  fmt.Sprintf("%s: Role Binding", g.DescriptionBase),
+		invocations = append(invocations, kubedef.Apply{
+			Description:  fmt.Sprintf("%s: Role Binding", descriptionBase),
 			SetNamespace: kr.CanSetNamespace,
 			Resource: rbacv1.RoleBinding(roleBinding, kr.Namespace).
 				WithLabels(labels).
@@ -110,16 +121,16 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, scope Scope, out *con
 		})
 
 	case ClusterScope:
-		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description: fmt.Sprintf("%s: Cluster Role", g.DescriptionBase),
+		invocations = append(invocations, kubedef.Apply{
+			Description: fmt.Sprintf("%s: Cluster Role", descriptionBase),
 			Resource: rbacv1.ClusterRole(roleName).
-				WithRules(g.Rules...).
+				WithRules(rules...).
 				WithLabels(labels).
 				WithAnnotations(kubedef.BaseAnnotations()),
 		})
 
-		out.Invocations = append(out.Invocations, kubedef.Apply{
-			Description: fmt.Sprintf("%s: Cluster Role Binding", g.DescriptionBase),
+		invocations = append(invocations, kubedef.Apply{
+			Description: fmt.Sprintf("%s: Cluster Role Binding", descriptionBase),
 			Resource: rbacv1.ClusterRoleBinding(roleBinding).
 				WithLabels(labels).
 				WithAnnotations(kubedef.BaseAnnotations()).
@@ -134,7 +145,7 @@ func (g GrantKubeACLs) Compile(req configure.StackRequest, scope Scope, out *con
 		})
 	}
 
-	return nil
+	return invocations
 }
 
 func makeRoles(req configure.StackRequest) (string, string) {

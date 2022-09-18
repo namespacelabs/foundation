@@ -6,6 +6,7 @@ package testing
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,6 +16,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/schema"
+)
+
+var (
+	testTimeout = flag.Duration("test_timeout", 5*time.Minute, "The maximum duration of the test.")
+	debug       = flag.Bool("debug", false, "Output additional test runtime information.")
 )
 
 type Test struct {
@@ -46,7 +52,7 @@ func (t Test) WaitForEndpoint(ctx context.Context, endpoint *schema.Endpoint) er
 }
 
 func Do(testFunc func(context.Context, Test) error) {
-	t := testboot.BootstrapTest()
+	t := testboot.BootstrapTest(*testTimeout, *debug)
 
 	if err := testFunc(context.Background(), Test{t}); err != nil {
 		log.Fatal(err)

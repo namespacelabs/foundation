@@ -21,6 +21,16 @@ type KubeCluster interface {
 	RESTConfig() *rest.Config
 }
 
+type KubeClusterNamespace interface {
+	runtime.ClusterNamespace
+
+	KubeConfig() KubeConfig
+}
+
+type KubeConfig struct {
+	Config, Context, Namespace string
+}
+
 func InjectedKubeCluster(ctx context.Context) (KubeCluster, error) {
 	c, err := ops.Get(ctx, runtime.ClusterInjection)
 	if err != nil {
@@ -28,6 +38,19 @@ func InjectedKubeCluster(ctx context.Context) (KubeCluster, error) {
 	}
 
 	if v, ok := c.(KubeCluster); ok {
+		return v, nil
+	}
+
+	return nil, fnerrors.InternalError("expected a kubernetes cluster in context")
+}
+
+func InjectedKubeClusterNamespace(ctx context.Context) (KubeClusterNamespace, error) {
+	c, err := ops.Get(ctx, runtime.ClusterNamespaceInjection)
+	if err != nil {
+		return nil, err
+	}
+
+	if v, ok := c.(KubeClusterNamespace); ok {
 		return v, nil
 	}
 

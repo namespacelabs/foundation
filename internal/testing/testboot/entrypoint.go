@@ -15,11 +15,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-var (
-	testTimeout = flag.Duration("test_timeout", 5*time.Minute, "The maximum duration of the test.")
-	debug       = flag.Bool("debug", false, "Output additional test runtime information.")
-)
-
 type TestData struct {
 	Request *TestRequest
 }
@@ -45,14 +40,14 @@ func (t TestData) InternalOf(serverOwner string) []*schema.InternalEndpoint {
 	return filtered
 }
 
-func BootstrapTest() TestData {
+func BootstrapTest(testTimeout time.Duration, debug bool) TestData {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 
 	flag.Parse()
 
 	go func() {
-		time.Sleep(*testTimeout)
-		log.Fatal("test timed out after", *testTimeout)
+		time.Sleep(testTimeout)
+		log.Fatal("test timed out after", testTimeout)
 	}()
 
 	reqBytes, err := ioutil.ReadFile("/" + TestRequestPath)
@@ -65,7 +60,7 @@ func BootstrapTest() TestData {
 		log.Fatal(err)
 	}
 
-	if *debug {
+	if debug {
 		log.Println(prototext.Format(req))
 		log.Println("initialization complete")
 	}

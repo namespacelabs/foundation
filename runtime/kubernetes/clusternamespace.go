@@ -42,10 +42,6 @@ type clusterTarget struct {
 
 var _ runtime.ClusterNamespace = &ClusterNamespace{}
 
-type KubeConfig struct {
-	Config, Context, Namespace string
-}
-
 func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
 	cluster, err := ConnectToCluster(ctx, env.Configuration())
 	if err != nil {
@@ -58,8 +54,8 @@ func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterName
 	return bound.(*ClusterNamespace), nil
 }
 
-func (r *ClusterNamespace) KubeConfig() KubeConfig {
-	return KubeConfig{
+func (r *ClusterNamespace) KubeConfig() kubedef.KubeConfig {
+	return kubedef.KubeConfig{
 		Config:    r.cluster.host.HostEnv.Kubeconfig,
 		Context:   r.cluster.host.HostEnv.Context,
 		Namespace: r.target.namespace,

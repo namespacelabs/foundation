@@ -65,7 +65,7 @@ type Create struct {
 }
 
 type ApplyRoleBinding struct {
-	Description     string
+	DescriptionBase string
 	Namespaced      bool
 	RoleName        string
 	RoleBindingName string
@@ -87,14 +87,14 @@ type ExtendInitContainer struct {
 	With *InitContainerExtension
 }
 
-func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
+func (a Apply) ToDefinitionImpl(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, *OpApply, error) {
 	if a.Resource == nil {
-		return nil, fnerrors.InternalError("body is missing")
+		return nil, nil, fnerrors.InternalError("body is missing")
 	}
 
 	body, err := json.Marshal(a.Resource)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	op := &OpApply{
@@ -109,14 +109,19 @@ func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.Serialized
 
 	x, err := anypb.New(op)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &fnschema.SerializedInvocation{
 		Description: a.Description,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
-	}, nil
+	}, op, nil
+}
+
+func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
+	d, _, err := a.ToDefinitionImpl(scope...)
+	return d, err
 }
 
 func scopeToStrings(scope []fnschema.PackageName) []string {
@@ -232,7 +237,7 @@ func (ar ApplyRoleBinding) ToDefinition(scope ...fnschema.PackageName) (*fnschem
 	}
 
 	return &fnschema.SerializedInvocation{
-		Description: ar.Description,
+		Description: ar.DescriptionBase,
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
