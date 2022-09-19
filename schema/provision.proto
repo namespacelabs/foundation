@@ -8,9 +8,7 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
-import "schema/binary.proto";
 import "schema/package.proto";
-import "schema/volume.proto";
 
 message Invocation {
     reserved 3;
@@ -35,20 +33,6 @@ message InvocationSnapshot {
     string from_workspace = 1;
     bool   optional       = 2;
     bool   require_file   = 3;
-}
-
-message SidecarContainer {
-    string owner = 5;  // Package name.
-
-    // Deprecated, use binary_ref
-    string     binary     = 1;
-    PackageRef binary_ref = 4;
-
-    string          name = 3;
-    repeated string args = 2;
-
-    repeated BinaryConfig.EnvEntry env    = 6;
-    repeated Mount                 mounts = 7;
 }
 
 message StartupPlan {

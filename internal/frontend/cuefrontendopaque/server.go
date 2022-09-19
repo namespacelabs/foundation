@@ -45,7 +45,9 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		return nil, nil, err
 	}
 
-	out := &schema.Server{}
+	out := &schema.Server{
+		MainContainer: &schema.SidecarContainer{},
+	}
 	out.Name = bits.Name
 	out.Framework = schema.Framework_BASE
 	out.RunByDefault = true
@@ -89,7 +91,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		}
 
 		out.Volumes = append(out.Volumes, inlinedVolumes...)
-		out.Mounts = parsedMounts
+		out.MainContainer.Mounts = parsedMounts
 	}
 
 	for _, resource := range bits.Resources {

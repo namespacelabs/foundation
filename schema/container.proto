@@ -1,0 +1,28 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "schema/binary.proto";
+import "schema/package.proto";
+import "schema/volume.proto";
+
+// TODO: rename to "Container".
+message SidecarContainer {
+    string owner = 5;  // Package name.
+
+    // Deprecated, use binary_ref
+    string     binary     = 1;
+    PackageRef binary_ref = 4;
+
+    string          name = 3;
+    repeated string args = 2;
+
+    repeated BinaryConfig.EnvEntry env    = 6;
+    repeated Mount                 mounts = 7;
+}
