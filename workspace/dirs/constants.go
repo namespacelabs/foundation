@@ -8,12 +8,22 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// Any sub-directory.
-var DirsToExclude = []string{"node_modules"}
+var (
+	// Directories to exlude from source scanning.
+	// Any sub-directory.
+	dirsToExclude = []string{"node_modules"}
 
-// Relative to the workspace.
-var FilesToExclude = []string{}
+	// Patterns to exclude by default when building images. Integrations
+	// (e.g. nodejs) may add additional patterns.
+	BasePatternsToExclude = []string{
+		"**/node_modules/*",
+		"**/.git/*",
+		"**/.parcel-cache/*",
+	}
+)
 
-func IsExcluded(fullPath string, name string) bool {
-	return (len(name) > 1 && name[0] == '.') || slices.Contains(DirsToExclude, name)
+// Returns false if the directory shouldn't be scanned for Namespace source files (.cue, .proto).
+// This doesn't affect the content that is copied to the build image.
+func IsExcludedAsSource(name string) bool {
+	return (len(name) > 1 && name[0] == '.') || slices.Contains(dirsToExclude, name)
 }

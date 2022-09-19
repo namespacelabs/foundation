@@ -111,7 +111,8 @@ func SnapshotDirectory(absPath string) (*memfs.FS, error) {
 		}
 
 		if de.IsDir() {
-			if dirs.IsExcluded(osPathname, de.Name()) {
+			// TODO: use the exclude/include patterns passed as a config instead.
+			if dirs.IsExcludedAsSource(de.Name()) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -287,7 +288,8 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 			return err
 		}
 
-		if dirs.IsExcluded(path, d.Name()) {
+		// TODO: use the exclude/include patterns passed as a config instead.
+		if dirs.IsExcludedAsSource(d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

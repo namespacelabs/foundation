@@ -358,7 +358,7 @@ func listLocations(ctx context.Context, root *workspace.Root) ([]fnfs.Location, 
 		}
 
 		if d.IsDir() {
-			if dirs.IsExcluded(path, d.Name()) {
+			if dirs.IsExcludedAsSource(d.Name()) {
 				return fs.SkipDir
 			}
 			return nil

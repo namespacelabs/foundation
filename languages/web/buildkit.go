@@ -103,7 +103,9 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 
 	// Use separate layers for node_modules/package.json/yarn.lock, and sources, as the latter change more often.
 	// Copy all package.json files, not only from the given package, to support resolving ns-managed dependencies within the same module.
-	srcForYarn := buildkit.MakeLocalState(local, "**/package.json", "**/yarn.lock")
+	srcForYarn := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
+		Include: []string{"**/package.json", "**/yarn.lock"},
+	})
 
 	buildBase, err = runYarn(ctx, rel, target, buildBase, srcForYarn, *conf.TargetPlatform())
 	if err != nil {

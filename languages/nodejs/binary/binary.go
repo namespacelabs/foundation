@@ -23,6 +23,10 @@ const (
 	RunScriptPath = appRootPath + "/ns_run_node.sh"
 )
 
+var (
+	NodejsExclude = []string{"**/.yarn", "**/.pnp.*"}
+)
+
 type nodeJsBinary struct {
 	nodejsEnv string
 }
@@ -40,7 +44,9 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 	local := buildkit.LocalContents{Module: bnj.loc.Module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
 
-	src := buildkit.MakeLocalState(local)
+	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
+		Exclude: NodejsExclude,
+	})
 
 	buildBase = prepareAndRunInstall(ctx, buildBase, src)
 

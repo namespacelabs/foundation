@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/sdk/yarn"
+	"namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/languages/nodejs/yarnplugin"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -150,7 +151,10 @@ func AddExternalModules(ctx context.Context, workspace *schema.Workspace, rel st
 
 		moduleLocal := buildkit.LocalContents{Module: m, Path: ".", ObserveChanges: false}
 		locals = append(locals, moduleLocal)
-		buildBase = buildBase.With(llbutil.CopyFrom(buildkit.MakeLocalState(moduleLocal), ".", lfModule.Path))
+		localState := buildkit.MakeCustomLocalState(moduleLocal, buildkit.MakeLocalStateOpts{
+			Exclude: binary.NodejsExclude,
+		})
+		buildBase = buildBase.With(llbutil.CopyFrom(localState, ".", lfModule.Path))
 	}
 
 	return locals, buildBase, nil
