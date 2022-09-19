@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
+	pb "google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -37,7 +38,12 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 		}
 	}
 
-	env := orchestration.MakeSyntheticContext(req.Plan.Workspace, req.Plan.Environment, &client.HostEnv{Incluster: true}, req.Aws)
+	var extra []pb.Message
+	if req.Aws != nil {
+		extra = append(extra, req.Aws)
+	}
+
+	env := orchestration.MakeSyntheticContext(req.Plan.Workspace, req.Plan.Environment, &client.HostEnv{Incluster: true}, extra...)
 
 	// TODO store target state (req.Plan + merged with history) ?
 	id, err := svc.deployer.Schedule(req.Plan, env, now)
