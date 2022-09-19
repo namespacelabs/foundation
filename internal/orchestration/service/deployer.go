@@ -60,11 +60,7 @@ type RunningDeployment struct {
 func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arrival time.Time) (*RunningDeployment, error) {
 	id := ids.NewRandomBase32ID(16)
 
-	p, err := ops.NewPlan(plan.GetProgram().GetInvocation()...)
-	if err != nil {
-		log.Printf("id %s: failed to prepare plan: %v\n", id, err)
-		return nil, err
-	}
+	p := ops.NewPlan(plan.GetProgram().GetInvocation()...)
 
 	dir := filepath.Join(d.statusDir, id)
 	if err := os.MkdirAll(dir, 0700); err != nil {

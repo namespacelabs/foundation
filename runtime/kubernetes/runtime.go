@@ -27,7 +27,7 @@ var (
 	ObserveInitContainerLogs = false
 )
 
-const restmapperStateKey = "kubernetes.restmapper"
+const RestmapperStateKey = "kubernetes.restmapper"
 
 type ProvideOverrideFunc func(context.Context, planning.Configuration) (runtime.Class, error)
 
@@ -63,7 +63,7 @@ func Register() {
 		return kubernetesClass{}, nil
 	})
 
-	runtime.RegisterPrepare(restmapperStateKey, func(ctx context.Context, _ planning.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(RestmapperStateKey, func(ctx context.Context, _ planning.Configuration, cluster runtime.Cluster) (any, error) {
 		kube, ok := cluster.(*Cluster)
 		if !ok {
 			return nil, fnerrors.InternalError("expected kubernetes cluster")

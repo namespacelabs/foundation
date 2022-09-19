@@ -13,7 +13,6 @@ import (
 	k8srt "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
@@ -34,9 +33,7 @@ func (r *Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset,
 }
 
 func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Clientset, ns, podname string, rio runtime.TerminalIO, subresource string, params k8srt.Object) error {
-	config := client.CopyAndSetDefaults(*r.RESTConfig(), corev1.SchemeGroupVersion)
-
-	restClient, err := rest.RESTClientFor(config)
+	config, restClient, err := client.MakeGroupVersionBasedClientAndConfig(ctx, r.RESTConfig(), corev1.SchemeGroupVersion)
 	if err != nil {
 		return err
 	}

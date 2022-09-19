@@ -14,7 +14,6 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
@@ -24,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -71,22 +69,15 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 		return nil, err
 	}
 
-	resourceName := apply.GetResourceClass().GetResource()
-	if resourceName == "" {
-		resourceName = kubeparser.ResourceEndpointFromKind(&parsed)
-		if resourceName == "" {
-			return nil, fnerrors.InternalError("don't know the resource mapping for %q", parsed.GetKind())
-		}
-	}
-
-	if rc := apply.GetResourceClass(); rc != nil {
-		gv = kubeschema.GroupVersion{Group: rc.Group, Version: rc.Version}
+	resource, err := resolveResource(ctx, cluster, parsed.GroupVersionKind())
+	if err != nil {
+		return nil, err
 	}
 
 	var res unstructured.Unstructured
 	if err := tasks.Action("kubernetes.apply").Scope(scope...).
 		HumanReadablef(desc).
-		Arg("resource", resourceName).
+		Arg("resource", resource.Resource).
 		Arg("name", parsed.GetName()).
 		Arg("namespace", parsed.GetNamespace()).RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context) (bool, error) {
@@ -95,8 +86,8 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			// for them. So we first check if the CRD does exist, and we
 			// wait for its paths to become ready.
 			// XXX we should have metadata that identifies the resource class as a CRD.
-			if apply.ResourceClass != nil && apply.ResourceClass.GetGroup() == "k8s.namespacelabs.dev" {
-				crd := fmt.Sprintf("%s.%s", apply.ResourceClass.GetResource(), apply.ResourceClass.GetGroup())
+			if resource.Group == "k8s.namespacelabs.dev" {
+				crd := fmt.Sprintf("%s.%s", resource.Resource, resource.Group)
 
 				cli, err := apiextensionsv1.NewForConfig(cluster.RESTConfig())
 				if err != nil {
@@ -105,7 +96,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 
 				if err := kobs.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
 					ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", crd),
-					waitForCRD{apply.ResourceClass.Resource, crd}); err != nil {
+					waitForCRD{resource.Resource, crd}); err != nil {
 					return false, err
 				}
 			}
@@ -159,7 +150,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			return false, nil
 		},
 		Run: func(ctx context.Context) error {
-			client, err := client.MakeGroupVersionBasedClient(ctx, gv, cluster.RESTConfig())
+			client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
 			if err != nil {
 				return err
 			}
@@ -170,7 +161,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 				req = req.Namespace(parsed.GetNamespace())
 			}
 
-			prepReq := req.Resource(resourceName).
+			prepReq := req.Resource(resource.Resource).
 				Name(parsed.GetName()).
 				VersionedParams(&patchOpts, metav1.ParameterCodec).
 				Body([]byte(apply.BodyJson))
@@ -204,7 +195,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			Name:               parsed.GetName(),
 			ExpectedGeneration: generation,
 			ConditionType:      apply.CheckGenerationCondition.Type,
-			ResourceClass:      apply.ResourceClass,
+			Resource:           *resource,
 		}.WaitUntilReady}}, nil
 	}
 
@@ -336,5 +327,6 @@ func (w waitForCRD) Poll(ctx context.Context, cli *apiextensionsv1.Apiextensions
 		return false, err
 	}
 
+	// XXX check conditions instead.
 	return crd.Status.AcceptedNames.Plural == w.plural, nil
 }

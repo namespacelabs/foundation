@@ -9,22 +9,29 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/client-go/rest"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func fetchResource(ctx context.Context, restcfg *rest.Config, description string, resource client.ResourceClassLike, name, namespace string, scope []schema.PackageName) (*unstructured.Unstructured, error) {
+type Object interface {
+	GetObjectKind() schema.ObjectKind
+}
+
+func fetchResource(ctx context.Context, cluster kubedef.KubeCluster, description string, resource schema.GroupVersionResource, name, namespace string, scope []fnschema.PackageName) (*unstructured.Unstructured, error) {
 	return tasks.Return(ctx, tasks.Action("kubernetes.get").Scope(scope...).
 		HumanReadablef("Check: "+description).
-		Arg("resource", resourceName(resource)).
+		Arg("resource", resource.Resource).
 		Arg("name", name).
 		Arg("namespace", namespace), func(ctx context.Context) (*unstructured.Unstructured, error) {
-		client, err := client.MakeResourceSpecificClient(ctx, resource, restcfg)
+		client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +42,7 @@ func fetchResource(ctx context.Context, restcfg *rest.Config, description string
 			req.Namespace(namespace)
 		}
 
-		r := req.Resource(resourceName(resource)).
+		r := req.Resource(resource.Resource).
 			Name(name).
 			Body(&opts)
 
@@ -58,10 +65,16 @@ func fetchResource(ctx context.Context, restcfg *rest.Config, description string
 	})
 }
 
-func resourceName(r client.ResourceClassLike) string {
-	if klass := r.GetResourceClass(); klass != nil {
-		return klass.Resource
+func resolveResource(ctx context.Context, cluster kubedef.KubeCluster, gvk schema.GroupVersionKind) (*schema.GroupVersionResource, error) {
+	restMapper, err := cluster.EnsureState(ctx, kubernetes.RestmapperStateKey)
+	if err != nil {
+		return nil, err
 	}
 
-	return r.GetResource()
+	resource, err := restMapper.(meta.RESTMapper).RESTMapping(gvk.GroupKind(), gvk.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resource.Resource, nil
 }

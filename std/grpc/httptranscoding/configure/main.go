@@ -180,11 +180,6 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 					EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
 				},
 			},
-			ResourceClass: &kubedef.ResourceClass{
-				Resource: "httpgrpctranscoders",
-				Group:    "k8s.namespacelabs.dev",
-				Version:  "v1",
-			},
 			// This instructs the runtime to wait until the CRD above has a
 			// status.conditions of type Applied, which matches the observed
 			// generation.

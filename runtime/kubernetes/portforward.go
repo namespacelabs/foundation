@@ -70,9 +70,7 @@ func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[st
 		return nil, err
 	}
 
-	config := client.CopyAndSetDefaults(*u.RESTConfig(), v1.SchemeGroupVersion)
-
-	restClient, err := rest.RESTClientFor(config)
+	config, restClient, err := client.MakeGroupVersionBasedClientAndConfig(ctx, u.RESTConfig(), v1.SchemeGroupVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -89,9 +87,7 @@ func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[st
 }
 
 func (r *Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {
-	config := client.CopyAndSetDefaults(*r.RESTConfig(), v1.SchemeGroupVersion)
-
-	restClient, err := rest.RESTClientFor(config)
+	config, restClient, err := client.MakeGroupVersionBasedClientAndConfig(ctx, r.RESTConfig(), v1.SchemeGroupVersion)
 	if err != nil {
 		return err
 	}
@@ -154,7 +150,7 @@ func (r *Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPo
 	return eg.Wait()
 }
 
-func dialPod(ctx context.Context, restClient *rest.RESTClient, config *rest.Config, ns, podName string) (httpstream.Connection, error) {
+func dialPod(ctx context.Context, restClient rest.Interface, config *rest.Config, ns, podName string) (httpstream.Connection, error) {
 	reqtmpl := restClient.Post().Resource("pods").Namespace(ns).Name(podName).SubResource("portforward")
 
 	transport, upgrader, err := spdy.RoundTripperFor(config)

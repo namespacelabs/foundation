@@ -12,12 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -27,7 +27,7 @@ type WaitOnGenerationCondition struct {
 	Name, Namespace    string
 	ExpectedGeneration int64
 	ConditionType      string
-	ResourceClass      *kubedef.ResourceClass
+	Resource           schema.GroupVersionResource
 }
 
 func (w WaitOnGenerationCondition) WaitUntilReady(ctx context.Context, ch chan *orchestration.Event) error {
@@ -36,12 +36,12 @@ func (w WaitOnGenerationCondition) WaitUntilReady(ctx context.Context, ch chan *
 	}
 
 	return tasks.Action("kubernetes.wait-on-condition").
-		Arg("group_version", w.ResourceClass.GroupVersion()).
-		Arg("resource", w.ResourceClass.Resource).
+		Arg("group_version", w.Resource.GroupVersion()).
+		Arg("resource", w.Resource.Resource).
 		Arg("name", w.Name).
 		Arg("namespace", w.Namespace).
 		Run(ctx, func(ctx context.Context) error {
-			cli, err := client.MakeGroupVersionBasedClient(ctx, w.ResourceClass.GroupVersion(), w.RestConfig)
+			cli, err := client.MakeGroupVersionBasedClient(ctx, w.RestConfig, w.Resource.GroupVersion())
 			if err != nil {
 				return err
 			}
@@ -50,7 +50,7 @@ func (w WaitOnGenerationCondition) WaitUntilReady(ctx context.Context, ch chan *
 			return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(c context.Context) (bool, error) {
 				opts := metav1.GetOptions{}
 
-				req := cli.Get().Resource(w.ResourceClass.Resource).Namespace(w.Namespace).Name(w.Name).Body(&opts)
+				req := cli.Get().Resource(w.Resource.Resource).Namespace(w.Namespace).Name(w.Name).Body(&opts)
 
 				var res unstructured.Unstructured
 				if err := req.Do(ctx).Into(&res); err != nil {

@@ -13,7 +13,6 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fnschema "namespacelabs.dev/foundation/schema"
@@ -24,10 +23,9 @@ const (
 )
 
 type Apply struct {
-	Description   string
-	SetNamespace  bool
-	ResourceClass *ResourceClass
-	Resource      any
+	Description  string
+	SetNamespace bool
+	Resource     any
 
 	// If set, we wait until a status.conditions entry of matching type exists,
 	// that matches the resource's generation.
@@ -60,7 +58,6 @@ type Create struct {
 	UpdateIfExisting    bool
 	SetNamespace        bool
 	Resource            string
-	ResourceClass       *ResourceClass
 	Body                any
 }
 
@@ -98,9 +95,8 @@ func (a Apply) ToDefinitionImpl(scope ...fnschema.PackageName) (*fnschema.Serial
 	}
 
 	op := &OpApply{
-		BodyJson:      string(body), // We use strings for better debuggability.
-		ResourceClass: a.ResourceClass,
-		SetNamespace:  a.SetNamespace,
+		BodyJson:     string(body), // We use strings for better debuggability.
+		SetNamespace: a.SetNamespace,
 	}
 
 	if a.CheckGenerationCondition != nil {
@@ -182,7 +178,6 @@ func (c Create) ToDefinition(scope ...fnschema.PackageName) (*fnschema.Serialize
 
 	x, err := anypb.New(&OpCreate{
 		Resource:            c.Resource,
-		ResourceClass:       c.ResourceClass,
 		SetNamespace:        c.SetNamespace,
 		SkipIfAlreadyExists: c.SkipIfAlreadyExists,
 		UpdateIfExisting:    c.UpdateIfExisting,
@@ -281,11 +276,4 @@ func SerializeSelector(selector map[string]string) string {
 
 func Ego() metav1.ApplyOptions {
 	return metav1.ApplyOptions{FieldManager: K8sFieldManager}
-}
-
-func (rc *ResourceClass) GroupVersion() schema.GroupVersion {
-	return schema.GroupVersion{
-		Group:   rc.Group,
-		Version: rc.Version,
-	}
 }

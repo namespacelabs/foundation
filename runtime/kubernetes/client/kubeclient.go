@@ -9,13 +9,6 @@ import (
 	"fmt"
 	sync "sync"
 
-	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	networkingv1 "k8s.io/api/networking/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -24,7 +17,6 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -187,10 +179,6 @@ func (cfg *computedConfig) Namespace() (string, bool, error) {
 	return x.ClientConfig.Namespace()
 }
 
-func (cfg *computedConfig) ConfigAccess() clientcmd.ConfigAccess {
-	panic("ConfigAccess is not implemented")
-}
-
 func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
 
@@ -211,57 +199,18 @@ func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 	}, nil
 }
 
-var groups = map[string]schema.GroupVersion{
-	"configmaps":             corev1.SchemeGroupVersion,
-	"secrets":                corev1.SchemeGroupVersion,
-	"serviceaccounts":        corev1.SchemeGroupVersion,
-	"pods":                   corev1.SchemeGroupVersion,
-	"services":               corev1.SchemeGroupVersion,
-	"endpoints":              corev1.SchemeGroupVersion,
-	"namespaces":             corev1.SchemeGroupVersion,
-	"persistentvolumeclaims": corev1.SchemeGroupVersion,
-
-	"deployments":  appsv1.SchemeGroupVersion,
-	"statefulsets": appsv1.SchemeGroupVersion,
-
-	"clusterroles":        rbacv1.SchemeGroupVersion,
-	"clusterrolebindings": rbacv1.SchemeGroupVersion,
-	"roles":               rbacv1.SchemeGroupVersion,
-	"rolebindings":        rbacv1.SchemeGroupVersion,
-
-	"ingresses":      networkingv1.SchemeGroupVersion,
-	"ingressclasses": networkingv1.SchemeGroupVersion,
-
-	"validatingwebhookconfigurations": admissionregistrationv1.SchemeGroupVersion,
-
-	"jobs": batchv1.SchemeGroupVersion,
-
-	"customresourcedefinitions": apiextensionsv1.SchemeGroupVersion,
+func MakeGroupVersionBasedClientAndConfig(ctx context.Context, original *rest.Config, gv schema.GroupVersion) (*rest.Config, rest.Interface, error) {
+	config := copyAndSetDefaults(*original, gv)
+	client, err := rest.RESTClientFor(config)
+	return config, client, err
 }
 
-type ResourceClassLike interface {
-	GetResource() string
-	GetResourceClass() *kubedef.ResourceClass
+func MakeGroupVersionBasedClient(ctx context.Context, original *rest.Config, gv schema.GroupVersion) (rest.Interface, error) {
+	_, cli, err := MakeGroupVersionBasedClientAndConfig(ctx, original, gv)
+	return cli, err
 }
 
-func MakeGroupVersionBasedClient(ctx context.Context, gv schema.GroupVersion, cfg *rest.Config) (rest.Interface, error) {
-	return rest.RESTClientFor(CopyAndSetDefaults(*cfg, gv))
-}
-
-func MakeResourceSpecificClient(ctx context.Context, resource ResourceClassLike, cfg *rest.Config) (rest.Interface, error) {
-	if klass := resource.GetResourceClass(); klass != nil {
-		return MakeGroupVersionBasedClient(ctx, klass.GroupVersion(), cfg)
-	}
-
-	gv, ok := groups[resource.GetResource()]
-	if !ok {
-		return nil, fnerrors.InternalError("%s: don't know how to construct a client for this resource", resource.GetResource())
-	}
-
-	return rest.RESTClientFor(CopyAndSetDefaults(*cfg, gv))
-}
-
-func CopyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config {
+func copyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config {
 	config.GroupVersion = &gv
 	if gv.Group == "" {
 		config.APIPath = "/api"

@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -30,19 +31,21 @@ func registerCreate() {
 				return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
 			}
 
-			var obj struct {
-				Metadata metav1.ObjectMeta `json:"metadata"`
-			}
-
+			var obj kubeparser.ObjHeader
 			if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
 				return nil, fnerrors.BadInputError("%s: kubernetes.create: failed to parse resource: %w", d.Description, err)
 			}
 
-			if create.Resource == "" {
-				return nil, fnerrors.InternalError("%s: create.Resource is required", d.Description)
+			if obj.Kind == "" {
+				// XXX support older prebuilts
+				if create.Resource == "secrets" {
+					obj.SetGroupVersionKind(schema.GroupVersionKind{Version: "v1", Kind: "Secret"})
+				} else {
+					return nil, fnerrors.InternalError("%s: object Kind is required", d.Description)
+				}
 			}
 
-			if obj.Metadata.Name == "" {
+			if obj.Name == "" {
 				return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 			}
 
@@ -51,9 +54,14 @@ func registerCreate() {
 				return nil, err
 			}
 
+			resource, err := resolveResource(ctx, cluster, obj.GetObjectKind().GroupVersionKind())
+			if err != nil {
+				return nil, err
+			}
+
 			if create.SkipIfAlreadyExists || create.UpdateIfExisting {
-				obj, err := fetchResource(ctx, cluster.RESTConfig(), d.Description, create, obj.Metadata.Name,
-					obj.Metadata.Namespace, fnschema.PackageNames(d.Scope...))
+				obj, err := fetchResource(ctx, cluster, d.Description, *resource, obj.Name,
+					obj.Namespace, fnschema.PackageNames(d.Scope...))
 				if err != nil {
 					return nil, fnerrors.New("failed to fetch resource: %w", err)
 				}
@@ -72,17 +80,17 @@ func registerCreate() {
 						// This is not advised. Overwriting without reading.
 						msg.SetResourceVersion(obj.GetResourceVersion())
 
-						return nil, updateResource(ctx, d, create, msg, cluster.RESTConfig())
+						return nil, updateResource(ctx, d, *resource, msg, cluster.RESTConfig())
 					}
 				}
 			}
 
 			if err := tasks.Action("kubernetes.create").Scope(fnschema.PackageNames(d.Scope...)...).
 				HumanReadablef(d.Description).
-				Arg("resource", resourceName(create)).
-				Arg("name", obj.Metadata.Name).
-				Arg("namespace", obj.Metadata.Namespace).Run(ctx, func(ctx context.Context) error {
-				client, err := client.MakeResourceSpecificClient(ctx, create, cluster.RESTConfig())
+				Arg("resource", resource.Resource).
+				Arg("name", obj.Name).
+				Arg("namespace", obj.Namespace).Run(ctx, func(ctx context.Context) error {
+				client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
 				if err != nil {
 					return err
 				}
@@ -92,11 +100,11 @@ func registerCreate() {
 					FieldManager: kubedef.K8sFieldManager,
 				}
 
-				if obj.Metadata.Namespace != "" {
-					req.Namespace(obj.Metadata.Namespace)
+				if obj.Namespace != "" {
+					req.Namespace(obj.Namespace)
 				}
 
-				r := req.Resource(resourceName(create)).
+				r := req.Resource(resource.Resource).
 					VersionedParams(&opts, metav1.ParameterCodec).
 					Body([]byte(create.BodyJson))
 
@@ -138,13 +146,13 @@ func registerCreate() {
 	})
 }
 
-func updateResource(ctx context.Context, d *fnschema.SerializedInvocation, resourceClass client.ResourceClassLike, body *unstructured.Unstructured, restcfg *rest.Config) error {
+func updateResource(ctx context.Context, d *fnschema.SerializedInvocation, resource schema.GroupVersionResource, body *unstructured.Unstructured, restcfg *rest.Config) error {
 	return tasks.Action("kubernetes.update").Scope(fnschema.PackageNames(d.Scope...)...).
 		HumanReadablef(d.Description).
-		Arg("resource", resourceName(resourceClass)).
+		Arg("resource", resource.Resource).
 		Arg("name", body.GetName()).
 		Arg("namespace", body.GetNamespace()).Run(ctx, func(ctx context.Context) error {
-		client, err := client.MakeResourceSpecificClient(ctx, resourceClass, restcfg)
+		client, err := client.MakeGroupVersionBasedClient(ctx, restcfg, resource.GroupVersion())
 		if err != nil {
 			return err
 		}
@@ -158,7 +166,7 @@ func updateResource(ctx context.Context, d *fnschema.SerializedInvocation, resou
 			req.Namespace(body.GetNamespace())
 		}
 
-		r := req.Resource(resourceName(resourceClass)).
+		r := req.Resource(resource.Resource).
 			Name(body.GetName()).
 			VersionedParams(&opts, metav1.ParameterCodec).
 			Body(body)

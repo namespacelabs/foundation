@@ -35,7 +35,8 @@ func RegisterCreateSecret() {
 				return nil, err
 			}
 
-			existing, err := fetchResource(ctx, cluster.RESTConfig(), d.Description, inlineClass("secrets"), create.Name, create.Namespace, fnschema.PackageNames(d.Scope...))
+			existing, err := fetchResource(ctx, cluster, d.Description, schema.GroupVersionResource{Version: "v1", Resource: "secrets"},
+				create.Name, create.Namespace, fnschema.PackageNames(d.Scope...))
 			if err != nil {
 				return nil, err
 			}
@@ -97,8 +98,3 @@ func RegisterCreateSecret() {
 		},
 	})
 }
-
-type inlineClass string
-
-func (s inlineClass) GetResource() string                      { return string(s) }
-func (s inlineClass) GetResourceClass() *kubedef.ResourceClass { return nil }
