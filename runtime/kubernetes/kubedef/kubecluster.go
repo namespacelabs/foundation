@@ -9,6 +9,7 @@ import (
 
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -19,6 +20,7 @@ type KubeCluster interface {
 
 	Client() *k8s.Clientset
 	RESTConfig() *rest.Config
+	ComputedConfig() clientcmd.ClientConfig
 }
 
 type KubeClusterNamespace interface {

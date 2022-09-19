@@ -10,6 +10,7 @@ import (
 
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -75,6 +76,10 @@ func (u *Cluster) Client() *k8s.Clientset {
 
 func (u *Cluster) RESTConfig() *rest.Config {
 	return u.computedClient.RESTConfig
+}
+
+func (u *Cluster) ComputedConfig() clientcmd.ClientConfig {
+	return u.computedClient.ClientConfig()
 }
 
 func (u *Cluster) HostConfig() *client.HostConfig {

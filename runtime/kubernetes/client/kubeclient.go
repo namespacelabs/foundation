@@ -32,7 +32,8 @@ import (
 type ClusterConfiguration struct {
 	Config           clientcmdapi.Config
 	TokenProvider    TokenProviderFunc
-	ProviderSpecific any // Up to an implementation to attach state if needed.
+	Ephemeral        bool // Set to true if thie target cluster is ephemeral.
+	ProviderSpecific any  // Up to an implementation to attach state if needed.
 }
 
 type DeferredProvider struct{}
@@ -48,21 +49,26 @@ var (
 type ComputedClient struct {
 	Clientset  *k8s.Clientset
 	RESTConfig *rest.Config
-	parent     *computedConfig
+	internal   *configResult
 }
 
 func (cc ComputedClient) Provider() (ClusterConfiguration, error) {
-	if cc.parent == nil {
+	if cc.internal == nil {
 		return ClusterConfiguration{}, nil
 	}
 
-	x, err := cc.parent.computeConfig()
-	if err != nil {
-		return ClusterConfiguration{}, err
+	return cc.internal.Provider, nil
+}
+
+func (cc ComputedClient) ClientConfig() clientcmd.ClientConfig {
+	if cc.internal == nil {
+		return nil
 	}
 
-	return x.Provider, nil
+	return cc.internal.ClientConfig
 }
+
+func (cc ComputedClient) Ephemeral() bool { return cc.internal.Ephemeral }
 
 func RegisterConfigurationProvider(name string, p ProviderFunc) {
 	providers[name] = p
@@ -84,6 +90,7 @@ type configResult struct {
 	ClientConfig  clientcmd.ClientConfig
 	TokenProvider TokenProviderFunc
 	Provider      ClusterConfiguration
+	Ephemeral     bool
 }
 
 func (cfg *computedConfig) computeConfig() (*configResult, error) {
@@ -111,6 +118,7 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 			ClientConfig:  clientcmd.NewDefaultClientConfig(x.Config, nil),
 			TokenProvider: x.TokenProvider,
 			Provider:      x,
+			Ephemeral:     x.Ephemeral,
 		}
 
 		return cfg.computed, nil
@@ -138,31 +146,37 @@ func (cfg *computedConfig) RawConfig() (clientcmdapi.Config, error) {
 	return x.ClientConfig.RawConfig()
 }
 
-func (cfg *computedConfig) ClientConfig() (*rest.Config, error) {
+func (cfg *computedConfig) ClientConfigAndInternal() (*configResult, *rest.Config, error) {
 	if cfg.host.HostEnv.GetIncluster() {
-		return rest.InClusterConfig()
+		config, err := rest.InClusterConfig()
+		return nil, config, err
 	}
 
 	x, err := cfg.computeConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	computed, err := x.ClientConfig.ClientConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if x.TokenProvider != nil {
 		token, err := x.TokenProvider(cfg.ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		computed.BearerToken = token
 	}
 
-	return computed, nil
+	return x, computed, nil
+}
+
+func (cfg *computedConfig) ClientConfig() (*rest.Config, error) {
+	_, config, err := cfg.ClientConfigAndInternal()
+	return config, err
 }
 
 func (cfg *computedConfig) Namespace() (string, bool, error) {
@@ -180,9 +194,7 @@ func (cfg *computedConfig) ConfigAccess() clientcmd.ConfigAccess {
 func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
 
-	parent := NewClientConfig(ctx, host)
-
-	config, err := parent.ClientConfig()
+	computed, config, err := NewClientConfig(ctx, host).ClientConfigAndInternal()
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +207,7 @@ func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 	return &ComputedClient{
 		Clientset:  clientset,
 		RESTConfig: config,
-		parent:     parent,
+		internal:   computed,
 	}, nil
 }
 

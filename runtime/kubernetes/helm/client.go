@@ -7,30 +7,26 @@ package helm
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"regexp"
-	"strings"
-	"time"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
-	diskcached "k8s.io/client-go/discovery/cached/disk"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func NewConfiguration(ctx context.Context, host *client.HostConfig, namespace string) (*action.Configuration, error) {
+func NewConfiguration(ctx context.Context, host kubedef.KubeCluster, namespace string) (*action.Configuration, error) {
 	cfg := &action.Configuration{}
 
-	g := getter{cfg: client.NewClientConfig(ctx, host)}
+	// g := getter{cfg: client.NewClientConfig(ctx, host)}
+	g := clusterWrapper{host}
 	debugLogger := func(format string, v ...interface{}) {
 		fmt.Fprintf(console.Debug(ctx), "helm: "+format+"\n", v...)
 	}
@@ -42,7 +38,7 @@ func NewConfiguration(ctx context.Context, host *client.HostConfig, namespace st
 	return cfg, nil
 }
 
-func NewInstall(ctx context.Context, host *client.HostConfig, releaseName, namespace string, chart *chart.Chart, values map[string]interface{}) (*release.Release, error) {
+func NewInstall(ctx context.Context, host kubedef.KubeCluster, releaseName, namespace string, chart *chart.Chart, values map[string]interface{}) (*release.Release, error) {
 	return tasks.Return(ctx, tasks.Action("helm.install").Arg("chart", chart.Metadata.Name).Arg("name", releaseName),
 		func(ctx context.Context) (*release.Release, error) {
 			cfg, err := NewConfiguration(ctx, host, namespace)
@@ -69,37 +65,19 @@ func NewInstall(ctx context.Context, host *client.HostConfig, releaseName, names
 		})
 }
 
-type getter struct {
-	cfg clientcmd.ClientConfig
+type clusterWrapper struct {
+	cfg kubedef.KubeCluster
 }
 
-func (g getter) ToRESTConfig() (*rest.Config, error) {
-	c, err := g.ToRawKubeConfigLoader().ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
+func (g clusterWrapper) ToRESTConfig() (*rest.Config, error) {
+	return g.cfg.RESTConfig(), nil
 }
 
-func (g getter) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
-	config, err := g.ToRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	cacheDir, err := dirs.Ensure(dirs.Subdir("k8s-discovery"))
-	if err != nil {
-		return nil, err
-	}
-
-	httpCacheDir := filepath.Join(cacheDir, "http")
-	discoveryCacheDir := computeDiscoverCacheDir(filepath.Join(cacheDir, "discovery"), config.Host)
-
-	return diskcached.NewCachedDiscoveryClientForConfig(config, discoveryCacheDir, httpCacheDir, time.Duration(6*time.Hour))
+func (g clusterWrapper) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
+	return client.NewDiscoveryClient(g.cfg.RESTConfig(), false)
 }
 
-func (g getter) ToRESTMapper() (meta.RESTMapper, error) {
+func (g clusterWrapper) ToRESTMapper() (meta.RESTMapper, error) {
 	discoveryClient, err := g.ToDiscoveryClient()
 	if err != nil {
 		return nil, err
@@ -110,18 +88,6 @@ func (g getter) ToRESTMapper() (meta.RESTMapper, error) {
 	return expander, nil
 }
 
-func (g getter) ToRawKubeConfigLoader() clientcmd.ClientConfig {
-	return g.cfg
-}
-
-// overlyCautiousIllegalFileCharacters matches characters that *might* not be supported.  Windows is really restrictive, so this is really restrictive
-var overlyCautiousIllegalFileCharacters = regexp.MustCompile(`[^(\w/.)]`)
-
-// computeDiscoverCacheDir takes the parentDir and the host and comes up with a "usually non-colliding" name.
-func computeDiscoverCacheDir(parentDir, host string) string {
-	// strip the optional scheme from host if its there:
-	schemelessHost := strings.Replace(strings.Replace(host, "https://", "", 1), "http://", "", 1)
-	// now do a simple collapse of non-AZ09 characters.  Collisions are possible but unlikely.  Even if we do collide the problem is short lived
-	safeHost := overlyCautiousIllegalFileCharacters.ReplaceAllString(schemelessHost, "_")
-	return filepath.Join(parentDir, safeHost)
+func (g clusterWrapper) ToRawKubeConfigLoader() clientcmd.ClientConfig {
+	return g.cfg.ComputedConfig()
 }

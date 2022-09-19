@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -110,28 +111,31 @@ func RegisterClusterProvider() {
 	})
 }
 
-func getOrCreate(ctx context.Context, cfg planning.Configuration) (*KubernetesCluster, error) {
+func getOrCreate(ctx context.Context, cfg planning.Configuration) (bool, *KubernetesCluster, error) {
 	conf := &PrebuiltCluster{}
 
 	if cfg.Get(conf) {
-		return GetCluster(ctx, conf.ClusterId)
+		cluster, err := GetCluster(ctx, conf.ClusterId)
+		// Pre-defined clusters are never ephemeral.
+		return false, cluster, err
 	}
 
 	result, err := CreateClusterForEnv(ctx, cfg, true)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 
-	return result.Cluster, nil
+	return true, result.Cluster, nil
 }
 
 func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
-	cluster, err := getOrCreate(ctx, cfg)
+	ephemeral, cluster, err := getOrCreate(ctx, cfg)
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
 
 	var p client.ClusterConfiguration
+	p.Ephemeral = ephemeral
 	p.ProviderSpecific = cluster
 	p.Config = *makeConfig(cluster)
 	return p, nil
@@ -448,6 +452,10 @@ func (d *cluster) Client() *k8s.Clientset {
 
 func (d *cluster) RESTConfig() *rest.Config {
 	return d.cluster.RESTConfig()
+}
+
+func (d *cluster) ComputedConfig() clientcmd.ClientConfig {
+	return d.cluster.ComputedConfig()
 }
 
 func (d *cluster) config() (*KubernetesCluster, error) {
