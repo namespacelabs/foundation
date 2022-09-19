@@ -167,15 +167,6 @@ func (g *Plan) Definitions() []*schema.SerializedInvocation {
 func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 	graph := toposort.NewGraph(len(nodes))
 
-	keyTypes := map[string]struct{}{}
-	for _, n := range nodes {
-		keyTypes[n.reg.key] = struct{}{}
-	}
-
-	for k := range keyTypes {
-		graph.AddNode("key:" + k)
-	}
-
 	categories := map[string]struct{}{}
 	for _, n := range nodes {
 		for _, cat := range n.order.GetSchedCategory() {
@@ -198,7 +189,6 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 		ks := fmt.Sprintf("iid:%d", k)
 
 		graph.AddNode(ks)
-		graph.AddEdge(ks, "key:"+n.reg.key)
 
 		for _, cat := range n.order.GetSchedCategory() {
 			graph.AddEdge(ks, "cat:"+cat)
