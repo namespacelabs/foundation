@@ -24,9 +24,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type generator struct{}
-
-func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
+func generateWebBackend(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
 	loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 	if err != nil {
 		return nil, err
@@ -56,10 +54,6 @@ func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg
 			return bytestream.WriteTo(w, contents)
 		})
 	})
-}
-
-func (generator) PlanOrder(*OpGenHttpBackend) (*schema.ScheduleOrder, error) {
-	return nil, nil
 }
 
 type genFunc func(context.Context, pkggraph.Location, *OpGenHttpBackend_Backend) (*backendDefinition, error)

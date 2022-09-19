@@ -35,12 +35,10 @@ import (
 const wellKnownResource = "foundation.std.types.Resource"
 
 func Register() {
-	ops.Register[*OpGenNode](generator{})
+	ops.RegisterHandlerFunc(generateNode)
 }
 
-type generator struct{}
-
-func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
+func generateNode(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
 	loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
 	if err != nil {
 		return nil, err
@@ -51,11 +49,7 @@ func (generator) Handle(ctx context.Context, _ *schema.SerializedInvocation, msg
 		return nil, err
 	}
 
-	return nil, generateNode(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
-}
-
-func (generator) PlanOrder(*OpGenNode) (*schema.ScheduleOrder, error) {
-	return nil, nil
+	return nil, generateExports(ctx, loc, msg.Node, msg.Protos, loc.Module.ReadWriteFS())
 }
 
 func ProtosForNode(pkg *pkggraph.Package) ([]*schema.SerializedInvocation, error) {
@@ -102,7 +96,7 @@ func ForNodeForLanguage(pkg *pkggraph.Package, available []*schema.Node) ([]*sch
 	return allDefs, nil
 }
 
-func generateNode(ctx context.Context, loc pkggraph.Location, n *schema.Node, parsed *protos.FileDescriptorSetAndDeps, fs fnfs.ReadWriteFS) error {
+func generateExports(ctx context.Context, loc pkggraph.Location, n *schema.Node, parsed *protos.FileDescriptorSetAndDeps, fs fnfs.ReadWriteFS) error {
 	var imports uniquestrings.List
 
 	pd, err := protodesc.NewFiles(parsed.AsFileDescriptorSet())

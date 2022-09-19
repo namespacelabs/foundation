@@ -22,13 +22,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-// A dispatcher provides the implementation for a particular type, i.e. it
-// handles the execution of a particular serialized invocation.
-type Dispatcher[M proto.Message] interface {
-	Handle(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
-	PlanOrder(M) (*schema.ScheduleOrder, error)
-}
-
 type HandleResult struct {
 	Waiters []Waiter
 }
@@ -42,6 +35,15 @@ type Plan struct {
 type parsedPlan struct {
 	definitions []*schema.SerializedInvocation
 	nodes       []*rnode
+}
+
+type rnode struct {
+	def   *schema.SerializedInvocation
+	obj   proto.Message
+	order *schema.ScheduleOrder
+	reg   *registration
+	res   *HandleResult
+	err   error // Error captured from a previous run.
 }
 
 func NewEmptyPlan() *Plan {
@@ -108,7 +110,7 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 			node.order = src.Order
 		} else {
 			var err error
-			node.order, err = reg.planOrder(copy)
+			node.order, err = reg.funcs.PlanOrder(copy)
 			if err != nil {
 				return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 			}
@@ -143,10 +145,9 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 			continue
 		}
 
-		dispatcher := n.reg.dispatcher
 		typeUrl := n.def.Impl.GetTypeUrl()
 
-		d, err := dispatcher(ctx, n.def, n.obj)
+		d, err := n.reg.funcs.Handle(ctx, n.def, n.obj)
 		n.res = d
 		n.err = err
 		if err != nil {
