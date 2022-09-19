@@ -20,7 +20,6 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -137,7 +136,12 @@ func provideCluster(ctx context.Context, cfg planning.Configuration) (client.Clu
 	var p client.ClusterConfiguration
 	p.Ephemeral = ephemeral
 	p.ProviderSpecific = cluster
-	p.Config = *makeConfig(cluster)
+	p.Config = *client.MakeApiConfig(&client.StaticConfig{
+		EndpointAddress:          cluster.EndpointAddress,
+		CertificateAuthorityData: cluster.CertificateAuthorityData,
+		ClientCertificateData:    cluster.ClientCertificateData,
+		ClientKeyData:            cluster.ClientKeyData,
+	})
 	return p, nil
 }
 
@@ -273,29 +277,6 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 	}
 
 	return result, nil
-}
-
-func makeConfig(cr *KubernetesCluster) *api.Config {
-	cfg := api.NewConfig()
-	cluster := api.NewCluster()
-	cluster.CertificateAuthorityData = cr.CertificateAuthorityData
-	cluster.Server = cr.EndpointAddress
-	auth := api.NewAuthInfo()
-	auth.ClientCertificateData = cr.ClientCertificateData
-	auth.ClientKeyData = cr.ClientKeyData
-	c := api.NewContext()
-	c.Cluster = "default"
-	c.AuthInfo = "default"
-
-	cfg.Clusters["default"] = cluster
-	cfg.AuthInfos["default"] = auth
-	cfg.Contexts["default"] = c
-
-	cfg.Kind = "Config"
-	cfg.APIVersion = "v1"
-	cfg.CurrentContext = "default"
-
-	return cfg
 }
 
 func DestroyCluster(ctx context.Context, clusterId string) error {

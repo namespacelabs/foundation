@@ -122,6 +122,14 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 		return cfg.computed, nil
 	}
 
+	if c.StaticConfig != nil {
+		cfg.computed = &configResult{
+			ClientConfig: clientcmd.NewDefaultClientConfig(*MakeApiConfig(c.StaticConfig), nil),
+		}
+
+		return cfg.computed, nil
+	}
+
 	if c.GetKubeconfig() == "" {
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
