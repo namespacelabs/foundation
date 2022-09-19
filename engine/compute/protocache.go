@@ -9,9 +9,9 @@ import (
 	"reflect"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/engine/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/cache"
 )
 
 func RegisterProtoCacheable() {

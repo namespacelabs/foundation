@@ -8,7 +8,7 @@ import (
 	"context"
 	"io/fs"
 
-	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 

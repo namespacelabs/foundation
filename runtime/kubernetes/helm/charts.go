@@ -10,11 +10,11 @@ import (
 
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func Chart(repo, name, version string, digest schema.Digest) compute.Computable[*chart.Chart] {

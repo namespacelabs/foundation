@@ -8,8 +8,8 @@ import (
 	"context"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 

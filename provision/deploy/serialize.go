@@ -5,7 +5,7 @@
 package deploy
 
 import (
-	"namespacelabs.dev/foundation/internal/engine/ops"
+	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/schema"
 )
 

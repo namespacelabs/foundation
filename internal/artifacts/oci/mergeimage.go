@@ -11,7 +11,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"namespacelabs.dev/foundation/workspace/compute"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 

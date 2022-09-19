@@ -9,9 +9,9 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type mergeSpecs struct {

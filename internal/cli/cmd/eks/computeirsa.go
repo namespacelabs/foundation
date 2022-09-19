@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/std/planning"

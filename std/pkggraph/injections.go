@@ -4,7 +4,7 @@
 
 package pkggraph
 
-import "namespacelabs.dev/foundation/internal/engine/ops"
+import "namespacelabs.dev/foundation/engine/ops"
 
 var (
 	PackageLoaderInjection = ops.Define[PackageLoader]("ns.pkggraph.package-loader")

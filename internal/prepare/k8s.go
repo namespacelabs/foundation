@@ -7,9 +7,9 @@ package prepare
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 

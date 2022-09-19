@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/build/registry"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type staticRegistry struct{ r *registry.Registry }

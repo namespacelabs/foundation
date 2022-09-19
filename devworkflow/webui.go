@@ -9,10 +9,10 @@ import (
 	"fmt"
 
 	"github.com/gorilla/mux"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 const (

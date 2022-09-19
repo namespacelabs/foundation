@@ -4,7 +4,7 @@
 
 package runtime
 
-import "namespacelabs.dev/foundation/internal/engine/ops"
+import "namespacelabs.dev/foundation/engine/ops"
 
 // ClusterInjection is used in ops.Execute to provide access to the cluster instance.
 var ClusterInjection = ops.Define[Cluster]("ns.runtime.cluster")

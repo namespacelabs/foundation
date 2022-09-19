@@ -10,10 +10,10 @@ import (
 	"io"
 	"os"
 
+	"namespacelabs.dev/foundation/engine/cache"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/cache"
 )
 
 func RegisterBytesCacheable() {

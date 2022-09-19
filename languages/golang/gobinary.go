@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
@@ -16,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/planning/knobs"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type GoBinary struct {

@@ -10,13 +10,13 @@ import (
 	"io/fs"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"namespacelabs.dev/foundation/engine/cache"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/cache"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 func RegisterFSCacheable() {

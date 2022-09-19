@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/orchestration"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
@@ -16,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/compute"
 )
 
 type updateCluster struct {
