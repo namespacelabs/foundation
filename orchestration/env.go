@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	serverPkg = "namespacelabs.dev/foundation/orchestration/server"
-	toolPkg   = "namespacelabs.dev/foundation/orchestration/server/tool"
+	serverPkg schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
+	toolPkg   schema.PackageName = "namespacelabs.dev/foundation/orchestration/server/tool"
 )
 
 func MakeSyntheticConfiguration(wsproto *schema.Workspace, envName string, hostEnv *client.HostEnv, extra ...proto.Message) planning.Configuration {
@@ -50,16 +50,16 @@ func MakeOrchestratorContext(ctx context.Context, conf planning.Configuration) (
 
 	var prebuilts []*schema.Workspace_BinaryDigest
 
-	for _, pkg := range []string{serverPkg, toolPkg} {
-		res, err := fnapi.GetLatestPrebuilt(ctx, schema.PackageName(pkg))
-		if err != nil {
-			return nil, err
-		}
+	res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
+	if err != nil {
+		return nil, err
+	}
 
+	for _, prebuilt := range res.Prebuilt {
 		prebuilts = append(prebuilts, &schema.Workspace_BinaryDigest{
-			PackageName: pkg,
-			Repository:  res.Repository,
-			Digest:      res.Digest,
+			PackageName: prebuilt.PackageName,
+			Repository:  prebuilt.Repository,
+			Digest:      prebuilt.Digest,
 		})
 	}
 

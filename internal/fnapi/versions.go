@@ -54,22 +54,27 @@ func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRe
 	return &resp, nil
 }
 
-type GetLatestPrebuiltRequest struct {
-	PackageName string `json:"package_name"`
+type GetLatestPrebuiltsRequest struct {
+	PackageName []string `json:"package_name,omitempty"`
 }
 
-type GetLatestPrebuiltResponse struct {
-	Repository string `json:"repository"`
-	Digest     string `json:"digest"`
+type GetLatestPrebuiltsResponse struct {
+	Prebuilt []*GetLatestPrebuiltsResponse_Prebuilt `json:"prebuilt,omitempty"`
 }
 
-func GetLatestPrebuilt(ctx context.Context, pkg schema.PackageName) (*GetLatestPrebuiltResponse, error) {
-	req := GetLatestPrebuiltRequest{
-		PackageName: pkg.String(),
+type GetLatestPrebuiltsResponse_Prebuilt struct {
+	PackageName string `json:"package_name,omitempty"`
+	Repository  string `json:"repository,omitempty"`
+	Digest      string `json:"digest,omitempty"`
+}
+
+func GetLatestPrebuilts(ctx context.Context, pkgs ...schema.PackageName) (*GetLatestPrebuiltsResponse, error) {
+	req := GetLatestPrebuiltsRequest{
+		PackageName: schema.Strs(pkgs...),
 	}
 
-	var resp GetLatestPrebuiltResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestPrebuilt", &req, DecodeJSONResponse(&resp)); err != nil {
+	var resp GetLatestPrebuiltsResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestPrebuilts", &req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 

@@ -79,7 +79,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, 
 
 	var endpoint *schema.Endpoint
 	for _, e := range computed.ComputedStack.Endpoints {
-		if e.ServerOwner != serverPkg {
+		if !serverPkg.Equals(e.ServerOwner) {
 			continue
 		}
 
