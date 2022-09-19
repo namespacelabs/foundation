@@ -39,7 +39,7 @@ func RegisterPrepare() {
 }
 
 func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, cluster runtime.Cluster, wait bool) (any, error) {
-	env, err := makeOrchEnv(ctx, targetEnv)
+	env, err := MakeOrchestratorContext(ctx, targetEnv)
 	if err != nil {
 		return nil, err
 	}

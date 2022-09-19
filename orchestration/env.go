@@ -7,9 +7,11 @@ package orchestration
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
@@ -21,7 +23,21 @@ const (
 	toolPkg   = "namespacelabs.dev/foundation/orchestration/server/tool"
 )
 
-func makeOrchEnv(ctx context.Context, conf planning.Configuration) (planning.Context, error) {
+func MakeSyntheticConfiguration(wsproto *schema.Workspace, envName string, hostEnv *client.HostEnv, extra ...proto.Message) planning.Configuration {
+	messages := []proto.Message{hostEnv}
+	messages = append(messages, extra...)
+
+	ws := planning.MakeWorkspace(wsproto, nil)
+
+	return planning.MakeConfigurationWith(envName, ws, planning.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
+}
+
+func MakeSyntheticContext(wsproto *schema.Workspace, env *schema.Environment, hostEnv *client.HostEnv, extra ...proto.Message) planning.Context {
+	cfg := MakeSyntheticConfiguration(wsproto, env.Name, hostEnv, extra...)
+	return planning.MakeUnverifiedContext(cfg, env)
+}
+
+func MakeOrchestratorContext(ctx context.Context, conf planning.Configuration) (planning.Context, error) {
 	// We use a static environment here, since the orchestrator has global scope.
 	envProto := &schema.Environment{
 		Name:      kubedef.AdminNamespace,
@@ -39,6 +55,7 @@ func makeOrchEnv(ctx context.Context, conf planning.Configuration) (planning.Con
 		if err != nil {
 			return nil, err
 		}
+
 		prebuilts = append(prebuilts, &schema.Workspace_BinaryDigest{
 			PackageName: pkg,
 			Repository:  res.Repository,
