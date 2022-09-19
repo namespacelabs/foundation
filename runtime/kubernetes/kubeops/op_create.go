@@ -25,43 +25,59 @@ import (
 )
 
 func registerCreate() {
-	ops.RegisterFuncs(ops.Funcs[*kubedef.OpCreate]{
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, create *kubedef.OpCreate) (*ops.HandleResult, error) {
+	ops.RegisterVFuncs(ops.VFuncs[*kubedef.OpCreate, *parsedCreate]{
+		Parse: func(ctx context.Context, def *fnschema.SerializedInvocation, create *kubedef.OpCreate) (*parsedCreate, error) {
 			if create.BodyJson == "" {
-				return nil, fnerrors.InternalError("%s: apply.Body is required", d.Description)
+				return nil, fnerrors.InternalError("create.Body is required")
 			}
 
-			var obj kubeparser.ObjHeader
-			if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
-				return nil, fnerrors.BadInputError("%s: kubernetes.create: failed to parse resource: %w", d.Description, err)
-			}
+			parsed := &parsedCreate{spec: create}
 
-			if obj.Kind == "" {
-				// XXX support older prebuilts
-				if create.Resource == "secrets" {
-					obj.SetGroupVersionKind(schema.GroupVersionKind{Version: "v1", Kind: "Secret"})
-				} else {
-					return nil, fnerrors.InternalError("%s: object Kind is required", d.Description)
+			// XXX handle old versions of the secrets prebuilt which don't return a Kind within the body.
+			if create.Resource == "secrets" {
+				var obj kubeparser.ObjHeader
+				if err := json.Unmarshal([]byte(create.BodyJson), &obj); err != nil {
+					return nil, fnerrors.BadInputError("%s: kubernetes.create: failed to parse resource: %w", def.Description, err)
 				}
+
+				obj.SetGroupVersionKind(schema.GroupVersionKind{Version: "v1", Kind: "Secret"})
+
+				parsed.obj = obj
+				parsed.Name = obj.Name
+				parsed.Namespace = obj.Namespace
+			} else {
+				var u unstructured.Unstructured
+				if err := json.Unmarshal([]byte(create.BodyJson), &u); err != nil {
+					return nil, fnerrors.BadInputError("kubernetes.apply: failed to parse resource: %w", err)
+				}
+
+				parsed.obj = &u
+				parsed.Name = u.GetName()
+				parsed.Namespace = u.GetNamespace()
 			}
 
-			if obj.Name == "" {
-				return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
+			if parsed.Name == "" {
+				return nil, fnerrors.InternalError("%s: create.Name is required", def.Description)
 			}
 
+			return parsed, nil
+		},
+
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedCreate) (*ops.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
 			}
 
-			resource, err := resolveResource(ctx, cluster, obj.GetObjectKind().GroupVersionKind())
+			resource, err := resolveResource(ctx, cluster, parsed.obj.GetObjectKind().GroupVersionKind())
 			if err != nil {
 				return nil, err
 			}
 
+			create := parsed.spec
 			if create.SkipIfAlreadyExists || create.UpdateIfExisting {
-				obj, err := fetchResource(ctx, cluster, d.Description, *resource, obj.Name,
-					obj.Namespace, fnschema.PackageNames(d.Scope...))
+				obj, err := fetchResource(ctx, cluster, d.Description, *resource, parsed.Name,
+					parsed.Namespace, fnschema.PackageNames(d.Scope...))
 				if err != nil {
 					return nil, fnerrors.New("failed to fetch resource: %w", err)
 				}
@@ -88,8 +104,8 @@ func registerCreate() {
 			if err := tasks.Action("kubernetes.create").Scope(fnschema.PackageNames(d.Scope...)...).
 				HumanReadablef(d.Description).
 				Arg("resource", resource.Resource).
-				Arg("name", obj.Name).
-				Arg("namespace", obj.Namespace).Run(ctx, func(ctx context.Context) error {
+				Arg("name", parsed.Name).
+				Arg("namespace", parsed.Namespace).Run(ctx, func(ctx context.Context) error {
 				client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
 				if err != nil {
 					return err
@@ -100,8 +116,8 @@ func registerCreate() {
 					FieldManager: kubedef.K8sFieldManager,
 				}
 
-				if obj.Namespace != "" {
-					req.Namespace(obj.Namespace)
+				if parsed.Namespace != "" {
+					req.Namespace(parsed.Namespace)
 				}
 
 				r := req.Resource(resource.Resource).
@@ -126,24 +142,19 @@ func registerCreate() {
 			return nil, nil
 		},
 
-		PlanOrder: func(create *kubedef.OpCreate) (*fnschema.ScheduleOrder, error) {
-			if create.BodyJson == "" {
-				return nil, fnerrors.InternalError("create.Body is required")
-			}
-
-			// XXX handle old versions of the secrets prebuilt which don't return a Kind within the body.
-			if create.Resource == "secrets" {
-				return kubedef.PlanOrder(schema.GroupVersionKind{Version: "v1", Kind: "Secret"}), nil
-			}
-
-			var parsed unstructured.Unstructured
-			if err := json.Unmarshal([]byte(create.BodyJson), &parsed); err != nil {
-				return nil, fnerrors.BadInputError("kubernetes.apply: failed to parse resource: %w", err)
-			}
-
-			return kubedef.PlanOrder(parsed.GroupVersionKind()), nil
+		PlanOrder: func(create *parsedCreate) (*fnschema.ScheduleOrder, error) {
+			return kubedef.PlanOrder(create.obj.GetObjectKind().GroupVersionKind()), nil
 		},
 	})
+}
+
+type parsedCreate struct {
+	obj interface {
+		GetObjectKind() schema.ObjectKind
+	}
+	spec *kubedef.OpCreate
+
+	Name, Namespace string
 }
 
 func updateResource(ctx context.Context, d *fnschema.SerializedInvocation, resource schema.GroupVersionResource, body *unstructured.Unstructured, restcfg *rest.Config) error {

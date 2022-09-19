@@ -12,7 +12,6 @@ import (
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -102,7 +101,7 @@ func Single(contents []byte) (Parsed, error) {
 		return Parsed{}, err
 	}
 
-	msg := MessageTypeFromKind(m.Kind)
+	msg := messageTypeFromKind(m.Kind)
 
 	if msg == nil {
 		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", m.Kind)
@@ -122,79 +121,7 @@ func Single(contents []byte) (Parsed, error) {
 	return parsed, nil
 }
 
-func ResourceEndpointFromKind(obj runtime.Object) string {
-	gv := obj.GetObjectKind().GroupVersionKind()
-
-	switch gv.GroupVersion().String() {
-	case "v1":
-		switch gv.Kind {
-		case "Namespace":
-			return "namespaces"
-		case "ServiceAccount":
-			return "serviceaccounts"
-		case "ConfigMap":
-			return "configmaps"
-		case "Pod":
-			return "pods"
-		case "Service":
-			return "services"
-		case "Secret":
-			return "secrets"
-		case "PersistentVolumeClaim":
-			return "persistentvolumeclaims"
-		}
-
-	case "rbac.authorization.k8s.io/v1":
-		switch gv.Kind {
-		case "ClusterRole":
-			return "clusterroles"
-		case "ClusterRoleBinding":
-			return "clusterrolebindings"
-		case "Role":
-			return "roles"
-		case "RoleBinding":
-			return "rolebindings"
-		}
-
-	case "apps/v1":
-		switch gv.Kind {
-		case "Deployment":
-			return "deployments"
-		case "StatefulSet":
-			return "statefulsets"
-		}
-
-	case "networking.k8s.io/v1":
-		switch gv.Kind {
-		case "Ingress":
-			return "ingresses"
-		case "IngressClass":
-			return "ingressclasses"
-		}
-
-	case "admissionregistration.k8s.io/v1":
-		switch gv.Kind {
-		case "ValidatingWebhookConfiguration":
-			return "validatingwebhookconfigurations"
-		}
-
-	case "batch/v1":
-		switch gv.Kind {
-		case "Job":
-			return "jobs"
-		}
-
-	case "apiextensions.k8s.io/v1":
-		switch gv.Kind {
-		case "CustomResourceDefinition":
-			return "customresourcedefinitions"
-		}
-	}
-
-	return ""
-}
-
-func MessageTypeFromKind(kind string) interface{} {
+func messageTypeFromKind(kind string) interface{} {
 	switch kind {
 	case "Namespace":
 		return &corev1.NamespaceApplyConfiguration{}
