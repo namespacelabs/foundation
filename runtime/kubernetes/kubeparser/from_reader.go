@@ -10,15 +10,16 @@ import (
 	"fmt"
 	"io"
 
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
-	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
-	batchv1 "k8s.io/client-go/applyconfigurations/batch/v1"
-	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	networkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
-	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"sigs.k8s.io/yaml"
@@ -73,7 +74,7 @@ type Parsed struct {
 	Kind      string
 	Name      string
 	Namespace string
-	Resource  interface{}
+	Resource  runtime.Object
 }
 
 func headerJsonOrYaml(contents []byte) (ObjHeader, error) {
@@ -121,38 +122,38 @@ func Single(contents []byte) (Parsed, error) {
 	return parsed, nil
 }
 
-func messageTypeFromKind(kind string) interface{} {
+func messageTypeFromKind(kind string) runtime.Object {
 	switch kind {
 	case "Namespace":
-		return &corev1.NamespaceApplyConfiguration{}
+		return &corev1.Namespace{}
 	case "ServiceAccount":
-		return &corev1.ServiceAccountApplyConfiguration{}
+		return &corev1.ServiceAccount{}
 	case "ConfigMap":
-		return &corev1.ConfigMapApplyConfiguration{}
+		return &corev1.ConfigMap{}
 	case "ClusterRole":
-		return &rbacv1.ClusterRoleApplyConfiguration{}
+		return &rbacv1.ClusterRole{}
 	case "ClusterRoleBinding":
-		return &rbacv1.ClusterRoleBindingApplyConfiguration{}
+		return &rbacv1.ClusterRoleBinding{}
 	case "Role":
-		return &rbacv1.RoleApplyConfiguration{}
+		return &rbacv1.Role{}
 	case "RoleBinding":
-		return &rbacv1.RoleBindingApplyConfiguration{}
+		return &rbacv1.RoleBinding{}
 	case "Service":
-		return &corev1.ServiceApplyConfiguration{}
+		return &corev1.Service{}
 	case "Secret":
-		return &corev1.SecretApplyConfiguration{}
+		return &corev1.Secret{}
 	case "Deployment":
-		return &appsv1.DeploymentApplyConfiguration{}
+		return &appsv1.Deployment{}
 	case "Ingress":
-		return &networkingv1.IngressApplyConfiguration{}
+		return &networkingv1.Ingress{}
 	case "IngressClass":
-		return &networkingv1.IngressClassApplyConfiguration{}
+		return &networkingv1.IngressClass{}
 	case "ValidatingWebhookConfiguration":
-		return &admissionregistrationv1.ValidatingWebhookConfigurationApplyConfiguration{}
+		return &admissionregistrationv1.ValidatingWebhookConfiguration{}
 	case "CustomResourceDefinition":
 		return &apiextensionsv1.CustomResourceDefinition{}
 	case "Job":
-		return &batchv1.JobApplyConfiguration{}
+		return &batchv1.Job{}
 	}
 
 	return nil
