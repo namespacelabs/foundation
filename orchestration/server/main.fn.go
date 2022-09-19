@@ -15,7 +15,7 @@ import (
 func main() {
 	flag.Parse()
 
-	resources := core.PrepareEnv("namespacelabs.dev/foundation/internal/orchestration/server")
+	resources := core.PrepareEnv("namespacelabs.dev/foundation/orchestration/server")
 	defer resources.Close(context.Background())
 
 	ctx := core.WithResources(context.Background(), resources)

@@ -70,7 +70,7 @@ type buildOpts struct {
 	outputPath      string
 }
 
-const orchTool = "namespacelabs.dev/foundation/internal/orchestration/server/tool"
+const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 
 func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := workspace.NewPackageLoader(env)

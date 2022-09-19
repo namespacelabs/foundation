@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	serverPkg = "namespacelabs.dev/foundation/internal/orchestration/server"
-	toolPkg   = "namespacelabs.dev/foundation/internal/orchestration/server/tool"
+	serverPkg = "namespacelabs.dev/foundation/orchestration/server"
+	toolPkg   = "namespacelabs.dev/foundation/orchestration/server/tool"
 )
 
 func makeOrchEnv(ctx context.Context, conf planning.Configuration) (planning.Context, error) {

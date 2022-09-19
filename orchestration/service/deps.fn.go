@@ -19,17 +19,17 @@ type checkWireService func(context.Context, server.Registrar, ServiceDeps)
 var _ checkWireService = WireService
 
 var (
-	Package__k1rd1l = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/orchestration/service",
+	Package__v9aee7 = &core.Package{
+		PackageName: "namespacelabs.dev/foundation/orchestration/service",
 	}
 
-	Provider__k1rd1l = core.Provider{
-		Package:     Package__k1rd1l,
-		Instantiate: makeDeps__k1rd1l,
+	Provider__v9aee7 = core.Provider{
+		Package:     Package__v9aee7,
+		Instantiate: makeDeps__v9aee7,
 	}
 )
 
-func makeDeps__k1rd1l(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
+func makeDeps__v9aee7(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
 
 	return deps, nil

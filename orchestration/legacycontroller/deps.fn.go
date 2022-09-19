@@ -15,20 +15,20 @@ type ExtensionDeps struct {
 }
 
 var (
-	Package__6uudga = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/orchestration/legacycontroller",
+	Package__onl1mt = &core.Package{
+		PackageName: "namespacelabs.dev/foundation/orchestration/legacycontroller",
 	}
 
-	Provider__6uudga = core.Provider{
-		Package:     Package__6uudga,
-		Instantiate: makeDeps__6uudga,
+	Provider__onl1mt = core.Provider{
+		Package:     Package__onl1mt,
+		Instantiate: makeDeps__onl1mt,
 	}
 
-	Initializers__6uudga = []*core.Initializer{
+	Initializers__onl1mt = []*core.Initializer{
 		{
-			Package: Package__6uudga,
+			Package: Package__onl1mt,
 			Do: func(ctx context.Context, di core.Dependencies) error {
-				return di.Instantiate(ctx, Provider__6uudga, func(ctx context.Context, v interface{}) error {
+				return di.Instantiate(ctx, Provider__onl1mt, func(ctx context.Context, v interface{}) error {
 					return Prepare(ctx, v.(ExtensionDeps))
 				})
 			},
@@ -36,7 +36,7 @@ var (
 	}
 )
 
-func makeDeps__6uudga(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
+func makeDeps__onl1mt(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
 	if deps.Ready, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {

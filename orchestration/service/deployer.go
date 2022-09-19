@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/executor"
-	"namespacelabs.dev/foundation/internal/orchestration/proto"
+	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"

@@ -9,12 +9,12 @@ server: fn.#Server & {
 	isStateful: true
 
 	import: [
-		"namespacelabs.dev/foundation/internal/orchestration/service",
-		"namespacelabs.dev/foundation/internal/orchestration/legacycontroller", // TODO remove
+		"namespacelabs.dev/foundation/orchestration/service",
+		"namespacelabs.dev/foundation/orchestration/legacycontroller", // TODO remove
 		"namespacelabs.dev/foundation/std/grpc/logging",
 	]
 }
 
 configure: fn.#Configure & {
-	with: binary: "namespacelabs.dev/foundation/internal/orchestration/server/tool"
+	with: binary: "namespacelabs.dev/foundation/orchestration/server/tool"
 }
