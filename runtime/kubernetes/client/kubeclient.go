@@ -60,7 +60,13 @@ func (cc ComputedClient) ClientConfig() clientcmd.ClientConfig {
 	return cc.internal.ClientConfig
 }
 
-func (cc ComputedClient) Ephemeral() bool { return cc.internal.Ephemeral }
+func (cc ComputedClient) Ephemeral() bool {
+	if cc.internal == nil {
+		return false
+	}
+
+	return cc.internal.Ephemeral
+}
 
 func RegisterConfigurationProvider(name string, p ProviderFunc) {
 	providers[name] = p

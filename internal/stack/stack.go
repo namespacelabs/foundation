@@ -133,7 +133,7 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...provision.
 		k := k // Close k.
 
 		cs.exec.Go(func(ctx context.Context) error {
-			return cs.computeStackContents(ctx, servers[k], ps[k])
+			return cs.computeServerContents(ctx, servers[k], ps[k])
 		})
 	}
 
@@ -162,11 +162,11 @@ func (cs *computeState) checkAdd(env pkggraph.SealedContext, pkg schema.PackageN
 			return nil
 		}
 
-		return cs.computeStackContents(ctx, *server, ps)
+		return cs.computeServerContents(ctx, *server, ps)
 	})
 }
 
-func (cs *computeState) computeStackContents(ctx context.Context, server provision.Server, ps *ParsedServer) error {
+func (cs *computeState) computeServerContents(ctx context.Context, server provision.Server, ps *ParsedServer) error {
 	return tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
 		deps := server.Deps()
 
@@ -174,11 +174,11 @@ func (cs *computeState) computeStackContents(ctx context.Context, server provisi
 		exec := executor.New(ctx, "stack.provision.eval")
 
 		for k, n := range deps {
-			k := k // Close k.
-			n := n // Close n.
+			k := k    // Close k.
+			node := n // Close n.
 
 			exec.Go(func(ctx context.Context) error {
-				ev, err := EvalProvision(ctx, server, n)
+				ev, err := EvalProvision(ctx, server, node)
 				if err != nil {
 					return err
 				}
