@@ -42,7 +42,7 @@ func rawExecute(ctx context.Context, env planning.Context, actionName string, g 
 	}, injected...)
 
 	return tasks.Return(injectValues(ctx, injections...), tasks.Action(actionName).Scope(g.scope.PackageNames()...), func(ctx context.Context) ([]Waiter, error) {
-		compiled, err := compile(g.definitions, g.parallel)
+		compiled, err := compile(ctx, g.definitions, g.parallel)
 		if err != nil {
 			return nil, err
 		}

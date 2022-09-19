@@ -87,7 +87,7 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) *Plan {
 	return g
 }
 
-func compile(srcs []*schema.SerializedInvocation, parallel bool) (*parsedPlan, error) {
+func compile(ctx context.Context, srcs []*schema.SerializedInvocation, parallel bool) (*parsedPlan, error) {
 	g := &parsedPlan{parallel: parallel}
 
 	var defs []*schema.SerializedInvocation
@@ -105,7 +105,7 @@ func compile(srcs []*schema.SerializedInvocation, parallel bool) (*parsedPlan, e
 	slices.Sort(compileKeys)
 
 	for _, key := range compileKeys {
-		compiled, err := compilers[key](tocompile[key])
+		compiled, err := compilers[key](ctx, tocompile[key])
 		if err != nil {
 			return nil, err
 		}

@@ -18,3 +18,12 @@ message OpProtoGen {
 
     reserved 2, 4;
 }
+
+message OpMultiProtoGen {
+    repeated ProtosByFramework protos = 1;
+
+    message ProtosByFramework {
+        repeated protos.FileDescriptorSetAndDeps protos    = 1;
+        foundation.schema.Framework              framework = 2;
+    }
+}

@@ -12,7 +12,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -27,6 +26,8 @@ import (
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
+	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -35,7 +36,7 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source"
-	"namespacelabs.dev/foundation/workspace/source/protos"
+	srcprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 var (
@@ -117,7 +118,42 @@ func Register() {
 		return nil, generateGrpcApi(ctx, x.Protos, loc)
 	})
 
-	ops.Register[*OpGenYarnRoot](yarnRootStatefulGen{})
+	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenAllYarnRoots) (*ops.HandleResult, error) {
+		module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, yarnRoot := range x.RootPackageNames {
+			if err := generateYarnRoot(ctx, yarnRoot, module.ReadWriteFS()); err != nil {
+				return nil, err
+			}
+		}
+
+		return nil, nil
+	})
+
+	ops.Compile[*OpGenYarnRoot](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
+		var roots uniquestrings.List
+
+		for _, input := range inputs {
+			m := &OpGenYarnRoot{}
+			if err := input.Impl.UnmarshalTo(m); err != nil {
+				return nil, err
+			}
+			roots.Add(m.YarnRootPkgName)
+		}
+
+		ordered := roots.Strings()
+		slices.Sort(ordered)
+
+		return []*schema.SerializedInvocation{
+			{
+				Description: "Generate Nodejs Yarn root",
+				Impl:        protos.WrapAnyOrDie(&OpGenAllYarnRoots{RootPackageNames: ordered}),
+			},
+		}, nil
+	})
 }
 
 func useDevBuild(env *schema.Environment) bool {
@@ -457,7 +493,7 @@ func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*s
 		LoadedNode: nodes,
 	}, pkg.PackageName())
 
-	var list []*protos.FileDescriptorSetAndDeps
+	var list []*srcprotos.FileDescriptorSetAndDeps
 	for _, dl := range pkg.Provides {
 		list = append(list, dl)
 	}
@@ -466,7 +502,7 @@ func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*s
 	}
 
 	if len(list) > 0 {
-		merged, err := protos.Merge(list...)
+		merged, err := srcprotos.Merge(list...)
 		if err != nil {
 			return nil, err
 		}
@@ -493,55 +529,6 @@ func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*s
 	}, pkg.Location.PackageName)
 
 	return dl.Serialize()
-}
-
-type yarnRootStatefulGen struct{}
-
-// This is never called but ops.Register requires the Dispatcher.
-func (yarnRootStatefulGen) Handle(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
-	return nil, fnerrors.UserError(nil, "yarnRootStatefulGen.Handle is not supposed to be called")
-}
-
-func (yarnRootStatefulGen) PlanOrder(*OpGenYarnRoot) (*schema.ScheduleOrder, error) {
-	return nil, nil
-}
-
-func (yarnRootStatefulGen) StartSession(ctx context.Context) (ops.Session[*OpGenYarnRoot], error) {
-	module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
-	if err != nil {
-		return nil, err
-	}
-
-	return &yarnRootGenSession{module: module, yarnRoots: map[string]context.Context{}}, nil
-}
-
-type yarnRootGenSession struct {
-	module    pkggraph.MutableModule
-	yarnRoots map[string]context.Context
-}
-
-func (s *yarnRootGenSession) Handle(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenYarnRoot) (*ops.HandleResult, error) {
-	if s.yarnRoots[x.YarnRootPkgName] == nil {
-		s.yarnRoots[x.YarnRootPkgName] = ctx
-	}
-	return nil, nil
-}
-
-func (s *yarnRootGenSession) Commit() error {
-	// Converting to a slice for deterministic order.
-	var roots []string
-	for yarnRoot := range s.yarnRoots {
-		roots = append(roots, yarnRoot)
-	}
-	sort.Strings(roots)
-
-	for _, yarnRoot := range roots {
-		if err := generateYarnRoot(s.yarnRoots[yarnRoot], yarnRoot, s.module.ReadWriteFS()); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func generateYarnRoot(ctx context.Context, path string, out fnfs.ReadWriteFS) error {

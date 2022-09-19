@@ -305,6 +305,53 @@ func (x *OpGenYarnRoot) GetRelLocation() string {
 	return ""
 }
 
+type OpGenAllYarnRoots struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RootPackageNames []string `protobuf:"bytes,1,rep,name=root_package_names,json=rootPackageNames,proto3" json:"root_package_names,omitempty"`
+}
+
+func (x *OpGenAllYarnRoots) Reset() {
+	*x = OpGenAllYarnRoots{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_languages_nodejs_integration_op_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OpGenAllYarnRoots) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpGenAllYarnRoots) ProtoMessage() {}
+
+func (x *OpGenAllYarnRoots) ProtoReflect() protoreflect.Message {
+	mi := &file_languages_nodejs_integration_op_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpGenAllYarnRoots.ProtoReflect.Descriptor instead.
+func (*OpGenAllYarnRoots) Descriptor() ([]byte, []int) {
+	return file_languages_nodejs_integration_op_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *OpGenAllYarnRoots) GetRootPackageNames() []string {
+	if x != nil {
+		return x.RootPackageNames
+	}
+	return nil
+}
+
 var File_languages_nodejs_integration_op_proto protoreflect.FileDescriptor
 
 var file_languages_nodejs_integration_op_proto_rawDesc = []byte{
@@ -353,11 +400,15 @@ var file_languages_nodejs_integration_op_proto_rawDesc = []byte{
 	0x09, 0x52, 0x0f, 0x79, 0x61, 0x72, 0x6e, 0x52, 0x6f, 0x6f, 0x74, 0x50, 0x6b, 0x67, 0x4e, 0x61,
 	0x6d, 0x65, 0x12, 0x21, 0x0a, 0x0c, 0x72, 0x65, 0x6c, 0x5f, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x72, 0x65, 0x6c, 0x4c, 0x6f, 0x63,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x42, 0x3b, 0x5a, 0x39, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x6c, 0x61, 0x6e, 0x67, 0x75, 0x61, 0x67, 0x65, 0x73, 0x2f,
-	0x6e, 0x6f, 0x64, 0x65, 0x6a, 0x73, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x41, 0x0a, 0x11, 0x4f, 0x70, 0x47, 0x65, 0x6e, 0x41, 0x6c,
+	0x6c, 0x59, 0x61, 0x72, 0x6e, 0x52, 0x6f, 0x6f, 0x74, 0x73, 0x12, 0x2c, 0x0a, 0x12, 0x72, 0x6f,
+	0x6f, 0x74, 0x5f, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x10, 0x72, 0x6f, 0x6f, 0x74, 0x50, 0x61, 0x63, 0x6b,
+	0x61, 0x67, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x42, 0x3b, 0x5a, 0x39, 0x6e, 0x61, 0x6d, 0x65,
+	0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f,
+	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x6c, 0x61, 0x6e, 0x67, 0x75, 0x61, 0x67,
+	0x65, 0x73, 0x2f, 0x6e, 0x6f, 0x64, 0x65, 0x6a, 0x73, 0x2f, 0x69, 0x6e, 0x74, 0x65, 0x67, 0x72,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -372,24 +423,25 @@ func file_languages_nodejs_integration_op_proto_rawDescGZIP() []byte {
 	return file_languages_nodejs_integration_op_proto_rawDescData
 }
 
-var file_languages_nodejs_integration_op_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_languages_nodejs_integration_op_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_languages_nodejs_integration_op_proto_goTypes = []interface{}{
 	(*OpGenServer)(nil),                     // 0: foundation.languages.nodejs.integration.OpGenServer
 	(*OpGenNode)(nil),                       // 1: foundation.languages.nodejs.integration.OpGenNode
 	(*OpGenNodeStub)(nil),                   // 2: foundation.languages.nodejs.integration.OpGenNodeStub
 	(*OpGenGrpc)(nil),                       // 3: foundation.languages.nodejs.integration.OpGenGrpc
 	(*OpGenYarnRoot)(nil),                   // 4: foundation.languages.nodejs.integration.OpGenYarnRoot
-	(*schema.Server)(nil),                   // 5: foundation.schema.Server
-	(*schema.Node)(nil),                     // 6: foundation.schema.Node
-	(*protos.FileDescriptorSetAndDeps)(nil), // 7: foundation.workspace.source.protos.FileDescriptorSetAndDeps
+	(*OpGenAllYarnRoots)(nil),               // 5: foundation.languages.nodejs.integration.OpGenAllYarnRoots
+	(*schema.Server)(nil),                   // 6: foundation.schema.Server
+	(*schema.Node)(nil),                     // 7: foundation.schema.Node
+	(*protos.FileDescriptorSetAndDeps)(nil), // 8: foundation.workspace.source.protos.FileDescriptorSetAndDeps
 }
 var file_languages_nodejs_integration_op_proto_depIdxs = []int32{
-	5, // 0: foundation.languages.nodejs.integration.OpGenServer.server:type_name -> foundation.schema.Server
-	6, // 1: foundation.languages.nodejs.integration.OpGenServer.loaded_node:type_name -> foundation.schema.Node
-	6, // 2: foundation.languages.nodejs.integration.OpGenNode.node:type_name -> foundation.schema.Node
-	6, // 3: foundation.languages.nodejs.integration.OpGenNode.loaded_node:type_name -> foundation.schema.Node
-	6, // 4: foundation.languages.nodejs.integration.OpGenNodeStub.node:type_name -> foundation.schema.Node
-	7, // 5: foundation.languages.nodejs.integration.OpGenGrpc.protos:type_name -> foundation.workspace.source.protos.FileDescriptorSetAndDeps
+	6, // 0: foundation.languages.nodejs.integration.OpGenServer.server:type_name -> foundation.schema.Server
+	7, // 1: foundation.languages.nodejs.integration.OpGenServer.loaded_node:type_name -> foundation.schema.Node
+	7, // 2: foundation.languages.nodejs.integration.OpGenNode.node:type_name -> foundation.schema.Node
+	7, // 3: foundation.languages.nodejs.integration.OpGenNode.loaded_node:type_name -> foundation.schema.Node
+	7, // 4: foundation.languages.nodejs.integration.OpGenNodeStub.node:type_name -> foundation.schema.Node
+	8, // 5: foundation.languages.nodejs.integration.OpGenGrpc.protos:type_name -> foundation.workspace.source.protos.FileDescriptorSetAndDeps
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name
@@ -463,6 +515,18 @@ func file_languages_nodejs_integration_op_proto_init() {
 				return nil
 			}
 		}
+		file_languages_nodejs_integration_op_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OpGenAllYarnRoots); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -470,7 +534,7 @@ func file_languages_nodejs_integration_op_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_languages_nodejs_integration_op_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

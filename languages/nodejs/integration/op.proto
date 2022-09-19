@@ -40,3 +40,7 @@ message OpGenYarnRoot {
     // Relative to workspace root.
     string rel_location = 2;
 }
+
+message OpGenAllYarnRoots {
+    repeated string root_package_names = 1;
+}

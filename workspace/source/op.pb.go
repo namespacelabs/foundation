@@ -89,6 +89,108 @@ func (x *OpProtoGen) GetFramework() schema.Framework {
 	return schema.Framework(0)
 }
 
+type OpMultiProtoGen struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Protos []*OpMultiProtoGen_ProtosByFramework `protobuf:"bytes,1,rep,name=protos,proto3" json:"protos,omitempty"`
+}
+
+func (x *OpMultiProtoGen) Reset() {
+	*x = OpMultiProtoGen{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_workspace_source_op_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OpMultiProtoGen) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpMultiProtoGen) ProtoMessage() {}
+
+func (x *OpMultiProtoGen) ProtoReflect() protoreflect.Message {
+	mi := &file_workspace_source_op_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpMultiProtoGen.ProtoReflect.Descriptor instead.
+func (*OpMultiProtoGen) Descriptor() ([]byte, []int) {
+	return file_workspace_source_op_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *OpMultiProtoGen) GetProtos() []*OpMultiProtoGen_ProtosByFramework {
+	if x != nil {
+		return x.Protos
+	}
+	return nil
+}
+
+type OpMultiProtoGen_ProtosByFramework struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Protos    []*protos.FileDescriptorSetAndDeps `protobuf:"bytes,1,rep,name=protos,proto3" json:"protos,omitempty"`
+	Framework schema.Framework                   `protobuf:"varint,2,opt,name=framework,proto3,enum=foundation.schema.Framework" json:"framework,omitempty"`
+}
+
+func (x *OpMultiProtoGen_ProtosByFramework) Reset() {
+	*x = OpMultiProtoGen_ProtosByFramework{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_workspace_source_op_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *OpMultiProtoGen_ProtosByFramework) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpMultiProtoGen_ProtosByFramework) ProtoMessage() {}
+
+func (x *OpMultiProtoGen_ProtosByFramework) ProtoReflect() protoreflect.Message {
+	mi := &file_workspace_source_op_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpMultiProtoGen_ProtosByFramework.ProtoReflect.Descriptor instead.
+func (*OpMultiProtoGen_ProtosByFramework) Descriptor() ([]byte, []int) {
+	return file_workspace_source_op_proto_rawDescGZIP(), []int{1, 0}
+}
+
+func (x *OpMultiProtoGen_ProtosByFramework) GetProtos() []*protos.FileDescriptorSetAndDeps {
+	if x != nil {
+		return x.Protos
+	}
+	return nil
+}
+
+func (x *OpMultiProtoGen_ProtosByFramework) GetFramework() schema.Framework {
+	if x != nil {
+		return x.Framework
+	}
+	return schema.Framework(0)
+}
+
 var File_workspace_source_op_proto protoreflect.FileDescriptor
 
 var file_workspace_source_op_proto_rawDesc = []byte{
@@ -112,11 +214,28 @@ var file_workspace_source_op_proto_rawDesc = []byte{
 	0x01, 0x28, 0x0e, 0x32, 0x1c, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
 	0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72,
 	0x6b, 0x52, 0x09, 0x66, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x4a, 0x04, 0x08, 0x02,
-	0x10, 0x03, 0x4a, 0x04, 0x08, 0x04, 0x10, 0x05, 0x42, 0x2f, 0x5a, 0x2d, 0x6e, 0x61, 0x6d, 0x65,
-	0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f,
-	0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x77, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x2f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x10, 0x03, 0x4a, 0x04, 0x08, 0x04, 0x10, 0x05, 0x22, 0x91, 0x02, 0x0a, 0x0f, 0x4f, 0x70, 0x4d,
+	0x75, 0x6c, 0x74, 0x69, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x47, 0x65, 0x6e, 0x12, 0x56, 0x0a, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3e, 0x2e, 0x66,
+	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x77, 0x6f, 0x72, 0x6b, 0x73, 0x70,
+	0x61, 0x63, 0x65, 0x2e, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x2e, 0x4f, 0x70, 0x4d, 0x75, 0x6c,
+	0x74, 0x69, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x47, 0x65, 0x6e, 0x2e, 0x50, 0x72, 0x6f, 0x74, 0x6f,
+	0x73, 0x42, 0x79, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x52, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x73, 0x1a, 0xa5, 0x01, 0x0a, 0x11, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x42,
+	0x79, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x12, 0x54, 0x0a, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x3c, 0x2e, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x77, 0x6f, 0x72, 0x6b, 0x73, 0x70, 0x61, 0x63,
+	0x65, 0x2e, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73, 0x2e,
+	0x46, 0x69, 0x6c, 0x65, 0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x74, 0x6f, 0x72, 0x53, 0x65,
+	0x74, 0x41, 0x6e, 0x64, 0x44, 0x65, 0x70, 0x73, 0x52, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x73,
+	0x12, 0x3a, 0x0a, 0x09, 0x66, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x0e, 0x32, 0x1c, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
+	0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72,
+	0x6b, 0x52, 0x09, 0x66, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x42, 0x2f, 0x5a, 0x2d,
+	0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65,
+	0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x77, 0x6f, 0x72,
+	0x6b, 0x73, 0x70, 0x61, 0x63, 0x65, 0x2f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -131,20 +250,25 @@ func file_workspace_source_op_proto_rawDescGZIP() []byte {
 	return file_workspace_source_op_proto_rawDescData
 }
 
-var file_workspace_source_op_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_workspace_source_op_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_workspace_source_op_proto_goTypes = []interface{}{
-	(*OpProtoGen)(nil),                      // 0: foundation.workspace.source.OpProtoGen
-	(*protos.FileDescriptorSetAndDeps)(nil), // 1: foundation.workspace.source.protos.FileDescriptorSetAndDeps
-	(schema.Framework)(0),                   // 2: foundation.schema.Framework
+	(*OpProtoGen)(nil),                        // 0: foundation.workspace.source.OpProtoGen
+	(*OpMultiProtoGen)(nil),                   // 1: foundation.workspace.source.OpMultiProtoGen
+	(*OpMultiProtoGen_ProtosByFramework)(nil), // 2: foundation.workspace.source.OpMultiProtoGen.ProtosByFramework
+	(*protos.FileDescriptorSetAndDeps)(nil),   // 3: foundation.workspace.source.protos.FileDescriptorSetAndDeps
+	(schema.Framework)(0),                     // 4: foundation.schema.Framework
 }
 var file_workspace_source_op_proto_depIdxs = []int32{
-	1, // 0: foundation.workspace.source.OpProtoGen.protos:type_name -> foundation.workspace.source.protos.FileDescriptorSetAndDeps
-	2, // 1: foundation.workspace.source.OpProtoGen.framework:type_name -> foundation.schema.Framework
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 0: foundation.workspace.source.OpProtoGen.protos:type_name -> foundation.workspace.source.protos.FileDescriptorSetAndDeps
+	4, // 1: foundation.workspace.source.OpProtoGen.framework:type_name -> foundation.schema.Framework
+	2, // 2: foundation.workspace.source.OpMultiProtoGen.protos:type_name -> foundation.workspace.source.OpMultiProtoGen.ProtosByFramework
+	3, // 3: foundation.workspace.source.OpMultiProtoGen.ProtosByFramework.protos:type_name -> foundation.workspace.source.protos.FileDescriptorSetAndDeps
+	4, // 4: foundation.workspace.source.OpMultiProtoGen.ProtosByFramework.framework:type_name -> foundation.schema.Framework
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_workspace_source_op_proto_init() }
@@ -165,6 +289,30 @@ func file_workspace_source_op_proto_init() {
 				return nil
 			}
 		}
+		file_workspace_source_op_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OpMultiProtoGen); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_workspace_source_op_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*OpMultiProtoGen_ProtosByFramework); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -172,7 +320,7 @@ func file_workspace_source_op_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_workspace_source_op_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
