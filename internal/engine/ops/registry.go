@@ -22,17 +22,14 @@ type rnode struct {
 }
 
 type registration struct {
-	key          string
-	tmpl         proto.Message
-	dispatcher   dispatcherFunc
-	planOrder    planOrderFunc
-	startSession startSessionFunc
+	key        string
+	tmpl       proto.Message
+	dispatcher dispatcherFunc
+	planOrder  planOrderFunc
 }
 
 type dispatcherFunc func(context.Context, *schema.SerializedInvocation, proto.Message) (*HandleResult, error)
 type planOrderFunc func(proto.Message) (*schema.ScheduleOrder, error)
-type startSessionFunc func(context.Context) (dispatcherFunc, commitSessionFunc, error)
-type commitSessionFunc func() error
 type compilerFunc func(context.Context, []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error)
 
 var (
@@ -41,26 +38,11 @@ var (
 )
 
 func Register[M proto.Message](mr Dispatcher[M]) {
-	var startSession startSessionFunc
-	if stateful, ok := mr.(BatchedDispatcher[M]); ok {
-		startSession = func(ctx context.Context) (dispatcherFunc, commitSessionFunc, error) {
-			st, err := stateful.StartSession(ctx)
-			if err != nil {
-				return nil, nil, err
-			}
-			return func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
-					return st.Handle(ctx, def, msg.(M))
-				}, func() error {
-					return st.Commit()
-				}, nil
-		}
-	}
-
 	register[M](func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message) (*HandleResult, error) {
 		return mr.Handle(ctx, def, msg.(M))
 	}, func(m proto.Message) (*schema.ScheduleOrder, error) {
 		return mr.PlanOrder(m.(M))
-	}, startSession)
+	})
 }
 
 func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)) {
@@ -68,7 +50,7 @@ func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.S
 		return handle(ctx, def, msg.(M))
 	}, func(m proto.Message) (*schema.ScheduleOrder, error) {
 		return nil, nil
-	}, nil)
+	})
 }
 
 func Compile[M proto.Message](compiler compilerFunc) {
@@ -90,17 +72,16 @@ func RegisterFuncs[M proto.Message](funcs Funcs[M]) {
 		}
 
 		return funcs.PlanOrder(m.(M))
-	}, nil)
+	})
 }
 
-func register[M proto.Message](dispatcher dispatcherFunc, planOrder planOrderFunc, startSession startSessionFunc) {
+func register[M proto.Message](dispatcher dispatcherFunc, planOrder planOrderFunc) {
 	tmpl := protos.NewFromType[M]()
 	reg := registration{
-		key:          protos.TypeUrl(tmpl),
-		tmpl:         tmpl,
-		dispatcher:   dispatcher,
-		planOrder:    planOrder,
-		startSession: startSession,
+		key:        protos.TypeUrl(tmpl),
+		tmpl:       tmpl,
+		dispatcher: dispatcher,
+		planOrder:  planOrder,
 	}
 
 	handlers[protos.TypeUrl(tmpl)] = &reg

@@ -16,35 +16,17 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type Handler[M proto.Message] interface {
-	Handle(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
-}
-
 // A dispatcher provides the implementation for a particular type, i.e. it
 // handles the execution of a particular serialized invocation.
 type Dispatcher[M proto.Message] interface {
-	Handler[M]
-
+	Handle(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
 	PlanOrder(M) (*schema.ScheduleOrder, error)
-}
-
-// A BatchedDispatcher represents an implementation which batches the execution
-// of multiple invocations.
-type BatchedDispatcher[M proto.Message] interface {
-	StartSession(context.Context) (Session[M], error)
-}
-
-// A session represents a single batched invocation.
-type Session[M proto.Message] interface {
-	Handler[M]
-	Commit() error
 }
 
 type HandleResult struct {
@@ -55,13 +37,11 @@ type HandleResult struct {
 type Plan struct {
 	definitions []*schema.SerializedInvocation
 	scope       schema.PackageList
-	parallel    bool // Execute invocations in parallel regardless of dependency graph.
 }
 
 type parsedPlan struct {
 	definitions []*schema.SerializedInvocation
 	nodes       []*rnode
-	parallel    bool // Execute invocations in parallel regardless of dependency graph.
 }
 
 func NewEmptyPlan() *Plan {
@@ -72,13 +52,6 @@ func NewPlan(defs ...*schema.SerializedInvocation) *Plan {
 	return NewEmptyPlan().Add(defs...)
 }
 
-// Don't use this if you don't know why you need it. Use NewPlan instead.
-func NewParallelPlan(defs ...*schema.SerializedInvocation) *Plan {
-	p := NewEmptyPlan()
-	p.parallel = true
-	return p.Add(defs...)
-}
-
 func (g *Plan) Add(defs ...*schema.SerializedInvocation) *Plan {
 	g.definitions = append(g.definitions, defs...)
 	for _, def := range defs {
@@ -87,8 +60,8 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) *Plan {
 	return g
 }
 
-func compile(ctx context.Context, srcs []*schema.SerializedInvocation, parallel bool) (*parsedPlan, error) {
-	g := &parsedPlan{parallel: parallel}
+func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedPlan, error) {
+	g := &parsedPlan{}
 
 	var defs []*schema.SerializedInvocation
 	tocompile := map[string][]*schema.SerializedInvocation{}
@@ -158,32 +131,9 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
 	}
 
-	sessions := map[string]dispatcherFunc{}
-	commits := map[string]commitSessionFunc{}
-
 	nodes, err := topoSortNodes(ctx, g.nodes)
 	if err != nil {
 		return nil, err
-	}
-
-	for _, n := range nodes {
-		if n.err != nil {
-			continue
-		}
-
-		typeUrl := n.def.Impl.GetTypeUrl()
-		if _, has := sessions[typeUrl]; has {
-			continue
-		}
-
-		if n.reg.startSession != nil {
-			dispatcher, commit, err := n.reg.startSession(ctx)
-			if err != nil {
-				return nil, err
-			}
-			sessions[typeUrl] = dispatcher
-			commits[typeUrl] = commit
-		}
 	}
 
 	var errs []error
@@ -195,9 +145,6 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 		dispatcher := n.reg.dispatcher
 		typeUrl := n.def.Impl.GetTypeUrl()
-		if d, has := sessions[typeUrl]; has {
-			dispatcher = d
-		}
 
 		d, err := dispatcher(ctx, n.def, n.obj)
 		n.res = d
@@ -208,43 +155,6 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 		if d != nil {
 			waiters = append(waiters, d.Waiters...)
 		}
-	}
-
-	// Use insertion order.
-	var ordered []commitSessionFunc
-	var orderedTypeUrls []string
-	for _, n := range nodes {
-		typeUrl := n.def.Impl.GetTypeUrl()
-		if commit, has := commits[typeUrl]; has {
-			ordered = append(ordered, commit)
-			orderedTypeUrls = append(orderedTypeUrls, typeUrl)
-			delete(sessions, typeUrl)
-			delete(commits, typeUrl)
-		}
-	}
-
-	var ex executor.ExecutorLike
-
-	if g.parallel {
-		ex = executor.New(ctx, "plan.apply")
-	} else {
-		ex = executor.NewSerial(ctx)
-	}
-
-	for k, commit := range ordered {
-		k := k           // Close k.
-		commit := commit // Close commit.
-
-		ex.Go(func(ctx context.Context) error {
-			if err := commit(); err != nil {
-				return fnerrors.InternalError("failed to close %q: %w", orderedTypeUrls[k], err)
-			}
-			return nil
-		})
-	}
-
-	if err := ex.Wait(); err != nil {
-		errs = append(errs, err)
 	}
 
 	return waiters, multierr.New(errs...)
