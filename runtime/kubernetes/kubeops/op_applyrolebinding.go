@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -19,10 +18,16 @@ import (
 )
 
 func registerApplyRoleBinding() {
-	ops.RegisterFuncs(ops.Funcs[*kubedef.OpApplyRoleBinding]{
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, spec *kubedef.OpApplyRoleBinding) (*ops.HandleResult, error) {
-			ns, err := kubedef.InjectedKubeClusterNamespace(ctx)
-			if err != nil {
+	ops.Compile[*kubedef.OpApplyRoleBinding](func(ctx context.Context, inputs []*fnschema.SerializedInvocation) ([]*fnschema.SerializedInvocation, error) {
+		ns, err := kubedef.InjectedKubeClusterNamespace(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var res []*fnschema.SerializedInvocation
+		for _, input := range inputs {
+			spec := &kubedef.OpApplyRoleBinding{}
+			if err := input.Impl.UnmarshalTo(spec); err != nil {
 				return nil, err
 			}
 
@@ -36,31 +41,19 @@ func registerApplyRoleBinding() {
 				return nil, fnerrors.InternalError("failed to unmarshal rules: %w", err)
 			}
 
-			invocations := kubeblueprint.MakeInvocations(d.Description, scope, &kubetool.ContextualEnv{Namespace: ns.KubeConfig().Namespace},
+			invocations := kubeblueprint.MakeInvocations(input.Description, scope, &kubetool.ContextualEnv{Namespace: ns.KubeConfig().Namespace},
 				spec.RoleName, spec.RoleBindingName, makeMap(spec.Label), makeMap(spec.Annotation), spec.ServiceAccount, rules)
 
-			res := &ops.HandleResult{}
-			for _, spec := range invocations {
-				d, spec, err := spec.ToDefinitionImpl(fnschema.PackageNames(d.Scope...)...)
+			for _, inv := range invocations {
+				compiled, err := inv.ToDefinition(fnschema.PackageNames(input.Scope...)...)
 				if err != nil {
 					return nil, err
 				}
-
-				if h, err := apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), spec); err != nil {
-					return nil, err
-				} else {
-					res.Waiters = append(res.Waiters, h.Waiters...)
-				}
+				res = append(res, compiled)
 			}
+		}
 
-			return res, nil
-		},
-
-		PlanOrder: func(_ *kubedef.OpApplyRoleBinding) (*fnschema.ScheduleOrder, error) {
-			// Same position as a RoleBinding.
-			// XXX OpApplyRoleBinding should compile into OpApply.
-			return kubedef.PlanOrder(schema.GroupVersionKind{Group: "rbac.authorization.k8s.io", Version: "v1", Kind: "RoleBinding"}), nil
-		},
+		return res, nil
 	})
 }
 
