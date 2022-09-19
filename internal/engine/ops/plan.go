@@ -43,6 +43,7 @@ type rnode struct {
 	order *schema.ScheduleOrder
 	reg   *registration
 	res   *HandleResult
+	value any
 	err   error // Error captured from a previous run.
 }
 
@@ -106,11 +107,19 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 			obj: copy,
 		}
 
+		if reg.funcs.Parse != nil {
+			var err error
+			node.value, err = reg.funcs.Parse(ctx, src, copy)
+			if err != nil {
+				return nil, fnerrors.InternalError("%s: failed to parse: %w", key, err)
+			}
+		}
+
 		if src.Order != nil {
 			node.order = src.Order
 		} else {
 			var err error
-			node.order, err = reg.funcs.PlanOrder(copy)
+			node.order, err = reg.funcs.PlanOrder(copy, node.value)
 			if err != nil {
 				return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 			}
@@ -147,7 +156,7 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 		typeUrl := n.def.Impl.GetTypeUrl()
 
-		d, err := n.reg.funcs.Handle(ctx, n.def, n.obj)
+		d, err := n.reg.funcs.Handle(ctx, n.def, n.obj, n.value)
 		n.res = d
 		n.err = err
 		if err != nil {
