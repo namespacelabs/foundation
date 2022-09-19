@@ -9,10 +9,22 @@ import (
 )
 
 // Any sub-directory.
-var DirsToExclude = []string{"node_modules"}
+var DirsToExclude = []string{
+	".git",
+	".parcel-cache",
+	// NodeJS-specific
+	"node_modules",
+	// Yarn-specific
+	".yarn/cache",
+	".yarn/unplugged",
+}
 
 // Relative to the workspace.
-var FilesToExclude = []string{}
+var FilesToExclude = []string{
+	// Yarn-specific
+	"install-state.gz",
+	".pnp.*",
+}
 
 func IsExcluded(fullPath string, name string) bool {
 	return (len(name) > 1 && name[0] == '.') || slices.Contains(DirsToExclude, name)
