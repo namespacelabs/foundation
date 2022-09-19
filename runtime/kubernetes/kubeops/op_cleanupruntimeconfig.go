@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -100,11 +99,7 @@ func registerCleanup() {
 
 		PlanOrder: func(_ *kubedef.OpCleanupRuntimeConfig) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
-				SchedAfterCategory: []string{
-					kubedef.MakeSchedCat(schema.GroupKind{Kind: "Pod"}),
-					kubedef.MakeSchedCat(schema.GroupKind{Group: "apps", Kind: "Deployment"}),
-					kubedef.MakeSchedCat(schema.GroupKind{Group: "apps", Kind: "StatefulSet"}),
-				},
+				SchedAfterCategory: kubedef.Sched_JobLike,
 			}, nil
 		},
 	})
