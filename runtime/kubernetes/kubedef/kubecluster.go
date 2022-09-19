@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type KubeCluster interface {
@@ -31,6 +32,7 @@ type KubeClusterNamespace interface {
 
 type KubeConfig struct {
 	Config, Context, Namespace string
+	Environment                *schema.Environment
 }
 
 func InjectedKubeCluster(ctx context.Context) (KubeCluster, error) {

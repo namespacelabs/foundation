@@ -79,11 +79,11 @@ func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]stri
 		m[K8sServerId] = srv.GetId()
 	}
 	if env != nil {
-		m[K8sEnvName] = env.Name
 		m[K8sEnvPurpose] = strings.ToLower(env.Purpose.String())
 		if env.Ephemeral {
 			m[K8sEnvEphemeral] = "true"
 		} else {
+			m[K8sEnvName] = env.Name
 			m[K8sEnvEphemeral] = "false"
 		}
 	}

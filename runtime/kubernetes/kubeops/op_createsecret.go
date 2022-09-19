@@ -30,12 +30,15 @@ func RegisterCreateSecret() {
 				return nil, fnerrors.InternalError("%s: create.Namespace is required", d.Description)
 			}
 
-			cluster, err := kubedef.InjectedKubeCluster(ctx)
+			cluster, err := kubedef.InjectedKubeClusterNamespace(ctx)
 			if err != nil {
 				return nil, err
 			}
 
-			existing, err := fetchResource(ctx, cluster, d.Description, schema.GroupVersionResource{Version: "v1", Resource: "secrets"},
+			kubecluster := cluster.Cluster().(kubedef.KubeCluster)
+
+			existing, err := fetchResource(ctx, kubecluster,
+				d.Description, schema.GroupVersionResource{Version: "v1", Resource: "secrets"},
 				create.Name, create.Namespace, fnschema.PackageNames(d.Scope...))
 			if err != nil {
 				return nil, err
@@ -45,17 +48,19 @@ func RegisterCreateSecret() {
 				return nil, nil // Nothing to do.
 			}
 
+			kubecfg := cluster.KubeConfig()
+
 			newSecret := &v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        create.Name,
 					Namespace:   create.Namespace,
-					Labels:      kubedef.MakeLabels(create.Environment, nil),
+					Labels:      kubedef.MakeLabels(kubecfg.Environment, nil),
 					Annotations: kubedef.BaseAnnotations(),
 				},
 			}
 
 			if create.SelfSignedCertificate != nil {
-				bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, create.Environment, create.SelfSignedCertificate)
+				bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, kubecfg.Environment, create.SelfSignedCertificate)
 				if err != nil {
 					return nil, err
 				}
@@ -83,7 +88,7 @@ func RegisterCreateSecret() {
 				}
 			}
 
-			if _, err := cluster.Client().CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+			if _, err := kubecluster.Client().CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
 				FieldManager: kubedef.K8sFieldManager,
 			}); err != nil {
 				return nil, err
