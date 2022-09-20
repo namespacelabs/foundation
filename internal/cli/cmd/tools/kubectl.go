@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -38,9 +37,10 @@ func newKubeCtlCmd() *cobra.Command {
 			return err
 		}
 
+		kluster := cluster.Cluster().(*kubernetes.Cluster)
+
 		k8sconfig := cluster.KubeConfig()
-		clientConfig := client.NewClientConfig(ctx, cluster.HostConfig())
-		rawConfig, err := clientConfig.RawConfig()
+		rawConfig, err := kluster.ComputedConfig().RawConfig()
 		if err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to generate kubeconfig")
 		}
@@ -68,10 +68,16 @@ func newKubeCtlCmd() *cobra.Command {
 			return fnerrors.Wrapf(nil, err, "failed to close kubeconfig")
 		}
 
-		cmdLine := append([]string{
+		baseArgs := []string{
 			"--kubeconfig=" + tmpFile.Name(),
 			"-n", k8sconfig.Namespace,
-		}, args...)
+		}
+
+		if k8sconfig.Context != "" {
+			baseArgs = append(baseArgs, "--context", k8sconfig.Context)
+		}
+
+		cmdLine := append(baseArgs, args...)
 
 		if *keepConfig {
 			fmt.Fprintf(console.Stderr(ctx), "Running kubectl %s\n", strings.Join(cmdLine, " "))
