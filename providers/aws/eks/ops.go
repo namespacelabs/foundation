@@ -22,7 +22,7 @@ func RegisterGraphHandlers() {
 				return nil, err
 			}
 
-			awsAuth := awsauth.New(cluster.Client(), false)
+			awsAuth := awsauth.New(cluster.PreparedClient().Clientset, false)
 			args := &awsauth.MapperArguments{
 				MapRoles: true,
 				RoleARN:  a.Rolearn,

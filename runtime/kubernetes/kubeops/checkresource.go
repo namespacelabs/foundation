@@ -31,7 +31,7 @@ func fetchResource(ctx context.Context, cluster kubedef.KubeCluster, description
 		Arg("resource", resource.Resource).
 		Arg("name", name).
 		Arg("namespace", namespace), func(ctx context.Context) (*unstructured.Unstructured, error) {
-		client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
+		client, err := client.MakeGroupVersionBasedClient(ctx, cluster.PreparedClient().RESTConfig, resource.GroupVersion())
 		if err != nil {
 			return nil, err
 		}

@@ -75,6 +75,8 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 		return nil, err
 	}
 
+	restcfg := cluster.PreparedClient().RESTConfig
+
 	var res unstructured.Unstructured
 	if err := tasks.Action("kubernetes.apply").Scope(scope...).
 		HumanReadablef(desc).
@@ -90,7 +92,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			if resource.Group == "k8s.namespacelabs.dev" {
 				crd := fmt.Sprintf("%s.%s", resource.Resource, resource.Group)
 
-				cli, err := apiextensionsv1.NewForConfig(cluster.RESTConfig())
+				cli, err := apiextensionsv1.NewForConfig(restcfg)
 				if err != nil {
 					return false, err
 				}
@@ -138,12 +140,12 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			}
 
 			if waitOnNamespace != "" {
-				if err := waitForDefaultServiceAccount(ctx, cluster.Client(), waitOnNamespace); err != nil {
+				if err := waitForDefaultServiceAccount(ctx, cluster.PreparedClient().Clientset, waitOnNamespace); err != nil {
 					return false, err
 				}
 			}
 
-			if !cluster.ClusterConfiguration().Ephemeral {
+			if !cluster.PreparedClient().Configuration.Ephemeral {
 				if apply.obj.GetAPIVersion() == "networking.k8s.io/v1" && apply.obj.GetKind() == "Ingress" {
 					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
@@ -154,7 +156,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			return false, nil
 		},
 		Run: func(ctx context.Context) error {
-			client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
+			client, err := client.MakeGroupVersionBasedClient(ctx, restcfg, resource.GroupVersion())
 			if err != nil {
 				return err
 			}
@@ -198,7 +200,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 		}
 
 		return &ops.HandleResult{Waiters: []ops.Waiter{kobs.WaitOnGenerationCondition{
-			RestConfig:         cluster.RESTConfig(),
+			RestConfig:         restcfg,
 			Namespace:          apply.obj.GetNamespace(),
 			Name:               apply.obj.GetName(),
 			ExpectedGeneration: generation,
@@ -220,7 +222,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 			var waiters []ops.Waiter
 			for _, sc := range scope {
 				w := kobs.WaitOnResource{
-					RestConfig:       cluster.RESTConfig(),
+					RestConfig:       restcfg,
 					Description:      desc,
 					Namespace:        apply.obj.GetNamespace(),
 					Name:             apply.obj.GetName(),
@@ -245,7 +247,7 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 				defer close(ch)
 			}
 
-			return kobs.WaitForCondition(ctx, cluster.Client(), tasks.Action("pod.wait").Scope(scope...),
+			return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("pod.wait").Scope(scope...),
 				kobs.WaitForPodConditition(
 					apply.obj.GetNamespace(),
 					kobs.PickPod(apply.obj.GetName()),

@@ -10,7 +10,6 @@ import (
 
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -20,7 +19,7 @@ import (
 
 type Cluster struct {
 	cli            *k8s.Clientset
-	computedClient *client.ComputedClient
+	computedClient *client.Prepared
 	host           *client.HostConfig
 
 	ClusterAttachedState
@@ -66,24 +65,12 @@ func (u *Cluster) Planner(env planning.Context) runtime.Planner {
 	return NewPlanner(env, u.SystemInfo)
 }
 
-func (u *Cluster) ClusterConfiguration() client.ClusterConfiguration {
-	return u.computedClient.ClusterConfiguration
-}
-
-func (u *Cluster) Client() *k8s.Clientset {
-	return u.cli
-}
-
 func (u *Cluster) RESTConfig() *rest.Config {
 	return u.computedClient.RESTConfig
 }
 
-func (u *Cluster) ComputedConfig() clientcmd.ClientConfig {
-	return u.computedClient.ClientConfig
-}
-
-func (u *Cluster) HostConfig() *client.HostConfig {
-	return u.host
+func (u *Cluster) PreparedClient() *client.Prepared {
+	return u.computedClient
 }
 
 func (u *Cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {

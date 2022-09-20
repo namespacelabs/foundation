@@ -70,11 +70,11 @@ type clusterWrapper struct {
 }
 
 func (g clusterWrapper) ToRESTConfig() (*rest.Config, error) {
-	return g.cfg.RESTConfig(), nil
+	return g.cfg.PreparedClient().RESTConfig, nil
 }
 
 func (g clusterWrapper) ToDiscoveryClient() (discovery.CachedDiscoveryInterface, error) {
-	return client.NewDiscoveryClient(g.cfg.RESTConfig(), false)
+	return client.NewDiscoveryClient(g.cfg.PreparedClient().RESTConfig, false)
 }
 
 func (g clusterWrapper) ToRESTMapper() (meta.RESTMapper, error) {
@@ -89,5 +89,5 @@ func (g clusterWrapper) ToRESTMapper() (meta.RESTMapper, error) {
 }
 
 func (g clusterWrapper) ToRawKubeConfigLoader() clientcmd.ClientConfig {
-	return g.cfg.ComputedConfig()
+	return g.cfg.PreparedClient().ClientConfig
 }

@@ -27,7 +27,9 @@ func registerCleanup() {
 					return nil, err
 				}
 
-				configs, err := cluster.Client().CoreV1().ConfigMaps(cleanup.Namespace).List(ctx, v1.ListOptions{
+				client := cluster.PreparedClient().Clientset
+
+				configs, err := client.CoreV1().ConfigMaps(cleanup.Namespace).List(ctx, v1.ListOptions{
 					LabelSelector: kubedef.SerializeSelector(map[string]string{
 						kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
 					}),
@@ -43,7 +45,7 @@ func registerCleanup() {
 				usedConfigs := map[string]struct{}{}
 
 				if cleanup.CheckPods {
-					pods, err := cluster.Client().CoreV1().Pods(cleanup.Namespace).List(ctx, v1.ListOptions{
+					pods, err := client.CoreV1().Pods(cleanup.Namespace).List(ctx, v1.ListOptions{
 						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
@@ -56,7 +58,7 @@ func registerCleanup() {
 						}
 					}
 				} else {
-					deployments, err := cluster.Client().AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
+					deployments, err := client.AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
 						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
@@ -69,7 +71,7 @@ func registerCleanup() {
 						}
 					}
 
-					statefulSets, err := cluster.Client().AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
+					statefulSets, err := client.AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
 						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
@@ -88,7 +90,7 @@ func registerCleanup() {
 						continue
 					}
 
-					if err := cluster.Client().CoreV1().ConfigMaps(cleanup.Namespace).Delete(ctx, cfg.Name, v1.DeleteOptions{}); err != nil {
+					if err := client.CoreV1().ConfigMaps(cleanup.Namespace).Delete(ctx, cfg.Name, v1.DeleteOptions{}); err != nil {
 						fmt.Fprintf(console.Warnings(ctx), "kubernetes: failed to remove unused runtime configuration %q: %v\n", cfg.Name, err)
 					}
 				}

@@ -37,7 +37,7 @@ func Register() {
 			return nil, tasks.Action("ingress.publish-address").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
 				ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
 
-				return waitForIngress(ctx, cluster.Client(), ingressSvc, op)
+				return waitForIngress(ctx, cluster.PreparedClient().Clientset, ingressSvc, op)
 			})
 		},
 
@@ -56,7 +56,7 @@ func Register() {
 			}
 
 			return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
-				ingresses, err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
+				ingresses, err := cluster.PreparedClient().Clientset.NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
 					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 				})
 				if err != nil {
@@ -66,7 +66,7 @@ func Register() {
 				// We no longer emit "-managed" ingresses.
 				for _, ingress := range ingresses.Items {
 					if strings.HasSuffix(ingress.Name, "-managed") {
-						if err := cluster.Client().NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
+						if err := cluster.PreparedClient().Clientset.NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
 							return err
 						}
 					}

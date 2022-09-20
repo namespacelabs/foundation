@@ -17,9 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -421,31 +418,19 @@ func (d *cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 }
 
 func (d *cluster) EnsureState(ctx context.Context, key string) (any, error) {
-	return d.ClusterAttachedState.EnsureState(ctx, key, d.cluster.HostConfig().Config, d, nil)
+	return d.cluster.EnsureState(ctx, key)
 }
 
 func (d *cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	return d.cluster.DeleteAllRecursively(ctx, wait, progress)
 }
 
-func (d *cluster) Client() *k8s.Clientset {
-	return d.cluster.Client()
-}
-
-func (d *cluster) RESTConfig() *rest.Config {
-	return d.cluster.RESTConfig()
-}
-
-func (d *cluster) ComputedConfig() clientcmd.ClientConfig {
-	return d.cluster.ComputedConfig()
-}
-
-func (d *cluster) ClusterConfiguration() client.ClusterConfiguration {
-	return d.cluster.ClusterConfiguration()
+func (d *cluster) PreparedClient() *client.Prepared {
+	return d.cluster.PreparedClient()
 }
 
 func (d *cluster) config() (*KubernetesCluster, error) {
-	p := d.cluster.ClusterConfiguration()
+	p := d.cluster.PreparedClient().Configuration
 	if p.ProviderSpecific == nil {
 		return nil, fnerrors.InternalError("cluster creation state is missing")
 	}

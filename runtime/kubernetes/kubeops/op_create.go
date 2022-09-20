@@ -77,6 +77,8 @@ func registerCreate() {
 				return nil, err
 			}
 
+			restcfg := cluster.PreparedClient().RESTConfig
+
 			create := parsed.spec
 			if create.SkipIfAlreadyExists || create.UpdateIfExisting {
 				obj, err := fetchResource(ctx, cluster, d.Description, *resource, parsed.Name,
@@ -99,7 +101,7 @@ func registerCreate() {
 						// This is not advised. Overwriting without reading.
 						msg.SetResourceVersion(obj.GetResourceVersion())
 
-						return nil, updateResource(ctx, d, *resource, msg, cluster.RESTConfig())
+						return nil, updateResource(ctx, d, *resource, msg, restcfg)
 					}
 				}
 			}
@@ -109,7 +111,7 @@ func registerCreate() {
 				Arg("resource", resource.Resource).
 				Arg("name", parsed.Name).
 				Arg("namespace", parsed.Namespace).Run(ctx, func(ctx context.Context) error {
-				client, err := client.MakeGroupVersionBasedClient(ctx, cluster.RESTConfig(), resource.GroupVersion())
+				client, err := client.MakeGroupVersionBasedClient(ctx, restcfg, resource.GroupVersion())
 				if err != nil {
 					return err
 				}

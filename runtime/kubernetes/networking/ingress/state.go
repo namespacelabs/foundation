@@ -25,7 +25,7 @@ func RegisterRuntimeState() {
 		}
 
 		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until nginx (ingress) is running").Run(ctx, func(ctx context.Context) error {
-			return nginx.IngressWaiter(kube.RESTConfig()).WaitUntilReady(ctx, nil)
+			return nginx.IngressWaiter(kube.PreparedClient().RESTConfig).WaitUntilReady(ctx, nil)
 		}); err != nil {
 			return nil, err
 		}

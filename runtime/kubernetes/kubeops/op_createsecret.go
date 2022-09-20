@@ -88,7 +88,7 @@ func RegisterCreateSecret() {
 				}
 			}
 
-			if _, err := kubecluster.Client().CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+			if _, err := kubecluster.PreparedClient().Clientset.CoreV1().Secrets(create.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
 				FieldManager: kubedef.K8sFieldManager,
 			}); err != nil {
 				return nil, err

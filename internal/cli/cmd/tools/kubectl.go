@@ -71,7 +71,7 @@ func writeKubeconfig(ctx context.Context, env planning.Context, keepConfig bool)
 	kluster := cluster.Cluster().(*kubernetes.Cluster)
 
 	k8sconfig := cluster.KubeConfig()
-	rawConfig, err := kluster.ComputedConfig().RawConfig()
+	rawConfig, err := kluster.PreparedClient().ClientConfig.RawConfig()
 	if err != nil {
 		return nil, fnerrors.Wrapf(nil, err, "failed to generate kubeconfig")
 	}

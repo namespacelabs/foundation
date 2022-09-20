@@ -40,11 +40,11 @@ var (
 	providers = map[string]ProviderFunc{}
 )
 
-type ComputedClient struct {
-	Clientset            *k8s.Clientset
-	RESTConfig           *rest.Config
-	ClientConfig         clientcmd.ClientConfig
-	ClusterConfiguration ClusterConfiguration
+type Prepared struct {
+	Clientset     *k8s.Clientset
+	RESTConfig    *rest.Config
+	ClientConfig  clientcmd.ClientConfig
+	Configuration ClusterConfiguration
 }
 
 func RegisterConfigurationProvider(name string, p ProviderFunc) {
@@ -168,7 +168,7 @@ func (cfg *computedConfig) Namespace() (string, bool, error) {
 	return x.ClientConfig.Namespace()
 }
 
-func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
+func NewClient(ctx context.Context, host *HostConfig) (*Prepared, error) {
 	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
 
 	computed, config, err := NewClientConfig(ctx, host).ClientConfigAndInternal()
@@ -181,13 +181,13 @@ func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 		return nil, err
 	}
 
-	c := &ComputedClient{
+	c := &Prepared{
 		Clientset:  clientset,
 		RESTConfig: config,
 	}
 
 	if computed != nil {
-		c.ClusterConfiguration = computed.ClusterConfiguration
+		c.Configuration = computed.ClusterConfiguration
 		c.ClientConfig = computed.ClientConfig
 	}
 

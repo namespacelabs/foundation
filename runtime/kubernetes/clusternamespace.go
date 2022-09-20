@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -57,7 +56,6 @@ func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterName
 
 func (r *ClusterNamespace) KubeConfig() kubedef.KubeConfig {
 	return kubedef.KubeConfig{
-		Config:      r.cluster.host.HostEnv.Kubeconfig,
 		Context:     r.cluster.host.HostEnv.Context,
 		Environment: r.target.env,
 		Namespace:   r.target.namespace,
@@ -70,10 +68,6 @@ func (cn *ClusterNamespace) Cluster() runtime.Cluster {
 
 func (cn *ClusterNamespace) Planner() runtime.Planner {
 	return Planner{fetchSystemInfo: cn.cluster.SystemInfo, target: cn.target}
-}
-
-func (u *ClusterNamespace) HostConfig() *client.HostConfig {
-	return u.cluster.HostConfig()
 }
 
 func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {

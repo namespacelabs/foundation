@@ -42,7 +42,7 @@ func PrepareIngress(env planning.Context, kube compute.Computable[*kubernetes.Cl
 }
 
 func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kubernetes.Cluster) error {
-	for _, lbl := range kube.ClusterConfiguration().Labels {
+	for _, lbl := range kube.PreparedClient().Configuration.Labels {
 		if lbl.Name == ingress.LblNameStatus {
 			if lbl.Value == "installed" {
 				return nil

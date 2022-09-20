@@ -7,9 +7,6 @@ package kubedef
 import (
 	"context"
 
-	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -20,10 +17,7 @@ import (
 type KubeCluster interface {
 	runtime.Cluster
 
-	Client() *k8s.Clientset
-	RESTConfig() *rest.Config
-	ComputedConfig() clientcmd.ClientConfig
-	ClusterConfiguration() client.ClusterConfiguration
+	PreparedClient() *client.Prepared
 }
 
 type KubeClusterNamespace interface {
@@ -33,7 +27,6 @@ type KubeClusterNamespace interface {
 }
 
 type KubeConfig struct {
-	Config      string
 	Context     string // Only set if explicitly set in KubeEnv.
 	Namespace   string
 	Environment *schema.Environment
