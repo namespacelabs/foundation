@@ -181,12 +181,17 @@ func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 		return nil, err
 	}
 
-	return &ComputedClient{
-		Clientset:            clientset,
-		RESTConfig:           config,
-		ClusterConfiguration: computed.ClusterConfiguration,
-		ClientConfig:         computed.ClientConfig,
-	}, nil
+	c := &ComputedClient{
+		Clientset:  clientset,
+		RESTConfig: config,
+	}
+
+	if computed != nil {
+		c.ClusterConfiguration = computed.ClusterConfiguration
+		c.ClientConfig = computed.ClientConfig
+	}
+
+	return c, nil
 }
 
 func MakeGroupVersionBasedClientAndConfig(ctx context.Context, original *rest.Config, gv schema.GroupVersion) (*rest.Config, rest.Interface, error) {
