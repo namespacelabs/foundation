@@ -16,13 +16,13 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareNewNamespaceCluster(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareNewNamespaceCluster(env planning.Context, machineType string, ephemeral bool) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.nscloud.new-cluster"),
 		compute.Inputs().Proto("env", env.Environment()).Indigestible("foobar", "foobar"),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			cfg, err := nscloud.CreateClusterForEnv(ctx, env.Configuration(), false)
+			cfg, err := nscloud.CreateCluster(ctx, machineType, ephemeral, env.Environment().Name)
 			if err != nil {
 				return nil, err
 			}

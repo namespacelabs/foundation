@@ -17,30 +17,34 @@ import (
 )
 
 func newNewClusterCmd() *cobra.Command {
-	newClusterCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    "new-cluster",
 		Args:   cobra.NoArgs,
 		Hidden: true,
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			env, err := planning.LoadContext(root, envRef)
-			if err != nil {
-				return err
-			}
-
-			prepares := baseline(env)
-
-			configs := []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]{prepare.PrepareNewNamespaceCluster(env)}
-			prepares = append(prepares, configs...)
-			kube := instantiateKube(env, configs)
-			prepares = append(prepares, prepare.PrepareIngress(env, kube))
-			return collectPreparesAndUpdateDevhost(ctx, root, prepares)
-		}),
 	}
 
-	return newClusterCmd
+	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
+	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
+		env, err := planning.LoadContext(root, envRef)
+		if err != nil {
+			return err
+		}
+
+		prepares := baseline(env)
+
+		configs := []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]{prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral)}
+		prepares = append(prepares, configs...)
+		kube := instantiateKube(env, configs)
+		prepares = append(prepares, prepare.PrepareIngress(env, kube))
+		return collectPreparesAndUpdateDevhost(ctx, root, prepares)
+	})
+
+	return cmd
 }

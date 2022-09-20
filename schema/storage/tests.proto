@@ -44,11 +44,11 @@ message TestRuns {
     }
 
     message IncompatibleTest {
-        string            test_package       = 1;
-        string            server_package     = 2;
-        string            requirement_owner  = 3;
-        Environment.Label required_label     = 4;
-        Environment.Label incompatible_label = 5;
+        string                  test_package       = 1;
+        string                  server_package     = 2;
+        string                  requirement_owner  = 3;
+        foundation.schema.Label required_label     = 4;
+        foundation.schema.Label incompatible_label = 5;
     }
 }
 

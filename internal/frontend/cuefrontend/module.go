@@ -166,10 +166,10 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 		}
 
 		for k, v := range env.Labels {
-			out.Labels = append(out.Labels, &schema.Environment_Label{Name: k, Value: v})
+			out.Labels = append(out.Labels, &schema.Label{Name: k, Value: v})
 		}
 
-		slices.SortFunc(out.Labels, func(a, b *schema.Environment_Label) bool {
+		slices.SortFunc(out.Labels, func(a, b *schema.Label) bool {
 			if a.GetName() == b.GetName() {
 				return strings.Compare(a.GetValue(), b.GetValue()) < 0
 			}

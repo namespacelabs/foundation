@@ -63,7 +63,7 @@ message Workspace {
         string              name                                  = 1;
         string              runtime                               = 2;  // E.g. kubernetes
         Environment.Purpose purpose                               = 3;
-        repeated Environment.Label labels                         = 4;
+        repeated foundation.schema.Label labels                   = 4;
         repeated google.protobuf.Any configuration                = 5;
         repeated DevHost.ConfigurePlatform platform_configuration = 6;
     }

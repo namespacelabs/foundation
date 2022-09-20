@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -41,6 +42,15 @@ func PrepareIngress(env planning.Context, kube compute.Computable[*kubernetes.Cl
 }
 
 func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kubernetes.Cluster) error {
+	for _, lbl := range kube.ClusterConfiguration().Labels {
+		if lbl.Name == ingress.LblNameStatus {
+			if lbl.Value == "installed" {
+				return nil
+			}
+			break
+		}
+	}
+
 	state, err := kube.PrepareCluster(ctx)
 	if err != nil {
 		return err

@@ -23,11 +23,11 @@ message Environment {
         TESTING         = 2;
         PRODUCTION      = 3;
     }
+}
 
-    message Label {
-        string name  = 1;
-        string value = 2;
-    }
+message Label {
+    string name  = 1;
+    string value = 2;
 }
 
 message Platform {

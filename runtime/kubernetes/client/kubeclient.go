@@ -17,6 +17,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
@@ -26,6 +27,7 @@ type ClusterConfiguration struct {
 	TokenProvider    TokenProviderFunc
 	Ephemeral        bool // Set to true if thie target cluster is ephemeral.
 	ProviderSpecific any  // Up to an implementation to attach state if needed.
+	Labels           []*fnschema.Label
 }
 
 type DeferredProvider struct{}
@@ -44,12 +46,12 @@ type ComputedClient struct {
 	internal   *configResult
 }
 
-func (cc ComputedClient) Provider() (ClusterConfiguration, error) {
+func (cc ComputedClient) ClusterConfiguration() ClusterConfiguration {
 	if cc.internal == nil {
-		return ClusterConfiguration{}, nil
+		return ClusterConfiguration{}
 	}
 
-	return cc.internal.Provider, nil
+	return cc.internal.ClusterConfiguration
 }
 
 func (cc ComputedClient) ClientConfig() clientcmd.ClientConfig {
@@ -85,10 +87,8 @@ type computedConfig struct {
 }
 
 type configResult struct {
-	ClientConfig  clientcmd.ClientConfig
-	TokenProvider TokenProviderFunc
-	Provider      ClusterConfiguration
-	Ephemeral     bool
+	ClientConfig clientcmd.ClientConfig
+	ClusterConfiguration
 }
 
 func (cfg *computedConfig) computeConfig() (*configResult, error) {
@@ -107,16 +107,14 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 			return nil, fnerrors.BadInputError("%s: no such kubernetes configuration provider", c.Provider)
 		}
 
-		x, err := provider(cfg.ctx, cfg.host.Config)
+		result, err := provider(cfg.ctx, cfg.host.Config)
 		if err != nil {
 			return nil, err
 		}
 
 		cfg.computed = &configResult{
-			ClientConfig:  clientcmd.NewDefaultClientConfig(x.Config, nil),
-			TokenProvider: x.TokenProvider,
-			Provider:      x,
-			Ephemeral:     x.Ephemeral,
+			ClientConfig:         clientcmd.NewDefaultClientConfig(result.Config, nil),
+			ClusterConfiguration: result,
 		}
 
 		return cfg.computed, nil

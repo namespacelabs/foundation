@@ -66,8 +66,8 @@ func (u *Cluster) Planner(env planning.Context) runtime.Planner {
 	return NewPlanner(env, u.SystemInfo)
 }
 
-func (u *Cluster) Provider() (client.ClusterConfiguration, error) {
-	return u.computedClient.Provider()
+func (u *Cluster) ClusterConfiguration() client.ClusterConfiguration {
+	return u.computedClient.ClusterConfiguration()
 }
 
 func (u *Cluster) Client() *k8s.Clientset {

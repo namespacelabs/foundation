@@ -14,8 +14,8 @@ type IncompatibleEnvironmentErr struct {
 	Env               *schema.Environment
 	Server            *schema.Server
 	RequirementOwner  schema.PackageName
-	RequiredLabel     *schema.Environment_Label
-	IncompatibleLabel *schema.Environment_Label
+	RequiredLabel     *schema.Label
+	IncompatibleLabel *schema.Label
 }
 
 func (err IncompatibleEnvironmentErr) Error() string {

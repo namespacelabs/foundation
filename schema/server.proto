@@ -133,9 +133,9 @@ message Server {
     }
 
     message EnvironmentRequirement {
-        string   package                                           = 1;
-        repeated Environment.Label environment_has_label           = 2;
-        repeated Environment.Label environment_does_not_have_label = 3;
+        string   package                                                 = 1;
+        repeated foundation.schema.Label environment_has_label           = 2;
+        repeated foundation.schema.Label environment_does_not_have_label = 3;
     }
 }
 

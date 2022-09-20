@@ -119,7 +119,7 @@ func getOrCreate(ctx context.Context, cfg planning.Configuration) (bool, *Kubern
 		return false, cluster, err
 	}
 
-	result, err := CreateClusterForEnv(ctx, cfg, true)
+	result, err := CreateCluster(ctx, "", true, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
 	if err != nil {
 		return false, nil, err
 	}
@@ -142,6 +142,9 @@ func provideCluster(ctx context.Context, cfg planning.Configuration) (client.Clu
 		ClientCertificateData:    cluster.ClientCertificateData,
 		ClientKeyData:            cluster.ClientKeyData,
 	})
+	for _, lbl := range cluster.Label {
+		p.Labels = append(p.Labels, &schema.Label{Name: lbl.Name, Value: lbl.Value})
+	}
 	return p, nil
 }
 
@@ -152,11 +155,7 @@ type CreateClusterResult struct {
 	Deadline  *time.Time
 }
 
-func CreateClusterForEnv(ctx context.Context, cfg planning.Configuration, ephemeral bool) (*CreateClusterResult, error) {
-	return CreateCluster(ctx, ephemeral, cfg.EnvKey()) // The environment name is the best we can do right now as a documented purpose.
-}
-
-func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*CreateClusterResult, error) {
+func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purpose string) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
 	defer done()
 
@@ -165,6 +164,7 @@ func CreateCluster(ctx context.Context, ephemeral bool, purpose string) (*Create
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         ephemeral,
 			DocumentedPurpose: purpose,
+			MachineType:       machineType,
 		}
 
 		if !environment.IsRunningInCI() {
@@ -329,7 +329,7 @@ func provideClass(ctx context.Context, cfg planning.Configuration) (runtime.Clas
 			Action: tasks.Action("nscloud.cluster-prepare").LogLevel(1),
 			Do: func(ctx context.Context) error {
 				// Kick off the cluster provisioning as soon as we can.
-				_, _ = CreateClusterForEnv(ctx, cfg, true)
+				_, _ = CreateCluster(ctx, "", true, cfg.EnvKey())
 				return nil
 			},
 			BestEffort: true,
@@ -440,11 +440,7 @@ func (d *cluster) ComputedConfig() clientcmd.ClientConfig {
 }
 
 func (d *cluster) config() (*KubernetesCluster, error) {
-	p, err := d.cluster.Provider()
-	if err != nil {
-		return nil, err
-	}
-
+	p := d.cluster.ClusterConfiguration()
 	if p.ProviderSpecific == nil {
 		return nil, fnerrors.InternalError("cluster creation state is missing")
 	}
@@ -504,6 +500,7 @@ type CreateKubernetesClusterRequest struct {
 	Ephemeral         bool     `json:"ephemeral,omitempty"`
 	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
 	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
+	MachineType       string   `json:"machine_type,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {
@@ -560,6 +557,8 @@ type KubernetesCluster struct {
 	Platform               []string `json:"platform,omitempty"`
 
 	IngressDomain string `json:"ingress_domain,omitempty"`
+
+	Label []*LabelEntry `json:"label,omitempty"`
 }
 
 type ImageRegistry struct {
@@ -574,4 +573,9 @@ type ClusterShape struct {
 type DestroyKubernetesClusterRequest struct {
 	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
 	ClusterId      string `json:"cluster_id,omitempty"`
+}
+
+type LabelEntry struct {
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
 }

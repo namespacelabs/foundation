@@ -365,13 +365,13 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 
 		node.EnvironmentRequirement = &schema.Node_EnvironmentRequirement{}
 		for k, v := range er.RequiredLabels {
-			node.EnvironmentRequirement.EnvironmentHasLabel = append(node.EnvironmentRequirement.EnvironmentHasLabel, &schema.Environment_Label{
+			node.EnvironmentRequirement.EnvironmentHasLabel = append(node.EnvironmentRequirement.EnvironmentHasLabel, &schema.Label{
 				Name:  k,
 				Value: v,
 			})
 		}
 
-		slices.SortFunc(node.EnvironmentRequirement.EnvironmentHasLabel, func(a, b *schema.Environment_Label) bool {
+		slices.SortFunc(node.EnvironmentRequirement.EnvironmentHasLabel, func(a, b *schema.Label) bool {
 			if a.GetName() == b.GetName() {
 				return strings.Compare(a.GetValue(), b.GetValue()) < 0
 			}
