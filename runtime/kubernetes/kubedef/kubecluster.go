@@ -33,8 +33,10 @@ type KubeClusterNamespace interface {
 }
 
 type KubeConfig struct {
-	Config, Context, Namespace string
-	Environment                *schema.Environment
+	Config      string
+	Context     string // Only set if explicitly set in KubeEnv.
+	Namespace   string
+	Environment *schema.Environment
 }
 
 func InjectedKubeCluster(ctx context.Context) (KubeCluster, error) {

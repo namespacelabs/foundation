@@ -12,7 +12,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/octant"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -23,18 +22,16 @@ func newOctantCmd() *cobra.Command {
 	}
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
-		k8s, err := kubernetes.ConnectToNamespace(ctx, env)
-		if err != nil {
-			return err
-		}
-
 		bin, err := octant.EnsureSDK(ctx)
 		if err != nil {
 			return err
 		}
 
-		cfg := k8s.KubeConfig()
+		cfg, err := writeKubeconfig(ctx, env, false)
+		if err != nil {
+			return err
+		}
 
-		return localexec.RunInteractive(ctx, exec.CommandContext(ctx, string(bin), "--context="+cfg.Context, "--kubeconfig="+cfg.Config, "-n", cfg.Namespace))
+		return localexec.RunInteractive(ctx, exec.CommandContext(ctx, string(bin), cfg.BaseArgs()...))
 	})
 }
