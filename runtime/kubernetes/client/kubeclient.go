@@ -7,7 +7,6 @@ package client
 import (
 	"context"
 	"fmt"
-	sync "sync"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
@@ -19,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type ClusterConfiguration struct {
@@ -44,6 +42,7 @@ type Prepared struct {
 	Clientset     *k8s.Clientset
 	RESTConfig    *rest.Config
 	ClientConfig  clientcmd.ClientConfig
+	HostEnv       *HostEnv
 	Configuration ClusterConfiguration
 }
 
@@ -51,32 +50,15 @@ func RegisterConfigurationProvider(name string, p ProviderFunc) {
 	providers[name] = p
 }
 
-func NewClientConfig(ctx context.Context, host *HostConfig) *computedConfig {
-	return &computedConfig{ctx: ctx, host: host}
-}
-
-type computedConfig struct {
-	ctx  context.Context
-	host *HostConfig
-
-	mu       sync.Mutex
-	computed *configResult
-}
-
 type configResult struct {
 	ClientConfig clientcmd.ClientConfig
 	ClusterConfiguration
 }
 
-func (cfg *computedConfig) computeConfig() (*configResult, error) {
-	cfg.mu.Lock()
-	defer cfg.mu.Unlock()
-
-	if cfg.computed != nil {
-		return cfg.computed, nil
+func computeConfig(ctx context.Context, c *HostEnv, config planning.Configuration) (*configResult, error) {
+	if c.Incluster {
+		return nil, nil
 	}
-
-	c := cfg.host.HostEnv
 
 	if c.Provider != "" {
 		provider := providers[c.Provider]
@@ -84,106 +66,84 @@ func (cfg *computedConfig) computeConfig() (*configResult, error) {
 			return nil, fnerrors.BadInputError("%s: no such kubernetes configuration provider", c.Provider)
 		}
 
-		result, err := provider(cfg.ctx, cfg.host.Config)
+		result, err := provider(ctx, config)
 		if err != nil {
 			return nil, err
 		}
 
-		cfg.computed = &configResult{
+		return &configResult{
 			ClientConfig:         clientcmd.NewDefaultClientConfig(result.Config, nil),
 			ClusterConfiguration: result,
-		}
-
-		return cfg.computed, nil
+		}, nil
 	}
 
 	if c.StaticConfig != nil {
-		cfg.computed = &configResult{
+		return &configResult{
 			ClientConfig: clientcmd.NewDefaultClientConfig(*MakeApiConfig(c.StaticConfig), nil),
-		}
-
-		return cfg.computed, nil
+		}, nil
 	}
 
 	if c.GetKubeconfig() == "" {
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
-	cfg.computed = &configResult{
+	return &configResult{
 		ClientConfig: clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 			&clientcmd.ClientConfigLoadingRules{ExplicitPath: c.GetKubeconfig()},
 			&clientcmd.ConfigOverrides{CurrentContext: c.GetContext()}),
-	}
-
-	return cfg.computed, nil
+	}, nil
 }
 
-func (cfg *computedConfig) RawConfig() (clientcmdapi.Config, error) {
-	x, err := cfg.computeConfig()
-	if err != nil {
-		return clientcmdapi.Config{}, err
-	}
-
-	return x.ClientConfig.RawConfig()
-}
-
-func (cfg *computedConfig) ClientConfigAndInternal() (*configResult, *rest.Config, error) {
-	if cfg.host.HostEnv.GetIncluster() {
+func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configResult) (*rest.Config, error) {
+	if hostEnv.GetIncluster() {
 		config, err := rest.InClusterConfig()
-		return nil, config, err
+		return config, err
 	}
 
-	x, err := cfg.computeConfig()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	computed, err := x.ClientConfig.ClientConfig()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if x.TokenProvider != nil {
-		token, err := x.TokenProvider(cfg.ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		computed.BearerToken = token
-	}
-
-	return x, computed, nil
-}
-
-func (cfg *computedConfig) ClientConfig() (*rest.Config, error) {
-	_, config, err := cfg.ClientConfigAndInternal()
-	return config, err
-}
-
-func (cfg *computedConfig) Namespace() (string, bool, error) {
-	x, err := cfg.computeConfig()
-	if err != nil {
-		return "", false, err
-	}
-	return x.ClientConfig.Namespace()
-}
-
-func NewClient(ctx context.Context, host *HostConfig) (*Prepared, error) {
-	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
-
-	computed, config, err := NewClientConfig(ctx, host).ClientConfigAndInternal()
+	restcfg, err := computed.ClientConfig.ClientConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	clientset, err := k8s.NewForConfig(config)
+	if computed.TokenProvider != nil {
+		token, err := computed.TokenProvider(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		restcfg.BearerToken = token
+	}
+
+	return restcfg, nil
+}
+
+func NewClient(ctx context.Context, cfg planning.Configuration) (*Prepared, error) {
+	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
+
+	hostEnv, err := CheckGetHostEnv(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	computed, err := computeConfig(ctx, hostEnv, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	restcfg, err := obtainRESTConfig(ctx, hostEnv, computed)
+	if err != nil {
+		return nil, err
+	}
+
+	clientset, err := k8s.NewForConfig(restcfg)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &Prepared{
 		Clientset:  clientset,
-		RESTConfig: config,
+		RESTConfig: restcfg,
+		HostEnv:    hostEnv,
 	}
 
 	if computed != nil {
@@ -227,18 +187,4 @@ func CheckGetHostEnv(cfg planning.Configuration) (*HostEnv, error) {
 		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", cfg.EnvKey())
 	}
 	return hostEnv, nil
-}
-
-func ComputeHostConfig(cfg planning.Configuration) (*HostConfig, error) {
-	hostEnv, err := CheckGetHostEnv(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	hostEnv.Kubeconfig, err = dirs.ExpandHome(hostEnv.Kubeconfig)
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to expand %q", hostEnv.Kubeconfig)
-	}
-
-	return &HostConfig{Config: cfg, HostEnv: hostEnv}, nil
 }

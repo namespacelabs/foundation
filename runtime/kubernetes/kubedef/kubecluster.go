@@ -17,7 +17,7 @@ import (
 type KubeCluster interface {
 	runtime.Cluster
 
-	PreparedClient() *client.Prepared
+	PreparedClient() client.Prepared
 }
 
 type KubeClusterNamespace interface {

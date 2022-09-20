@@ -425,7 +425,7 @@ func (d *cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress 
 	return d.cluster.DeleteAllRecursively(ctx, wait, progress)
 }
 
-func (d *cluster) PreparedClient() *client.Prepared {
+func (d *cluster) PreparedClient() client.Prepared {
 	return d.cluster.PreparedClient()
 }
 

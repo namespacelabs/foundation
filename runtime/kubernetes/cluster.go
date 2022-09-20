@@ -21,8 +21,8 @@ import (
 
 type Cluster struct {
 	cli            *k8s.Clientset
-	computedClient *client.Prepared
-	host           *client.HostConfig
+	computedClient client.Prepared
+	config         planning.Configuration
 
 	systemInfo *tcache.Deferred[*kubedef.SystemInfo]
 
@@ -43,7 +43,7 @@ type state struct {
 
 var _ kubedef.KubeCluster = &Cluster{}
 
-func connectToConfig(ctx context.Context, config *client.HostConfig) (*Cluster, error) {
+func ConnectToCluster(ctx context.Context, config planning.Configuration) (*Cluster, error) {
 	cli, err := client.NewClient(ctx, config)
 	if err != nil {
 		return nil, err
@@ -51,21 +51,12 @@ func connectToConfig(ctx context.Context, config *client.HostConfig) (*Cluster, 
 
 	return &Cluster{
 		cli:            cli.Clientset,
-		computedClient: cli,
-		host:           config,
+		computedClient: *cli,
+		config:         config,
 		systemInfo: tcache.NewDeferred(tasks.Action("kubernetes.fetch-system-info"), func(ctx context.Context) (*kubedef.SystemInfo, error) {
 			return computeSystemInfo(ctx, cli.Clientset)
 		}),
 	}, nil
-}
-
-func ConnectToCluster(ctx context.Context, cfg planning.Configuration) (*Cluster, error) {
-	hostConfig, err := client.ComputeHostConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return connectToConfig(ctx, hostConfig)
 }
 
 func (u *Cluster) Class() runtime.Class {
@@ -80,7 +71,7 @@ func (u *Cluster) RESTConfig() *rest.Config {
 	return u.computedClient.RESTConfig
 }
 
-func (u *Cluster) PreparedClient() *client.Prepared {
+func (u *Cluster) PreparedClient() client.Prepared {
 	return u.computedClient
 }
 
@@ -102,7 +93,7 @@ func (r *Cluster) PrepareCluster(ctx context.Context) (*runtime.DeploymentPlan, 
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
-	return r.ClusterAttachedState.EnsureState(ctx, key, r.host.Config, r, nil)
+	return r.ClusterAttachedState.EnsureState(ctx, key, r.config, r, nil)
 }
 
 func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config planning.Configuration, cluster runtime.Cluster, key *string) (any, error) {

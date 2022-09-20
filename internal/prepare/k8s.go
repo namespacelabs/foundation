@@ -9,36 +9,28 @@ import (
 
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type PrepareK8sOptions struct {
-	contextName string
-}
-
-type PrepareK8sOption func(*PrepareK8sOptions)
-
-func WithK8sContextName(contextName string) PrepareK8sOption {
-	return func(options *PrepareK8sOptions) {
-		options.contextName = contextName
-	}
-}
-
-func PrepareExistingK8s(env planning.Context, args ...PrepareK8sOption) compute.Computable[*client.HostConfig] {
+func PrepareExistingK8s(env planning.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
 		compute.Inputs().Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*client.HostConfig, error) {
-			opts := &PrepareK8sOptions{}
-			for _, opt := range args {
-				opt(opts)
+		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+			hostEnv, err := client.NewLocalHostEnv(contextName, env)
+			if err != nil {
+				return nil, err
 			}
-			if opts.contextName != "" {
-				return client.NewHostConfig(opts.contextName, env)
-			} else {
-				return client.ComputeHostConfig(env.Configuration())
+
+			c, err := devhost.MakeConfiguration(hostEnv)
+			if err != nil {
+				return nil, err
 			}
+			c.Name = env.Environment().Name
+			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }

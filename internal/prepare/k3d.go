@@ -19,16 +19,18 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/runtime/docker"
 	kubeclient "namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareK3d(clusterName string, env planning.Context) compute.Computable[*kubeclient.HostConfig] {
+func PrepareK3d(clusterName string, env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*kubeclient.HostConfig, error) {
+		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			// download k3d
 			k3dbin, err := k3d.EnsureSDK(ctx)
 			if err != nil {
@@ -56,16 +58,23 @@ func PrepareK3d(clusterName string, env planning.Context) compute.Computable[*ku
 			}
 
 			r := &registry.Registry{Url: "http://" + registryAddr}
-			hostconf, err := kubeclient.NewHostConfig("k3d-"+clusterName, env, kubeclient.WithRegistry(r))
+
+			hostEnv, err := kubeclient.NewLocalHostEnv("k3d-"+clusterName, env)
 			if err != nil {
 				return nil, err
 			}
 
-			if err = k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr, hostconf); err != nil {
+			c, err := devhost.MakeConfiguration(r, hostEnv)
+			if err != nil {
 				return nil, err
-
 			}
-			return hostconf, nil
+			c.Name = env.Environment().Name
+
+			if err = k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr); err != nil {
+				return nil, err
+			}
+
+			return []*schema.DevHost_ConfigureEnvironment{c}, nil
 		})
 }
 
@@ -122,7 +131,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 	return registryAddr, nil
 }
 
-func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName string, registryAddr string, hostconf *kubeclient.HostConfig) error {
+func (p *k3dPrepare) createOrRestartCluster(ctx context.Context, clusterName string, registryAddr string) error {
 	clusters, err := p.k3dbin.ListClusters(ctx)
 	if err != nil {
 		return err
