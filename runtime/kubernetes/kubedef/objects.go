@@ -32,3 +32,11 @@ func IsGVKStatefulSet(gvk schema.GroupVersionKind) bool {
 func IsGVKPod(gvk schema.GroupVersionKind) bool {
 	return gvk.GroupVersion().String() == "v1" && gvk.Kind == "Pod"
 }
+
+func IsCRD(obj runtime.Object) bool {
+	return IsGVKCRD(obj.GetObjectKind().GroupVersionKind())
+}
+
+func IsGVKCRD(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "apiextensions.k8s.io/v1" && gvk.Kind == "CustomResourceDefinition"
+}

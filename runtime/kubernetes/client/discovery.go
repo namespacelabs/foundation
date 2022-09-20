@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	diskcached "k8s.io/client-go/discovery/cached/disk"
 	"k8s.io/client-go/rest"
@@ -27,15 +26,13 @@ func NewDiscoveryClient(config *rest.Config, ephemeral bool) (discovery.CachedDi
 	return diskcached.NewCachedDiscoveryClientForConfig(config, cacheDir, "", time.Duration(6*time.Hour))
 }
 
-func NewRESTMapper(config *rest.Config, ephemeral bool) (meta.RESTMapper, error) {
+func NewRESTMapper(config *rest.Config, ephemeral bool) (*restmapper.DeferredDiscoveryRESTMapper, error) {
 	discoveryClient, err := NewDiscoveryClient(config, ephemeral)
 	if err != nil {
 		return nil, err
 	}
 
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient)
-	expander := restmapper.NewShortcutExpander(mapper, discoveryClient)
-	return expander, nil
+	return restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient), nil
 }
 
 func makeCacheDir(host string, ephemeral bool) (string, error) {

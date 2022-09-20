@@ -389,7 +389,7 @@ func (d *cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
 		return nil, err
 	}
 
-	return clusterNamespace{ClusterNamespace: bound, Config: config}, nil
+	return clusterNamespace{ClusterNamespace: bound.(*kubernetes.ClusterNamespace), Config: config}, nil
 }
 
 func (d *cluster) Planner(env planning.Context) runtime.Planner {
@@ -439,6 +439,10 @@ func (d *cluster) ComputedConfig() clientcmd.ClientConfig {
 	return d.cluster.ComputedConfig()
 }
 
+func (d *cluster) ClusterConfiguration() client.ClusterConfiguration {
+	return d.cluster.ClusterConfiguration()
+}
+
 func (d *cluster) config() (*KubernetesCluster, error) {
 	p := d.cluster.ClusterConfiguration()
 	if p.ProviderSpecific == nil {
@@ -473,9 +477,11 @@ func (d planner) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNamin
 }
 
 type clusterNamespace struct {
-	runtime.ClusterNamespace
+	*kubernetes.ClusterNamespace
 	Config *KubernetesCluster
 }
+
+var _ kubedef.KubeClusterNamespace = clusterNamespace{}
 
 func (cr clusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
 	return cr.deleteCluster(ctx)

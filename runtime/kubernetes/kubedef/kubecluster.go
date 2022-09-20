@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -22,6 +23,7 @@ type KubeCluster interface {
 	Client() *k8s.Clientset
 	RESTConfig() *rest.Config
 	ComputedConfig() clientcmd.ClientConfig
+	ClusterConfiguration() client.ClusterConfiguration
 }
 
 type KubeClusterNamespace interface {
@@ -58,5 +60,5 @@ func InjectedKubeClusterNamespace(ctx context.Context) (KubeClusterNamespace, er
 		return v, nil
 	}
 
-	return nil, fnerrors.InternalError("expected a kubernetes cluster in context")
+	return nil, fnerrors.InternalError("expected a kubernetes namespace in context")
 }

@@ -143,9 +143,11 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 				}
 			}
 
-			if apply.obj.GetAPIVersion() == "networking.k8s.io/v1" && apply.obj.GetKind() == "Ingress" {
-				if err := ingress.EnsureState(ctx, cluster); err != nil {
-					return false, err
+			if !cluster.ClusterConfiguration().Ephemeral {
+				if apply.obj.GetAPIVersion() == "networking.k8s.io/v1" && apply.obj.GetKind() == "Ingress" {
+					if err := ingress.EnsureState(ctx, cluster); err != nil {
+						return false, err
+					}
 				}
 			}
 
@@ -177,6 +179,10 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 		return nil, fnerrors.InvocationError("%s: failed to apply: %w", desc, err)
 	}
 
+	if err := checkResetCRDCache(ctx, cluster, apply.obj.GroupVersionKind()); err != nil {
+		return nil, err
+	}
+
 	if apply.obj.GetNamespace() == kubedef.AdminNamespace && !kubedef.HasFocusMark(apply.obj.GetLabels()) {
 		// don't wait for changes to admin namespace, unless they are in focus
 		return &ops.HandleResult{}, nil
@@ -201,7 +207,6 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 		}.WaitUntilReady}}, nil
 	}
 
-	// XXX check gkv
 	switch {
 	case kubedef.IsDeployment(apply.obj), kubedef.IsStatefulSet(apply.obj):
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")

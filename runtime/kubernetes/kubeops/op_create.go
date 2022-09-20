@@ -14,9 +14,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
@@ -139,6 +142,10 @@ func registerCreate() {
 				}
 			}
 
+			if err := checkResetCRDCache(ctx, cluster, parsed.obj.GetObjectKind().GroupVersionKind()); err != nil {
+				return nil, err
+			}
+
 			return nil, nil
 		},
 
@@ -146,6 +153,20 @@ func registerCreate() {
 			return kubedef.PlanOrder(create.obj.GetObjectKind().GroupVersionKind()), nil
 		},
 	})
+}
+
+func checkResetCRDCache(ctx context.Context, cluster runtime.Cluster, gvk schema.GroupVersionKind) error {
+	if kubedef.IsGVKCRD(gvk) {
+		mapper, err := cluster.EnsureState(ctx, kubernetes.RestmapperStateKey)
+		if err != nil {
+			return err
+		}
+
+		// Reset the cache after we install a new CRD.
+		mapper.(*restmapper.DeferredDiscoveryRESTMapper).Reset()
+	}
+
+	return nil
 }
 
 type parsedCreate struct {

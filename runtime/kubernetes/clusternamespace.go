@@ -41,6 +41,7 @@ type clusterTarget struct {
 }
 
 var _ runtime.ClusterNamespace = &ClusterNamespace{}
+var _ kubedef.KubeClusterNamespace = &ClusterNamespace{}
 
 func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
 	cluster, err := ConnectToCluster(ctx, env.Configuration())
