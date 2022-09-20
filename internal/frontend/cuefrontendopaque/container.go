@@ -54,7 +54,25 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 		}
 	}
 
+	if image := v.LookupPath("image"); image.Exists() {
+		bin, err := ParseImage(ctx, loc, image)
+		if err != nil {
+			return nil, err
+		}
+
+		inlineBinary := &schema.Binary{
+			Name:      name,
+			BuildPlan: bin,
+		}
+		out.container.BinaryRef = schema.MakePackageRef(loc.PackageName, name)
+		out.inlineBinaries = append(out.inlineBinaries, inlineBinary)
+	}
+
 	if build := v.LookupPath("build"); build.Exists() {
+		if out.container.BinaryRef != nil {
+			return nil, fnerrors.UserError(loc, "cannot specify both 'build' and 'image'")
+		}
+
 		cueBuild, err := parseCueBuild(ctx, name, loc, build)
 		if err != nil {
 			return nil, err
@@ -62,8 +80,10 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 
 		out.container.BinaryRef = cueBuild.binaryRef
 		out.inlineBinaries = append(out.inlineBinaries, cueBuild.inlineBinary)
-	} else {
-		return nil, fnerrors.UserError(loc, "missing build definition")
+	}
+
+	if out.container.BinaryRef == nil {
+		return nil, fnerrors.UserError(loc, "missing 'build' or 'image' definition")
 	}
 
 	return out, nil

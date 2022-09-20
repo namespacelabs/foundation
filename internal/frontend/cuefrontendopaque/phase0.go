@@ -12,7 +12,6 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	integrationapi "namespacelabs.dev/foundation/internal/integration/api"
-	imageintegration "namespacelabs.dev/foundation/internal/integration/image"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
@@ -155,7 +154,13 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 
 		if image := server.LookupPath("image"); image.Exists() {
-			if err := imageintegration.ParseImageIntegration(ctx, loc, image, parsedPkg); err != nil {
+			bin, err := ParseImage(ctx, loc, image)
+			if err != nil {
+				return nil, err
+			}
+
+			err = integrationapi.SetServerBinary(parsedPkg, bin, nil)
+			if err != nil {
 				return nil, err
 			}
 		}
