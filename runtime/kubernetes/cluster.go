@@ -39,7 +39,7 @@ type state struct {
 
 var _ kubedef.KubeCluster = &Cluster{}
 
-func ConnectToConfig(ctx context.Context, config *client.HostConfig) (*Cluster, error) {
+func connectToConfig(ctx context.Context, config *client.HostConfig) (*Cluster, error) {
 	cli, err := client.NewClient(ctx, config)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func ConnectToCluster(ctx context.Context, cfg planning.Configuration) (*Cluster
 		return nil, err
 	}
 
-	return ConnectToConfig(ctx, hostConfig)
+	return connectToConfig(ctx, hostConfig)
 }
 
 func (u *Cluster) Class() runtime.Class {

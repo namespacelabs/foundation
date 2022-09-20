@@ -8,10 +8,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/module"
 )
@@ -38,11 +36,7 @@ func newNewClusterCmd() *cobra.Command {
 		}
 
 		prepares := baseline(env)
-
-		configs := []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]{prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral)}
-		prepares = append(prepares, configs...)
-		kube := instantiateKube(env, configs)
-		prepares = append(prepares, prepare.PrepareIngress(env, kube))
+		prepares = append(prepares, prepare.PrepareCluster(env, prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral))...)
 		return collectPreparesAndUpdateDevhost(ctx, root, prepares)
 	})
 

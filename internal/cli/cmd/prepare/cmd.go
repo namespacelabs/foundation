@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -54,31 +53,6 @@ func NewPrepareCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
 
 	return rootCmd
-}
-
-func instantiateKube(env planning.Context, confs []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[*kubernetes.Cluster] {
-	return compute.Map(tasks.Action("prepare.kubernetes"),
-		compute.Inputs().Computable("conf", compute.Transform("parse results", compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
-			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
-				var result []*schema.DevHost_ConfigureEnvironment
-				for _, conf := range computed {
-					result = append(result, conf.Value...)
-				}
-				return result, nil
-			})),
-		compute.Output{},
-		func(ctx context.Context, r compute.Resolved) (*kubernetes.Cluster, error) {
-			computed, _ := compute.GetDepWithType[[]*schema.DevHost_ConfigureEnvironment](r, "conf")
-
-			devhost := &schema.DevHost{Configure: computed.Value}
-
-			config, err := planning.MakeConfigurationCompat(env, env.Workspace(), devhost, env.Environment())
-			if err != nil {
-				return nil, err
-			}
-
-			return kubernetes.ConnectToCluster(ctx, config)
-		})
 }
 
 func baseline(env planning.Context) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
