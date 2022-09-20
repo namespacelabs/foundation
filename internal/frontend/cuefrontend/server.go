@@ -63,18 +63,23 @@ type inlineAnyJson struct {
 	Body    string `json:"body"`
 }
 
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV, opts workspace.LoadPackageOpts) (*schema.Server, error) {
+// Returns generated binaries that need to be added to the package.
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV, opts workspace.LoadPackageOpts) (*schema.Server, []*schema.Binary, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	out := &schema.Server{}
+	var outBinaries []*schema.Binary
+
+	out := &schema.Server{
+		MainContainer: &schema.SidecarContainer{},
+	}
 	out.Id = bits.ID
 	out.Name = bits.Name
 	out.Description = bits.Description
@@ -82,34 +87,37 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	if fmwk, err := parseFramework(loc, bits.Framework); err == nil {
 		out.Framework = schema.Framework(fmwk)
 	} else {
-		return nil, fnerrors.UserError(loc, "unrecognized framework: %s", bits.Framework)
+		return nil, nil, fnerrors.UserError(loc, "unrecognized framework: %s", bits.Framework)
 	}
 
 	if bits.Binary != nil {
 		if out.Framework != schema.Framework_OPAQUE {
-			return nil, fnerrors.UserError(loc, "can't specify binary on non-opaque servers")
+			return nil, nil, fnerrors.UserError(loc, "can't specify binary on non-opaque servers")
 		}
 
 		switch x := bits.Binary.(type) {
 		case string:
 			pkgRef, err := schema.ParsePackageRef(x)
 			if err != nil {
-				return nil, fnerrors.UserError(loc, "invalid package reference: %s", x)
+				return nil, nil, fnerrors.UserError(loc, "invalid package reference: %s", x)
 			}
 
-			out.Binary = &schema.Server_Binary{
-				PackageRef: pkgRef,
-			}
+			out.MainContainer.BinaryRef = pkgRef
 		case map[string]interface{}:
 			if image, ok := x["image"]; ok {
-				out.Binary = &schema.Server_Binary{
-					Prebuilt: fmt.Sprintf("%s", image),
-				}
+				// For prebuilt images, generating a binary in the server package and referring to it from the "Server.MainContainer".
+				outBinaries = append(outBinaries, &schema.Binary{
+					Name: bits.Name,
+					BuildPlan: &schema.LayeredImageBuildPlan{
+						LayerBuildPlan: []*schema.ImageBuildPlan{{ImageId: fmt.Sprintf("%s", image)}},
+					},
+				})
+				out.MainContainer.BinaryRef = schema.MakePackageRef(loc.PackageName, bits.Name)
 			} else {
-				return nil, fnerrors.UserError(loc, "binary: must either specify an image, or be a pointer to a binary package")
+				return nil, nil, fnerrors.UserError(loc, "binary: must either specify an image, or be a pointer to a binary package")
 			}
 		default:
-			return nil, fnerrors.InternalError("binary: unexpected type: %v", reflect.TypeOf(bits.Binary))
+			return nil, nil, fnerrors.InternalError("binary: unexpected type: %v", reflect.TypeOf(bits.Binary))
 		}
 	}
 
@@ -125,14 +133,14 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	out.RunByDefault = runByDefault(bits)
 
 	for k, v := range bits.StaticEnv {
-		out.StaticEnv = append(out.StaticEnv, &schema.BinaryConfig_EnvEntry{
+		out.MainContainer.Env = append(out.MainContainer.Env, &schema.BinaryConfig_EnvEntry{
 			Name: k, Value: v,
 		})
 	}
-	sort.Slice(out.StaticEnv, func(i, j int) bool {
-		x, y := out.StaticEnv[i].Name, out.StaticEnv[j].Name
+	sort.Slice(out.MainContainer.Env, func(i, j int) bool {
+		x, y := out.MainContainer.Env[i].Name, out.MainContainer.Env[j].Name
 		if x == y {
-			return strings.Compare(out.StaticEnv[i].Value, out.StaticEnv[j].Value) < 0
+			return strings.Compare(out.MainContainer.Env[i].Value, out.MainContainer.Env[j].Value) < 0
 		}
 		return strings.Compare(x, y) < 0
 	})
@@ -153,7 +161,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	for name, svc := range bits.Services {
 		parsed, err := parseService(loc, "service", name, svc)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		out.Service = append(out.Service, parsed)
@@ -161,12 +169,12 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 	for name, svc := range bits.Ingress {
 		if svc.Internal {
-			return nil, fnerrors.UserError(loc, "ingress[%s]: can't be internal", name)
+			return nil, nil, fnerrors.UserError(loc, "ingress[%s]: can't be internal", name)
 		}
 
 		parsed, err := parseService(loc, "ingress", name, svc)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		out.Ingress = append(out.Ingress, parsed)
@@ -185,10 +193,10 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return out, nil
+	return out, outBinaries, nil
 }
 
 func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {

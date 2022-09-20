@@ -29,7 +29,7 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
-	binRef := server.Proto().GetBinary().GetPackageRef()
+	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
 	if binRef == nil {
 		return nil, fnerrors.InternalError("server binary is not set at %s", server.Location)
@@ -50,15 +50,15 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 }
 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
-	bin := server.Proto().GetBinary()
+	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
-	if bin.GetPackageRef() != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())
+	if binRef != nil {
+		pkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
 		if err != nil {
 			return err
 		}
 
-		binary, err := binary.GetBinary(pkg, bin.GetPackageRef().GetName())
+		binary, err := binary.GetBinary(pkg, binRef.GetName())
 		if err != nil {
 			return err
 		}

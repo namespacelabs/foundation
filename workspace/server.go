@@ -137,7 +137,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 					return nil, fnerrors.BadInputError("%s: mount: didn't expect owner to be %q", node.PackageName, rs.Owner)
 				}
 
-				sealed.Proto.Server.Mounts = append(sealed.Proto.Server.Mounts, rs)
+				sealed.Proto.Server.MainContainer.Mounts = append(sealed.Proto.Server.MainContainer.Mounts, rs)
 			}
 
 			for _, secret := range node.Secret {
@@ -194,7 +194,7 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 }
 
 func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Server) error {
-	for _, m := range srv.Mounts {
+	for _, m := range srv.MainContainer.Mounts {
 		if findVolume(srv.Volumes, m.VolumeName) == nil {
 			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeName)
 		}

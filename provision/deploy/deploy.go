@@ -659,7 +659,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	out.Id = srv.Id
 	out.Name = srv.Name
 	out.Volumes = srv.Volumes
-	out.RunOpts.Mounts = srv.Mounts
+	out.RunOpts.Mounts = srv.MainContainer.Mounts
 
 	out.RunOpts.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
@@ -688,7 +688,7 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server,
 	}
 
 	out.RunOpts.Args = append(out.RunOpts.Args, merged.Args...)
-	out.RunOpts.Env = append(out.RunOpts.Env, s.Proto().StaticEnv...)
+	out.RunOpts.Env = append(out.RunOpts.Env, s.Proto().MainContainer.Env...)
 	out.RunOpts.Env = append(out.RunOpts.Env, merged.Env...)
 
 	return nil

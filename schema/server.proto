@@ -9,10 +9,9 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
-import "schema/binary.proto";
+import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
-import "schema/package.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/secret.proto";
@@ -29,9 +28,9 @@ enum Framework {
     BASE = 5;
 }
 
-// Next ID: 33
+// Next ID: 34
 message Server {
-    reserved 17, 19, 30;
+    reserved 9, 13, 17, 19, 27, 30;
 
     // The package name (computed).
     string package_name = 1;
@@ -69,15 +68,12 @@ message Server {
     // E.g. `ns deploy` should not deploy test only servers, unless explicitly mentioned.
     bool run_by_default = 29;
 
-    Binary binary = 9;
+    SidecarContainer main_container = 33;
 
     repeated ServiceSpec service = 10;
     repeated ServiceSpec ingress = 11;
 
     repeated Reference reference = 12;
-
-    // XXX temporary.
-    repeated BinaryConfig.EnvEntry static_env = 13;
 
     // Set of dependencies specified explicitly by the user.
     repeated string user_imports = 14;
@@ -95,19 +91,9 @@ message Server {
     // Includes file-level and inlined volumes.
     repeated Volume volumes = 26;
 
-    repeated Mount mounts = 27;
-
     repeated SecretSpec secret = 28;
 
     repeated ResourceInstance resources = 32;
-
-    message Binary {
-        reserved 2;
-
-        // One of
-        string     prebuilt    = 1;
-        PackageRef package_ref = 3;
-    }
 
     message ServiceSpec {
         string                   name     = 1;

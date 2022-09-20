@@ -9,8 +9,6 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -30,44 +28,30 @@ type impl struct {
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
-	bin := server.Proto().GetBinary()
+	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
-	if bin.GetPackageRef() != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())
-		if err != nil {
-			return nil, err
-		}
-
-		prep, err := binary.Plan(ctx, pkg, bin.GetPackageRef().GetName(), server.SealedContext(), binary.BuildImageOpts{UsePrebuilts: true})
-		if err != nil {
-			return nil, err
-		}
-
-		return prep.Plan.Spec, nil
-	}
-
-	image := bin.GetPrebuilt()
-	if image == "" {
-		return nil, fnerrors.UserError(server.Location, "neither binary nor binary.image is set")
-	}
-
-	imgid, err := oci.ParseImageID(image)
+	pkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
 	if err != nil {
-		return nil, fnerrors.Wrapf(server.Location, err, "unable to parse image")
+		return nil, err
 	}
 
-	return build.PrebuiltPlan(imgid, false, build.PrebuiltResolveOpts()), nil
+	prep, err := binary.Plan(ctx, pkg, binRef.GetName(), server.SealedContext(), binary.BuildImageOpts{UsePrebuilts: true})
+	if err != nil {
+		return nil, err
+	}
+
+	return prep.Plan.Spec, nil
 }
 
 func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
-	bin := server.Proto().GetBinary()
-	if bin.GetPackageRef() != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, bin.GetPackageRef().AsPackageName())
+	binRef := server.Proto().GetMainContainer().GetBinaryRef()
+	if binRef != nil {
+		pkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
 		if err != nil {
 			return err
 		}
 
-		binary, err := binary.GetBinary(pkg, bin.GetPackageRef().GetName())
+		binary, err := binary.GetBinary(pkg, binRef.GetName())
 		if err != nil {
 			return err
 		}
