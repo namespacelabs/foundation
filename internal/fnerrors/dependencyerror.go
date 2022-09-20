@@ -12,11 +12,11 @@ import (
 )
 
 func DependencyFailed(name, typ string, err error) error {
-	return &DependencyFailedError{fnError: fnError{Err: err, stack: stacktrace.New()}, Name: name, Type: typ}
+	return &DependencyFailedError{NsError: NsError{Err: err, stack: stacktrace.New()}, Name: name, Type: typ}
 }
 
 type DependencyFailedError struct {
-	fnError
+	NsError
 	Name string
 	Type string
 }

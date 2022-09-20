@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
@@ -37,7 +37,7 @@ func NewLintCmd() *cobra.Command {
 				fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())
 				if _, err := workspace.LoadPackageByName(ctx, env, loc.AsPackageName()); err != nil {
 					fmt.Fprintln(console.Stderr(ctx))
-					fnerrors.Format(console.Stderr(ctx), err, fnerrors.WithStyle(colors.WithColors))
+					format.Format(console.Stderr(ctx), err, format.WithStyle(colors.WithColors))
 					fmt.Fprintln(console.Stderr(ctx))
 				}
 			}

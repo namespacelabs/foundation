@@ -6,6 +6,7 @@ package tool
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"time"
@@ -211,7 +212,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 
-		if fnerrors.IsInvocationError(err) {
+		if errors.Is(err, &fnerrors.InvocationErr{}) {
 			fmt.Fprintf(console.Stderr(ctx), "%s: Invoking provisioning tool (%s try) encountered transient failure: %v. Will retry in %v.\n", r.Source.PackageName, humanize.Ordinal(count), err, toolBackoff)
 
 			return err

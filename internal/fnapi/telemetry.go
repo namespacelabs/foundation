@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/go-ids"
 )
@@ -82,7 +83,7 @@ func (tel *Telemetry) IsTelemetryEnabled() bool {
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {
 	if tel.errorLogging {
-		fnerrors.Format(console.Stderr(ctx), err)
+		format.Format(console.Stderr(ctx), err)
 	}
 }
 

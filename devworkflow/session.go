@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
@@ -152,7 +153,7 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 		eg.Go(func(ctx context.Context) error {
 			err := setWorkspace(ctx, env, cluster, servers, s, pfw)
 			if err != nil && !errors.Is(err, context.Canceled) {
-				fnerrors.Format(console.Stderr(parentCtx), err, fnerrors.WithStyle(colors.WithColors))
+				format.Format(console.Stderr(parentCtx), err, format.WithStyle(colors.WithColors))
 			}
 
 			return err

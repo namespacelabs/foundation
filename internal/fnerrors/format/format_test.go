@@ -2,13 +2,14 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package fnerrors
+package format
 
 import (
 	"bytes"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func TestErrorFormatting(t *testing.T) {
@@ -16,9 +17,9 @@ func TestErrorFormatting(t *testing.T) {
 		err      error
 		expected string
 	}{
-		{err: UsageError("Run 'foobar'.", "It expired."),
+		{err: fnerrors.UsageError("Run 'foobar'.", "It expired."),
 			expected: "Failed: It expired.\n\n  Run 'foobar'.\n"},
-		{err: UserError(nil, "wrapping it: %w", UsageError("Run 'foobar'.", "It expired.")),
+		{err: fnerrors.UserError(nil, "wrapping it: %w", fnerrors.UsageError("Run 'foobar'.", "It expired.")),
 			expected: "Failed: wrapping it: It expired.\n\n  Run 'foobar'.\n"},
 	}
 

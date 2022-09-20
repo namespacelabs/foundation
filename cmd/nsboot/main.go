@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
@@ -71,7 +72,7 @@ func main() {
 		cleanup()
 	}
 	if err != nil {
-		fnerrors.Format(os.Stderr, err, fnerrors.WithStyle(style))
+		format.Format(os.Stderr, err, format.WithStyle(style))
 		return
 	}
 
@@ -83,7 +84,7 @@ func main() {
 	proc.Stderr = os.Stderr
 	err = proc.Run()
 	if err != nil {
-		fnerrors.Format(os.Stderr, err, fnerrors.WithStyle(style))
+		format.Format(os.Stderr, err, format.WithStyle(style))
 	}
 }
 

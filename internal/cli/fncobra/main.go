@@ -32,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
@@ -446,7 +447,7 @@ func handleExitError(style colors.Style, err error, remoteStatusChan chan remote
 		// an error again, just forward the appropriate exit code.
 		return exitError.ExitCode()
 	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
-		fnerrors.Format(os.Stderr, versionError, fnerrors.WithStyle(style))
+		format.Format(os.Stderr, versionError, format.WithStyle(style))
 
 		select {
 		case <-time.After(5 * time.Second):
@@ -465,7 +466,7 @@ func handleExitError(style colors.Style, err error, remoteStatusChan chan remote
 	} else {
 		// Only print errors after calling flushLogs above, so the console driver
 		// is no longer erasing lines.
-		fnerrors.Format(os.Stderr, err, fnerrors.WithStyle(style), fnerrors.WithTracing(enableErrorTracing))
+		format.Format(os.Stderr, err, format.WithStyle(style), format.WithTracing(enableErrorTracing))
 		return 1
 	}
 }

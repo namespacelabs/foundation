@@ -64,10 +64,10 @@ type CodegenMultiError struct {
 	Errs []CodegenError
 
 	// aggregates CodegenErrors by root error message.
-	commonerrs map[string]map[string]packages
+	CommonErrs map[string]map[string]packages
 
 	// contains errors not grouped in [commonerrs].
-	uniqgenerrs []CodegenError
+	UniqGenErrs []CodegenError
 }
 
 // newCodegenMultiError walks through accumulated CodegenErrors aggregating
@@ -108,7 +108,7 @@ func newCodegenMultiError(errs []CodegenError) *CodegenMultiError {
 		}
 	}
 
-	err := &CodegenMultiError{Errs: errs, commonerrs: commonerrs, uniqgenerrs: uniqgenerrs}
+	err := &CodegenMultiError{Errs: errs, CommonErrs: commonerrs, UniqGenErrs: uniqgenerrs}
 	return err
 }
 
