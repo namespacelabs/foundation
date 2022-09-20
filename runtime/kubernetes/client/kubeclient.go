@@ -41,33 +41,10 @@ var (
 )
 
 type ComputedClient struct {
-	Clientset  *k8s.Clientset
-	RESTConfig *rest.Config
-	internal   *configResult
-}
-
-func (cc ComputedClient) ClusterConfiguration() ClusterConfiguration {
-	if cc.internal == nil {
-		return ClusterConfiguration{}
-	}
-
-	return cc.internal.ClusterConfiguration
-}
-
-func (cc ComputedClient) ClientConfig() clientcmd.ClientConfig {
-	if cc.internal == nil {
-		return nil
-	}
-
-	return cc.internal.ClientConfig
-}
-
-func (cc ComputedClient) Ephemeral() bool {
-	if cc.internal == nil {
-		return false
-	}
-
-	return cc.internal.Ephemeral
+	Clientset            *k8s.Clientset
+	RESTConfig           *rest.Config
+	ClientConfig         clientcmd.ClientConfig
+	ClusterConfiguration ClusterConfiguration
 }
 
 func RegisterConfigurationProvider(name string, p ProviderFunc) {
@@ -205,9 +182,10 @@ func NewClient(ctx context.Context, host *HostConfig) (*ComputedClient, error) {
 	}
 
 	return &ComputedClient{
-		Clientset:  clientset,
-		RESTConfig: config,
-		internal:   computed,
+		Clientset:            clientset,
+		RESTConfig:           config,
+		ClusterConfiguration: computed.ClusterConfiguration,
+		ClientConfig:         computed.ClientConfig,
 	}, nil
 }
 

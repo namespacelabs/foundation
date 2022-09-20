@@ -67,7 +67,7 @@ func (u *Cluster) Planner(env planning.Context) runtime.Planner {
 }
 
 func (u *Cluster) ClusterConfiguration() client.ClusterConfiguration {
-	return u.computedClient.ClusterConfiguration()
+	return u.computedClient.ClusterConfiguration
 }
 
 func (u *Cluster) Client() *k8s.Clientset {
@@ -79,7 +79,7 @@ func (u *Cluster) RESTConfig() *rest.Config {
 }
 
 func (u *Cluster) ComputedConfig() clientcmd.ClientConfig {
-	return u.computedClient.ClientConfig()
+	return u.computedClient.ClientConfig
 }
 
 func (u *Cluster) HostConfig() *client.HostConfig {

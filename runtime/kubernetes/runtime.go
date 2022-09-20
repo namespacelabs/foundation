@@ -69,7 +69,7 @@ func Register() {
 			return nil, fnerrors.InternalError("expected kubernetes cluster")
 		}
 
-		return client.NewRESTMapper(kube.RESTConfig(), kube.computedClient.Ephemeral())
+		return client.NewRESTMapper(kube.RESTConfig(), kube.computedClient.ClusterConfiguration.Ephemeral)
 	})
 
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
