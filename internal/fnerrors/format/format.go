@@ -17,8 +17,10 @@ import (
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type FormatOptions struct {
@@ -68,21 +70,39 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 
 	if opts.tracing {
 		fmt.Fprintln(w)
+		w = indent(w)
 	}
+
+	var actionError *tasks.ActionError
 	cause := err
 	// Keep unwrapping to get the root fnError.
 	for {
-		if opts.tracing && cause != err {
-			w = indent(w)
-			format(w, cause, opts)
-			writeSourceFileAndLine(w, cause, opts.style)
-		}
+		// Keep looking for the innermost fnerror
+		errors.As(cause, &actionError)
+
 		child := errors.Unwrap(cause)
 		if child == nil || !isNsError(child) {
 			break
+		} else if opts.tracing {
+			format(w, cause, opts)
+			writeSourceFileAndLine(w, cause, opts.style)
+			w = indent(w)
 		}
 		cause = child
 	}
+
+	if opts.actionTracing && actionError != nil {
+		// Print the sequence of actions/tasks leading to the error.
+		if !opts.tracing {
+			fmt.Fprintln(w) // Break the line after Failed:
+			w = indent(w)
+		}
+		for _, a := range actionError.Trace() {
+			consolesink.LogAction(w, opts.style, tasks.EventDataFromProto("", a))
+			w = indent(w)
+		}
+	}
+
 	format(w, cause, opts)
 }
 

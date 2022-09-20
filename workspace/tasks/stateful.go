@@ -12,11 +12,10 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 )
 
-var ActionRetentionMaxCount = -1 // No limit.
-
 // Keeps track of which actions are running, and have run in the past.
 type statefulState struct {
-	parent ActionSink
+	parent      ActionSink
+	keepHistory bool
 
 	mu        sync.Mutex
 	running   []*RunningAction
@@ -37,14 +36,18 @@ type StatefulSink struct{ state *statefulState }
 
 var _ ActionSink = &statefulState{}
 
-func WithStatefulSink(ctx context.Context) (context.Context, *StatefulSink) {
-	state := &statefulState{
-		parent:         SinkFrom(ctx),
+func NewStatefulSink(parent ActionSink, keepHistory bool) *StatefulSink {
+	return &StatefulSink{&statefulState{
+		parent:         parent,
 		protoIndex:     map[ActionID]int{},
 		allAttachments: map[ActionID]*EventAttachments{},
-	}
+		keepHistory:    keepHistory,
+	}}
+}
 
-	return WithSink(ctx, state), &StatefulSink{state}
+func WithStatefulSink(ctx context.Context) (context.Context, *StatefulSink) {
+	state := NewStatefulSink(SinkFrom(ctx), true)
+	return WithSink(ctx, state.Sink()), state
 }
 
 func (s *StatefulSink) Sink() ActionSink { return s.state }
@@ -80,6 +83,23 @@ func (s *StatefulSink) History(max int, filter func(*protocol.Task) bool) []*pro
 	return history
 }
 
+// Recursively returns the action and all of its callers (leaf action first).
+func (s *StatefulSink) Trace(id ActionID) (trace []*protocol.Task) {
+	// XXX: the implementation is rather inefficient.
+	next := s.state.runningAction(id)
+	for next != nil {
+		trace = append(trace, next.Data.Proto())
+		if next.Data.ParentID != "" {
+			next = s.state.runningAction(next.Data.ParentID)
+		} else if next.Data.AnchorID != "" {
+			next = s.state.waitingAction(next.Data.AnchorID)
+		} else {
+			next = nil
+		}
+	}
+	return
+}
+
 func (s *StatefulSink) Observe(obs Observer) func() {
 	s.state.mu.Lock()
 	s.state.observers = append(s.state.observers, obs)
@@ -97,16 +117,37 @@ func (s *StatefulSink) Observe(obs Observer) func() {
 	}
 }
 
+func (s *statefulState) runningAction(id ActionID) *RunningAction {
+	for _, a := range s.running {
+		if a.ID() == id {
+			return a
+		}
+	}
+	return nil
+}
+
+func (s *statefulState) waitingAction(id ActionID) *RunningAction {
+	for _, a := range s.running {
+		if a.Data.AnchorID == id {
+			return a
+		}
+	}
+	return nil
+}
+
 func (s *statefulState) addToRunning(ra *RunningAction) []Observer {
 	p := ra.Proto()
 
 	s.mu.Lock()
 	if _, ok := s.protoIndex[ra.Data.ActionID]; !ok {
 		s.running = append(s.running, ra)
-		s.allAttachments[ra.Data.ActionID] = ra.attachments
-		index := len(s.allTasks)
-		s.allTasks = append(s.allTasks, p)
-		s.protoIndex[ra.Data.ActionID] = index
+
+		if s.keepHistory {
+			s.allAttachments[ra.Data.ActionID] = ra.attachments
+			index := len(s.allTasks)
+			s.allTasks = append(s.allTasks, p)
+			s.protoIndex[ra.Data.ActionID] = index
+		}
 	}
 	observers := s.observers
 	s.mu.Unlock()

@@ -28,6 +28,9 @@ var ActionStorer *Storer = nil
 
 type ActionState string
 
+// Globally keeps track of all running actions in order to be able to reconstruct action trace for errors.
+var runningActionsSink = NewStatefulSink(nil, false)
+
 const (
 	ActionCreated = "fn.action.created"
 	ActionWaiting = "fn.action.waiting"
@@ -235,12 +238,9 @@ func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *Running
 
 	ev.data.State = state
 
-	span := startSpan(ctx, ev.data)
-
 	return &RunningAction{
 		sink:        sink,
 		Data:        ev.data,
-		span:        span,
 		Progress:    ev.progress,
 		attachments: &EventAttachments{actionID: ev.data.ActionID, sink: sink},
 		onDone:      ev.onDone,
@@ -249,9 +249,7 @@ func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *Running
 
 func (ev *ActionEvent) Start(ctx context.Context) *RunningAction {
 	ra := ev.toAction(ctx, ActionRunning)
-	if ra != nil {
-		ra.markStarted(ctx)
-	}
+	ra.markStarted(ctx)
 	return ra
 }
 
@@ -503,12 +501,7 @@ func (af *RunningAction) ID() ActionID                   { return af.Data.Action
 func (af *RunningAction) Proto() *protocol.Task          { return makeProto(&af.Data, af.attachments) }
 func (af *RunningAction) Attachments() *EventAttachments { return af.attachments }
 
-func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *RunningAction {
-	sink := SinkFrom(ctx)
-	if sink == nil {
-		panic("compute: action sink required in the context")
-	}
-
+func EventDataFromProto(cat string, in *protocol.Task) EventData {
 	data := EventData{
 		ActionID:      ActionID(in.Id),
 		Name:          in.Name,
@@ -547,6 +540,16 @@ func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *Runnin
 	if in.ErrorMessage != "" {
 		data.Err = fmt.Errorf(in.ErrorMessage)
 	}
+	return data
+}
+
+func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *RunningAction {
+	sink := SinkFrom(ctx)
+	if sink == nil {
+		panic("compute: action sink required in the context")
+	}
+
+	data := EventDataFromProto(cat, in)
 
 	parentId := parentID(ctx)
 	if parentId != nil {
@@ -608,6 +611,8 @@ func (af *RunningAction) markStarted(ctx context.Context) {
 	}
 	af.Data.State = ActionRunning
 	af.sink.Started(af)
+	af.span = startSpan(ctx, af.Data)
+	runningActionsSink.Sink().Started(af)
 }
 
 func (af *RunningAction) CustomDone(t time.Time, err error) bool {
@@ -637,6 +642,7 @@ func (af *RunningAction) CustomDone(t time.Time, err error) bool {
 		}
 
 		af.sink.Done(af)
+		runningActionsSink.Sink().Done(af)
 
 		// It's fundamental that seal() is called above before Store(); else
 		// we'll spin forever trying to consume the open buffers.
@@ -664,6 +670,11 @@ func (af *RunningAction) Call(ctx context.Context, f func(context.Context) error
 
 func (af *RunningAction) Done(err error) error {
 	// XXX serialize additional error data.
+
+	if err != nil {
+		err = WrapActionError(err, af.ID())
+	}
+
 	af.CustomDone(time.Now(), err)
 	return err
 }

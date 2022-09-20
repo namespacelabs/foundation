@@ -466,7 +466,7 @@ func handleExitError(style colors.Style, err error, remoteStatusChan chan remote
 	} else {
 		// Only print errors after calling flushLogs above, so the console driver
 		// is no longer erasing lines.
-		format.Format(os.Stderr, err, format.WithStyle(style), format.WithTracing(enableErrorTracing))
+		format.Format(os.Stderr, err, format.WithStyle(style), format.WithTracing(enableErrorTracing), format.WithActionTrace(true))
 		return 1
 	}
 }
