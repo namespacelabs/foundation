@@ -8,7 +8,6 @@ import (
 	"context"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
@@ -19,10 +18,7 @@ var (
 )
 
 func (r *Cluster) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
-	return compute.GetValue[*kubedef.SystemInfo](ctx, &fetchSystemInfo{
-		cli: r.cli,
-		cfg: r.host.HostEnv,
-	})
+	return r.systemInfo.Get(ctx)
 }
 
 func (r *Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platform, error) {

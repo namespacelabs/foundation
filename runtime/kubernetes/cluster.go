@@ -10,17 +10,21 @@ import (
 
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Cluster struct {
 	cli            *k8s.Clientset
 	computedClient *client.Prepared
 	host           *client.HostConfig
+
+	systemInfo *tcache.Deferred[*kubedef.SystemInfo]
 
 	ClusterAttachedState
 }
@@ -45,7 +49,14 @@ func connectToConfig(ctx context.Context, config *client.HostConfig) (*Cluster, 
 		return nil, err
 	}
 
-	return &Cluster{cli: cli.Clientset, computedClient: cli, host: config}, nil
+	return &Cluster{
+		cli:            cli.Clientset,
+		computedClient: cli,
+		host:           config,
+		systemInfo: tcache.NewDeferred(tasks.Action("kubernetes.fetch-system-info"), func(ctx context.Context) (*kubedef.SystemInfo, error) {
+			return computeSystemInfo(ctx, cli.Clientset)
+		}),
+	}, nil
 }
 
 func ConnectToCluster(ctx context.Context, cfg planning.Configuration) (*Cluster, error) {

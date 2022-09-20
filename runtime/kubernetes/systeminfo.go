@@ -6,51 +6,24 @@ package kubernetes
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
 	"golang.org/x/exp/slices"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/internal/console"
+	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type fetchSystemInfo struct {
-	cli *k8s.Clientset
-	cfg *client.HostEnv
-
-	compute.DoScoped[*kubedef.SystemInfo] // DoScoped so the computation is deferred.
-}
-
-var _ compute.Computable[*kubedef.SystemInfo] = &fetchSystemInfo{}
-
-func (f *fetchSystemInfo) Action() *tasks.ActionEvent {
-	return tasks.Action("kubernetes.fetch-system-info")
-}
-
-func (f *fetchSystemInfo) Inputs() *compute.In {
-	return compute.Inputs().Proto("cfg", f.cfg)
-}
-
-func (f *fetchSystemInfo) Output() compute.Output { return compute.Output{NotCacheable: true} }
-
-func (f *fetchSystemInfo) Compute(ctx context.Context, _ compute.Resolved) (*kubedef.SystemInfo, error) {
+func computeSystemInfo(ctx context.Context, cli *kubernetes.Clientset) (*kubedef.SystemInfo, error) {
 	var platforms uniquestrings.List
 
-	nodes, err := f.cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	nodes, err := cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		// This typically the first calls to k8s. So if it fails, it can be helpful to see the effective host config.
-		if data, err := json.MarshalIndent(f.cfg, "", " "); err == nil {
-			fmt.Fprintf(console.Debug(ctx), "failing host config:\n%s\n", string(data))
-		}
 		return nil, fnerrors.Wrapf(nil, err, "unable to list nodes")
 	}
 
