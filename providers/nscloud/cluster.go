@@ -329,7 +329,8 @@ func provideClass(ctx context.Context, cfg planning.Configuration) (runtime.Clas
 			Action: tasks.Action("nscloud.cluster-prepare").LogLevel(1),
 			Do: func(ctx context.Context) error {
 				// Kick off the cluster provisioning as soon as we can.
-				_, _ = CreateCluster(ctx, "", true, cfg.EnvKey())
+				// XXX this has to be a future, and we don't have the means for it yet.
+				// _, _ = CreateCluster(ctx, "", true, cfg.EnvKey())
 				return nil
 			},
 			BestEffort: true,
