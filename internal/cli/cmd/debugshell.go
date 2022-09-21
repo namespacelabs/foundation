@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/debugshell"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/go-ids"
@@ -46,6 +47,8 @@ func NewDebugShellCmd() *cobra.Command {
 			return err
 		}
 
+		pl := workspace.NewPackageLoader(env)
+
 		switch {
 		case imageRef != "":
 			var err error
@@ -60,17 +63,19 @@ func NewDebugShellCmd() *cobra.Command {
 				return err
 			}
 
-			pkg, err := workspace.NewPackageLoader(env).LoadByName(ctx, binaryRef.AsPackageName())
+			pkg, err := pl.LoadByName(ctx, binaryRef.AsPackageName())
 			if err != nil {
 				return err
 			}
 
-			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, env, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
+			sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
+
+			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, sealedCtx, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
 			if err != nil {
 				return err
 			}
 
-			imageID, err = binary.EnsureImage(ctx, env, prepared)
+			imageID, err = binary.EnsureImage(ctx, sealedCtx, prepared)
 			if err != nil {
 				return err
 			}
@@ -81,7 +86,9 @@ func NewDebugShellCmd() *cobra.Command {
 				return err
 			}
 
-			img, err := debugshell.Image(ctx, env, platforms, tag)
+			sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
+
+			img, err := debugshell.Image(ctx, sealedCtx, platforms, tag)
 			if err != nil {
 				return err
 			}

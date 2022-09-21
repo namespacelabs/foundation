@@ -72,7 +72,7 @@ func GetBinary(pkg *pkggraph.Package, binName string) (*schema.Binary, error) {
 }
 
 // Returns a Prepared.
-func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env planning.Context, opts BuildImageOpts) (*Prepared, error) {
+func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggraph.SealedContext, opts BuildImageOpts) (*Prepared, error) {
 	binary, err := GetBinary(pkg, binName)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env planni
 	return PlanBinary(ctx, pkg.Location, binary, env, opts)
 }
 
-func PlanBinary(ctx context.Context, loc pkggraph.Location, binary *schema.Binary, env planning.Context, opts BuildImageOpts) (*Prepared, error) {
+func PlanBinary(ctx context.Context, loc pkggraph.Location, binary *schema.Binary, env pkggraph.SealedContext, opts BuildImageOpts) (*Prepared, error) {
 	spec, err := planImage(ctx, loc, binary, env, opts)
 	if err != nil {
 		return nil, err
@@ -109,11 +109,11 @@ func PlanBinary(ctx context.Context, loc pkggraph.Location, binary *schema.Binar
 	}, nil
 }
 
-func (p Prepared) Image(ctx context.Context, env planning.Context) (compute.Computable[oci.ResolvableImage], error) {
+func (p Prepared) Image(ctx context.Context, env pkggraph.SealedContext) (compute.Computable[oci.ResolvableImage], error) {
 	return multiplatform.PrepareMultiPlatformImage(ctx, env, p.Plan)
 }
 
-func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env planning.Context, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
+func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggraph.SealedContext, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
 	binary, err := GetBinary(pkg, binName)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, env planning.Co
 	return selected, nil
 }
 
-func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
+func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env pkggraph.SealedContext, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
 	spec, err := buildLayeredSpec(ctx, loc, bin, env, opts)
@@ -204,7 +204,7 @@ func planImage(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, e
 	return spec, nil
 }
 
-func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
+func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, env pkggraph.SealedContext, opts BuildImageOpts) (build.Spec, error) {
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
@@ -231,7 +231,7 @@ func buildLayeredSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Bi
 	return mergeSpecs{specs, platformIndependent}, nil
 }
 
-func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, env planning.Context, opts BuildImageOpts) (build.Spec, error) {
+func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, env pkggraph.SealedContext, opts BuildImageOpts) (build.Spec, error) {
 	if src == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}
@@ -303,7 +303,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 
-func EnsureImage(ctx context.Context, env planning.Context, prepared *Prepared) (oci.ImageID, error) {
+func EnsureImage(ctx context.Context, env pkggraph.SealedContext, prepared *Prepared) (oci.ImageID, error) {
 	img, err := prepared.Image(ctx, env)
 	if err != nil {
 		return oci.ImageID{}, err

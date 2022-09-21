@@ -99,6 +99,8 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 		return strings.Compare(pkgs[i].PackageName().String(), pkgs[j].PackageName().String()) < 0
 	})
 
+	sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
+
 	var imgOpts binary.BuildImageOpts
 	imgOpts.UsePrebuilts = false
 	imgOpts.Platforms = []specs.Platform{docker.HostPlatform()}
@@ -109,12 +111,12 @@ func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Loca
 
 		// TODO: allow to choose what binary to build within a package.
 		for _, b := range pkg.Binaries {
-			bin, err := binary.Plan(ctx, pkg, b.Name, env, imgOpts)
+			bin, err := binary.Plan(ctx, pkg, b.Name, sealedCtx, imgOpts)
 			if err != nil {
 				return err
 			}
 
-			image, err := bin.Image(ctx, env)
+			image, err := bin.Image(ctx, sealedCtx)
 			if err != nil {
 				return err
 			}

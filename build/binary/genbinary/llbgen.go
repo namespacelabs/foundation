@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -36,7 +35,7 @@ type llbBinary struct {
 	bin         build.Spec
 }
 
-func (l llbBinary) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	hostPlatform, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return nil, err

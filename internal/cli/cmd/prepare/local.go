@@ -13,7 +13,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -40,7 +42,9 @@ func newLocalCmd() *cobra.Command {
 					"Kubernetes context is required for preparing a production environment.")
 			}
 
-			prepares := baseline(env)
+			sealedCtx := pkggraph.MakeSealedContext(env, workspace.NewPackageLoader(env).Seal())
+
+			prepares := baseline(sealedCtx)
 
 			k8sconfig := prepareK8s(ctx, env, contextName)
 			prepares = append(prepares, prepare.PrepareCluster(env, k8sconfig)...)

@@ -12,7 +12,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -37,7 +39,9 @@ func newEksCmd() *cobra.Command {
 				return err
 			}
 
-			prepares := baseline(env)
+			sealedCtx := pkggraph.MakeSealedContext(env, workspace.NewPackageLoader(env).Seal())
+
+			prepares := baseline(sealedCtx)
 
 			var aws []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 			aws = append(aws, prepare.PrepareAWSProfile(env, awsProfile))

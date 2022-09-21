@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -55,14 +55,14 @@ func NewPrepareCmd() *cobra.Command {
 	return rootCmd
 }
 
-func baseline(env planning.Context) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func baseline(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, prepare.PrepareBuildkit(env))
 	prepares = append(prepares, prebuilts(env)...)
 	return prepares
 }
 
-func prebuilts(env planning.Context) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func prebuilts(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prebuilts = []schema.PackageName{
 		"namespacelabs.dev/foundation/devworkflow/web",
 		"namespacelabs.dev/foundation/std/dev/controller",

@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
@@ -25,7 +25,7 @@ var (
 )
 
 type Spec interface {
-	BuildImage(context.Context, planning.Context, Configuration) (compute.Computable[oci.Image], error)
+	BuildImage(context.Context, pkggraph.SealedContext, Configuration) (compute.Computable[oci.Image], error)
 	PlatformIndependent() bool
 }
 

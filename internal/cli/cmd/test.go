@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -113,10 +114,12 @@ func NewTestCmd() *cobra.Command {
 					eg.Go(func(ctx context.Context) error {
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
 
+						sealedCtx := pkggraph.MakeSealedContext(buildEnv, pl.Seal())
+
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
 
-						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
+						testComp, err := testing.PrepareTest(ctx, pl, sealedCtx, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
 							var suts []provision.Server
 
 							for _, pkg := range test.ServersUnderTest {

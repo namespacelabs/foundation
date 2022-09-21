@@ -344,7 +344,7 @@ type buildDevServer struct {
 	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
 
-func (bws buildDevServer) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (bws buildDevServer) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	builds, err := buildWebApps(ctx, conf, bws.ingressFragments, bws.srv, bws.isFocus)
 	if err != nil {
 		return nil, err
@@ -373,7 +373,7 @@ type buildProdWebServer struct {
 	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
 
-func (bws buildProdWebServer) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (bws buildProdWebServer) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	builds, err := buildWebApps(ctx, conf, bws.ingressFragments, bws.srv, bws.isFocus)
 	if err != nil {
 		return nil, err

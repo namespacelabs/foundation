@@ -11,7 +11,6 @@ import (
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func WebBuilder(loc pkggraph.Location) build.Spec {
@@ -22,7 +21,7 @@ type staticBuild struct {
 	Location pkggraph.Location
 }
 
-func (w staticBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (w staticBuild) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	img, err := ViteProductionBuild(ctx, w.Location, env, conf.SourceLabel(), ".", "/", nil, generateProdViteConfig())
 	if err != nil {
 		return nil, err

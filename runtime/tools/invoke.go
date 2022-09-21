@@ -17,12 +17,13 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func InvokeWithBinary(ctx context.Context, env planning.Context, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
+func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
 	it := &invokeTool{
 		conf:       env.Configuration(),
 		invocation: inv,

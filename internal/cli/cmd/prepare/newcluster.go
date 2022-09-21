@@ -10,7 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
 )
 
@@ -35,7 +37,9 @@ func newNewClusterCmd() *cobra.Command {
 			return err
 		}
 
-		prepares := baseline(env)
+		sealedCtx := pkggraph.MakeSealedContext(env, workspace.NewPackageLoader(env).Seal())
+
+		prepares := baseline(sealedCtx)
 		prepares = append(prepares, prepare.PrepareCluster(env, prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral))...)
 		return collectPreparesAndUpdateDevhost(ctx, root, prepares)
 	})
