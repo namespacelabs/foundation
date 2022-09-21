@@ -37,7 +37,7 @@ func ListSchemas(ctx context.Context, env planning.Context, root *Root) (SchemaL
 		}
 
 		if d.IsDir() {
-			if dirs.IsExcluded(path, d.Name()) {
+			if dirs.IsExcludedAsSource(d.Name()) {
 				return fs.SkipDir
 			}
 			return nil
