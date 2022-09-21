@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/moby/buildkit/client/llb"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/llbutil"
@@ -37,25 +36,25 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	buildBase, err := prepareNodejsBaseWithPkgManager(ctx, nodeImage, *conf.TargetPlatform())
-	if err != nil {
-		return llb.State{}, nil, err
-	}
-
 	local := buildkit.LocalContents{Module: bnj.loc.Module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
-
 	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
 		Exclude: NodejsExclude,
 	})
 
-	buildBase = prepareAndRunInstall(ctx, buildBase, src)
-
-	buildBase, err = runBuild(ctx, bnj.loc, buildBase, src)
+	pkgMgr, err := detectPkgMgr(*conf.TargetPlatform(), local, bnj.loc, bnj.loc.Module.ReadOnlyFS())
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	buildBase = addRunScript(ctx, buildBase)
+	buildBase := llbutil.Image(nodeImage, *conf.TargetPlatform())
+	buildBase = prepareAndRunInstall(ctx, pkgMgr, buildBase, src)
+
+	buildBase, err = runBuild(ctx, pkgMgr, bnj.loc, buildBase, src)
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
+	buildBase = addRunScript(ctx, pkgMgr, buildBase)
 
 	var out llb.State
 	// The dev and prod builds are different:
@@ -67,10 +66,11 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	} else {
 		// For non-dev builds creating an optimized, small image.
 		// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-		out = llbutil.Image(nodeImage, *conf.TargetPlatform()).With(
-			production.NonRootUser(),
-			llbutil.CopyFrom(buildBase, appRootPath, appRootPath),
-		)
+		out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
+			With(pkgMgr.InstallCli,
+				production.NonRootUser(),
+				llbutil.CopyFrom(buildBase, appRootPath, appRootPath),
+			)
 	}
 
 	out = out.AddEnv("NODE_ENV", n.nodejsEnv)
@@ -78,29 +78,15 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	return out, []buildkit.LocalContents{local}, nil
 }
 
-func prepareNodejsBaseWithPkgManager(ctx context.Context, nodejsBase string, platform specs.Platform) (llb.State, error) {
-	base := llbutil.Image(nodejsBase, platform)
-
-	// TODO: detect and install the package manager (npm, yarn, pnpm, etc.).
-
-	return base, nil
+func prepareAndRunInstall(ctx context.Context, pkgMgr pkgMgr, base llb.State, src llb.State) llb.State {
+	return base.
+		File(llb.Mkdir(appRootPath, 0644)).
+		With(llb.Dir(appRootPath), pkgMgr.InstallCli).
+		With(llbutil.CopyFrom(src, "./package.json", ".")).
+		Run(llb.Shlex(pkgMgr.CliName() + " install")).Root()
 }
 
-func prepareAndRunInstall(ctx context.Context, base llb.State, src llb.State) llb.State {
-	state := base.
-		File(
-			llb.Mkdir(appRootPath, 0644)).
-		With(
-			llb.Dir(appRootPath),
-			llbutil.CopyFrom(src, "./package.json", "."))
-
-	// TODO: use the detected package manager.
-	state = state.Run(llb.Shlex("npm install")).Root()
-
-	return state
-}
-
-func runBuild(ctx context.Context, loc pkggraph.Location, base llb.State, src llb.State) (llb.State, error) {
+func runBuild(ctx context.Context, pkgMgr pkgMgr, loc pkggraph.Location, base llb.State, src llb.State) (llb.State, error) {
 	state := base.With(llbutil.CopyFrom(src, ".", "."))
 
 	pkgJson, err := readPackageJson(loc)
@@ -109,21 +95,19 @@ func runBuild(ctx context.Context, loc pkggraph.Location, base llb.State, src ll
 	}
 
 	if _, ok := pkgJson.Scripts["build"]; ok {
-		// TODO: use the detected package manager.
-		state = state.Run(llb.Shlex("npm run build")).Root()
+		state = state.Run(llb.Shlex(pkgMgr.CliName() + " run build")).Root()
 	}
 
 	return state, nil
 }
 
-func addRunScript(ctx context.Context, base llb.State) llb.State {
-	return llbutil.AddFile(base, RunScriptPath, 0755, []byte(genRunScript()))
+func addRunScript(ctx context.Context, pkgMgr pkgMgr, base llb.State) llb.State {
+	return llbutil.AddFile(base, RunScriptPath, 0755, []byte(genRunScript(pkgMgr)))
 }
 
 // We generate a run script so the container command can be static.
-func genRunScript() string {
-	// TODO: use the detected package manager.
+func genRunScript(pkgMgr pkgMgr) string {
 	return fmt.Sprintf(`#!/bin/sh
 cd %s
-npm start`, appRootPath)
+%s start`, appRootPath, pkgMgr.CliName())
 }
