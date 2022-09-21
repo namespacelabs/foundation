@@ -55,7 +55,7 @@ func WithActionTrace(tracing bool) FormatOption {
 
 func isNsError(err error) bool {
 	switch err.(type) {
-	case *fnerrors.NsError, *fnerrors.UserErr, *fnerrors.InternalErr, *fnerrors.InvocationErr, *fnerrors.DependencyFailedError, *fnerrors.VersionError:
+	case *fnerrors.NsError, *fnerrors.UserErr, *fnerrors.InternalErr, *fnerrors.InvocationErr, *fnerrors.DependencyFailedError, *fnerrors.VersionError, *tasks.ActionError:
 		return true
 	}
 	return false
@@ -97,8 +97,9 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 			fmt.Fprintln(w) // Break the line after Failed:
 			w = indent(w)
 		}
-		for _, a := range actionError.Trace() {
-			consolesink.LogAction(w, opts.style, tasks.EventDataFromProto("", a))
+		trace := actionError.Trace()
+		for i := len(trace) - 1; i >= 0; i-- {
+			consolesink.LogAction(w, opts.style, tasks.EventDataFromProto("", trace[i]))
 			w = indent(w)
 		}
 	}
