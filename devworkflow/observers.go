@@ -5,54 +5,30 @@
 package devworkflow
 
 import (
-	"context"
 	"sync"
 
-	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 )
 
-type opType int
-
-const (
-	pOpAddCh    opType = 1
-	pOpRemoveCh opType = 2
-	pOpNewData  opType = 3
-)
-
-type obsMsg struct {
-	op         opType
-	observer   *Observer
-	message    *Update
-	callbackCh chan struct{} // If set, will be closed after this message is handled.
-}
-
 type Observers struct {
-	ch     chan obsMsg
-	mu     sync.Mutex
-	closed bool
+	mu        sync.Mutex
+	closed    bool
+	observers []*Observer
 }
 
 type Observer struct {
 	parent       *Observers
 	allUpdates   chan *Update                     // Either this channel is set, or stackUpdates is.
 	stackUpdates chan *observers.StackUpdateEvent // If only stackUpdates is set, observer only receives updates to the stack.
-	closed       atomic.Bool
 }
 
 func NewObservers() *Observers {
-	ch := make(chan obsMsg)
-	return &Observers{ch: ch}
+	return &Observers{}
 }
 
-func (obs *Observers) Loop(ctx context.Context) {
-	doLoop(ctx, obs.ch)
-}
-
-func (obs *Observers) New(update *Update, stackUpdates bool) (*Observer, error) {
+func (obs *Observers) New(update *Update, stackUpdates bool) *Observer {
 	cli := &Observer{parent: obs}
 	if !stackUpdates {
 		cli.allUpdates = make(chan *Update, 1)
@@ -65,94 +41,51 @@ func (obs *Observers) New(update *Update, stackUpdates bool) (*Observer, error) 
 		cli.post(update)
 	}
 
-	if !obs.pushCheckClosed(obsMsg{op: pOpAddCh, observer: cli}) {
-		return nil, fnerrors.New("was closed")
-	}
+	obs.mu.Lock()
+	defer obs.mu.Unlock()
 
-	return cli, nil
+	obs.observers = append(slices.Clone(obs.observers), cli)
+
+	return cli
 }
 
 func (obs *Observers) Publish(data *Update) {
 	copy := protos.Clone(data)
-	obs.pushCheckClosed(obsMsg{op: pOpNewData, message: copy})
+
+	obs.mu.Lock()
+	observers := obs.observers
+	if obs.closed {
+		observers = nil
+	}
+	obs.mu.Unlock()
+
+	for _, obs := range observers {
+		obs.post(copy)
+	}
 }
 
-func (obs *Observers) pushCheckClosed(op obsMsg) bool {
+func (obs *Observers) remove(o *Observer) {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
 
-	if obs.closed {
-		return false
+	i := slices.Index(obs.observers, o)
+	if i >= 0 {
+		obs.observers = slices.Delete(obs.observers, i, i+1)
 	}
-
-	// This is a bit tricky as we keep the lock held while waiting for the
-	// goroutine to consume our write. That means that a concurrent Close() will
-	// also have to wait.
-	obs.ch <- op
-	return true
 }
 
 func (obs *Observers) Close() {
 	obs.mu.Lock()
 	defer obs.mu.Unlock()
-	if obs.closed {
-		return
-	}
-
 	obs.closed = true
-	close(obs.ch)
-}
-
-func doLoop(ctx context.Context, ch chan obsMsg) {
-	var observers []*Observer
-
-	for op := range ch {
-		switch op.op {
-		case pOpAddCh:
-			observers = append(observers, op.observer)
-		case pOpRemoveCh:
-			index := slices.Index(observers, op.observer)
-			if index >= 0 {
-				if op.observer.allUpdates != nil {
-					close(op.observer.allUpdates)
-				}
-				if op.observer.stackUpdates != nil {
-					close(op.observer.stackUpdates)
-				}
-
-				observers = slices.Delete(observers, index, index+1)
-			}
-		case pOpNewData:
-			for _, obs := range observers {
-				obs.post(op.message)
-			}
-		}
-
-		if op.callbackCh != nil {
-			close(op.callbackCh)
-		}
-	}
-
-	// Make sure that any observers that were not canceled, become canceled.
-	for _, obs := range observers {
-		obs.closed.Store(true)
-		if obs.allUpdates != nil {
-			close(obs.allUpdates)
-		}
-		if obs.stackUpdates != nil {
-			close(obs.stackUpdates)
-		}
-	}
 }
 
 func (o *Observer) Close() {
-	// Only send close message once.
-	if o.closed.CAS(false, true) {
-		callback := make(chan struct{})
-		if o.parent.pushCheckClosed(obsMsg{op: pOpRemoveCh, observer: o, callbackCh: callback}) {
-			// Block until we're actually removed.
-			<-callback
-		}
+	o.parent.remove(o)
+	if o.stackUpdates != nil {
+		close(o.stackUpdates)
+	} else {
+		close(o.allUpdates)
 	}
 }
 

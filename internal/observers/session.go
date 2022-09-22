@@ -7,7 +7,7 @@ package observers
 import sync "sync"
 
 type SessionProvider interface {
-	NewStackClient() (StackSession, error)
+	NewStackClient() StackSession
 }
 
 type StackSession interface {
@@ -39,7 +39,7 @@ func (p *StaticProvider) PushUpdate(update *StackUpdateEvent) {
 	}
 }
 
-func (p *StaticProvider) NewStackClient() (StackSession, error) {
+func (p *StaticProvider) NewStackClient() StackSession {
 	ch := make(chan *StackUpdateEvent, 1)
 
 	p.mu.Lock()
@@ -51,7 +51,7 @@ func (p *StaticProvider) NewStackClient() (StackSession, error) {
 		ch <- update
 	}
 
-	return staticSession{ch, p}, nil
+	return staticSession{ch, p}
 }
 
 func (p *StaticProvider) RemoveClient(ch chan *StackUpdateEvent) {

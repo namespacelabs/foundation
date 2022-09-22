@@ -29,12 +29,7 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(console.Debug(r.Context()), "(%s) websocket2: connected\n", r.RemoteAddr)
 
-	ch, err := s.NewClient(true)
-	if err != nil {
-		w.WriteHeader(500)
-		fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed to create client: %v\n", r.RemoteAddr, err)
-		return
-	}
+	ch := s.NewClient(true)
 	defer ch.Close()
 
 	ctx, cancel := context.WithCancel(r.Context())

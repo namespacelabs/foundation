@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/executor"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
@@ -77,47 +76,39 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 		return opts.Handler(ctx)
 	}
 
+	obs := opts.Provider.NewStackClient()
+	defer obs.Close()
+
 	keych := make(chan tea.KeyMsg)
 	p := tea.NewProgram(&program{ch: keych, w: console.Stderr(ctx)}, tea.WithoutRenderer())
 
+	ctx, cancelContext := context.WithCancel(ctx)
+	defer cancelContext()
+
+	go handleEvents(ctx, obs, opts.Keybindings, keych)
+
 	eg := executor.New(ctx, "keyboard-handler")
-	eg.Go(func(ctx context.Context) error {
-		obs, err := opts.Provider.NewStackClient()
-		if err != nil {
-			return fnerrors.InternalError("failed to create observer: %w", err)
-		}
-
-		defer obs.Close()
-
-		handleEvents(ctx, obs, opts.Keybindings, keych)
-		return nil
-	})
+	eg.Go(opts.Handler)
 	eg.Go(func(ctx context.Context) error {
 		m, err := p.StartReturningModel()
 		if err != nil {
 			return err
 		}
-		if m.(*program).canceled {
+
+		if m.(*program).quit {
 			return context.Canceled
 		}
+
 		return nil
 	})
-	eg.Go(func(ctx context.Context) error {
-		// Since StartReturningModel doesn't take context and doesn't respect cancellation
-		// we need to quit the TUI explicitly in cases when opts.Handler itself causes an exit (errors out).
-		<-ctx.Done()
-		p.Quit()
-		return nil
-	})
-	eg.Go(opts.Handler)
 
 	return eg.Wait()
 }
 
 type program struct {
-	ch       chan tea.KeyMsg
-	canceled bool
-	w        io.Writer
+	ch   chan tea.KeyMsg
+	quit bool
+	w    io.Writer
 }
 
 func (m *program) Init() tea.Cmd { return nil }
@@ -128,12 +119,12 @@ func (m *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			m.canceled = true
+			m.quit = true
 			return m, tea.Quit
 
 		default:
 			if msg.String() == "q" {
-				m.canceled = true
+				m.quit = true
 				return m, tea.Quit
 			}
 

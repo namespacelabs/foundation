@@ -70,7 +70,7 @@ func (s *Session) DeferRequest(req *DevWorkflowRequest) {
 	s.requestCh <- req
 }
 
-func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
+func (s *Session) NewClient(needsHistory bool) *Observer {
 	const maxTaskUpload = 1000
 	var taskHistory []*protocol.Task
 
@@ -90,7 +90,7 @@ func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
 }
 
 // Implements observers.SessionProvider.
-func (s *Session) NewStackClient() (observers.StackSession, error) {
+func (s *Session) NewStackClient() observers.StackSession {
 	s.mu.Lock()
 	tu := &Update{StackUpdate: protos.Clone(s.currentStack)}
 	s.mu.Unlock()
@@ -201,10 +201,6 @@ func (s *Session) Run(ctx context.Context, extra func(*executor.Executor)) error
 
 	eg := executor.New(ctx, "devworkflow.session")
 	extra(eg)
-
-	// Not attaching to the executor, as we only leave on Close, which is called
-	// outside the executor.
-	go s.obs.Loop(ctx)
 
 	eg.Go(func(ctx context.Context) error {
 		for {
