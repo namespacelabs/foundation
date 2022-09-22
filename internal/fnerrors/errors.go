@@ -205,3 +205,7 @@ func (e *exitError) Error() string {
 func (e *exitError) ExitCode() int {
 	return e.code
 }
+
+type StackTracer interface {
+	StackTrace() stacktrace.StackTrace
+}

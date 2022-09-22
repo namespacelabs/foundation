@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/schema/storage";
 import "google/protobuf/timestamp.proto";
 import "google/rpc/status.proto";
 import "google/protobuf/any.proto";
+import "schema/storage/task.proto";
 
 // Emitted by each individual run, regardless of kind and storage type.
 // Next ID: 7
@@ -109,4 +110,20 @@ message InvocationDescription {
 // This is an attachment to a RunStorage Run.
 message GithubEvent {
     string serialized_json = 1;
+}
+
+// Stored in google.rpc.Status.details to provide action context for errors.
+message ActionTrace {
+    // List of actions leading to the failure (leaf action first).
+    repeated StoredTask task = 1;
+}
+
+message StackTrace {
+    repeated Frame frame = 1;
+
+    message Frame {
+        string filename = 1;
+        int32 line = 2;
+        string symbol = 3;
+    }
 }

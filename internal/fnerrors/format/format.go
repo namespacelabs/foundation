@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -108,10 +107,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 }
 
 func writeSourceFileAndLine(w io.Writer, err error, colors colors.Style) {
-	type stackTracer interface {
-		StackTrace() stacktrace.StackTrace
-	}
-	if st, ok := err.(stackTracer); ok {
+	if st, ok := err.(fnerrors.StackTracer); ok {
 		stack := st.StackTrace()
 		if len(stack) == 0 {
 			return

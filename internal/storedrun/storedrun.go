@@ -7,6 +7,7 @@ package storedrun
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (
@@ -58,7 +60,7 @@ func New() *Run {
 }
 
 func (s *Run) Output(ctx context.Context, execErr error) error {
-	st, _ := status.FromError(execErr)
+	st := nsErrorToStatus(execErr)
 
 	run := &storage.UndifferentiatedRun{
 		ParentRunId: ParentID,
@@ -95,6 +97,60 @@ func (s *Run) Output(ctx context.Context, execErr error) error {
 	}
 
 	return nil
+}
+
+func nsErrorToStatus(err error) *status.Status {
+	st, _ := status.FromError(err)
+
+	// Find the deepest ActionError to provide the action trace for the root cause.
+	var actionErr *tasks.ActionError
+	for {
+		errors.As(err, &actionErr)
+		cause := errors.Unwrap(err)
+		if cause == nil {
+			break
+		}
+		err = cause
+	}
+	if actionErr != nil {
+		// Rewind to the ActionError so that the stacktrace below is consistent with
+		// the action stack.
+		err = actionErr
+	}
+
+	// Extract nearest stack.
+	var stackTracer fnerrors.StackTracer
+	errors.As(actionErr, &stackTracer)
+
+	if actionErr != nil {
+		trace := actionErr.Trace()
+		att := &storage.ActionTrace{}
+		for _, a := range trace {
+			ev := tasks.EventDataFromProto("", a)
+			st := tasks.MakeStoreProto(&ev, nil)
+			att.Task = append(att.Task, st)
+		}
+		if newSt, err := st.WithDetails(att); err == nil {
+			st = newSt
+		}
+	}
+
+	if stackTracer != nil {
+		trace := stackTracer.StackTrace()
+		att := &storage.StackTrace{}
+		for _, f := range trace {
+			st := &storage.StackTrace_Frame{
+				Filename: f.File(),
+				Line:     int32(f.Line()),
+				Symbol:   f.Name(),
+			}
+			att.Frame = append(att.Frame, st)
+		}
+		if newSt, err := st.WithDetails(att); err == nil {
+			st = newSt
+		}
+	}
+	return st
 }
 
 func consumeAttachments() []proto.Message {

@@ -416,7 +416,7 @@ func makeProto(data *EventData, at *EventAttachments) *protocol.Task {
 	return p
 }
 
-func makeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
+func MakeStoreProto(data *EventData, at *EventAttachments) *storage.StoredTask {
 	p := &storage.StoredTask{
 		Id:                 data.ActionID.String(),
 		ParentId:           data.ParentID.String(),
