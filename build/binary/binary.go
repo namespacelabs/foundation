@@ -296,6 +296,25 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 		return spec, nil
 	}
 
+	if binRef := src.Binary; binRef != nil {
+		binPkg, err := env.LoadByName(ctx, binRef.AsPackageName())
+		if err != nil {
+			return nil, err
+		}
+
+		binary, err := GetBinary(binPkg, binRef.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		spec, err := planImage(ctx, binPkg.Location, binary, env, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return spec, nil
+	}
+
 	if len(src.SnapshotFiles) > 0 {
 		return snapshotFiles{loc.Rel(), src.SnapshotFiles}, nil
 	}

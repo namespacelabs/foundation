@@ -6,6 +6,8 @@ syntax = "proto3";
 
 package foundation.schema;
 
+import "schema/package.proto";
+
 option go_package = "namespacelabs.dev/foundation/schema";
 
 // A "binary" represents a compiled image. It's output is an OCI image, but the
@@ -34,6 +36,7 @@ message ImageBuildPlan {
     repeated string snapshot_files = 6;  // Add all referenced files, and directories, recursively visiting their children.
     string          image_id       = 8;  // Use an existing image.
     NodejsBuild     nodejs_build   = 9;
+    PackageRef      binary         = 10;  // Add another binary as a layer.
 
     message LLBPlan {
         Binary output_of = 1;
