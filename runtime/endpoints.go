@@ -11,12 +11,12 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func ComputeEndpoints(srv provision.Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+func ComputeEndpoints(srv parsed.Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
 	sch := srv.StackEntry()
 
 	serverPorts := append([]*schema.Endpoint_Port{}, sch.Server.StaticPort...)

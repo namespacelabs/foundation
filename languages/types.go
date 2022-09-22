@@ -10,7 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -26,8 +26,8 @@ type Integration interface {
 	workspace.FrameworkHandler
 
 	// Called on `ns build`, `ns deploy`.
-	PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool /*isFocus*/) (build.Spec, error)
-	PrepareRun(context.Context, provision.Server, *runtime.ContainerRunOpts) error
+	PrepareBuild(context.Context, AvailableBuildAssets, parsed.Server, bool /*isFocus*/) (build.Spec, error)
+	PrepareRun(context.Context, parsed.Server, *runtime.ContainerRunOpts) error
 
 	// Called on `ns tidy`
 	TidyWorkspace(context.Context, planning.Context, []*pkggraph.Package) error
@@ -39,7 +39,7 @@ type Integration interface {
 	GenerateServer(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 
 	// Called on `ns dev`.
-	PrepareDev(context.Context, runtime.ClusterNamespace, provision.Server) (context.Context, DevObserver, error)
+	PrepareDev(context.Context, runtime.ClusterNamespace, parsed.Server) (context.Context, DevObserver, error)
 }
 
 type DevObserver interface {
@@ -62,10 +62,10 @@ func IntegrationFor(fmwk schema.Framework) Integration {
 
 type MaybePrepare struct{}
 
-func (MaybePrepare) PrepareBuild(context.Context, AvailableBuildAssets, provision.Server, bool) (build.Spec, error) {
+func (MaybePrepare) PrepareBuild(context.Context, AvailableBuildAssets, parsed.Server, bool) (build.Spec, error) {
 	return nil, nil
 }
-func (MaybePrepare) PrepareRun(context.Context, provision.Server, *runtime.ContainerRunOpts) error {
+func (MaybePrepare) PrepareRun(context.Context, parsed.Server, *runtime.ContainerRunOpts) error {
 	return nil
 }
 
@@ -94,6 +94,6 @@ func (MaybeTidy) TidyServer(context.Context, planning.Context, pkggraph.PackageL
 
 type NoDev struct{}
 
-func (NoDev) PrepareDev(ctx context.Context, _ runtime.ClusterNamespace, _ provision.Server) (context.Context, DevObserver, error) {
+func (NoDev) PrepareDev(ctx context.Context, _ runtime.ClusterNamespace, _ parsed.Server) (context.Context, DevObserver, error) {
 	return ctx, nil, nil
 }

@@ -21,10 +21,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -119,18 +119,18 @@ func NewTestCmd() *cobra.Command {
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
 
-						testComp, err := testing.PrepareTest(ctx, pl, sealedCtx, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]provision.Server, *stack.Stack, error) {
-							var suts []provision.Server
+						testComp, err := testing.PrepareTest(ctx, pl, sealedCtx, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]parsed.Server, *provision.Stack, error) {
+							var suts []parsed.Server
 
 							for _, pkg := range test.ServersUnderTest {
-								sut, err := provision.RequireServerWith(ctx, buildEnv, pl, schema.PackageName(pkg))
+								sut, err := parsed.RequireServerWith(ctx, buildEnv, pl, schema.PackageName(pkg))
 								if err != nil {
 									return nil, nil, err
 								}
 								suts = append(suts, sut)
 							}
 
-							stack, err := stack.Compute(ctx, suts, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+							stack, err := provision.Compute(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 							if err != nil {
 								return nil, nil, err
 							}

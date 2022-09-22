@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package stack
+package provision
 
 import (
 	"context"
@@ -18,8 +18,8 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/invocation"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/eval"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -30,7 +30,7 @@ import (
 )
 
 type Stack struct {
-	Servers           []ParsedServer
+	Servers           []Server
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
 }
@@ -39,13 +39,13 @@ type ProvisionOpts struct {
 	PortRange runtime.PortRange
 }
 
-type ParsedServer struct {
-	provision.Server
+type Server struct {
+	parsed.Server
 	DeclaredStack schema.PackageList
 	ParsedDeps    []*ParsedNode
 }
 
-func (p ParsedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.SidecarContainer) {
+func (p Server) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.SidecarContainer) {
 	var sidecars, inits []*schema.SidecarContainer
 
 	sidecars = append(sidecars, p.Server.Provisioning.Sidecars...)
@@ -59,7 +59,7 @@ func (p ParsedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.
 	return sidecars, inits
 }
 
-func (p ParsedServer) Integration() languages.Integration {
+func (p Server) Integration() languages.Integration {
 	return languages.IntegrationFor(p.Server.Framework())
 }
 
@@ -95,18 +95,18 @@ func (stack *Stack) Proto() *schema.Stack {
 	return s
 }
 
-func (stack *Stack) Get(srv schema.PackageName) (ParsedServer, bool) {
+func (stack *Stack) Get(srv schema.PackageName) (Server, bool) {
 	for k, s := range stack.Servers {
 		if s.PackageName() == srv {
 			return stack.Servers[k], true
 		}
 	}
 
-	return ParsedServer{}, false
+	return Server{}, false
 }
 
-func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts) (*Stack, error) {
-	return tasks.Return(ctx, tasks.Action("stack.compute").Scope(provision.ServerPackages(servers).PackageNames()...),
+func Compute(ctx context.Context, servers parsed.Servers, opts ProvisionOpts) (*Stack, error) {
+	return tasks.Return(ctx, tasks.Action("provision.Compute").Scope(servers.Packages().PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {
 			return computeStack(ctx, opts, servers...)
 		})
@@ -115,21 +115,21 @@ func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts
 // XXX Unfortunately as we are today we need to pass provisioning information to stack computation
 // because we need to yield definitions which have ports already materialized. Port allocation is
 // more of a "startup" responsibility but this kept things simpler.
-func computeStack(ctx context.Context, opts ProvisionOpts, servers ...provision.Server) (*Stack, error) {
+func computeStack(ctx context.Context, opts ProvisionOpts, servers ...parsed.Server) (*Stack, error) {
 	if len(servers) == 0 {
 		return nil, fnerrors.InternalError("no server specified")
 	}
 
 	builder := newStackBuilder()
 
-	ps := make([]*ParsedServer, len(servers))
+	ps := make([]*Server, len(servers))
 	pkgs := make([]schema.PackageName, len(servers))
 	for k, server := range servers {
 		ps[k] = builder.Add(server)
 		pkgs[k] = server.PackageName()
 	}
 
-	cs := computeState{exec: executor.New(ctx, "stack.compute"), out: builder, opts: opts}
+	cs := computeState{exec: executor.New(ctx, "provision.Compute"), out: builder, opts: opts}
 
 	for k := range servers {
 		k := k // Close k.
@@ -168,7 +168,7 @@ func (cs *computeState) checkAdd(env pkggraph.SealedContext, pkg schema.PackageN
 	})
 }
 
-func (cs *computeState) computeServerContents(ctx context.Context, server provision.Server, ps *ParsedServer) error {
+func (cs *computeState) computeServerContents(ctx context.Context, server parsed.Server, ps *Server) error {
 	return tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
 		deps := server.Deps()
 
@@ -245,7 +245,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, server provis
 	})
 }
 
-func EvalProvision(ctx context.Context, server provision.Server, n *pkggraph.Package) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, server parsed.Server, n *pkggraph.Package) (*ParsedNode, error) {
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
 		pn, err := evalProvision(ctx, server, n)
 		if err != nil {
@@ -256,7 +256,7 @@ func EvalProvision(ctx context.Context, server provision.Server, n *pkggraph.Pac
 	})
 }
 
-func evalProvision(ctx context.Context, server provision.Server, node *pkggraph.Package) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps frontend.PrepareProps
 	for _, hook := range node.PrepareHooks {
 		if hook.InvokeInternal != "" {

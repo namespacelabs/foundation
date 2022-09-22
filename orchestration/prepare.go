@@ -11,8 +11,8 @@ import (
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/orchestration/proto"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -49,12 +49,12 @@ func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, 
 		return nil, err
 	}
 
-	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
+	focus, err := parsed.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, boundCluster.Planner(), []provision.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, boundCluster.Planner(), []parsed.Server{focus}, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -55,12 +55,12 @@ func newPrintSealedCmd() *cobra.Command {
 
 				return output(ctx, pl, sealed.Proto, outputType)
 			} else {
-				t, err := provision.RequireServer(ctx, env, loc.AsPackageName())
+				t, err := parsed.RequireServer(ctx, env, loc.AsPackageName())
 				if err != nil {
 					return err
 				}
 
-				plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []provision.Server{t}, nil)
+				plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []parsed.Server{t}, nil)
 				if err != nil {
 					return err
 				}

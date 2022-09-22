@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
@@ -30,7 +30,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.Planner, stack *stack.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
+func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
 	props, err := planner.PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 }
 
 type handlerResult struct {
-	Stack       *stack.Stack
+	Stack       *provision.Stack
 	Definitions []*schema.SerializedInvocation
 	Computed    *schema.ComputedConfigurations
 	ServerDefs  map[schema.PackageName]*serverDefs // Per server.
@@ -99,7 +99,7 @@ type serverDefs struct {
 }
 
 type finishInvokeHandlers struct {
-	stack            *stack.Stack
+	stack            *provision.Stack
 	handlers         []*tool.Definition
 	invocations      []compute.Computable[*protocol.ToolResponse]
 	event            protocol.Lifecycle
@@ -267,7 +267,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 const controllerPkg = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
 
-func ensureInvocationOrder(ctx context.Context, stack *stack.Stack, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
+func ensureInvocationOrder(ctx context.Context, stack *provision.Stack, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
 	// We make sure that serialized invocations produced by a server A, that
 	// depends on server B, are always run after B's serialized invocations.
 	// This guarantees the pattern where B is a provider of an API -- and A is

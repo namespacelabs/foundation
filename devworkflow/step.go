@@ -14,11 +14,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -28,7 +28,7 @@ import (
 func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
-		focusServers := provision.RequireServers(env, serverPackages...)
+		focusServers := parsed.RequireServers(env, serverPackages...)
 
 		fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
 
@@ -58,7 +58,7 @@ type buildAndDeploy struct {
 	pfw            *endpointfwd.PortForward
 	env            planning.Context
 	serverPackages []schema.PackageName
-	focusServers   compute.Computable[*provision.ServerSnapshot]
+	focusServers   compute.Computable[*parsed.ServerSnapshot]
 	cluster        runtime.ClusterNamespace
 
 	mu            sync.Mutex
@@ -117,7 +117,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			}
 		}
 
-		stack, err := stack.Compute(ctx, focus, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+		stack, err := provision.Compute(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 		if err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Environment, focus []provision.Server) {
+func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Environment, focus []parsed.Server) {
 	workspace := protos.Clone(env.Workspace().Proto())
 
 	out.AbsRoot = env.Workspace().LoadedFrom().AbsPath

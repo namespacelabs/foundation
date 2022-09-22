@@ -19,11 +19,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -47,7 +47,7 @@ type TestOpts struct {
 	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
-type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]provision.Server, *stack.Stack, error)
+type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]parsed.Server, *provision.Stack, error)
 
 func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env pkggraph.SealedContext, testRef *schema.PackageRef, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())

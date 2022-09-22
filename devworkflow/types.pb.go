@@ -761,7 +761,7 @@ var file_devworkflow_types_proto_depIdxs = []int32{
 	8,  // 0: foundation.devworkflow.Stack.workspace:type_name -> foundation.schema.Workspace
 	9,  // 1: foundation.devworkflow.Stack.env:type_name -> foundation.schema.Environment
 	9,  // 2: foundation.devworkflow.Stack.available_env:type_name -> foundation.schema.Environment
-	10, // 3: foundation.devworkflow.Stack.stack:type_name -> foundation.schema.Stack
+	10, // 3: foundation.devworkflow.provision.Stack:type_name -> foundation.schema.Stack
 	11, // 4: foundation.devworkflow.Stack.current:type_name -> foundation.schema.Stack.Entry
 	3,  // 5: foundation.devworkflow.Stack.state:type_name -> foundation.devworkflow.StackEntryState
 	1,  // 6: foundation.devworkflow.Stack.forwarded_port:type_name -> foundation.devworkflow.ForwardedPort

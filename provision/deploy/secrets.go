@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
 
-func loadSecrets(ctx context.Context, env *schema.Environment, stack *stack.Stack) (*runtime.GroundedSecrets, error) {
+func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.Stack) (*runtime.GroundedSecrets, error) {
 	keyDir, err := keys.KeysDir()
 	if err != nil {
 		if errors.Is(err, keys.ErrKeyGen) {

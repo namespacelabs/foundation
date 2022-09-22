@@ -9,8 +9,8 @@ import (
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/runtime"
 )
@@ -21,7 +21,7 @@ func init() {
 	privateEntries.Add("namespacelabs.dev/foundation/std/runtime/kubernetes/controller") // Don't include the kube controller as a dep.
 }
 
-func serverToRuntimeConfig(stack *stack.Stack, ps stack.ParsedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack *provision.Stack, ps provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	srv := ps.Server
 	config := &runtime.RuntimeConfig{
 		Environment: makeEnv(srv.SealedContext().Environment()),
@@ -46,7 +46,7 @@ func serverToRuntimeConfig(stack *stack.Stack, ps stack.ParsedServer, serverImag
 	return config, nil
 }
 
-func TestStackToRuntimeConfig(stack *stack.Stack, sutServers []string) (*runtime.RuntimeConfig, error) {
+func TestStackToRuntimeConfig(stack *provision.Stack, sutServers []string) (*runtime.RuntimeConfig, error) {
 	if len(sutServers) == 0 {
 		return nil, fnerrors.InternalError("no servers to test")
 	}
@@ -81,7 +81,7 @@ func makeEnv(env *schema.Environment) *runtime.ServerEnvironment {
 	return res
 }
 
-func makeServer(stack *stack.Stack, server provision.Server) *runtime.Server {
+func makeServer(stack *provision.Stack, server parsed.Server) *runtime.Server {
 	current := &runtime.Server{
 		PackageName: server.Proto().PackageName,
 		ModuleName:  server.Proto().ModuleName,

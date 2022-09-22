@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package provision
+package parsed
 
 import (
 	"context"
@@ -110,35 +110,9 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 	return t, nil
 }
 
-func CheckCompatible(t Server) error {
-	for _, req := range t.Proto().GetEnvironmentRequirement() {
-		for _, r := range req.GetEnvironmentHasLabel() {
-			if !t.SealedContext().Environment().HasLabel(r) {
-				return fnerrors.IncompatibleEnvironmentErr{
-					Env:              t.env.Environment(),
-					Server:           t.Proto(),
-					RequirementOwner: schema.PackageName(req.Package),
-					RequiredLabel:    r,
-				}
-			}
-		}
+type Servers []Server
 
-		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
-			if t.SealedContext().Environment().HasLabel(r) {
-				return fnerrors.IncompatibleEnvironmentErr{
-					Env:               t.env.Environment(),
-					Server:            t.Proto(),
-					RequirementOwner:  schema.PackageName(req.Package),
-					IncompatibleLabel: r,
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func ServerPackages(stack []Server) schema.PackageList {
+func (stack Servers) Packages() schema.PackageList {
 	var pl schema.PackageList
 	for _, s := range stack {
 		pl.Add(s.PackageName())

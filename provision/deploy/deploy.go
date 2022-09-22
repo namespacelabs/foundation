@@ -23,9 +23,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/compatibility"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/provision/startup"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
@@ -61,8 +62,8 @@ type ResolvedSidecarImage struct {
 	Binary     oci.ImageID
 }
 
-func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus []provision.Server, onStack func(*stack.Stack)) (compute.Computable[*Plan], error) {
-	stack, err := stack.Compute(ctx, focus, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus []parsed.Server, onStack func(*provision.Stack)) (compute.Computable[*Plan], error) {
+	stack, err := provision.Compute(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
@@ -74,9 +75,9 @@ func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.
 	return PrepareDeployStack(ctx, env, rc, stack, focus)
 }
 
-func PrepareDeployStack(ctx context.Context, env planning.Context, planner runtime.Planner, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, focus []parsed.Server) (compute.Computable[*Plan], error) {
 	for _, srv := range stack.Servers {
-		if err := provision.CheckCompatible(srv.Server); err != nil {
+		if err := compatibility.CheckCompatible(srv.Server.SealedContext().Environment(), srv.Server.Proto()); err != nil {
 			return nil, err
 		}
 	}
@@ -114,7 +115,7 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 	}
 }
 
-func computeIngressWithHandlerResult(env planning.Context, planner runtime.Planner, stack *stack.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
+func computeIngressWithHandlerResult(env planning.Context, planner runtime.Planner, stack *provision.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
 	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
 		var fragments []*schema.IngressFragment
 
@@ -142,7 +143,7 @@ func computeIngressWithHandlerResult(env planning.Context, planner runtime.Plann
 }
 
 type makeDeployGraph struct {
-	stack            *stack.Stack
+	stack            *provision.Stack
 	prepare          compute.Computable[prepareAndBuildResult]
 	ingressFragments compute.Computable[*ComputeIngressResult]
 	ingressPlan      compute.Computable[*runtime.DeploymentPlan]
@@ -152,7 +153,7 @@ type makeDeployGraph struct {
 
 type Plan struct {
 	Deployer         *ops.Plan
-	ComputedStack    *stack.Stack
+	ComputedStack    *provision.Stack
 	IngressFragments []*schema.IngressFragment
 	Computed         *schema.ComputedConfigurations
 	Hints            []string // Optional messages to pass to the user.
@@ -198,7 +199,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	return plan, nil
 }
 
-func prepareHandlerInvocations(ctx context.Context, env planning.Context, planner runtime.Planner, stack *stack.Stack) (compute.Computable[*handlerResult], error) {
+func prepareHandlerInvocations(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack) (compute.Computable[*handlerResult], error) {
 	return tasks.Return(ctx, tasks.Action("server.invoke-handlers").
 		Arg("env", env.Environment().Name).
 		Scope(stack.ServerPackageList().PackageNames()...),
@@ -240,7 +241,7 @@ func (bi builtImages) get(ref *schema.PackageRef) (builtImage, bool) {
 	return builtImage{}, false
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, servers []provision.Server, stack *stack.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, servers []parsed.Server, stack *provision.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
 	var focus schema.PackageList
 	for _, server := range servers {
 		focus.Add(server.PackageName())
@@ -437,7 +438,7 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 }
 
 func prepareServerImages(ctx context.Context, env planning.Context, planner runtime.Planner,
-	focus schema.PackageList, stack *stack.Stack, buildAssets languages.AvailableBuildAssets,
+	focus schema.PackageList, stack *provision.Stack, buildAssets languages.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverImages, error) {
 	imageList := []serverImages{}
 
@@ -517,7 +518,7 @@ type containerImage struct {
 	Command     []string
 }
 
-func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, stack *stack.Stack) ([]containerImage, error) {
+func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, stack *provision.Stack) ([]containerImage, error) {
 	res := []containerImage{}
 	for k, srv := range stack.Servers {
 		platforms, err := planner.TargetPlatforms(ctx)
@@ -570,8 +571,8 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 	return res, nil
 }
 
-func ComputeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, servers []provision.Server) (*stack.Stack, []compute.Computable[ResolvedServerImages], error) {
-	stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+func ComputeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, servers parsed.Servers) (*provision.Stack, []compute.Computable[ResolvedServerImages], error) {
+	stack, err := provision.Compute(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -587,7 +588,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 		return h.Computed, nil
 	})
 
-	imageMap, err := prepareServerImages(ctx, env, planner, provision.ServerPackages(servers), stack, makeBuildAssets(ingressFragments), computedOnly)
+	imageMap, err := prepareServerImages(ctx, env, planner, servers.Packages(), stack, makeBuildAssets(ingressFragments), computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -654,7 +655,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 	return stack, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *stack.Stack, srv provision.Server, imgs builtImage, out *runtime.DeployableSpec) error {
+func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Server, imgs builtImage, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
 	out.Location = srv.Location
 	out.PackageName = srv.PackageName()

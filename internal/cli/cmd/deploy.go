@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/stack"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/orchestration"
@@ -70,7 +69,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := stack.Compute(ctx, servers.Servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+			stack, err := provision.Compute(ctx, servers.Servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 			if err != nil {
 				return err
 			}
@@ -89,7 +88,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), stack.Proto(), computed, provision.ServerPackages(servers.Servers).PackageNamesAsString())
+			deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), stack.Proto(), computed, servers.Servers.Packages().PackageNamesAsString())
 
 			if serializePath != "" {
 				return protos.WriteFile(serializePath, deployPlan)

@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -20,7 +20,7 @@ import (
 )
 
 type codegenWorkspace struct {
-	srv provision.Server
+	srv parsed.Server
 }
 
 func (cw codegenWorkspace) ModuleName() string { return cw.srv.Module().ModuleName() }
@@ -30,7 +30,7 @@ func (cw codegenWorkspace) VersionedFS(rel string, observeChanges bool) compute.
 }
 
 type codegenThenSnapshot struct {
-	srv            provision.Server
+	srv            parsed.Server
 	rel            string
 	observeChanges bool
 	compute.LocalScoped[wscontents.Versioned]
@@ -78,7 +78,7 @@ func (ce codegenEnv) LoadByName(ctx context.Context, packageName schema.PackageN
 	return ce.packages.LoadByName(ctx, packageName)
 }
 
-func codegenServer(ctx context.Context, srv provision.Server) error {
+func codegenServer(ctx context.Context, srv parsed.Server) error {
 	// XXX we should be able to disable codegen for pure builds.
 	if srv.Module().IsExternal() {
 		return nil

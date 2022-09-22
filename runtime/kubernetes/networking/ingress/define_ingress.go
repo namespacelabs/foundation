@@ -19,7 +19,7 @@ import (
 	applynetworkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
@@ -309,7 +309,7 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 	return ingress, &managed, nil
 }
 
-func Delete(ns string, stack []provision.Server) ([]*schema.SerializedInvocation, error) {
+func Delete(ns string, stack []parsed.Server) ([]*schema.SerializedInvocation, error) {
 	var defs []*schema.SerializedInvocation
 
 	for _, srv := range stack {

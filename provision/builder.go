@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package stack
+package provision
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type stackBuilder struct {
 	mu        sync.Mutex
-	servers   []*ParsedServer
+	servers   []*Server
 	endpoints []*schema.Endpoint
 	internal  []*schema.InternalEndpoint
 	known     map[schema.PackageName]struct{} // TODO consider removing this and fully relying on `servers`
@@ -30,8 +30,8 @@ func newStackBuilder() *stackBuilder {
 	}
 }
 
-func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
-	ps := &ParsedServer{Server: srv}
+func (stack *stackBuilder) Add(srv parsed.Server) *Server {
+	ps := &Server{Server: srv}
 
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
@@ -41,7 +41,7 @@ func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
 	return ps
 }
 
-func (stack *stackBuilder) checkAdd(ctx context.Context, env pkggraph.SealedContext, pkgname schema.PackageName) (*provision.Server, *ParsedServer, error) {
+func (stack *stackBuilder) checkAdd(ctx context.Context, env pkggraph.SealedContext, pkgname schema.PackageName) (*parsed.Server, *Server, error) {
 	stack.mu.Lock()
 
 	if _, ok := stack.known[pkgname]; ok {
@@ -52,7 +52,7 @@ func (stack *stackBuilder) checkAdd(ctx context.Context, env pkggraph.SealedCont
 	stack.known[pkgname] = struct{}{}
 	stack.mu.Unlock()
 
-	childT, err := provision.RequireLoadedServer(ctx, env, pkgname)
+	childT, err := parsed.RequireLoadedServer(ctx, env, pkgname)
 	if err != nil {
 		return nil, nil, err
 	}

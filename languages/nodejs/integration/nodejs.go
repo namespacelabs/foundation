@@ -29,7 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -166,7 +166,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func GetExternalModuleForDeps(server provision.Server) []build.Workspace {
+func GetExternalModuleForDeps(server parsed.Server) []build.Workspace {
 	moduleMap := map[string]*pkggraph.Module{}
 	for _, dep := range server.Deps() {
 		if dep.Location.Module.ModuleName() != server.Module().ModuleName() &&
@@ -183,7 +183,7 @@ func GetExternalModuleForDeps(server provision.Server) []build.Workspace {
 	return modules
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server parsed.Server, isFocus bool) (build.Spec, error) {
 	yarnRoot, err := findYarnRoot(server.Location)
 	if err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ func pkgSupportsNodejs(pkg *pkggraph.Package) bool {
 		(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS))
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
 	if useDevBuild(srv.SealedContext().Environment()) {
 		if wsremote.Ctx(ctx) != nil {
 			return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
@@ -235,7 +235,7 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 	return ctx, nil, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ContainerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, srv parsed.Server, run *runtime.ContainerRunOpts) error {
 	if useDevBuild(srv.SealedContext().Environment()) {
 		// For dev builds we use runtime complication of Typescript.
 		run.ReadOnlyFilesystem = false

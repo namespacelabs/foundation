@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -114,7 +114,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 		h.resultOut.Ingress = rehydrated.IngressFragments
 		h.resultOut.Rehydrated = rehydrated
 	} else {
-		stack, err := stack.Compute(ctx, servers, stack.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+		stack, err := provision.Compute(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 		if err != nil {
 			return err
 		}

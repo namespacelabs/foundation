@@ -10,7 +10,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -27,7 +27,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server parsed.Server, isFocus bool) (build.Spec, error) {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
 	pkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
@@ -43,7 +43,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return prep.Plan.Spec, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, server parsed.Server, run *runtime.ContainerRunOpts) error {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 	if binRef != nil {
 		pkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())

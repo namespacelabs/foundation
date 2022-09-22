@@ -8,12 +8,12 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/stack"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan *schema.StartupPlan, deps []*stack.ParsedNode, info pkggraph.StartupInputs) (*schema.BinaryConfig, error) {
+func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan *schema.StartupPlan, deps []*provision.ParsedNode, info pkggraph.StartupInputs) (*schema.BinaryConfig, error) {
 	computed := &schema.BinaryConfig{}
 
 	// For each already loaded configuration, unify the startup args to produce the final startup configuration.
@@ -28,7 +28,7 @@ func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan 
 	return computed, nil
 }
 
-func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *stack.ParsedNode, info pkggraph.StartupInputs, merged *schema.BinaryConfig) error {
+func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *provision.ParsedNode, info pkggraph.StartupInputs, merged *schema.BinaryConfig) error {
 	plan, err := dep.ProvisionPlan.Startup.EvalStartup(ctx, env, info, dep.Allocations)
 	if err != nil {
 		return fnerrors.Wrap(dep.Package.Location, err)

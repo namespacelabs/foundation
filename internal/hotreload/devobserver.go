@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -36,7 +36,7 @@ type FileSyncDevObserver struct {
 	port io.Closer
 }
 
-func NewFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
+func NewFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
 		ctx:          ctx,
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
