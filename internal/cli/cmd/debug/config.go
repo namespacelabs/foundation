@@ -55,8 +55,8 @@ func newComputeConfigCmd() *cobra.Command {
 
 			stack := computedPlan.ComputedStack
 
-			s := stack.Get(server.PackageName())
-			if s == nil {
+			ps, ok := stack.Get(server.PackageName())
+			if !ok {
 				return fnerrors.InternalError("expected to find %s in the stack, but didn't", server.PackageName())
 			}
 
@@ -67,14 +67,12 @@ func newComputeConfigCmd() *cobra.Command {
 				ServerRootAbs: server.Location.Abs(),
 			}
 
-			evald := stack.GetParsed(s.PackageName())
-
-			serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.SealedContext(), sargs, nil)
+			serverStartupPlan, err := ps.Server.Startup.EvalStartup(ctx, ps.Server.SealedContext(), sargs, nil)
 			if err != nil {
 				return err
 			}
 
-			c, err := startup.ComputeConfig(ctx, s.SealedContext(), serverStartupPlan, evald.Deps, sargs)
+			c, err := startup.ComputeConfig(ctx, ps.Server.SealedContext(), serverStartupPlan, ps.ParsedDeps, sargs)
 			if err != nil {
 				return err
 			}

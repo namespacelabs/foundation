@@ -18,21 +18,13 @@ import (
 
 func TestEnsureInvocationOrder(t *testing.T) {
 	stack := &stack.Stack{
-		Servers: []provision.Server{{
-			Location: pkggraph.Location{
-				PackageName: "a",
+		Servers: []stack.ParsedServer{{
+			Server: provision.Server{
+				Location: pkggraph.Location{
+					PackageName: "a",
+				},
 			},
-		}, {
-			Location: pkggraph.Location{
-				PackageName: "b",
-			},
-		}, {
-			Location: pkggraph.Location{
-				PackageName: "c",
-			},
-		}},
-		ParsedServers: []*stack.ParsedServer{{
-			Deps: []*stack.ParsedNode{{
+			ParsedDeps: []*stack.ParsedNode{{
 				ProvisionPlan: pkggraph.ProvisionPlan{
 					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
 						ProvisionStack: pkggraph.ProvisionStack{
@@ -42,7 +34,12 @@ func TestEnsureInvocationOrder(t *testing.T) {
 				},
 			}},
 		}, {
-			Deps: []*stack.ParsedNode{{
+			Server: provision.Server{
+				Location: pkggraph.Location{
+					PackageName: "b",
+				},
+			},
+			ParsedDeps: []*stack.ParsedNode{{
 				ProvisionPlan: pkggraph.ProvisionPlan{
 					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
 						ProvisionStack: pkggraph.ProvisionStack{
@@ -52,7 +49,12 @@ func TestEnsureInvocationOrder(t *testing.T) {
 				},
 			}},
 		}, {
-			Deps: []*stack.ParsedNode{{
+			Server: provision.Server{
+				Location: pkggraph.Location{
+					PackageName: "c",
+				},
+			},
+			ParsedDeps: []*stack.ParsedNode{{
 				ProvisionPlan: pkggraph.ProvisionPlan{
 					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
 						ProvisionStack: pkggraph.ProvisionStack{

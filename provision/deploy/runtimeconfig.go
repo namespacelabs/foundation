@@ -21,25 +21,26 @@ func init() {
 	privateEntries.Add("namespacelabs.dev/foundation/std/runtime/kubernetes/controller") // Don't include the kube controller as a dep.
 }
 
-func serverToRuntimeConfig(stack *stack.Stack, server provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack *stack.Stack, ps stack.ParsedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
+	srv := ps.Server
 	config := &runtime.RuntimeConfig{
-		Environment: makeEnv(server.SealedContext().Environment()),
-		Current:     makeServer(stack, server),
+		Environment: makeEnv(srv.SealedContext().Environment()),
+		Current:     makeServer(stack, srv),
 	}
 
 	config.Current.ImageRef = serverImage.String()
 
-	for _, pkg := range stack.GetParsed(server.PackageName()).DeclaredStack.PackageNames() {
-		if pkg == server.PackageName() || privateEntries.Includes(pkg) {
+	for _, pkg := range ps.DeclaredStack.PackageNames() {
+		if pkg == ps.PackageName() || privateEntries.Includes(pkg) {
 			continue
 		}
 
-		ref := stack.Get(pkg)
-		if ref == nil {
+		ref, ok := stack.Get(pkg)
+		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServer(stack, *ref))
+		config.StackEntry = append(config.StackEntry, makeServer(stack, ref.Server))
 	}
 
 	return config, nil
@@ -51,16 +52,16 @@ func TestStackToRuntimeConfig(stack *stack.Stack, sutServers []string) (*runtime
 	}
 
 	config := &runtime.RuntimeConfig{
-		Environment: makeEnv(stack.Servers[0].SealedContext().Environment()),
+		Environment: makeEnv(stack.Servers[0].Server.SealedContext().Environment()),
 	}
 
 	for _, pkg := range sutServers {
-		ref := stack.Get(schema.MakePackageName(pkg))
-		if ref == nil {
+		ref, ok := stack.Get(schema.MakePackageName(pkg))
+		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServer(stack, *ref))
+		config.StackEntry = append(config.StackEntry, makeServer(stack, ref.Server))
 	}
 
 	return config, nil

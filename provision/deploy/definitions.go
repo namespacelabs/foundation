@@ -42,12 +42,12 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 	extensions := props.Extension
 	serverExtensions := props.ServerExtension
 
-	for k, srv := range stack.ParsedServers {
+	for k, srv := range stack.Servers {
 		invokeProps := tool.InvokeProps{Event: event}
 
 		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, props.ProvisionInput...)
 
-		for _, dep := range srv.Deps {
+		for _, dep := range srv.ParsedDeps {
 			// XXX breaks isolation.
 			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, dep.PrepareProps.ProvisionInput...)
 
@@ -60,8 +60,8 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 
 	var invocations []compute.Computable[*protocol.ToolResponse]
 	for _, r := range handlers {
-		focus := stack.Get(r.TargetServer)
-		if focus == nil {
+		focus, ok := stack.Get(r.TargetServer)
+		if !ok {
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.TargetServer)
 		}
 
@@ -156,8 +156,8 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	}
 
 	for k, handler := range r.handlers {
-		s := r.stack.Get(handler.TargetServer)
-		if s == nil {
+		s, ok := r.stack.Get(handler.TargetServer)
+		if !ok {
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", handler.TargetServer)
 		}
 
@@ -171,10 +171,10 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 			// Probably lifecycle handlers should declare which servers they
 			// apply to.
 			for _, si := range resp.ApplyResponse.Extension {
-				server := r.stack.Get(schema.PackageName(si.For))
-				if server == nil {
+				server, ok := r.stack.Get(schema.PackageName(si.For))
+				if !ok {
 					return nil, fnerrors.InternalError("%s: received startup input for %s, which is not in our stack",
-						s.Location.PackageName, si.For)
+						s.PackageName(), si.For)
 				}
 
 				if !handler.Source.Contains(server.PackageName()) {
@@ -186,10 +186,10 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 			}
 
 			for _, si := range resp.ApplyResponse.ServerExtension {
-				server := r.stack.Get(schema.PackageName(si.TargetServer))
-				if server == nil {
+				server, ok := r.stack.Get(schema.PackageName(si.TargetServer))
+				if !ok {
 					return nil, fnerrors.InternalError("%s: received startup input for %s, which is not in our stack",
-						s.Location.PackageName, si.TargetServer)
+						s.PackageName(), si.TargetServer)
 				}
 
 				if !handler.Source.Contains(server.PackageName()) {
@@ -208,7 +208,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				// XXX make this extensible.
 
 				for _, computable := range src.Computable {
-					compiled, err := compileComputable(ctx, s.SealedContext(), computable)
+					compiled, err := compileComputable(ctx, s.Server.SealedContext(), computable)
 					if err != nil {
 						return nil, err
 					}
@@ -285,7 +285,7 @@ func ensureInvocationOrder(ctx context.Context, stack *stack.Stack, perServer ma
 
 	// Add edges for each server dep.
 	for k, srv := range stack.Servers {
-		for _, dep := range stack.ParsedServers[k].Deps {
+		for _, dep := range stack.Servers[k].ParsedDeps {
 			for _, backend := range dep.ProvisionPlan.DeclaredStack {
 				if backend == srv.PackageName() {
 					if srv.PackageName() == controllerPkg {

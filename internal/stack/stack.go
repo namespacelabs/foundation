@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend"
 	"namespacelabs.dev/foundation/internal/frontend/invocation"
 	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
@@ -29,11 +30,9 @@ import (
 )
 
 type Stack struct {
-	Servers           []provision.Server
+	Servers           []ParsedServer
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
-
-	ParsedServers []*ParsedServer
 }
 
 type ProvisionOpts struct {
@@ -41,23 +40,27 @@ type ProvisionOpts struct {
 }
 
 type ParsedServer struct {
-	DeclaredStack               schema.PackageList
-	Deps                        []*ParsedNode
-	ServerSidecars, ServerInits []*schema.SidecarContainer
+	provision.Server
+	DeclaredStack schema.PackageList
+	ParsedDeps    []*ParsedNode
 }
 
 func (p ParsedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.SidecarContainer) {
 	var sidecars, inits []*schema.SidecarContainer
 
-	sidecars = append(sidecars, p.ServerSidecars...)
-	inits = append(inits, p.ServerInits...)
+	sidecars = append(sidecars, p.Server.Provisioning.Sidecars...)
+	inits = append(inits, p.Server.Provisioning.Inits...)
 
-	for _, dep := range p.Deps {
+	for _, dep := range p.ParsedDeps {
 		sidecars = append(sidecars, dep.ProvisionPlan.Sidecars...)
 		inits = append(inits, dep.ProvisionPlan.Inits...)
 	}
 
 	return sidecars, inits
+}
+
+func (p ParsedServer) Integration() languages.Integration {
+	return languages.IntegrationFor(p.Server.Framework())
 }
 
 type ParsedNode struct {
@@ -71,6 +74,14 @@ type ParsedNode struct {
 	}
 }
 
+func (stack *Stack) ServerPackageList() schema.PackageList {
+	var pl schema.PackageList
+	for _, srv := range stack.Servers {
+		pl.Add(srv.PackageName())
+	}
+	return pl
+}
+
 func (stack *Stack) Proto() *schema.Stack {
 	s := &schema.Stack{
 		Endpoint:         stack.Endpoints,
@@ -78,29 +89,20 @@ func (stack *Stack) Proto() *schema.Stack {
 	}
 
 	for _, srv := range stack.Servers {
-		s.Entry = append(s.Entry, srv.StackEntry())
+		s.Entry = append(s.Entry, srv.Server.StackEntry())
 	}
 
 	return s
 }
 
-func (stack *Stack) Get(pkg schema.PackageName) *provision.Server {
-	for _, s := range stack.Servers {
-		if s.PackageName() == pkg {
-			return &s
-		}
-	}
-	return nil
-}
-
-func (stack *Stack) GetParsed(srv schema.PackageName) *ParsedServer {
+func (stack *Stack) Get(srv schema.PackageName) (ParsedServer, bool) {
 	for k, s := range stack.Servers {
 		if s.PackageName() == srv {
-			return stack.ParsedServers[k]
+			return stack.Servers[k], true
 		}
 	}
 
-	return nil
+	return ParsedServer{}, false
 }
 
 func Compute(ctx context.Context, servers []provision.Server, opts ProvisionOpts) (*Stack, error) {
@@ -229,9 +231,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, server provis
 			dwn.Allocations = allocs
 		}
 
-		ps.Deps = parsedDeps
-		ps.ServerSidecars = server.Provisioning.Sidecars
-		ps.ServerInits = server.Provisioning.Inits
+		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
 		// Fill in env-bound data now, post ports allocation.

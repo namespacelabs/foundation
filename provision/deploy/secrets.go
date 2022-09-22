@@ -36,7 +36,8 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *stack.Stac
 
 	var missing []*schema.SecretSpec
 	var missingServer []schema.PackageName
-	for _, srv := range stack.Servers {
+	for _, ps := range stack.Servers {
+		srv := ps.Server
 		if len(srv.Proto().Secret) == 0 {
 			continue
 		}

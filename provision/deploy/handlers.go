@@ -27,9 +27,9 @@ func computeHandlers(ctx context.Context, in *stack.Stack) ([]*tool.Definition, 
 	var handlers []*tool.Definition
 
 	var sources []handlerSource
-	for k, s := range in.ParsedServers {
-		srv := in.Servers[k]
-		for _, n := range s.Deps {
+	for _, ps := range in.Servers {
+		srv := ps.Server
+		for _, n := range ps.ParsedDeps {
 			sources = append(sources, handlerSource{srv, n.Package.PackageName(), n.ProvisionPlan.PreparedProvisionPlan})
 		}
 		sources = append(sources, handlerSource{srv, srv.PackageName(), srv.Provisioning})

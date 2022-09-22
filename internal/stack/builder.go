@@ -18,15 +18,10 @@ import (
 
 type stackBuilder struct {
 	mu        sync.Mutex
-	servers   []serverBuilder
+	servers   []*ParsedServer
 	endpoints []*schema.Endpoint
 	internal  []*schema.InternalEndpoint
 	known     map[schema.PackageName]struct{} // TODO consider removing this and fully relying on `servers`
-}
-
-type serverBuilder struct {
-	srv    provision.Server
-	parsed *ParsedServer
 }
 
 func newStackBuilder() *stackBuilder {
@@ -36,13 +31,13 @@ func newStackBuilder() *stackBuilder {
 }
 
 func (stack *stackBuilder) Add(srv provision.Server) *ParsedServer {
-	ps := &ParsedServer{}
+	ps := &ParsedServer{Server: srv}
 
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 
 	stack.known[srv.PackageName()] = struct{}{}
-	stack.servers = append(stack.servers, serverBuilder{srv, ps})
+	stack.servers = append(stack.servers, ps)
 	return ps
 }
 
@@ -84,7 +79,7 @@ func (stack *stackBuilder) Seal(focus ...schema.PackageName) *Stack {
 	}
 
 	sort.Slice(stack.servers, func(i, j int) bool {
-		return order(foci, stack.servers[i].srv.PackageName().String(), stack.servers[j].srv.PackageName().String())
+		return order(foci, stack.servers[i].Server.PackageName().String(), stack.servers[j].Server.PackageName().String())
 	})
 
 	sort.Slice(stack.endpoints, func(i, j int) bool {
@@ -113,8 +108,7 @@ func (stack *stackBuilder) Seal(focus ...schema.PackageName) *Stack {
 	}
 
 	for _, sb := range stack.servers {
-		s.Servers = append(s.Servers, sb.srv)
-		s.ParsedServers = append(s.ParsedServers, sb.parsed)
+		s.Servers = append(s.Servers, *sb)
 	}
 
 	return s

@@ -76,7 +76,7 @@ func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.
 
 func PrepareDeployStack(ctx context.Context, env planning.Context, planner runtime.Planner, stack *stack.Stack, focus []provision.Server) (compute.Computable[*Plan], error) {
 	for _, srv := range stack.Servers {
-		if err := provision.CheckCompatible(srv); err != nil {
+		if err := provision.CheckCompatible(srv.Server); err != nil {
 			return nil, err
 		}
 	}
@@ -201,7 +201,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 func prepareHandlerInvocations(ctx context.Context, env planning.Context, planner runtime.Planner, stack *stack.Stack) (compute.Computable[*handlerResult], error) {
 	return tasks.Return(ctx, tasks.Action("server.invoke-handlers").
 		Arg("env", env.Environment().Name).
-		Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
+		Scope(stack.ServerPackageList().PackageNames()...),
 		func(ctx context.Context) (compute.Computable[*handlerResult], error) {
 			handlers, err := computeHandlers(ctx, stack)
 			if err != nil {
@@ -333,7 +333,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 	secretData := compute.Map(
 		tasks.Action("server.collect-secret-data").
-			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
+			Scope(stack.ServerPackageList().PackageNames()...),
 		compute.Inputs().
 			Proto("env", env.Environment()).
 			Computable("stackAndDefs", stackDef),
@@ -346,7 +346,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 	c1 := compute.Map(
 		tasks.Action("server.plan-deployment").
-			Scope(provision.ServerPackages(stack.Servers).PackageNames()...),
+			Scope(stack.ServerPackageList().PackageNames()...),
 		finalInputs.
 			Indigestible("focus", focus).
 			Computable("images", imageIDs).
@@ -376,11 +376,11 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 					return prepareAndBuildResult{}, err
 				}
 
-				if err := prepareRunOpts(ctx, stack, srv, img, &run); err != nil {
+				if err := prepareRunOpts(ctx, stack, srv.Server, img, &run); err != nil {
 					return prepareAndBuildResult{}, err
 				}
 
-				sidecars, inits := stack.ParsedServers[k].SidecarsAndInits()
+				sidecars, inits := stack.Servers[k].SidecarsAndInits()
 
 				if err := prepareContainerRunOpts(sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
 					return prepareAndBuildResult{}, err
@@ -454,7 +454,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv, focus.Includes(srv.PackageName()))
+			spec, err = srv.Integration().PrepareBuild(ctx, buildAssets, srv.Server, focus.Includes(srv.PackageName()))
 		}
 		if err != nil {
 			return nil, err
@@ -463,12 +463,13 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		if imgid, ok := build.IsPrebuilt(spec); ok && !PushPrebuiltsToRegistry {
 			images.Binary = build.Prebuilt(imgid)
 		} else {
-			p, err := MakePlan(ctx, planner, srv, spec)
+			p, err := MakePlan(ctx, planner, srv.Server, spec)
 			if err != nil {
 				return nil, err
 			}
 
-			name, err := registry.AllocateName(ctx, srv.SealedContext(), srv.PackageName())
+			pctx := srv.Server.SealedContext()
+			name, err := registry.AllocateName(ctx, pctx, srv.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -478,7 +479,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 			// replaced with a graph optimization pass in the future.
 			p.PublishName = name
 
-			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, srv.SealedContext(), p)
+			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, pctx, p)
 			if err != nil {
 				return nil, err
 			}
@@ -491,10 +492,11 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		// stack at the time of evaluation of the target image and deployment, but also the
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
-		if focus.Includes(srv.PackageName()) && !srv.SealedContext().Environment().Ephemeral && computedConfigs != nil {
-			configImage := prepareConfigImage(ctx, env, planner, srv, stack, computedConfigs)
+		pctx := srv.Server.SealedContext()
+		if focus.Includes(srv.PackageName()) && !pctx.Environment().Ephemeral && computedConfigs != nil {
+			configImage := prepareConfigImage(ctx, env, planner, srv.Server, stack, computedConfigs)
 
-			cfgtag, err := registry.AllocateName(ctx, srv.SealedContext(), srv.PackageName())
+			cfgtag, err := registry.AllocateName(ctx, pctx, srv.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -523,7 +525,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 			return nil, err
 		}
 
-		sidecars, inits := stack.ParsedServers[k].SidecarsAndInits()
+		sidecars, inits := stack.Servers[k].SidecarsAndInits()
 		sidecars = append(sidecars, inits...) // For our purposes, they are the same.
 
 		for _, container := range sidecars {
@@ -532,12 +534,13 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 				binRef = schema.MakePackageSingleRef(schema.MakePackageName(container.Binary))
 			}
 
-			bin, err := srv.SealedContext().LoadByName(ctx, binRef.AsPackageName())
+			pctx := srv.Server.SealedContext()
+			bin, err := pctx.LoadByName(ctx, binRef.AsPackageName())
 			if err != nil {
 				return nil, err
 			}
 
-			prepared, err := binary.Plan(ctx, bin, binRef.Name, srv.SealedContext(),
+			prepared, err := binary.Plan(ctx, bin, binRef.Name, pctx,
 				binary.BuildImageOpts{
 					UsePrebuilts: true,
 					Platforms:    platforms,
@@ -546,12 +549,12 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 				return nil, err
 			}
 
-			image, err := prepared.Image(ctx, srv.SealedContext())
+			image, err := prepared.Image(ctx, pctx)
 			if err != nil {
 				return nil, err
 			}
 
-			tag, err := registry.AllocateName(ctx, srv.SealedContext(), bin.PackageName())
+			tag, err := registry.AllocateName(ctx, pctx, bin.PackageName())
 			if err != nil {
 				return nil, err
 			}
@@ -682,7 +685,12 @@ func prepareRunOpts(ctx context.Context, stack *stack.Stack, srv provision.Serve
 		return err
 	}
 
-	merged, err := startup.ComputeConfig(ctx, srv.SealedContext(), serverStartupPlan, stack.GetParsed(srv.PackageName()).Deps, inputs)
+	stackEntry, ok := stack.Get(srv.PackageName())
+	if !ok {
+		return fnerrors.InternalError("%s: missing from the stack", srv.PackageName())
+	}
+
+	merged, err := startup.ComputeConfig(ctx, srv.SealedContext(), serverStartupPlan, stackEntry.ParsedDeps, inputs)
 	if err != nil {
 		return err
 	}
