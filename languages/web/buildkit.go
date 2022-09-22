@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -119,7 +120,9 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 		base = base.With(llbutil.CopyFrom(buildBase, nodejs.DepsRootPath, nodejs.DepsRootPath))
 	}
 
-	src := buildkit.MakeLocalState(local)
+	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
+		Exclude: binary.NodejsExclude,
+	})
 	// Use separate layers for node_modules, and sources, as the latter change more often.
 	base = base.With(llbutil.CopyFrom(src, ".", target))
 

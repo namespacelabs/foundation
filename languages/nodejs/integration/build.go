@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
+	nodejsbinary "namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -136,7 +137,9 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	src := buildkit.MakeLocalState(local)
+	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
+		Exclude: nodejsbinary.NodejsExclude,
+	})
 	buildBase = buildBase.With(
 		llbutil.CopyFrom(src, bnj.yarnRoot.Rel(), yarnRoot),
 		yarnInstallAndBuild(*conf.TargetPlatform(), yarnRoot, bnj.isDevBuild))
