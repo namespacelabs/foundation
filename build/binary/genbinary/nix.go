@@ -30,7 +30,7 @@ type nixImage struct {
 	sources     fs.FS
 }
 
-func (l nixImage) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (l nixImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	return NixImage(ctx, env.Configuration(), conf, l.sources)
 
 }

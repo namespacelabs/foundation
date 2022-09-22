@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type mergeSpecs struct {
@@ -19,7 +19,7 @@ type mergeSpecs struct {
 	platformIndependent bool
 }
 
-func (m mergeSpecs) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (m mergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	images := make([]oci.NamedImage, len(m.specs))
 
 	for k, spec := range m.specs {

@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -43,7 +43,7 @@ func makeDockerfileState(sourceLabel string, contents []byte) llb.State {
 			llb.WithCustomName(fmt.Sprintf("Dockerfile (%s)", sourceLabel)))
 }
 
-func (df dockerfileBuild) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	generatedRequest := &generateRequest{
 		// Setting observeChanges to true will yield a new solve() on changes to the workspace.
 		// Also importantly we scope observe changes to ContextRel.

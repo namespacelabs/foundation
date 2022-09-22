@@ -18,12 +18,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareMultiPlatformImage(ctx context.Context, env planning.Context, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
+func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
 	img, err := prepareImage(ctx, env, p)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func prefix(p, label string) string {
 	return p + " " + label
 }
 
-func prepareImage(ctx context.Context, env planning.Context, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
+func prepareImage(ctx context.Context, env pkggraph.SealedContext, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
 	if p.Spec.PlatformIndependent() {
 		img, err := p.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).
 			WithTargetName(p.PublishName).

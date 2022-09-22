@@ -45,7 +45,7 @@ type buildNodeJS struct {
 	isFocus         bool
 }
 
-func (bnj buildNodeJS) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	nodeImage, err := pins.CheckDefault("node")
 	if err != nil {
 		return nil, err

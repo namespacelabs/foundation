@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -22,7 +22,7 @@ type snapshotFiles struct {
 	globs []string
 }
 
-func (m snapshotFiles) BuildImage(ctx context.Context, env planning.Context, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func (m snapshotFiles) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	w := conf.Workspace().VersionedFS(m.rel, true)
 
 	return compute.Map(tasks.Action("binary.snapshot-files"),
