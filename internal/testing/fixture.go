@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos/resolver"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -49,7 +50,7 @@ type TestOpts struct {
 
 type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]parsed.Server, *provision.Stack, error)
 
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env pkggraph.SealedContext, testRef *schema.PackageRef, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
+func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -83,7 +84,17 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env pkggraph.
 		return nil, err
 	}
 
-	testBin, err := binary.PlanBinary(ctx, driverLoc, testDef.Driver, env, binary.BuildImageOpts{
+	sut, stack, err := loadSUT(ctx, pl, testDef)
+	if err != nil {
+		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
+	}
+
+	// Must be no "pl" usage after this point:
+	// All packages have been bound to the environment, and sealed.
+	packages := pl.Seal()
+	sealedCtx := pkggraph.MakeSealedContext(env, packages)
+
+	testBin, err := binary.PlanBinary(ctx, driverLoc, testDef.Driver, sealedCtx, binary.BuildImageOpts{
 		Platforms: platforms,
 	})
 	if err != nil {
@@ -93,11 +104,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env pkggraph.
 	testBinTag, err := registry.AllocateName(ctx, env, driverLoc.PackageName)
 	if err != nil {
 		return nil, err
-	}
-
-	sut, stack, err := loadSUT(ctx, pl, testDef)
-	if err != nil {
-		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
 	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack, sut)
@@ -115,7 +121,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env pkggraph.
 	// We build multi-platform binaries because we don't know if the target cluster
 	// is actually multi-platform as well (although we could probably resolve it at
 	// test setup time, i.e. now).
-	bin, err := multiplatform.PrepareMultiPlatformImage(ctx, env, testBin.Plan)
+	bin, err := multiplatform.PrepareMultiPlatformImage(ctx, sealedCtx, testBin.Plan)
 	if err != nil {
 		return nil, err
 	}
@@ -132,15 +138,13 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env pkggraph.
 		return nil, err
 	}
 
-	packages := pl.Seal()
-
 	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
 	if err != nil {
 		return nil, err
 	}
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
-		SealedContext:    pkggraph.MakeSealedContext(env, packages),
+		SealedContext:    sealedCtx,
 		Cluster:          cluster,
 		TestRef:          testRef,
 		Plan:             deployPlan,
