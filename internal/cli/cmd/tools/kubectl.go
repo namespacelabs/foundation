@@ -37,7 +37,9 @@ func newKubeCtlCmd() *cobra.Command {
 			return err
 		}
 
-		defer cfg.Cleanup()
+		defer func() {
+			_ = cfg.Cleanup()
+		}()
 
 		cmdLine := append(cfg.BaseArgs(), args...)
 
