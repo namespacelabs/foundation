@@ -137,7 +137,6 @@ type ConsoleSink struct {
 
 	maxLevel int // Only display actions at this level or below (all actions are still computed).
 
-	idleLabel     string           // Label that is shown after `[-] idle` when no tasks are running.
 	stickyContent []*stickyContent // Multi-line content that is always displayed above actions.
 
 	logSources logSources // Sources of log output (think: action IDs)
@@ -780,10 +779,6 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	}
 
 	if (waiting + running + anchored) == 0 {
-		if len(c.waitForIdle) == 0 && c.idleLabel != "" {
-			// Show the idle banner.
-			c.writeLineWithMaxW(out, width, fmt.Sprintf("[-] idle, %s.", c.idleLabel), "")
-		}
 		return
 	}
 
@@ -1027,11 +1022,6 @@ func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.Ca
 
 func (c *ConsoleSink) AllocateConsoleId() uint64 {
 	return uint64(rand.Int63())
-}
-
-func (c *ConsoleSink) SetIdleLabel(label string) {
-	// XXX locking
-	c.idleLabel = label
 }
 
 func (c *ConsoleSink) SetStickyContent(name string, content []byte) {

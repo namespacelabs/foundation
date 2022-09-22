@@ -651,44 +651,44 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 	return stack, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *stack.Stack, s provision.Server, imgs builtImage, out *runtime.DeployableSpec) error {
-	srv := s.Proto()
-	out.Location = s.Location
-	out.PackageName = s.PackageName()
-	out.Class = schema.DeployableClass(srv.DeployableClass)
-	out.Id = srv.Id
-	out.Name = srv.Name
-	out.Volumes = srv.Volumes
-	out.RunOpts.Mounts = srv.MainContainer.Mounts
+func prepareRunOpts(ctx context.Context, stack *stack.Stack, srv provision.Server, imgs builtImage, out *runtime.DeployableSpec) error {
+	proto := srv.Proto()
+	out.Location = srv.Location
+	out.PackageName = srv.PackageName()
+	out.Class = schema.DeployableClass(proto.DeployableClass)
+	out.Id = proto.Id
+	out.Name = proto.Name
+	out.Volumes = proto.Volumes
+	out.RunOpts.Mounts = proto.MainContainer.Mounts
 
 	out.RunOpts.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
 		out.ConfigImage = &imgs.Config
 	}
 
-	if err := languages.IntegrationFor(s.Framework()).PrepareRun(ctx, s, &out.RunOpts); err != nil {
+	if err := languages.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.RunOpts); err != nil {
 		return err
 	}
 
 	inputs := pkggraph.StartupInputs{
 		Stack:         stack.Proto(),
-		Server:        s.Proto(),
+		Server:        srv.Proto(),
 		ServerImage:   imgs.Binary.RepoAndDigest(),
-		ServerRootAbs: s.Location.Abs(),
+		ServerRootAbs: srv.Location.Abs(),
 	}
 
-	serverStartupPlan, err := s.Startup.EvalStartup(ctx, s.SealedContext(), inputs, nil)
+	serverStartupPlan, err := srv.Startup.EvalStartup(ctx, srv.SealedContext(), inputs, nil)
 	if err != nil {
 		return err
 	}
 
-	merged, err := startup.ComputeConfig(ctx, s.SealedContext(), serverStartupPlan, stack.GetParsed(s.PackageName()).Deps, inputs)
+	merged, err := startup.ComputeConfig(ctx, srv.SealedContext(), serverStartupPlan, stack.GetParsed(srv.PackageName()).Deps, inputs)
 	if err != nil {
 		return err
 	}
 
 	out.RunOpts.Args = append(out.RunOpts.Args, merged.Args...)
-	out.RunOpts.Env = append(out.RunOpts.Env, s.Proto().MainContainer.Env...)
+	out.RunOpts.Env = append(out.RunOpts.Env, srv.Proto().MainContainer.Env...)
 	out.RunOpts.Env = append(out.RunOpts.Env, merged.Env...)
 
 	return nil

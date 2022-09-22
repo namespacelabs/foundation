@@ -10,13 +10,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func SetIdleLabel(ctx context.Context, label string) {
-	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
-	if t, ok := unwrapped.(consoleLike); ok {
-		t.SetIdleLabel(label)
-	}
-}
-
 func SetStickyContent(ctx context.Context, name string, content string) {
 	SetStickyContentOnSink(tasks.SinkFrom(ctx), name, content)
 }
@@ -45,7 +38,6 @@ func IsConsoleLike(ctx context.Context) bool {
 }
 
 type consoleLike interface {
-	SetIdleLabel(string)
 	SetStickyContent(string, []byte)
 	EnterInputMode(context.Context, ...string) func()
 }

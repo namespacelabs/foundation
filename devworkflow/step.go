@@ -102,12 +102,12 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		}()
 
 		if do.env.Environment().Purpose == schema.Environment_DEVELOPMENT {
-			for _, f := range focus {
+			for _, srv := range focus {
 				var observer languages.DevObserver
 
 				// Must be invoked before building to make sure stack computation and building
 				// uses the updated context.
-				ctx, observer, err = languages.IntegrationFor(f.Framework()).PrepareDev(ctx, do.cluster, f)
+				ctx, observer, err = languages.IntegrationFor(srv.Framework()).PrepareDev(ctx, do.cluster, srv)
 				if err != nil {
 					return err
 				}

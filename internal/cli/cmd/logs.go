@@ -9,10 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
+	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -36,9 +38,23 @@ func NewLogsCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			console.SetIdleLabel(ctx, "listening for deployment changes")
 			server := servers.Servers[0]
+			event := &observers.StackUpdateEvent{
+				Env: env.Environment(),
+				Stack: &schema.Stack{
+					Entry: []*schema.Stack_Entry{server.StackEntry()},
+				},
+				Focus: []string{server.Proto().PackageName},
+			}
 
-			return logtail.Listen(ctx, server.SealedContext(), server.Proto())
+			observer := observers.Static()
+			observer.PushUpdate(event)
+
+			return keyboard.Handle(ctx, keyboard.HandleOpts{
+				Provider: observer,
+				Handler: func(ctx context.Context) error {
+					return logtail.Listen(ctx, server.SealedContext(), server.Proto())
+				},
+			})
 		})
 }

@@ -47,6 +47,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
 func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
+
 	g := ops.NewEmptyPlan()
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
@@ -54,6 +55,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 			onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "loading schema", Err: err})
 			continue
 		}
+
 		if srv := sealed.Proto.Server; srv != nil {
 			defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
 			if err != nil {

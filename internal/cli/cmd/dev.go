@@ -82,8 +82,6 @@ func NewDevCmd() *cobra.Command {
 					return err
 				}
 
-				console.SetIdleLabel(ctx, "waiting for workspace changes")
-
 				// Kick off the dev workflow.
 				sesh.DeferRequest(&devworkflow.DevWorkflowRequest{
 					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
