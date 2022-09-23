@@ -120,7 +120,8 @@ jobs:
             --use_prebuilts=${{ matrix.use_prebuilts }} \
             --golang_use_buildkit=false \
             --naming_no_tls=true \
-            --wait std/testdata/server/gogrpc
+            --use_orchestrator=false \
+            std/testdata/server/gogrpc
 
   run_e2e_tests:
     name: cross-repo e2e tests
