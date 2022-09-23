@@ -49,13 +49,13 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 
 		if wait {
 			var ch chan *orchpb.Event
-			var handler = func(err error) error { return err }
+			var handler = func(_ context.Context, err error) error { return err }
 
 			if outputProgress {
 				ch, handler = deploy.MaybeRenderBlock(env, cluster.Cluster(), true)(ctx)
 			}
 
-			return handler(WireDeploymentStatus(ctx, conn, id, ch))
+			return handler(ctx, WireDeploymentStatus(ctx, conn, id, ch))
 		}
 
 		return nil

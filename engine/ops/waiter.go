@@ -16,7 +16,7 @@ type Waiter func(context.Context, chan *orchestration.Event) error
 
 func WaitMultipleWithHandler(ctx context.Context, waiters []Waiter, channelHandler WaitHandler) error {
 	var ch chan *orchestration.Event
-	var handleErr func(error) error
+	var handleErr func(context.Context, error) error
 
 	if channelHandler != nil {
 		ch, handleErr = channelHandler(ctx)
@@ -25,7 +25,7 @@ func WaitMultipleWithHandler(ctx context.Context, waiters []Waiter, channelHandl
 	waitErr := waitMultiple(ctx, waiters, ch)
 
 	if handleErr != nil {
-		return handleErr(waitErr)
+		return handleErr(ctx, waitErr)
 	}
 
 	return waitErr

@@ -25,15 +25,14 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, maybe bool) ops.WaitHandler {
-	if !maybe {
-		return nil
-	}
+func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, render bool) ops.WaitHandler {
+	return func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
+		if !render {
+			return observeContainers(ctx, env, cluster, nil), func(ctx context.Context, err error) error { return err }
+		}
 
-	return func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
 		rwb := renderwait.NewBlock(ctx, "deploy")
-
-		return observeContainers(ctx, env, cluster, rwb.Ch()), func(waitErr error) error {
+		cleanup := func(ctx context.Context, waitErr error) error {
 			// Make sure that rwb completes before further output below (for ordering purposes).
 			if err := rwb.Wait(ctx); err != nil {
 				if waitErr == nil {
@@ -43,6 +42,8 @@ func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, maybe bool)
 
 			return waitErr
 		}
+
+		return observeContainers(ctx, env, cluster, rwb.Ch()), cleanup
 	}
 }
 
@@ -54,7 +55,10 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 	startedDiagnosis := true // After the first tick, we tick twice as fast.
 
 	go func() {
-		defer close(parent)
+		if parent != nil {
+			defer close(parent)
+		}
+
 		defer t.Stop()
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
@@ -127,9 +131,11 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 					}
 				}
 
-				parent <- &orchestration.Event{
-					ResourceId:  resourceID,
-					WaitDetails: buf.String(),
+				if parent != nil {
+					parent <- &orchestration.Event{
+						ResourceId:  resourceID,
+						WaitDetails: buf.String(),
+					}
 				}
 			}
 		}
@@ -144,7 +150,9 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 					return
 				}
 
-				parent <- ev
+				if parent != nil {
+					parent <- ev
+				}
 
 				if ev.Ready != orchestration.Event_READY {
 					pending[ev.ResourceId] = nil

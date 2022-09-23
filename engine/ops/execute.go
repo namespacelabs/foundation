@@ -18,7 +18,7 @@ var (
 	EnvironmentInjection   = Define[*schema.Environment]("ns.schema.environment")
 )
 
-type WaitHandler func(context.Context) (chan *orchestration.Event, func(error) error)
+type WaitHandler func(context.Context) (chan *orchestration.Event, func(context.Context, error) error)
 
 func Execute(ctx context.Context, config planning.Context, actionName string, g *Plan, channelHandler WaitHandler, injected ...InjectionInstance) error {
 	waiters, err := rawExecute(ctx, config, actionName, g, injected...)
