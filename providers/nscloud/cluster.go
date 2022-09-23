@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/providers/nscloud/config"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
@@ -107,32 +108,21 @@ func RegisterClusterProvider() {
 	})
 }
 
-func getOrCreate(ctx context.Context, cfg planning.Configuration) (bool, *KubernetesCluster, error) {
-	conf := &PrebuiltCluster{}
-
-	if cfg.Get(conf) {
-		cluster, err := GetCluster(ctx, conf.ClusterId)
-		// Pre-defined clusters are never ephemeral.
-		return false, cluster, err
-	}
-
-	result, err := CreateCluster(ctx, "", true, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
-	if err != nil {
-		return false, nil, err
-	}
-
-	return true, result.Cluster, nil
-}
-
 func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
-	ephemeral, cluster, err := getOrCreate(ctx, cfg)
+	conf := &PrebuiltCluster{}
+	if !cfg.Get(conf) {
+		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
+	}
+
+	wres, err := WaitCluster(ctx, conf.ClusterId)
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
 
+	cluster := wres.Cluster
+
 	var p client.ClusterConfiguration
-	p.Ephemeral = ephemeral
-	p.ProviderSpecific = cluster
+	p.Ephemeral = conf.Ephemeral
 	p.Config = *client.MakeApiConfig(&client.StaticConfig{
 		EndpointAddress:          cluster.EndpointAddress,
 		CertificateAuthorityData: cluster.CertificateAuthorityData,
@@ -152,12 +142,8 @@ type CreateClusterResult struct {
 	Deadline  *time.Time
 }
 
-func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purpose string) (*CreateClusterResult, error) {
-	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
-	defer done()
-
-	var cr *CreateKubernetesClusterResponse
-	if err := tasks.Action("nscloud.cluster-create").Run(ctx, func(ctx context.Context) error {
+func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purpose string) (*KubernetesCluster, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*KubernetesCluster, error) {
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         ephemeral,
 			DocumentedPurpose: purpose,
@@ -167,13 +153,13 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 		if !environment.IsRunningInCI() {
 			keys, err := UserSSHKeys()
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if keys != nil {
 				actualKeys, err := compute.GetValue(ctx, keys)
 				if err != nil {
-					return err
+					return nil, err
 				}
 
 				req.AuthorizedSshKeys = actualKeys
@@ -182,14 +168,49 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 
 		var response StartCreateKubernetesClusterResponse
 		if err := startCreateKubernetesCluster.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return err
+			return nil, err
 		}
 
+		tasks.Attachments(ctx).
+			AddResult("cluster_id", response.ClusterId)
+
+		if ephemeral {
+			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
+				if err := DestroyCluster(ctx, response.ClusterId); err != nil {
+					// The cluster being gone is an acceptable state (it could have
+					// been deleted by DeleteRecursively for example).
+					if status.Code(err) == codes.NotFound {
+						return nil
+					}
+				}
+
+				return nil
+			})
+		}
+
+		return response.ClusterFragment, nil
+	})
+}
+
+func CreateAndWaitCluster(ctx context.Context, machineType string, ephemeral bool, purpose string) (*CreateClusterResult, error) {
+	cluster, err := CreateCluster(ctx, machineType, ephemeral, purpose)
+	if err != nil {
+		return nil, err
+	}
+
+	return WaitCluster(ctx, cluster.ClusterId)
+}
+
+func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, error) {
+	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
+	defer done()
+
+	var cr *CreateKubernetesClusterResponse
+	if err := tasks.Action("nscloud.cluster-wait").Run(ctx, func(ctx context.Context) error {
 		var progress clusterCreateProgress
 		progress.status.Store("CREATE_ACCEPTED_WAITING_FOR_ALLOCATION")
 		tasks.Attachments(ctx).SetProgress(&progress)
 
-		clusterId := "<unknown>"
 		lastStatus := "<none>"
 		for cr == nil {
 			if err := ctx.Err(); err != nil {
@@ -197,7 +218,7 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 			}
 
 			// We continue to wait for the cluster to become ready until we observe a READY.
-			if err := waitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: response.ClusterId}, func(body io.Reader) error {
+			if err := waitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, func(body io.Reader) error {
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
@@ -244,20 +265,6 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 		tasks.Attachments(ctx).
 			AddResult("cluster_cpu", shape.VirtualCpu).
 			AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
-	}
-
-	if ephemeral {
-		compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
-			if err := DestroyCluster(ctx, cr.ClusterId); err != nil {
-				// The cluster being gone is an acceptable state (it could have
-				// been deleted by DeleteRecursively for example).
-				if status.Code(err) == codes.NotFound {
-					return nil
-				}
-			}
-
-			return nil
-		})
 	}
 
 	result := &CreateClusterResult{
@@ -352,6 +359,34 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configur
 }
 
 func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+	conf := &PrebuiltCluster{}
+
+	if !cfg.Get(conf) {
+		ephemeral := true
+		result, err := CreateCluster(ctx, "", ephemeral, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
+		if err != nil {
+			return nil, err
+		}
+
+		cfg = cfg.Derive(cfg.EnvKey(), func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
+			previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
+				&PrebuiltCluster{ClusterId: result.ClusterId, Ephemeral: ephemeral},
+			)...)
+			return previous
+		})
+
+		return d.ensureCluster(ctx, cfg, result)
+	} else {
+		cluster, err := GetCluster(ctx, conf.ClusterId)
+		if err != nil {
+			return nil, err
+		}
+
+		return d.ensureCluster(ctx, cfg, cluster)
+	}
+}
+
+func (d runtimeClass) ensureCluster(ctx context.Context, cfg planning.Configuration, kc *KubernetesCluster) (runtime.Cluster, error) {
 	// XXX This is confusing. We can call NewCluster because the runtime class
 	// and cluster providers are registered with the same provider key. We
 	// should instead create the cluster here, when the CreateCluster intent is
@@ -361,11 +396,12 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 		return nil, err
 	}
 
-	return &cluster{cluster: unbound}, nil
+	return &cluster{cluster: unbound, config: kc}, nil
 }
 
 type cluster struct {
 	cluster *kubernetes.Cluster
+	config  *KubernetesCluster
 }
 
 var _ runtime.Cluster = &cluster{}
@@ -376,17 +412,12 @@ func (d *cluster) Class() runtime.Class {
 }
 
 func (d *cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
-	config, err := d.config()
-	if err != nil {
-		return nil, err
-	}
-
 	bound, err := d.cluster.Bind(env)
 	if err != nil {
 		return nil, err
 	}
 
-	return clusterNamespace{ClusterNamespace: bound.(*kubernetes.ClusterNamespace), Config: config}, nil
+	return clusterNamespace{ClusterNamespace: bound.(*kubernetes.ClusterNamespace), Config: d.config}, nil
 }
 
 func (d *cluster) Planner(env planning.Context) runtime.Planner {
@@ -397,7 +428,7 @@ func (d *cluster) Planner(env planning.Context) runtime.Planner {
 		}, nil
 	})
 
-	return planner{Planner: base, cluster: d, env: env.Environment(), workspace: env.Workspace().Proto()}
+	return planner{Planner: base, cluster: d, config: d.config, env: env.Environment(), workspace: env.Workspace().Proto()}
 }
 
 func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtime.ContainerReference) (*runtime.Diagnostics, error) {
@@ -428,35 +459,22 @@ func (d *cluster) PreparedClient() client.Prepared {
 	return d.cluster.PreparedClient()
 }
 
-func (d *cluster) config() (*KubernetesCluster, error) {
-	p := d.cluster.PreparedClient().Configuration
-	if p.ProviderSpecific == nil {
-		return nil, fnerrors.InternalError("cluster creation state is missing")
-	}
-
-	return p.ProviderSpecific.(*KubernetesCluster), nil
-}
-
 type planner struct {
 	kubernetes.Planner
 	cluster   *cluster
+	config    *KubernetesCluster
 	env       *schema.Environment
 	workspace *schema.Workspace
 }
 
 func (d planner) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNaming, error) {
-	config, err := d.cluster.config()
-	if err != nil {
-		return nil, err
-	}
-
 	return &schema.ComputedNaming{
 		Source:                   source,
-		BaseDomain:               config.IngressDomain,
-		TlsPassthroughBaseDomain: "int-" + config.IngressDomain, // XXX receive this value.
+		BaseDomain:               d.config.IngressDomain,
+		TlsPassthroughBaseDomain: "int-" + d.config.IngressDomain, // XXX receive this value.
 		Managed:                  schema.Domain_CLOUD_TERMINATION,
 		UpstreamTlsTermination:   true,
-		DomainFragmentSuffix:     config.ClusterId, // XXX fetch ingress external IP to calculate domain.
+		DomainFragmentSuffix:     d.config.ClusterId, // XXX fetch ingress external IP to calculate domain.
 		UseShortAlias:            true,
 	}, nil
 }
@@ -519,7 +537,8 @@ type GetKubernetesClusterResponse struct {
 }
 
 type StartCreateKubernetesClusterResponse struct {
-	ClusterId string `json:"cluster_id,omitempty"`
+	ClusterId       string             `json:"cluster_id,omitempty"`
+	ClusterFragment *KubernetesCluster `json:"cluster_fragment,omitempty"`
 }
 
 type ListKubernetesClustersRequest struct {
