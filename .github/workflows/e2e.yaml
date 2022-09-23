@@ -63,8 +63,7 @@ jobs:
         if: failure() && github.event_name == 'push'
 
   run_deploy:
-    name:
-      Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
+    name: Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
     needs: build_fn
     strategy:
       matrix:

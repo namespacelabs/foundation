@@ -4,9 +4,12 @@
 
 package tasks
 
-import "github.com/spf13/pflag"
+import (
+	"github.com/spf13/pflag"
+	"namespacelabs.dev/foundation/internal/environment"
+)
 
-var LogActions = false
+var LogActions = environment.IsRunningInCI()
 
 func SetupFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&LogActions, "log_actions", LogActions, "If set to true, each completed action is also output as a log message.")

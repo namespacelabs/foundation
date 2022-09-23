@@ -20,10 +20,12 @@ type Layer v1.Layer
 type Image v1.Image
 type ImageIndex v1.ImageIndex
 
-var defaultPlatform = v1.Platform{
-	Architecture: "amd64",
-	OS:           "linux",
-}
+var (
+	defaultPlatform = v1.Platform{
+		Architecture: "amd64",
+		OS:           "linux",
+	}
+)
 
 type ResolvableImage interface {
 	Digest() (schema.Digest, error)
