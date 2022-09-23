@@ -6,19 +6,13 @@ package client
 
 import (
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
-func NewLocalHostEnv(contextName string, env planning.Context) (*HostEnv, error) {
-	kubeconfig, err := dirs.ExpandHome("~/.kube/config")
-	if err != nil {
-		return nil, err
-	}
-
+func NewLocalHostEnv(contextName string, env planning.Context) *HostEnv {
 	hostEnv := &HostEnv{
-		Kubeconfig: kubeconfig,
+		Kubeconfig: "~/.kube/config",
 		Context:    contextName,
 	}
 
-	return hostEnv, nil
+	return hostEnv
 }

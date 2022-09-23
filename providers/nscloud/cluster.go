@@ -366,7 +366,6 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 
 type cluster struct {
 	cluster *kubernetes.Cluster
-	kubernetes.ClusterAttachedState
 }
 
 var _ runtime.Cluster = &cluster{}

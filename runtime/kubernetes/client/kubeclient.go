@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 type ClusterConfiguration struct {
@@ -87,9 +88,14 @@ func computeConfig(ctx context.Context, c *HostEnv, config planning.Configuratio
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
+	kubeconfig, err := dirs.ExpandHome(c.GetKubeconfig())
+	if err != nil {
+		return nil, err
+	}
+
 	return &configResult{
 		ClientConfig: clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: c.GetKubeconfig()},
+			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig},
 			&clientcmd.ConfigOverrides{CurrentContext: c.GetContext()}),
 	}, nil
 }

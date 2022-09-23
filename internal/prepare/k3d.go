@@ -59,11 +59,7 @@ func PrepareK3d(clusterName string, env planning.Context) compute.Computable[[]*
 
 			r := &registry.Registry{Url: "http://" + registryAddr}
 
-			hostEnv, err := kubeclient.NewLocalHostEnv("k3d-"+clusterName, env)
-			if err != nil {
-				return nil, err
-			}
-
+			hostEnv := kubeclient.NewLocalHostEnv("k3d-"+clusterName, env)
 			c, err := devhost.MakeConfiguration(r, hostEnv)
 			if err != nil {
 				return nil, err

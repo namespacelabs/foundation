@@ -21,11 +21,7 @@ func PrepareExistingK8s(env planning.Context, contextName string) compute.Comput
 		compute.Inputs().Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			hostEnv, err := client.NewLocalHostEnv(contextName, env)
-			if err != nil {
-				return nil, err
-			}
-
+			hostEnv := client.NewLocalHostEnv(contextName, env)
 			c, err := devhost.MakeConfiguration(hostEnv)
 			if err != nil {
 				return nil, err
