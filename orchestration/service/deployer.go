@@ -137,17 +137,16 @@ func (d *deployer) execute(ctx context.Context, eventPath string, p *ops.Plan, e
 	}
 	defer releaseLease()
 
-	return ops.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(error) error) {
+	return ops.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
 		ch := make(chan *orchestration.Event)
-
-		logErrCh := make(chan error)
+		errCh := make(chan error)
 
 		go func() {
-			logErrCh <- logProtos(eventPath, ch)
+			errCh <- logProtos(eventPath, ch)
 		}()
 
-		return ch, func(err error) error {
-			logErr := <-logErrCh // Wait for the logging go-routine to return.
+		return ch, func(_ context.Context, err error) error {
+			logErr := <-errCh // Wait for the logging go-routine to return.
 			if err != nil {
 				return err
 			}

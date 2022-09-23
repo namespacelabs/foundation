@@ -68,7 +68,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, 
 	defer cancel()
 
 	if wait {
-		if err := ops.Execute(ctx, env, "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, cluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
+		if err := ops.Execute(ctx, env, "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, boundCluster, RenderOrchestratorDeployment), runtime.ClusterInjection.With(cluster)); err != nil {
 			return nil, err
 		}
 	} else {

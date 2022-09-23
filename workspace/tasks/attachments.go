@@ -72,7 +72,10 @@ func (ev *EventAttachments) attach(name OutputName, body []byte) {
 
 	ev.init()
 
-	ev.insertionOrder = append(ev.insertionOrder, name)
+	if _, ok := ev.buffers[name.computed]; !ok {
+		ev.insertionOrder = append(ev.insertionOrder, name)
+	}
+
 	ev.buffers[name.computed] = attachedBuffer{
 		id:          ids.NewRandomBase62ID(8),
 		buffer:      syncbuffer.Seal(body),

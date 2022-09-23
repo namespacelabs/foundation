@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const (
@@ -25,7 +26,7 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, render bool) ops.WaitHandler {
+func MaybeRenderBlock(env planning.Context, cluster runtime.ClusterNamespace, render bool) ops.WaitHandler {
 	return func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
 		if !render {
 			return observeContainers(ctx, env, cluster, nil), func(ctx context.Context, err error) error { return err }
@@ -49,7 +50,7 @@ func MaybeRenderBlock(env planning.Context, cluster runtime.Cluster, render bool
 
 // observeContainers observes the deploy events (received from the returned channel) and updates the
 // console through the `parent` channel.
-func observeContainers(ctx context.Context, env planning.Context, cluster runtime.Cluster, parent chan *orchestration.Event) chan *orchestration.Event {
+func observeContainers(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, parent chan *orchestration.Event) chan *orchestration.Event {
 	ch := make(chan *orchestration.Event)
 	t := time.NewTicker(maxDeployWait)
 	startedDiagnosis := true // After the first tick, we tick twice as fast.
@@ -93,7 +94,7 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 
 				// XXX fetching diagnostics should not block forwarding events (above).
 				for _, ws := range all {
-					diagnostics, err := cluster.FetchDiagnostics(ctx, ws.Reference)
+					diagnostics, err := cluster.Cluster().FetchDiagnostics(ctx, ws.Reference)
 					if err != nil {
 						fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference, err)
 						continue
@@ -108,7 +109,7 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 					switch {
 					case diagnostics.Running:
 						fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
-						if err := cluster.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
+						if err := cluster.Cluster().FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
 							fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 						}
 
@@ -116,7 +117,7 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 						fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
 						if diagnostics.Crashed {
 							fmt.Fprintf(out, "  Crashed, logs (last %d lines):\n", tailLinesOnFailure)
-							if err := cluster.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
+							if err := cluster.Cluster().FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
@@ -124,7 +125,7 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 					case diagnostics.Terminated:
 						if diagnostics.ExitCode > 0 {
 							fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
-							if err := cluster.FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
+							if err := cluster.Cluster().FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {
 								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
@@ -135,6 +136,13 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 					parent <- &orchestration.Event{
 						ResourceId:  resourceID,
 						WaitDetails: buf.String(),
+					}
+				} else {
+					diagnostics, err := cluster.FetchEnvironmentDiagnostics(ctx)
+					if err != nil {
+						fmt.Fprintf(out, "Failed to retrieve environment diagnostics: %v\n", err)
+					} else {
+						_ = tasks.Attachments(ctx).AttachSerializable("diagnostics.json", "", diagnostics)
 					}
 				}
 			}

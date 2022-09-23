@@ -25,7 +25,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
 		return ops.Execute(ctx, env, "deployment.execute", p,
-			deploy.MaybeRenderBlock(env, cluster.Cluster(), outputProgress),
+			deploy.MaybeRenderBlock(env, cluster, outputProgress),
 			runtime.InjectCluster(cluster)...)
 	}
 
@@ -52,7 +52,7 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 			var handler = func(_ context.Context, err error) error { return err }
 
 			if outputProgress {
-				ch, handler = deploy.MaybeRenderBlock(env, cluster.Cluster(), true)(ctx)
+				ch, handler = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
 			}
 
 			return handler(ctx, WireDeploymentStatus(ctx, conn, id, ch))
