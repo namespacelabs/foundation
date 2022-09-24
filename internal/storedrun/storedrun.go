@@ -120,9 +120,10 @@ func nsErrorToStatus(err error) *status.Status {
 
 	// Extract nearest stack.
 	var stackTracer fnerrors.StackTracer
-	errors.As(actionErr, &stackTracer)
 
 	if actionErr != nil {
+		errors.As(actionErr, &stackTracer)
+
 		trace := actionErr.Trace()
 		att := &storage.ActionTrace{}
 		for _, a := range trace {
