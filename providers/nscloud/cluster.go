@@ -171,8 +171,15 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 			return nil, err
 		}
 
-		tasks.Attachments(ctx).
-			AddResult("cluster_id", response.ClusterId)
+		tasks.Attachments(ctx).AddResult("cluster_id", response.ClusterId)
+
+		if response.ClusterFragment != nil {
+			if shape := response.ClusterFragment.Shape; shape != nil {
+				tasks.Attachments(ctx).
+					AddResult("cluster_cpu", shape.VirtualCpu).
+					AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
+			}
+		}
 
 		if ephemeral {
 			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
@@ -206,7 +213,7 @@ func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, e
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse
-	if err := tasks.Action("nscloud.cluster-wait").Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("nscloud.cluster-wait").Arg("cluster_id", clusterId).Run(ctx, func(ctx context.Context) error {
 		var progress clusterCreateProgress
 		progress.status.Store("CREATE_ACCEPTED_WAITING_FOR_ALLOCATION")
 		tasks.Attachments(ctx).SetProgress(&progress)
@@ -251,20 +258,13 @@ func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, e
 			}
 		}
 
+		tasks.Attachments(ctx).
+			AddResult("cluster_address", cr.Cluster.EndpointAddress).
+			AddResult("deadline", cr.Cluster.Deadline)
+
 		return nil
 	}); err != nil {
 		return nil, err
-	}
-
-	tasks.Attachments(ctx).
-		AddResult("cluster_id", cr.ClusterId).
-		AddResult("cluster_address", cr.Cluster.EndpointAddress).
-		AddResult("deadline", cr.Cluster.Deadline)
-
-	if shape := cr.Cluster.Shape; shape != nil {
-		tasks.Attachments(ctx).
-			AddResult("cluster_cpu", shape.VirtualCpu).
-			AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
 	}
 
 	result := &CreateClusterResult{
@@ -363,7 +363,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 
 	if !cfg.Get(conf) {
 		ephemeral := true
-		result, err := CreateCluster(ctx, "", ephemeral, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
+		result, err := CreateAndWaitCluster(ctx, "", ephemeral, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
 		if err != nil {
 			return nil, err
 		}
@@ -375,7 +375,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 			return previous
 		})
 
-		return d.ensureCluster(ctx, cfg, result)
+		return d.ensureCluster(ctx, cfg, result.Cluster)
 	} else {
 		cluster, err := GetCluster(ctx, conf.ClusterId)
 		if err != nil {
