@@ -66,15 +66,19 @@ func fetchResource(ctx context.Context, cluster kubedef.KubeCluster, description
 }
 
 func resolveResource(ctx context.Context, cluster kubedef.KubeCluster, gvk schema.GroupVersionKind) (*schema.GroupVersionResource, error) {
-	restMapper, err := cluster.EnsureState(ctx, kubernetes.RestmapperStateKey)
-	if err != nil {
-		return nil, err
-	}
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-resource").Arg("gvk", gvk.String()), func(ctx context.Context) (*schema.GroupVersionResource, error) {
+		restMapper, err := cluster.EnsureState(ctx, kubernetes.RestmapperStateKey)
+		if err != nil {
+			return nil, err
+		}
 
-	resource, err := restMapper.(meta.RESTMapper).RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		return nil, err
-	}
+		resource, err := restMapper.(meta.RESTMapper).RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return nil, err
+		}
 
-	return &resource.Resource, nil
+		tasks.Attachments(ctx).AddResult("resource", resource.Resource.Resource)
+
+		return &resource.Resource, nil
+	})
 }
