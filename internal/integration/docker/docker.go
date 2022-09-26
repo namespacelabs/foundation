@@ -6,6 +6,8 @@ package docker
 
 import (
 	"context"
+	"io/fs"
+	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -37,11 +39,16 @@ func (i *DockerIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v 
 		}
 	}
 
-	if bits.Dockerfile == "" {
-		return fnerrors.UserError(pkg.Location, "docker integration requires dockerfile")
+	dockerfile := bits.Dockerfile
+	if dockerfile == "" {
+		dockerfile = "Dockerfile"
+	}
+
+	if _, err := fs.Stat(pkg.Location.Module.ReadOnlyFS(), filepath.Join(pkg.Location.Rel(), dockerfile)); err != nil {
+		return fnerrors.Wrapf(pkg.Location, err, "could not find %q file, please verify that the specified dockerfile path is correct", dockerfile)
 	}
 
 	return api.SetServerBinary(pkg, &schema.LayeredImageBuildPlan{
-		LayerBuildPlan: []*schema.ImageBuildPlan{{Dockerfile: bits.Dockerfile}},
+		LayerBuildPlan: []*schema.ImageBuildPlan{{Dockerfile: dockerfile}},
 	}, nil)
 }
