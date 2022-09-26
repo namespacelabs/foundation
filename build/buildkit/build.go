@@ -48,10 +48,10 @@ type clientInstance struct {
 	compute.DoScoped[*client.Client] // Only connect once per configuration.
 }
 
-func connectToClient(config planning.Configuration, targetPlatform specs.Platform) compute.Computable[*client.Client] {
-	conf := &Overrides{}
+var OverridesConfigType = planning.DefineConfigType[*Overrides]()
 
-	_ = config.GetForPlatform(targetPlatform, conf)
+func connectToClient(config planning.Configuration, targetPlatform specs.Platform) compute.Computable[*client.Client] {
+	conf, _ := OverridesConfigType.CheckGetForPlatform(config, targetPlatform)
 
 	if conf.BuildkitAddr == "" && conf.ContainerName == "" {
 		conf.ContainerName = DefaultContainerName

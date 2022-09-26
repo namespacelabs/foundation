@@ -25,6 +25,8 @@ import (
 
 var (
 	ObserveInitContainerLogs = false
+
+	kubernetesEnvConfigType = planning.DefineConfigType[*kubetool.KubernetesEnv]()
 )
 
 const RestmapperStateKey = "kubernetes.restmapper"
@@ -90,8 +92,7 @@ func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg planning.Configu
 func newTarget(env planning.Context) clusterTarget {
 	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
-	conf := &kubetool.KubernetesEnv{}
-	if env.Configuration().Get(conf) {
+	if conf, ok := kubernetesEnvConfigType.CheckGet(env.Configuration()); ok {
 		ns = conf.Namespace
 	}
 

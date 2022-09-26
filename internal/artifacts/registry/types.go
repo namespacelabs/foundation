@@ -23,6 +23,9 @@ var (
 	mapping = map[string]func(context.Context, planning.Configuration) (Manager, error){}
 
 	ErrNoRegistry = errors.New("no registry configured")
+
+	registryConfigType         = planning.DefineConfigType[*registry.Registry]()
+	registryProviderConfigType = planning.DefineConfigType[*registry.Provider]()
 )
 
 // XXX use external plugin system.
@@ -43,8 +46,9 @@ func GetRegistry(ctx context.Context, env planning.Context) (Manager, error) {
 }
 
 func GetRegistryFromConfig(ctx context.Context, cfg planning.Configuration) (Manager, error) {
-	r := &registry.Registry{}
-	if cfg.Get(r) && r.Url != "" {
+	r, ok := registryConfigType.CheckGet(cfg)
+
+	if ok && r.Url != "" {
 		if trimmed := strings.TrimPrefix(r.Url, "http://"); trimmed != r.Url {
 			r.Url = trimmed
 			r.Insecure = true
@@ -52,8 +56,8 @@ func GetRegistryFromConfig(ctx context.Context, cfg planning.Configuration) (Man
 		return staticRegistry{r}, nil
 	}
 
-	p := &registry.Provider{}
-	if cfg.Get(p) && p.Provider != "" {
+	p, ok := registryProviderConfigType.CheckGet(cfg)
+	if ok && p.Provider != "" {
 		return GetRegistryByName(ctx, cfg, p.Provider)
 	}
 

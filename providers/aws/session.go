@@ -21,6 +21,8 @@ import (
 
 const identityTokenEnv = "AWS_WEB_IDENTITY_TOKEN_FILE"
 
+var confConfigType = planning.DefineConfigType[*Conf]()
+
 func hasWebIdentityEnvVar() bool {
 	// Check if we run inside an AWS cluster with a configured IAM role.
 	token := os.Getenv(identityTokenEnv)
@@ -59,20 +61,20 @@ func configuredSession(ctx context.Context, cfg planning.Configuration) (*Sessio
 	return &Session{aws: session, conf: conf}, nil
 }
 
-func configuration(cfg planning.Configuration) *Conf {
-	conf := &Conf{}
-	if cfg == nil || !cfg.Get(conf) {
-		if hasWebIdentityEnvVar() {
-			return &Conf{UseInjectedWebIdentity: true}
-		}
-		return nil
+func currentConfiguration(cfg planning.Configuration) *Conf {
+	if conf, ok := confConfigType.CheckGet(cfg); ok {
+		return conf
 	}
 
-	return conf
+	if hasWebIdentityEnvVar() {
+		return &Conf{UseInjectedWebIdentity: true}
+	}
+
+	return nil
 }
 
 func innerSession(ctx context.Context, cfg planning.Configuration) (func(...func(*config.LoadOptions) error) (aws.Config, error), *Conf, error) {
-	conf := configuration(cfg)
+	conf := currentConfiguration(cfg)
 	if conf == nil {
 		return nil, nil, nil
 	}

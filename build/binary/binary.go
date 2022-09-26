@@ -35,6 +35,8 @@ var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spe
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
 var BuildNodejs func(planning.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, bool /* isFocus */) (build.Spec, error)
 
+var prebuiltsConfType = planning.DefineConfigType[*Prebuilts]()
+
 const LLBGenBinaryName = "llbgen"
 
 type Prepared struct {
@@ -149,8 +151,7 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, env planning.Co
 
 	prebuilts := loc.Module.Workspace.PrebuiltBinary
 
-	conf := &Prebuilts{}
-	if env.Configuration().Get(conf) {
+	if conf, ok := prebuiltsConfType.CheckGet(env.Configuration()); ok {
 		prebuilts = append(prebuilts, conf.PrebuiltBinary...)
 		fmt.Fprintf(console.Debug(ctx), "Adding %d prebuilts from planning configuration.", len(conf.PrebuiltBinary))
 	}

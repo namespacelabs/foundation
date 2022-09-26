@@ -24,8 +24,7 @@ func PrepareBuildkit(env planning.Context) compute.Computable[[]*schema.DevHost_
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			containerName := buildkit.DefaultContainerName
 
-			conf := &buildkit.Overrides{}
-			if !env.Configuration().Get(conf) {
+			if conf, ok := buildkit.OverridesConfigType.CheckGet(env.Configuration()); ok {
 				if conf.BuildkitAddr != "" {
 					fmt.Fprintln(console.Stderr(ctx), "Buildkit has been manually configured, skipping setup.")
 					return nil, nil

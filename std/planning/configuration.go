@@ -15,8 +15,6 @@ import (
 )
 
 type Configuration interface {
-	Get(proto.Message) bool
-	GetForPlatform(specs.Platform, proto.Message) bool
 	Derive(string, func(ConfigurationSlice) ConfigurationSlice) Configuration
 
 	// When the configuration is loaded pinned to an environment, returns the
@@ -26,11 +24,13 @@ type Configuration interface {
 
 	Workspace() Workspace
 
-	getMultiple(string) []*anypb.Any
+	checkGetMessage(proto.Message) bool
+	checkGetMessageForPlatform(specs.Platform, proto.Message) bool
+	fetchMultiple(string) []*anypb.Any
 }
 
 func GetMultiple[V proto.Message](config Configuration) ([]V, error) {
-	msgs := config.getMultiple(protos.TypeUrl(protos.NewFromType[V]()))
+	msgs := config.fetchMultiple(protos.TypeUrl[V]())
 
 	var result []V
 	for _, msg := range msgs {
@@ -125,11 +125,11 @@ func (cfg config) Workspace() Workspace {
 	return cfg.workspace
 }
 
-func (cfg config) Get(msg proto.Message) bool {
+func (cfg config) checkGetMessage(msg proto.Message) bool {
 	return checkGet(cfg.atoms.Configuration, msg)
 }
 
-func (cfg config) getMultiple(typeUrl string) []*anypb.Any {
+func (cfg config) fetchMultiple(typeUrl string) []*anypb.Any {
 	var response []*anypb.Any
 	for _, m := range cfg.atoms.Configuration {
 		if m.TypeUrl == typeUrl {
@@ -152,7 +152,7 @@ func checkGet(merged []*anypb.Any, msg proto.Message) bool {
 	return false
 }
 
-func (cfg config) GetForPlatform(target specs.Platform, msg proto.Message) bool {
+func (cfg config) checkGetMessageForPlatform(target specs.Platform, msg proto.Message) bool {
 	for _, p := range cfg.atoms.PlatformConfiguration {
 		if platformMatches(p, target) {
 			if checkGet(p.Configuration, msg) {
@@ -163,7 +163,7 @@ func (cfg config) GetForPlatform(target specs.Platform, msg proto.Message) bool 
 		}
 	}
 
-	return cfg.Get(msg)
+	return cfg.checkGetMessage(msg)
 }
 
 func (cfg config) EnvKey() string {

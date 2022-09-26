@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -42,9 +43,41 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 		}
 	}
 
+	for _, entry := range root.LoadedDevHost.Configure {
+		if err := validate(entry.Configuration); err != nil {
+			return err
+		}
+
+		for _, y := range entry.PlatformConfiguration {
+			if err := validate(y.Configuration); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, x := range root.LoadedDevHost.ConfigurePlatform {
+		if err := validate(x.Configuration); err != nil {
+			return err
+		}
+	}
+
+	if err := validate(root.LoadedDevHost.ConfigureTools); err != nil {
+		return err
+	}
+
 	for _, env := range root.Workspace().Proto().EnvSpec {
 		if !HasRuntime(env.Runtime) {
 			return fnerrors.InternalError("%s is not a supported runtime type", env.Runtime)
+		}
+	}
+
+	return nil
+}
+
+func validate(messages []*anypb.Any) error {
+	for _, msg := range messages {
+		if !planning.IsValidConfigType(msg) {
+			return fnerrors.InternalError("%s: unsupported configuration type", msg.TypeUrl)
 		}
 	}
 

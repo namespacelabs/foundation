@@ -86,6 +86,8 @@ var (
 	}
 )
 
+var clusterConfigType = planning.DefineConfigType[*PrebuiltCluster]()
+
 func RegisterClusterProvider() {
 	client.RegisterConfigurationProvider("nscloud", provideCluster)
 	kubernetes.RegisterOverrideClass("nscloud", provideClass)
@@ -109,8 +111,8 @@ func RegisterClusterProvider() {
 }
 
 func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
-	conf := &PrebuiltCluster{}
-	if !cfg.Get(conf) {
+	conf, ok := clusterConfigType.CheckGet(cfg)
+	if !ok {
 		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
 	}
 
@@ -327,20 +329,6 @@ func reparse(obj interface{}, target interface{}) error {
 }
 
 func provideClass(ctx context.Context, cfg planning.Configuration) (runtime.Class, error) {
-	conf := &PrebuiltCluster{}
-	if !cfg.Get(conf) {
-		compute.On(ctx).DetachWith(compute.Detach{
-			Action: tasks.Action("nscloud.cluster-prepare").LogLevel(1),
-			Do: func(ctx context.Context) error {
-				// Kick off the cluster provisioning as soon as we can.
-				// XXX this has to be a future, and we don't have the means for it yet.
-				// _, _ = CreateCluster(ctx, "", true, cfg.EnvKey())
-				return nil
-			},
-			BestEffort: true,
-		})
-	}
-
 	return runtimeClass{}, nil
 }
 
@@ -349,9 +337,7 @@ type runtimeClass struct{}
 var _ runtime.Class = runtimeClass{}
 
 func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
-	conf := &PrebuiltCluster{}
-
-	if !cfg.Get(conf) {
+	if _, ok := clusterConfigType.CheckGet(cfg); !ok {
 		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
 	}
 
@@ -359,9 +345,8 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configur
 }
 
 func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
-	conf := &PrebuiltCluster{}
-
-	if !cfg.Get(conf) {
+	conf, ok := clusterConfigType.CheckGet(cfg)
+	if !ok {
 		ephemeral := true
 		result, err := CreateAndWaitCluster(ctx, "", ephemeral, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
 		if err != nil {
@@ -376,14 +361,14 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 		})
 
 		return d.ensureCluster(ctx, cfg, result.Cluster)
-	} else {
-		cluster, err := GetCluster(ctx, conf.ClusterId)
-		if err != nil {
-			return nil, err
-		}
-
-		return d.ensureCluster(ctx, cfg, cluster)
 	}
+
+	cluster, err := GetCluster(ctx, conf.ClusterId)
+	if err != nil {
+		return nil, err
+	}
+
+	return d.ensureCluster(ctx, cfg, cluster)
 }
 
 func (d runtimeClass) ensureCluster(ctx context.Context, cfg planning.Configuration, kc *KubernetesCluster) (runtime.Cluster, error) {

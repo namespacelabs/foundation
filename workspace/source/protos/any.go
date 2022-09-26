@@ -8,7 +8,6 @@ import (
 	reflect "reflect"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 func NewFromType[V proto.Message]() V {
@@ -16,10 +15,8 @@ func NewFromType[V proto.Message]() V {
 	return reflect.New(reflect.TypeOf(m).Elem()).Interface().(V)
 }
 
-func TypeUrl(msg proto.Message) string {
-	packed, err := anypb.New(msg)
-	if err != nil {
-		panic(err)
-	}
-	return packed.GetTypeUrl()
+func TypeUrl[V proto.Message]() string {
+	m := NewFromType[V]()
+	const urlPrefix = "type.googleapis.com/"
+	return urlPrefix + string(m.ProtoReflect().Descriptor().FullName())
 }

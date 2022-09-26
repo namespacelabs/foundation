@@ -87,17 +87,15 @@ func RegisterVFuncs[M proto.Message, V any](funcs VFuncs[M, V]) {
 }
 
 func register[M proto.Message](funcs internalFuncs) {
-	tmpl := protos.NewFromType[M]()
 	reg := registration{
-		key:   protos.TypeUrl(tmpl),
-		tmpl:  tmpl,
+		key:   protos.TypeUrl[M](),
+		tmpl:  protos.NewFromType[M](),
 		funcs: funcs,
 	}
 
-	handlers[protos.TypeUrl(tmpl)] = &reg
+	handlers[protos.TypeUrl[M]()] = &reg
 }
 
 func Compile[M proto.Message](compiler compilerFunc) {
-	tmpl := protos.NewFromType[M]()
-	compilers[protos.TypeUrl(tmpl)] = compiler
+	compilers[protos.TypeUrl[M]()] = compiler
 }

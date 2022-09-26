@@ -21,6 +21,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
+var hostEnvConfigType = planning.DefineConfigType[*HostEnv]()
+
 type ClusterConfiguration struct {
 	Config           clientcmdapi.Config
 	TokenProvider    TokenProviderFunc
@@ -188,8 +190,8 @@ func copyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config
 }
 
 func CheckGetHostEnv(cfg planning.Configuration) (*HostEnv, error) {
-	hostEnv := &HostEnv{}
-	if !cfg.Get(hostEnv) {
+	hostEnv, ok := hostEnvConfigType.CheckGet(cfg)
+	if !ok {
 		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", cfg.EnvKey())
 	}
 	return hostEnv, nil

@@ -142,6 +142,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		run = storedrun.New()
 
+		planning.ValidateNoConfigTypeCollisions()
+
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 

@@ -32,6 +32,8 @@ import (
 
 const minimumTokenExpiry = 5 * time.Minute
 
+var clusterConfigType = planning.DefineConfigType[*EKSCluster]()
+
 func Register() {
 	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
 
@@ -59,9 +61,8 @@ func Register() {
 }
 
 func provideEKS(ctx context.Context, config planning.Configuration) (client.ClusterConfiguration, error) {
-	conf := &EKSCluster{}
-
-	if !config.Get(conf) {
+	conf, ok := clusterConfigType.CheckGet(config)
+	if !ok {
 		return client.ClusterConfiguration{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
 	}
 
