@@ -28,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -77,12 +76,13 @@ func NewTestCmd() *cobra.Command {
 				parallel = true
 			}
 
-			pl := workspace.NewPackageLoader(env)
+			// This PackageLoader instance is only used to resolve package references from the command line arguments.
+			packageRefPl := workspace.NewPackageLoader(env)
 
 			includeStartupTests := includeServers || locs.UserSpecified
 			testRefs := []*schema.PackageRef{}
 			for _, l := range locs.Locs {
-				pp, err := pl.LoadByName(ctx, l.AsPackageName())
+				pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
 				if err != nil {
 					return err
 				}
@@ -113,13 +113,12 @@ func NewTestCmd() *cobra.Command {
 
 					eg.Go(func(ctx context.Context) error {
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
-
-						sealedCtx := pkggraph.MakeSealedContext(buildEnv, pl.Seal())
+						pl := workspace.NewPackageLoader(buildEnv)
 
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
 
-						testComp, err := testing.PrepareTest(ctx, pl, sealedCtx, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]parsed.Server, *provision.Stack, error) {
+						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]parsed.Server, *provision.Stack, error) {
 							var suts []parsed.Server
 
 							for _, pkg := range test.ServersUnderTest {
