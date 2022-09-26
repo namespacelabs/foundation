@@ -75,10 +75,16 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 	var resource *schema.GroupVersionResource
 	var res unstructured.Unstructured
 
-	if err := tasks.Action("kubernetes.apply").Scope(scope...).
+	action := tasks.Action("kubernetes.apply").
+		Scope(scope...).
 		HumanReadablef(desc).
-		Arg("name", apply.obj.GetName()).
-		Arg("namespace", apply.obj.GetNamespace()).RunWithOpts(ctx, tasks.RunOpts{
+		Arg("name", apply.obj.GetName())
+
+	if ns := apply.obj.GetNamespace(); ns != "" {
+		action = action.Arg("namespace", ns)
+	}
+
+	if err := action.RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context) (bool, error) {
 			var err error
 			resource, err = resolveResource(ctx, cluster, apply.obj.GroupVersionKind())
@@ -92,39 +98,13 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 			// default service account, requires that the default service
 			// account actually exists. And creating the default service
 			// account takes a bit of time after creating a namespace.
-			var waitOnNamespace string
-			switch {
-			case kubedef.IsDeployment(apply.obj):
-				// XXX change to unstructured lookups.
-				var d appsv1.Deployment
-				if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
-					return false, err
-				}
-				if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
-					waitOnNamespace = apply.obj.GetNamespace()
-				}
-
-			case kubedef.IsStatefulSet(apply.obj):
-				var d appsv1.StatefulSet
-				if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
-					return false, err
-				}
-				if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
-					waitOnNamespace = apply.obj.GetNamespace()
-				}
-
-			case kubedef.IsPod(apply.obj):
-				var d v1.Pod
-				if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
-					return false, err
-				}
-				if d.Spec.ServiceAccountName == "" || d.Spec.ServiceAccountName == "default" {
-					waitOnNamespace = apply.obj.GetNamespace()
-				}
+			waitOnNamespace, err := requiresWaitForNamespace(apply)
+			if err != nil {
+				return false, fnerrors.InternalError("failed to determine object namespace: %w", err)
 			}
 
-			if waitOnNamespace != "" {
-				if err := waitForDefaultServiceAccount(ctx, cluster.PreparedClient().Clientset, waitOnNamespace); err != nil {
+			if waitOnNamespace {
+				if err := waitForDefaultServiceAccount(ctx, cluster.PreparedClient().Clientset, apply.obj.GetNamespace()); err != nil {
 					return false, err
 				}
 			}
@@ -281,6 +261,40 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 	}
 
 	return nil, nil
+}
+
+func requiresWaitForNamespace(apply *parsedApply) (bool, error) {
+	switch {
+	case kubedef.IsDeployment(apply.obj):
+		// XXX change to unstructured lookups.
+		var d appsv1.Deployment
+		if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
+			return false, err
+		}
+		if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
+			return true, nil
+		}
+
+	case kubedef.IsStatefulSet(apply.obj):
+		var d appsv1.StatefulSet
+		if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
+			return false, err
+		}
+		if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
+			return true, nil
+		}
+
+	case kubedef.IsPod(apply.obj):
+		var d v1.Pod
+		if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
+			return false, err
+		}
+		if d.Spec.ServiceAccountName == "" || d.Spec.ServiceAccountName == "default" {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func waitForDefaultServiceAccount(ctx context.Context, c *k8s.Clientset, namespace string) error {
