@@ -1,9 +1,9 @@
 name: Nightly Release
 
 on:
-#  schedule:
-#     # On weekdays at 2am UTC
-#     - cron: "0 2 * * 1-5"
+  #  schedule:
+  #     # On weekdays at 2am UTC
+  #     - cron: "0 2 * * 1-5"
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: 1.19
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3
