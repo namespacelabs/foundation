@@ -1,7 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: nodejs: {}
+	integration: "nodejs"
 
 	env: {
 		NAME: "\($env.name)-Bob"

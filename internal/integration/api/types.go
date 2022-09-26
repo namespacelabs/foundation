@@ -19,5 +19,6 @@ type Integration interface {
 	Shortcut() string
 
 	// Mutates "pkg"
+	// "integration" is nil if the user used the shortest syntactic form: `integration: "golang"`
 	Parse(ctx context.Context, pkg *pkggraph.Package, integration *fncue.CueV) error
 }

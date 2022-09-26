@@ -1,7 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: go: {}
+	integration: "go"
 
 	env: {
 		NAME: "\($env.name)-Bob"

@@ -31,8 +31,10 @@ func (i *DockerIntegration) Shortcut() string {
 
 func (i *DockerIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fncue.CueV) error {
 	var bits cueIntegrationDocker
-	if err := v.Val.Decode(&bits); err != nil {
-		return err
+	if v != nil {
+		if err := v.Val.Decode(&bits); err != nil {
+			return err
+		}
 	}
 
 	if bits.Dockerfile == "" {

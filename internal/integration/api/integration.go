@@ -43,11 +43,19 @@ func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 		}
 	}
 
-	// If the kind is not specified, trying the short form
+	// If the kind is not specified, trying the short form, e.g.:
+	//   integration: golang {
+	//	   pkg: "."
+	//   }
 	for _, kind := range sortedIntegrationKinds {
 		i := registeredIntegrations[kind]
 		if shortV := v.LookupPath(i.Shortcut()); shortV.Exists() {
 			return i.Parse(ctx, pkg, shortV)
+		}
+		// Shortest form:
+		//  integration: "golang"
+		if str, err := v.Val.String(); err == nil && str == i.Shortcut() {
+			return i.Parse(ctx, pkg, nil)
 		}
 	}
 

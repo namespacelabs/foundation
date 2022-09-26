@@ -31,8 +31,10 @@ func (i *NodejsIntegration) Shortcut() string {
 
 func (i *NodejsIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fncue.CueV) error {
 	var bits cueIntegrationNodejs
-	if err := v.Val.Decode(&bits); err != nil {
-		return err
+	if v != nil {
+		if err := v.Val.Decode(&bits); err != nil {
+			return err
+		}
 	}
 
 	nodePkg := bits.Package

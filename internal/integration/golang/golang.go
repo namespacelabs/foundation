@@ -30,8 +30,10 @@ func (i *GoIntegration) Shortcut() string {
 
 func (i *GoIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fncue.CueV) error {
 	var bits cueIntegrationGo
-	if err := v.Val.Decode(&bits); err != nil {
-		return err
+	if v != nil {
+		if err := v.Val.Decode(&bits); err != nil {
+			return err
+		}
 	}
 
 	goPkg := bits.Package
