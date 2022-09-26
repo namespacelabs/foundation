@@ -15,7 +15,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -40,12 +39,7 @@ func Register() {
 	client.RegisterConfigurationProvider("eks", provideEKS)
 	client.RegisterConfigurationProvider("aws/eks", provideEKS)
 
-	planning.RegisterConfigurationProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
-		cluster := &config.Cluster{}
-		if err := input.UnmarshalTo(cluster); err != nil {
-			return nil, err
-		}
-
+	planning.RegisterConfigurationProvider(func(cluster *config.Cluster) ([]proto.Message, error) {
 		if cluster.Name == "" {
 			return nil, fnerrors.BadInputError("cluster name must be specified")
 		}

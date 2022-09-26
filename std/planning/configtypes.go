@@ -13,14 +13,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-type ConfigType[V proto.Message] struct {
-	msg   proto.Message
-	trace stacktrace.StackTrace
-}
+type ConfigType[V proto.Message] struct{}
 
-type internalConfigType interface {
-	message() proto.Message
-	stacktrace() stacktrace.StackTrace
+type internalConfigType struct {
+	message    proto.Message
+	stacktrace stacktrace.StackTrace
 }
 
 var (
@@ -29,8 +26,8 @@ var (
 )
 
 func DefineConfigType[V proto.Message]() ConfigType[V] {
-	configType := ConfigType[V]{protos.NewFromType[V](), stacktrace.New()}
-	registeredKnownTypes = append(registeredKnownTypes, configType)
+	configType := ConfigType[V]{}
+	registeredKnownTypes = append(registeredKnownTypes, internalConfigType{protos.NewFromType[V](), stacktrace.New()})
 	return configType
 }
 
@@ -40,13 +37,13 @@ func ValidateNoConfigTypeCollisions() {
 	seen := map[string]stacktrace.StackTrace{}
 	for _, wkt := range registeredKnownTypes {
 		// We can only access ProtoReflect() after the proto package init() methods have been called.
-		name := string(wkt.message().ProtoReflect().Descriptor().FullName())
+		name := string(wkt.message.ProtoReflect().Descriptor().FullName())
 
 		if st, ok := seen[name]; ok {
-			panic(name + ": registered multiple times: " + st[0].File() + " vs " + wkt.stacktrace()[0].File())
+			panic(name + ": registered multiple times: " + st[0].File() + " vs " + wkt.stacktrace[0].File())
 		}
 
-		seen[name] = wkt.stacktrace()
+		seen[name] = wkt.stacktrace
 	}
 
 	var strs []string
@@ -78,12 +75,4 @@ func (ConfigType[V]) CheckGetForPlatform(cfg Configuration, target specs.Platfor
 		return v, false
 	}
 	return v, cfg.checkGetMessageForPlatform(target, v)
-}
-
-func (cf ConfigType[V]) message() proto.Message {
-	return cf.msg
-}
-
-func (cf ConfigType[V]) stacktrace() stacktrace.StackTrace {
-	return cf.trace
 }

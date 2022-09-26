@@ -142,8 +142,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		run = storedrun.New()
 
-		planning.ValidateNoConfigTypeCollisions()
-
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
@@ -233,6 +231,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		kubernetes.Register()
 		kubeops.Register()
 		orchestration.RegisterPrepare()
+
+		planning.ValidateNoConfigTypeCollisions()
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)

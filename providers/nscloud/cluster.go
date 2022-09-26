@@ -16,7 +16,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -92,12 +91,7 @@ func RegisterClusterProvider() {
 	client.RegisterConfigurationProvider("nscloud", provideCluster)
 	kubernetes.RegisterOverrideClass("nscloud", provideClass)
 
-	planning.RegisterConfigurationProvider(&config.Cluster{}, func(input *anypb.Any) ([]proto.Message, error) {
-		cluster := &config.Cluster{}
-		if err := input.UnmarshalTo(cluster); err != nil {
-			return nil, err
-		}
-
+	planning.RegisterConfigurationProvider(func(cluster *config.Cluster) ([]proto.Message, error) {
 		if cluster.ClusterId == "" {
 			return nil, fnerrors.BadInputError("cluster_id must be specified")
 		}
