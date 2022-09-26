@@ -29,7 +29,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-const version = "1.23.3"
+const version = "1.25.4"
 
 var IncludedImports = []string{
 	"https://deno.land/std@0.147.0/encoding/base64.ts",
@@ -40,7 +40,7 @@ var Pins = map[string]artifacts.Reference{
 		URL: fmt.Sprintf("https://github.com/denoland/deno/releases/download/v%s/deno-x86_64-unknown-linux-gnu.zip", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "4f6de6e7772dd4cc9f4afcbd583c56a43cd5df2ae38d317c757850fcfcd845cc",
+			Hex:       "ee29ceabab5141ce56ffbb4cbb74a9662de325e5b336933d19058764ea13633d",
 		},
 	},
 	// "linux/arm64": {
@@ -54,14 +54,14 @@ var Pins = map[string]artifacts.Reference{
 		URL: fmt.Sprintf("https://github.com/denoland/deno/releases/download/v%s/deno-aarch64-apple-darwin.zip", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "834ecd6e5530306540bb1c7e2c8a542b36581db1c7388400fbd6578b66347d71",
+			Hex:       "c29526fd6835e65505efc07d7d372943f418bc7d97d172ef86e4d86e1e42ca69",
 		},
 	},
 	"darwin/amd64": {
 		URL: fmt.Sprintf("https://github.com/denoland/deno/releases/download/v%s/deno-x86_64-apple-darwin.zip", version),
 		Digest: schema.Digest{
 			Algorithm: "sha256",
-			Hex:       "92008bdee96718abd1e0f21275046347dcccc134f7f982323c6663d3212c315b",
+			Hex:       "2dd4700707baaf29548ab72d3fddd994d50f65f8c46c7044fdd4c0e6b4a94f78",
 		},
 	},
 }
