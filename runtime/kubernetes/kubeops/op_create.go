@@ -159,15 +159,20 @@ func registerCreate() {
 
 func checkResetCRDCache(ctx context.Context, cluster runtime.Cluster, gvk schema.GroupVersionKind) error {
 	if kubedef.IsGVKCRD(gvk) {
-		mapper, err := cluster.EnsureState(ctx, kubernetes.RestmapperStateKey)
-		if err != nil {
-			return err
-		}
-
-		// Reset the cache after we install a new CRD.
-		mapper.(*restmapper.DeferredDiscoveryRESTMapper).Reset()
+		return resetCRDCache(ctx, cluster)
 	}
 
+	return nil
+}
+
+func resetCRDCache(ctx context.Context, cluster runtime.Cluster) error {
+	mapper, err := cluster.EnsureState(ctx, kubernetes.RestmapperStateKey)
+	if err != nil {
+		return err
+	}
+
+	// Reset the cache after we install a new CRD.
+	mapper.(*restmapper.DeferredDiscoveryRESTMapper).Reset()
 	return nil
 }
 

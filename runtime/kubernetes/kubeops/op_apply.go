@@ -11,9 +11,9 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
@@ -24,14 +24,14 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	kobs "namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
-	"namespacelabs.dev/foundation/schema"
+	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerApply() {
 	ops.RegisterVFuncs(ops.VFuncs[*kubedef.OpApply, *parsedApply]{
-		Parse: func(ctx context.Context, def *schema.SerializedInvocation, apply *kubedef.OpApply) (*parsedApply, error) {
+		Parse: func(ctx context.Context, def *fnschema.SerializedInvocation, apply *kubedef.OpApply) (*parsedApply, error) {
 			if apply.BodyJson == "" {
 				return nil, fnerrors.InternalError("apply.Body is required")
 			}
@@ -44,11 +44,11 @@ func registerApply() {
 			return &parsedApply{obj: &parsed, spec: apply}, nil
 		},
 
-		Handle: func(ctx context.Context, d *schema.SerializedInvocation, spec *parsedApply) (*ops.HandleResult, error) {
-			return apply(ctx, d.Description, schema.PackageNames(d.Scope...), spec)
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, spec *parsedApply) (*ops.HandleResult, error) {
+			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), spec)
 		},
 
-		PlanOrder: func(apply *parsedApply) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(apply *parsedApply) (*fnschema.ScheduleOrder, error) {
 			return kubedef.PlanOrder(apply.obj.GroupVersionKind()), nil
 		},
 	})
@@ -59,7 +59,7 @@ type parsedApply struct {
 	spec *kubedef.OpApply
 }
 
-func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *parsedApply) (*ops.HandleResult, error) {
+func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply *parsedApply) (*ops.HandleResult, error) {
 	gv := apply.obj.GroupVersionKind().GroupVersion()
 	if gv.Version == "" {
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
@@ -70,39 +70,23 @@ func apply(ctx context.Context, desc string, scope []schema.PackageName, apply *
 		return nil, err
 	}
 
-	resource, err := resolveResource(ctx, cluster, apply.obj.GroupVersionKind())
-	if err != nil {
-		return nil, err
-	}
-
 	restcfg := cluster.PreparedClient().RESTConfig
 
+	var resource *schema.GroupVersionResource
 	var res unstructured.Unstructured
+
 	if err := tasks.Action("kubernetes.apply").Scope(scope...).
 		HumanReadablef(desc).
-		Arg("resource", resource.Resource).
 		Arg("name", apply.obj.GetName()).
 		Arg("namespace", apply.obj.GetNamespace()).RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context) (bool, error) {
-			// CRDs are funky in that they take a moment to apply, and
-			// before that happens the api server doesn't accept patches
-			// for them. So we first check if the CRD does exist, and we
-			// wait for its paths to become ready.
-			// XXX we should have metadata that identifies the resource class as a CRD.
-			if resource.Group == "k8s.namespacelabs.dev" {
-				crd := fmt.Sprintf("%s.%s", resource.Resource, resource.Group)
-
-				cli, err := apiextensionsv1.NewForConfig(restcfg)
-				if err != nil {
-					return false, err
-				}
-
-				if err := kobs.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
-					ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", crd),
-					waitForCRD{resource.Resource, crd}); err != nil {
-					return false, err
-				}
+			var err error
+			resource, err = resolveResource(ctx, cluster, apply.obj.GroupVersionKind())
+			if err != nil {
+				return false, err
 			}
+
+			tasks.Attachments(ctx).AddResult("resource", resource.Resource)
 
 			// Creating Deployments and Statefulsets that refer to the
 			// default service account, requires that the default service
@@ -319,23 +303,4 @@ func waitForDefaultServiceAccount(ctx context.Context, c *k8s.Clientset, namespa
 
 		return nil
 	})
-}
-
-type waitForCRD struct {
-	plural string
-	crd    string
-}
-
-func (w waitForCRD) Prepare(context.Context, *apiextensionsv1.ApiextensionsV1Client) error {
-	return nil
-}
-
-func (w waitForCRD) Poll(ctx context.Context, cli *apiextensionsv1.ApiextensionsV1Client) (bool, error) {
-	crd, err := cli.CustomResourceDefinitions().Get(ctx, w.crd, metav1.GetOptions{})
-	if err != nil {
-		return false, err
-	}
-
-	// XXX check conditions instead.
-	return crd.Status.AcceptedNames.Plural == w.plural, nil
 }
