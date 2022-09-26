@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
@@ -41,7 +42,7 @@ type IngressRef struct {
 	Namespace, Name string
 }
 
-func Ensure(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
+func Ensure(ctx context.Context, ns string, env *schema.Environment, srv runtime.Deployable, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
 	var applies []kubedef.Apply
 
 	groups := groupByName(fragments)
@@ -200,7 +201,7 @@ func (m *MapAddressList) Sorted() []MapAddress {
 	return mas
 }
 
-func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv *schema.Server, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
+func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv runtime.Deployable, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
 	var clearTextGrpcCount, grpcCount, nonGrpcCount int
 
 	spec := applynetworkingv1.IngressSpec()

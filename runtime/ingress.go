@@ -377,11 +377,11 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 	return domains, nil
 }
 
-func serverScoped(srv *schema.Server, name string) string {
-	name = srv.Name + "-" + name
+func serverScoped(srv Deployable, name string) string {
+	name = srv.GetName() + "-" + name
 
-	if !strings.HasSuffix(name, "-"+srv.Id) {
-		return name + "-" + srv.Id
+	if !strings.HasSuffix(name, "-"+srv.GetId()) {
+		return name + "-" + srv.GetId()
 	}
 
 	return name

@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision/deploy/render"
+	"namespacelabs.dev/foundation/schema"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -20,14 +21,12 @@ type PortFwd struct {
 	LocalPort uint32
 }
 
-func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []*fnschema.Server, portFwds []*PortFwd, ingressFragments []*fnschema.IngressFragment) *storage.NetworkPlan {
+func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []fnschema.PackageName, portFwds []*PortFwd, ingressFragments []*fnschema.IngressFragment) *storage.NetworkPlan {
 	r := &storage.NetworkPlan{
 		LocalHostname: localHostname,
 	}
 
-	for _, s := range focus {
-		r.FocusedServerPackages = append(r.FocusedServerPackages, s.PackageName)
-	}
+	r.FocusedServerPackages = schema.Strs(focus...)
 
 	for _, i := range ingressFragments {
 		domain := convertDomain(i.Domain)

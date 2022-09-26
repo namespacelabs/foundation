@@ -21,13 +21,12 @@ import (
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/schema"
 )
 
 type FileSyncDevObserver struct {
 	ctx          context.Context
 	log          io.Writer
-	server       *schema.Server
+	server       runtime.Deployable
 	cluster      runtime.ClusterNamespace
 	fileSyncPort int32
 

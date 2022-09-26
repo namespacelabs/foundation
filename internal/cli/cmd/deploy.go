@@ -129,14 +129,7 @@ func completeDeployment(ctx context.Context, env planning.Context, cluster runti
 
 	out := console.TypedOutput(ctx, "deploy", console.CatOutputUs)
 
-	var focusServer []*schema.Server
-	for _, focus := range plan.FocusServer {
-		if srv := plan.Stack.GetServer(schema.PackageName(focus)); srv != nil {
-			focusServer = append(focusServer, srv.Server)
-		}
-	}
-
-	r := deploystorage.ToStorageNetworkPlan("", plan.Stack, focusServer, ports, plan.IngressFragment)
+	r := deploystorage.ToStorageNetworkPlan("", plan.Stack, schema.PackageNames(plan.FocusServer...), ports, plan.IngressFragment)
 	if r != nil {
 		summary := render.NetworkPlanToSummary(r)
 		view.NetworkPlanToText(out, summary, &view.NetworkPlanToTextOpts{

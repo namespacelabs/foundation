@@ -208,7 +208,7 @@ func NewTestCmd() *cobra.Command {
 					} else {
 						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{
 							TestPackage:       testRefs[k].AsPackageName().String(),
-							ServerPackage:     incompatible[k].Server.PackageName,
+							ServerPackage:     incompatible[k].ServerPackageName.String(),
 							RequirementOwner:  incompatible[k].RequirementOwner.String(),
 							RequiredLabel:     incompatible[k].RequiredLabel,
 							IncompatibleLabel: incompatible[k].IncompatibleLabel,

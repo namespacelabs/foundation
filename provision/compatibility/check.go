@@ -14,10 +14,10 @@ func CheckCompatible(env *schema.Environment, srv *schema.Server) error {
 		for _, r := range req.GetEnvironmentHasLabel() {
 			if !env.HasLabel(r) {
 				return fnerrors.IncompatibleEnvironmentErr{
-					Env:              env,
-					Server:           srv,
-					RequirementOwner: schema.PackageName(req.Package),
-					RequiredLabel:    r,
+					Env:               env,
+					ServerPackageName: schema.PackageName(srv.PackageName),
+					RequirementOwner:  schema.PackageName(req.Package),
+					RequiredLabel:     r,
 				}
 			}
 		}
@@ -26,7 +26,7 @@ func CheckCompatible(env *schema.Environment, srv *schema.Server) error {
 			if env.HasLabel(r) {
 				return fnerrors.IncompatibleEnvironmentErr{
 					Env:               env,
-					Server:            srv,
+					ServerPackageName: schema.PackageName(srv.PackageName),
 					RequirementOwner:  schema.PackageName(req.Package),
 					IncompatibleLabel: r,
 				}

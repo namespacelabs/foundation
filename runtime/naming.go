@@ -107,7 +107,7 @@ func computeInnerNaming(ctx context.Context, rootenv planning.Context, cluster P
 	}, nil
 }
 
-func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOpts) (*schema.Certificate, error) {
+func allocateName(ctx context.Context, srv Deployable, opts fnapi.AllocateOpts) (*schema.Certificate, error) {
 	var cacheKey string
 
 	if opts.Subdomain != "" {
@@ -131,7 +131,7 @@ func allocateName(ctx context.Context, srv *schema.Server, opts fnapi.AllocateOp
 
 	opts.NoTLS = NamingNoTLS
 	opts.Stored = previous
-	opts.Scope = schema.PackageName(srv.PackageName)
+	opts.Scope = schema.PackageName(srv.GetPackageName())
 
 	nr, err := fnapi.AllocateName(ctx, opts)
 	if err != nil {
@@ -165,7 +165,7 @@ func isResourceValid(nr *fnapi.NameResource) bool {
 	return false
 }
 
-func checkStored(ctx context.Context, srv *schema.Server, org, cacheKey string) (*fnapi.NameResource, error) {
+func checkStored(ctx context.Context, srv Deployable, org, cacheKey string) (*fnapi.NameResource, error) {
 	// XXX security check permissions
 	certDir, err := makeCertDir(org, srv)
 	if err != nil {
@@ -189,7 +189,7 @@ func checkStored(ctx context.Context, srv *schema.Server, org, cacheKey string) 
 	return &nr, nil
 }
 
-func storeCert(ctx context.Context, srv *schema.Server, org, cacheKey string, res *fnapi.NameResource) error {
+func storeCert(ctx context.Context, srv Deployable, org, cacheKey string, res *fnapi.NameResource) error {
 	certDir, err := makeCertDir(org, srv)
 	if err != nil {
 		return err
@@ -207,7 +207,7 @@ func storeCert(ctx context.Context, srv *schema.Server, org, cacheKey string, re
 	return ioutil.WriteFile(filepath.Join(certDir, cacheKey+".json"), resBytes, 0600)
 }
 
-func makeCertDir(org string, srv *schema.Server) (string, error) {
+func makeCertDir(org string, srv Deployable) (string, error) {
 	if org == "" {
 		return "", fnerrors.New("no org specified")
 	}
@@ -217,5 +217,5 @@ func makeCertDir(org string, srv *schema.Server) (string, error) {
 		return "", err
 	}
 
-	return filepath.Join(certDir, org, srv.Id), nil
+	return filepath.Join(certDir, org, srv.GetId()), nil
 }

@@ -12,7 +12,7 @@ import (
 
 type IncompatibleEnvironmentErr struct {
 	Env               *schema.Environment
-	Server            *schema.Server
+	ServerPackageName schema.PackageName
 	RequirementOwner  schema.PackageName
 	RequiredLabel     *schema.Label
 	IncompatibleLabel *schema.Label
@@ -21,9 +21,9 @@ type IncompatibleEnvironmentErr struct {
 func (err IncompatibleEnvironmentErr) Error() string {
 	if err.IncompatibleLabel != nil {
 		return fmt.Sprintf("environment %q is incompatible with %q (included by %s), it is not compatible with %s=%q",
-			err.Env.Name, err.RequirementOwner, err.Server.PackageName, err.IncompatibleLabel.Name, err.IncompatibleLabel.Value)
+			err.Env.Name, err.RequirementOwner, err.ServerPackageName, err.IncompatibleLabel.Name, err.IncompatibleLabel.Value)
 	}
 
 	return fmt.Sprintf("environment %q is incompatible with %q (included by %s), it requires %s=%q",
-		err.Env.Name, err.RequirementOwner, err.Server.PackageName, err.RequiredLabel.Name, err.RequiredLabel.Value)
+		err.Env.Name, err.RequirementOwner, err.ServerPackageName, err.RequiredLabel.Name, err.RequiredLabel.Value)
 }

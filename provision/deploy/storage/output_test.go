@@ -39,9 +39,9 @@ func TestToStorageNetworkPlan(t *testing.T) {
 			},
 		},
 		// Focused servers
-		[]*schema.Server{
-			{PackageName: "server1"},
-			{PackageName: "server2"},
+		[]schema.PackageName{
+			"server1",
+			"server2",
 		},
 		[]*PortFwd{
 			{Endpoint: &schema.Endpoint{}},
@@ -96,7 +96,7 @@ func TestToStorageNetworkPlan(t *testing.T) {
 		})
 }
 
-func assertNetworkPlan(t *testing.T, snapshotName string, localHostname string, stack *schema.Stack, focus []*schema.Server, portFwds []*PortFwd, ingressFragments []*schema.IngressFragment) {
+func assertNetworkPlan(t *testing.T, snapshotName string, localHostname string, stack *schema.Stack, focus []schema.PackageName, portFwds []*PortFwd, ingressFragments []*schema.IngressFragment) {
 	plan := ToStorageNetworkPlan(localHostname, stack, focus, portFwds, ingressFragments)
 
 	json := jsontesting.StableProtoToJson(t, plan)

@@ -11,6 +11,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -82,7 +83,7 @@ func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure
 	return nil
 }
 
-func makeServiceAccount(srv *schema.Server) string {
+func makeServiceAccount(srv runtime.Deployable) string {
 	return fmt.Sprintf("admin-%s", kubedef.MakeDeploymentId(srv))
 }
 

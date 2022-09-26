@@ -23,7 +23,7 @@ type PortForward struct {
 	Debug     io.Writer
 	Warnings  io.Writer
 
-	ForwardPort    func(*schema.Server, int32, []string, runtime.SinglePortForwardedFunc) (io.Closer, error)
+	ForwardPort    func(runtime.Deployable, int32, []string, runtime.SinglePortForwardedFunc) (io.Closer, error)
 	ForwardIngress func([]string, int, runtime.PortForwardedFunc) (io.Closer, error)
 
 	OnAdd    func(*schema.Endpoint, uint)
@@ -32,7 +32,7 @@ type PortForward struct {
 
 	mu            sync.Mutex
 	stack         *schema.Stack
-	focus         []*schema.Server
+	focus         []schema.PackageName
 	done          bool
 	revision      int
 	endpointState map[string]*endpointState
@@ -60,7 +60,7 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 	defer pi.mu.Unlock()
 
 	pi.stack = stack
-	pi.focus = focusServers(stack, focus)
+	pi.focus = focus
 
 	pi.fragments = fragments
 
@@ -263,22 +263,4 @@ func (pi *PortForward) Cleanup() error {
 	}
 
 	return multierr.New(errs...)
-}
-
-func focusServers(stack *schema.Stack, focus []schema.PackageName) []*schema.Server {
-	// Must be called with lock held.
-
-	var servers []*schema.Server
-	for _, pkg := range focus {
-		for _, entry := range stack.Entry {
-			if entry.GetPackageName() == pkg {
-				servers = append(servers, entry.Server)
-				break
-			}
-		}
-		// XXX this is a major hack, as there's no guarantee we'll see all of the
-		// expected servers in the stack.
-	}
-
-	return servers
 }

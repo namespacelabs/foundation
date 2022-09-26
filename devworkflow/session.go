@@ -103,7 +103,7 @@ func (s *Session) CommandOutput() io.ReadCloser   { return io.NopCloser(bytes.Ne
 func (s *Session) BuildOutput() io.ReadCloser     { return io.NopCloser(bytes.NewReader(nil)) }
 func (s *Session) BuildJSONOutput() io.ReadCloser { return io.NopCloser(bytes.NewReader(nil)) }
 
-func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.ClusterNamespace, *schema.Server, error) {
+func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.ClusterNamespace, runtime.Deployable, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

@@ -23,7 +23,7 @@ func NewPortFwd(ctx context.Context, obs *Session, env planning.Context, rt runt
 		LocalAddr: localaddr,
 		Debug:     console.Debug(ctx),
 		Warnings:  console.Warnings(ctx),
-		ForwardPort: func(server *schema.Server, port int32, localAddr []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
+		ForwardPort: func(server runtime.Deployable, port int32, localAddr []string, callback runtime.SinglePortForwardedFunc) (io.Closer, error) {
 			return rt.ForwardPort(ctx, server, port, localAddr, callback)
 		},
 		ForwardIngress: func(localAddr []string, port int, callback runtime.PortForwardedFunc) (io.Closer, error) {
