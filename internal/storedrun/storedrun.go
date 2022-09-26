@@ -112,11 +112,6 @@ func nsErrorToStatus(err error) *status.Status {
 		}
 		err = cause
 	}
-	if actionErr != nil {
-		// Rewind to the ActionError so that the stacktrace below is consistent with
-		// the action stack.
-		err = actionErr
-	}
 
 	// Extract nearest stack.
 	var stackTracer fnerrors.StackTracer
