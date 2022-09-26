@@ -105,7 +105,7 @@ func (stack *Stack) Get(srv schema.PackageName) (Server, bool) {
 	return Server{}, false
 }
 
-func Compute(ctx context.Context, servers parsed.Servers, opts ProvisionOpts) (*Stack, error) {
+func ComputeStack(ctx context.Context, servers parsed.Servers, opts ProvisionOpts) (*Stack, error) {
 	return tasks.Return(ctx, tasks.Action("provision.Compute").Scope(servers.Packages().PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {
 			return computeStack(ctx, opts, servers...)

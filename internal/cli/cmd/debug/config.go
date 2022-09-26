@@ -42,8 +42,7 @@ func newComputeConfigCmd() *cobra.Command {
 				return err
 			}
 
-			server := servers.Servers[0]
-			plan, err := deploy.PrepareDeployServers(ctx, env, planner, servers.Servers, nil)
+			plan, err := deploy.PrepareDeployServers(ctx, env, planner, servers.Servers...)
 			if err != nil {
 				return err
 			}
@@ -55,6 +54,7 @@ func newComputeConfigCmd() *cobra.Command {
 
 			stack := computedPlan.ComputedStack
 
+			server := servers.Servers[0]
 			ps, ok := stack.Get(server.PackageName())
 			if !ok {
 				return fnerrors.InternalError("expected to find %s in the stack, but didn't", server.PackageName())

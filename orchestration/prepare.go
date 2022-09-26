@@ -54,7 +54,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, 
 		return nil, err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, boundCluster.Planner(), []parsed.Server{focus}, nil)
+	plan, err := deploy.PrepareDeployServers(ctx, env, boundCluster.Planner(), focus)
 	if err != nil {
 		return nil, err
 	}

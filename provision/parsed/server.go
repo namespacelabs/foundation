@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision/compatibility"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -94,6 +95,10 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 	t.Package = sealed.ParsedPackage
 	t.entry = sealed.Proto
 	t.deps = sealed.Deps
+
+	if err := compatibility.CheckCompatible(env, t.entry.Server); err != nil {
+		return Server{}, err
+	}
 
 	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.SealedContext(), pkggraph.ProvisionInputs{
 		Workspace:      t.Module().Workspace,

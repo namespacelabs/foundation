@@ -60,7 +60,7 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				plan, err := deploy.PrepareDeployServers(ctx, env, cluster, []parsed.Server{t}, nil)
+				plan, err := deploy.PrepareDeployServers(ctx, env, cluster, t)
 				if err != nil {
 					return err
 				}

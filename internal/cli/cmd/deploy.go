@@ -69,7 +69,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := provision.Compute(ctx, servers.Servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+			stack, err := provision.ComputeStack(ctx, servers.Servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 			if err != nil {
 				return err
 			}

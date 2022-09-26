@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/compatibility"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/provision/startup"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
@@ -62,26 +61,16 @@ type ResolvedSidecarImage struct {
 	Binary     oci.ImageID
 }
 
-func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus []parsed.Server, onStack func(*provision.Stack)) (compute.Computable[*Plan], error) {
-	stack, err := provision.Compute(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus ...parsed.Server) (compute.Computable[*Plan], error) {
+	stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, err
-	}
-
-	if onStack != nil {
-		onStack(stack)
 	}
 
 	return PrepareDeployStack(ctx, env, rc, stack, focus)
 }
 
 func PrepareDeployStack(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, focus []parsed.Server) (compute.Computable[*Plan], error) {
-	for _, srv := range stack.Servers {
-		if err := compatibility.CheckCompatible(srv.Server.SealedContext().Environment(), srv.Server.Proto()); err != nil {
-			return nil, err
-		}
-	}
-
 	def, err := prepareHandlerInvocations(ctx, env, planner, stack)
 	if err != nil {
 		return nil, err
@@ -572,7 +561,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 }
 
 func ComputeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, servers parsed.Servers) (*provision.Stack, []compute.Computable[ResolvedServerImages], error) {
-	stack, err := provision.Compute(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+	stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
 	}

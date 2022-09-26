@@ -114,7 +114,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 		h.resultOut.Ingress = rehydrated.IngressFragments
 		h.resultOut.Rehydrated = rehydrated
 	} else {
-		stack, err := provision.Compute(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+		stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 		if err != nil {
 			return err
 		}

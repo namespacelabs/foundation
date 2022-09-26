@@ -129,7 +129,7 @@ func NewTestCmd() *cobra.Command {
 								suts = append(suts, sut)
 							}
 
-							stack, err := provision.Compute(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+							stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 							if err != nil {
 								return nil, nil, err
 							}

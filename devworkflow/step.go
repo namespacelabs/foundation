@@ -117,7 +117,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			}
 		}
 
-		stack, err := provision.Compute(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+		stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 		if err != nil {
 			return err
 		}
