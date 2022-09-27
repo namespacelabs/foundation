@@ -43,6 +43,9 @@ type Server struct {
 	parsed.Server
 	DeclaredStack schema.PackageList
 	ParsedDeps    []*ParsedNode
+
+	Endpoints         []*schema.Endpoint
+	InternalEndpoints []*schema.InternalEndpoint
 }
 
 func (p Server) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.SidecarContainer) {
@@ -120,22 +123,20 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...parsed.Ser
 		return nil, fnerrors.InternalError("no server specified")
 	}
 
-	builder := newStackBuilder()
+	var builder stackBuilder
 
-	ps := make([]*Server, len(servers))
-	pkgs := make([]schema.PackageName, len(servers))
+	focus := make([]schema.PackageName, len(servers))
 	for k, server := range servers {
-		ps[k] = builder.Add(server)
-		pkgs[k] = server.PackageName()
+		focus[k] = server.PackageName()
 	}
 
-	cs := computeState{exec: executor.New(ctx, "provision.Compute"), out: builder, opts: opts}
+	cs := computeState{exec: executor.New(ctx, "provision.Compute"), out: &builder}
 
-	for k := range servers {
-		k := k // Close k.
+	for _, srv := range servers {
+		srv := srv // Close srv.
 
 		cs.exec.Go(func(ctx context.Context) error {
-			return cs.computeServerContents(ctx, servers[k], ps[k])
+			return cs.recursivelyComputeServerContents(ctx, srv.SealedContext(), srv.PackageName(), opts)
 		})
 	}
 
@@ -143,32 +144,40 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...parsed.Ser
 		return nil, err
 	}
 
-	return builder.Seal(pkgs...), nil
+	return builder.buildStack(focus...), nil
 }
 
 type computeState struct {
 	exec *executor.Executor
 	out  *stackBuilder
-	opts ProvisionOpts
 }
 
-func (cs *computeState) checkAdd(env pkggraph.SealedContext, pkg schema.PackageName) {
-	cs.exec.Go(func(ctx context.Context) error {
-		server, ps, err := cs.out.checkAdd(ctx, env, pkg)
-		if err != nil {
-			return err
-		}
+func (cs *computeState) recursivelyComputeServerContents(ctx context.Context, pkgs pkggraph.SealedContext, pkg schema.PackageName, opts ProvisionOpts) error {
+	ps, existing := cs.out.claim(pkg)
+	if existing {
+		return nil // Already added.
+	}
 
-		if ps == nil {
-			// Already exists.
-			return nil
-		}
+	srv, err := parsed.RequireLoadedServer(ctx, pkgs, pkg)
+	if err != nil {
+		return err
+	}
 
-		return cs.computeServerContents(ctx, *server, ps)
-	})
+	if err := computeServerContents(ctx, srv, opts, ps); err != nil {
+		return err
+	}
+
+	for _, pkg := range ps.DeclaredStack.PackageNames() {
+		pkg := pkg // Close pkg.
+		cs.exec.Go(func(ctx context.Context) error {
+			return cs.recursivelyComputeServerContents(ctx, pkgs, pkg, opts)
+		})
+	}
+
+	return nil
 }
 
-func (cs *computeState) computeServerContents(ctx context.Context, server parsed.Server, ps *Server) error {
+func computeServerContents(ctx context.Context, server parsed.Server, opts ProvisionOpts, ps *Server) error {
 	return tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
 		deps := server.Deps()
 
@@ -194,19 +203,9 @@ func (cs *computeState) computeServerContents(ctx context.Context, server parsed
 			return err
 		}
 
-		var declaredStack schema.PackageList
-		declaredStack.AddMultiple(server.Provisioning.DeclaredStack...)
-		for _, p := range parsedDeps {
-			declaredStack.AddMultiple(p.ProvisionPlan.DeclaredStack...)
-		}
-
-		for _, p := range declaredStack.PackageNames() {
-			cs.checkAdd(server.SealedContext(), p)
-		}
-
 		var allocatedPorts eval.PortAllocations
 		var allocators []eval.AllocatorFunc
-		allocators = append(allocators, eval.MakePortAllocator(server.Proto(), cs.opts.PortRange, &allocatedPorts))
+		allocators = append(allocators, eval.MakePortAllocator(server.Proto(), opts.PortRange, &allocatedPorts))
 
 		var depsWithNeeds []*ParsedNode
 		for _, p := range parsedDeps {
@@ -231,6 +230,13 @@ func (cs *computeState) computeServerContents(ctx context.Context, server parsed
 			dwn.Allocations = allocs
 		}
 
+		var declaredStack schema.PackageList
+		declaredStack.AddMultiple(server.Provisioning.DeclaredStack...)
+		for _, p := range parsedDeps {
+			declaredStack.AddMultiple(p.ProvisionPlan.DeclaredStack...)
+		}
+
+		ps.Server = server
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
@@ -240,7 +246,9 @@ func (cs *computeState) computeServerContents(ctx context.Context, server parsed
 			return err
 		}
 
-		cs.out.AddEndpoints(endpoints, internal)
+		ps.Endpoints = endpoints
+		ps.InternalEndpoints = internal
+
 		return err
 	})
 }
