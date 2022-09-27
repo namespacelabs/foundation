@@ -58,7 +58,7 @@ func ValidateNoConfigTypeCollisions() {
 }
 
 func IsValidConfigType(msg *anypb.Any) bool {
-	return slices.Index(wellKnownTypes, msg.TypeUrl) >= 0
+	return slices.Contains(wellKnownTypes, msg.TypeUrl)
 }
 
 func (ConfigType[V]) CheckGet(cfg Configuration) (V, bool) {
