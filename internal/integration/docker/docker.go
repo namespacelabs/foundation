@@ -12,16 +12,16 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type DockerIntegrationParser struct{}
+type Parser struct{}
 
-func (i *DockerIntegrationParser) Kind() string     { return "namespace.so/from-dockerfile" }
-func (i *DockerIntegrationParser) Shortcut() string { return "docker" }
+func (i *Parser) Kind() string     { return "namespace.so/from-dockerfile" }
+func (i *Parser) Shortcut() string { return "docker" }
 
 type cueIntegrationDocker struct {
 	Dockerfile string `json:"dockerfile"`
 }
 
-func (i *DockerIntegrationParser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
+func (i *Parser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationDocker
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {

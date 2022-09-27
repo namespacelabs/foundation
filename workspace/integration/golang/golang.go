@@ -14,11 +14,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/integration/api"
 )
 
-type GoIntegrationApplier struct{}
+type Applier struct{}
 
-func (i *GoIntegrationApplier) Kind() string { return "namespace.so/from-go" }
+func (i *Applier) Kind() string { return "namespace.so/from-go" }
 
-func (i *GoIntegrationApplier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
+func (i *Applier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
 	data := &schema.GoIntegration{}
 	if err := dataAny.UnmarshalTo(data); err != nil {
 		return err

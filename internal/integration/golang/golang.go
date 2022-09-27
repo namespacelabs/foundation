@@ -12,16 +12,16 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type GoIntegrationParser struct{}
+type Parser struct{}
 
-func (i *GoIntegrationParser) Kind() string     { return "namespace.so/from-go" }
-func (i *GoIntegrationParser) Shortcut() string { return "go" }
+func (i *Parser) Kind() string     { return "namespace.so/from-go" }
+func (i *Parser) Shortcut() string { return "go" }
 
 type cueIntegrationGo struct {
 	Package string `json:"pkg"`
 }
 
-func (i *GoIntegrationParser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
+func (i *Parser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationGo
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {

@@ -15,11 +15,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/integration/api"
 )
 
-type NodejsIntegrationApplier struct{}
+type Applier struct{}
 
-func (i *NodejsIntegrationApplier) Kind() string { return "namespace.so/from-nodejs" }
+func (i *Applier) Kind() string { return "namespace.so/from-nodejs" }
 
-func (i *NodejsIntegrationApplier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
+func (i *Applier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
 	data := &schema.NodejsIntegration{}
 	if err := dataAny.UnmarshalTo(data); err != nil {
 		return err

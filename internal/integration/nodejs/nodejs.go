@@ -12,16 +12,16 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type NodejsIntegrationParser struct{}
+type Parser struct{}
 
-func (i *NodejsIntegrationParser) Kind() string     { return "namespace.so/from-nodejs" }
-func (i *NodejsIntegrationParser) Shortcut() string { return "nodejs" }
+func (i *Parser) Kind() string     { return "namespace.so/from-nodejs" }
+func (i *Parser) Shortcut() string { return "nodejs" }
 
 type cueIntegrationNodejs struct {
 	Package string `json:"pkg"`
 }
 
-func (i *NodejsIntegrationParser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
+func (i *Parser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationNodejs
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {

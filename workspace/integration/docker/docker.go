@@ -16,11 +16,11 @@ import (
 	"namespacelabs.dev/foundation/workspace/integration/api"
 )
 
-type DockerIntegrationApplier struct{}
+type Applier struct{}
 
-func (i *DockerIntegrationApplier) Kind() string { return "namespace.so/from-dockerfile" }
+func (i *Applier) Kind() string { return "namespace.so/from-dockerfile" }
 
-func (i *DockerIntegrationApplier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
+func (i *Applier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
 	data := &schema.DockerIntegration{}
 	if err := dataAny.UnmarshalTo(data); err != nil {
 		return err

@@ -213,14 +213,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		opaque.Register()
 
 		// Opaque integrations: parsing
-		integrationparsing.Register(&dockerparser.DockerIntegrationParser{})
-		integrationparsing.Register(&goparser.GoIntegrationParser{})
-		integrationparsing.Register(&nodejsparser.NodejsIntegrationParser{})
+		integrationparsing.Register(&dockerparser.Parser{})
+		integrationparsing.Register(&goparser.Parser{})
+		integrationparsing.Register(&nodejsparser.Parser{})
 
 		// Opaque integrations: applying
-		integrationapplying.Register(&dockerapplier.DockerIntegrationApplier{})
-		integrationapplying.Register(&goapplier.GoIntegrationApplier{})
-		integrationapplying.Register(&nodejsapplier.NodejsIntegrationApplier{})
+		integrationapplying.Register(&dockerapplier.Applier{})
+		integrationapplying.Register(&goapplier.Applier{})
+		integrationapplying.Register(&nodejsapplier.Applier{})
 
 		// Codegen
 		codegen.Register()
