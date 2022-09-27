@@ -49,7 +49,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		MainContainer: &schema.SidecarContainer{},
 	}
 	out.Name = bits.Name
-	out.Framework = schema.Framework_BASE
+	out.Framework = schema.Framework_OPAQUE
 	out.RunByDefault = true
 
 	switch bits.Class {
