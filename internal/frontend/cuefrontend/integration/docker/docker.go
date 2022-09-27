@@ -5,8 +5,8 @@
 package docker
 
 import (
-	"namespacelabs.dev/foundation/internal/integration/api"
-	"namespacelabs.dev/foundation/internal/integration/helpers"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/helpers"
 	"namespacelabs.dev/foundation/schema"
 )
 
