@@ -375,6 +375,13 @@ func (d runtimeClass) ensureCluster(ctx context.Context, cfg planning.Configurat
 		return nil, err
 	}
 
+	unbound.FetchSystemInfo = func(ctx context.Context) (*kubedef.SystemInfo, error) {
+		return &kubedef.SystemInfo{
+			NodePlatform:         []string{"linux/amd64"},
+			DetectedDistribution: "k3s",
+		}, nil
+	}
+
 	return &cluster{cluster: unbound, config: kc}, nil
 }
 
@@ -400,12 +407,7 @@ func (d *cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
 }
 
 func (d *cluster) Planner(env planning.Context) runtime.Planner {
-	base := kubernetes.NewPlanner(env, func(ctx context.Context) (*kubedef.SystemInfo, error) {
-		return &kubedef.SystemInfo{
-			NodePlatform:         []string{"linux/amd64"},
-			DetectedDistribution: "k3s",
-		}, nil
-	})
+	base := kubernetes.NewPlanner(env, d.cluster.SystemInfo)
 
 	return planner{Planner: base, cluster: d, config: d.config, env: env.Environment(), workspace: env.Workspace().Proto()}
 }

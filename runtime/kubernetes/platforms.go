@@ -18,11 +18,11 @@ var (
 )
 
 func (r *Cluster) SystemInfo(ctx context.Context) (*kubedef.SystemInfo, error) {
-	return r.systemInfo.Get(ctx)
+	return r.FetchSystemInfo(ctx)
 }
 
 func (r *Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platform, error) {
-	sysInfo, err := r.SystemInfo(ctx)
+	sysInfo, err := r.FetchSystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}

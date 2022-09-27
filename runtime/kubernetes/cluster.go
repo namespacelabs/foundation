@@ -24,7 +24,7 @@ type Cluster struct {
 	computedClient client.Prepared
 	config         planning.Configuration
 
-	systemInfo *tcache.Deferred[*kubedef.SystemInfo]
+	FetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
 
 	ClusterAttachedState
 }
@@ -49,13 +49,15 @@ func ConnectToCluster(ctx context.Context, config planning.Configuration) (*Clus
 		return nil, err
 	}
 
+	deferredSystemInfo := tcache.NewDeferred(tasks.Action("kubernetes.fetch-system-info"), func(ctx context.Context) (*kubedef.SystemInfo, error) {
+		return computeSystemInfo(ctx, cli.Clientset)
+	})
+
 	return &Cluster{
-		cli:            cli.Clientset,
-		computedClient: *cli,
-		config:         config,
-		systemInfo: tcache.NewDeferred(tasks.Action("kubernetes.fetch-system-info"), func(ctx context.Context) (*kubedef.SystemInfo, error) {
-			return computeSystemInfo(ctx, cli.Clientset)
-		}),
+		cli:             cli.Clientset,
+		computedClient:  *cli,
+		config:          config,
+		FetchSystemInfo: deferredSystemInfo.Get,
 	}, nil
 }
 
