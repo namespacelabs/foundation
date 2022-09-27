@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, obs *Session, pfw *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
 		focusServers := parsed.RequireServers(env, serverPackages...)
@@ -39,8 +39,8 @@ func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterN
 		// a single build, single deployment, etc. And changes to siblings servers
 		// would only impact themselves, not all servers. #362
 		if err := compute.Continuously(ctx, &buildAndDeploy{
-			obs:            obs,
-			pfw:            pfw,
+			session:        session,
+			portForward:    portForward,
 			env:            env,
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
@@ -54,8 +54,8 @@ func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterN
 }
 
 type buildAndDeploy struct {
-	obs            *Session
-	pfw            *endpointfwd.PortForward
+	session        *Session
+	portForward    *endpointfwd.PortForward
 	env            planning.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*parsed.ServerSnapshot]
@@ -87,8 +87,8 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		return err
 	}
 
-	do.obs.updateStackInPlace(func(stack *Stack) {
-		resetStack(stack, do.env, do.obs.availableEnvs, focus)
+	do.session.updateStackInPlace(func(stack *Stack) {
+		resetStack(stack, do.env, do.session.availableEnvs, focus)
 	})
 
 	switch do.env.Environment().Purpose {
@@ -111,6 +111,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 				if err != nil {
 					return err
 				}
+
 				if observer != nil {
 					observers = append(observers, observer)
 				}
@@ -122,7 +123,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			return err
 		}
 
-		do.obs.updateStackInPlace(func(s *Stack) {
+		do.session.updateStackInPlace(func(s *Stack) {
 			s.Stack = stack.Proto()
 		})
 
@@ -151,7 +152,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		cancel := compute.SpawnCancelableOnContinuously(ctx, func(ctx context.Context) error {
 			defer close(done)
 			return compute.Continuously(ctx,
-				newUpdateCluster(focusServers.Env(), do.cluster, stack.Proto(), do.serverPackages, observers, plan, do.pfw),
+				newUpdateCluster(focusServers.Env(), do.cluster, stack.Proto(), do.serverPackages, observers, plan, do.portForward),
 				transformError)
 		})
 
@@ -178,7 +179,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 					return err
 				}
 
-				do.obs.updateStackInPlace(func(stack *Stack) {
+				do.session.updateStackInPlace(func(stack *Stack) {
 					stack.Stack = s.Stack
 				})
 

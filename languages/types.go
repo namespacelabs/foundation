@@ -44,7 +44,7 @@ type Integration interface {
 
 type DevObserver interface {
 	io.Closer
-	OnDeployment()
+	OnDeployment(context.Context)
 }
 
 var (

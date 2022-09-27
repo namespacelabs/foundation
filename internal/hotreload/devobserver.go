@@ -8,12 +8,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
@@ -21,10 +23,10 @@ import (
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type FileSyncDevObserver struct {
-	ctx          context.Context
 	log          io.Writer
 	server       runtime.Deployable
 	cluster      runtime.ClusterNamespace
@@ -32,12 +34,10 @@ type FileSyncDevObserver struct {
 
 	mu   sync.Mutex
 	conn *grpc.ClientConn
-	port io.Closer
 }
 
 func NewFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
-		ctx:          ctx,
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
 		server:       srv.Proto(),
 		cluster:      cluster,
@@ -61,17 +61,10 @@ func (do *FileSyncDevObserver) cleanup() error {
 		do.conn = nil
 	}
 
-	if do.port != nil {
-		if err := do.port.Close(); err != nil {
-			errs = append(errs, err)
-		}
-		do.port = nil
-	}
-
 	return multierr.New(errs...)
 }
 
-func (do *FileSyncDevObserver) OnDeployment() {
+func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 	do.mu.Lock()
 	defer do.mu.Unlock()
 
@@ -80,34 +73,34 @@ func (do *FileSyncDevObserver) OnDeployment() {
 		fmt.Fprintln(do.log, "failed to port forwarding cleanup", err)
 	}
 
-	// An endpoint is manufactored here, we don't actually export this in our metadata.
-	do.port, err = do.cluster.ForwardPort(do.ctx, do.server, do.fileSyncPort, []string{"127.0.0.1"}, func(fp runtime.ForwardedPort) {
-		do.onEndpoint(fp)
-	})
-	if err != nil {
-		fmt.Fprintln(do.log, "failed to port forward filesync port", err)
-	}
-}
+	orch := compute.On(ctx)
+	sink := tasks.SinkFrom(ctx)
 
-func (do *FileSyncDevObserver) onEndpoint(fpe runtime.ForwardedPort) {
-	do.mu.Lock()
-	defer do.mu.Unlock()
+	// A background context is used here as the connection we create will be
+	// long-lived. The parent orchestrator and sink are then patched in when an
+	// actual connection attempt is made.
+	ctxWithTimeout, done := context.WithTimeout(context.Background(), 15*time.Second)
+	defer done()
 
-	if do.conn != nil {
-		do.conn.Close()
-		do.conn = nil
-	}
+	t := time.Now()
 
-	host := fmt.Sprintf("127.0.0.1:%d", fpe.LocalPort)
+	conn, err := grpc.DialContext(ctxWithTimeout, "filesync-"+do.server.GetName(),
+		grpc.WithBlock(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			patchedContext := compute.AttachOrch(tasks.WithSink(ctx, sink), orch)
 
-	conn, err := grpc.DialContext(do.ctx, host, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			return do.cluster.DialServer(patchedContext, do.server, do.fileSyncPort)
+		}),
+	)
 	if err != nil {
 		fmt.Fprintln(do.log, "failed to connect to filesync", err)
-	} else {
-		do.conn = conn
-
-		fmt.Fprintln(do.log, "Connected to FileSync (for hot reload).")
+		return
 	}
+
+	do.conn = conn
+
+	fmt.Fprintf(do.log, "Connected to FileSync (for hot reload), took %v.\n", time.Since(t))
 }
 
 func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, fe []*wscontents.FileEvent) error {
