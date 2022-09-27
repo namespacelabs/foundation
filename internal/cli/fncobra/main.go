@@ -75,6 +75,7 @@ import (
 	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 	dockerapplier "namespacelabs.dev/foundation/workspace/integration/docker"
 	goapplier "namespacelabs.dev/foundation/workspace/integration/golang"
+	imageapplier "namespacelabs.dev/foundation/workspace/integration/image"
 	nodejsapplier "namespacelabs.dev/foundation/workspace/integration/nodejs"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
@@ -221,6 +222,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		integrationapplying.Register(dockerapplier.Apply)
 		integrationapplying.Register(goapplier.Apply)
 		integrationapplying.Register(nodejsapplier.Apply)
+		integrationapplying.Register(imageapplier.Apply)
 
 		// Codegen
 		codegen.Register()

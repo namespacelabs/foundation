@@ -73,6 +73,53 @@ func (x *Integration) GetData() *anypb.Any {
 	return nil
 }
 
+type ImageIntegration struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ImageId string `protobuf:"bytes,1,opt,name=image_id,json=imageId,proto3" json:"image_id,omitempty"`
+}
+
+func (x *ImageIntegration) Reset() {
+	*x = ImageIntegration{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_integration_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ImageIntegration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ImageIntegration) ProtoMessage() {}
+
+func (x *ImageIntegration) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_integration_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ImageIntegration.ProtoReflect.Descriptor instead.
+func (*ImageIntegration) Descriptor() ([]byte, []int) {
+	return file_schema_integration_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *ImageIntegration) GetImageId() string {
+	if x != nil {
+		return x.ImageId
+	}
+	return ""
+}
+
 type DockerIntegration struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -84,7 +131,7 @@ type DockerIntegration struct {
 func (x *DockerIntegration) Reset() {
 	*x = DockerIntegration{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_integration_proto_msgTypes[1]
+		mi := &file_schema_integration_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -97,7 +144,7 @@ func (x *DockerIntegration) String() string {
 func (*DockerIntegration) ProtoMessage() {}
 
 func (x *DockerIntegration) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_integration_proto_msgTypes[1]
+	mi := &file_schema_integration_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -110,7 +157,7 @@ func (x *DockerIntegration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DockerIntegration.ProtoReflect.Descriptor instead.
 func (*DockerIntegration) Descriptor() ([]byte, []int) {
-	return file_schema_integration_proto_rawDescGZIP(), []int{1}
+	return file_schema_integration_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *DockerIntegration) GetDockerfile() string {
@@ -131,7 +178,7 @@ type GoIntegration struct {
 func (x *GoIntegration) Reset() {
 	*x = GoIntegration{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_integration_proto_msgTypes[2]
+		mi := &file_schema_integration_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -144,7 +191,7 @@ func (x *GoIntegration) String() string {
 func (*GoIntegration) ProtoMessage() {}
 
 func (x *GoIntegration) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_integration_proto_msgTypes[2]
+	mi := &file_schema_integration_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -157,7 +204,7 @@ func (x *GoIntegration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GoIntegration.ProtoReflect.Descriptor instead.
 func (*GoIntegration) Descriptor() ([]byte, []int) {
-	return file_schema_integration_proto_rawDescGZIP(), []int{2}
+	return file_schema_integration_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GoIntegration) GetPkg() string {
@@ -178,7 +225,7 @@ type NodejsIntegration struct {
 func (x *NodejsIntegration) Reset() {
 	*x = NodejsIntegration{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_integration_proto_msgTypes[3]
+		mi := &file_schema_integration_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -191,7 +238,7 @@ func (x *NodejsIntegration) String() string {
 func (*NodejsIntegration) ProtoMessage() {}
 
 func (x *NodejsIntegration) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_integration_proto_msgTypes[3]
+	mi := &file_schema_integration_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +251,7 @@ func (x *NodejsIntegration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NodejsIntegration.ProtoReflect.Descriptor instead.
 func (*NodejsIntegration) Descriptor() ([]byte, []int) {
-	return file_schema_integration_proto_rawDescGZIP(), []int{3}
+	return file_schema_integration_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *NodejsIntegration) GetPkg() string {
@@ -225,17 +272,20 @@ var file_schema_integration_proto_rawDesc = []byte{
 	0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x28, 0x0a, 0x04, 0x64, 0x61, 0x74, 0x61, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70,
 	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x04, 0x64, 0x61, 0x74,
-	0x61, 0x22, 0x33, 0x0a, 0x11, 0x44, 0x6f, 0x63, 0x6b, 0x65, 0x72, 0x49, 0x6e, 0x74, 0x65, 0x67,
-	0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x0a, 0x64, 0x6f, 0x63, 0x6b, 0x65, 0x72,
-	0x66, 0x69, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x64, 0x6f, 0x63, 0x6b,
-	0x65, 0x72, 0x66, 0x69, 0x6c, 0x65, 0x22, 0x21, 0x0a, 0x0d, 0x47, 0x6f, 0x49, 0x6e, 0x74, 0x65,
-	0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x10, 0x0a, 0x03, 0x70, 0x6b, 0x67, 0x18, 0x01,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x70, 0x6b, 0x67, 0x22, 0x25, 0x0a, 0x11, 0x4e, 0x6f, 0x64,
-	0x65, 0x6a, 0x73, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x10,
-	0x0a, 0x03, 0x70, 0x6b, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x70, 0x6b, 0x67,
-	0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62,
-	0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x61, 0x22, 0x2d, 0x0a, 0x10, 0x49, 0x6d, 0x61, 0x67, 0x65, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x19, 0x0a, 0x08, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x5f, 0x69,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x69, 0x6d, 0x61, 0x67, 0x65, 0x49, 0x64,
+	0x22, 0x33, 0x0a, 0x11, 0x44, 0x6f, 0x63, 0x6b, 0x65, 0x72, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x1e, 0x0a, 0x0a, 0x64, 0x6f, 0x63, 0x6b, 0x65, 0x72, 0x66,
+	0x69, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x64, 0x6f, 0x63, 0x6b, 0x65,
+	0x72, 0x66, 0x69, 0x6c, 0x65, 0x22, 0x21, 0x0a, 0x0d, 0x47, 0x6f, 0x49, 0x6e, 0x74, 0x65, 0x67,
+	0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x10, 0x0a, 0x03, 0x70, 0x6b, 0x67, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x03, 0x70, 0x6b, 0x67, 0x22, 0x25, 0x0a, 0x11, 0x4e, 0x6f, 0x64, 0x65,
+	0x6a, 0x73, 0x49, 0x6e, 0x74, 0x65, 0x67, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x10, 0x0a,
+	0x03, 0x70, 0x6b, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x70, 0x6b, 0x67, 0x42,
+	0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73,
+	0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
+	0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -250,16 +300,17 @@ func file_schema_integration_proto_rawDescGZIP() []byte {
 	return file_schema_integration_proto_rawDescData
 }
 
-var file_schema_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_schema_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_schema_integration_proto_goTypes = []interface{}{
 	(*Integration)(nil),       // 0: foundation.schema.Integration
-	(*DockerIntegration)(nil), // 1: foundation.schema.DockerIntegration
-	(*GoIntegration)(nil),     // 2: foundation.schema.GoIntegration
-	(*NodejsIntegration)(nil), // 3: foundation.schema.NodejsIntegration
-	(*anypb.Any)(nil),         // 4: google.protobuf.Any
+	(*ImageIntegration)(nil),  // 1: foundation.schema.ImageIntegration
+	(*DockerIntegration)(nil), // 2: foundation.schema.DockerIntegration
+	(*GoIntegration)(nil),     // 3: foundation.schema.GoIntegration
+	(*NodejsIntegration)(nil), // 4: foundation.schema.NodejsIntegration
+	(*anypb.Any)(nil),         // 5: google.protobuf.Any
 }
 var file_schema_integration_proto_depIdxs = []int32{
-	4, // 0: foundation.schema.Integration.data:type_name -> google.protobuf.Any
+	5, // 0: foundation.schema.Integration.data:type_name -> google.protobuf.Any
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -286,7 +337,7 @@ func file_schema_integration_proto_init() {
 			}
 		}
 		file_schema_integration_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DockerIntegration); i {
+			switch v := v.(*ImageIntegration); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -298,7 +349,7 @@ func file_schema_integration_proto_init() {
 			}
 		}
 		file_schema_integration_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GoIntegration); i {
+			switch v := v.(*DockerIntegration); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -310,6 +361,18 @@ func file_schema_integration_proto_init() {
 			}
 		}
 		file_schema_integration_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GoIntegration); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_integration_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*NodejsIntegration); i {
 			case 0:
 				return &v.state
@@ -328,7 +391,7 @@ func file_schema_integration_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_integration_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

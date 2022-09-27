@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
-	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 type Frontend struct {
@@ -161,15 +160,17 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 
 		if image := server.LookupPath("image"); image.Exists() {
-			bin, err := ParseImage(ctx, loc, image)
+			if parsedPkg.Integration != nil {
+				return nil, fnerrors.UserError(loc, "cannot specify both image and integration")
+			}
+
+			imageId, err := v.Val.String()
 			if err != nil {
 				return nil, err
 			}
 
-			// TODO: don't set the server binary here, instead introduce an "image" integration.
-			err = integrationapplying.SetServerBinary(parsedPkg, bin, nil)
-			if err != nil {
-				return nil, err
+			parsedPkg.Integration = &schema.Integration{
+				Data: protos.WrapAnyOrDie(&schema.ImageIntegration{ImageId: imageId}),
 			}
 		}
 

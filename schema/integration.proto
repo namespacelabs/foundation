@@ -15,6 +15,10 @@ message Integration {
     google.protobuf.Any data = 1;
 }
 
+message ImageIntegration {
+    string image_id = 1;
+}
+
 message DockerIntegration {
     string dockerfile = 1;
 }

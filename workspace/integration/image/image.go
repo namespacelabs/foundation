@@ -1,0 +1,26 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+package docker
+
+import (
+	"context"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/workspace/integration/api"
+)
+
+func Apply(ctx context.Context, data *schema.ImageIntegration, pkg *pkggraph.Package) error {
+	if pkg.Server == nil {
+		// Can't happen with the current syntax.
+		return fnerrors.UserError(pkg.Location, "image integration requires a server")
+	}
+
+	return api.SetServerBinary(pkg, &schema.LayeredImageBuildPlan{
+		LayerBuildPlan: []*schema.ImageBuildPlan{{ImageId: data.ImageId}},
+	}, nil)
+
+}
