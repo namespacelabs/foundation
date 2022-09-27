@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/languages/nodejs/binary"
@@ -28,6 +29,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/pins"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
+
+const yarnLockFn = "yarn.lock"
 
 // Returns a Computable[v1.Image] with the results of the compilation.
 func ViteProductionBuild(ctx context.Context, loc pkggraph.Location, env planning.Context, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
@@ -61,10 +64,11 @@ func viteDevBuild(ctx context.Context, env planning.Context, targetDir string, l
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
-		module = nodejs.YarnHotReloadModule{
-			Module: loc.Module,
-			Sink:   r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: "."}),
-		}
+		module = hotreload.NewHotReloadModule(
+			loc.Module,
+			r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: "."}),
+			func(filepath string) bool { return filepath == yarnLockFn },
+		)
 	} else {
 		module = loc.Module
 	}
