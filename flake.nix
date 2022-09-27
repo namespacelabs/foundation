@@ -17,13 +17,12 @@
         buildInputs = with pkgs;
           [
             clang-tools # For clang-format.
-            go_1_18
+            go_1_19
             upx
             nodejs-16_x
             yarn
             git
 
-            docker-client # Required by `ns prepare`.
             crane
 
             pre-commit
