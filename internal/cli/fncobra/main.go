@@ -218,9 +218,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		integrationparsing.Register(&nodejsparser.Parser{})
 
 		// Opaque integrations: applying
-		integrationapplying.Register(&dockerapplier.Applier{})
-		integrationapplying.Register(&goapplier.Applier{})
-		integrationapplying.Register(&nodejsapplier.Applier{})
+		integrationapplying.Register(dockerapplier.Apply)
+		integrationapplying.Register(goapplier.Apply)
+		integrationapplying.Register(nodejsapplier.Apply)
 
 		// Codegen
 		codegen.Register()

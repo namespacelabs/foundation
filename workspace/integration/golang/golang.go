@@ -7,23 +7,13 @@ package integrations
 import (
 	"context"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/integration/api"
 )
 
-type Applier struct{}
-
-func (i *Applier) Kind() string { return "namespace.so/from-go" }
-
-func (i *Applier) Apply(ctx context.Context, dataAny *anypb.Any, pkg *pkggraph.Package) error {
-	data := &schema.GoIntegration{}
-	if err := dataAny.UnmarshalTo(data); err != nil {
-		return err
-	}
-
+func Apply(ctx context.Context, data *schema.GoIntegration, pkg *pkggraph.Package) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "go integration requires a server")

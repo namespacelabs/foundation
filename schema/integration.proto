@@ -11,10 +11,8 @@ option go_package = "namespacelabs.dev/foundation/schema";
 import "google/protobuf/any.proto";
 
 message Integration {
-    string kind = 1;
-
     // Contains the integration-specific configuration, see below.
-    google.protobuf.Any data = 2;
+    google.protobuf.Any data = 1;
 }
 
 message DockerIntegration {

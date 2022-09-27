@@ -156,7 +156,6 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			}
 
 			parsedPkg.Integration = &schema.Integration{
-				Kind: integration.Kind,
 				Data: protos.WrapAnyOrDie(integration.Data),
 			}
 		}
