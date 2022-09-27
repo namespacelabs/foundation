@@ -100,8 +100,9 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		return Server{}, err
 	}
 
+	// XXX consolidate with other EvalProvision calls. This is only invoked here
+	// for convenience but it's not quite right.
 	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.SealedContext(), pkggraph.ProvisionInputs{
-		Workspace:      t.Module().Workspace,
 		ServerLocation: t.Location,
 	})
 	if err != nil {

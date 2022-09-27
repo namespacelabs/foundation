@@ -350,7 +350,6 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 	// We need to make sure that `env` is available before we read extend.stack, as env is often used
 	// for branching.
 	pdata, err := node.Parsed.EvalProvision(ctx, server.SealedContext(), pkggraph.ProvisionInputs{
-		Workspace:      server.Module().Workspace,
 		ServerLocation: server.Location,
 	})
 	if err != nil {

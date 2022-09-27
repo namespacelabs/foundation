@@ -20,15 +20,17 @@ type PreStartup interface {
 }
 
 type ProvisionInputs struct {
-	Workspace      *schema.Workspace
 	ServerLocation Location
 }
 
 type StartupInputs struct {
 	ServerImage   string // Result of imageID.ImageRef(), not oci.ImageID to avoid cycles.
-	Stack         *schema.Stack
-	Server        *schema.Server
+	Stack         StackEndpoints
 	ServerRootAbs string
+}
+
+type StackEndpoints interface {
+	EndpointsBy(schema.PackageName) []*schema.Endpoint
 }
 
 type ValueWithPath struct {

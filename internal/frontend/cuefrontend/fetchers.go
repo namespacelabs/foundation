@@ -22,7 +22,6 @@ import (
 )
 
 type cueWorkspace struct {
-	ModuleName string `json:"moduleName"`
 	ServerPath string `json:"serverPath"`
 }
 
@@ -40,7 +39,7 @@ type cueEndpoint struct {
 	ContainerPort int32  `json:"containerPort"`
 }
 
-func FetchServer(packages pkggraph.PackageLoader, stack *schema.Stack) FetcherFunc {
+func FetchServer(packages pkggraph.PackageLoader, stack pkggraph.StackEndpoints) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		var server cueServerReference
 		if err := v.Decode(&server); err != nil {
@@ -60,26 +59,22 @@ func FetchServer(packages pkggraph.PackageLoader, stack *schema.Stack) FetcherFu
 		server.Name = pkg.Server.Name
 		server.Endpoints = []cueEndpoint{}
 
-		s := stack.GetServer(pkg.PackageName())
-		if s != nil {
-			for _, endpoint := range stack.EndpointsBy(pkg.PackageName()) {
-				server.Endpoints = append(server.Endpoints, cueEndpoint{
-					Type:          endpoint.Type.String(),
-					ServiceName:   endpoint.ServiceName,
-					AllocatedName: endpoint.AllocatedName,
-					ContainerPort: endpoint.GetPort().GetContainerPort(),
-				})
-			}
+		for _, endpoint := range stack.EndpointsBy(pkg.PackageName()) {
+			server.Endpoints = append(server.Endpoints, cueEndpoint{
+				Type:          endpoint.Type.String(),
+				ServiceName:   endpoint.ServiceName,
+				AllocatedName: endpoint.AllocatedName,
+				ContainerPort: endpoint.GetPort().GetContainerPort(),
+			})
 		}
 
 		return server, nil
 	}
 }
 
-func FetchServerWorkspace(workspace *schema.Workspace, loc protos.Location) FetcherFunc {
+func FetchServerWorkspace(loc protos.Location) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		return cueWorkspace{
-			ModuleName: workspace.ModuleName,
 			ServerPath: loc.Rel(),
 		}, nil
 	}
@@ -224,7 +219,7 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 	}
 }
 
-func FetchEnv(env *schema.Environment, workspace *schema.Workspace) FetcherFunc {
+func FetchEnv(env *schema.Environment) FetcherFunc {
 	return func(context.Context, cue.Value) (interface{}, error) {
 		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
 	}

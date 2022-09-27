@@ -56,7 +56,6 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 
 #Workspace: {
 	@fn(input=workspace)
-	moduleName: string
 	serverPath: string
 }
 

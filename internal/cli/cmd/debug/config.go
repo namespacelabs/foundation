@@ -62,7 +62,6 @@ func newComputeConfigCmd() *cobra.Command {
 
 			sargs := pkggraph.StartupInputs{
 				Stack:         stack.Proto(),
-				Server:        server.Proto(),
 				ServerImage:   "imageversion",
 				ServerRootAbs: server.Location.Abs(),
 			}

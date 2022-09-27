@@ -665,7 +665,6 @@ func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Serv
 
 	inputs := pkggraph.StartupInputs{
 		Stack:         stack.Proto(),
-		Server:        srv.Proto(),
 		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: srv.Location.Abs(),
 	}
