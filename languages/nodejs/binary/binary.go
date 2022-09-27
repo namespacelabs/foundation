@@ -67,7 +67,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		// For non-dev builds creating an optimized, small image.
 		// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 		out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
-			With(pkgMgr.InstallCli,
+			With(pkgMgr.InstallCliWithConfigFiles,
 				production.NonRootUser(),
 				llbutil.CopyFrom(buildBase, appRootPath, appRootPath),
 			)
@@ -81,8 +81,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 func prepareAndRunInstall(ctx context.Context, pkgMgr pkgMgr, base llb.State, src llb.State) llb.State {
 	return base.
 		File(llb.Mkdir(appRootPath, 0644)).
-		With(llb.Dir(appRootPath), pkgMgr.InstallCli).
-		With(llbutil.CopyFrom(src, "./package.json", ".")).
+		With(llb.Dir(appRootPath), pkgMgr.InstallCliWithConfigFiles).
 		Run(llb.Shlex(pkgMgr.CliName() + " install")).Root()
 }
 

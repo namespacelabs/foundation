@@ -24,32 +24,39 @@ const (
 	pnpmPath     = "/bin/pnpm"
 )
 
+var (
+	// Paths of files required for installing dependencies. Also changes to them trigger a full rebuild.
+	pathsForBuild = []string{
+		// Common
+		"package.json",
+		// Npm
+		".npmrc", npmLockfile,
+		// Yarn
+		".yarnrc.yml", ".yarn/releases", ".yarn/plugins", ".yarn/patches", ".yarn/versions", yarnLockfile,
+		// Pnpm
+		pnpmLockfile,
+	}
+	patternsForBuild = pathsToPatterns(pathsForBuild)
+)
+
 type pkgMgr interface {
-	InstallCli(llb.State) llb.State
+	// Install the package manager CLI and any config files (e.g. ".yarnrc.yml") required for installing dependencies.
+	InstallCliWithConfigFiles(llb.State) llb.State
 	CliName() string
 }
 
 func detectPkgMgr(platform specs.Platform, local buildkit.LocalContents, loc pkggraph.Location, fsys fs.FS) (pkgMgr, error) {
-	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), npmLockfile)); err == nil {
-		configsSrc := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-			Include: []string{"**/.npmrc", "**/" + npmLockfile},
-		})
+	configsSrc := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
+		Include: patternsForBuild,
+	})
 
+	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), npmLockfile)); err == nil {
 		return npmPkgMgr{configsSrc}, nil
 	}
 	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), yarnLockfile)); err == nil {
-		configsSrc := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-			Include: []string{"**/.yarnrc.yml", "**/.yarn/releases", "**/.yarn/plugins", "**/.yarn/patches", "**/.yarn/versions", "**/" + yarnLockfile},
-		})
-
 		return yarnPkgMgr{configsSrc}, nil
 	}
 	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), pnpmLockfile)); err == nil {
-		configsSrc := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-			// Pnpm uses the same .npmrc as npm.
-			Include: []string{"**/.npmrc", "**/" + pnpmLockfile},
-		})
-
 		return newPnpmPkgMgr(platform, configsSrc)
 	}
 
@@ -60,7 +67,7 @@ type npmPkgMgr struct {
 	configsSrc llb.State
 }
 
-func (npm npmPkgMgr) InstallCli(base llb.State) llb.State {
+func (npm npmPkgMgr) InstallCliWithConfigFiles(base llb.State) llb.State {
 	// Not installing "npm" itself: relying on the base version built into the "node:alpine" image.
 	return base.With(llbutil.CopyFrom(npm.configsSrc, ".", "."))
 }
@@ -70,7 +77,7 @@ type yarnPkgMgr struct {
 	src llb.State
 }
 
-func (yarn yarnPkgMgr) InstallCli(base llb.State) llb.State {
+func (yarn yarnPkgMgr) InstallCliWithConfigFiles(base llb.State) llb.State {
 	// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
 	return base.With(llbutil.CopyFrom(yarn.src, ".", "."))
 }
@@ -97,8 +104,16 @@ func newPnpmPkgMgr(platform specs.Platform, src llb.State) (pnpmPkgMgr, error) {
 }
 
 // Relying on the version built into the "node:alpine" image.
-func (p pnpmPkgMgr) InstallCli(base llb.State) llb.State {
+func (p pnpmPkgMgr) InstallCliWithConfigFiles(base llb.State) llb.State {
 	return base.With(llbutil.CopyFrom(p.base, pnpmPath, pnpmPath)).
 		With(llbutil.CopyFrom(p.src, ".", "."))
 }
 func (pnpmPkgMgr) CliName() string { return pnpmPath }
+
+func pathsToPatterns(paths []string) []string {
+	patterns := make([]string, len(paths))
+	for i, path := range paths {
+		patterns[i] = "**/" + path
+	}
+	return patterns
+}
