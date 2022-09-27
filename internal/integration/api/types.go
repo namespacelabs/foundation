@@ -7,18 +7,17 @@ package api
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type Integration interface {
+type IntegrationParser interface {
 	// For example, "namespace.so/from-dockerfile"
 	Kind() string
 
 	// Shortcut for "kind", for example, "docker"
 	Shortcut() string
 
-	// Mutates "pkg"
 	// "integration" is nil if the user used the shortest syntactic form: `integration: "golang"`
-	Parse(ctx context.Context, pkg *pkggraph.Package, integration *fncue.CueV) error
+	Parse(ctx context.Context, integration *fncue.CueV) (proto.Message, error)
 }

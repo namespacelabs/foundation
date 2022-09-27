@@ -1,0 +1,28 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema;
+
+option go_package = "namespacelabs.dev/foundation/schema";
+
+import "google/protobuf/any.proto";
+
+message Integration {
+    // Contains the integration-specific configuration, see below.
+    google.protobuf.Any data = 1;
+}
+
+message DockerIntegration {
+    string dockerfile = 1;
+}
+
+message GoIntegration {
+    string package = 1;
+}
+
+message NodejsIntegration {
+    string package = 1;
+}
