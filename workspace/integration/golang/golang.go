@@ -19,7 +19,7 @@ func Apply(ctx context.Context, data *schema.GoIntegration, pkg *pkggraph.Packag
 		return fnerrors.UserError(pkg.Location, "go integration requires a server")
 	}
 
-	goPkg := data.Package
+	goPkg := data.Pkg
 	if goPkg == "" {
 		goPkg = "."
 	}

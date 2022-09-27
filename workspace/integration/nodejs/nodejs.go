@@ -20,7 +20,7 @@ func Apply(ctx context.Context, data *schema.NodejsIntegration, pkg *pkggraph.Pa
 		return fnerrors.UserError(pkg.Location, "nodejs integration requires a server")
 	}
 
-	nodePkg := data.Package
+	nodePkg := data.Pkg
 	if nodePkg == "" {
 		nodePkg = "."
 	}

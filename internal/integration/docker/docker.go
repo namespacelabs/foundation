@@ -5,31 +5,14 @@
 package docker
 
 import (
-	"context"
-
-	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/integration/api"
+	"namespacelabs.dev/foundation/internal/integration/helpers"
 	"namespacelabs.dev/foundation/schema"
 )
 
-type Parser struct{}
-
-func (i *Parser) Kind() string     { return "namespace.so/from-dockerfile" }
-func (i *Parser) Shortcut() string { return "docker" }
-
-type cueIntegrationDocker struct {
-	Dockerfile string `json:"dockerfile"`
-}
-
-func (i *Parser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
-	var bits cueIntegrationDocker
-	if v != nil {
-		if err := v.Val.Decode(&bits); err != nil {
-			return nil, err
-		}
+func NewParser() api.IntegrationParser {
+	return &helpers.SimpleJsonParser[*schema.DockerIntegration]{
+		SyntaxKind:     "namespace.so/from-dockerfile",
+		SyntaxShortcut: "docker",
 	}
-
-	return &schema.DockerIntegration{
-		Dockerfile: bits.Dockerfile,
-	}, nil
 }

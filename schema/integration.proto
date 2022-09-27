@@ -20,9 +20,9 @@ message DockerIntegration {
 }
 
 message GoIntegration {
-    string package = 1;
+    string pkg = 1;
 }
 
 message NodejsIntegration {
-    string package = 1;
+    string pkg = 1;
 }
