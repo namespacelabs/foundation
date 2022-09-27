@@ -8,17 +8,18 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 // This function contains frontend-agnostic validation and processing code.
 // The "opaque integration" will be applied here.
-func SealPackage(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
+func SealPackage(ctx context.Context, env *schema.Environment, pl EarlyPackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
 	var err error
 
 	if pp.Integration != nil {
-		if err = api.ApplyIntegration(ctx, pp); err != nil {
+		if err = api.ApplyIntegration(ctx, env, pl, pp); err != nil {
 			return nil, err
 		}
 	}

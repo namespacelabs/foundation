@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/integration/api"
 )
 
-func Apply(ctx context.Context, data *schema.DockerIntegration, pkg *pkggraph.Package) error {
+func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.DockerIntegration, pkg *pkggraph.Package) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "docker integration requires a server")

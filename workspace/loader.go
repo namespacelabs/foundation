@@ -77,6 +77,7 @@ var MakeFrontend func(EarlyPackageLoader, *schema.Environment) Frontend
 type PackageLoader struct {
 	absPath       string
 	workspace     planning.Workspace
+	env           *schema.Environment
 	frontend      Frontend
 	rootmodule    *pkggraph.Module
 	mu            sync.RWMutex
@@ -112,6 +113,7 @@ func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = env.Workspace().LoadedFrom().AbsPath
 	pl.workspace = env.Workspace()
+	pl.env = env.Environment()
 	pl.loaded = map[schema.PackageName]*pkggraph.Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
 	pl.fsys = map[string]*memfs.IncrementalFS{}
@@ -385,7 +387,7 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 			return nil, err
 		}
 
-		return SealPackage(ctx, l.pl, pp, l.opts)
+		return SealPackage(ctx, l.pl.env, l.pl, pp, l.opts)
 	})
 
 	l.mu.Lock()
