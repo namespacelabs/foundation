@@ -11,10 +11,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	integrationapi "namespacelabs.dev/foundation/internal/integration/api"
+	integrationparsing "namespacelabs.dev/foundation/internal/integration/api"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
+	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 type Frontend struct {
@@ -148,8 +150,14 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		parsedPkg.Server = parsedSrv
 
 		if i := server.LookupPath("integration"); i.Exists() {
-			if err := integrationapi.ParseIntegration(ctx, loc, i, parsedPkg); err != nil {
+			integration, err := integrationparsing.ParseIntegration(ctx, loc, i)
+			if err != nil {
 				return nil, err
+			}
+
+			parsedPkg.Integration = &schema.Integration{
+				Kind: integration.Kind,
+				Data: protos.WrapAnyOrDie(integration.Data),
 			}
 		}
 
@@ -159,7 +167,8 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 				return nil, err
 			}
 
-			err = integrationapi.SetServerBinary(parsedPkg, bin, nil)
+			// TODO: don't set the server binary here, instead introduce an "image" integration.
+			err = integrationapplying.SetServerBinary(parsedPkg, bin, nil)
 			if err != nil {
 				return nil, err
 			}

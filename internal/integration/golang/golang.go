@@ -7,43 +7,29 @@ package integrations
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/integration/api"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type GoIntegration struct {
-}
+type GoIntegrationParser struct{}
+
+func (i *GoIntegrationParser) Kind() string     { return "namespace.so/from-go" }
+func (i *GoIntegrationParser) Shortcut() string { return "go" }
 
 type cueIntegrationGo struct {
 	Package string `json:"pkg"`
 }
 
-func (i *GoIntegration) Kind() string {
-	return "namespace.so/from-go"
-}
-
-func (i *GoIntegration) Shortcut() string {
-	return "go"
-}
-
-func (i *GoIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fncue.CueV) error {
+func (i *GoIntegrationParser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationGo
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	goPkg := bits.Package
-	if goPkg == "" {
-		goPkg = "."
-	}
-
-	return api.SetServerBinary(pkg,
-		&schema.LayeredImageBuildPlan{
-			LayerBuildPlan: []*schema.ImageBuildPlan{{GoPackage: goPkg}},
-		},
-		[]string{"/" + pkg.Server.Name})
+	return &schema.GoIntegration{
+		Package: bits.Package,
+	}, nil
 }

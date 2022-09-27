@@ -7,48 +7,29 @@ package nodejs
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/integration/api"
-	"namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type NodejsIntegration struct {
-}
+type NodejsIntegrationParser struct{}
+
+func (i *NodejsIntegrationParser) Kind() string     { return "namespace.so/from-nodejs" }
+func (i *NodejsIntegrationParser) Shortcut() string { return "nodejs" }
 
 type cueIntegrationNodejs struct {
 	Package string `json:"pkg"`
 }
 
-func (i *NodejsIntegration) Kind() string {
-	return "namespace.so/from-nodejs"
-}
-
-func (i *NodejsIntegration) Shortcut() string {
-	return "nodejs"
-}
-
-func (i *NodejsIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fncue.CueV) error {
+func (i *NodejsIntegrationParser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationNodejs
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	nodePkg := bits.Package
-	if nodePkg == "" {
-		nodePkg = "."
-	}
-
-	return api.SetServerBinary(
-		pkg,
-		&schema.LayeredImageBuildPlan{
-			LayerBuildPlan: []*schema.ImageBuildPlan{{
-				NodejsBuild: &schema.ImageBuildPlan_NodejsBuild{
-					RelPath: nodePkg,
-				}}},
-		},
-		[]string{binary.RunScriptPath})
+	return &schema.NodejsIntegration{
+		Package: bits.Package,
+	}, nil
 }

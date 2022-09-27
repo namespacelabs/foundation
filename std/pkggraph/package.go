@@ -27,6 +27,10 @@ type Package struct {
 	// Inlined or explicitly defined binaries.
 	Binaries []*schema.Binary
 
+	// Integration that has been applied to this package. May be nil.
+	// Shouldn't be used outside of workspace.SealPackage.
+	Integration *schema.Integration
+
 	// Resources associated with node types.
 	Provides    map[string]*protos.FileDescriptorSetAndDeps // key: `Provides.Name`
 	Services    map[string]*protos.FileDescriptorSetAndDeps // key: fully qualified service name

@@ -8,6 +8,7 @@ import (
 	"context"
 	"sort"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -15,31 +16,35 @@ import (
 
 var (
 	// Key: kind
-	registeredIntegrations = map[string]Integration{}
+	registeredIntegrations = map[string]IntegrationParser{}
 	sortedIntegrationKinds []string
 )
 
 // Must be called before ParseIntegration.
-func Register(i Integration) {
+func Register(i IntegrationParser) {
 	registeredIntegrations[i.Kind()] = i
 	// Caching a deterministic order of integrations
 	sortedIntegrationKinds = append(sortedIntegrationKinds, i.Kind())
 	sort.Strings(sortedIntegrationKinds)
 }
 
-// Mutates "pkg"
-func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV, pkg *pkggraph.Package) error {
+type ParsedIntegration struct {
+	Kind string
+	Data proto.Message
+}
+
+func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) (ParsedIntegration, error) {
 	// First checking for the full kind
 	if kind := v.LookupPath("kind"); kind.Exists() {
 		str, err := kind.Val.String()
 		if err != nil {
-			return err
+			return ParsedIntegration{}, err
 		}
 
 		if i, ok := registeredIntegrations[str]; ok {
-			return i.Parse(ctx, pkg, v)
+			return parse(ctx, i, v)
 		} else {
-			return fnerrors.UserError(loc, "unknown integration kind: %s", str)
+			return ParsedIntegration{}, fnerrors.UserError(loc, "unknown integration kind: %s", str)
 		}
 	}
 
@@ -50,14 +55,25 @@ func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV,
 	for _, kind := range sortedIntegrationKinds {
 		i := registeredIntegrations[kind]
 		if shortV := v.LookupPath(i.Shortcut()); shortV.Exists() {
-			return i.Parse(ctx, pkg, shortV)
+			return parse(ctx, i, shortV)
 		}
 		// Shortest form:
 		//  integration: "golang"
 		if str, err := v.Val.String(); err == nil && str == i.Shortcut() {
-			return i.Parse(ctx, pkg, nil)
+			return parse(ctx, i, nil)
 		}
 	}
 
-	return fnerrors.UserError(loc, "integration is not recognized")
+	return ParsedIntegration{}, fnerrors.UserError(loc, "integration is not recognized")
+}
+
+func parse(ctx context.Context, i IntegrationParser, v *fncue.CueV) (ParsedIntegration, error) {
+	data, err := i.Parse(ctx, v)
+	if err != nil {
+		return ParsedIntegration{}, err
+	}
+	return ParsedIntegration{
+		Kind: i.Kind(),
+		Data: data,
+	}, nil
 }

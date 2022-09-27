@@ -37,10 +37,10 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/git"
-	integrationapi "namespacelabs.dev/foundation/internal/integration/api"
-	dockerintegration "namespacelabs.dev/foundation/internal/integration/docker"
-	gointegration "namespacelabs.dev/foundation/internal/integration/golang"
-	nodejsintegration "namespacelabs.dev/foundation/internal/integration/nodejs"
+	integrationparsing "namespacelabs.dev/foundation/internal/integration/api"
+	dockerparser "namespacelabs.dev/foundation/internal/integration/docker"
+	goparser "namespacelabs.dev/foundation/internal/integration/golang"
+	nodejsparser "namespacelabs.dev/foundation/internal/integration/nodejs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
@@ -72,6 +72,10 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
+	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
+	dockerapplier "namespacelabs.dev/foundation/workspace/integration/docker"
+	goapplier "namespacelabs.dev/foundation/workspace/integration/golang"
+	nodejsapplier "namespacelabs.dev/foundation/workspace/integration/nodejs"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -208,10 +212,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		nodeintegration.Register()
 		opaque.Register()
 
-		// Opaque integrations
-		integrationapi.Register(&dockerintegration.DockerIntegration{})
-		integrationapi.Register(&gointegration.GoIntegration{})
-		integrationapi.Register(&nodejsintegration.NodejsIntegration{})
+		// Opaque integrations: parsing
+		integrationparsing.Register(&dockerparser.DockerIntegrationParser{})
+		integrationparsing.Register(&goparser.GoIntegrationParser{})
+		integrationparsing.Register(&nodejsparser.NodejsIntegrationParser{})
+
+		// Opaque integrations: applying
+		integrationapplying.Register(&dockerapplier.DockerIntegrationApplier{})
+		integrationapplying.Register(&goapplier.GoIntegrationApplier{})
+		integrationapplying.Register(&nodejsapplier.NodejsIntegrationApplier{})
 
 		// Codegen
 		codegen.Register()

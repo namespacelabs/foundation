@@ -6,49 +6,30 @@ package docker
 
 import (
 	"context"
-	"io/fs"
-	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/integration/api"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type DockerIntegration struct {
-}
+type DockerIntegrationParser struct{}
+
+func (i *DockerIntegrationParser) Kind() string     { return "namespace.so/from-dockerfile" }
+func (i *DockerIntegrationParser) Shortcut() string { return "docker" }
 
 type cueIntegrationDocker struct {
 	Dockerfile string `json:"dockerfile"`
 }
 
-func (i *DockerIntegration) Kind() string {
-	return "namespace.so/from-dockerfile"
-}
-
-func (i *DockerIntegration) Shortcut() string {
-	return "docker"
-}
-
-func (i *DockerIntegration) Parse(ctx context.Context, pkg *pkggraph.Package, v *fncue.CueV) error {
+func (i *DockerIntegrationParser) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationDocker
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	dockerfile := bits.Dockerfile
-	if dockerfile == "" {
-		dockerfile = "Dockerfile"
-	}
-
-	if _, err := fs.Stat(pkg.Location.Module.ReadOnlyFS(), filepath.Join(pkg.Location.Rel(), dockerfile)); err != nil {
-		return fnerrors.Wrapf(pkg.Location, err, "could not find %q file, please verify that the specified dockerfile path is correct", dockerfile)
-	}
-
-	return api.SetServerBinary(pkg, &schema.LayeredImageBuildPlan{
-		LayerBuildPlan: []*schema.ImageBuildPlan{{Dockerfile: dockerfile}},
-	}, nil)
+	return &schema.DockerIntegration{
+		Dockerfile: bits.Dockerfile,
+	}, nil
 }
