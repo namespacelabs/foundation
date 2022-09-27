@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/production"
@@ -69,12 +70,12 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 
 	if bnj.isDevBuild {
 		// Adding dev controller
-		pkg, err := bnj.serverEnv.LoadByName(ctx, controllerPkg.AsPackageName())
+		pkg, err := bnj.serverEnv.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, env, binary.BuildImageOpts{UsePrebuilts: true})
+		p, err := binary.Plan(ctx, pkg, hotreload.ControllerPkg.Name, env, binary.BuildImageOpts{UsePrebuilts: true})
 		if err != nil {
 			return nil, err
 		}

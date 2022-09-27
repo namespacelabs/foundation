@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/languages"
 	nodejsintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
+	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -41,12 +42,11 @@ var (
 )
 
 const (
-	webPkg       schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
 	httpPort                        = 40000
 	fileSyncPort                    = 50000
 	httpPortName                    = "http-port"
 	compiledPath                    = "static"
-	ForceProd                       = false
+	webPkg       schema.PackageName = "namespacelabs.dev/foundation/std/web/http"
 )
 
 func Register() {
@@ -74,7 +74,7 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 }
 
 func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv parsed.Server, isFocus bool) (build.Spec, error) {
-	if useDevBuild(srv.SealedContext().Environment()) {
+	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
@@ -144,7 +144,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 }
 
 func prepareBuild(ctx context.Context, loc pkggraph.Location, env planning.Context, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
-	if !useDevBuild(env.Environment()) {
+	if !opaque.UseDevBuild(env.Environment()) {
 
 		extra = append(extra, generateProdViteConfig())
 
@@ -217,7 +217,7 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 }
 
 func (impl) PrepareRun(ctx context.Context, srv parsed.Server, run *runtime.ContainerRunOpts) error {
-	if useDevBuild(srv.SealedContext().Environment()) {
+	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		configuration := &admin.Configuration{
 			PackageBase:  "/packages",
 			RevproxyPort: httpPort,
@@ -270,10 +270,6 @@ func (impl) PrepareRun(ctx context.Context, srv parsed.Server, run *runtime.Cont
 	// 	UserID: "101", // This is the image's default. We lift it here explicitly for visibility at the runtime level.
 	// }
 	return nil
-}
-
-func useDevBuild(env *schema.Environment) bool {
-	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
 func (i impl) TidyNode(ctx context.Context, env planning.Context, pkgs pkggraph.PackageLoader, p *pkggraph.Package) error {

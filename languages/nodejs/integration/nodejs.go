@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
+	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -39,18 +40,12 @@ import (
 	srcprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-var (
-	controllerPkg = schema.MakePackageSingleRef("namespacelabs.dev/foundation/std/development/filesync/controller")
-)
-
 const (
 	grpcNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/grpc"
 	httpNode      schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/http"
 	runtimeNode   schema.PackageName = "namespacelabs.dev/foundation/std/nodejs/runtime"
 	implFileName                     = "impl.ts"
 	packageJsonFn                    = "package.json"
-	fileSyncPort                     = 50000
-	ForceProd                        = false
 )
 
 var ()
@@ -156,10 +151,6 @@ func Register() {
 	})
 }
 
-func useDevBuild(env *schema.Environment) bool {
-	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
-}
-
 type impl struct {
 	languages.MaybeGenerate
 	languages.MaybeTidy
@@ -189,7 +180,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 		return nil, err
 	}
 
-	isDevBuild := useDevBuild(server.SealedContext().Environment())
+	isDevBuild := opaque.UseDevBuild(server.SealedContext().Environment())
 
 	var module build.Workspace
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !server.Location.Module.IsExternal() && isDevBuild {
@@ -221,12 +212,12 @@ func pkgSupportsNodejs(pkg *pkggraph.Package) bool {
 }
 
 func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
-	if useDevBuild(srv.SealedContext().Environment()) {
+	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		if wsremote.Ctx(ctx) != nil {
 			return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 		}
 
-		devObserver := hotreload.NewFileSyncDevObserver(ctx, cluster, srv, fileSyncPort)
+		devObserver := hotreload.NewFileSyncDevObserver(ctx, cluster, srv, hotreload.FileSyncPort)
 
 		newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
 
@@ -237,12 +228,12 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 }
 
 func (impl) PrepareRun(ctx context.Context, srv parsed.Server, run *runtime.ContainerRunOpts) error {
-	if useDevBuild(srv.SealedContext().Environment()) {
+	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		// For dev builds we use runtime complication of Typescript.
 		run.ReadOnlyFilesystem = false
 
 		run.Command = []string{"/filesync-controller"}
-		run.Args = []string{"/app", fmt.Sprint(fileSyncPort), "nodemon",
+		run.Args = []string{"/app", fmt.Sprint(hotreload.FileSyncPort), "nodemon",
 			"--config", nodemonConfigPath,
 			filepath.Join(srv.Location.Rel(), "main.fn.ts")}
 	} else {
@@ -481,7 +472,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error
 }
 
 func (impl) DevelopmentPackages() []schema.PackageName {
-	return []schema.PackageName{controllerPkg.AsPackageName()}
+	return []schema.PackageName{hotreload.ControllerPkg.AsPackageName()}
 }
 
 func (impl impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema.SerializedInvocation, error) {

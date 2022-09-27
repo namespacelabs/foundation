@@ -11,25 +11,18 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-const (
-	ForceProd = false
-)
-
 func NodejsBuilder(env planning.Context, loc pkggraph.Location, cfg *schema.ImageBuildPlan_NodejsBuild, isFocus bool) (build.Spec, error) {
 	return &buildNodeJS{
 		loc:        loc.Module.MakeLocation(loc.Rel(cfg.RelPath)),
-		isDevBuild: useDevBuild(env.Environment()),
+		isDevBuild: opaque.UseDevBuild(env.Environment()),
 		isFocus:    isFocus,
 	}, nil
-}
-
-func useDevBuild(env *schema.Environment) bool {
-	return !ForceProd && env.Purpose == schema.Environment_DEVELOPMENT
 }
 
 type buildNodeJS struct {
