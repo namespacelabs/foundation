@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package api
+package entity
 
 import (
 	"context"
@@ -13,13 +13,13 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-type IntegrationParser interface {
+type EntityParser interface {
 	// For example, "namespace.so/from-dockerfile"
-	Kind() string
+	Url() string
 
 	// Shortcut for "kind", for example, "docker"
 	Shortcut() string
 
-	// "integration" is nil if the user used the shortest syntactic form: `integration: "golang"`
-	Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, integration *fncue.CueV) (proto.Message, error)
+	// "v" is nil if the user used the shortest syntactic form. Example: `integration: "golang"`
+	Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error)
 }

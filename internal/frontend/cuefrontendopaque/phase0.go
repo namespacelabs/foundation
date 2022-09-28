@@ -151,7 +151,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		parsedPkg.Server = parsedSrv
 
 		if i := server.LookupPath("integration"); i.Exists() {
-			integration, err := integrationparsing.ParseIntegration(ctx, ft.loader, loc, i)
+			integration, err := integrationparsing.IntegrationParser.ParseEntity(ctx, ft.loader, loc, i)
 			if err != nil {
 				return nil, err
 			}

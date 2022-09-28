@@ -15,12 +15,12 @@ import (
 )
 
 type SimpleJsonParser[V proto.Message] struct {
-	// Not "Kind" to avoid a collision with the "Kind" method.
-	SyntaxKind     string
+	// Not "Url" to avoid a collision with the "Url" method.
+	SyntaxUrl      string
 	SyntaxShortcut string
 }
 
-func (p *SimpleJsonParser[V]) Kind() string     { return p.SyntaxKind }
+func (p *SimpleJsonParser[V]) Url() string      { return p.SyntaxUrl }
 func (p *SimpleJsonParser[V]) Shortcut() string { return p.SyntaxShortcut }
 
 func (p *SimpleJsonParser[V]) Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
