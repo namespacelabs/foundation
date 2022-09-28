@@ -24,5 +24,16 @@ message GoIntegration {
 }
 
 message NodejsIntegration {
+    // Path to the Namespace package with the code. Default is "."
     string pkg = 1;
+
+    // Detected Node.js package manager.
+    NodePkgMgr node_pkg_mgr = 2;
+
+    enum NodePkgMgr {
+        PKG_MGR_UNKNOWN = 0;
+        NPM             = 1;
+        YARN            = 2;
+        PNPM            = 3;
+    }
 }

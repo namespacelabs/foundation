@@ -42,7 +42,7 @@ func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV)
 		}
 
 		if i, ok := registeredIntegrations[str]; ok {
-			return parse(ctx, i, v)
+			return parse(ctx, loc, i, v)
 		} else {
 			return ParsedIntegration{}, fnerrors.UserError(loc, "unknown integration kind: %s", str)
 		}
@@ -55,20 +55,20 @@ func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV)
 	for _, kind := range sortedIntegrationKinds {
 		i := registeredIntegrations[kind]
 		if shortV := v.LookupPath(i.Shortcut()); shortV.Exists() {
-			return parse(ctx, i, shortV)
+			return parse(ctx, loc, i, shortV)
 		}
 		// Shortest form:
 		//  integration: "golang"
 		if str, err := v.Val.String(); err == nil && str == i.Shortcut() {
-			return parse(ctx, i, nil)
+			return parse(ctx, loc, i, nil)
 		}
 	}
 
 	return ParsedIntegration{}, fnerrors.UserError(loc, "integration is not recognized")
 }
 
-func parse(ctx context.Context, i IntegrationParser, v *fncue.CueV) (ParsedIntegration, error) {
-	data, err := i.Parse(ctx, v)
+func parse(ctx context.Context, loc pkggraph.Location, i IntegrationParser, v *fncue.CueV) (ParsedIntegration, error) {
+	data, err := i.Parse(ctx, loc, v)
 	if err != nil {
 		return ParsedIntegration{}, err
 	}
