@@ -8,10 +8,12 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
+	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 type cueTest struct {
@@ -50,12 +52,17 @@ func parseTest(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggrap
 	}
 
 	if build := v.LookupPath("build"); build.Exists() {
-		cueBuild, err := parseCueBuild(ctx, name, loc, build)
+		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
 		if err != nil {
 			return nil, err
 		}
 
-		out.Driver = cueBuild.inlineBinary
+		binary, err := integrationapplying.GenerateBinary(ctx, pl, loc, name, integration.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		out.Driver = binary
 	} else {
 		return nil, fnerrors.UserError(loc, "missing build definition")
 	}

@@ -9,10 +9,12 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
+	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 type cueContainer struct {
@@ -27,7 +29,7 @@ type parsedCueContainer struct {
 }
 
 // TODO: make it common for the main "server" container and sidecars.
-func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, name string, loc pkggraph.Location, v *fncue.CueV) (*parsedCueContainer, error) {
+func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, pkg *pkggraph.Package, name string, loc pkggraph.Location, v *fncue.CueV) (*parsedCueContainer, error) {
 	var bits cueContainer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
@@ -73,13 +75,16 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, nam
 			return nil, fnerrors.UserError(loc, "cannot specify both 'build' and 'image'")
 		}
 
-		cueBuild, err := parseCueBuild(ctx, name, loc, build)
+		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
 		if err != nil {
 			return nil, err
 		}
 
-		out.container.BinaryRef = cueBuild.binaryRef
-		out.inlineBinaries = append(out.inlineBinaries, cueBuild.inlineBinary)
+		binaryRef, err := integrationapplying.GenerateBinaryAndAddToPackage(ctx, pl, pkg, name, integration.Data)
+		if err != nil {
+			return nil, err
+		}
+		out.container.BinaryRef = binaryRef
 	}
 
 	if out.container.BinaryRef == nil {

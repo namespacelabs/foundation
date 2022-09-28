@@ -10,4 +10,5 @@ import (
 
 var (
 	IntegrationParser *entity.DispatchingEntityParser
+	BuildParser       *entity.DispatchingEntityParser
 )

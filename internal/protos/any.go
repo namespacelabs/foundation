@@ -19,7 +19,10 @@ func NewFromType[V proto.Message]() V {
 }
 
 func TypeUrl[V proto.Message]() string {
-	m := NewFromType[V]()
+	return TypeUrlForInstance(NewFromType[V]())
+}
+
+func TypeUrlForInstance(m proto.Message) string {
 	const urlPrefix = "type.googleapis.com/"
 	return urlPrefix + string(m.ProtoReflect().Descriptor().FullName())
 }

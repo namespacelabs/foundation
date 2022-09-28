@@ -32,7 +32,7 @@ type Package struct {
 
 	// Integration that has been applied to this package. May be nil.
 	// Shouldn't be used outside of workspace.SealPackage.
-	Integration *schema.Integration
+	Integration *schema.PackageIntegration
 
 	// Resources associated with node types.
 	Provides    map[string]*protos.FileDescriptorSetAndDeps // key: `Provides.Name`

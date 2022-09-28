@@ -10,7 +10,8 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
 
-message Integration {
+// For whole packages.
+message PackageIntegration {
     // Contains the integration-specific configuration, see below.
     google.protobuf.Any data = 1;
 }

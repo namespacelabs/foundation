@@ -11,11 +11,6 @@ import (
 )
 
 func SetServerBinary(pkg *pkggraph.Package, buildPlan *schema.LayeredImageBuildPlan, commands []string) error {
-	if pkg.Server.MainContainer.BinaryRef != nil {
-		// TODO: add a more meaningful error message
-		return fnerrors.UserError(pkg.Location, "server binary is set multiple times")
-	}
-
 	pkg.Binaries = append(pkg.Binaries, &schema.Binary{
 		Name:      pkg.Server.Name,
 		BuildPlan: buildPlan,
@@ -23,7 +18,17 @@ func SetServerBinary(pkg *pkggraph.Package, buildPlan *schema.LayeredImageBuildP
 			Command: commands,
 		},
 	})
-	pkg.Server.MainContainer.BinaryRef = schema.MakePackageRef(pkg.Location.PackageName, pkg.Server.Name)
+
+	return SetServerBinaryRef(pkg, schema.MakePackageRef(pkg.Location.PackageName, pkg.Server.Name))
+}
+
+func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) error {
+	if pkg.Server.MainContainer.BinaryRef != nil {
+		// TODO: add a more meaningful error message
+		return fnerrors.UserError(pkg.Location, "server binary is set multiple times")
+	}
+
+	pkg.Server.MainContainer.BinaryRef = binaryRef
 
 	return nil
 }

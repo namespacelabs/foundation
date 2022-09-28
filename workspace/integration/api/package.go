@@ -17,12 +17,12 @@ import (
 
 var (
 	// Key: typeUrl
-	registeredIntegrations = map[string]func(context.Context, *schema.Environment, pkggraph.PackageLoader, *anypb.Any, *pkggraph.Package) error{}
+	registeredPackageIntegrations = map[string]func(context.Context, *schema.Environment, pkggraph.PackageLoader, *anypb.Any, *pkggraph.Package) error{}
 )
 
 // Must be called before ApplyIntegration.
-func Register[V proto.Message](handler func(context.Context, *schema.Environment, pkggraph.PackageLoader, V, *pkggraph.Package) error) {
-	registeredIntegrations[protos.TypeUrl[V]()] = func(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *anypb.Any, pkg *pkggraph.Package) error {
+func RegisterPackageIntegration[V proto.Message](handler func(context.Context, *schema.Environment, pkggraph.PackageLoader, V, *pkggraph.Package) error) {
+	registeredPackageIntegrations[protos.TypeUrl[V]()] = func(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *anypb.Any, pkg *pkggraph.Package) error {
 		msg := protos.NewFromType[V]()
 		if err := data.UnmarshalTo(msg); err != nil {
 			return err
@@ -32,12 +32,12 @@ func Register[V proto.Message](handler func(context.Context, *schema.Environment
 	}
 }
 
-func ApplyIntegration(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package) error {
+func ApplyPackageIntegration(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package) error {
 	if pkg.Integration == nil {
 		return nil
 	}
 
-	if i, ok := registeredIntegrations[pkg.Integration.Data.TypeUrl]; ok {
+	if i, ok := registeredPackageIntegrations[pkg.Integration.Data.TypeUrl]; ok {
 		return i(ctx, env, pl, pkg.Integration.Data, pkg)
 	} else {
 		return fnerrors.UserError(pkg.Location, "unknown integration kind: %s", pkg.Integration)

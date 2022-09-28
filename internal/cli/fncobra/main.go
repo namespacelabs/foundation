@@ -219,11 +219,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			goparser.NewParser(),
 			&nodejsparser.Parser{},
 		})
+		integrationparsing.BuildParser = entity.NewDispatchingEntityParser("with", []entity.EntityParser{
+			// Same syntax as docker integration so we can reuse the parser.
+			dockerparser.NewParser(),
+		})
 
 		// Opaque integrations: applying
-		integrationapplying.Register(dockerapplier.Apply)
-		integrationapplying.Register(goapplier.Apply)
-		integrationapplying.Register(nodejsapplier.Apply)
+		integrationapplying.RegisterPackageIntegration(dockerapplier.ApplyToPackage)
+		integrationapplying.RegisterBinaryIntegration(dockerapplier.CreateBinary)
+		integrationapplying.RegisterPackageIntegration(goapplier.Apply)
+		integrationapplying.RegisterPackageIntegration(nodejsapplier.Apply)
 
 		// Codegen
 		codegen.Register()
