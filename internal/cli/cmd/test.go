@@ -192,13 +192,8 @@ func NewTestCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[testing.StoredTestResults]) bool {
-					return a.Value.Bundle.Result.Success && !b.Value.Bundle.Result.Success
-				})
 
 				for k, res := range results {
-					printResult(stderr, style, testRefs[k], res, true)
-
 					if res.Set {
 						runs.Run[k] = &storage.TestRuns_Run{
 							TestBundleId: res.Value.ImageRef.ImageRef(),
@@ -214,6 +209,15 @@ func NewTestCmd() *cobra.Command {
 							IncompatibleLabel: incompatible[k].IncompatibleLabel,
 						})
 					}
+				}
+
+				// Sorting after processing results since the indices need to be synchronized with other slices.
+				slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[testing.StoredTestResults]) bool {
+					return a.Value.Bundle.Result.Success && !b.Value.Bundle.Result.Success
+				})
+				for _, res := range results {
+					pkgRef := schema.MakePackageRef(res.Result.Value.Package, res.Result.Value.TestBundleSummary.TestName)
+					printResult(stderr, style, pkgRef, res, true)
 				}
 			}
 
