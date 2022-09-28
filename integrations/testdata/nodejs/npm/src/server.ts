@@ -17,7 +17,7 @@ const HOST = "0.0.0.0";
 const app = express();
 app.get("/", (_: any, res: express.Response<any, any>) => {
 	// Accessing the env variables from cue file
-	res.send(`Hello, ${process.env.NAME}!`);
+	res.send(`Hello from npm, ${process.env.NAME}!`);
 });
 
 app.listen(PORT, HOST);
