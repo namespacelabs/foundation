@@ -127,7 +127,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			s.Stack = stack.Proto()
 		})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster.Planner(), stack, focus)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster.Planner(), stack)
 		if err != nil {
 			return err
 		}

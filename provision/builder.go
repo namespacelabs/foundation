@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -40,19 +39,21 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 
-	var foci uniquestrings.List
+	var foci schema.PackageList
 	for _, pkg := range focus {
-		foci.Add(pkg.String())
+		foci.Add(pkg)
 	}
 
-	s := &Stack{}
+	s := &Stack{
+		Focus: foci.PackageNames(),
+	}
 
 	for _, sb := range stack.servers {
 		s.Servers = append(s.Servers, *sb)
 	}
 
 	sort.Slice(s.Servers, func(i, j int) bool {
-		return order(foci, s.Servers[i].Server.PackageName().String(), s.Servers[j].Server.PackageName().String())
+		return order(foci, s.Servers[i].Server.PackageName(), s.Servers[j].Server.PackageName())
 	})
 
 	var endpoints []*schema.Endpoint
@@ -70,7 +71,7 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 		if e_i.ServerOwner == e_j.ServerOwner {
 			return strings.Compare(e_i.AllocatedName, e_j.AllocatedName) < 0
 		}
-		return order(foci, e_i.ServerOwner, e_j.ServerOwner)
+		return order(foci, schema.PackageName(e_i.ServerOwner), schema.PackageName(e_j.ServerOwner))
 	})
 
 	sort.Slice(internal, func(i, j int) bool {
@@ -80,7 +81,7 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 		if e_i.ServerOwner == e_j.ServerOwner {
 			return e_i.GetPort().GetContainerPort() < e_j.Port.GetContainerPort()
 		}
-		return order(foci, e_i.ServerOwner, e_j.ServerOwner)
+		return order(foci, schema.PackageName(e_i.ServerOwner), schema.PackageName(e_j.ServerOwner))
 	})
 
 	s.Endpoints = endpoints
@@ -88,14 +89,14 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 	return s
 }
 
-func order(foci uniquestrings.List, a, b string) bool {
-	if foci.Has(a) {
-		if !foci.Has(b) {
+func order(foci schema.PackageList, a, b schema.PackageName) bool {
+	if foci.Includes(a) {
+		if !foci.Includes(b) {
 			return true
 		}
-	} else if foci.Has(b) {
+	} else if foci.Includes(b) {
 		return false
 	}
 
-	return strings.Compare(a, b) < 0
+	return strings.Compare(a.String(), b.String()) < 0
 }

@@ -30,6 +30,7 @@ import (
 )
 
 type Stack struct {
+	Focus             []schema.PackageName
 	Servers           []Server
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
@@ -77,7 +78,13 @@ type ParsedNode struct {
 	}
 }
 
-func (stack *Stack) ServerPackageList() schema.PackageList {
+func (stack *Stack) FocusPackageList() schema.PackageList {
+	var pl schema.PackageList
+	pl.AddMultiple(stack.Focus...)
+	return pl
+}
+
+func (stack *Stack) AllPackageList() schema.PackageList {
 	var pl schema.PackageList
 	for _, srv := range stack.Servers {
 		pl.Add(srv.PackageName())

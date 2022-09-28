@@ -118,23 +118,23 @@ func NewTestCmd() *cobra.Command {
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
 
-						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) ([]parsed.Server, *provision.Stack, error) {
+						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) (*provision.Stack, error) {
 							var suts []parsed.Server
 
 							for _, pkg := range test.ServersUnderTest {
 								sut, err := parsed.RequireServerWith(ctx, buildEnv, pl, schema.PackageName(pkg))
 								if err != nil {
-									return nil, nil, err
+									return nil, err
 								}
 								suts = append(suts, sut)
 							}
 
 							stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
 							if err != nil {
-								return nil, nil, err
+								return nil, err
 							}
 
-							return suts, stack, nil
+							return stack, nil
 						})
 						if err != nil {
 							var inc fnerrors.IncompatibleEnvironmentErr

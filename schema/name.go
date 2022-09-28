@@ -76,6 +76,12 @@ func Strs(sch ...PackageName) []string {
 	return o
 }
 
+func List(packages []PackageName) PackageList {
+	var pl PackageList
+	pl.AddMultiple(packages...)
+	return pl
+}
+
 func IsParent(moduleName string, sch PackageName) (string, bool) {
 	if sch.Equals(moduleName) {
 		return ".", true

@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -48,7 +47,7 @@ type TestOpts struct {
 	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
-type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) ([]parsed.Server, *provision.Stack, error)
+type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) (*provision.Stack, error)
 
 func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())
@@ -84,7 +83,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	sut, stack, err := loadSUT(ctx, pl, testDef)
+	stack, err := loadSUT(ctx, pl, testDef)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
@@ -106,7 +105,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack, sut)
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
 	}
@@ -128,16 +127,12 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 
 	fixtureImage := oci.PublishResolvable(testBinTag, bin)
 
-	var sutServers []string
-	for _, srv := range sut {
-		sutServers = append(sutServers, srv.Proto().GetPackageName())
-	}
-
 	tag, err := registry.AllocateName(ctx, env, testPkg.PackageName())
 	if err != nil {
 		return nil, err
 	}
 
+	sutServers := stack.FocusPackageList().PackageNamesAsString()
 	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
 	if err != nil {
 		return nil, err

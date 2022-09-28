@@ -67,10 +67,10 @@ func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.
 		return nil, err
 	}
 
-	return PrepareDeployStack(ctx, env, rc, stack, focus)
+	return PrepareDeployStack(ctx, env, rc, stack)
 }
 
-func PrepareDeployStack(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, focus []parsed.Server) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack) (compute.Computable[*Plan], error) {
 	def, err := prepareHandlerInvocations(ctx, env, planner, stack)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func PrepareDeployStack(ctx context.Context, env planning.Context, planner runti
 
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, planner, focus, stack, def, makeBuildAssets(ingressFragments))
+	prepare, err := prepareBuildAndDeployment(ctx, env, planner, stack, def, makeBuildAssets(ingressFragments))
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +191,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 func prepareHandlerInvocations(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack) (compute.Computable[*handlerResult], error) {
 	return tasks.Return(ctx, tasks.Action("server.invoke-handlers").
 		Arg("env", env.Environment().Name).
-		Scope(stack.ServerPackageList().PackageNames()...),
+		Scope(stack.AllPackageList().PackageNames()...),
 		func(ctx context.Context) (compute.Computable[*handlerResult], error) {
 			handlers, err := computeHandlers(ctx, stack)
 			if err != nil {
@@ -230,19 +230,14 @@ func (bi builtImages) get(ref *schema.PackageRef) (builtImage, bool) {
 	return builtImage{}, false
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, servers []parsed.Server, stack *provision.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
-	var focus schema.PackageList
-	for _, server := range servers {
-		focus.Add(server.PackageName())
-	}
-
+func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, stack *provision.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
 	computedOnly := compute.Transform("return computed", stackDef, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.Computed, nil
 	})
 
 	// computedOnly is used exclusively by config images. They include the set of
 	// computed configurations that provision tools may have emitted.
-	imgs, err := prepareServerImages(ctx, env, rc, focus, stack, buildAssets, computedOnly)
+	imgs, err := prepareServerImages(ctx, env, rc, stack, buildAssets, computedOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +318,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 	secretData := compute.Map(
 		tasks.Action("server.collect-secret-data").
-			Scope(stack.ServerPackageList().PackageNames()...),
+			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
 			Proto("env", env.Environment()).
 			Computable("stackAndDefs", stackDef),
@@ -336,9 +331,9 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 	c1 := compute.Map(
 		tasks.Action("server.plan-deployment").
-			Scope(stack.ServerPackageList().PackageNames()...),
+			Scope(stack.AllPackageList().PackageNames()...),
 		finalInputs.
-			Indigestible("focus", focus).
+			Strs("focus", stack.AllPackageList().PackageNamesAsString()).
 			Computable("images", imageIDs).
 			Computable("stackAndDefs", stackDef).
 			Computable("secretData", secretData),
@@ -348,63 +343,9 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 			secrets := compute.MustGetDepValue(deps, secretData, "secretData")
 
-			stack := handlerR.Stack
-
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			var serverRuns []runtime.DeployableSpec
-			for k, srv := range stack.Servers {
-				img, ok := imageIDs.get(srv.PackageRef())
-				if !ok {
-					return prepareAndBuildResult{}, fnerrors.InternalError("%s: missing an image to run", srv.PackageName())
-				}
-
-				var run runtime.DeployableSpec
-
-				run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, img.Binary)
-				if err != nil {
-					return prepareAndBuildResult{}, err
-				}
-
-				if err := prepareRunOpts(ctx, stack, srv.Server, img, &run); err != nil {
-					return prepareAndBuildResult{}, err
-				}
-
-				sidecars, inits := stack.Servers[k].SidecarsAndInits()
-
-				if err := prepareContainerRunOpts(sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
-					return prepareAndBuildResult{}, err
-				}
-
-				if err := prepareContainerRunOpts(inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
-					return prepareAndBuildResult{}, err
-				}
-
-				if sr := handlerR.ServerDefs[srv.PackageName()]; sr != nil {
-					run.Extensions = sr.Extensions
-
-					for _, ext := range sr.ServerExtensions {
-						run.Volumes = append(run.Volumes, ext.Volume...)
-						run.MainContainer.Mounts = append(run.MainContainer.Mounts, ext.Mount...)
-					}
-				}
-
-				for _, ie := range stack.Proto().InternalEndpoint {
-					if srv.PackageName().Equals(ie.ServerOwner) {
-						run.InternalEndpoints = append(run.InternalEndpoints, ie)
-					}
-				}
-
-				run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
-				run.Focused = focus.Includes(srv.PackageName())
-
-				serverRuns = append(serverRuns, run)
-			}
-
-			deployment, err := rc.PlanDeployment(ctx, runtime.DeploymentSpec{
-				Specs:   serverRuns,
-				Secrets: *secrets,
-			})
+			deployment, err := planDeployment(ctx, rc, handlerR.Stack, handlerR.ServerDefs, imageIDs, sidecarCommands, *secrets)
 			if err != nil {
 				return prepareAndBuildResult{}, err
 			}
@@ -416,6 +357,67 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		})
 
 	return c1, nil
+}
+
+func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, serverDefs map[schema.PackageName]*serverDefs, imageIDs builtImages, sidecarCommands []sidecarPackage, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
+	focus := schema.List(stack.Focus)
+
+	// And finally compute the startup plan of each server in the stack, passing in the id of the
+	// images we just built.
+	var serverRuns []runtime.DeployableSpec
+	for k, srv := range stack.Servers {
+		img, ok := imageIDs.get(srv.PackageRef())
+		if !ok {
+			return nil, fnerrors.InternalError("%s: missing an image to run", srv.PackageName())
+		}
+
+		var run runtime.DeployableSpec
+
+		var err error
+		run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, img.Binary)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := prepareRunOpts(ctx, stack, srv.Server, img, &run); err != nil {
+			return nil, err
+		}
+
+		sidecars, inits := stack.Servers[k].SidecarsAndInits()
+
+		if err := prepareContainerRunOpts(sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
+			return nil, err
+		}
+
+		if err := prepareContainerRunOpts(inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
+			return nil, err
+		}
+
+		if sr := serverDefs[srv.PackageName()]; sr != nil {
+			run.Extensions = sr.Extensions
+
+			for _, ext := range sr.ServerExtensions {
+				run.Volumes = append(run.Volumes, ext.Volume...)
+				run.MainContainer.Mounts = append(run.MainContainer.Mounts, ext.Mount...)
+			}
+		}
+
+		for _, ie := range stack.Proto().InternalEndpoint {
+			if srv.PackageName().Equals(ie.ServerOwner) {
+				run.InternalEndpoints = append(run.InternalEndpoints, ie)
+			}
+		}
+
+		run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
+		run.Focused = focus.Includes(srv.PackageName())
+
+		serverRuns = append(serverRuns, run)
+	}
+
+	return planner.PlanDeployment(ctx, runtime.DeploymentSpec{
+		Specs:   serverRuns,
+		Secrets: secrets,
+	})
 }
 
 func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
@@ -431,8 +433,9 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 }
 
 func prepareServerImages(ctx context.Context, env planning.Context, planner runtime.Planner,
-	focus schema.PackageList, stack *provision.Stack, buildAssets languages.AvailableBuildAssets,
+	stack *provision.Stack, buildAssets languages.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverImages, error) {
+	focus := schema.List(stack.Focus)
 	imageList := []serverImages{}
 
 	for _, srv := range stack.Servers {
@@ -581,7 +584,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 		return h.Computed, nil
 	})
 
-	imageMap, err := prepareServerImages(ctx, env, planner, servers.Packages(), stack, makeBuildAssets(ingressFragments), computedOnly)
+	imageMap, err := prepareServerImages(ctx, env, planner, stack, makeBuildAssets(ingressFragments), computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}
