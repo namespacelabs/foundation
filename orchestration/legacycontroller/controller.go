@@ -37,6 +37,11 @@ func Prepare(ctx context.Context, _ ExtensionDeps) error {
 			kubedef.SelectEphemeral(),
 		),
 	})
+	w.Add(cleanupRuntimeConfig, metav1.ListOptions{
+		LabelSelector: kubedef.SerializeSelector(
+			kubedef.ManagedByUs(),
+		),
+	})
 
 	// TODO remodel dev controller (removal of unused deps) with incluster-NS
 	// w.Add(controlDev, metav1.ListOptions{
