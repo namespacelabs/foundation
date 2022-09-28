@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type IntegrationParser interface {
@@ -19,5 +20,5 @@ type IntegrationParser interface {
 	Shortcut() string
 
 	// "integration" is nil if the user used the shortest syntactic form: `integration: "golang"`
-	Parse(ctx context.Context, integration *fncue.CueV) (proto.Message, error)
+	Parse(ctx context.Context, loc pkggraph.Location, integration *fncue.CueV) (proto.Message, error)
 }

@@ -30,7 +30,8 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 		&schema.LayeredImageBuildPlan{
 			LayerBuildPlan: []*schema.ImageBuildPlan{{
 				NodejsBuild: &schema.ImageBuildPlan_NodejsBuild{
-					RelPath: nodePkg,
+					RelPath:    nodePkg,
+					NodePkgMgr: data.NodePkgMgr,
 				}}},
 		},
 		[]string{binary.RunScriptPath})

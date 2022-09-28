@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type SimpleJsonParser[V proto.Message] struct {
@@ -21,7 +22,7 @@ type SimpleJsonParser[V proto.Message] struct {
 func (p *SimpleJsonParser[V]) Kind() string     { return p.SyntaxKind }
 func (p *SimpleJsonParser[V]) Shortcut() string { return p.SyntaxShortcut }
 
-func (p *SimpleJsonParser[V]) Parse(ctx context.Context, v *fncue.CueV) (proto.Message, error) {
+func (p *SimpleJsonParser[V]) Parse(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	msg := protos.NewFromType[V]()
 	if v != nil {
 		if err := v.Val.Decode(&msg); err != nil {
