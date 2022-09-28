@@ -213,15 +213,7 @@ func pkgSupportsNodejs(pkg *pkggraph.Package) bool {
 
 func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
-		if wsremote.Ctx(ctx) != nil {
-			return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
-		}
-
-		devObserver := hotreload.NewFileSyncDevObserver(ctx, cluster, srv, hotreload.FileSyncPort)
-
-		newCtx, _ := wsremote.BufferAndSinkTo(ctx, devObserver.Deposit)
-
-		return newCtx, devObserver, nil
+		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 	}
 
 	return ctx, nil, nil

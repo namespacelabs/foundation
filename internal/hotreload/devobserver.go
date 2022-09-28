@@ -17,10 +17,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -36,7 +38,19 @@ type FileSyncDevObserver struct {
 	conn *grpc.ClientConn
 }
 
-func NewFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server, fileSyncPort int32) *FileSyncDevObserver {
+func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
+	if wsremote.Ctx(ctx) != nil {
+		return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
+	}
+
+	devObserver := newFileSyncDevObserver(ctx, cluster, srv, FileSyncPort)
+
+	newCtx, _ := wsremote.BufferAndSinkTo(ctx, devObserver.Deposit)
+
+	return newCtx, devObserver, nil
+}
+
+func newFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
 		server:       srv.Proto(),

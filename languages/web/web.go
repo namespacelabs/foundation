@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/languages"
@@ -205,15 +204,7 @@ func generateProdViteConfig() *memfs.FS {
 }
 
 func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
-	if wsremote.Ctx(ctx) != nil {
-		return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
-	}
-
-	devObserver := hotreload.NewFileSyncDevObserver(ctx, cluster, srv, fileSyncPort)
-
-	newCtx, _ := wsremote.BufferAndSinkTo(ctx, devObserver.Deposit)
-
-	return newCtx, devObserver, nil
+	return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 }
 
 func (impl) PrepareRun(ctx context.Context, srv parsed.Server, run *runtime.ContainerRunOpts) error {
