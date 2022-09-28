@@ -105,7 +105,7 @@ func NewDebugShellCmd() *cobra.Command {
 			Name:        "debug",
 			Id:          ids.NewRandomBase32ID(8),
 			Attachable:  runtime.AttachableKind_WITH_TTY,
-			RunOpts: runtime.ContainerRunOpts{
+			MainContainer: runtime.ContainerRunOpts{
 				Image:   imageID,
 				Command: []string{"bash"},
 			},

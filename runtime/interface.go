@@ -193,15 +193,14 @@ type DeployableSpec struct {
 	Name    string // Can be empty.
 	Volumes []*schema.Volume
 
-	RunOpts ContainerRunOpts
+	MainContainer ContainerRunOpts
+	Sidecars      []SidecarRunOpts
+	Inits         []SidecarRunOpts
 
 	ConfigImage   *oci.ImageID
 	RuntimeConfig *runtime.RuntimeConfig
 
-	ServerExtensions []*schema.ServerExtension
-	Extensions       []*schema.DefExtension
-	Sidecars         []SidecarRunOpts
-	Inits            []SidecarRunOpts
+	Extensions []*schema.DefExtension
 
 	Endpoints         []*schema.Endpoint         // Owned by this deployable.
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
@@ -253,8 +252,8 @@ type RunAs struct {
 }
 
 type SidecarRunOpts struct {
-	Name       string
-	PackageRef *schema.PackageRef
+	Name  string
+	Owner *schema.PackageRef
 	ContainerRunOpts
 }
 

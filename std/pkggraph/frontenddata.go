@@ -38,15 +38,11 @@ type ValueWithPath struct {
 	Value any
 }
 
-type ProvisionStack struct {
-	DeclaredStack []schema.PackageName
-}
-
 type PreparedProvisionPlan struct {
-	ProvisionStack
-	Provisioning []*schema.Invocation
-	Sidecars     []*schema.SidecarContainer
-	Inits        []*schema.SidecarContainer
+	DeclaredStack []schema.PackageName
+	Provisioning  []*schema.Invocation
+	Sidecars      []*schema.SidecarContainer
+	Inits         []*schema.SidecarContainer
 }
 
 func (p *PreparedProvisionPlan) AppendWith(rhs PreparedProvisionPlan) {

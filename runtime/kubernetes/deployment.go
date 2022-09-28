@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -142,13 +141,13 @@ func deployAsPods(env *schema.Environment) bool {
 }
 
 func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
-	if deployable.RunOpts.Image.Repository == "" {
-		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.RunOpts.Image)
+	if deployable.MainContainer.Image.Repository == "" {
+		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.MainContainer.Image)
 	}
 
 	secCtx := applycorev1.SecurityContext()
 
-	if deployable.RunOpts.ReadOnlyFilesystem {
+	if deployable.MainContainer.ReadOnlyFilesystem {
 		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
 	}
 
@@ -157,9 +156,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	mainContainer := applycorev1.Container().
 		WithName(name).
 		WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
-		WithImage(deployable.RunOpts.Image.RepoAndDigest()).
-		WithArgs(deployable.RunOpts.Args...).
-		WithCommand(deployable.RunOpts.Command...).
+		WithImage(deployable.MainContainer.Image.RepoAndDigest()).
+		WithArgs(deployable.MainContainer.Args...).
+		WithCommand(deployable.MainContainer.Command...).
 		WithSecurityContext(secCtx)
 
 	switch deployable.Attachable {
@@ -184,12 +183,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	if _, err := fillEnv(mainContainer, deployable.RunOpts.Env); err != nil {
+	if _, err := fillEnv(mainContainer, deployable.MainContainer.Env); err != nil {
 		return err
 	}
 
-	if deployable.RunOpts.WorkingDir != "" {
-		mainContainer = mainContainer.WithWorkingDir(deployable.RunOpts.WorkingDir)
+	if deployable.MainContainer.WorkingDir != "" {
+		mainContainer = mainContainer.WithWorkingDir(deployable.MainContainer.WorkingDir)
 	}
 
 	spec := applycorev1.PodSpec().
@@ -376,13 +375,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		return err
 	}
 
-	volumes := slices.Clone(deployable.Volumes)
-	mounts := slices.Clone(deployable.RunOpts.Mounts)
-
-	for _, ext := range deployable.ServerExtensions {
-		volumes = append(volumes, ext.Volume...)
-		mounts = append(mounts, ext.Mount...)
-	}
+	volumes := deployable.Volumes
+	mounts := deployable.MainContainer.Mounts
 
 	for k, volume := range volumes {
 		if volume.Name == "" {
@@ -616,7 +610,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				WithName(name).
 				WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 				WithImage(init.Image.RepoAndDigest()).
-				WithArgs(append(init.Args, initArgs[init.PackageRef.Canonical()]...)...).
+				WithArgs(append(init.Args, initArgs[init.Owner.Canonical()]...)...).
 				WithCommand(init.Command...).
 				WithVolumeMounts(initVolumeMounts...))
 	}
@@ -650,7 +644,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	if _, err := runAsToPodSecCtx(podSecCtx, deployable.RunOpts.RunAs); err != nil {
+	if _, err := runAsToPodSecCtx(podSecCtx, deployable.MainContainer.RunAs); err != nil {
 		return fnerrors.Wrap(deployable.Location, err)
 	}
 

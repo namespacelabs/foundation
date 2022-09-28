@@ -63,12 +63,12 @@ func newPsql() *cobra.Command {
 				}
 
 				return runtime.RunAttachedStdio(ctx, res.Env, rt, runtime.DeployableSpec{
-					PackageName: schema.PackageName(bind.PackageName),
-					Attachable:  runtime.AttachableKind_WITH_TTY,
-					Class:       schema.DeployableClass_ONESHOT,
-					Id:          ids.NewRandomBase32ID(8),
-					Name:        "psql",
-					RunOpts:     opts,
+					PackageName:   schema.PackageName(bind.PackageName),
+					Attachable:    runtime.AttachableKind_WITH_TTY,
+					Class:         schema.DeployableClass_ONESHOT,
+					Id:            ids.NewRandomBase32ID(8),
+					Name:          "psql",
+					MainContainer: opts,
 				})
 			})
 		})
@@ -116,12 +116,12 @@ func newPgdump() *cobra.Command {
 				}, " "))
 
 				return runtime.RunAttached(ctx, res.Env, rt, runtime.DeployableSpec{
-					PackageName: schema.PackageName(bind.PackageName),
-					Attachable:  runtime.AttachableKind_WITH_STDIN_ONLY,
-					Class:       schema.DeployableClass_ONESHOT,
-					Id:          ids.NewRandomBase32ID(8),
-					Name:        "pgdump",
-					RunOpts:     opts,
+					PackageName:   schema.PackageName(bind.PackageName),
+					Attachable:    runtime.AttachableKind_WITH_STDIN_ONLY,
+					Class:         schema.DeployableClass_ONESHOT,
+					Id:            ids.NewRandomBase32ID(8),
+					Name:          "pgdump",
+					MainContainer: opts,
 				}, runtime.TerminalIO{
 					Stdin:  cmd,
 					Stdout: outw,
@@ -165,12 +165,12 @@ func newPgrestore() *cobra.Command {
 				defer f.Close()
 
 				return runtime.RunAttached(ctx, res.Env, rt, runtime.DeployableSpec{
-					PackageName: schema.PackageName(bind.PackageName),
-					Attachable:  runtime.AttachableKind_WITH_STDIN_ONLY,
-					Class:       schema.DeployableClass_ONESHOT,
-					Id:          ids.NewRandomBase32ID(8),
-					Name:        "pgrestore",
-					RunOpts:     opts,
+					PackageName:   schema.PackageName(bind.PackageName),
+					Attachable:    runtime.AttachableKind_WITH_STDIN_ONLY,
+					Class:         schema.DeployableClass_ONESHOT,
+					Id:            ids.NewRandomBase32ID(8),
+					Name:          "pgrestore",
+					MainContainer: opts,
 				}, runtime.TerminalIO{
 					Stdin:  f,
 					Stdout: os.Stdout,

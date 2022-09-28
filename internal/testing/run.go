@@ -149,7 +149,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				Class:         schema.DeployableClass_ONESHOT,
 				Id:            ids.NewRandomBase32ID(8),
 				Name:          fmt.Sprintf("%s-%s", test.TestRef.Name, pkgId),
-				RunOpts:       testRun,
+				MainContainer: testRun,
 				RuntimeConfig: test.RuntimeConfig,
 			}
 

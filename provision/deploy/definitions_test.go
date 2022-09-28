@@ -27,9 +27,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 			ParsedDeps: []*provision.ParsedNode{{
 				ProvisionPlan: pkggraph.ProvisionPlan{
 					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
-						ProvisionStack: pkggraph.ProvisionStack{
-							DeclaredStack: []schema.PackageName{"b", "c"},
-						},
+						DeclaredStack: []schema.PackageName{"b", "c"},
 					},
 				},
 			}},
@@ -42,9 +40,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 			ParsedDeps: []*provision.ParsedNode{{
 				ProvisionPlan: pkggraph.ProvisionPlan{
 					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
-						ProvisionStack: pkggraph.ProvisionStack{
-							DeclaredStack: []schema.PackageName{"c"},
-						},
+						DeclaredStack: []schema.PackageName{"c"},
 					},
 				},
 			}},
@@ -57,9 +53,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 			ParsedDeps: []*provision.ParsedNode{{
 				ProvisionPlan: pkggraph.ProvisionPlan{
 					PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
-						ProvisionStack: pkggraph.ProvisionStack{
-							DeclaredStack: []schema.PackageName{},
-						},
+						DeclaredStack: []schema.PackageName{},
 					},
 				},
 			}},

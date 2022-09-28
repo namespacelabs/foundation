@@ -382,7 +382,11 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 				if sr := handlerR.ServerDefs[srv.PackageName()]; sr != nil {
 					run.Extensions = sr.Extensions
-					run.ServerExtensions = sr.ServerExtensions
+
+					for _, ext := range sr.ServerExtensions {
+						run.Volumes = append(run.Volumes, ext.Volume...)
+						run.MainContainer.Mounts = append(run.MainContainer.Mounts, ext.Mount...)
+					}
 				}
 
 				for _, ie := range stack.Proto().InternalEndpoint {
@@ -651,15 +655,15 @@ func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Serv
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Id = proto.Id
 	out.Name = proto.Name
-	out.Volumes = proto.Volumes
-	out.RunOpts.Mounts = proto.MainContainer.Mounts
+	out.Volumes = append(out.Volumes, proto.Volumes...)
+	out.MainContainer.Mounts = append(out.MainContainer.Mounts, proto.MainContainer.Mounts...)
 
-	out.RunOpts.Image = imgs.Binary
+	out.MainContainer.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
 		out.ConfigImage = &imgs.Config
 	}
 
-	if err := languages.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.RunOpts); err != nil {
+	if err := languages.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err
 	}
 
@@ -684,9 +688,9 @@ func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Serv
 		return err
 	}
 
-	out.RunOpts.Args = append(out.RunOpts.Args, merged.Args...)
-	out.RunOpts.Env = append(out.RunOpts.Env, srv.Proto().MainContainer.Env...)
-	out.RunOpts.Env = append(out.RunOpts.Env, merged.Env...)
+	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
+	out.MainContainer.Env = append(out.MainContainer.Env, srv.Proto().MainContainer.Env...)
+	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
 
 	return nil
 }
@@ -720,8 +724,8 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs bui
 		}
 
 		*out = append(*out, runtime.SidecarRunOpts{
-			Name:       container.Name,
-			PackageRef: binRef,
+			Name:  container.Name,
+			Owner: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
 				Image:   img.Binary,
 				Args:    container.Args,
