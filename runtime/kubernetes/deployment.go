@@ -45,7 +45,8 @@ var DeployAsPodsInTests = true
 const (
 	kubeNode schema.PackageName = "namespacelabs.dev/foundation/std/runtime/kubernetes"
 
-	runtimeConfigVersion = 0
+	runtimeConfigVersion       = 0
+	revisionHistoryLimit int32 = 10
 )
 
 type perEnvConf struct {
@@ -152,8 +153,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	name := kubedef.ServerCtrName(deployable)
 	containers := []string{name}
-	container := applycorev1.Container().
+	mainContainer := applycorev1.Container().
 		WithName(name).
+		WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 		WithImage(deployable.RunOpts.Image.RepoAndDigest()).
 		WithArgs(deployable.RunOpts.Args...).
 		WithCommand(deployable.RunOpts.Command...).
@@ -161,10 +163,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	switch deployable.Attachable {
 	case runtime.AttachableKind_WITH_STDIN_ONLY:
-		container = container.WithStdin(true).WithStdinOnce(true)
+		mainContainer = mainContainer.WithStdin(true).WithStdinOnce(true)
 
 	case runtime.AttachableKind_WITH_TTY:
-		container = container.WithStdin(true).WithStdinOnce(true).WithTTY(true)
+		mainContainer = mainContainer.WithStdin(true).WithStdinOnce(true).WithTTY(true)
 	}
 
 	var probes []*kubedef.ContainerExtension_Probe
@@ -181,12 +183,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	if _, err := fillEnv(container, deployable.RunOpts.Env); err != nil {
+	if _, err := fillEnv(mainContainer, deployable.RunOpts.Env); err != nil {
 		return err
 	}
 
 	if deployable.RunOpts.WorkingDir != "" {
-		container = container.WithWorkingDir(deployable.RunOpts.WorkingDir)
+		mainContainer = mainContainer.WithWorkingDir(deployable.RunOpts.WorkingDir)
 	}
 
 	spec := applycorev1.PodSpec().
@@ -280,7 +282,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					WithName(mount.Name).
 					WithReadOnly(mount.ReadOnly).
 					WithMountPath(mount.MountPath)
-				container = container.WithVolumeMounts(volumeMount)
+				mainContainer = mainContainer.WithVolumeMounts(volumeMount)
 				if mount.MountOnInit {
 					// Volume mounts may declare to be available also during server initialization.
 					// E.g. Initializing the schema of a data store requires early access to server secrets.
@@ -299,14 +301,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			if containerExt.Args != nil {
-				container = container.WithArgs(containerExt.Args...)
+				mainContainer = mainContainer.WithArgs(containerExt.Args...)
 			} else {
 				// Deprecated path.
 				for _, arg := range containerExt.ArgTuple {
-					if currentValue, found := getArg(container, arg.Name); found && currentValue != arg.Value {
+					if currentValue, found := getArg(mainContainer, arg.Name); found && currentValue != arg.Value {
 						return fnerrors.UserError(deployable.Location, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
 					}
-					container = container.WithArgs(fmt.Sprintf("--%s=%s", arg.Name, arg.Value))
+					mainContainer = mainContainer.WithArgs(fmt.Sprintf("--%s=%s", arg.Name, arg.Value))
 				}
 			}
 
@@ -364,18 +366,18 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	if readinessProbe != nil {
-		container = container.WithReadinessProbe(
+		mainContainer = mainContainer.WithReadinessProbe(
 			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.readinessInitialDelay),
 				probevalues, readinessProbe))
 	}
 
 	if livenessProbe != nil {
-		container = container.WithLivenessProbe(
+		mainContainer = mainContainer.WithLivenessProbe(
 			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.livenessInitialDelay),
 				probevalues, livenessProbe))
 	}
 
-	if _, err := fillEnv(container, env); err != nil {
+	if _, err := fillEnv(mainContainer, env); err != nil {
 		return err
 	}
 
@@ -516,7 +518,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 
 		volumeName := fmt.Sprintf("v-%s", mount.VolumeName)
-		container = container.WithVolumeMounts(applycorev1.VolumeMount().
+		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
 			WithMountPath(mount.Path).
 			WithName(volumeName).
 			WithReadOnly(mount.Readonly))
@@ -558,7 +560,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithName(configId).
 			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
 
-		container = container.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
+		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
 
 		// We do manual cleanup of unused configs. In the future they'll be owned by a deployment intent.
 		annotations[kubedef.K8sRuntimeConfig] = configId
@@ -579,6 +581,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 		scntr := applycorev1.Container().
 			WithName(name).
+			WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 			WithImage(sidecar.Image.RepoAndDigest()).
 			WithArgs(sidecar.Args...).
 			WithCommand(sidecar.Command...)
@@ -596,7 +599,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 		// Share all mounts with sidecards for now.
 		// XXX security review this.
-		scntr.VolumeMounts = container.VolumeMounts
+		scntr.VolumeMounts = mainContainer.VolumeMounts
 		spec.WithContainers(scntr)
 	}
 
@@ -616,6 +619,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		spec.WithInitContainers(
 			applycorev1.Container().
 				WithName(name).
+				WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 				WithImage(init.Image.RepoAndDigest()).
 				WithArgs(append(init.Args, initArgs[init.PackageRef.Canonical()]...)...).
 				WithCommand(init.Command...).
@@ -657,7 +661,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	spec = spec.
 		WithSecurityContext(podSecCtx).
-		WithContainers(container).
+		WithContainers(mainContainer).
 		WithAutomountServiceAccountToken(serviceAccount != "")
 
 	if serviceAccount != "" {
@@ -721,6 +725,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
 					WithReplicas(1).
+					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable)))),
 		})
@@ -734,6 +739,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
 					WithReplicas(1).
+					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable)))),
 		})
