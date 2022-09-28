@@ -19,7 +19,8 @@ func PrepareCluster(env planning.Context, confs ...compute.Computable[[]*schema.
 
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
 	prepares = append(prepares, confs...)
-	prepares = append(prepares, PrepareOrchestrator(env, kube))
+	// TODO requires a configured registry.
+	// prepares = append(prepares, PrepareOrchestrator(env, kube))
 	prepares = append(prepares, PrepareIngress(env, kube))
 
 	return prepares
