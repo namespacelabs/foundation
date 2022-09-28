@@ -5,7 +5,7 @@ ENDPOINT=`cat /namespace/config/runtime.json | jq -r ".stack_entry[0].service[0]
 
 RESPONSE=`curl -s $ENDPOINT`
 
-if [[ "$RESPONSE" != *"Hello,"* ]]; then
+if [[ "$RESPONSE" != *"Hello from complex docker"* ]]; then
     echo "Unexpected response: $RESPONSE"
     exit 1
 fi
