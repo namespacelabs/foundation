@@ -9,10 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"sort"
-	"strings"
 
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
@@ -40,25 +37,26 @@ var (
 	PushPrebuiltsToRegistry = false
 )
 
-type serverImages struct {
-	PackageRef  *schema.PackageRef
-	Binary      compute.Computable[oci.ImageID]
-	BinaryImage compute.Computable[oci.ResolvableImage]
-	Config      compute.Computable[oci.ImageID]
-}
-
 type ResolvedServerImages struct {
 	PackageRef     *schema.PackageRef
 	Binary         oci.ImageID
 	BinaryImage    compute.Computable[oci.ResolvableImage]
 	PrebuiltBinary bool
 	Config         oci.ImageID
-	Sidecars       []ResolvedSidecarImage
+	Sidecars       []ResolvedBinary
 }
 
-type ResolvedSidecarImage struct {
+type ResolvedBinary struct {
 	PackageRef *schema.PackageRef
 	Binary     oci.ImageID
+	Command    []string
+}
+
+type serverBuildSpec struct {
+	PackageName schema.PackageName
+	Binary      compute.Computable[oci.ImageID]
+	BinaryImage compute.Computable[oci.ResolvableImage]
+	Config      compute.Computable[oci.ImageID]
 }
 
 func PrepareDeployServers(ctx context.Context, env planning.Context, rc runtime.Planner, focus ...parsed.Server) (compute.Computable[*Plan], error) {
@@ -208,112 +206,28 @@ type prepareAndBuildResult struct {
 	DeploymentPlan *runtime.DeploymentPlan
 }
 
-type sidecarPackage struct {
-	PackageRef *schema.PackageRef
-	Command    []string
-}
-
-type builtImage struct {
-	PackageRef *schema.PackageRef
-	Binary     oci.ImageID
-	Config     oci.ImageID
-}
-
-type builtImages []builtImage
-
-func (bi builtImages) get(ref *schema.PackageRef) (builtImage, bool) {
-	for _, p := range bi {
-		if p.PackageRef.Equals(ref) {
-			return p, true
-		}
-	}
-	return builtImage{}, false
-}
-
 func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, stack *provision.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
-	computedOnly := compute.Transform("return computed", stackDef, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
-		return h.Computed, nil
-	})
-
-	// computedOnly is used exclusively by config images. They include the set of
-	// computed configurations that provision tools may have emitted.
-	imgs, err := prepareServerImages(ctx, env, rc, stack, buildAssets, computedOnly)
-	if err != nil {
-		return nil, err
-	}
-
-	sidecarImages, err := prepareSidecarAndInitImages(ctx, rc, stack)
+	packages, images, err := computeStackAndImages(ctx, env, rc, stack, stackDef, buildAssets)
 	if err != nil {
 		return nil, err
 	}
 
 	finalInputs := compute.Inputs()
 
-	var sidecarCommands []sidecarPackage
-	for _, v := range sidecarImages {
-		// There's an assumption here that sidecar/init packages are non-overlapping with servers.
-		imgs = append(imgs, serverImages{
-			PackageRef: v.PackageRef,
-			Binary:     v.Image,
-		})
-		sidecarCommands = append(sidecarCommands, sidecarPackage{PackageRef: v.PackageRef, Command: v.Command})
-	}
-
-	// Stable ordering.
-	sort.Slice(sidecarCommands, func(i, j int) bool {
-		return strings.Compare(sidecarCommands[i].PackageRef.String(), sidecarCommands[j].PackageRef.String()) < 0
-	})
-
-	// Ensure sidecarCommands are part of the cache key.
-	finalInputs = finalInputs.JSON("sidecarCommands", sidecarCommands)
-
-	// A two-layer graph is created here: the first layer depends on all the server binaries,
-	// while the second layer depends on all config images (if specified), plus depending on
-	// the outcome of invoking all handlers, and then the outcome of all server images. This
-	// allows all builds and invocations to occur in parallel.
-
-	binaryInputs := compute.Inputs()
-
-	sort.Slice(imgs, func(i, j int) bool {
-		return imgs[i].PackageRef.Compare(imgs[j].PackageRef) < 0
-	})
-	for _, img := range imgs {
-		if img.Binary != nil {
-			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:binary", img.PackageRef.Canonical()), img.Binary)
-		}
-		if img.Config != nil {
-			binaryInputs = binaryInputs.Computable(fmt.Sprintf("%s:config", img.PackageRef.Canonical()), img.Config)
-		}
+	imageInputs := compute.Inputs().Indigestible("packages", packages)
+	for k, pkg := range packages {
+		imageInputs = imageInputs.Computable(pkg.String(), images[k])
 	}
 
 	imageIDs := compute.Map(tasks.Action("server.build"),
-		binaryInputs, compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) (builtImages, error) {
-			var built builtImages
-
-			for _, img := range imgs {
-				imgResult, ok := compute.GetDepWithType[oci.ImageID](deps, fmt.Sprintf("%s:binary", img.PackageRef.Canonical()))
-				if !ok {
-					return nil, fnerrors.InternalError("server image missing")
-				}
-
-				b := builtImage{
-					PackageRef: img.PackageRef,
-					Binary:     imgResult.Value,
-				}
-
-				if v, ok := compute.GetDepWithType[oci.ImageID](deps, fmt.Sprintf("%s:config", img.PackageRef.Canonical())); ok {
-					b.Config = v.Value
-				}
-
-				built = append(built, b)
+		imageInputs, compute.Output{},
+		func(ctx context.Context, deps compute.Resolved) (map[schema.PackageName]ResolvedServerImages, error) {
+			m := map[schema.PackageName]ResolvedServerImages{}
+			for k, pkg := range packages {
+				srv := compute.MustGetDepValue(deps, images[k], pkg.String())
+				m[pkg] = srv
 			}
-
-			slices.SortFunc(built, func(a, b builtImage) bool {
-				return strings.Compare(a.PackageRef.String(), b.PackageRef.String()) < 0
-			})
-
-			return built, nil
+			return m, nil
 		})
 
 	secretData := compute.Map(
@@ -345,7 +259,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			deployment, err := planDeployment(ctx, rc, handlerR.Stack, handlerR.ServerDefs, imageIDs, sidecarCommands, *secrets)
+			deployment, err := planDeployment(ctx, rc, handlerR.Stack, handlerR.ServerDefs, imageIDs, *secrets)
 			if err != nil {
 				return prepareAndBuildResult{}, err
 			}
@@ -359,37 +273,37 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 	return c1, nil
 }
 
-func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, serverDefs map[schema.PackageName]*serverDefs, imageIDs builtImages, sidecarCommands []sidecarPackage, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, serverDefs map[schema.PackageName]*serverDefs, imageIDs map[schema.PackageName]ResolvedServerImages, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
 	focus := schema.List(stack.Focus)
 
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
 	for k, srv := range stack.Servers {
-		img, ok := imageIDs.get(srv.PackageRef())
+		resolved, ok := imageIDs[srv.PackageName()]
 		if !ok {
-			return nil, fnerrors.InternalError("%s: missing an image to run", srv.PackageName())
+			return nil, fnerrors.InternalError("%s: missing server build results", srv.PackageName())
 		}
 
 		var run runtime.DeployableSpec
 
 		var err error
-		run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, img.Binary)
+		run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, resolved.Binary)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := prepareRunOpts(ctx, stack, srv.Server, img, &run); err != nil {
+		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
 			return nil, err
 		}
 
 		sidecars, inits := stack.Servers[k].SidecarsAndInits()
 
-		if err := prepareContainerRunOpts(sidecars, imageIDs, sidecarCommands, &run.Sidecars); err != nil {
+		if err := prepareContainerRunOpts(sidecars, resolved, &run.Sidecars); err != nil {
 			return nil, err
 		}
 
-		if err := prepareContainerRunOpts(inits, imageIDs, sidecarCommands, &run.Inits); err != nil {
+		if err := prepareContainerRunOpts(inits, resolved, &run.Inits); err != nil {
 			return nil, err
 		}
 
@@ -434,12 +348,12 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 
 func prepareServerImages(ctx context.Context, env planning.Context, planner runtime.Planner,
 	stack *provision.Stack, buildAssets languages.AvailableBuildAssets,
-	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverImages, error) {
+	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverBuildSpec, error) {
 	focus := schema.List(stack.Focus)
-	imageList := []serverImages{}
+	imageList := []serverBuildSpec{}
 
 	for _, srv := range stack.Servers {
-		images := serverImages{PackageRef: srv.PackageRef()}
+		images := serverBuildSpec{PackageName: srv.PackageName()}
 
 		prebuilt, err := binary.PrebuiltImageID(ctx, srv.Location, env)
 		if err != nil {
@@ -509,7 +423,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 
 type containerImage struct {
 	PackageRef  *schema.PackageRef
-	OwnerServer *schema.PackageRef
+	OwnerServer schema.PackageName
 	Image       compute.Computable[oci.ImageID]
 	Command     []string
 }
@@ -558,7 +472,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 
 			res = append(res, containerImage{
 				PackageRef:  binRef,
-				OwnerServer: srv.PackageRef(),
+				OwnerServer: srv.PackageName(),
 				Image:       oci.PublishResolvable(tag, image),
 				Command:     prepared.Command,
 			})
@@ -580,11 +494,16 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
+	_, images, err := computeStackAndImages(ctx, env, planner, stack, def, makeBuildAssets(ingressFragments))
+	return stack, images, err
+}
+
+func computeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, def compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) ([]schema.PackageName, []compute.Computable[ResolvedServerImages], error) {
 	computedOnly := compute.Transform("return computed", def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.Computed, nil
 	})
 
-	imageMap, err := prepareServerImages(ctx, env, planner, stack, makeBuildAssets(ingressFragments), computedOnly)
+	imageMap, err := prepareServerImages(ctx, env, planner, stack, buildAssets, computedOnly)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -594,18 +513,19 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 		return nil, nil, err
 	}
 
+	var pkgs []schema.PackageName
 	var images []compute.Computable[ResolvedServerImages]
-	for _, r := range imageMap {
-		r := r // Close r.
-		in := compute.Inputs().Stringer("package", r.PackageRef).
-			Computable("binary", r.Binary)
-		if r.Config != nil {
-			in = in.Computable("config", r.Config)
+	for _, srv := range imageMap {
+		srv := srv // Close r.
+		in := compute.Inputs().Stringer("package", srv.PackageName).
+			Computable("binary", srv.Binary)
+		if srv.Config != nil {
+			in = in.Computable("config", srv.Config)
 		}
 
 		sidecarIndex := 0
 		for _, sidecar := range sidecarImages {
-			if sidecar.OwnerServer.Equals(r.PackageRef) {
+			if sidecar.OwnerServer == srv.PackageName {
 				in = in.Computable(fmt.Sprintf("sidecar%d", sidecarIndex), sidecar.Image)
 				sidecarIndex++
 			}
@@ -614,30 +534,32 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 		// We make the binary image as indigestible to make it clear that it is
 		// also an input below. We just care about retaining the original
 		// compute.Computable though.
-		in = in.Indigestible("binaryImage", r.BinaryImage)
+		in = in.Indigestible("binaryImage", srv.BinaryImage)
 
-		images = append(images, compute.Map(tasks.Action("server.compute-images").Scope(r.PackageRef.AsPackageName()), in, compute.Output{},
+		pkgs = append(pkgs, srv.PackageName)
+		images = append(images, compute.Map(tasks.Action("server.build-images").Scope(srv.PackageName), in, compute.Output{},
 			func(ctx context.Context, deps compute.Resolved) (ResolvedServerImages, error) {
-				binary, _ := compute.GetDep(deps, r.Binary, "binary")
+				binary, _ := compute.GetDep(deps, srv.Binary, "binary")
 
 				result := ResolvedServerImages{
-					PackageRef:     r.PackageRef,
+					PackageRef:     &schema.PackageRef{PackageName: srv.PackageName.String()},
 					Binary:         binary.Value,
-					BinaryImage:    r.BinaryImage,
+					BinaryImage:    srv.BinaryImage,
 					PrebuiltBinary: binary.Completed.IsZero(),
 				}
 
-				if v, ok := compute.GetDep(deps, r.Config, "config"); ok {
+				if v, ok := compute.GetDep(deps, srv.Config, "config"); ok {
 					result.Config = v.Value
 				}
 
 				sidecarIndex := 0
 				for _, sidecar := range sidecarImages {
-					if sidecar.OwnerServer.Equals(r.PackageRef) {
+					if sidecar.OwnerServer == srv.PackageName {
 						if v, ok := compute.GetDep(deps, sidecar.Image, fmt.Sprintf("sidecar%d", sidecarIndex)); ok {
-							result.Sidecars = append(result.Sidecars, ResolvedSidecarImage{
+							result.Sidecars = append(result.Sidecars, ResolvedBinary{
 								PackageRef: sidecar.PackageRef,
 								Binary:     v.Value,
+								Command:    sidecar.Command,
 							})
 						}
 						sidecarIndex++
@@ -648,10 +570,10 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 			}))
 	}
 
-	return stack, images, nil
+	return pkgs, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Server, imgs builtImage, out *runtime.DeployableSpec) error {
+func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Server, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
 	out.Location = srv.Location
 	out.PackageName = srv.PackageName()
@@ -698,7 +620,7 @@ func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Serv
 	return nil
 }
 
-func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs builtImages, sidecarCommands []sidecarPackage, out *[]runtime.SidecarRunOpts) error {
+func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved ResolvedServerImages, out *[]runtime.SidecarRunOpts) error {
 	for _, container := range containers {
 		if container.Name == "" {
 			return fnerrors.InternalError("%s: sidecar name is required", container.Owner)
@@ -709,31 +631,26 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, imageIDs bui
 			binRef = schema.MakePackageSingleRef(schema.MakePackageName(container.Binary))
 		}
 
-		var sidecarPkg *sidecarPackage
-		for _, ip := range sidecarCommands {
-			if ip.PackageRef.Equals(binRef) {
-				sidecarPkg = &ip
+		var sidecarBinary *ResolvedBinary
+		for _, binary := range resolved.Sidecars {
+			if binary.PackageRef.Equals(binRef) {
+				sidecarBinary = &binary
 				break
 			}
 		}
 
-		if sidecarPkg == nil {
-			return fnerrors.InternalError("%s: missing a command", binRef)
-		}
-
-		img, ok := imageIDs.get(binRef)
-		if !ok {
-			return fnerrors.InternalError("%s: missing an image to run", binRef)
+		if sidecarBinary == nil {
+			return fnerrors.InternalError("%s: missing sidecar build", binRef)
 		}
 
 		*out = append(*out, runtime.SidecarRunOpts{
 			Name:  container.Name,
 			Owner: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
-				Image:   img.Binary,
+				Image:   sidecarBinary.Binary,
 				Args:    container.Args,
 				Env:     container.Env,
-				Command: sidecarPkg.Command,
+				Command: sidecarBinary.Command,
 			},
 		})
 	}
