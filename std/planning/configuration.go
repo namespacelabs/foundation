@@ -10,8 +10,8 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type Configuration interface {

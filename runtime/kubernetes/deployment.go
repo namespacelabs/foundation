@@ -28,6 +28,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -264,9 +265,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			if specExt.SecurityContext != nil {
-				if specifiedSec == nil {
-					specifiedSec = specExt.SecurityContext
-				} else if !proto.Equal(specifiedSec, specExt.SecurityContext) {
+				if !protos.CheckConsolidate(specExt.SecurityContext, &specifiedSec) {
 					return fnerrors.UserError(deployable.Location, "incompatible securitycontext defined, %v vs %v",
 						specifiedSec, specExt.SecurityContext)
 				}
@@ -342,15 +341,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	for _, probe := range probes {
 		switch probe.Kind {
 		case runtime.FnServiceLivez:
-			if livenessProbe == nil {
-				livenessProbe = probe
-			} else if !proto.Equal(probe, livenessProbe) {
+			if !protos.CheckConsolidate(probe, &livenessProbe) {
 				return fnerrors.BadInputError("inconsistent live probe definition")
 			}
 		case runtime.FnServiceReadyz:
-			if readinessProbe == nil {
-				readinessProbe = probe
-			} else if !proto.Equal(probe, readinessProbe) {
+			if !protos.CheckConsolidate(probe, &readinessProbe) {
 				return fnerrors.BadInputError("inconsistent ready probe definition")
 			}
 		default:

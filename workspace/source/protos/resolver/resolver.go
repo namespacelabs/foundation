@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/source/protos"
+	wsprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type providerProtoResolver struct {
@@ -45,7 +45,7 @@ func (pr *providerProtoResolver) FindMessageByURL(url string) (protoreflect.Mess
 		return protoregistry.GlobalTypes.FindMessageByURL(url)
 	}
 
-	v := strings.TrimPrefix(url, protos.TypeUrlBaseSlash)
+	v := strings.TrimPrefix(url, wsprotos.FoundationTypeUrlBaseSlash)
 	if v == url {
 		return nil, protoregistry.NotFound
 	}
@@ -59,7 +59,7 @@ func (pr *providerProtoResolver) FindMessageByURL(url string) (protoreflect.Mess
 	}
 
 	for _, msg := range pkg.Provides {
-		_, providermsg, err := protos.LoadMessageByName(msg, typeName)
+		_, providermsg, err := wsprotos.LoadMessageByName(msg, typeName)
 		if err != nil {
 			if err == protoregistry.NotFound {
 				continue

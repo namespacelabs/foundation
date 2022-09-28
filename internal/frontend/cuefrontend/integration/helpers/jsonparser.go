@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/internal/protos"
 )
 
 type SimpleJsonParser[V proto.Message] struct {

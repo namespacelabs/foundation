@@ -6,10 +6,23 @@ package protos
 
 import (
 	"log"
+	"reflect"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 )
+
+func NewFromType[V proto.Message]() V {
+	var m V
+	return reflect.New(reflect.TypeOf(m).Elem()).Interface().(V)
+}
+
+func TypeUrl[V proto.Message]() string {
+	m := NewFromType[V]()
+	const urlPrefix = "type.googleapis.com/"
+	return urlPrefix + string(m.ProtoReflect().Descriptor().FullName())
+}
 
 func WrapAnysOrDie(srcs ...protoreflect.ProtoMessage) []*anypb.Any {
 	var out []*anypb.Any

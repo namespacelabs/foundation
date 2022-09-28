@@ -13,12 +13,10 @@ import (
 	"strings"
 
 	"github.com/jet/kube-webhook-certgen/pkg/certs"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -26,10 +24,11 @@ import (
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
-	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -40,7 +39,7 @@ var (
 
 func RegisterGraphHandlers() {
 	ops.RegisterFuncs(ops.Funcs[*OpGenerateWebhookCert]{
-		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
+		Handle: func(ctx context.Context, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
@@ -101,17 +100,17 @@ func RegisterGraphHandlers() {
 			return nil, nil
 		},
 
-		PlanOrder: func(_ *OpGenerateWebhookCert) (*fnschema.ScheduleOrder, error) {
-			return &fnschema.ScheduleOrder{
+		PlanOrder: func(_ *OpGenerateWebhookCert) (*schema.ScheduleOrder, error) {
+			return &schema.ScheduleOrder{
 				SchedAfterCategory: []string{
-					kubedef.MakeSchedCat(schema.GroupKind{Kind: "Namespace"}),
+					kubedef.MakeSchedCat(kubeschema.GroupKind{Kind: "Namespace"}),
 				},
 			}, nil
 		},
 	})
 }
 
-func Ensure(ctx context.Context) ([]*fnschema.SerializedInvocation, error) {
+func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	f, err := lib.Open("ingress.yaml")
 	if err != nil {
 		return nil, err
@@ -156,7 +155,7 @@ func Ensure(ctx context.Context) ([]*fnschema.SerializedInvocation, error) {
 	}
 
 	// It's important that we create the webhook + CAbundle first, so it's available to the nginx deployment.
-	return append([]*fnschema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
+	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
 }
 
 func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb.Any) (map[string]string, error) {
@@ -173,33 +172,23 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 		annotations["nginx.ingress.kubernetes.io/force-ssl-redirect"] = "false"
 	}
 
-	var cors *fnschema.HttpCors
+	var cors *schema.HttpCors
 	var entityLimit *ProxyBodySize
 
 	for _, ext := range extensions {
-		corsConf := &fnschema.HttpCors{}
-		entityLimitConf := &ProxyBodySize{}
+		msg, err := ext.UnmarshalNew()
+		if err != nil {
+			return nil, fnerrors.InternalError("nginx: failed to unpack configuration: %v", err)
+		}
 
-		switch {
-		case ext.MessageIs(corsConf):
-			if err := ext.UnmarshalTo(corsConf); err != nil {
-				return nil, fnerrors.InternalError("nginx: failed to unpack CORS configuration: %v", err)
-			}
-
-			if cors == nil {
-				cors = corsConf
-			} else if !proto.Equal(cors, corsConf) {
+		switch x := msg.(type) {
+		case *schema.HttpCors:
+			if !protos.CheckConsolidate(x, &cors) {
 				return nil, fnerrors.InternalError("nginx: incompatible CORS configurations")
 			}
 
-		case ext.MessageIs(entityLimit):
-			if err := ext.UnmarshalTo(entityLimitConf); err != nil {
-				return nil, fnerrors.InternalError("nginx: failed to unpack ProxyBodySize configuration: %v", err)
-			}
-
-			if entityLimit == nil {
-				entityLimit = entityLimitConf
-			} else if !proto.Equal(entityLimit, entityLimitConf) {
+		case *ProxyBodySize:
+			if !protos.CheckConsolidate(x, &entityLimit) {
 				return nil, fnerrors.InternalError("nginx: incompatible ProxyBodySize configurations")
 			}
 

@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-const TypeUrlBaseSlash = "type.foundation.namespacelabs.dev/"
+const FoundationTypeUrlBaseSlash = "type.foundation.namespacelabs.dev/"
 
 type TypeReference struct {
 	Package   schema.PackageName
@@ -28,7 +28,7 @@ func Ref(dep *anypb.Any) *TypeReference {
 		}
 	}
 
-	if t := strings.TrimPrefix(dep.GetTypeUrl(), TypeUrlBaseSlash); t != dep.GetTypeUrl() {
+	if t := strings.TrimPrefix(dep.GetTypeUrl(), FoundationTypeUrlBaseSlash); t != dep.GetTypeUrl() {
 		return &TypeReference{
 			Package:   schema.PackageName(filepath.Dir(t)),
 			ProtoType: filepath.Base(t),

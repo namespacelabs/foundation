@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
-	"namespacelabs.dev/foundation/workspace/source/protos"
+	"namespacelabs.dev/foundation/internal/protos"
 )
 
 var configProviders = map[string]func(*anypb.Any) ([]proto.Message, error){}

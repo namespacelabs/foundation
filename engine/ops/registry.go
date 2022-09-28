@@ -8,8 +8,8 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type Funcs[M proto.Message] struct {

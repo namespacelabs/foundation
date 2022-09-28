@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/source/protos"
+	wsprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func Marshal(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {
@@ -30,5 +30,5 @@ func Marshal(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {
 
 func TypeURL(pkg schema.PackageName, msg proto.Message) string {
 	typename := string(msg.ProtoReflect().Descriptor().FullName())
-	return fmt.Sprintf("%s%s/%s", protos.TypeUrlBaseSlash, pkg, typename)
+	return fmt.Sprintf("%s%s/%s", wsprotos.FoundationTypeUrlBaseSlash, pkg, typename)
 }
