@@ -312,6 +312,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, enables the new incluster deployment orchestrator.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
+	rootCmd.PersistentFlags().BoolVar(&orchestration.UsePinnedOrchestrator, "use_pinned_orchestrator", orchestration.UsePinnedOrchestrator,
+		"If set to false, we rebuild the orchestrator instead of using the pinned version. For internal testing only.")
 	rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
 		"If set to true, we log a start event for each action, if --log_actions is also set.")
 
@@ -352,6 +354,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"render_orchestrator_deployment",
 		"also_report_start_events",
 		"buildkit_forward_keychain",
+		"use_pinned_orchestrator",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

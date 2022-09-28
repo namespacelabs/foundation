@@ -23,6 +23,8 @@ const (
 	toolPkg   schema.PackageName = "namespacelabs.dev/foundation/orchestration/server/tool"
 )
 
+var UsePinnedOrchestrator = true
+
 func MakeSyntheticConfiguration(wsproto *schema.Workspace, envName string, hostEnv *client.HostEnv, extra ...proto.Message) planning.Configuration {
 	messages := []proto.Message{hostEnv}
 	messages = append(messages, extra...)
@@ -50,17 +52,19 @@ func MakeOrchestratorContext(ctx context.Context, conf planning.Configuration) (
 
 	var prebuilts []*schema.Workspace_BinaryDigest
 
-	res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
-	if err != nil {
-		return nil, err
-	}
+	if UsePinnedOrchestrator {
+		res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
+		if err != nil {
+			return nil, err
+		}
 
-	for _, prebuilt := range res.Prebuilt {
-		prebuilts = append(prebuilts, &schema.Workspace_BinaryDigest{
-			PackageName: prebuilt.PackageName,
-			Repository:  prebuilt.Repository,
-			Digest:      prebuilt.Digest,
-		})
+		for _, prebuilt := range res.Prebuilt {
+			prebuilts = append(prebuilts, &schema.Workspace_BinaryDigest{
+				PackageName: prebuilt.PackageName,
+				Repository:  prebuilt.Repository,
+				Digest:      prebuilt.Digest,
+			})
+		}
 	}
 
 	cfg := conf.Derive(kubedef.AdminNamespace, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
