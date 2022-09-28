@@ -11,12 +11,14 @@ import (
 	"io"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
+	dockernames "github.com/docker/docker/daemon/names"
 	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/muesli/cancelreader"
@@ -28,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 type ToolRuntime struct{}
@@ -161,7 +164,22 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 	networkConfig := &network.NetworkingConfig{}
 
-	created, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, "")
+	name := ""
+	if len(opts.Command) > 0 {
+		label := strings.Join(opts.Command, "-")
+		label = strings.ReplaceAll(label, "/", "")
+
+		if dockernames.RestrictedNamePattern.MatchString(label) {
+			// generate unique ID to avoid collisions
+			id := ids.NewRandomBase32ID(6)
+
+			name = fmt.Sprintf("ns-%s-%s", label, id)
+		} else {
+			fmt.Fprintf(console.Debug(ctx), "%s is not a valid docker container name", label)
+		}
+	}
+
+	created, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, name)
 	if err != nil {
 		return err
 	}
