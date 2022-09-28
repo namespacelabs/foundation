@@ -15,15 +15,31 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PrepareOrchestrator(env planning.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareOrchestrator(env planning.Context, kube compute.Computable[*kubernetes.Cluster], confs ...compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.orchestrator").HumanReadablef("Deploying the Namespace Orchestrator"),
-		compute.Inputs().Str("kind", "orchestrator").Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
+		compute.Inputs().Str("kind", "orchestrator").Computable("runtime", kube).Computable("conf", compute.Transform("parse results", compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
+			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
+				var result []*schema.DevHost_ConfigureEnvironment
+				for _, conf := range computed {
+					result = append(result, conf.Value...)
+				}
+				return result, nil
+			})).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+			computed, _ := compute.GetDepWithType[[]*schema.DevHost_ConfigureEnvironment](deps, "conf")
+
+			devhost := &schema.DevHost{Configure: computed.Value}
+
+			config, err := planning.MakeConfigurationCompat(env, env.Workspace(), devhost, env.Environment())
+			if err != nil {
+				return nil, err
+			}
+
 			kube := compute.MustGetDepValue(deps, kube, "runtime")
 
-			if err := PrepareOrchestratorInKube(ctx, env, kube); err != nil {
+			if err := PrepareOrchestratorInKube(ctx, config, kube); err != nil {
 				return nil, err
 			}
 
@@ -32,7 +48,7 @@ func PrepareOrchestrator(env planning.Context, kube compute.Computable[*kubernet
 		})
 }
 
-func PrepareOrchestratorInKube(ctx context.Context, env planning.Context, kube *kubernetes.Cluster) error {
-	_, err := orchestration.PrepareOrchestrator(ctx, env.Configuration(), kube, false)
+func PrepareOrchestratorInKube(ctx context.Context, config planning.Configuration, kube *kubernetes.Cluster) error {
+	_, err := orchestration.PrepareOrchestrator(ctx, config, kube, false)
 	return err
 }
