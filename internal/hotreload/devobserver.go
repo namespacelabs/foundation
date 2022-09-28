@@ -103,12 +103,12 @@ func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 	fmt.Fprintf(do.log, "Connected to FileSync (for hot reload), took %v.\n", time.Since(t))
 }
 
-func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, fe []*wscontents.FileEvent) error {
+func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, fe []*wscontents.FileEvent) (bool, error) {
 	do.mu.Lock()
 	defer do.mu.Unlock()
 
 	if do.conn == nil {
-		return wsremote.ErrNotReady
+		return false, nil
 	}
 
 	var paths uniquestrings.List
@@ -125,8 +125,8 @@ func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signatur
 		Signature: s,
 		FileEvent: fe,
 	}); err != nil {
-		return err
+		return false, err
 	}
 
-	return nil
+	return true, nil
 }

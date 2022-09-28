@@ -6,7 +6,6 @@ package wsremote
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -22,9 +21,7 @@ type SinkRegistrar struct {
 	deposit DepositFunc
 }
 
-var ErrNotReady = errors.New("not ready")
-
-type DepositFunc func(context.Context, *Signature, []*wscontents.FileEvent) error
+type DepositFunc func(context.Context, *Signature, []*wscontents.FileEvent) (bool, error)
 
 func Ctx(ctx context.Context) *SinkRegistrar {
 	raw := ctx.Value(_registrarKey)
@@ -34,7 +31,7 @@ func Ctx(ctx context.Context) *SinkRegistrar {
 	return raw.(*SinkRegistrar)
 }
 
-func WithRegistrar(ctx context.Context, f DepositFunc) (context.Context, *SinkRegistrar) {
+func BufferAndSinkTo(ctx context.Context, f DepositFunc) (context.Context, *SinkRegistrar) {
 	r := &SinkRegistrar{f}
 
 	newCtx := context.WithValue(ctx, _registrarKey, r)
@@ -43,10 +40,10 @@ func WithRegistrar(ctx context.Context, f DepositFunc) (context.Context, *SinkRe
 }
 
 func (r *SinkRegistrar) For(sig *Signature) Sink {
-	return &staticSink{r: r, sig: sig}
+	return &bufferingSink{r: r, sig: sig}
 }
 
-type staticSink struct {
+type bufferingSink struct {
 	r   *SinkRegistrar
 	sig *Signature
 
@@ -54,21 +51,21 @@ type staticSink struct {
 	buffered []*wscontents.FileEvent
 }
 
-func (s *staticSink) Deposit(ctx context.Context, events []*wscontents.FileEvent) error {
+func (s *bufferingSink) Deposit(ctx context.Context, events []*wscontents.FileEvent) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	// XXX manage queue length.
 	s.buffered = append(s.buffered, events...)
 
-	if err := s.r.deposit(ctx, s.sig, s.buffered); err != nil {
-		if errors.Is(err, ErrNotReady) {
-			return nil
-		}
-		return err
+	deposited, err := s.r.deposit(ctx, s.sig, s.buffered)
+	if err != nil {
+		return false, err
 	}
 
-	s.buffered = nil
+	if deposited {
+		s.buffered = nil
+	}
 
-	return nil
+	return true, nil
 }

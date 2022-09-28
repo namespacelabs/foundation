@@ -24,7 +24,7 @@ import (
 )
 
 type Sink interface {
-	Deposit(context.Context, []*wscontents.FileEvent) error
+	Deposit(context.Context, []*wscontents.FileEvent) (bool, error)
 }
 
 // Returns a wscontents.Versioned which will produce a local snapshot as expected
@@ -74,7 +74,7 @@ func (lo localObserver) ComputeDigest(ctx context.Context) (schema.Digest, error
 	return digestfs.Digest(ctx, lo.snapshot)
 }
 
-func (lo localObserver) Observe(ctx context.Context, _ func(compute.ResultWithTimestamp[any], bool)) (func(), error) {
+func (lo localObserver) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], bool)) (func(), error) {
 	// XXX we're doing polling for correctness; this needs to use filewatcher.
 
 	// This observer is special; if we know that the scheduler wants to observe
@@ -90,13 +90,22 @@ func (lo localObserver) Observe(ctx context.Context, _ func(compute.ResultWithTi
 			case <-closeCh:
 				return
 			case <-time.After(time.Second):
-				newSnapshot, err := checkSnapshot(ctx, last, lo.absPath, lo.sink)
+				newSnapshot, deposited, err := checkSnapshot(ctx, last, lo.absPath, lo.sink)
 				if err != nil {
 					fmt.Fprintf(console.Errors(ctx), "FileSync failed while snapshotting %q: %v\n", lo.absPath, err)
 					return
 				}
 
-				last = newSnapshot
+				if !deposited {
+					r := compute.ResultWithTimestamp[any]{
+						Completed: time.Now(),
+					}
+					r.Value = localObserver{absPath: lo.absPath, snapshot: newSnapshot, sink: lo.sink}
+					onChange(r, false)
+					return // Stop observing.
+				} else {
+					last = newSnapshot
+				}
 			}
 		}
 	}()
@@ -104,10 +113,10 @@ func (lo localObserver) Observe(ctx context.Context, _ func(compute.ResultWithTi
 	return func() { close(closeCh) }, nil
 }
 
-func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink Sink) (*memfs.FS, error) {
+func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink Sink) (*memfs.FS, bool, error) {
 	newSnapshot, err := wscontents.SnapshotDirectory(absPath)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// First we iterate over all files in the new snapshot. This index will be
@@ -120,7 +129,7 @@ func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink
 		newFilesModes[path] = de
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	var events []*wscontents.FileEvent
@@ -137,14 +146,14 @@ func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink
 		}
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	m := checkMkdir{previous: previous, newdirs: map[string]struct{}{}}
 
 	for filename, contents := range newFiles {
 		if err := m.check(filepath.Dir(filename)); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		events = append(events, &wscontents.FileEvent{
@@ -158,13 +167,14 @@ func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink
 	// Mkdirs come first.
 	events = append(m.events, events...)
 
+	var deposited bool
+	var depositErr error
+
 	if len(events) > 0 {
-		if err := sink.Deposit(ctx, events); err != nil {
-			return nil, err
-		}
+		deposited, depositErr = sink.Deposit(ctx, events)
 	}
 
-	return newSnapshot, nil
+	return newSnapshot, deposited, depositErr
 }
 
 type checkMkdir struct {

@@ -6,11 +6,9 @@ package hotreload
 
 import (
 	"context"
-	"fmt"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -45,10 +43,10 @@ type observerSink struct {
 	triggerFullRebuildPredicate func(filepath string) bool
 }
 
-func (obs observerSink) Deposit(ctx context.Context, events []*wscontents.FileEvent) error {
+func (obs observerSink) Deposit(ctx context.Context, events []*wscontents.FileEvent) (bool, error) {
 	for _, ev := range events {
 		if obs.triggerFullRebuildPredicate != nil && obs.triggerFullRebuildPredicate(ev.Path) {
-			return fnerrors.ExpectedError(fmt.Sprintf("%s changed, triggering a full rebuild", ev.Path))
+			return false, nil
 		}
 	}
 

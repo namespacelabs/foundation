@@ -219,7 +219,7 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 
 		devObserver := hotreload.NewFileSyncDevObserver(ctx, cluster, srv, hotreload.FileSyncPort)
 
-		newCtx, _ := wsremote.WithRegistrar(ctx, devObserver.Deposit)
+		newCtx, _ := wsremote.BufferAndSinkTo(ctx, devObserver.Deposit)
 
 		return newCtx, devObserver, nil
 	}
