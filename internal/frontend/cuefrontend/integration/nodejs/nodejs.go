@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/workspace"
 )
 
 const (
@@ -31,7 +32,7 @@ type cueIntegrationNodejs struct {
 	Pkg string `json:"pkg"`
 }
 
-func (i *Parser) Parse(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (i *Parser) Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationNodejs
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {
@@ -39,7 +40,7 @@ func (i *Parser) Parse(ctx context.Context, loc pkggraph.Location, v *fncue.CueV
 		}
 	}
 
-	pkgMgr, err := detectPkgMgr(loc)
+	pkgMgr, err := detectPkgMgr(ctx, pl, loc)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +51,11 @@ func (i *Parser) Parse(ctx context.Context, loc pkggraph.Location, v *fncue.CueV
 	}, nil
 }
 
-func detectPkgMgr(loc pkggraph.Location) (schema.NodejsIntegration_NodePkgMgr, error) {
-	fsys := loc.Module.ReadOnlyFS()
+func detectPkgMgr(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location) (schema.NodejsIntegration_NodePkgMgr, error) {
+	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+	if err != nil {
+		return schema.NodejsIntegration_PKG_MGR_UNKNOWN, err
+	}
 
 	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), npmLockfile)); err == nil {
 		return schema.NodejsIntegration_NPM, nil

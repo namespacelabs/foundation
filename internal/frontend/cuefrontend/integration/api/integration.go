@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/workspace"
 )
 
 var (
@@ -33,7 +34,7 @@ type ParsedIntegration struct {
 	Data proto.Message
 }
 
-func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) (ParsedIntegration, error) {
+func ParseIntegration(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (ParsedIntegration, error) {
 	// First checking for the full kind
 	if kind := v.LookupPath("kind"); kind.Exists() {
 		str, err := kind.Val.String()
@@ -42,7 +43,7 @@ func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV)
 		}
 
 		if i, ok := registeredIntegrations[str]; ok {
-			return parse(ctx, loc, i, v)
+			return parse(ctx, pl, loc, i, v)
 		} else {
 			return ParsedIntegration{}, fnerrors.UserError(loc, "unknown integration kind: %s", str)
 		}
@@ -55,20 +56,20 @@ func ParseIntegration(ctx context.Context, loc pkggraph.Location, v *fncue.CueV)
 	for _, kind := range sortedIntegrationKinds {
 		i := registeredIntegrations[kind]
 		if shortV := v.LookupPath(i.Shortcut()); shortV.Exists() {
-			return parse(ctx, loc, i, shortV)
+			return parse(ctx, pl, loc, i, shortV)
 		}
 		// Shortest form:
 		//  integration: "golang"
 		if str, err := v.Val.String(); err == nil && str == i.Shortcut() {
-			return parse(ctx, loc, i, nil)
+			return parse(ctx, pl, loc, i, nil)
 		}
 	}
 
 	return ParsedIntegration{}, fnerrors.UserError(loc, "integration is not recognized")
 }
 
-func parse(ctx context.Context, loc pkggraph.Location, i IntegrationParser, v *fncue.CueV) (ParsedIntegration, error) {
-	data, err := i.Parse(ctx, loc, v)
+func parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, i IntegrationParser, v *fncue.CueV) (ParsedIntegration, error) {
+	data, err := i.Parse(ctx, pl, loc, v)
 	if err != nil {
 		return ParsedIntegration{}, err
 	}
