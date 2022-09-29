@@ -20,6 +20,8 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 		return fnerrors.UserError(pkg.Location, "nodejs integration requires a server")
 	}
 
+	pkg.Server.Framework = schema.Framework_OPAQUE_NODEJS
+
 	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, pl, pkg, pkg.Server.Name, data)
 	if err != nil {
 		return err

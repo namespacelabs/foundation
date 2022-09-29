@@ -23,7 +23,8 @@ enum Framework {
     WEB                   = 2;
     NODEJS                = 3;
     // Only for servers
-    OPAQUE = 4;
+    OPAQUE        = 4;
+    OPAQUE_NODEJS = 5;
 }
 
 // Next ID: 34

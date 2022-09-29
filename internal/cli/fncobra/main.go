@@ -52,6 +52,7 @@ import (
 	"namespacelabs.dev/foundation/languages/golang"
 	nodebinary "namespacelabs.dev/foundation/languages/nodejs/binary"
 	nodeintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
+	nodeopaqueintegration "namespacelabs.dev/foundation/languages/nodejs/opaqueintegration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/orchestration"
@@ -212,6 +213,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		web.Register()
 		nodeintegration.Register()
 		opaque.Register()
+		nodeopaqueintegration.Register()
 
 		// Opaque integrations: parsing
 		integrationparsing.IntegrationParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
