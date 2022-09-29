@@ -342,10 +342,10 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 
 			combinedProps.AppendWith(frontend.PrepareProps{
 				PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
-					DeclaredStack: pl.PackageNames(),
-					Provisioning:  resp.GetPreparedProvisionPlan().GetProvisioning(),
-					Sidecars:      resp.GetPreparedProvisionPlan().GetSidecar(),
-					Inits:         resp.GetPreparedProvisionPlan().GetInit(),
+					DeclaredStack:   pl.PackageNames(),
+					ComputePlanWith: resp.GetPreparedProvisionPlan().GetProvisioning(),
+					Sidecars:        resp.GetPreparedProvisionPlan().GetSidecar(),
+					Inits:           resp.GetPreparedProvisionPlan().GetInit(),
 				},
 				ProvisionInput:  resp.ProvisionInput,
 				Extension:       resp.Extension,

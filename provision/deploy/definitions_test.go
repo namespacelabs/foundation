@@ -60,13 +60,13 @@ func TestEnsureInvocationOrder(t *testing.T) {
 		}},
 	}
 
-	perServer := map[schema.PackageName]*serverDefs{
-		"a": {Ops: []*schema.SerializedInvocation{{Description: "a"}}},
-		"b": {Ops: []*schema.SerializedInvocation{{Description: "b"}}},
-		"c": {Ops: []*schema.SerializedInvocation{{Description: "c"}}},
+	perServerOps := map[schema.PackageName][]*schema.SerializedInvocation{
+		"a": {{Description: "a"}},
+		"b": {{Description: "b"}},
+		"c": {{Description: "c"}},
 	}
 
-	got, err := ensureInvocationOrder(context.Background(), stack, perServer)
+	got, err := ensureInvocationOrder(context.Background(), stack, perServerOps)
 	if err != nil {
 		t.Fatal(err)
 	}

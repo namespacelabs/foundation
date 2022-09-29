@@ -105,8 +105,11 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 		}
 	}
 
+	// XXX These should be scoped down to only the configs provided by this server.
+	computedConfigs := compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")
+
 	files := &memfs.FS{}
-	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, files, c.env.Environment(), c.stack, fragment, compute.MustGetDepValue(deps, c.computedConfigs, "computedConfigs")); err != nil {
+	if err := (config.DehydrateOpts{IncludeTextProto: true}).DehydrateTo(ctx, c.env.Environment(), c.stack, fragment, computedConfigs, files); err != nil {
 		return nil, err
 	}
 

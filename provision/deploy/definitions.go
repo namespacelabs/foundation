@@ -84,18 +84,30 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 }
 
 type handlerResult struct {
-	Stack       *provision.Stack
-	Definitions []*schema.SerializedInvocation
-	Computed    *schema.ComputedConfigurations
-	ServerDefs  map[schema.PackageName]*serverDefs // Per server.
+	Stack *provision.Stack
+	// Merged set of invocations that are produced from the handlers invoked.
+	// Topologically ordered based on the server dependency graph.
+	OrderedInvocations []*schema.SerializedInvocation
+	ProvisionOutput    map[schema.PackageName]*provisionOutput // Per server.
 }
 
-type serverDefs struct {
-	Server           schema.PackageName
-	Ops              []*schema.SerializedInvocation
-	ServerExtensions []*schema.ServerExtension
-	Extensions       []*schema.DefExtension
-	Computed         []*schema.ComputedConfiguration
+func (hr handlerResult) MergedComputedConfigurations() *schema.ComputedConfigurations {
+	computed := &schema.ComputedConfigurations{}
+	for _, srv := range hr.ProvisionOutput {
+		computed.Entry = append(computed.Entry, srv.ComputedConfigurations.GetEntry()...)
+	}
+
+	slices.SortFunc(computed.Entry, func(a, b *schema.ComputedConfigurations_Entry) bool {
+		return strings.Compare(a.ServerPackage, b.ServerPackage) < 0
+	})
+
+	return computed
+}
+
+type provisionOutput struct {
+	ComputedConfigurations *schema.ComputedConfigurations
+	ServerExtensions       []*schema.ServerExtension
+	Extensions             []*schema.DefExtension
 }
 
 type finishInvokeHandlers struct {
@@ -133,25 +145,26 @@ func (r *finishInvokeHandlers) Output() compute.Output {
 }
 
 func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolved) (*handlerResult, error) {
-	allOps := append([]*schema.SerializedInvocation{}, r.definitions...)
+	allOps := slices.Clone(r.definitions)
 
-	perServer := map[schema.PackageName]*serverDefs{}
+	perServer := map[schema.PackageName]*provisionOutput{}
+	perServerOps := map[schema.PackageName][]*schema.SerializedInvocation{}
 
-	def := func(pkg schema.PackageName) *serverDefs {
+	ensure := func(pkg schema.PackageName) *provisionOutput {
 		if existing, ok := perServer[pkg]; ok {
 			return existing
 		}
-		perServer[pkg] = &serverDefs{Server: pkg}
+		perServer[pkg] = &provisionOutput{}
 		return perServer[pkg]
 	}
 
 	for _, ext := range r.extensions {
-		targetServer := def(schema.PackageName(ext.For))
+		targetServer := ensure(schema.PackageName(ext.For))
 		targetServer.Extensions = append(targetServer.Extensions, ext)
 	}
 
 	for _, ext := range r.serverExtensions {
-		targetServer := def(schema.PackageName(ext.TargetServer))
+		targetServer := ensure(schema.PackageName(ext.TargetServer))
 		targetServer.ServerExtensions = append(targetServer.ServerExtensions, ext)
 	}
 
@@ -161,7 +174,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", handler.TargetServer)
 		}
 
-		sr := def(handler.TargetServer)
+		sr := ensure(handler.TargetServer)
 
 		resp := compute.MustGetDepValue(deps, r.invocations[k], fmt.Sprintf("invocation%d", k))
 
@@ -200,7 +213,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				sr.ServerExtensions = append(sr.ServerExtensions, si)
 			}
 
-			sr.Ops = append(sr.Ops, resp.ApplyResponse.Invocation...)
+			perServerOps[handler.TargetServer] = append(perServerOps[handler.TargetServer], resp.ApplyResponse.Invocation...)
 
 			for _, src := range resp.ApplyResponse.InvocationSource {
 				var computed []*schema.SerializedInvocation_ComputedValue
@@ -224,7 +237,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 					})
 				}
 
-				sr.Ops = append(sr.Ops, &schema.SerializedInvocation{
+				perServerOps[handler.TargetServer] = append(perServerOps[handler.TargetServer], &schema.SerializedInvocation{
 					Description: src.Description,
 					Scope:       src.Scope,
 					Impl:        src.Impl,
@@ -232,47 +245,46 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				})
 			}
 
-			sr.Computed = append(sr.Computed, resp.ApplyResponse.Computed...)
+			if len(resp.ApplyResponse.Computed) > 0 {
+				if sr.ComputedConfigurations == nil {
+					sr.ComputedConfigurations = &schema.ComputedConfigurations{}
+				}
+
+				if len(sr.ComputedConfigurations.Entry) == 0 {
+					sr.ComputedConfigurations.Entry = append(sr.ComputedConfigurations.Entry, &schema.ComputedConfigurations_Entry{
+						ServerPackage: handler.TargetServer.String(),
+					})
+				}
+
+				sr.ComputedConfigurations.Entry[0].Configuration = append(sr.ComputedConfigurations.Entry[0].Configuration, resp.ApplyResponse.Computed...)
+			}
 
 		case protocol.Lifecycle_SHUTDOWN:
-			sr.Ops = append(sr.Ops, resp.DeleteResponse.Invocation...)
+			perServerOps[handler.TargetServer] = append(perServerOps[handler.TargetServer], resp.DeleteResponse.Invocation...)
 		}
 	}
 
-	computed := &schema.ComputedConfigurations{}
-	for srv, sr := range perServer {
-		slices.SortFunc(sr.Computed, func(a, b *schema.ComputedConfiguration) bool {
-			return strings.Compare(a.GetOwner(), b.GetOwner()) < 0
-		})
-
-		computed.Entry = append(computed.Entry, &schema.ComputedConfigurations_Entry{
-			ServerPackage: srv.String(),
-			Configuration: sr.Computed,
-		})
+	for _, sr := range perServer {
+		for _, computed := range sr.ComputedConfigurations.GetEntry() {
+			slices.SortFunc(computed.Configuration, func(a, b *schema.ComputedConfiguration) bool {
+				return strings.Compare(a.GetOwner(), b.GetOwner()) < 0
+			})
+		}
 	}
 
-	slices.SortFunc(computed.Entry, func(a, b *schema.ComputedConfigurations_Entry) bool {
-		return strings.Compare(a.GetServerPackage(), b.GetServerPackage()) < 0
-	})
-
-	orderedOps, err := ensureInvocationOrder(ctx, r.stack, perServer)
+	orderedOps, err := ensureInvocationOrder(ctx, r.stack, perServerOps)
 	if err != nil {
 		return nil, err
 	}
 
 	allOps = append(allOps, orderedOps...)
 
-	return &handlerResult{r.stack, allOps, computed, perServer}, nil
+	return &handlerResult{r.stack, allOps, perServer}, nil
 }
 
 const controllerPkg = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
 
-func ensureInvocationOrder(ctx context.Context, stack *provision.Stack, perServer map[schema.PackageName]*serverDefs) ([]*schema.SerializedInvocation, error) {
-	// We make sure that serialized invocations produced by a server A, that
-	// depends on server B, are always run after B's serialized invocations.
-	// This guarantees the pattern where B is a provider of an API -- and A is
-	// the consumer, works. For example, B may create a CRD definition, and A
-	// may instantiate that CRD.
+func sortServers(ctx context.Context, stack *provision.Stack) ([]schema.PackageName, error) {
 	graph := toposort.NewGraph(0)
 
 	// First ensure all nodes exist.
@@ -303,18 +315,30 @@ func ensureInvocationOrder(ctx context.Context, stack *provision.Stack, perServe
 		}
 	}
 
-	sorted, ok := graph.Toposort()
+	sortedServers, ok := graph.Toposort()
 	if !ok {
 		return nil, fnerrors.InternalError("failed to sort servers by dependency order")
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "invocation sorted: %v\n", sorted)
+	fmt.Fprintf(console.Debug(ctx), "invocation sorted: %v\n", sortedServers)
+
+	return schema.PackageNames(sortedServers...), nil
+}
+
+func ensureInvocationOrder(ctx context.Context, stack *provision.Stack, perServer map[schema.PackageName][]*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
+	// We make sure that serialized invocations produced by a server A, that
+	// depends on server B, are always run after B's serialized invocations.
+	// This guarantees the pattern where B is a provider of an API -- and A is
+	// the consumer, works. For example, B may create a CRD definition, and A
+	// may instantiate that CRD.
+	orderedServers, err := sortServers(ctx, stack)
+	if err != nil {
+		return nil, err
+	}
 
 	var allOps []*schema.SerializedInvocation
-	for _, pkg := range sorted {
-		if sr := perServer[schema.PackageName(pkg)]; sr != nil {
-			allOps = append(allOps, sr.Ops...)
-		}
+	for _, pkg := range orderedServers {
+		allOps = append(allOps, perServer[schema.PackageName(pkg)]...)
 	}
 
 	return allOps, nil

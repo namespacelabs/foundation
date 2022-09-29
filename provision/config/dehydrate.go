@@ -16,7 +16,7 @@ type DehydrateOpts struct {
 	IncludeTextProto bool
 }
 
-func (opts DehydrateOpts) DehydrateTo(ctx context.Context, target fnfs.WriteFS, env *schema.Environment, stack *schema.Stack, ingress []*schema.IngressFragment, computed *schema.ComputedConfigurations) error {
+func (opts DehydrateOpts) DehydrateTo(ctx context.Context, env *schema.Environment, stack *schema.Stack, ingress []*schema.IngressFragment, computed *schema.ComputedConfigurations, target fnfs.WriteFS) error {
 	messages, err := protos.SerializeOpts{TextProto: opts.IncludeTextProto}.Serialize(
 		env,
 		stack,

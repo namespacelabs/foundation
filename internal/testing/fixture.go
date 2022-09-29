@@ -231,8 +231,8 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 			fsys.Add("testbundle.binarypb", messages[0].Binary)
 
 			// Produce an image that can be rehydrated.
-			if err := (config.DehydrateOpts{}).DehydrateTo(ctx, &fsys, bundle.DeployPlan.Environment, bundle.DeployPlan.Stack,
-				bundle.DeployPlan.IngressFragment, bundle.ComputedConfigurations); err != nil {
+			if err := (config.DehydrateOpts{}).DehydrateTo(ctx, bundle.DeployPlan.Environment, bundle.DeployPlan.Stack,
+				bundle.DeployPlan.IngressFragment, bundle.ComputedConfigurations, &fsys); err != nil {
 				return nil, err
 			}
 

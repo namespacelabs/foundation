@@ -106,7 +106,7 @@ func computeIngressWithHandlerResult(env planning.Context, planner runtime.Plann
 	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
 		var fragments []*schema.IngressFragment
 
-		for _, computed := range h.Computed.GetEntry() {
+		for _, computed := range h.MergedComputedConfigurations().GetEntry() {
 			for _, conf := range computed.Configuration {
 				p := &schema.IngressFragment{}
 				if !conf.Impl.MessageIs(p) {
@@ -167,7 +167,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	pbr := compute.MustGetDepValue(deps, m.prepare, "prepare")
 
 	g := ops.NewEmptyPlan()
-	g.Add(pbr.HandlerResult.Definitions...)
+	g.Add(pbr.HandlerResult.OrderedInvocations...)
 	g.Add(pbr.DeploymentPlan.Definitions...)
 
 	plan := &Plan{
@@ -181,7 +181,7 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	plan.IngressFragments = compute.MustGetDepValue(deps, m.ingressFragments, "ingress").Fragments
-	plan.Computed = pbr.HandlerResult.Computed
+	plan.Computed = pbr.HandlerResult.MergedComputedConfigurations()
 
 	return plan, nil
 }
@@ -258,7 +258,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			deployment, err := planDeployment(ctx, rc, stackAndDefs.Stack, stackAndDefs.ServerDefs, imageIDs, *secrets)
+			deployment, err := planDeployment(ctx, rc, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, *secrets)
 			if err != nil {
 				return prepareAndBuildResult{}, err
 			}
@@ -272,7 +272,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 	return deploymentPlan, nil
 }
 
-func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, serverDefs map[schema.PackageName]*serverDefs, imageIDs map[schema.PackageName]ResolvedServerImages, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
@@ -304,8 +304,8 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 			return nil, err
 		}
 
-		if sr := serverDefs[srv.PackageName()]; sr != nil {
-			run.Extensions = sr.Extensions
+		if sr := outputs[srv.PackageName()]; sr != nil {
+			run.Extensions = append(run.Extensions, sr.Extensions...)
 
 			for _, ext := range sr.ServerExtensions {
 				run.Volumes = append(run.Volumes, ext.Volume...)
@@ -496,7 +496,7 @@ func ComputeStackAndImages(ctx context.Context, env planning.Context, planner ru
 
 func computeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, def compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) ([]schema.PackageName, []compute.Computable[ResolvedServerImages], error) {
 	computedOnly := compute.Transform("return computed", def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
-		return h.Computed, nil
+		return h.MergedComputedConfigurations(), nil
 	})
 
 	imageMap, err := prepareServerImages(ctx, env, planner, stack, buildAssets, computedOnly)

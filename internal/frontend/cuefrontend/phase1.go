@@ -86,7 +86,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, in
 			return pdata, err
 		}
 
-		pdata.Provisioning = append(pdata.Provisioning, inv)
+		pdata.ComputePlanWith = append(pdata.ComputePlanWith, inv)
 	}
 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
