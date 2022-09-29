@@ -229,6 +229,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		integrationapplying.RegisterBinaryIntegration(dockerapplier.CreateBinary)
 		integrationapplying.RegisterPackageIntegration(goapplier.Apply)
 		integrationapplying.RegisterPackageIntegration(nodejsapplier.Apply)
+		integrationapplying.RegisterBinaryIntegration(nodejsapplier.CreateBinary)
 
 		// Codegen
 		codegen.Register()

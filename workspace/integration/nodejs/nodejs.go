@@ -20,19 +20,30 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 		return fnerrors.UserError(pkg.Location, "nodejs integration requires a server")
 	}
 
+	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, pl, pkg, pkg.Server.Name, data)
+	if err != nil {
+		return err
+	}
+
+	return api.SetServerBinaryRef(pkg, binaryRef)
+}
+
+func CreateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
 	nodePkg := data.Pkg
 	if nodePkg == "" {
 		nodePkg = "."
 	}
 
-	return api.SetServerBinary(
-		pkg,
-		&schema.LayeredImageBuildPlan{
+	return &schema.Binary{
+		BuildPlan: &schema.LayeredImageBuildPlan{
 			LayerBuildPlan: []*schema.ImageBuildPlan{{
 				NodejsBuild: &schema.ImageBuildPlan_NodejsBuild{
 					RelPath:    nodePkg,
 					NodePkgMgr: data.NodePkgMgr,
 				}}},
 		},
-		[]string{binary.RunScriptPath})
+		Config: &schema.BinaryConfig{
+			Command: []string{binary.RunScriptPath},
+		},
+	}, nil
 }
