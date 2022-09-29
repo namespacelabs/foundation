@@ -6,9 +6,11 @@ package nodejs
 
 import (
 	"context"
+	"fmt"
 
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/schema"
@@ -49,6 +51,15 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		return nil, err
 	}
 
+	nodejsBuild := &schema.ImageBuildPlan_NodejsBuild{
+		RelPath:    nodePkg,
+		NodePkgMgr: data.NodePkgMgr,
+	}
+	if slices.Contains(data.PackageJsonScripts, buildScript) {
+		nodejsBuild.BuildScript = buildScript
+	}
+
+	layers := []*schema.ImageBuildPlan{{NodejsBuild: nodejsBuild}}
 	config := &schema.BinaryConfig{
 		WorkingDir: binary.AppRootPath,
 		Command:    []string{cliName},
@@ -59,7 +70,16 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in "dev" environment`, devScript)
 		}
 
-		config.Args = []string{"run", devScript}
+		// Making sure that the controller package is loaded.
+		_, err := pl.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
+		if err != nil {
+			return nil, err
+		}
+
+		layers = append(layers, &schema.ImageBuildPlan{Binary: hotreload.ControllerPkg})
+
+		config.Command = []string{"/filesync-controller"}
+		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), cliName, "run", devScript}
 	} else {
 		if !slices.Contains(data.PackageJsonScripts, startScript) {
 			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in non-dev environments`, startScript)
@@ -68,18 +88,8 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		config.Args = []string{"run", startScript}
 	}
 
-	nodejsBuild := &schema.ImageBuildPlan_NodejsBuild{
-		RelPath:    nodePkg,
-		NodePkgMgr: data.NodePkgMgr,
-	}
-	if slices.Contains(data.PackageJsonScripts, buildScript) {
-		nodejsBuild.BuildScript = buildScript
-	}
-
 	return &schema.Binary{
-		BuildPlan: &schema.LayeredImageBuildPlan{
-			LayerBuildPlan: []*schema.ImageBuildPlan{{NodejsBuild: nodejsBuild}},
-		},
-		Config: config,
+		BuildPlan: &schema.LayeredImageBuildPlan{LayerBuildPlan: layers},
+		Config:    config,
 	}, nil
 }
