@@ -34,28 +34,43 @@ type pkgMgrRuntime struct {
 	installCliWithConfigFiles func(llb.State) llb.State
 }
 
+func PkgMgrCliName(pkgMgr schema.NodejsIntegration_NodePkgMgr) (string, error) {
+	switch pkgMgr {
+	case schema.NodejsIntegration_NPM:
+		return "npm", nil
+	case schema.NodejsIntegration_YARN:
+		return "yarn", nil
+	case schema.NodejsIntegration_PNPM:
+		return "pnpm", nil
+	default:
+		return "", fnerrors.InternalError("unknown nodejs package manager: %v", pkgMgr)
+	}
+}
+
 func pkgMgrToRuntime(local buildkit.LocalContents, platform specs.Platform, pkgMgr schema.NodejsIntegration_NodePkgMgr) (pkgMgrRuntime, error) {
 	configsSrc := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
 		Include: patternsForBuild,
 	})
+	cliName, err := PkgMgrCliName(pkgMgr)
+	if err != nil {
+		return pkgMgrRuntime{}, err
+	}
+
+	runtime := pkgMgrRuntime{
+		cliName: cliName,
+	}
 
 	switch pkgMgr {
 	case schema.NodejsIntegration_NPM:
-		return pkgMgrRuntime{
-			"npm",
-			func(base llb.State) llb.State {
-				// Not installing the "npm" binary itself: relying on the base version built into the "node:alpine" image.
-				return base.With(llbutil.CopyFrom(configsSrc, ".", "."))
-			},
-		}, nil
+		runtime.installCliWithConfigFiles = func(base llb.State) llb.State {
+			// Not installing the "npm" binary itself: relying on the base version built into the "node:alpine" image.
+			return base.With(llbutil.CopyFrom(configsSrc, ".", "."))
+		}
 	case schema.NodejsIntegration_YARN:
-		return pkgMgrRuntime{
-			"yarn",
-			func(base llb.State) llb.State {
-				// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
-				return base.With(llbutil.CopyFrom(configsSrc, ".", "."))
-			},
-		}, nil
+		runtime.installCliWithConfigFiles = func(base llb.State) llb.State {
+			// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
+			return base.With(llbutil.CopyFrom(configsSrc, ".", "."))
+		}
 	case schema.NodejsIntegration_PNPM:
 		alpineName, err := pins.CheckDefault("alpine")
 		if err != nil {
@@ -69,16 +84,15 @@ func pkgMgrToRuntime(local buildkit.LocalContents, platform specs.Platform, pkgM
 				versions().Pnpm, pnpmPath)).Root().
 			Run(llb.Shlexf("chmod +x %s", pnpmPath)).Root()
 
-		return pkgMgrRuntime{
-			"pnpm",
-			func(base llb.State) llb.State {
-				return base.With(llbutil.CopyFrom(pnpmBase, pnpmPath, pnpmPath)).
-					With(llbutil.CopyFrom(configsSrc, ".", "."))
-			},
-		}, nil
+		runtime.installCliWithConfigFiles = func(base llb.State) llb.State {
+			return base.With(llbutil.CopyFrom(pnpmBase, pnpmPath, pnpmPath)).
+				With(llbutil.CopyFrom(configsSrc, ".", "."))
+		}
 	default:
 		return pkgMgrRuntime{}, fnerrors.InternalError("unknown nodejs package manager: %v", pkgMgr)
 	}
+
+	return runtime, nil
 }
 
 func pathsToPatterns(paths []string) []string {

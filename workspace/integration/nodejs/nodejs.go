@@ -36,6 +36,11 @@ func CreateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		nodePkg = "."
 	}
 
+	cliName, err := binary.PkgMgrCliName(data.NodePkgMgr)
+	if err != nil {
+		return nil, err
+	}
+
 	return &schema.Binary{
 		BuildPlan: &schema.LayeredImageBuildPlan{
 			LayerBuildPlan: []*schema.ImageBuildPlan{{
@@ -45,7 +50,9 @@ func CreateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 				}}},
 		},
 		Config: &schema.BinaryConfig{
-			Command: []string{binary.RunScriptPath},
+			WorkingDir: binary.AppRootPath,
+			Command:    []string{cliName},
+			Args:       []string{"start"},
 		},
 	}, nil
 }
