@@ -23,7 +23,18 @@ func Config() (string, error) {
 	if err != nil {
 		return dir, err
 	}
-	return filepath.Join(dir, "fn"), nil
+
+	// Best-effort to migrate configuration to the "ns" directory.
+	// TODO: Remove after M0 release.
+	oldPath := filepath.Join(dir, "fn")
+	newPath := filepath.Join(dir, "ns")
+	_, oldErr := os.Stat(oldPath)
+	_, newErr := os.Stat(newPath)
+	if os.IsNotExist(newErr) && oldErr == nil {
+		_ = os.Rename(oldPath, newPath)
+	}
+
+	return filepath.Join(dir, "ns"), nil
 }
 
 func ModuleCache(name, ref string) (string, error) {
