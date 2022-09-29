@@ -20,7 +20,7 @@ type cueTest struct {
 	Servers []string `json:"serversUnderTest"`
 }
 
-func parseTests(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Test, error) {
+func parseTests(ctx context.Context, env *schema.Environment, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Test, error) {
 	it, err := v.Val.Fields()
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func parseTests(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggra
 	out := []*schema.Test{}
 
 	for it.Next() {
-		parsedTest, err := parseTest(ctx, pl, loc, it.Label(), (&fncue.CueV{Val: it.Value()}))
+		parsedTest, err := parseTest(ctx, env, pl, loc, it.Label(), (&fncue.CueV{Val: it.Value()}))
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +40,7 @@ func parseTests(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggra
 	return out, nil
 }
 
-func parseTest(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.Test, error) {
+func parseTest(ctx context.Context, env *schema.Environment, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.Test, error) {
 	var bits cueTest
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func parseTest(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggrap
 			return nil, err
 		}
 
-		binary, err := integrationapplying.GenerateBinary(ctx, pl, loc, name, integration.Data)
+		binary, err := integrationapplying.GenerateBinary(ctx, env, pl, loc, name, integration.Data)
 		if err != nil {
 			return nil, err
 		}

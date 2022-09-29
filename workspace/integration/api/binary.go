@@ -16,20 +16,20 @@ import (
 
 var (
 	// Key: typeUrl
-	registeredBinaryIntegrations = map[string]func(context.Context, pkggraph.PackageLoader, pkggraph.Location, proto.Message) (*schema.Binary, error){}
+	registeredBinaryIntegrations = map[string]func(context.Context, *schema.Environment, pkggraph.PackageLoader, pkggraph.Location, proto.Message) (*schema.Binary, error){}
 )
 
 // Must be called before ApplyIntegration.
-func RegisterBinaryIntegration[V proto.Message](handler func(context.Context, pkggraph.PackageLoader, pkggraph.Location, V) (*schema.Binary, error)) {
-	registeredBinaryIntegrations[protos.TypeUrl[V]()] = func(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, data proto.Message) (*schema.Binary, error) {
-		return handler(ctx, pl, loc, data.(V))
+func RegisterBinaryIntegration[V proto.Message](handler func(context.Context, *schema.Environment, pkggraph.PackageLoader, pkggraph.Location, V) (*schema.Binary, error)) {
+	registeredBinaryIntegrations[protos.TypeUrl[V]()] = func(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data proto.Message) (*schema.Binary, error) {
+		return handler(ctx, env, pl, loc, data.(V))
 	}
 }
 
-func GenerateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, binaryName string, data proto.Message) (*schema.Binary, error) {
+func GenerateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, binaryName string, data proto.Message) (*schema.Binary, error) {
 	url := protos.TypeUrlForInstance(data)
 	if i, ok := registeredBinaryIntegrations[url]; ok {
-		binary, err := i(ctx, pl, loc, data)
+		binary, err := i(ctx, env, pl, loc, data)
 		if err != nil {
 			return nil, err
 		}
@@ -41,8 +41,8 @@ func GenerateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph
 	}
 }
 
-func GenerateBinaryAndAddToPackage(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, binaryName string, data proto.Message) (*schema.PackageRef, error) {
-	binary, err := GenerateBinary(ctx, pl, pkg.Location, binaryName, data)
+func GenerateBinaryAndAddToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, binaryName string, data proto.Message) (*schema.PackageRef, error) {
+	binary, err := GenerateBinary(ctx, env, pl, pkg.Location, binaryName, data)
 	if err != nil {
 		return nil, err
 	}

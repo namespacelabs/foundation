@@ -29,7 +29,7 @@ type parsedCueContainer struct {
 }
 
 // TODO: make it common for the main "server" container and sidecars.
-func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, pkg *pkggraph.Package, name string, loc pkggraph.Location, v *fncue.CueV) (*parsedCueContainer, error) {
+func parseCueContainer(ctx context.Context, env *schema.Environment, pl workspace.EarlyPackageLoader, pkg *pkggraph.Package, name string, loc pkggraph.Location, v *fncue.CueV) (*parsedCueContainer, error) {
 	var bits cueContainer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func parseCueContainer(ctx context.Context, pl workspace.EarlyPackageLoader, pkg
 			return nil, err
 		}
 
-		binaryRef, err := integrationapplying.GenerateBinaryAndAddToPackage(ctx, pl, pkg, name, integration.Data)
+		binaryRef, err := integrationapplying.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, name, integration.Data)
 		if err != nil {
 			return nil, err
 		}

@@ -43,7 +43,7 @@ func main() {
 	workspace.ModuleLoader = cuefrontend.ModuleLoader
 
 	workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader, env *schema.Environment) workspace.Frontend {
-		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(pl), env)
+		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
 	}
 
 	tasks.SetupFlags(root.PersistentFlags())

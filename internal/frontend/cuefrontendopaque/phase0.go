@@ -21,10 +21,11 @@ import (
 
 type Frontend struct {
 	loader workspace.EarlyPackageLoader
+	env    *schema.Environment
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader) *Frontend {
-	return &Frontend{loader: pl}
+func NewFrontend(env *schema.Environment, pl workspace.EarlyPackageLoader) *Frontend {
+	return &Frontend{pl, env}
 }
 
 func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error) {
@@ -40,7 +41,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	}
 
 	if tests := v.LookupPath("tests"); tests.Exists() {
-		parsedTests, err := parseTests(ctx, ft.loader, loc, tests)
+		parsedTests, err := parseTests(ctx, ft.env, ft.loader, loc, tests)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +126,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 			for it.Next() {
 				val := &fncue.CueV{Val: it.Value()}
-				parsedContainer, err := parseCueContainer(ctx, ft.loader, parsedPkg, it.Label(), loc, val)
+				parsedContainer, err := parseCueContainer(ctx, ft.env, ft.loader, parsedPkg, it.Label(), loc, val)
 				if err != nil {
 					return nil, err
 				}

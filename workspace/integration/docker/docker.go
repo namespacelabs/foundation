@@ -21,7 +21,7 @@ func ApplyToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.Pa
 		return fnerrors.UserError(pkg.Location, "docker integration requires a server")
 	}
 
-	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, pl, pkg, pkg.Server.Name, data)
+	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, pkg.Server.Name, data)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func ApplyToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.Pa
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func CreateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.DockerIntegration) (*schema.Binary, error) {
+func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.DockerIntegration) (*schema.Binary, error) {
 	dockerfile := data.Dockerfile
 	if dockerfile == "" {
 		dockerfile = "Dockerfile"

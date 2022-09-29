@@ -22,7 +22,7 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 
 	pkg.Server.Framework = schema.Framework_OPAQUE_NODEJS
 
-	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, pl, pkg, pkg.Server.Name, data)
+	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, pkg.Server.Name, data)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func CreateBinary(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
+func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
 	nodePkg := data.Pkg
 	if nodePkg == "" {
 		nodePkg = "."
