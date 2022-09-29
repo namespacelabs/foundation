@@ -125,11 +125,12 @@ func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *schema.R
 	return nil
 }
 
-func (pr *Package) LookupResourceInstance(name string) *schema.ResourceInstance {
-	for _, r := range pr.ResourceInstanceSpecs {
-		if r.Name == name {
-			return r
+func (pr *Package) LookupResourceInstance(name string) *Resource {
+	for _, r := range pr.Resources {
+		if r.Spec.Name == name {
+			return &r
 		}
 	}
+
 	return nil
 }

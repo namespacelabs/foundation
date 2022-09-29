@@ -42,6 +42,7 @@ type ProvisionOpts struct {
 
 type Server struct {
 	parsed.Server
+
 	DeclaredStack schema.PackageList
 	ParsedDeps    []*ParsedNode
 
@@ -281,7 +282,7 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 			combinedProps.AppendWith(*props)
 		} else if hook.InvokeBinary != nil {
 			// XXX combine all builds beforehand.
-			inv, err := invocation.Make(ctx, server.SealedContext(), nil, hook.InvokeBinary)
+			inv, err := invocation.Make(ctx, server.SealedContext(), server.SealedContext(), nil, hook.InvokeBinary)
 			if err != nil {
 				return nil, err
 			}
@@ -308,7 +309,10 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 					return nil, err
 				}
 
-				opts.Image = image
+				opts.Image, err = image.Image()
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]

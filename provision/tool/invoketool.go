@@ -185,7 +185,12 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && r.Invocation.PublicImageID != nil {
 		opts.PublicImageID = r.Invocation.PublicImageID
 	} else {
-		opts.Image = compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
+		resolvable := compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
+		if image, err := resolvable.Image(); err == nil {
+			opts.Image = image
+		} else {
+			return nil, err
+		}
 	}
 
 	opts.SupportedToolVersion = r.Invocation.SupportedToolVersion

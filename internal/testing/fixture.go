@@ -91,9 +91,8 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	// Must be no "pl" usage after this point:
 	// All packages have been bound to the environment, and sealed.
 	packages := pl.Seal()
-	sealedCtx := pkggraph.MakeSealedContext(env, packages)
 
-	testBin, err := binary.PlanBinary(ctx, driverLoc, testDef.Driver, sealedCtx, binary.BuildImageOpts{
+	testBin, err := binary.PlanBinary(ctx, packages, env, driverLoc, testDef.Driver, binary.BuildImageOpts{
 		Platforms: platforms,
 	})
 	if err != nil {
@@ -117,6 +116,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 
 	testBin.Plan.Spec = buildAndAttachDataLayer{testBin.Plan.SourceLabel, testBin.Plan.Spec, makeRequestDataLayer(testReq)}
 
+	sealedCtx := pkggraph.MakeSealedContext(env, packages)
 	// We build multi-platform binaries because we don't know if the target cluster
 	// is actually multi-platform as well (although we could probably resolve it at
 	// test setup time, i.e. now).

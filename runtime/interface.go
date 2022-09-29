@@ -183,7 +183,8 @@ type DeploymentSpec struct {
 }
 
 type DeployableSpec struct {
-	Location    fnerrors.Location
+	ErrorLocation fnerrors.Location
+
 	PackageName schema.PackageName
 	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
 	Attachable  AttachableKind

@@ -144,7 +144,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			pkgId := naming.StableIDN(test.TestRef.PackageName, 8)
 
 			testDriver := runtime.DeployableSpec{
-				Location:      test.TestRef.AsPackageName(),
+				ErrorLocation: test.TestRef.AsPackageName(),
 				PackageName:   test.TestRef.AsPackageName(),
 				Class:         schema.DeployableClass_ONESHOT,
 				Id:            ids.NewRandomBase32ID(8),

@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -21,11 +23,12 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/planning"
 )
 
 type Invocation struct {
 	ImageName            string
-	Image                compute.Computable[oci.Image]
+	Image                compute.Computable[oci.ResolvableImage]
 	PublicImageID        *oci.ImageID
 	SupportedToolVersion int
 	Command              []string
@@ -41,7 +44,16 @@ type Snapshot struct {
 	Contents fs.FS
 }
 
-func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
+func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
+	p, err := tools.HostPlatform(ctx, env.Configuration())
+	if err != nil {
+		return nil, err
+	}
+
+	return MakeForPlatforms(ctx, pl, env, serverLocRef, with, p)
+}
+
+func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
 	var binRef *schema.PackageRef
 	if with.BinaryRef != nil {
 		binRef = with.BinaryRef
@@ -51,37 +63,39 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 		return nil, fnerrors.UserError(nil, "`binary` is required to point to a binary package")
 	}
 
-	binPkg, err := env.LoadByName(ctx, binRef.AsPackageName())
+	pkg, bin, err := pkggraph.LoadBinary(ctx, pl, binRef)
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := tools.HostPlatform(ctx, env.Configuration())
+	prepared, err := binary.PlanBinary(ctx, pl, env, pkg.Location, bin, binary.BuildImageOpts{
+		UsePrebuilts: true,
+		Platforms:    target,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	bin, err := binary.PlanImage(ctx, binPkg, binRef.Name, env, true, &p)
-	if err != nil {
-		return nil, err
-	}
-
-	prebuilt, err := binary.PrebuiltImageID(ctx, binPkg.Location, env)
+	image, err := prepared.Image(ctx, pkggraph.MakeSealedContext(env, pl))
 	if err != nil {
 		return nil, err
 	}
 
 	invocation := &Invocation{
-		ImageName:     bin.Name,
-		Command:       bin.Command,
-		Image:         bin.Image,
-		PublicImageID: prebuilt, // The assumption at the moment is that all prebuilts are public.
-		WorkingDir:    with.WorkingDir,
-		NoCache:       with.NoCache,
-		Inject:        with.Inject,
+		ImageName:  bin.Name,
+		Command:    prepared.Command,
+		Image:      image,
+		WorkingDir: with.WorkingDir,
+		NoCache:    with.NoCache,
+		Inject:     with.Inject,
 	}
 
-	if v := binPkg.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {
+	if prebuilt, is := build.IsPrebuilt(prepared.Plan.Spec); is {
+		// The assumption at the moment is that all prebuilts are public.
+		invocation.PublicImageID = &prebuilt
+	}
+
+	if v := pkg.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {
 		invocation.SupportedToolVersion = int(v)
 	}
 
@@ -155,9 +169,6 @@ func Make(ctx context.Context, env pkggraph.SealedContext, serverLocRef *pkggrap
 	}
 
 	// Make configuration deterministic.
-
-	sort.Strings(invocation.Args)
-
 	sort.Slice(invocation.Snapshots, func(i, j int) bool {
 		return strings.Compare(invocation.Snapshots[i].Name, invocation.Snapshots[j].Name) < 0
 	})

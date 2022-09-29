@@ -27,6 +27,11 @@ type PackageList struct {
 	l uniquestrings.List
 }
 
+type PackageRefList struct {
+	l    uniquestrings.List
+	refs []*PackageRef
+}
+
 func (pl *PackageList) Add(pkg PackageName) bool {
 	return pl.l.Add(pkg.String())
 }
@@ -58,6 +63,19 @@ func (pl PackageList) Len() int { return pl.l.Len() }
 
 func (pl PackageList) Clone() PackageList {
 	return PackageList{l: pl.l.Clone()}
+}
+
+func (pl *PackageRefList) Add(ref *PackageRef) bool {
+	if pl.l.Add(ref.Canonical()) {
+		pl.refs = append(pl.refs, ref)
+		return true
+	}
+
+	return false
+}
+
+func (pl PackageRefList) Refs() []*PackageRef {
+	return pl.refs
 }
 
 func PackageNames(strs ...string) []PackageName {

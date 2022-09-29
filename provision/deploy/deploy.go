@@ -351,7 +351,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 	for _, srv := range stack.Servers {
 		images := serverBuildSpec{PackageName: srv.PackageName()}
 
-		prebuilt, err := binary.PrebuiltImageID(ctx, srv.Location, env)
+		prebuilt, err := binary.PrebuiltImageID(ctx, srv.Location, env.Configuration())
 		if err != nil {
 			return nil, err
 		}
@@ -367,32 +367,14 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 			return nil, err
 		}
 
-		if imgid, ok := build.IsPrebuilt(spec); ok && !PushPrebuiltsToRegistry {
-			images.Binary = build.Prebuilt(imgid)
-		} else {
-			p, err := MakePlan(ctx, planner, srv.Server, spec)
-			if err != nil {
-				return nil, err
-			}
+		p, err := MakePlan(ctx, planner, srv.Server, spec)
+		if err != nil {
+			return nil, err
+		}
 
-			pctx := srv.Server.SealedContext()
-			name, err := registry.AllocateName(ctx, pctx, srv.PackageName())
-			if err != nil {
-				return nil, err
-			}
-
-			// Leave a hint to where we're pushing to, in case the builder can
-			// use that information for optimization purposes. This may be
-			// replaced with a graph optimization pass in the future.
-			p.PublishName = name
-
-			bin, err := multiplatform.PrepareMultiPlatformImage(ctx, pctx, p)
-			if err != nil {
-				return nil, err
-			}
-
-			images.Binary = oci.PublishResolvable(name, bin)
-			images.BinaryImage = bin
+		images.Binary, images.BinaryImage, err = ensureImage(ctx, srv.Server.SealedContext(), p)
+		if err != nil {
+			return nil, err
 		}
 
 		// In production builds, also build a "config image" which includes both the processed
@@ -415,6 +397,29 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 	}
 
 	return imageList, nil
+}
+
+func ensureImage(ctx context.Context, env pkggraph.SealedContext, p build.Plan) (compute.Computable[oci.ImageID], compute.Computable[oci.ResolvableImage], error) {
+	if imgid, ok := build.IsPrebuilt(p.Spec); ok && !PushPrebuiltsToRegistry {
+		return build.Prebuilt(imgid), nil, nil
+	}
+
+	name, err := registry.AllocateName(ctx, env, p.SourcePackage)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Leave a hint to where we're pushing to, in case the builder can
+	// use that information for optimization purposes. This may be
+	// replaced with a graph optimization pass in the future.
+	p.PublishName = name
+
+	bin, err := multiplatform.PrepareMultiPlatformImage(ctx, env, p)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return oci.PublishResolvable(name, bin), bin, nil
 }
 
 type containerImage struct {
@@ -571,7 +576,7 @@ func computeStackAndImages(ctx context.Context, env planning.Context, planner ru
 
 func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Server, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
-	out.Location = srv.Location
+	out.ErrorLocation = srv.Location
 	out.PackageName = srv.PackageName()
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Id = proto.Id
