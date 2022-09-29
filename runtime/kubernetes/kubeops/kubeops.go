@@ -16,6 +16,7 @@ func Register() {
 	RegisterCreateSecret()
 	registerDelete()
 	registerDeleteList()
+	registerCleanup()
 	registerApplyRoleBinding()
 	registerEnsureRuntimeConfig()
 	registerEnsureDeployment()

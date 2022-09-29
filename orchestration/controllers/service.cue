@@ -3,8 +3,8 @@ import (
 	"namespacelabs.dev/foundation/std/core"
 )
 
-extension: fn.#Extension & {
-	hasInitializerIn: "GO"
+service: fn.#Service & {
+	framework:     "GO"
 
 	// We don't really need it, but https://github.com/namespacelabs/foundation/issues/717
 	instantiate: {

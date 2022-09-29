@@ -16,13 +16,19 @@ import (
 
 func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializers(metrics.Initializers__so2f3v...)
-	di.AddInitializers(controllers.Initializers__6f40u5...)
 	di.AddInitializers(legacycontroller.Initializers__onl1mt...)
 	di.AddInitializers(logging.Initializers__16bc0q...)
 }
 
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {
 	var errs []error
+
+	if err := depgraph.Instantiate(ctx, controllers.Provider__6f40u5, func(ctx context.Context, v interface{}) error {
+		controllers.WireService(ctx, srv.Scope(controllers.Package__6f40u5), v.(controllers.ServiceDeps))
+		return nil
+	}); err != nil {
+		errs = append(errs, err)
+	}
 
 	if err := depgraph.Instantiate(ctx, service.Provider__v9aee7, func(ctx context.Context, v interface{}) error {
 		service.WireService(ctx, srv.Scope(service.Package__v9aee7), v.(service.ServiceDeps))

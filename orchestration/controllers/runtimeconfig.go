@@ -7,26 +7,34 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/tools/record"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const minConfigLifetime = time.Minute // Don't touch freshly created runtime configs.
+const (
+	// Don't touch freshly created runtime configs.
+	// We reconcile on pod updates. If there is an independent pod update after a new runtime config was created,
+	// but before it is referenced by a consumer, we must not delete the new config.
+	// In that case, we requeue when the config is old enough and check if references appeared meanwhile.
+	minConfigLifetime   = 15 * time.Minute
+	DeleteRuntimeConfig = "DeleteRuntimeConfig"
+)
 
 type RuntimeConfigReconciler struct {
-	client.Client
+	client   client.Client
+	recorder record.EventRecorder
 }
 
-func (r RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	configs := &corev1.ConfigMapList{}
-	if err := r.List(ctx, configs, client.InNamespace(req.Namespace), client.MatchingLabels{kubedef.K8sKind: kubedef.K8sRuntimeConfigKind}); err != nil {
+	if err := r.client.List(ctx, configs, client.InNamespace(req.Namespace), client.MatchingLabels{kubedef.K8sKind: kubedef.K8sRuntimeConfigKind}); err != nil {
 		return reconcile.Result{}, fmt.Errorf("unable to list configmaps in namespace %s: %w", req.Namespace, err)
 	}
 
@@ -40,7 +48,7 @@ func (r RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Re
 	usedConfigs := map[string]struct{}{}
 
 	pods := &corev1.PodList{}
-	if err := r.List(ctx, pods, client.InNamespace(req.Namespace), managedByUs); err != nil {
+	if err := r.client.List(ctx, pods, client.InNamespace(req.Namespace), managedByUs); err != nil {
 		return reconcile.Result{}, fmt.Errorf("unable to list pods in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range pods.Items {
@@ -51,7 +59,7 @@ func (r RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Re
 
 	// Also check deployments/stateful sets for what version will be in use next
 	deployments := &appsv1.DeploymentList{}
-	if err := r.List(ctx, deployments, client.InNamespace(req.Namespace), managedByUs); err != nil {
+	if err := r.client.List(ctx, deployments, client.InNamespace(req.Namespace), managedByUs); err != nil {
 		return reconcile.Result{}, fmt.Errorf("unable to list deployments in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range deployments.Items {
@@ -61,7 +69,7 @@ func (r RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Re
 	}
 
 	statefulSets := &appsv1.StatefulSetList{}
-	if err := r.List(ctx, statefulSets, client.InNamespace(req.Namespace), managedByUs); err != nil {
+	if err := r.client.List(ctx, statefulSets, client.InNamespace(req.Namespace), managedByUs); err != nil {
 		return reconcile.Result{}, fmt.Errorf("unable to list stateful sets in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range statefulSets.Items {
@@ -70,23 +78,33 @@ func (r RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Re
 		}
 	}
 
+	requeueAfter := minConfigLifetime
+
 	for _, cfg := range configs.Items {
 		if _, ok := usedConfigs[cfg.Name]; ok {
 			continue
 		}
 
-		if time.Since(cfg.CreationTimestamp.Time) < minConfigLifetime {
-			// Bail out for recently created configs to mitigate races (e.g. cfg created but deployment not applied yet).
+		lifetime := time.Since(cfg.CreationTimestamp.Time)
+		if lifetime < minConfigLifetime {
+			deletableAfter := minConfigLifetime - lifetime
+			if deletableAfter < requeueAfter {
+				requeueAfter = deletableAfter
+			}
 			continue
 		}
 
-		if err := r.Delete(ctx, &cfg); err != nil {
+		if err := r.client.Delete(ctx, &cfg); err != nil {
 			if k8serrors.IsNotFound(err) {
 				// already deleted
 				continue
 			}
-			log.Printf("kubernetes: failed to remove unused runtime configuration %q: %v\n", cfg.Name, err)
+			r.recorder.Eventf(&cfg, corev1.EventTypeWarning, DeleteRuntimeConfig, "failed to remove unused runtime configuration %q: %v", cfg.Name, err)
 		}
+	}
+
+	if requeueAfter < minConfigLifetime {
+		return reconcile.Result{RequeueAfter: requeueAfter}, nil
 	}
 
 	return reconcile.Result{}, nil

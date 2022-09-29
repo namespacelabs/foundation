@@ -11,6 +11,7 @@ import (
 	"log"
 
 	corev1 "k8s.io/api/core/v1"
+	"namespacelabs.dev/foundation/std/go/server"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 )
@@ -29,7 +30,13 @@ var (
 		"Enable leader election for the Kubernetes controller manager, with true guaranteeing only one active controller manager.")
 )
 
-func Prepare(ctx context.Context, _ ExtensionDeps) error {
+func WireService(context.Context, server.Registrar, ServiceDeps) {
+	if err := setupControllers(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func setupControllers() error {
 	mgr, err := controllerruntime.NewManager(controllerruntime.GetConfigOrDie(), controllerruntime.Options{
 		MetricsBindAddress:     *metricsAddress,
 		Port:                   *controllerPort,
@@ -53,8 +60,9 @@ func Prepare(ctx context.Context, _ ExtensionDeps) error {
 	if err := controllerruntime.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
 		Owns(&corev1.ConfigMap{}).
-		Complete(RuntimeConfigReconciler{
-			Client: mgr.GetClient(),
+		Complete(&RuntimeConfigReconciler{
+			client:   mgr.GetClient(),
+			recorder: mgr.GetEventRecorderFor("runtimeconfig-controller"),
 		}); err != nil {
 		return err
 	}
