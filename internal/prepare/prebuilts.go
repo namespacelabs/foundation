@@ -7,9 +7,11 @@ package prepare
 import (
 	"context"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
@@ -17,13 +19,18 @@ import (
 )
 
 func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName) compute.Computable[[]oci.ResolvableImage] {
-	pl := workspace.NewPackageLoader(env)
-
 	return compute.Map(
 		tasks.Action("prepare.download-prebuilts").HumanReadablef("Download prebuilt package images"),
 		compute.Inputs().Proto("env", env.Environment()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.ResolvableImage, error) {
+			platform, err := tools.HostPlatform(ctx, env.Configuration())
+			if err != nil {
+				return nil, err
+			}
+
+			pl := workspace.NewPackageLoader(env)
+
 			var pkgs []*pkggraph.Package
 			var bins []*schema.Binary
 			for _, pkg := range packages {
@@ -40,7 +47,10 @@ func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName
 
 			var images []compute.Computable[oci.ResolvableImage]
 			for k, p := range pkgs {
-				prepared, err := binary.PlanBinary(ctx, pl, env, p.Location, bins[k], binary.BuildImageOpts{UsePrebuilts: true})
+				prepared, err := binary.PlanBinary(ctx, pl, env, p.Location, bins[k], binary.BuildImageOpts{
+					UsePrebuilts: true,
+					Platforms:    []specs.Platform{platform},
+				})
 				if err != nil {
 					return nil, err
 				}
