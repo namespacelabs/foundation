@@ -53,8 +53,12 @@ message ImageBuildPlan {
 
     message NodejsBuild {
         string rel_path = 1;
+
         // Required.
         NodejsIntegration.NodePkgMgr node_pkg_mgr = 2;
+
+        // If set, this script from package.json is executed when building for non-dev environments.
+        string build_script = 3;
     }
 }
 

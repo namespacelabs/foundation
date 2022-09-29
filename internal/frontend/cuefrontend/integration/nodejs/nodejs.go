@@ -45,9 +45,20 @@ func (i *Parser) Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc
 		return nil, err
 	}
 
+	packageJson, err := readPackageJson(ctx, pl, loc)
+	if err != nil {
+		return nil, err
+	}
+
+	scripts := []string{}
+	for s := range packageJson.Scripts {
+		scripts = append(scripts, s)
+	}
+
 	return &schema.NodejsIntegration{
-		Pkg:        bits.Pkg,
-		NodePkgMgr: pkgMgr,
+		Pkg:                bits.Pkg,
+		NodePkgMgr:         pkgMgr,
+		PackageJsonScripts: scripts,
 	}, nil
 }
 

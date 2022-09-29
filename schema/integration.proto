@@ -31,6 +31,9 @@ message NodejsIntegration {
     // Detected Node.js package manager.
     NodePkgMgr node_pkg_mgr = 2;
 
+    // Names of the scripts from `package.json`.
+    repeated string package_json_scripts = 3;
+
     enum NodePkgMgr {
         PKG_MGR_UNKNOWN = 0;
         NPM             = 1;

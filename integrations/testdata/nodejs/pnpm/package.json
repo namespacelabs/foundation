@@ -5,7 +5,7 @@
 	"scripts": {
 		"start": "node dist/server.js",
 		"build": "tsc",
-		"tsc": "tsc"
+		"dev": "pnpm build && pnpm start"
 	},
 	"dependencies": {
 		"express": "^4.18.1",

@@ -17,10 +17,10 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-func NodejsBuilder(env planning.Context, loc pkggraph.Location, cfg *schema.ImageBuildPlan_NodejsBuild, isFocus bool) (build.Spec, error) {
+func NodejsBuilder(env planning.Context, loc pkggraph.Location, config *schema.ImageBuildPlan_NodejsBuild, isFocus bool) (build.Spec, error) {
 	return &buildNodeJS{
-		loc:        loc.Module.MakeLocation(loc.Rel(cfg.RelPath)),
-		nodePkgMgr: cfg.NodePkgMgr,
+		loc:        loc.Module.MakeLocation(loc.Rel(config.RelPath)),
+		config:     config,
 		isDevBuild: opaque.UseDevBuild(env.Environment()),
 		isFocus:    isFocus,
 	}, nil
@@ -28,7 +28,7 @@ func NodejsBuilder(env planning.Context, loc pkggraph.Location, cfg *schema.Imag
 
 type buildNodeJS struct {
 	loc        pkggraph.Location
-	nodePkgMgr schema.NodejsIntegration_NodePkgMgr
+	config     *schema.ImageBuildPlan_NodejsBuild
 	isDevBuild bool
 	isFocus    bool
 }

@@ -5,7 +5,7 @@
 	"scripts": {
 		"start": "node dist/server.js",
 		"build": "tsc",
-		"tsc": "tsc"
+		"dev": "npm run build && npm run start"
 	},
 	"dependencies": {
 		"express": "^4.18.1",

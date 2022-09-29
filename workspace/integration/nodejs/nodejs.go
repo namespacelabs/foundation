@@ -7,11 +7,19 @@ package nodejs
 import (
 	"context"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages/nodejs/binary"
+	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/integration/api"
+)
+
+const (
+	startScript = "start"
+	buildScript = "build"
+	devScript   = "dev"
 )
 
 func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.NodejsIntegration, pkg *pkggraph.Package) error {
@@ -41,18 +49,37 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		return nil, err
 	}
 
+	config := &schema.BinaryConfig{
+		WorkingDir: binary.AppRootPath,
+		Command:    []string{cliName},
+	}
+
+	if opaque.UseDevBuild(env) {
+		if !slices.Contains(data.PackageJsonScripts, devScript) {
+			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in "dev" environment`, devScript)
+		}
+
+		config.Args = []string{"run", devScript}
+	} else {
+		if !slices.Contains(data.PackageJsonScripts, startScript) {
+			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in non-dev environments`, startScript)
+		}
+
+		config.Args = []string{"run", startScript}
+	}
+
+	nodejsBuild := &schema.ImageBuildPlan_NodejsBuild{
+		RelPath:    nodePkg,
+		NodePkgMgr: data.NodePkgMgr,
+	}
+	if slices.Contains(data.PackageJsonScripts, buildScript) {
+		nodejsBuild.BuildScript = buildScript
+	}
+
 	return &schema.Binary{
 		BuildPlan: &schema.LayeredImageBuildPlan{
-			LayerBuildPlan: []*schema.ImageBuildPlan{{
-				NodejsBuild: &schema.ImageBuildPlan_NodejsBuild{
-					RelPath:    nodePkg,
-					NodePkgMgr: data.NodePkgMgr,
-				}}},
+			LayerBuildPlan: []*schema.ImageBuildPlan{{NodejsBuild: nodejsBuild}},
 		},
-		Config: &schema.BinaryConfig{
-			WorkingDir: binary.AppRootPath,
-			Command:    []string{cliName},
-			Args:       []string{"start"},
-		},
+		Config: config,
 	}, nil
 }

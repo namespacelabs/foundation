@@ -3,7 +3,8 @@
 	"version": "1.0.0",
 	"main": "server.js",
 	"scripts": {
-		"start": "node src/server.js"
+		"start": "node src/server.js",
+		"dev": "npm start"
 	},
 	"dependencies": {
 		"express": "^4.18.1"
