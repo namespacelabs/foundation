@@ -59,23 +59,9 @@ type BuildImageOpts struct {
 	Platforms []specs.Platform
 }
 
-func GetBinary(pkg *pkggraph.Package, binName string) (*schema.Binary, error) {
-	for _, bin := range pkg.Binaries {
-		if bin.Name == binName {
-			return bin, nil
-		}
-	}
-
-	if binName == "" && len(pkg.Binaries) == 1 {
-		return pkg.Binaries[0], nil
-	}
-
-	return nil, fnerrors.UserError(pkg.Location, "no such binary %q", binName)
-}
-
 // Returns a Prepared.
 func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggraph.SealedContext, opts BuildImageOpts) (*Prepared, error) {
-	binary, err := GetBinary(pkg, binName)
+	binary, err := pkg.LookupBinary(binName)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +102,7 @@ func (p Prepared) Image(ctx context.Context, env pkggraph.SealedContext) (comput
 }
 
 func PlanImage(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggraph.SealedContext, usePrebuilts bool, platform *specs.Platform) (*PreparedImage, error) {
-	binary, err := GetBinary(pkg, binName)
+	binary, err := pkg.LookupBinary(binName)
 	if err != nil {
 		return nil, err
 	}
@@ -298,12 +284,7 @@ func buildSpec(ctx context.Context, loc pkggraph.Location, bin *schema.Binary, s
 	}
 
 	if binRef := src.Binary; binRef != nil {
-		binPkg, err := env.LoadByName(ctx, binRef.AsPackageName())
-		if err != nil {
-			return nil, err
-		}
-
-		binary, err := GetBinary(binPkg, binRef.Name)
+		binPkg, binary, err := pkggraph.LoadBinary(ctx, env, binRef)
 		if err != nil {
 			return nil, err
 		}

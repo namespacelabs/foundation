@@ -13,9 +13,9 @@ import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
 import "schema/reference.proto";
-import "schema/resource.proto";
 import "schema/secret.proto";
 import "schema/volume.proto";
+import "schema/package.proto";
 
 enum Framework {
     FRAMEWORK_UNSPECIFIED = 0;
@@ -91,7 +91,7 @@ message Server {
 
     repeated SecretSpec secret = 28;
 
-    repeated ResourceInstance resources = 32;
+    repeated PackageRef resource = 32;
 
     message ServiceSpec {
         string                   name     = 1;

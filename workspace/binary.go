@@ -31,7 +31,7 @@ func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 		}
 
 		// For Go, by default, assume the binary is built with the same name as the package name.
-		// TODO: revisit this heuristics.
+		// TODO: revisit this heuristic.
 		if hasGoLayers {
 			bin.Config = &schema.BinaryConfig{
 				Command: []string{"/" + bin.Name},

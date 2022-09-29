@@ -25,43 +25,43 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 		return err
 	}
 
-	for _, rc := range pp.ResourceClasses {
+	for _, rc := range pp.ResourceClassSpecs {
 		if rc.Name == "" {
 			return fnerrors.UserError(pp.Location, "resource class name can't be empty")
 		}
 
 		rc.PackageName = pp.Location.PackageName.String()
 
-		fds, err := transformResourceClass(parseOpts, fsys, pp.Location, []*schema.ResourceClass_Type{rc.IntentType, rc.InstanceType})
+		intentType, err := loadUserType(parseOpts, fsys, pp.Location, rc.IntentType)
 		if err != nil {
 			return err
 		}
 
-		if pp.Provides == nil {
-			pp.Provides = map[string]*protos.FileDescriptorSetAndDeps{}
+		InstanceType, err := loadUserType(parseOpts, fsys, pp.Location, rc.InstanceType)
+		if err != nil {
+			return err
 		}
-		pp.Provides[rc.Name] = fds
+
+		pp.ResourceClasses = append(pp.ResourceClasses, pkggraph.ResourceClass{
+			Spec:         rc,
+			IntentType:   intentType,
+			InstanceType: InstanceType,
+		})
 	}
 
 	return nil
 }
 
-func transformResourceClass(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, rcTypes []*schema.ResourceClass_Type) (*protos.FileDescriptorSetAndDeps, error) {
-	protoSources := []string{}
-	for _, rcType := range rcTypes {
-		protoSources = append(protoSources, rcType.ProtoSource)
-	}
-
-	fds, err := parseOpts.ParseAtLocation(fsys, loc, protoSources)
+func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, spec *schema.ResourceClass_Type) (pkggraph.UserType, error) {
+	fds, err := parseOpts.ParseAtLocation(fsys, loc, []string{spec.ProtoSource})
 	if err != nil {
-		return nil, fnerrors.UserError(loc, "failed to parse proto sources %v: %v", protoSources, err)
+		return pkggraph.UserType{}, fnerrors.UserError(loc, "failed to parse proto sources %v: %v", spec.ProtoSource, err)
 	}
 
-	for _, t := range rcTypes {
-		if _, _, err := protos.LoadMessageByName(fds, t.ProtoType); err != nil {
-			return nil, fnerrors.UserError(loc, "failed to load message %q: %v", t.ProtoType, err)
-		}
+	files, md, err := protos.LoadMessageByName(fds, spec.ProtoType)
+	if err != nil {
+		return pkggraph.UserType{}, fnerrors.UserError(loc, "failed to load message %q: %v", spec.ProtoType, err)
 	}
 
-	return fds, nil
+	return pkggraph.UserType{Descriptor: md, Sources: fds, Registry: files}, nil
 }

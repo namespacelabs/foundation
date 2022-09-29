@@ -100,7 +100,7 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 			return nil, nil, err
 		}
 
-		out.Resources = append(out.Resources, r)
+		out.Resource = append(out.Resource, r)
 	}
 
 	return out, startupPlan, nil

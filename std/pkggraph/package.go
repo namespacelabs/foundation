@@ -5,6 +5,9 @@
 package pkggraph
 
 import (
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -36,19 +39,40 @@ type Package struct {
 	Services    map[string]*protos.FileDescriptorSetAndDeps // key: fully qualified service name
 	PackageData []*types.Resource
 
+	// Parsed resources
+	Resources       []Resource
+	ResourceClasses []ResourceClass
+
 	// Hooks
 	PrepareHooks []PrepareHook
 
-	// Opaque-style resources.
+	// Raw resources definitions within a package.
+	ResourceClassSpecs    []*schema.ResourceClass
+	ResourceProviders     []*schema.ResourceProvider
+	ResourceInstanceSpecs []*schema.ResourceInstance
+}
 
-	// Resources defined by the node.
-	ResourceClasses   []*schema.ResourceClass
-	ResourceProviders []*schema.ResourceProvider
-	ResourceInstances []*schema.ResourceInstance
+type Resource struct {
+	Spec            *schema.ResourceInstance
+	Class           ResourceClass
+	ProviderPackage *Package
+	Provider        *schema.ResourceProvider
+}
 
-	// Resources referenced by the node.
-	ProvidedResourceClasses   []*schema.ResourceClass
-	RequiredResourceProviders []*schema.ResourceProvider
+type ResourceClass struct {
+	Spec         *schema.ResourceClass
+	IntentType   UserType
+	InstanceType UserType
+}
+
+func (rc ResourceClass) PackageName() schema.PackageName {
+	return schema.PackageName(rc.Spec.PackageName)
+}
+
+type UserType struct {
+	Descriptor protoreflect.MessageDescriptor
+	Sources    *protos.FileDescriptorSetAndDeps
+	Registry   *protoregistry.Files
 }
 
 type PrepareHook struct {
@@ -68,44 +92,41 @@ func (pr *Package) Node() *schema.Node {
 	return nil
 }
 
-func (pr *Package) ResourceClass(name string) *schema.ResourceClass {
+func (pr *Package) LookupBinary(name string) (*schema.Binary, error) {
+	for _, bin := range pr.Binaries {
+		if bin.Name == name {
+			return bin, nil
+		}
+	}
+
+	if name == "" && len(pr.Binaries) == 1 {
+		return pr.Binaries[0], nil
+	}
+
+	return nil, fnerrors.UserError(pr.Location, "no such binary %q", name)
+}
+
+func (pr *Package) LookupResourceClass(name string) *ResourceClass {
 	for _, rc := range pr.ResourceClasses {
-		if rc.Name == name {
-			return rc
+		if rc.Spec.Name == name {
+			return &rc
 		}
 	}
 	return nil
 }
 
-func (pr *Package) ProvidedResourceClass(pkgRef *schema.PackageRef) *schema.ResourceClass {
-	for _, rc := range pr.ProvidedResourceClasses {
-		if rc.PackageName == pkgRef.PackageName && rc.Name == pkgRef.Name {
-			return rc
-		}
-	}
-	return nil
-}
-
-func (pr *Package) ResourceProvider(pkgRef *schema.PackageRef) *schema.ResourceProvider {
+func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *schema.ResourceProvider {
 	for _, p := range pr.ResourceProviders {
-		if p.ProvidesClass.Equals(pkgRef) {
+		if p.ProvidesClass.Equals(classRef) {
 			return p
 		}
 	}
+
 	return nil
 }
 
-func (pr *Package) RequiredResourceProvider(pkgRef *schema.PackageRef) *schema.ResourceProvider {
-	for _, p := range pr.RequiredResourceProviders {
-		if p.ProvidesClass.Equals(pkgRef) {
-			return p
-		}
-	}
-	return nil
-}
-
-func (pr *Package) ResourceInstance(name string) *schema.ResourceInstance {
-	for _, r := range pr.ResourceInstances {
+func (pr *Package) LookupResourceInstance(name string) *schema.ResourceInstance {
+	for _, r := range pr.ResourceInstanceSpecs {
 		if r.Name == name {
 			return r
 		}

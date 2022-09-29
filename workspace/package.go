@@ -14,8 +14,7 @@ import (
 )
 
 // This function contains frontend-agnostic validation and processing code.
-// The "opaque integration" will be applied here.
-func SealPackage(ctx context.Context, env *schema.Environment, pl EarlyPackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
+func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
 	var err error
 
 	if pp.Integration != nil {
@@ -61,7 +60,7 @@ func SealPackage(ctx context.Context, env *schema.Environment, pl EarlyPackageLo
 		}
 	}
 
-	for _, r := range pp.ResourceInstances {
+	for _, r := range pp.ResourceInstanceSpecs {
 		if err := transformResourceInstance(ctx, pl, pp, r); err != nil {
 			return nil, err
 		}

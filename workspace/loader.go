@@ -158,6 +158,10 @@ func (pl *PackageLoader) Seal() pkggraph.SealedPackageLoader {
 func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.PackageName) (pkggraph.Location, error) {
 	pkg := string(packageName)
 
+	if pkg == "" || pkg == "." {
+		return pkggraph.Location{}, fnerrors.InternalError("bad package reference %q", pkg)
+	}
+
 	if packageName.Equals(pl.workspace.ModuleName()) {
 		return pl.rootmodule.MakeLocation("."), nil
 	} else if rel := strings.TrimPrefix(pkg, pl.workspace.ModuleName()+"/"); rel != pkg {
@@ -387,7 +391,7 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 			return nil, err
 		}
 
-		return SealPackage(ctx, l.pl.env, l.pl, pp, l.opts)
+		return FinalizePackage(ctx, l.pl.env, l.pl, pp, l.opts)
 	})
 
 	l.mu.Lock()

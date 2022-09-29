@@ -23,18 +23,38 @@ func transformResourceInstance(ctx context.Context, pl EarlyPackageLoader, pp *p
 		return fnerrors.UserError(pp.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", r.Name)
 	}
 
+	if r.IntentFrom != nil {
+		if _, _, err := pkggraph.LoadBinary(ctx, pl, r.IntentFrom.BinaryRef); err != nil {
+			return err
+		}
+	}
+
+	classPkg, err := pl.LoadByName(ctx, r.Class.AsPackageName())
+	if err != nil {
+		return err
+	}
+
+	class := classPkg.LookupResourceClass(r.Class.Name)
+	if class == nil {
+		return fnerrors.UserError(pp.Location, "no such resource class %q", r.Class.Canonical())
+	}
+
 	providerPkg, err := pl.LoadByName(ctx, schema.PackageName(r.Provider))
 	if err != nil {
 		return err
 	}
-	provider := providerPkg.ResourceProvider(r.Class)
+
+	provider := providerPkg.LookupResourceProvider(r.Class)
 	if provider == nil {
 		return fnerrors.UserError(pp.Location, "package %q does not a provider for resource class %q", r.Provider, r.Class.Canonical())
 	}
-	// Keeping RequiredResourceProviders unique.
-	if pp.RequiredResourceProvider(r.Class) == nil {
-		pp.RequiredResourceProviders = append(pp.RequiredResourceProviders, provider)
-	}
+
+	pp.Resources = append(pp.Resources, pkggraph.Resource{
+		Spec:            r,
+		Class:           *class,
+		ProviderPackage: providerPkg,
+		Provider:        provider,
+	})
 
 	return nil
 }

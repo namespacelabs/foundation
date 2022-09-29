@@ -52,12 +52,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 func (impl) PrepareRun(ctx context.Context, server parsed.Server, run *runtime.ContainerRunOpts) error {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 	if binRef != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, binRef.AsPackageName())
-		if err != nil {
-			return err
-		}
-
-		binary, err := binary.GetBinary(pkg, binRef.GetName())
+		_, binary, err := pkggraph.LoadBinary(ctx, server.SealedContext(), binRef)
 		if err != nil {
 			return err
 		}

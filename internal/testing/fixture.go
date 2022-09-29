@@ -132,7 +132,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, err
 	}
 
-	sutServers := stack.FocusPackageList().PackageNamesAsString()
+	sutServers := stack.Focus.PackageNamesAsString()
 	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
 	if err != nil {
 		return nil, err

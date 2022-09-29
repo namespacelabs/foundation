@@ -30,7 +30,7 @@ import (
 )
 
 type Stack struct {
-	Focus             []schema.PackageName
+	Focus             schema.PackageList
 	Servers           []Server
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
@@ -76,12 +76,6 @@ type ParsedNode struct {
 		ServerExtension []*schema.ServerExtension
 		Extension       []*schema.DefExtension
 	}
-}
-
-func (stack *Stack) FocusPackageList() schema.PackageList {
-	var pl schema.PackageList
-	pl.AddMultiple(stack.Focus...)
-	return pl
 }
 
 func (stack *Stack) AllPackageList() schema.PackageList {
@@ -329,7 +323,7 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 
 			if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
 				resp, err = invoke.InvokeOnBuildkit(ctx, server.SealedContext().Configuration(), "foundation.provision.tool.protocol.PrepareService/Prepare",
-					schema.PackageName(hook.InvokeBinary.Binary), *opts.PublicImageID, opts, req)
+					node.PackageName(), *opts.PublicImageID, opts, req)
 			} else {
 				resp, err = invoke.Invoke(ctx, server.SealedContext().Configuration(), node.PackageName(), opts, req,
 					func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {

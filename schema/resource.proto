@@ -12,7 +12,8 @@ import "google/protobuf/any.proto";
 import "schema/package.proto";
 import "schema/provision.proto";
 
-// A resource represents an instance of an entity class, i.e. a _thing_ that has been instantiated to be used by a server, or by
+// A resource represents an instance of an entity class, i.e. a _thing_ that has
+// been instantiated to be used by a server, or by other resources.
 message ResourceInstance {
     string package_name = 1;  // Computed, where this resource lives.
     string name         = 2;  // The name of the resource, scoped to the package where it lives.
@@ -44,7 +45,8 @@ message ResourceProvider {
 
     Invocation initialize_with = 3;  // Run this invocation to create the resource.
 
-    repeated ResourceInstance resource_instance                   = 4;  // Resources this provider depends on in order to instantiate its own resource.
-    Invocation                resource_instance_from              = 5;  // Programatically specify a set of resources.
-    repeated PackageRef       resource_instance_available_classes = 6;  // Resource classes that an invocation may produce (any instance of a different class will be rejected).
+    repeated ResourceInstance resource_instance                          = 4;  // Resources this provider depends on in order to instantiate its own resource.
+    Invocation                resource_instance_from                     = 5;  // Programatically specify a set of resources.
+    repeated PackageRef       resource_instance_from_available_classes   = 6;  // Resource classes that an invocation may produce (any instance of a different class will be rejected).
+    repeated PackageRef       resource_instance_from_available_providers = 7;  // Resource providers that an invocation may reference (any instance of a different class will be rejected).
 }

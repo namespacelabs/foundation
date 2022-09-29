@@ -8,27 +8,45 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, provider *schema.ResourceProvider) error {
+	if provider.InitializeWith == nil {
+		return fnerrors.UserError(pp.Location, "resource provider requires initializedWith")
+	}
+
+	if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.InitializeWith.BinaryRef); err != nil {
+		return err
+	}
+
 	pkg, err := pl.LoadByName(ctx, provider.ProvidesClass.AsPackageName())
 	if err != nil {
 		return err
 	}
 
-	rc := pkg.ResourceClass(provider.ProvidesClass.Name)
+	rc := pkg.LookupResourceClass(provider.ProvidesClass.Name)
 	if rc == nil {
 		return fnerrors.UserError(pp.Location, "resource class %q not found in package %q", provider.ProvidesClass.Name, provider.ProvidesClass.PackageName)
 	}
 
-	if pp.ProvidedResourceClass(provider.ProvidesClass) != nil {
-		// Shouldn't happen since the resource class ref is a map key in CUE.
-		return fnerrors.InternalError("resource class %q already provided by this package", provider.ProvidesClass.Canonical())
+	if len(provider.ResourceInstance) > 0 {
+		return fnerrors.UserError(pp.Location, "%s: inline resources not yet supported", provider.ProvidesClass.Canonical())
 	}
 
-	pp.ProvidedResourceClasses = append(pp.ProvidedResourceClasses, rc)
+	// Make sure that all referenced classes and providers are loaded.
+	var errs []error
+	for _, pkg := range provider.ResourceInstanceFromAvailableClasses {
+		_, err := pl.LoadByName(ctx, pkg.AsPackageName())
+		errs = append(errs, err)
+	}
 
-	return nil
+	for _, pkg := range provider.ResourceInstanceFromAvailableProviders {
+		_, err := pl.LoadByName(ctx, pkg.AsPackageName())
+		errs = append(errs, err)
+	}
+
+	return multierr.New(errs...)
 }

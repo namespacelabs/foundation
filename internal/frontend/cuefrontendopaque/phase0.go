@@ -61,7 +61,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 				return nil, err
 			}
 
-			parsedPkg.ResourceClasses = append(parsedPkg.ResourceClasses, parsedRc)
+			parsedPkg.ResourceClassSpecs = append(parsedPkg.ResourceClassSpecs, parsedRc)
 		}
 	}
 
@@ -73,6 +73,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 		for it.Next() {
 			val := &fncue.CueV{Val: it.Value()}
+
 			parsedProvider, err := parseResourceProvider(ctx, loc, it.Label(), val)
 			if err != nil {
 				return nil, err
@@ -95,7 +96,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 				return nil, err
 			}
 
-			parsedPkg.ResourceInstances = append(parsedPkg.ResourceInstances, parsedResource)
+			parsedPkg.ResourceInstanceSpecs = append(parsedPkg.ResourceInstanceSpecs, parsedResource)
 		}
 	}
 

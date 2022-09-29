@@ -35,17 +35,17 @@ func (stack *stackBuilder) claim(pkgname schema.PackageName) (*Server, bool) {
 	return ps, false
 }
 
-func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
+func (stack *stackBuilder) buildStack(focusPackages ...schema.PackageName) *Stack {
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 
-	var foci schema.PackageList
-	for _, pkg := range focus {
-		foci.Add(pkg)
+	var focus schema.PackageList
+	for _, pkg := range focusPackages {
+		focus.Add(pkg)
 	}
 
 	s := &Stack{
-		Focus: foci.PackageNames(),
+		Focus: focus,
 	}
 
 	for _, sb := range stack.servers {
@@ -53,7 +53,7 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 	}
 
 	sort.Slice(s.Servers, func(i, j int) bool {
-		return order(foci, s.Servers[i].Server.PackageName(), s.Servers[j].Server.PackageName())
+		return order(focus, s.Servers[i].Server.PackageName(), s.Servers[j].Server.PackageName())
 	})
 
 	var endpoints []*schema.Endpoint
@@ -71,7 +71,7 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 		if e_i.ServerOwner == e_j.ServerOwner {
 			return strings.Compare(e_i.AllocatedName, e_j.AllocatedName) < 0
 		}
-		return order(foci, schema.PackageName(e_i.ServerOwner), schema.PackageName(e_j.ServerOwner))
+		return order(focus, schema.PackageName(e_i.ServerOwner), schema.PackageName(e_j.ServerOwner))
 	})
 
 	sort.Slice(internal, func(i, j int) bool {
@@ -81,7 +81,7 @@ func (stack *stackBuilder) buildStack(focus ...schema.PackageName) *Stack {
 		if e_i.ServerOwner == e_j.ServerOwner {
 			return e_i.GetPort().GetContainerPort() < e_j.Port.GetContainerPort()
 		}
-		return order(foci, schema.PackageName(e_i.ServerOwner), schema.PackageName(e_j.ServerOwner))
+		return order(focus, schema.PackageName(e_i.ServerOwner), schema.PackageName(e_j.ServerOwner))
 	})
 
 	s.Endpoints = endpoints

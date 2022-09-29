@@ -7,7 +7,6 @@ package cuefrontendopaque
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
@@ -26,22 +25,18 @@ func parseResourceProvider(ctx context.Context, loc pkggraph.Location, key strin
 		return nil, err
 	}
 
-	rcPkgRef, err := schema.ParsePackageRef(key)
+	classRef, err := schema.ParsePackageRef(key)
 	if err != nil {
 		return nil, err
 	}
 
-	if bits.InitializedWith == nil {
-		return nil, fnerrors.UserError(loc, "resource provider requires initializedWith")
-	}
-
-	inv, err := bits.InitializedWith.ToFrontend()
+	invocation, err := bits.InitializedWith.ToInvocation()
 	if err != nil {
 		return nil, err
 	}
 
 	return &schema.ResourceProvider{
-		ProvidesClass:  rcPkgRef,
-		InitializeWith: inv,
+		ProvidesClass:  classRef,
+		InitializeWith: invocation,
 	}, nil
 }

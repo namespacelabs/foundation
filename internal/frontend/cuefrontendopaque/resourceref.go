@@ -13,8 +13,8 @@ import (
 	"namespacelabs.dev/foundation/workspace"
 )
 
-func parseResourceRef(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, pkgRefStr string) (*schema.ResourceInstance, error) {
-	pkgRef, err := schema.ParsePackageRef(pkgRefStr)
+func parseResourceRef(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, packageRef string) (*schema.PackageRef, error) {
+	pkgRef, err := schema.ParsePackageRef(packageRef)
 	if err != nil {
 		return nil, err
 	}
@@ -24,10 +24,10 @@ func parseResourceRef(ctx context.Context, pl workspace.EarlyPackageLoader, loc 
 		return nil, err
 	}
 
-	r := pkg.ResourceInstance(pkgRef.Name)
+	r := pkg.LookupResourceInstance(pkgRef.Name)
 	if r == nil {
 		return nil, fnerrors.UserError(loc, "no such resource %q", pkgRef.Name)
 	}
 
-	return r, nil
+	return pkgRef, nil
 }

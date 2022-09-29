@@ -243,39 +243,36 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			return loadSecrets(ctx, env.Environment(), handlerR.Stack)
 		})
 
-	c1 := compute.Map(
+	deploymentPlan := compute.Map(
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		finalInputs.
-			Strs("focus", stack.AllPackageList().PackageNamesAsString()).
 			Computable("images", imageIDs).
 			Computable("stackAndDefs", stackDef).
 			Computable("secretData", secretData),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
-			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 			secrets := compute.MustGetDepValue(deps, secretData, "secretData")
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			deployment, err := planDeployment(ctx, rc, handlerR.Stack, handlerR.ServerDefs, imageIDs, *secrets)
+			deployment, err := planDeployment(ctx, rc, stackAndDefs.Stack, stackAndDefs.ServerDefs, imageIDs, *secrets)
 			if err != nil {
 				return prepareAndBuildResult{}, err
 			}
 
 			return prepareAndBuildResult{
-				HandlerResult:  handlerR,
+				HandlerResult:  stackAndDefs,
 				DeploymentPlan: deployment,
 			}, nil
 		})
 
-	return c1, nil
+	return deploymentPlan, nil
 }
 
 func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, serverDefs map[schema.PackageName]*serverDefs, imageIDs map[schema.PackageName]ResolvedServerImages, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
-	focus := schema.List(stack.Focus)
-
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
@@ -323,7 +320,7 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 		}
 
 		run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
-		run.Focused = focus.Includes(srv.PackageName())
+		run.Focused = stack.Focus.Includes(srv.PackageName())
 
 		serverRuns = append(serverRuns, run)
 	}
@@ -349,7 +346,6 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 func prepareServerImages(ctx context.Context, env planning.Context, planner runtime.Planner,
 	stack *provision.Stack, buildAssets languages.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverBuildSpec, error) {
-	focus := schema.List(stack.Focus)
 	imageList := []serverBuildSpec{}
 
 	for _, srv := range stack.Servers {
@@ -365,7 +361,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = srv.Integration().PrepareBuild(ctx, buildAssets, srv.Server, focus.Includes(srv.PackageName()))
+			spec, err = srv.Integration().PrepareBuild(ctx, buildAssets, srv.Server, stack.Focus.Includes(srv.PackageName()))
 		}
 		if err != nil {
 			return nil, err
@@ -404,7 +400,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
 		pctx := srv.Server.SealedContext()
-		if focus.Includes(srv.PackageName()) && !pctx.Environment().Ephemeral && computedConfigs != nil {
+		if stack.Focus.Includes(srv.PackageName()) && !pctx.Environment().Ephemeral && computedConfigs != nil {
 			configImage := prepareConfigImage(ctx, env, planner, srv.Server, stack, computedConfigs)
 
 			cfgtag, err := registry.AllocateName(ctx, pctx, srv.PackageName())

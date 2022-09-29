@@ -29,5 +29,4 @@ func TestImports(t *testing.T) {
 	}, x.ImportMap()); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}
-
 }
