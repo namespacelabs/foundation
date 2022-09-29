@@ -25,6 +25,7 @@ var (
 
 type nodeJsBinary struct {
 	nodejsEnv string
+	module    build.Workspace
 }
 
 func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Configuration) (llb.State, []buildkit.LocalContents, error) {
@@ -33,7 +34,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	local := buildkit.LocalContents{Module: bnj.loc.Module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
+	local := buildkit.LocalContents{Module: n.module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
 	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
 		Exclude: NodejsExclude,
 	})
@@ -52,7 +53,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	var out llb.State
 	// The dev and prod builds are different:
 	//  - For prod we produce the smallest image, without the package manager and its dependencies.
-	//  - For dev we keep the base image with the package manager and install nodemon there.
+	//  - For dev we keep the base image with the package manager.
 	// This can cause discrepancies between environments however the risk seems to be small.
 	if bnj.isDevBuild {
 		out = srcWithPkgMgr
