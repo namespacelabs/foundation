@@ -6,7 +6,6 @@ package binary
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
@@ -18,8 +17,7 @@ import (
 )
 
 const (
-	appRootPath   = "/app"
-	RunScriptPath = appRootPath + "/ns_run_node.sh"
+	AppRootPath = "/app"
 )
 
 var (
@@ -54,8 +52,6 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	buildBase = addRunScript(ctx, pkgMgrRuntime.cliName, buildBase)
-
 	var out llb.State
 	// The dev and prod builds are different:
 	//  - For prod we produce the smallest image, without the package manager and its dependencies.
@@ -69,7 +65,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
 			With(pkgMgrRuntime.installCliWithConfigFiles,
 				production.NonRootUser(),
-				llbutil.CopyFrom(buildBase, appRootPath, appRootPath),
+				llbutil.CopyFrom(buildBase, AppRootPath, AppRootPath),
 			)
 	}
 
@@ -80,8 +76,8 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 func prepareAndRunInstall(ctx context.Context, pkgMgrRuntime pkgMgrRuntime, base llb.State, src llb.State) llb.State {
 	return base.
-		File(llb.Mkdir(appRootPath, 0644)).
-		With(llb.Dir(appRootPath), pkgMgrRuntime.installCliWithConfigFiles).
+		File(llb.Mkdir(AppRootPath, 0644)).
+		With(llb.Dir(AppRootPath), pkgMgrRuntime.installCliWithConfigFiles).
 		Run(llb.Shlexf("%s install", pkgMgrRuntime.cliName)).Root()
 }
 
@@ -98,15 +94,4 @@ func runBuild(ctx context.Context, pkgMgrCliName string, loc pkggraph.Location, 
 	}
 
 	return state, nil
-}
-
-func addRunScript(ctx context.Context, pkgMgrCliName string, base llb.State) llb.State {
-	return llbutil.AddFile(base, RunScriptPath, 0755, []byte(genRunScript(pkgMgrCliName)))
-}
-
-// We generate a run script so the container command can be static.
-func genRunScript(pkgMgrCliName string) string {
-	return fmt.Sprintf(`#!/bin/sh
-cd %s
-%s start`, appRootPath, pkgMgrCliName)
 }
