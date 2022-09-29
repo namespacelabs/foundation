@@ -19,16 +19,16 @@ import (
 )
 
 func Register() {
-	languages.Register(schema.Framework_OPAQUE, impl{})
+	languages.Register(schema.Framework_OPAQUE, OpaqueIntegration{})
 }
 
-type impl struct {
+type OpaqueIntegration struct {
 	languages.MaybeGenerate
 	languages.MaybeTidy
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server parsed.Server, isFocus bool) (build.Spec, error) {
+func (OpaqueIntegration) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server parsed.Server, isFocus bool) (build.Spec, error) {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
 	if binRef == nil {
@@ -49,7 +49,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return prep.Plan.Spec, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, server parsed.Server, run *runtime.ContainerRunOpts) error {
+func (OpaqueIntegration) PrepareRun(ctx context.Context, server parsed.Server, run *runtime.ContainerRunOpts) error {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 	if binRef != nil {
 		_, binary, err := pkggraph.LoadBinary(ctx, server.SealedContext(), binRef)
@@ -68,14 +68,14 @@ func (impl) PrepareRun(ctx context.Context, server parsed.Server, run *runtime.C
 	return nil
 }
 
-func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
+func (OpaqueIntegration) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
 	return nil
 }
 
-func (impl) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
+func (OpaqueIntegration) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
 	return nil
 }
 
-func (impl) DevelopmentPackages() []schema.PackageName {
+func (OpaqueIntegration) DevelopmentPackages() []schema.PackageName {
 	return nil
 }
