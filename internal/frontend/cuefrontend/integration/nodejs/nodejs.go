@@ -25,7 +25,7 @@ const (
 
 type Parser struct{}
 
-func (i *Parser) Kind() string     { return "namespace.so/from-nodejs" }
+func (i *Parser) Url() string      { return "namespace.so/from-nodejs" }
 func (i *Parser) Shortcut() string { return "nodejs" }
 
 type cueIntegrationNodejs struct {

@@ -5,14 +5,14 @@
 package integrations
 
 import (
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/helpers"
 	"namespacelabs.dev/foundation/schema"
 )
 
-func NewParser() api.IntegrationParser {
+func NewParser() entity.EntityParser {
 	return &helpers.SimpleJsonParser[*schema.GoIntegration]{
-		SyntaxKind:     "namespace.so/from-go",
+		SyntaxUrl:      "namespace.so/from-go",
 		SyntaxShortcut: "go",
 	}
 }

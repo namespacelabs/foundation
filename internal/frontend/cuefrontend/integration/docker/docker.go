@@ -5,14 +5,14 @@
 package docker
 
 import (
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/helpers"
 	"namespacelabs.dev/foundation/schema"
 )
 
-func NewParser() api.IntegrationParser {
+func NewParser() entity.EntityParser {
 	return &helpers.SimpleJsonParser[*schema.DockerIntegration]{
-		SyntaxKind:     "namespace.so/from-dockerfile",
+		SyntaxUrl:      "namespace.so/from-dockerfile",
 		SyntaxShortcut: "docker",
 	}
 }

@@ -35,6 +35,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	dockerparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/docker"
 	goparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/golang"
@@ -213,9 +214,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		opaque.Register()
 
 		// Opaque integrations: parsing
-		integrationparsing.Register(dockerparser.NewParser())
-		integrationparsing.Register(goparser.NewParser())
-		integrationparsing.Register(&nodejsparser.Parser{})
+		integrationparsing.IntegrationParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
+			dockerparser.NewParser(),
+			goparser.NewParser(),
+			&nodejsparser.Parser{},
+		})
 
 		// Opaque integrations: applying
 		integrationapplying.Register(dockerapplier.Apply)
