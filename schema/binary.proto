@@ -64,9 +64,10 @@ message LayeredImageBuildPlan {
 
 // Instructions of how to invoke the image, if it includes an invocable binary.
 message BinaryConfig {
-    repeated string   command = 1;
-    repeated string   args    = 2;
-    repeated EnvEntry env     = 3;
+    repeated string   command     = 1;
+    repeated string   args        = 2;
+    repeated EnvEntry env         = 3;
+    string            working_dir = 4;
 
     message EnvEntry {
         string name                     = 1;

@@ -614,6 +614,9 @@ func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Serv
 		return err
 	}
 
+	if merged.WorkingDir != "" {
+		out.MainContainer.WorkingDir = merged.WorkingDir
+	}
 	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
 	out.MainContainer.Env = append(out.MainContainer.Env, srv.Proto().MainContainer.Env...)
 	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
