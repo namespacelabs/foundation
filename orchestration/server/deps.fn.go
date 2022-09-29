@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"namespacelabs.dev/foundation/orchestration/controllers"
 	"namespacelabs.dev/foundation/orchestration/legacycontroller"
 	"namespacelabs.dev/foundation/orchestration/service"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -15,6 +16,7 @@ import (
 
 func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializers(metrics.Initializers__so2f3v...)
+	di.AddInitializers(controllers.Initializers__6f40u5...)
 	di.AddInitializers(legacycontroller.Initializers__onl1mt...)
 	di.AddInitializers(logging.Initializers__16bc0q...)
 }

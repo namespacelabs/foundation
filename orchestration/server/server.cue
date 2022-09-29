@@ -9,6 +9,7 @@ server: fn.#Server & {
 	isStateful: true
 
 	import: [
+		"namespacelabs.dev/foundation/orchestration/controllers",
 		"namespacelabs.dev/foundation/orchestration/service",
 		"namespacelabs.dev/foundation/orchestration/legacycontroller", // TODO remove
 		"namespacelabs.dev/foundation/std/grpc/logging",
