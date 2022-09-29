@@ -125,7 +125,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 			for it.Next() {
 				val := &fncue.CueV{Val: it.Value()}
-				parsedContainer, err := parseCueContainer(ctx, ft.loader, it.Label(), loc, val)
+				parsedContainer, err := parseCueContainer(ctx, ft.loader, parsedPkg, it.Label(), loc, val)
 				if err != nil {
 					return nil, err
 				}
@@ -156,7 +156,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 				return nil, err
 			}
 
-			parsedPkg.Integration = &schema.Integration{
+			parsedPkg.Integration = &schema.PackageIntegration{
 				Data: protos.WrapAnyOrDie(integration.Data),
 			}
 		}
