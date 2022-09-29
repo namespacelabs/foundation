@@ -1,0 +1,16 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.runtime;
+
+option go_package = "namespacelabs.dev/foundation/std/runtime";
+
+message Deployable {
+    string package_name     = 1;
+    string id               = 2;
+    string name             = 3;
+    string deployable_class = 4;
+}

@@ -6,23 +6,23 @@ package deploy
 
 import (
 	"context"
-	"fmt"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, planner runtime.Planner, stack *provision.Stack) (*runtime.DeploymentPlan, error) {
+func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, planner runtime.Planner, stack *provision.Stack) ([]*schema.SerializedInvocation, error) {
 	var rp resourcePlanner
 
 	var errs []error
@@ -43,8 +43,8 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 		return nil, err
 	}
 
-	var spec runtime.DeploymentSpec
 	var imageIDs []compute.Computable[oci.ImageID]
+	var invocations []*resources.OpInvokeResourceProvider
 	for _, ref := range rp.resourceRefs.Refs() {
 		resource := rp.resources[ref.Canonical()]
 		provider := resource.Provider
@@ -73,17 +73,11 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 
 		imageIDs = append(imageIDs, imageID)
 
-		spec.Specs = append(spec.Specs, runtime.DeployableSpec{
-			ErrorLocation: resource.ProviderPackage.Location,
-
-			PackageName: ref.AsPackageName(),
-			Class:       schema.DeployableClass_ONESHOT,
-			Id:          naming.StableID(fmt.Sprintf("%s-%s", provider.PackageName, provider.ProvidesClass.Canonical())),
-			MainContainer: runtime.ContainerRunOpts{
-				Command:    prepared.Command,
-				Args:       provider.InitializeWith.Args,
-				WorkingDir: provider.InitializeWith.WorkingDir,
-			},
+		invocations = append(invocations, &resources.OpInvokeResourceProvider{
+			BinaryRef:        provider.InitializeWith.BinaryRef,
+			BinaryConfig:     bin.Config,
+			ResourceClass:    resource.Class.Spec,
+			ResourceProvider: provider,
 		})
 	}
 
@@ -92,11 +86,22 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 		return nil, err
 	}
 
+	var ops []*schema.SerializedInvocation
 	for k, img := range builtImages {
-		spec.Specs[k].MainContainer.Image = img.Value
+		invocations[k].BinaryImageId = img.Value.RepoAndDigest()
+
+		wrapped, err := anypb.New(invocations[k])
+		if err != nil {
+			return nil, err
+		}
+
+		ops = append(ops, &schema.SerializedInvocation{
+			Description: "Invoke Resource Provider",
+			Impl:        wrapped,
+		})
 	}
 
-	return planner.PlanDeployment(ctx, spec)
+	return ops, nil
 }
 
 type resourcePlanner struct {

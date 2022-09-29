@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.std.resources;
+
+option go_package = "namespacelabs.dev/foundation/std/resources";
+
+import "schema/binary.proto";
+import "schema/package.proto";
+import "schema/resource.proto";
+
+message OpInvokeResourceProvider {
+    foundation.schema.PackageRef       binary_ref        = 1;
+    string                             binary_image_id   = 2;
+    foundation.schema.BinaryConfig     binary_config     = 3;
+    foundation.schema.ResourceClass    resource_class    = 4;
+    foundation.schema.ResourceProvider resource_provider = 5;
+}
