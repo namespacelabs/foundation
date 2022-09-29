@@ -59,6 +59,7 @@ func (impl) PrepareRun(ctx context.Context, server parsed.Server, run *runtime.C
 
 		config := binary.Config
 		if config != nil {
+			run.WorkingDir = config.WorkingDir
 			run.Command = config.Command
 			run.Args = config.Args
 			run.Env = config.Env

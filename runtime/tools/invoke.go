@@ -85,12 +85,17 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 		req.Input = append(req.Input, inv.invocation.WithInput)
 	}
 
+	workingDir := "/"
+	if inv.invocation.BinaryConfig.WorkingDir != "" {
+		workingDir = inv.invocation.BinaryConfig.WorkingDir
+	}
+
 	run := rtypes.RunToolOpts{
 		ImageName: inv.invocation.BinaryRef.Canonical(),
 		// NoNetworking: true, // XXX security
 
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			WorkingDir: "/",
+			WorkingDir: workingDir,
 			Command:    inv.invocation.BinaryConfig.Command,
 			Args:       inv.invocation.BinaryConfig.Args,
 			Env:        append(slices.Clone(inv.invocation.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
