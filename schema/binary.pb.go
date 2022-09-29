@@ -454,7 +454,8 @@ type ImageBuildPlan_NodejsBuild struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	RelPath    string                       `protobuf:"bytes,1,opt,name=rel_path,json=relPath,proto3" json:"rel_path,omitempty"`
+	RelPath string `protobuf:"bytes,1,opt,name=rel_path,json=relPath,proto3" json:"rel_path,omitempty"`
+	// Required.
 	NodePkgMgr NodejsIntegration_NodePkgMgr `protobuf:"varint,2,opt,name=node_pkg_mgr,json=nodePkgMgr,proto3,enum=foundation.schema.NodejsIntegration_NodePkgMgr" json:"node_pkg_mgr,omitempty"`
 }
 

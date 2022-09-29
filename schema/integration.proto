@@ -24,7 +24,7 @@ message GoIntegration {
 }
 
 message NodejsIntegration {
-    // Path to the Namespace package with the code. Default is "."
+    // Path to `package.json`, relative to the Namespace package. Default is "."
     string pkg = 1;
 
     // Detected Node.js package manager.

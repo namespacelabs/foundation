@@ -224,7 +224,7 @@ type NodejsIntegration struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Path to the Namespace package with the code. Default is "."
+	// Path to `package.json`, relative to the Namespace package. Default is "."
 	Pkg string `protobuf:"bytes,1,opt,name=pkg,proto3" json:"pkg,omitempty"`
 	// Detected Node.js package manager.
 	NodePkgMgr NodejsIntegration_NodePkgMgr `protobuf:"varint,2,opt,name=node_pkg_mgr,json=nodePkgMgr,proto3,enum=foundation.schema.NodejsIntegration_NodePkgMgr" json:"node_pkg_mgr,omitempty"`
