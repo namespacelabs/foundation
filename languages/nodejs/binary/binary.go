@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace/pins"
 )
@@ -42,20 +41,20 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		Exclude: NodejsExclude,
 	})
 
-	pkgMgrInstallState, err := installPkgMgrCliWithConfigFiles(bnj.nodePkgMgr, local, *conf.TargetPlatform())
+	pkgMgrRuntime, err := pkgMgrToRuntime(local, *conf.TargetPlatform(), bnj.nodePkgMgr)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
 	buildBase := llbutil.Image(nodeImage, *conf.TargetPlatform())
-	buildBase = prepareAndRunInstall(ctx, bnj.nodePkgMgr, pkgMgrInstallState, buildBase, src)
+	buildBase = prepareAndRunInstall(ctx, pkgMgrRuntime, buildBase, src)
 
-	buildBase, err = runBuild(ctx, bnj.nodePkgMgr, bnj.loc, buildBase, src)
+	buildBase, err = runBuild(ctx, pkgMgrRuntime.cliName, bnj.loc, buildBase, src)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	buildBase = addRunScript(ctx, bnj.nodePkgMgr, buildBase)
+	buildBase = addRunScript(ctx, pkgMgrRuntime.cliName, buildBase)
 
 	var out llb.State
 	// The dev and prod builds are different:
@@ -68,7 +67,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		// For non-dev builds creating an optimized, small image.
 		// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 		out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
-			With(pkgMgrInstallState,
+			With(pkgMgrRuntime.installCliWithConfigFiles,
 				production.NonRootUser(),
 				llbutil.CopyFrom(buildBase, appRootPath, appRootPath),
 			)
@@ -79,14 +78,14 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	return out, []buildkit.LocalContents{local}, nil
 }
 
-func prepareAndRunInstall(ctx context.Context, pkgMgr schema.NodejsIntegration_NodePkgMgr, pkgMgrInstallState llb.StateOption, base llb.State, src llb.State) llb.State {
+func prepareAndRunInstall(ctx context.Context, pkgMgrRuntime pkgMgrRuntime, base llb.State, src llb.State) llb.State {
 	return base.
 		File(llb.Mkdir(appRootPath, 0644)).
-		With(llb.Dir(appRootPath), pkgMgrInstallState).
-		Run(llb.Shlex(pkgMgrCliNameOrDie(pkgMgr) + " install")).Root()
+		With(llb.Dir(appRootPath), pkgMgrRuntime.installCliWithConfigFiles).
+		Run(llb.Shlexf("%s install", pkgMgrRuntime.cliName)).Root()
 }
 
-func runBuild(ctx context.Context, pkgMgr schema.NodejsIntegration_NodePkgMgr, loc pkggraph.Location, base llb.State, src llb.State) (llb.State, error) {
+func runBuild(ctx context.Context, pkgMgrCliName string, loc pkggraph.Location, base llb.State, src llb.State) (llb.State, error) {
 	state := base.With(llbutil.CopyFrom(src, ".", "."))
 
 	pkgJson, err := readPackageJson(loc)
@@ -95,19 +94,19 @@ func runBuild(ctx context.Context, pkgMgr schema.NodejsIntegration_NodePkgMgr, l
 	}
 
 	if _, ok := pkgJson.Scripts["build"]; ok {
-		state = state.Run(llb.Shlex(pkgMgrCliNameOrDie(pkgMgr) + " run build")).Root()
+		state = state.Run(llb.Shlexf("%s run build", pkgMgrCliName)).Root()
 	}
 
 	return state, nil
 }
 
-func addRunScript(ctx context.Context, pkgMgr schema.NodejsIntegration_NodePkgMgr, base llb.State) llb.State {
-	return llbutil.AddFile(base, RunScriptPath, 0755, []byte(genRunScript(pkgMgr)))
+func addRunScript(ctx context.Context, pkgMgrCliName string, base llb.State) llb.State {
+	return llbutil.AddFile(base, RunScriptPath, 0755, []byte(genRunScript(pkgMgrCliName)))
 }
 
 // We generate a run script so the container command can be static.
-func genRunScript(pkgMgr schema.NodejsIntegration_NodePkgMgr) string {
+func genRunScript(pkgMgrCliName string) string {
 	return fmt.Sprintf(`#!/bin/sh
 cd %s
-%s start`, appRootPath, pkgMgrCliNameOrDie(pkgMgr))
+%s start`, appRootPath, pkgMgrCliName)
 }
