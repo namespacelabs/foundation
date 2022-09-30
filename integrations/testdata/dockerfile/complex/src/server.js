@@ -17,7 +17,7 @@ const HOST = "0.0.0.0";
 
 // App
 const app = express();
-app.get("/", (req, res) => {
+app.get("/mypath", (req, res) => {
 	// Accessing the env variables from cue file
 	res.send(`Hello from complex docker, ${process.env.NAME}!`);
 });

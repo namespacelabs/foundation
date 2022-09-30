@@ -14,7 +14,7 @@ server: {
 
 			ingress: {
 				internetFacing: true
-				httpRoutes: "*": ["/"]
+				httpRoutes: "*": ["/mypath"]
 			}
 		}
 	}
