@@ -553,11 +553,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		configId := makeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
 
 		ensureConfig := kubedef.EnsureRuntimeConfig{
-			Description:   "Runtime configuration",
-			ConfigID:      configId,
-			RuntimeConfig: deployable.RuntimeConfig,
-			Deployable:    deployable,
-			ResourceIDs:   resourceIDs,
+			Description:         "Runtime configuration",
+			ConfigID:            configId,
+			RuntimeConfig:       deployable.RuntimeConfig,
+			Deployable:          deployable,
+			ResourceInstanceIDs: resourceIDs,
 		}
 		s.operations = append(s.operations, ensureConfig)
 

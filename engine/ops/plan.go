@@ -29,8 +29,9 @@ type HandleResult struct {
 }
 
 type Output struct {
-	InstanceID string
-	Message    proto.Message
+	InstanceID   string
+	Message      proto.Message
+	OriginalJSON map[string]any
 }
 
 // A plan collects a set of invocations which can then be executed as a batch.
@@ -149,8 +150,9 @@ func Serialize(g *Plan) *schema.SerializedProgram {
 }
 
 type recordedOutput struct {
-	Message proto.Message
-	Used    bool
+	Message      proto.Message
+	OriginalJSON map[string]any
+	Used         bool
 }
 
 func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
@@ -195,7 +197,8 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 					errs = append(errs, fnerrors.InternalError("duplicate result key: %q", output.InstanceID))
 				} else {
 					outputs[output.InstanceID] = &recordedOutput{
-						Message: output.Message,
+						Message:      output.Message,
+						OriginalJSON: output.OriginalJSON,
 					}
 				}
 			}
@@ -223,13 +226,16 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 func prepareInputs(outputs map[string]*recordedOutput, def *schema.SerializedInvocation) (Inputs, error) {
 	var missing []string
 
-	out := map[string]proto.Message{}
+	out := Inputs{}
 	for _, required := range def.RequiredOutput {
 		output, ok := outputs[required]
 		if !ok {
 			missing = append(missing, required)
 		} else {
-			out[required] = output.Message
+			out[required] = Input{
+				Message:      output.Message,
+				OriginalJSON: output.OriginalJSON,
+			}
 			output.Used = true
 		}
 	}

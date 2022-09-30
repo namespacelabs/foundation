@@ -81,11 +81,11 @@ type ApplyRoleBinding struct {
 }
 
 type EnsureRuntimeConfig struct {
-	Description   string
-	ConfigID      string
-	RuntimeConfig *stdruntime.RuntimeConfig
-	Deployable    runtime.Deployable
-	ResourceIDs   []string
+	Description         string
+	ConfigID            string
+	RuntimeConfig       *stdruntime.RuntimeConfig
+	Deployable          runtime.Deployable
+	ResourceInstanceIDs []string
 }
 
 type ExtendSpec struct {
@@ -270,10 +270,10 @@ func (ar ApplyRoleBinding) ToDefinition(scope ...fnschema.PackageName) (*fnschem
 
 func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
 	op := &OpEnsureRuntimeConfig{
-		ConfigId:      a.ConfigID,
-		RuntimeConfig: a.RuntimeConfig,
-		Deployable:    runtime.DeployableToProto(a.Deployable),
-		ResourceId:    a.ResourceIDs,
+		ConfigId:           a.ConfigID,
+		RuntimeConfig:      a.RuntimeConfig,
+		Deployable:         runtime.DeployableToProto(a.Deployable),
+		ResourceInstanceId: a.ResourceInstanceIDs,
 	}
 
 	x, err := anypb.New(op)
@@ -284,7 +284,7 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 	order := &fnschema.ScheduleOrder{
 		SchedCategory: []string{a.Category()},
 	}
-	for _, rid := range a.ResourceIDs {
+	for _, rid := range a.ResourceInstanceIDs {
 		order.SchedAfterCategory = append(order.SchedAfterCategory, resources.ResourceInstanceCategory(rid))
 	}
 
@@ -292,7 +292,7 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 		Description:    a.Description,
 		Impl:           x,
 		Scope:          scopeToStrings(scope),
-		RequiredOutput: a.ResourceIDs,
+		RequiredOutput: a.ResourceInstanceIDs,
 		Order:          order,
 	}, nil
 }

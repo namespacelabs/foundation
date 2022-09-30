@@ -11,6 +11,10 @@ const nsConfigRaw = fs.readFileSync("/namespace/config/runtime.json");
 const nsConfig = JSON.parse(nsConfigRaw);
 console.log(`Namespace config: ${JSON.stringify(nsConfig, null, 2)}`);
 
+const nsResourcesRaw = fs.readFileSync("/namespace/config/resources.json");
+const nsResources = JSON.parse(nsResourcesRaw);
+console.log(`Namespace resources: ${JSON.stringify(nsResources, null, 2)}`);
+
 // Constants
 const PORT = nsConfig.current.port.find((s) => s.name === "webapi").port;
 const HOST = "0.0.0.0";

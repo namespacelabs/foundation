@@ -35,6 +35,35 @@ func registerEnsureRuntimeConfig() {
 					data["runtime.json"] = string(serializedConfig)
 				}
 
+				if len(ensure.ResourceInstanceId) > 0 {
+					inputs, err := ops.Get(ctx, ops.InputsInjection)
+					if err != nil {
+						return nil, err
+					}
+
+					resourceData := map[string]any{}
+
+					var missing []string
+					for _, key := range ensure.ResourceInstanceId {
+						input, ok := inputs[key]
+						if ok {
+							resourceData[key] = input.OriginalJSON
+						} else {
+							missing = append(missing, key)
+						}
+					}
+
+					if len(missing) > 0 {
+						return nil, fnerrors.InvocationError("missing required resources: %v", missing)
+					}
+
+					serializedConfig, err := json.Marshal(resourceData)
+					if err != nil {
+						return nil, fnerrors.InternalError("failed to serialize resource configuration: %w", err)
+					}
+					data["resources.json"] = string(serializedConfig)
+				}
+
 				if len(data) == 0 {
 					return nil, nil
 				}

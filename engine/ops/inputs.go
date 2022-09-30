@@ -6,6 +6,11 @@ package ops
 
 import "google.golang.org/protobuf/proto"
 
-type Inputs map[string]proto.Message
+type Input struct {
+	OriginalJSON map[string]any
+	Message      proto.Message
+}
+
+type Inputs map[string]Input
 
 var InputsInjection = Define[Inputs]("namespace.ops.inputs")
