@@ -90,6 +90,7 @@ func newCompleteCmd() *cobra.Command {
 				reqs = append(reqs, req)
 			}
 
+			fmt.Fprintf(os.Stdout, "[debug] Uploading %d chunks to %s\n", len(bytes), storageService)
 			if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSectionStream", storageService), reqs, nil); err != nil {
 				return err
 			}
@@ -112,6 +113,7 @@ func newCompleteCmd() *cobra.Command {
 			return fnerrors.BadInputError("either --run_id_path or --stored_run_path are required")
 		}
 
+		fmt.Fprintf(os.Stdout, "[debug] marking run %q as completed...\n", runID)
 		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
 			&CompleteRunRequest{OpaqueUserAuth: userAuth.Opaque, RunId: runID}, nil); err != nil {
 			return err
