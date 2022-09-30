@@ -203,7 +203,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 }
 
 func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.Deployable) ([]runtime.ContainerStatus, error) {
-	if object.GetDeployableClass() != string(fnschema.DeployableClass_ONESHOT) {
+	if object.GetDeployableClass() != string(fnschema.DeployableClass_ONESHOT) && object.GetDeployableClass() != string(fnschema.DeployableClass_MANUAL) {
 		return nil, fnerrors.InternalError("WaitForTermination: only support one-shot deployments")
 	}
 
@@ -315,11 +315,11 @@ func (r *ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bo
 	return DeleteAllRecursively(ctx, r.cluster.cli, wait, nil, r.target.namespace)
 }
 
-func (r *ClusterNamespace) DeleteDeployment(ctx context.Context, deployable runtime.Deployable) error {
+func (r *ClusterNamespace) DeleteDeployable(ctx context.Context, deployable runtime.Deployable) error {
 	listOpts := metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(deployable))}
 
 	switch deployable.GetDeployableClass() {
-	case string(fnschema.DeployableClass_ONESHOT):
+	case string(fnschema.DeployableClass_ONESHOT), string(fnschema.DeployableClass_MANUAL):
 		return r.cluster.cli.CoreV1().Pods(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
 	case string(fnschema.DeployableClass_STATEFUL):

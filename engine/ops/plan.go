@@ -236,7 +236,7 @@ func prepareInputs(outputs map[string]*recordedOutput, def *schema.SerializedInv
 
 	if len(missing) > 0 {
 		slices.Sort(missing)
-		return nil, fnerrors.InvocationError("required keys are missing: %v", missing)
+		return nil, fnerrors.InvocationError("required inputs are missing: %v", missing)
 	}
 
 	return out, nil
@@ -283,6 +283,14 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 
 	sorted, solved := graph.Toposort()
 	if !solved {
+		fmt.Fprintf(console.Errors(ctx), "execution sort failed:\n")
+
+		for k, n := range nodes {
+			fmt.Fprintf(console.Errors(ctx), " #%d %q --> cats:%v after:%v\n", k, n.def.Description,
+				n.order.GetSchedCategory(),
+				n.order.GetSchedAfterCategory())
+		}
+
 		return nil, fnerrors.InternalError("ops dependencies are not solvable")
 	}
 
@@ -302,17 +310,12 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 		}
 		end = append(end, nodes[i])
 
-		fmt.Fprintf(&debug, " %s (%s)\n", k, strBit(nodes[i].def.Description, 32))
+		fmt.Fprintf(&debug, " #%d %q --> cats:%v after:%v\n", i, nodes[i].def.Description,
+			nodes[i].order.GetSchedCategory(),
+			nodes[i].order.GetSchedAfterCategory())
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "execution sorted:\n%s", debug.Bytes())
 
 	return end, nil
-}
-
-func strBit(str string, n int) string {
-	if len(str) > n {
-		return str[:n]
-	}
-	return str
 }

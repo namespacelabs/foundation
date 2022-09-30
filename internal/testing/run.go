@@ -165,9 +165,6 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				return fnerrors.New("failed to deploy: %w", err)
 			}
 
-			// We don't use WaitMultiple here, i.e. ignore the set of returned
-			// waiters, because we have our own custom waiting logic below in
-			// WaitForTermination.
 			containers, err := cluster.WaitForTermination(ctx, testDriver)
 			if err != nil {
 				return err

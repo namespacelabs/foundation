@@ -707,14 +707,17 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
-	if deployAsPods(target.env) || deployable.Class == schema.DeployableClass_ONESHOT {
+	if deployAsPods(target.env) || isOneShotLike(deployable.Class) {
 		desc := "Server"
-		if deployable.Class == schema.DeployableClass_ONESHOT {
+		if isOneShotLike(deployable.Class) {
 			desc = "One-shot"
 		}
 
 		s.operations = append(s.operations, kubedef.Apply{
-			Description: desc,
+			Description:        firstStr(deployable.Description, desc),
+			InhibitEvents:      deployable.Class == schema.DeployableClass_MANUAL,
+			SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
+			SchedAfterCategory: schedAfter,
 			Resource: applycorev1.Pod(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
@@ -728,7 +731,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	switch deployable.Class {
 	case schema.DeployableClass_STATELESS:
 		s.operations = append(s.operations, kubedef.Apply{
-			Description:        "Server Deployment",
+			Description:        firstStr(deployable.Description, "Server Deployment"),
+			SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
 			SchedAfterCategory: schedAfter,
 			Resource: appsv1.
 				Deployment(deploymentId, target.namespace).
@@ -743,7 +747,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	case schema.DeployableClass_STATEFUL:
 		s.operations = append(s.operations, kubedef.Apply{
-			Description:        "Server StatefulSet",
+			Description:        firstStr(deployable.Description, "Server StatefulSet"),
+			SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
 			SchedAfterCategory: schedAfter,
 			Resource: appsv1.
 				StatefulSet(deploymentId, target.namespace).
@@ -761,6 +766,19 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	return nil
+}
+
+func firstStr(strs ...string) string {
+	for _, str := range strs {
+		if str != "" {
+			return str
+		}
+	}
+	return ""
+}
+
+func isOneShotLike(class schema.DeployableClass) bool {
+	return class == schema.DeployableClass_ONESHOT || class == schema.DeployableClass_MANUAL
 }
 
 func makeVolumeName(deploymentId, name string) string {

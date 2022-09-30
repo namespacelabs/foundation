@@ -47,9 +47,11 @@ func register_OpInvokeResourceProvider() {
 				// ErrorLocation: resource.ProviderPackage.Location,
 
 				PackageName: invoke.BinaryRef.AsPackageName(),
-				Class:       schema.DeployableClass_ONESHOT,
+				Class:       schema.DeployableClass_MANUAL, // Don't emit deployment events.
 				Id:          id,
 				Name:        "provider",
+				Description: fmt.Sprintf("Ensure resource: %s", invoke.ResourceInstanceId),
+
 				MainContainer: runtime.ContainerRunOpts{
 					Image:   imageID,
 					Command: invoke.BinaryConfig.Command,
@@ -59,25 +61,16 @@ func register_OpInvokeResourceProvider() {
 			}
 
 			plan, err := planner.PlanDeployment(ctx, runtime.DeploymentSpec{
-				Specs: []runtime.DeployableSpec{
-					spec,
-				},
+				Specs: []runtime.DeployableSpec{spec},
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			for _, def := range plan.Definitions {
-				if def.Order == nil {
-					def.Order = &schema.ScheduleOrder{}
-				}
-
-				def.Order.SchedCategory = append(def.Order.SchedCategory, invocationCategory(id))
-				ops = append(ops, def)
-			}
+			ops = append(ops, plan.Definitions...)
 
 			ops = append(ops, &schema.SerializedInvocation{
-				Description: fmt.Sprintf("Resource provider for %s:%s", invoke.ResourceClass.PackageName, invoke.ResourceClass.Name),
+				Description: fmt.Sprintf("Wait for Resource (%s:%s)", invoke.ResourceClass.PackageName, invoke.ResourceClass.Name),
 				Impl: protos.WrapAnyOrDie(&internalres.OpWaitForProviderResults{
 					ResourceInstanceId: invoke.ResourceInstanceId,
 					Deployable:         runtime.DeployableToProto(spec),
@@ -86,15 +79,11 @@ func register_OpInvokeResourceProvider() {
 				}),
 				Order: &schema.ScheduleOrder{
 					SchedCategory:      []string{resources.ResourceInstanceCategory(invoke.ResourceInstanceId)},
-					SchedAfterCategory: []string{invocationCategory(id)},
+					SchedAfterCategory: []string{runtime.DeployableCategoryID(id)},
 				},
 			})
 		}
 
 		return ops, nil
 	})
-}
-
-func invocationCategory(id string) string {
-	return fmt.Sprintf("invocation:%s", id)
 }

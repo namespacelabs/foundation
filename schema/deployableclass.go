@@ -13,4 +13,6 @@ const (
 	DeployableClass_STATEFUL DeployableClass = "deployableclass.namespace.so/stateful"
 	// Represents a one-shot run.
 	DeployableClass_ONESHOT DeployableClass = "deployableclass.namespace.so/one-shot"
+	// Represents an internal one-shot run whose orchestration management is manual.
+	DeployableClass_MANUAL DeployableClass = "deployableclass.namespace.so/manual"
 )

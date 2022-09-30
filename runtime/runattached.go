@@ -25,7 +25,7 @@ func RunAttached(ctx context.Context, config planning.Context, cluster ClusterNa
 	}
 
 	defer func() {
-		if err := cluster.DeleteDeployment(ctx, spec); err != nil {
+		if err := cluster.DeleteDeployable(ctx, spec); err != nil {
 			fmt.Fprintf(console.Errors(ctx), "Deleting %s failed: %v\n", spec.Name, err)
 		}
 	}()

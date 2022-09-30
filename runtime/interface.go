@@ -157,7 +157,7 @@ type ClusterNamespace interface {
 	WaitForTermination(ctx context.Context, object Deployable) ([]ContainerStatus, error)
 
 	// Deletes a previously deployed DeployableSpec.
-	DeleteDeployment(ctx context.Context, deployable Deployable) error
+	DeleteDeployable(ctx context.Context, deployable Deployable) error
 
 	// Deletes the scoped environment, and all of its associated resources (e.g.
 	// after a test invocation). If wait is true, waits until the target
@@ -189,10 +189,11 @@ type DeployableSpec struct {
 	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
 	Attachable  AttachableKind
 
-	Class   schema.DeployableClass
-	Id      string // Must not be empty.
-	Name    string // Can be empty.
-	Volumes []*schema.Volume
+	Description string
+	Class       schema.DeployableClass
+	Id          string // Must not be empty.
+	Name        string // Can be empty.
+	Volumes     []*schema.Volume
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts
@@ -391,4 +392,8 @@ func DeployableToProto(spec Deployable) *runtimepb.Deployable {
 		Name:            spec.GetName(),
 		DeployableClass: spec.GetDeployableClass(),
 	}
+}
+
+func DeployableCategoryID(id string) string {
+	return fmt.Sprintf("deployable:%s", id)
 }

@@ -6,7 +6,6 @@ package deploy
 
 import (
 	"context"
-	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
@@ -128,7 +127,7 @@ type resourceInstance struct {
 }
 
 func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
-	resourceID := rootResourceID(resourceRef)
+	resourceID := resources.ResourceID(resourceRef)
 
 	if !rp.resourceIDs.Add(resourceID) {
 		return nil
@@ -157,8 +156,4 @@ func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoad
 
 	rp.resources[instance.ID] = instance
 	return nil
-}
-
-func rootResourceID(resourceRef *schema.PackageRef) string {
-	return fmt.Sprintf("%s:%s", resourceRef.AsPackageName(), resourceRef.Name)
 }

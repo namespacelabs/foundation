@@ -26,9 +26,13 @@ const (
 )
 
 type Apply struct {
-	Description        string
-	SetNamespace       bool
-	Resource           any
+	Description  string
+	SetNamespace bool
+	Resource     any
+
+	InhibitEvents bool
+
+	SchedCategory      []string
 	SchedAfterCategory []string
 
 	// If set, we wait until a status.conditions entry of matching type exists,
@@ -107,8 +111,9 @@ func (a Apply) ToDefinitionImpl(scope ...fnschema.PackageName) (*fnschema.Serial
 	}
 
 	op := &OpApply{
-		BodyJson:     string(body), // We use strings for better debuggability.
-		SetNamespace: a.SetNamespace,
+		BodyJson:      string(body), // We use strings for better debuggability.
+		SetNamespace:  a.SetNamespace,
+		InhibitEvents: a.InhibitEvents,
 	}
 
 	if a.CheckGenerationCondition != nil {
@@ -120,8 +125,9 @@ func (a Apply) ToDefinitionImpl(scope ...fnschema.PackageName) (*fnschema.Serial
 		Scope:       scopeToStrings(scope),
 	}
 
-	if len(a.SchedAfterCategory) > 0 {
+	if len(a.SchedAfterCategory) > 0 || len(a.SchedCategory) > 0 {
 		inv.Order = &fnschema.ScheduleOrder{
+			SchedCategory:      a.SchedCategory,
 			SchedAfterCategory: a.SchedAfterCategory,
 		}
 	}
@@ -275,7 +281,9 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 		return nil, err
 	}
 
-	order := &fnschema.ScheduleOrder{}
+	order := &fnschema.ScheduleOrder{
+		SchedCategory: []string{a.Category()},
+	}
 	for _, rid := range a.ResourceIDs {
 		order.SchedAfterCategory = append(order.SchedAfterCategory, resources.ResourceInstanceCategory(rid))
 	}
@@ -285,10 +293,7 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 		Impl:           x,
 		Scope:          scopeToStrings(scope),
 		RequiredOutput: a.ResourceIDs,
-		Order: &fnschema.ScheduleOrder{
-			SchedCategory:      []string{a.Category()},
-			SchedAfterCategory: []string{},
-		},
+		Order:          order,
 	}, nil
 }
 

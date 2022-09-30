@@ -173,6 +173,10 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 		}.WaitUntilReady}}, nil
 	}
 
+	if apply.spec.InhibitEvents {
+		return nil, nil
+	}
+
 	switch {
 	case kubedef.IsDeployment(apply.obj), kubedef.IsStatefulSet(apply.obj):
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
