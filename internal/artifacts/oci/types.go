@@ -30,6 +30,7 @@ var (
 type ResolvableImage interface {
 	Digest() (schema.Digest, error)
 	Image() (Image, error)
+	ImageForPlatform(specs.Platform) (Image, error)
 	ImageIndex() (ImageIndex, error)
 	Push(context.Context, AllocatedName, bool) (ImageID, error)
 
@@ -62,6 +63,24 @@ func (raw rawImage) Image() (Image, error) {
 	return raw.image, nil
 }
 
+func (raw rawImage) ImageForPlatform(specs specs.Platform) (Image, error) {
+	manifest, err := raw.image.Manifest()
+	if err != nil {
+		return nil, err
+	}
+
+	platform := manifest.Config.Platform
+	if platform == nil {
+		return raw.image, nil
+	}
+
+	if !platformMatches(platform, toV1Plat(&specs)) {
+		return nil, fnerrors.InvocationError("container image platform mismatched, expected %q, got %q", specs, *platform)
+	}
+
+	return raw.image, nil
+}
+
 func (raw rawImage) ImageIndex() (ImageIndex, error) {
 	return nil, fnerrors.InternalError("expected an image index, saw an image")
 }
@@ -85,6 +104,17 @@ func (raw rawImageIndex) Digest() (schema.Digest, error) {
 
 func (raw rawImageIndex) Image() (Image, error) {
 	return nil, fnerrors.InternalError("expected an image, saw an image index")
+}
+
+func (raw rawImageIndex) ImageForPlatform(specs specs.Platform) (Image, error) {
+	idx, err := raw.index.IndexManifest()
+	if err != nil {
+		return nil, err
+	}
+
+	return imageForPlatform(idx, &specs, func(h v1.Hash) (Image, error) {
+		return raw.index.Image(h)
+	})
 }
 
 func (raw rawImageIndex) ImageIndex() (ImageIndex, error) {

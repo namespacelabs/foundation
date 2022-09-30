@@ -38,7 +38,12 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 		}
 
 		it.image = compute.Transform("return image", image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
-			return r.Image()
+			hostPlatform, err := HostPlatform(ctx, env.Configuration())
+			if err != nil {
+				return nil, err
+			}
+
+			return r.ImageForPlatform(hostPlatform)
 		})
 	}
 

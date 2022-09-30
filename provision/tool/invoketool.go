@@ -186,7 +186,13 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		opts.PublicImageID = r.Invocation.PublicImageID
 	} else {
 		resolvable := compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
-		if image, err := resolvable.Image(); err == nil {
+
+		hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration())
+		if err != nil {
+			return nil, err
+		}
+
+		if image, err := resolvable.ImageForPlatform(hostPlatform); err == nil {
 			opts.Image = image
 		} else {
 			return nil, err

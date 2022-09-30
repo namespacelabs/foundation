@@ -309,7 +309,12 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 					return nil, err
 				}
 
-				opts.Image, err = image.Image()
+				hostPlatform, err := tools.HostPlatform(ctx, server.SealedContext().Configuration())
+				if err != nil {
+					return nil, err
+				}
+
+				opts.Image, err = image.ImageForPlatform(hostPlatform)
 				if err != nil {
 					return nil, err
 				}

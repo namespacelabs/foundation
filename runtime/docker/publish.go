@@ -42,7 +42,7 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci
 
 	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
 
-	img, err := resolvable.Image()
+	img, err := resolvable.ImageForPlatform(HostPlatform())
 	if err != nil {
 		return oci.ImageID{}, fnerrors.InternalError("docker: %w", err)
 	}
