@@ -5,7 +5,7 @@ resourceClasses: {
 			source: "./proto1.proto"
 		}
 		produces: {
-			type:   "foundation.integrations.testdata.resources.classes.DatabaseInstance"
+			type:   "foundation.integrations.testdata.resources.classes.protos.DatabaseInstance"
 			source: "./protos/proto2.proto"
 		}
 	}
