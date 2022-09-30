@@ -19,9 +19,10 @@ server: {
 		}
 	}
 
-	resources: [
-		"namespacelabs.dev/foundation/integrations/testdata/resources/instances:withInput",
-	]
+	// XXX work in progress.
+	// resources: [
+	//  "namespacelabs.dev/foundation/integrations/testdata/resources/instances:withInput",
+	// ]
 }
 
 tests: {
