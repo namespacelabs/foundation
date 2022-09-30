@@ -11,11 +11,14 @@ option go_package = "namespacelabs.dev/foundation/std/resources";
 import "schema/binary.proto";
 import "schema/package.proto";
 import "schema/resource.proto";
+import "workspace/source/protos/filedescset.proto";
 
 message OpInvokeResourceProvider {
-    foundation.schema.PackageRef       binary_ref        = 1;
-    string                             binary_image_id   = 2;
-    foundation.schema.BinaryConfig     binary_config     = 3;
-    foundation.schema.ResourceClass    resource_class    = 4;
-    foundation.schema.ResourceProvider resource_provider = 5;
+    string                                                      resource_instance_id = 1;
+    foundation.schema.PackageRef                                binary_ref           = 2;
+    string                                                      binary_image_id      = 3;
+    foundation.schema.BinaryConfig                              binary_config        = 4;
+    foundation.schema.ResourceClass                             resource_class       = 5;
+    foundation.schema.ResourceProvider                          resource_provider    = 6;
+    foundation.workspace.source.protos.FileDescriptorSetAndDeps instance_type_source = 7;
 }

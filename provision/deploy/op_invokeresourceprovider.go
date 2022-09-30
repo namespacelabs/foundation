@@ -72,7 +72,7 @@ func Register_OpInvokeResourceProvider() {
 					def.Order = &schema.ScheduleOrder{}
 				}
 
-				def.Order.SchedCategory = append(def.Order.SchedCategory, fmt.Sprintf("invocation:%s", id))
+				def.Order.SchedCategory = append(def.Order.SchedCategory, category(id))
 				ops = append(ops, def)
 			}
 
@@ -85,13 +85,19 @@ func Register_OpInvokeResourceProvider() {
 						Name:            spec.GetName(),
 						DeployableClass: spec.GetDeployableClass(),
 					},
+					ResourceClass:      invoke.ResourceClass,
+					InstanceTypeSource: invoke.InstanceTypeSource,
 				}),
 				Order: &schema.ScheduleOrder{
-					SchedAfterCategory: []string{fmt.Sprintf("invocation:%s", id)},
+					SchedAfterCategory: []string{category(id)},
 				},
 			})
 		}
 
 		return ops, nil
 	})
+}
+
+func category(id string) string {
+	return fmt.Sprintf("invocation:%s", id)
 }

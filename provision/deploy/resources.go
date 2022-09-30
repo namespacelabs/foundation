@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
@@ -13,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -45,8 +47,9 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 
 	var imageIDs []compute.Computable[oci.ImageID]
 	var invocations []*resources.OpInvokeResourceProvider
-	for _, ref := range rp.resourceRefs.Refs() {
-		resource := rp.resources[ref.Canonical()]
+
+	for _, resourceID := range rp.resourceIDs.Strings() {
+		resource := rp.resources[resourceID]
 		provider := resource.Provider
 
 		if provider.InitializeWith.RequiresKeys || provider.InitializeWith.Snapshots != nil || provider.InitializeWith.Inject != nil {
@@ -74,10 +77,12 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 		imageIDs = append(imageIDs, imageID)
 
 		invocations = append(invocations, &resources.OpInvokeResourceProvider{
-			BinaryRef:        provider.InitializeWith.BinaryRef,
-			BinaryConfig:     bin.Config,
-			ResourceClass:    resource.Class.Spec,
-			ResourceProvider: provider,
+			ResourceInstanceId: resource.ID,
+			BinaryRef:          provider.InitializeWith.BinaryRef,
+			BinaryConfig:       bin.Config,
+			ResourceClass:      resource.Class.Spec,
+			ResourceProvider:   provider,
+			InstanceTypeSource: resource.Class.InstanceType.Sources,
 		})
 	}
 
@@ -105,13 +110,21 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 }
 
 type resourcePlanner struct {
-	resourceRefs schema.PackageRefList
+	resourceIDs uniquestrings.List
 
-	resources map[string]pkggraph.Resource
+	resources map[string]resourceInstance
+}
+
+type resourceInstance struct {
+	ID       string
+	Class    pkggraph.ResourceClass
+	Provider *schema.ResourceProvider
 }
 
 func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
-	if !rp.resourceRefs.Add(resourceRef) {
+	resourceID := fmt.Sprintf("%s:%s", resourceRef.AsPackageName(), resourceRef.Name)
+
+	if !rp.resourceIDs.Add(resourceID) {
 		return nil
 	}
 
@@ -126,11 +139,16 @@ func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoad
 	}
 
 	if rp.resources == nil {
-		rp.resources = map[string]pkggraph.Resource{}
+		rp.resources = map[string]resourceInstance{}
 	}
 
 	// XXX add resources recursively.
+	instance := resourceInstance{
+		ID:       resourceID,
+		Class:    resource.Class,
+		Provider: resource.Provider,
+	}
 
-	rp.resources[resourceRef.Canonical()] = *resource
+	rp.resources[instance.ID] = instance
 	return nil
 }

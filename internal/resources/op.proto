@@ -9,7 +9,12 @@ package foundation.internal.resources;
 option go_package = "namespacelabs.dev/foundation/internal/resources";
 
 import "std/runtime/deployable.proto";
+import "schema/resource.proto";
+import "workspace/source/protos/filedescset.proto";
 
 message OpWaitForProviderResults {
-    foundation.std.runtime.Deployable deployable = 1;
+    string                                                      result_id            = 1;
+    foundation.std.runtime.Deployable                           deployable           = 2;
+    foundation.schema.ResourceClass                             resource_class       = 3;
+    foundation.workspace.source.protos.FileDescriptorSetAndDeps instance_type_source = 4;
 }

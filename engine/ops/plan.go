@@ -24,6 +24,13 @@ import (
 
 type HandleResult struct {
 	Waiters []Waiter
+
+	Outputs []Output
+}
+
+type Output struct {
+	Key     string
+	Message proto.Message
 }
 
 // A plan collects a set of invocations which can then be executed as a batch.
@@ -141,6 +148,11 @@ func Serialize(g *Plan) *schema.SerializedProgram {
 	return &schema.SerializedProgram{Invocation: g.definitions}
 }
 
+type recordedOutput struct {
+	Message proto.Message
+	Used    bool
+}
+
 func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
@@ -154,6 +166,8 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 	var errs []error
 	var waiters []Waiter
+
+	outputs := map[string]*recordedOutput{}
 	for _, n := range nodes {
 		if n.err != nil {
 			continue
@@ -161,18 +175,71 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 		typeUrl := n.def.Impl.GetTypeUrl()
 
-		d, err := n.reg.funcs.Handle(ctx, n.def, n.obj, n.value)
-		n.res = d
-		n.err = err
+		invCtx := ctx
+		inputs, err := prepareInputs(outputs, n.def)
 		if err != nil {
-			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, err))
+			errs = append(errs, err)
+			continue
 		}
-		if d != nil {
-			waiters = append(waiters, d.Waiters...)
+
+		if len(inputs) > 0 {
+			invCtx = injectValues(invCtx, InputsInjection.With(inputs))
+		}
+
+		n.res, n.err = n.reg.funcs.Handle(invCtx, n.def, n.obj, n.value)
+		if n.err != nil {
+			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, n.err))
+		} else if n.res != nil {
+			for _, output := range n.res.Outputs {
+				if _, ok := outputs[output.Key]; ok {
+					errs = append(errs, fnerrors.InternalError("duplicate result key: %q", output.Key))
+				} else {
+					outputs[output.Key] = &recordedOutput{
+						Message: output.Message,
+					}
+				}
+			}
+
+			waiters = append(waiters, n.res.Waiters...)
 		}
 	}
 
+	var unusedKeys []string
+	for key, output := range outputs {
+		if !output.Used {
+			unusedKeys = append(unusedKeys, key)
+		}
+	}
+
+	slices.Sort(unusedKeys)
+
+	if len(unusedKeys) > 0 {
+		errs = append(errs, fnerrors.InternalError("unused outputs: %v", unusedKeys))
+	}
+
 	return waiters, multierr.New(errs...)
+}
+
+func prepareInputs(outputs map[string]*recordedOutput, def *schema.SerializedInvocation) (Inputs, error) {
+	var missing []string
+
+	out := map[string]proto.Message{}
+	for _, required := range def.RequiredOutput {
+		output, ok := outputs[required]
+		if !ok {
+			missing = append(missing, required)
+		} else {
+			out[required] = output.Message
+			output.Used = true
+		}
+	}
+
+	if len(missing) > 0 {
+		slices.Sort(missing)
+		return nil, fnerrors.InvocationError("required keys are missing: %v", missing)
+	}
+
+	return out, nil
 }
 
 func (g *Plan) Definitions() []*schema.SerializedInvocation {

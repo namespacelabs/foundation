@@ -26,6 +26,8 @@ message SerializedInvocation {
     google.protobuf.Any impl = 2;
     // Computed arguments that may be used by the implementation.
     repeated ComputedValue computed = 4;
+    // Set of outputs this invocation depends on.
+    repeated string required_output = 6;
 
     ScheduleOrder order = 5;  // If not specified, is computed based on impl type.
 
