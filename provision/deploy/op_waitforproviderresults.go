@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Register_OpWaitForProviderResults() {
+func register_OpWaitForProviderResults() {
 	ops.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults) (*ops.HandleResult, error) {
 		cluster, err := ops.Get(ctx, runtime.ClusterNamespaceInjection)
 		if err != nil {

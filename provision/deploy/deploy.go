@@ -168,12 +168,12 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 
 	g := ops.NewEmptyPlan()
 	g.Add(pbr.HandlerResult.OrderedInvocations...)
-	g.Add(pbr.DeploymentPlan.Definitions...)
+	g.Add(pbr.Ops...)
 
 	plan := &Plan{
 		Deployer:      g,
 		ComputedStack: m.stack,
-		Hints:         pbr.DeploymentPlan.Hints,
+		Hints:         pbr.Hints,
 	}
 
 	if ingress, ok := compute.GetDep(deps, m.ingressPlan, "ingressPlan"); ok {
@@ -202,8 +202,9 @@ func prepareHandlerInvocations(ctx context.Context, env planning.Context, planne
 }
 
 type prepareAndBuildResult struct {
-	HandlerResult  *handlerResult
-	DeploymentPlan *runtime.DeploymentPlan
+	HandlerResult *handlerResult
+	Ops           []*schema.SerializedInvocation
+	Hints         []string
 }
 
 func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc runtime.Planner, stack *provision.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
@@ -243,6 +244,17 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			return loadSecrets(ctx, env.Environment(), handlerR.Stack)
 		})
 
+	resourcePlan := compute.Map(
+		tasks.Action("resource.plan-deployment").
+			Scope(stack.AllPackageList().PackageNames()...),
+		finalInputs.
+			Computable("stackAndDefs", stackDef),
+		compute.Output{},
+		func(ctx context.Context, deps compute.Resolved) ([]*schema.SerializedInvocation, error) {
+			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+			return planResources(ctx, rc, stackAndDefs.Stack)
+		})
+
 	deploymentPlan := compute.Map(
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
@@ -251,25 +263,29 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			Computable("stackAndDefs", stackDef).
 			Computable("secretData", secretData),
 		compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
+		func(ctx context.Context, deps compute.Resolved) (*runtime.DeploymentPlan, error) {
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 			secrets := compute.MustGetDepValue(deps, secretData, "secretData")
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			deployment, err := planDeployment(ctx, rc, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, *secrets)
-			if err != nil {
-				return prepareAndBuildResult{}, err
-			}
-
-			return prepareAndBuildResult{
-				HandlerResult:  stackAndDefs,
-				DeploymentPlan: deployment,
-			}, nil
+			return planDeployment(ctx, rc, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, *secrets)
 		})
 
-	return deploymentPlan, nil
+	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
+		Computable("resourcePlan", resourcePlan).
+		Computable("deploymentPlan", deploymentPlan).
+		Computable("stackAndDefs", stackDef), compute.Output{},
+		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
+			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
+			deploymentPlan := compute.MustGetDepValue(deps, deploymentPlan, "deploymentPlan")
+			return prepareAndBuildResult{
+				HandlerResult: compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
+				Ops:           append(resourcePlan, deploymentPlan.Definitions...),
+				Hints:         deploymentPlan.Hints,
+			}, nil
+		}), nil
 }
 
 func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {

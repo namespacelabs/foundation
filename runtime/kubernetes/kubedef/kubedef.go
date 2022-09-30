@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/resources"
 	stdruntime "namespacelabs.dev/foundation/std/runtime"
 )
 
@@ -265,11 +266,19 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 		return nil, err
 	}
 
+	order := &fnschema.ScheduleOrder{}
+	for _, rid := range a.ResourceIDs {
+		order.SchedAfterCategory = append(order.SchedAfterCategory, resources.ResourceInstanceCategory(rid))
+	}
+
 	return &fnschema.SerializedInvocation{
 		Description:    a.Description,
 		Impl:           x,
 		Scope:          scopeToStrings(scope),
 		RequiredOutput: a.ResourceIDs,
+		Order: &fnschema.ScheduleOrder{
+			SchedAfterCategory: []string{},
+		},
 	}, nil
 }
 

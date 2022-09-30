@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-func Register_OpInvokeResourceProvider() {
+func register_OpInvokeResourceProvider() {
 	ops.Compile[*resources.OpInvokeResourceProvider](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
 		cluster, err := ops.Get(ctx, runtime.ClusterNamespaceInjection)
 		if err != nil {
@@ -49,6 +49,7 @@ func Register_OpInvokeResourceProvider() {
 				PackageName: invoke.BinaryRef.AsPackageName(),
 				Class:       schema.DeployableClass_ONESHOT,
 				Id:          id,
+				Name:        "provider",
 				MainContainer: runtime.ContainerRunOpts{
 					Image:   imageID,
 					Command: invoke.BinaryConfig.Command,
@@ -71,19 +72,21 @@ func Register_OpInvokeResourceProvider() {
 					def.Order = &schema.ScheduleOrder{}
 				}
 
-				def.Order.SchedCategory = append(def.Order.SchedCategory, category(id))
+				def.Order.SchedCategory = append(def.Order.SchedCategory, invocationCategory(id))
 				ops = append(ops, def)
 			}
 
 			ops = append(ops, &schema.SerializedInvocation{
 				Description: fmt.Sprintf("Resource provider for %s:%s", invoke.ResourceClass.PackageName, invoke.ResourceClass.Name),
 				Impl: protos.WrapAnyOrDie(&internalres.OpWaitForProviderResults{
+					ResourceInstanceId: invoke.ResourceInstanceId,
 					Deployable:         runtime.DeployableToProto(spec),
 					ResourceClass:      invoke.ResourceClass,
 					InstanceTypeSource: invoke.InstanceTypeSource,
 				}),
 				Order: &schema.ScheduleOrder{
-					SchedAfterCategory: []string{category(id)},
+					SchedCategory:      []string{resources.ResourceInstanceCategory(invoke.ResourceInstanceId)},
+					SchedAfterCategory: []string{invocationCategory(id)},
 				},
 			})
 		}
@@ -92,6 +95,6 @@ func Register_OpInvokeResourceProvider() {
 	})
 }
 
-func category(id string) string {
+func invocationCategory(id string) string {
 	return fmt.Sprintf("invocation:%s", id)
 }

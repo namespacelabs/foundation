@@ -292,7 +292,7 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 	for _, k := range sorted {
 		parsed := strings.TrimPrefix(k, "iid:")
 		if parsed == k {
-			fmt.Fprintf(&debug, " %s", k)
+			fmt.Fprintf(&debug, " [%s]\n", k)
 			continue
 		}
 
@@ -302,10 +302,10 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 		}
 		end = append(end, nodes[i])
 
-		fmt.Fprintf(&debug, " %s (%s)", k, strBit(nodes[i].def.Description, 32))
+		fmt.Fprintf(&debug, " %s (%s)\n", k, strBit(nodes[i].def.Description, 32))
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "execution sorted:%s\n", debug.Bytes())
+	fmt.Fprintf(console.Debug(ctx), "execution sorted:\n%s", debug.Bytes())
 
 	return end, nil
 }

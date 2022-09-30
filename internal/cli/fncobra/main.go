@@ -202,6 +202,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName(), env, planner, s.ServerNaming)
 		})
 
+		deploy.RegisterDeployOps()
+
 		// Compute cacheables.
 		compute.RegisterProtoCacheable()
 		compute.RegisterBytesCacheable()

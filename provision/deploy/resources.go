@@ -19,18 +19,24 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, planner runtime.Planner, stack *provision.Stack) ([]*schema.SerializedInvocation, error) {
+func planResources(ctx context.Context, planner runtime.Planner, stack *provision.Stack) ([]*schema.SerializedInvocation, error) {
+	// XXX this should be embedded in the provision.Stack.
+	if len(stack.Servers) == 0 {
+		return nil, nil
+	}
+
+	sealedCtx := stack.Servers[0].SealedContext()
+
 	var rp resourcePlanner
 
 	var errs []error
 	for _, ps := range stack.Servers {
 		for _, ref := range ps.Proto().Resource {
-			if err := rp.checkAdd(ctx, pl, ref); err != nil {
+			if err := rp.checkAdd(ctx, sealedCtx, ref); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -56,12 +62,12 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 			return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
 		}
 
-		pkg, bin, err := pkggraph.LoadBinary(ctx, pl, provider.InitializeWith.BinaryRef)
+		pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, provider.InitializeWith.BinaryRef)
 		if err != nil {
 			return nil, err
 		}
 
-		prepared, err := binary.PlanBinary(ctx, pl, env, pkg.Location, bin, binary.BuildImageOpts{
+		prepared, err := binary.PlanBinary(ctx, sealedCtx, sealedCtx, pkg.Location, bin, binary.BuildImageOpts{
 			UsePrebuilts: true,
 			Platforms:    platforms,
 		})
@@ -69,7 +75,7 @@ func PlanResources(ctx context.Context, pl pkggraph.SealedPackageLoader, env pla
 			return nil, err
 		}
 
-		imageID, _, err := ensureImage(ctx, pkggraph.MakeSealedContext(env, pl), prepared.Plan)
+		imageID, _, err := ensureImage(ctx, sealedCtx, prepared.Plan)
 		if err != nil {
 			return nil, err
 		}
@@ -122,7 +128,7 @@ type resourceInstance struct {
 }
 
 func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
-	resourceID := fmt.Sprintf("%s:%s", resourceRef.AsPackageName(), resourceRef.Name)
+	resourceID := rootResourceID(resourceRef)
 
 	if !rp.resourceIDs.Add(resourceID) {
 		return nil
@@ -151,4 +157,8 @@ func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoad
 
 	rp.resources[instance.ID] = instance
 	return nil
+}
+
+func rootResourceID(resourceRef *schema.PackageRef) string {
+	return fmt.Sprintf("%s:%s", resourceRef.AsPackageName(), resourceRef.Name)
 }
