@@ -40,6 +40,7 @@ import (
 	dockerparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/docker"
 	goparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/golang"
 	nodejsparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
+	webparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/web"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
@@ -78,6 +79,7 @@ import (
 	dockerapplier "namespacelabs.dev/foundation/workspace/integration/docker"
 	goapplier "namespacelabs.dev/foundation/workspace/integration/golang"
 	nodejsapplier "namespacelabs.dev/foundation/workspace/integration/nodejs"
+	webapplier "namespacelabs.dev/foundation/workspace/integration/web"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -173,6 +175,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildLLBGen = genbinary.LLBBinary
 		binary.BuildNix = genbinary.NixImageBuilder
 		binary.BuildNodejs = nodebinary.NodejsBuilder
+		binary.BuildStaticFilesServer = genbinary.StaticFilesServerBuilder
 
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
@@ -222,6 +225,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			dockerparser.NewParser(),
 			goparser.NewParser(),
 			&nodejsparser.Parser{},
+			&webparser.Parser{},
 		})
 		integrationparsing.BuildParser = entity.NewDispatchingEntityParser("with", []entity.EntityParser{
 			// Same syntax as docker integration so we can reuse the parser.
@@ -234,6 +238,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		integrationapplying.RegisterPackageIntegration(goapplier.Apply)
 		integrationapplying.RegisterPackageIntegration(nodejsapplier.Apply)
 		integrationapplying.RegisterBinaryIntegration(nodejsapplier.CreateBinary)
+		integrationapplying.RegisterPackageIntegration(webapplier.Apply)
+		integrationapplying.RegisterBinaryIntegration(webapplier.CreateBinary)
 
 		// Codegen
 		codegen.Register()

@@ -1,7 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: "nodejs"
+	integration: web: service: "webapi"
 
 	services: webapi: {
 		// Default Vite port

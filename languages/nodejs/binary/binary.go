@@ -6,6 +6,7 @@ package binary
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
@@ -62,13 +63,21 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			srcWithPkgMgr = srcWithPkgMgr.Run(llb.Shlexf("%s run %s", pkgMgrRuntime.cliName, bnj.config.BuildScript)).Root()
 		}
 
-		// For non-dev builds creating an optimized, small image.
-		// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-		out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
-			With(pkgMgrRuntime.installCliWithConfigFiles,
-				production.NonRootUser(),
-				llbutil.CopyFrom(srcWithPkgMgr, AppRootPath, AppRootPath),
-			)
+		if bnj.config.BuildOutDir != "" {
+			// In this case creating an image with just the built files.
+			// TODO: do it outside of the Node.js implementation.
+			pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
+
+			out = llb.Scratch().With(llbutil.CopyFrom(srcWithPkgMgr, pathToCopy, pathToCopy))
+		} else {
+			// For non-dev builds creating an optimized, small image.
+			// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
+			out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
+				With(pkgMgrRuntime.installCliWithConfigFiles,
+					production.NonRootUser(),
+					llbutil.CopyFrom(srcWithPkgMgr, AppRootPath, AppRootPath),
+				)
+		}
 	}
 
 	out = out.AddEnv("NODE_ENV", n.nodejsEnv)
