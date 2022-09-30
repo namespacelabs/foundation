@@ -80,7 +80,7 @@ func Register_OpWaitForProviderResults() {
 
 		return &ops.HandleResult{
 			Outputs: []ops.Output{
-				{Key: wait.ResultId, Message: resultMessage},
+				{InstanceID: wait.ResourceInstanceId, Message: resultMessage},
 			},
 		}, nil
 	})

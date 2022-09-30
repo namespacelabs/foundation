@@ -21,4 +21,9 @@ resources: {
 			binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
 		}
 	}
+
+	test1: {
+		kind: "namespacelabs.dev/foundation/integrations/testdata/resources/classes:Database"
+		on:   "namespacelabs.dev/foundation/integrations/testdata/resources/testgenprovider"
+	}
 }

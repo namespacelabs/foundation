@@ -29,8 +29,8 @@ type HandleResult struct {
 }
 
 type Output struct {
-	Key     string
-	Message proto.Message
+	InstanceID string
+	Message    proto.Message
 }
 
 // A plan collects a set of invocations which can then be executed as a batch.
@@ -191,10 +191,10 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, n.err))
 		} else if n.res != nil {
 			for _, output := range n.res.Outputs {
-				if _, ok := outputs[output.Key]; ok {
-					errs = append(errs, fnerrors.InternalError("duplicate result key: %q", output.Key))
+				if _, ok := outputs[output.InstanceID]; ok {
+					errs = append(errs, fnerrors.InternalError("duplicate result key: %q", output.InstanceID))
 				} else {
-					outputs[output.Key] = &recordedOutput{
+					outputs[output.InstanceID] = &recordedOutput{
 						Message: output.Message,
 					}
 				}

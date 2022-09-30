@@ -122,6 +122,7 @@ func fillFromFile(fds *protos.FileDescriptorSetAndDeps, d *descriptorpb.FileDesc
 		if int(index) >= len(d.Dependency) {
 			return fnerrors.InternalError("%s: public_dependency out of bonds", d.GetName())
 		}
+
 		dep := d.Dependency[index]
 
 		var filedep *descriptorpb.FileDescriptorProto
