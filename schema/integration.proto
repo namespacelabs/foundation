@@ -34,10 +34,34 @@ message NodejsIntegration {
     // Names of the scripts from `package.json`.
     repeated string package_json_scripts = 3;
 
+    // Relative path to copy to the output image. If set, the result image contains only these files.
+    // Only affects non-dev environments.
+    // TODO: Move copying the files out of the Node.js implementation.
+    string build_output_dir = 4;
+
     enum NodePkgMgr {
         PKG_MGR_UNKNOWN = 0;
         NPM             = 1;
         YARN            = 2;
         PNPM            = 3;
+    }
+}
+
+message WebIntegration {
+    NodejsIntegration nodejs = 1;
+
+    string build_output_dir = 2;
+
+    // The service that corresponds to this web integration.
+    // Needed to get the port for prod serving.
+    string service = 3;
+
+    message Build {
+        NodejsIntegration nodejs = 1;
+
+        string build_output_dir = 2;
+
+        // Passed to nginx
+        int32 port = 3;
     }
 }

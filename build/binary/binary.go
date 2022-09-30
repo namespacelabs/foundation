@@ -34,6 +34,7 @@ var BuildWeb func(pkggraph.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
 var BuildNodejs func(planning.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, bool /* isFocus */) (build.Spec, error)
+var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
 
 var prebuiltsConfType = planning.DefineConfigType[*Prebuilts]()
 
@@ -267,6 +268,10 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env planning.Cont
 		}
 
 		return spec, nil
+	}
+
+	if src.StaticFilesServer != nil {
+		return BuildStaticFilesServer(src.StaticFilesServer), nil
 	}
 
 	if len(src.SnapshotFiles) > 0 {
