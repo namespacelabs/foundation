@@ -115,18 +115,23 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 			}
 		}
 
-		if src.Order != nil {
-			node.order = src.Order
-		} else {
-			var err error
-			node.order, err = reg.funcs.PlanOrder(copy, node.value)
-			if err != nil {
-				return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
-			}
+		computedOrder, err := reg.funcs.PlanOrder(copy, node.value)
+		if err != nil {
+			return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 		}
+
+		if computedOrder == nil {
+			computedOrder = &schema.ScheduleOrder{}
+		}
+
+		computedOrder.SchedCategory = append(computedOrder.SchedCategory, src.Order.GetSchedCategory()...)
+		computedOrder.SchedAfterCategory = append(computedOrder.SchedAfterCategory, src.Order.GetSchedAfterCategory()...)
+
+		node.order = computedOrder
 
 		nodes = append(nodes, node)
 	}
+
 	g.definitions = append(g.definitions, defs...)
 	g.nodes = append(g.nodes, nodes...)
 	return g, nil
