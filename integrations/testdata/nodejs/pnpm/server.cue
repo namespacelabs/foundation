@@ -12,10 +12,7 @@ server: {
 			port: 4000
 			kind: "http"
 
-			ingress: {
-				internetFacing: true
-				httpRoutes: "*": ["/"]
-			}
+			ingress: internetFacing: true
 		}
 	}
 }
