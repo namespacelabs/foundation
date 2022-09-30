@@ -15,7 +15,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
 	fnschema "namespacelabs.dev/foundation/schema"
+	stdruntime "namespacelabs.dev/foundation/std/runtime"
 )
 
 const (
@@ -72,6 +74,14 @@ type ApplyRoleBinding struct {
 	ServiceAccount  string
 }
 
+type EnsureRuntimeConfig struct {
+	Description   string
+	ConfigID      string
+	RuntimeConfig *stdruntime.RuntimeConfig
+	Deployable    runtime.Deployable
+	ResourceIDs   []string
+}
+
 type ExtendSpec struct {
 	With *SpecExtension
 }
@@ -118,6 +128,10 @@ func (a Apply) ToDefinitionImpl(scope ...fnschema.PackageName) (*fnschema.Serial
 func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
 	d, _, err := a.ToDefinitionImpl(scope...)
 	return d, err
+}
+
+func (a Apply) AppliedResource() any {
+	return a.Resource
 }
 
 func scopeToStrings(scope []fnschema.PackageName) []string {
@@ -236,6 +250,31 @@ func (ar ApplyRoleBinding) ToDefinition(scope ...fnschema.PackageName) (*fnschem
 		Impl:        x,
 		Scope:       scopeToStrings(scope),
 	}, nil
+}
+
+func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
+	op := &OpEnsureRuntimeConfig{
+		ConfigId:      a.ConfigID,
+		RuntimeConfig: a.RuntimeConfig,
+		Deployable:    runtime.DeployableToProto(a.Deployable),
+		ResourceId:    a.ResourceIDs,
+	}
+
+	x, err := anypb.New(op)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fnschema.SerializedInvocation{
+		Description:    a.Description,
+		Impl:           x,
+		Scope:          scopeToStrings(scope),
+		RequiredOutput: a.ResourceIDs,
+	}, nil
+}
+
+func (a EnsureRuntimeConfig) AppliedResource() any {
+	return nil
 }
 
 func (es ExtendSpec) ToDefinition() (*fnschema.DefExtension, error) {

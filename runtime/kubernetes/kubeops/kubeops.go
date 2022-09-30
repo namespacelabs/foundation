@@ -18,6 +18,7 @@ func Register() {
 	registerDeleteList()
 	registerCleanup()
 	registerApplyRoleBinding()
+	registerEnsureRuntimeConfig()
 
 	ingress.Register()
 }

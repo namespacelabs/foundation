@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/std/runtime"
+	runtimepb "namespacelabs.dev/foundation/std/runtime"
 )
 
 const (
@@ -199,7 +199,8 @@ type DeployableSpec struct {
 	Inits         []SidecarRunOpts
 
 	ConfigImage   *oci.ImageID
-	RuntimeConfig *runtime.RuntimeConfig
+	RuntimeConfig *runtimepb.RuntimeConfig
+	ResourceIDs   []string
 
 	Extensions []*schema.DefExtension
 
@@ -381,4 +382,13 @@ func (g GroundedSecrets) Get(owner, name string) *schema.FileContents {
 	}
 
 	return nil
+}
+
+func DeployableToProto(spec Deployable) *runtimepb.Deployable {
+	return &runtimepb.Deployable{
+		PackageName:     spec.GetPackageName(),
+		Id:              spec.GetId(),
+		Name:            spec.GetName(),
+		DeployableClass: spec.GetDeployableClass(),
+	}
 }

@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -26,6 +27,7 @@ import (
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support/naming"
@@ -81,8 +83,15 @@ var constants = map[schema.Environment_Purpose]*perEnvConf{
 	},
 }
 
+type definitions []definition
+
+type definition interface {
+	defs.MakeDefinition
+	AppliedResource() any
+}
+
 type serverRunState struct {
-	operations []kubedef.Apply
+	operations definitions
 }
 
 func lookupByName(env []*schema.BinaryConfig_EnvEntry, name string) (*schema.BinaryConfig_EnvEntry, bool) {
@@ -514,42 +523,47 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	// Before sidecars so they have access to the "runtime config" volume.
-	if deployable.RuntimeConfig != nil {
-		serializedConfig, err := json.Marshal(deployable.RuntimeConfig)
-		if err != nil {
-			return fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
+	if deployable.RuntimeConfig != nil || len(deployable.ResourceIDs) > 0 {
+		idData := map[string]any{
+			"version": runtimeConfigVersion,
 		}
 
-		configDigest, err := schema.DigestOf(map[string]any{
-			"version": runtimeConfigVersion,
-			"config":  serializedConfig,
-		})
+		resourceIDs := slices.Clone(deployable.ResourceIDs)
+		slices.Sort(resourceIDs)
+		if len(resourceIDs) > 0 {
+			idData["resourceIDs"] = resourceIDs
+		}
+
+		if deployable.RuntimeConfig != nil {
+			serializedConfig, err := json.Marshal(deployable.RuntimeConfig)
+			if err != nil {
+				return fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
+			}
+
+			idData["config"] = serializedConfig
+		}
+
+		configDigest, err := schema.DigestOf(idData)
 		if err != nil {
 			return fnerrors.InternalError("failed to digest runtime configuration: %w", err)
 		}
 
 		configId := makeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
 
-		// Needs to be declared before it's used.
-		s.operations = append(s.operations, kubedef.Apply{
-			Description: "Runtime configuration",
-			Resource: applycorev1.ConfigMap(configId, target.namespace).
-				WithAnnotations(annotations).
-				WithLabels(labels).
-				WithLabels(map[string]string{
-					kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
-				}).
-				WithImmutable(true).
-				WithData(map[string]string{
-					"runtime.json": string(serializedConfig),
-				}),
+		s.operations = append(s.operations, kubedef.EnsureRuntimeConfig{
+			Description:   "Runtime configuration",
+			ConfigID:      configId,
+			RuntimeConfig: deployable.RuntimeConfig,
+			Deployable:    deployable,
+			ResourceIDs:   resourceIDs,
 		})
 
 		spec = spec.WithVolumes(applycorev1.Volume().
 			WithName(configId).
 			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
 
-		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
+		mainContainer = mainContainer.WithVolumeMounts(
+			applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
 
 		// We do manual cleanup of unused configs. In the future they'll be owned by a deployment intent.
 		annotations[kubedef.K8sRuntimeConfig] = configId
@@ -777,7 +791,7 @@ func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *s
 	return applycorev1.KeyToPath().WithKey(key)
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, []kubedef.Apply, error) {
+func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, definitions, error) {
 	if sizeBytes >= math.MaxInt64 {
 		return nil, nil, fnerrors.UserError(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
@@ -786,7 +800,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 
 	// Ephemeral environments are short lived, so there is no need for persistent volume claims.
 	// Admin servers are excluded here as they run as singletons in a global namespace.
-	var operations []kubedef.Apply
+	var operations definitions
 	var v *applycorev1.VolumeApplyConfiguration
 
 	if env.GetEphemeral() {

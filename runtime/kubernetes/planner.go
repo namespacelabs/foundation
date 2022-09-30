@@ -105,12 +105,19 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 
 		if at := tasks.Attachments(ctx); deployable.PackageName != "" && at.IsStoring() {
 			output := &bytes.Buffer{}
-			for k, decl := range singleState.operations {
-				if k > 0 {
+			count := 0
+			for _, decl := range singleState.operations {
+				if count > 0 {
 					fmt.Fprintln(output, "---")
 				}
 
-				b, err := yaml.Marshal(decl.Resource)
+				resource := decl.AppliedResource()
+				if resource == nil {
+					continue
+				}
+
+				count++
+				b, err := yaml.Marshal(resource)
 				if err == nil {
 					fmt.Fprintf(output, "%s\n", b)
 					// XXX ignoring errors

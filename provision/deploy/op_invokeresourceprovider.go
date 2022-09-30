@@ -15,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/resources"
-	runtimepb "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -79,12 +78,7 @@ func Register_OpInvokeResourceProvider() {
 			ops = append(ops, &schema.SerializedInvocation{
 				Description: fmt.Sprintf("Resource provider for %s:%s", invoke.ResourceClass.PackageName, invoke.ResourceClass.Name),
 				Impl: protos.WrapAnyOrDie(&internalres.OpWaitForProviderResults{
-					Deployable: &runtimepb.Deployable{
-						PackageName:     spec.GetPackageName(),
-						Id:              spec.GetId(),
-						Name:            spec.GetName(),
-						DeployableClass: spec.GetDeployableClass(),
-					},
+					Deployable:         runtime.DeployableToProto(spec),
 					ResourceClass:      invoke.ResourceClass,
 					InstanceTypeSource: invoke.InstanceTypeSource,
 				}),
