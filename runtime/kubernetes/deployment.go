@@ -522,6 +522,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithReadOnly(mount.Readonly))
 	}
 
+	var schedAfter []string
+
 	// Before sidecars so they have access to the "runtime config" volume.
 	if deployable.RuntimeConfig != nil || len(deployable.ResourceIDs) > 0 {
 		idData := map[string]any{
@@ -550,13 +552,18 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 		configId := makeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
 
-		s.operations = append(s.operations, kubedef.EnsureRuntimeConfig{
+		ensureConfig := kubedef.EnsureRuntimeConfig{
 			Description:   "Runtime configuration",
 			ConfigID:      configId,
 			RuntimeConfig: deployable.RuntimeConfig,
 			Deployable:    deployable,
 			ResourceIDs:   resourceIDs,
-		})
+		}
+		s.operations = append(s.operations, ensureConfig)
+
+		// Make sure we wait for the runtime configuration to be created before
+		// deploying a new deployment or statefulset.
+		schedAfter = append(schedAfter, ensureConfig.Category())
 
 		spec = spec.WithVolumes(applycorev1.Volume().
 			WithName(configId).
@@ -721,7 +728,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	switch deployable.Class {
 	case schema.DeployableClass_STATELESS:
 		s.operations = append(s.operations, kubedef.Apply{
-			Description: "Server Deployment",
+			Description:        "Server Deployment",
+			SchedAfterCategory: schedAfter,
 			Resource: appsv1.
 				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
@@ -735,7 +743,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	case schema.DeployableClass_STATEFUL:
 		s.operations = append(s.operations, kubedef.Apply{
-			Description: "Server StatefulSet",
+			Description:        "Server StatefulSet",
+			SchedAfterCategory: schedAfter,
 			Resource: appsv1.
 				StatefulSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).

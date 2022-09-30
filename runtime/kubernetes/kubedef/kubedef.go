@@ -26,9 +26,10 @@ const (
 )
 
 type Apply struct {
-	Description  string
-	SetNamespace bool
-	Resource     any
+	Description        string
+	SetNamespace       bool
+	Resource           any
+	SchedAfterCategory []string
 
 	// If set, we wait until a status.conditions entry of matching type exists,
 	// that matches the resource's generation.
@@ -114,16 +115,24 @@ func (a Apply) ToDefinitionImpl(scope ...fnschema.PackageName) (*fnschema.Serial
 		op.CheckGenerationCondition = &OpApply_CheckGenerationCondition{Type: a.CheckGenerationCondition.Type}
 	}
 
+	inv := &fnschema.SerializedInvocation{
+		Description: a.Description,
+		Scope:       scopeToStrings(scope),
+	}
+
+	if len(a.SchedAfterCategory) > 0 {
+		inv.Order = &fnschema.ScheduleOrder{
+			SchedAfterCategory: a.SchedAfterCategory,
+		}
+	}
+
 	x, err := anypb.New(op)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return &fnschema.SerializedInvocation{
-		Description: a.Description,
-		Impl:        x,
-		Scope:       scopeToStrings(scope),
-	}, op, nil
+	inv.Impl = x
+	return inv, op, nil
 }
 
 func (a Apply) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
@@ -277,9 +286,14 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 		Scope:          scopeToStrings(scope),
 		RequiredOutput: a.ResourceIDs,
 		Order: &fnschema.ScheduleOrder{
+			SchedCategory:      []string{a.Category()},
 			SchedAfterCategory: []string{},
 		},
 	}, nil
+}
+
+func (a EnsureRuntimeConfig) Category() string {
+	return fmt.Sprintf("rtconfig:" + a.ConfigID)
 }
 
 func (a EnsureRuntimeConfig) AppliedResource() any {
