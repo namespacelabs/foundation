@@ -25,11 +25,12 @@ const (
 	// In that case, we requeue when the config is old enough and check if references appeared meanwhile.
 	minConfigLifetime   = 15 * time.Minute
 	DeleteRuntimeConfig = "DeleteRuntimeConfig"
+
+	K8sObjectObsolete = "k8s.namespacelabs.dev/object-obsolete"
 )
 
 type RuntimeConfigReconciler struct {
-	client   client.Client
-	recorder record.EventRecorder
+	client client.Client
 }
 
 func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
@@ -78,18 +79,35 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 		}
 	}
 
-	requeueAfter := minConfigLifetime
-
 	for _, cfg := range configs.Items {
-		if _, ok := usedConfigs[cfg.Name]; ok {
-			continue
-		}
+		_, used := usedConfigs[cfg.Name]
+		cfg.Labels[K8sObjectObsolete] = fmt.Sprintf("%t", used)
+	}
 
+	return reconcile.Result{}, nil
+}
+
+type RuntimeConfigGC struct {
+	client   client.Client
+	recorder record.EventRecorder
+}
+
+func (r *RuntimeConfigGC) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	configs := &corev1.ConfigMapList{}
+	if err := r.client.List(ctx, configs, client.InNamespace(req.Namespace), client.MatchingLabels{
+		kubedef.K8sKind:   kubedef.K8sRuntimeConfigKind,
+		K8sObjectObsolete: "true",
+	}); err != nil {
+		return reconcile.Result{}, fmt.Errorf("unable to list configmaps in namespace %s: %w", req.Namespace, err)
+	}
+
+	requeueAfter := minConfigLifetime
+	for _, cfg := range configs.Items {
 		lifetime := time.Since(cfg.CreationTimestamp.Time)
 		if lifetime < minConfigLifetime {
-			deletableAfter := minConfigLifetime - lifetime
-			if deletableAfter < requeueAfter {
-				requeueAfter = deletableAfter
+			deleteAfter := minConfigLifetime - lifetime
+			if deleteAfter < requeueAfter {
+				requeueAfter = deleteAfter
 			}
 			continue
 		}

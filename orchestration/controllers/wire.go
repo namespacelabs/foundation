@@ -11,9 +11,12 @@ import (
 	"log"
 
 	corev1 "k8s.io/api/core/v1"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/go/server"
 	controllerruntime "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 var (
@@ -60,9 +63,20 @@ func setupControllers() error {
 	if err := controllerruntime.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
 		Owns(&corev1.ConfigMap{}).
+		WithEventFilter(predicate.NewPredicateFuncs(managedByUs)).
 		Complete(&RuntimeConfigReconciler{
 			client:   mgr.GetClient(),
-			recorder: mgr.GetEventRecorderFor("runtimeconfig-controller"),
+		}); err != nil {
+		return err
+	}
+
+	if err := controllerruntime.NewControllerManagedBy(mgr).
+		For(&corev1.ConfigMap{}).
+		Owns(&corev1.ConfigMap{}).
+		WithEventFilter(predicate.NewPredicateFuncs(managedByUs)).
+		Complete(&RuntimeConfigGC{
+			client:   mgr.GetClient(),
+			recorder: mgr.GetEventRecorderFor("runtimeconfig-gc"),
 		}); err != nil {
 		return err
 	}
@@ -76,4 +90,11 @@ func setupControllers() error {
 	}()
 
 	return nil
+}
+
+func managedByUs(obj client.Object) bool {
+	if mgr, ok := obj.GetLabels()[kubedef.AppKubernetesIoManagedBy]; ok {
+		return mgr == kubedef.ManagerId
+	}
+	return false
 }
