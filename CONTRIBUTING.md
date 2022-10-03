@@ -77,9 +77,9 @@ on.
 To issue an actual release:
 
 1. Create a Github PAT with `write_packages` permissions and place it in
-   `~/.github/github_token`. This allows GoReleaser to upload to Github releases.
+   `~/.config/goreleaser/github_token`. This allows GoReleaser to upload to Github releases.
 1. Log into AWS with `aws --profile prod-main sso login`.
-1. Export AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds)
+1. Export AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds#installation)
    `aws-sso-creds set default -p prod-main`.
 1. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
 1. Run the release `goreleaser release --rm-dist` (add `-f .goreleaser.nsboot.yaml` to release `nsboot`).
