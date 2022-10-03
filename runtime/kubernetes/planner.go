@@ -137,6 +137,7 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 	}
 
 	if !target.env.GetEphemeral() {
+		// TODO skip cleanup from CLI when orchestrator does it.
 		cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{
 			Namespace: target.namespace,
 			CheckPods: deployAsPods(target.env),
