@@ -50,7 +50,8 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 	fmt.Fprint(&b, "↦ ")
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
 
-	sl.out.Write(b.Bytes())
+	// Ignore errors
+	_, _ = sl.out.Write(b.Bytes())
 }
 
 func (sl *logger) Done(ra *tasks.RunningAction) {
@@ -66,7 +67,9 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 		fmt.Fprint(&b, "✔ ")
 	}
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
-	sl.out.Write(b.Bytes())
+
+	// Ignore errors
+	_, _ = sl.out.Write(b.Bytes())
 }
 
 func (sl *logger) Instant(ev *tasks.EventData) {
@@ -82,7 +85,9 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 		fmt.Fprint(&b, "✔ ")
 	}
 	consolesink.LogAction(&b, colors.NoColors, *ev)
-	sl.out.Write(b.Bytes())
+
+	// Ignore errors
+	_, _ = sl.out.Write(b.Bytes())
 }
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
