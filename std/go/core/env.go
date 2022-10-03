@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -43,7 +42,7 @@ type vcsInfo struct {
 }
 
 func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
-	configBytes, err := ioutil.ReadFile("/namespace/config/runtime.json")
+	configBytes, err := os.ReadFile("/namespace/config/runtime.json")
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to unwrap runtime configuration: %w", err)
 	}

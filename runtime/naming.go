@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -173,7 +172,7 @@ func checkStored(ctx context.Context, srv Deployable, org, cacheKey string) (*fn
 	}
 
 	// XXX security check escape
-	contents, err := ioutil.ReadFile(filepath.Join(certDir, cacheKey+".json"))
+	contents, err := os.ReadFile(filepath.Join(certDir, cacheKey+".json"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -204,7 +203,7 @@ func storeCert(ctx context.Context, srv Deployable, org, cacheKey string, res *f
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(certDir, cacheKey+".json"), resBytes, 0600)
+	return os.WriteFile(filepath.Join(certDir, cacheKey+".json"), resBytes, 0600)
 }
 
 func makeCertDir(org string, srv Deployable) (string, error) {

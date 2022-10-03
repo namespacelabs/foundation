@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -71,7 +71,7 @@ func RawModuleAt(ctx context.Context, path string) (pkggraph.WorkspaceData, erro
 		data := rawWorkspaceData{absPath: path, definitionFile: originalWorkspaceFilename}
 
 		file := filepath.Join(path, originalWorkspaceFilename)
-		moduleBytes, err := ioutil.ReadFile(file)
+		moduleBytes, err := os.ReadFile(file)
 		if err != nil {
 			return data, err
 		}
