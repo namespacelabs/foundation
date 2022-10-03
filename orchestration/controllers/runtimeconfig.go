@@ -81,7 +81,11 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 
 	for _, cfg := range configs.Items {
 		_, used := usedConfigs[cfg.Name]
-		cfg.Labels[K8sObjectObsolete] = fmt.Sprintf("%t", used)
+		cfg.Labels[K8sObjectObsolete] = fmt.Sprintf("%t", !used)
+
+		if err := r.client.Update(ctx, &cfg); err != nil {
+			return reconcile.Result{}, fmt.Errorf("unable to update config map %s in namespace %s: %w", cfg.Name, cfg.Namespace, err)
+		}
 	}
 
 	return reconcile.Result{}, nil
