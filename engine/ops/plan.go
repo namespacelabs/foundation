@@ -50,9 +50,7 @@ type rnode struct {
 	obj   proto.Message
 	order *schema.ScheduleOrder
 	reg   *registration
-	res   *HandleResult
 	value any
-	err   error // Error captured from a previous run.
 }
 
 func NewEmptyPlan() *Plan {
@@ -171,11 +169,9 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 	outputs := map[string]*recordedOutput{}
 	for _, n := range nodes {
-		if n.err != nil {
-			continue
-		}
-
 		typeUrl := n.def.Impl.GetTypeUrl()
+
+		fmt.Fprintf(console.Debug(ctx), "executing %q (%s)\n", typeUrl, n.def.Description)
 
 		invCtx := ctx
 		inputs, err := prepareInputs(outputs, n.def)
@@ -188,11 +184,11 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 			invCtx = injectValues(invCtx, InputsInjection.With(inputs))
 		}
 
-		n.res, n.err = n.reg.funcs.Handle(invCtx, n.def, n.obj, n.value)
-		if n.err != nil {
-			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, n.err))
-		} else if n.res != nil {
-			for _, output := range n.res.Outputs {
+		res, err := n.reg.funcs.Handle(invCtx, n.def, n.obj, n.value)
+		if err != nil {
+			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, err))
+		} else if res != nil {
+			for _, output := range res.Outputs {
 				if _, ok := outputs[output.InstanceID]; ok {
 					errs = append(errs, fnerrors.InternalError("duplicate result key: %q", output.InstanceID))
 				} else {
@@ -203,7 +199,7 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 				}
 			}
 
-			waiters = append(waiters, n.res.Waiters...)
+			waiters = append(waiters, res.Waiters...)
 		}
 	}
 

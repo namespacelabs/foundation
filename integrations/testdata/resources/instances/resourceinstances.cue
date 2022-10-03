@@ -25,5 +25,9 @@ resources: {
 	test1: {
 		kind: "namespacelabs.dev/foundation/integrations/testdata/resources/classes:Database"
 		on:   "namespacelabs.dev/foundation/integrations/testdata/resources/testgenprovider"
+
+		input: {
+			name: "helloworld"
+		}
 	}
 }

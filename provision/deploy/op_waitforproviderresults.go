@@ -22,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+var GarbageCollectProviders = true
+
 var resultHeader = []byte("namespace.provision.result:")
 
 func register_OpWaitForProviderResults() {
@@ -37,11 +39,13 @@ func register_OpWaitForProviderResults() {
 				return nil, err
 			}
 
-			defer func() {
-				if err := cluster.DeleteDeployable(ctx, wait.Deployable); err != nil {
-					fmt.Fprintf(console.Errors(ctx), "Deleting %s failed: %v\n", wait.Deployable.Name, err)
-				}
-			}()
+			if GarbageCollectProviders {
+				defer func() {
+					if err := cluster.DeleteDeployable(ctx, wait.Deployable); err != nil {
+						fmt.Fprintf(console.Errors(ctx), "Deleting %s failed: %v\n", wait.Deployable.Name, err)
+					}
+				}()
+			}
 
 			// XXX add a maximum time we're willing to wait.
 			containers, err := cluster.WaitForTermination(ctx, wait.Deployable)
@@ -54,14 +58,16 @@ func register_OpWaitForProviderResults() {
 			}
 
 			main := containers[0]
-			if main.TerminationError != nil {
-				return nil, fnerrors.InvocationError("provider failed: %w", main.TerminationError)
-			}
 
 			var out bytes.Buffer
-
 			if err := cluster.Cluster().FetchLogsTo(ctx, &out, main.Reference, runtime.FetchLogsOpts{}); err != nil {
 				return nil, fnerrors.InternalError("failed to retrieve output of provider invocation: %w", err)
+			}
+
+			if main.TerminationError != nil {
+				fmt.Fprintf(console.Errors(ctx), "%s provision failure:\n%s\n", wait.ResourceInstanceId, out.Bytes())
+
+				return nil, fnerrors.InvocationError("provider failed: %w", main.TerminationError)
 			}
 
 			_, msgdesc, err := protos.LoadMessageByName(wait.InstanceTypeSource, wait.ResourceClass.InstanceType.ProtoType)
@@ -103,7 +109,8 @@ func register_OpWaitForProviderResults() {
 				return nil, fnerrors.InvocationError("provision did not produce a result")
 			}
 
-			_ = tasks.Attachments(ctx).AttachSerializable("invocation-output.json", "", resultMessage)
+			_ = tasks.Attachments(ctx).AttachSerializable("instance.json", "", resultMessage)
+			_ = tasks.Attachments(ctx).AttachSerializable("instance-raw.json", "", originalMessage)
 
 			return &ops.HandleResult{
 				Outputs: []ops.Output{

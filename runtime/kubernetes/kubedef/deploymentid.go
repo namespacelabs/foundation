@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime"
 )
 
@@ -18,4 +19,13 @@ func MakeDeploymentId(srv runtime.Deployable) string {
 
 	// k8s doesn't accept uppercase names.
 	return fmt.Sprintf("%s-%s", strings.ToLower(srv.GetName()), srv.GetId())
+}
+
+func MakeVolumeName(deploymentId, name string) string {
+	if (len(deploymentId) + len(name) + 1) > 63 {
+		// Deployment id is too long, use an hash instead.
+		deploymentId = naming.StableIDN(deploymentId, 8)
+	}
+
+	return fmt.Sprintf("%s-%s", deploymentId, name)
 }

@@ -49,7 +49,7 @@ func Get[V any](ctx context.Context, inj Injection[V]) (V, error) {
 
 	state := ctx.Value(_injectionKey)
 	if state == nil {
-		return empty, fnerrors.InternalError("%s: no injection context in context", inj.key)
+		return empty, fnerrors.InternalError("%q: no injection context in context", inj.key)
 	}
 
 	for _, instance := range state.(injections).instances {
@@ -58,7 +58,7 @@ func Get[V any](ctx context.Context, inj Injection[V]) (V, error) {
 		}
 	}
 
-	return empty, fnerrors.InternalError("%s: no such injected key", inj.key)
+	return empty, fnerrors.InternalError("%q: no such injected key", inj.key)
 }
 
 type injections struct {

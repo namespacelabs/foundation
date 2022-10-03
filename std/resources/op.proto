@@ -14,11 +14,12 @@ import "schema/resource.proto";
 import "workspace/source/protos/filedescset.proto";
 
 message OpInvokeResourceProvider {
-    string                                                      resource_instance_id = 1;
-    foundation.schema.PackageRef                                binary_ref           = 2;
-    string                                                      binary_image_id      = 3;
-    foundation.schema.BinaryConfig                              binary_config        = 4;
-    foundation.schema.ResourceClass                             resource_class       = 5;
-    foundation.schema.ResourceProvider                          resource_provider    = 6;
-    foundation.workspace.source.protos.FileDescriptorSetAndDeps instance_type_source = 7;
+    string                                                      resource_instance_id   = 1;
+    bytes                                                       serialized_intent_json = 2;
+    foundation.schema.PackageRef                                binary_ref             = 3;
+    string                                                      binary_image_id        = 4;
+    foundation.schema.BinaryConfig                              binary_config          = 5;
+    foundation.schema.ResourceClass                             resource_class         = 6;
+    foundation.schema.ResourceProvider                          resource_provider      = 7;
+    foundation.workspace.source.protos.FileDescriptorSetAndDeps instance_type_source   = 8;
 }

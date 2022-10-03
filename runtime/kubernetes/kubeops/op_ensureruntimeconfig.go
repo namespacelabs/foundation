@@ -8,19 +8,22 @@ import (
 	"context"
 	"encoding/json"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
+const runtimeConfigVersion = 0
+
 func registerEnsureRuntimeConfig() {
 	ops.RegisterFuncs(ops.Funcs[*kubedef.OpEnsureRuntimeConfig]{
-		Handle: func(ctx context.Context, inv *fnschema.SerializedInvocation, ensure *kubedef.OpEnsureRuntimeConfig) (*ops.HandleResult, error) {
+		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, ensure *kubedef.OpEnsureRuntimeConfig) (*ops.HandleResult, error) {
 			action := tasks.Action("kubernetes.ensure-runtime-config").
-				Scope(fnschema.PackageName(ensure.Deployable.PackageName)).
+				Scope(schema.PackageName(ensure.Deployable.PackageName)).
 				Arg("deployable", ensure.Deployable.PackageName).
 				HumanReadablef(inv.Description)
 
@@ -68,18 +71,26 @@ func registerEnsureRuntimeConfig() {
 					return nil, nil
 				}
 
+				configDigest, err := schema.DigestOf(runtimeConfigVersion, data["runtime.json"], data["resources.json"])
+				if err != nil {
+					return nil, fnerrors.InternalError("failed to digest runtime configuration: %w", err)
+				}
+
+				deploymentId := kubedef.MakeDeploymentId(ensure.Deployable)
+				configId := kubedef.MakeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
+
 				cluster, err := kubedef.InjectedKubeClusterNamespace(ctx)
 				if err != nil {
 					return nil, err
 				}
 
-				annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, fnschema.PackageName(ensure.Deployable.PackageName))
+				annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, schema.PackageName(ensure.Deployable.PackageName))
 				labels := kubedef.MakeLabels(cluster.KubeConfig().Environment, ensure.Deployable)
 
 				if _, err := cluster.Cluster().(kubedef.KubeCluster).PreparedClient().Clientset.CoreV1().
 					ConfigMaps(cluster.KubeConfig().Namespace).
 					Apply(ctx,
-						applycorev1.ConfigMap(ensure.ConfigId, cluster.KubeConfig().Namespace).
+						applycorev1.ConfigMap(configId, cluster.KubeConfig().Namespace).
 							WithAnnotations(annotations).
 							WithLabels(labels).
 							WithLabels(map[string]string{
@@ -90,11 +101,15 @@ func registerEnsureRuntimeConfig() {
 					return nil, err
 				}
 
-				return nil, nil
+				return &ops.HandleResult{
+					Outputs: []ops.Output{
+						{InstanceID: kubedef.RuntimeConfigOutput(ensure.Deployable), Message: &wrapperspb.StringValue{Value: configId}},
+					},
+				}, nil
 			})
 		},
 
-		PlanOrder: func(ensure *kubedef.OpEnsureRuntimeConfig) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ensure *kubedef.OpEnsureRuntimeConfig) (*schema.ScheduleOrder, error) {
 			return nil, nil
 		},
 	})

@@ -82,10 +82,21 @@ type ApplyRoleBinding struct {
 
 type EnsureRuntimeConfig struct {
 	Description         string
-	ConfigID            string
 	RuntimeConfig       *stdruntime.RuntimeConfig
 	Deployable          runtime.Deployable
 	ResourceInstanceIDs []string
+}
+
+type EnsureDeployment struct {
+	Description             string
+	Deployable              runtime.Deployable
+	Resource                any
+	ConfigurationVolumeName string
+
+	InhibitEvents bool
+
+	SchedCategory      []string
+	SchedAfterCategory []string
 }
 
 type ExtendSpec struct {
@@ -270,7 +281,6 @@ func (ar ApplyRoleBinding) ToDefinition(scope ...fnschema.PackageName) (*fnschem
 
 func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
 	op := &OpEnsureRuntimeConfig{
-		ConfigId:           a.ConfigID,
 		RuntimeConfig:      a.RuntimeConfig,
 		Deployable:         runtime.DeployableToProto(a.Deployable),
 		ResourceInstanceId: a.ResourceInstanceIDs,
@@ -298,11 +308,57 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...fnschema.PackageName) (*fnsch
 }
 
 func (a EnsureRuntimeConfig) Category() string {
-	return fmt.Sprintf("rtconfig:" + a.ConfigID)
+	return fmt.Sprintf("rtconfig:" + a.Deployable.GetId())
 }
 
 func (a EnsureRuntimeConfig) AppliedResource() any {
 	return nil
+}
+
+func (a EnsureDeployment) ToDefinition(scope ...fnschema.PackageName) (*fnschema.SerializedInvocation, error) {
+	if a.Resource == nil {
+		return nil, fnerrors.InternalError("body is missing")
+	}
+
+	body, err := json.Marshal(a.Resource)
+	if err != nil {
+		return nil, err
+	}
+
+	op := &OpEnsureDeployment{
+		Deployable:              runtime.DeployableToProto(a.Deployable),
+		SerializedResource:      string(body), // We use strings for better debuggability.
+		InhibitEvents:           a.InhibitEvents,
+		ConfigurationVolumeName: a.ConfigurationVolumeName,
+	}
+
+	inv := &fnschema.SerializedInvocation{
+		Description: a.Description,
+		Scope:       scopeToStrings(scope),
+	}
+
+	if a.ConfigurationVolumeName != "" {
+		inv.RequiredOutput = []string{RuntimeConfigOutput(a.Deployable)}
+	}
+
+	if len(a.SchedAfterCategory) > 0 || len(a.SchedCategory) > 0 {
+		inv.Order = &fnschema.ScheduleOrder{
+			SchedCategory:      a.SchedCategory,
+			SchedAfterCategory: a.SchedAfterCategory,
+		}
+	}
+
+	x, err := anypb.New(op)
+	if err != nil {
+		return nil, err
+	}
+
+	inv.Impl = x
+	return inv, nil
+}
+
+func (a EnsureDeployment) AppliedResource() any {
+	return a.Resource
 }
 
 func (es ExtendSpec) ToDefinition() (*fnschema.DefExtension, error) {
@@ -343,4 +399,8 @@ func SerializeSelector(selector map[string]string) string {
 
 func Ego() metav1.ApplyOptions {
 	return metav1.ApplyOptions{FieldManager: K8sFieldManager}
+}
+
+func RuntimeConfigOutput(deployable runtime.Deployable) string {
+	return fmt.Sprintf("%s:%s", "rtconfig", deployable.GetId())
 }

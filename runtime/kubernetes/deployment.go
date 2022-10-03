@@ -8,7 +8,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"embed"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -30,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/storage"
@@ -47,7 +45,6 @@ var DeployAsPodsInTests = true
 const (
 	kubeNode schema.PackageName = "namespacelabs.dev/foundation/std/runtime/kubernetes"
 
-	runtimeConfigVersion       = 0
 	revisionHistoryLimit int32 = 10
 )
 
@@ -523,57 +520,29 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	var schedAfter []string
+	var configVolumeName string
 
 	// Before sidecars so they have access to the "runtime config" volume.
 	if deployable.RuntimeConfig != nil || len(deployable.ResourceIDs) > 0 {
-		idData := map[string]any{
-			"version": runtimeConfigVersion,
-		}
-
 		resourceIDs := slices.Clone(deployable.ResourceIDs)
 		slices.Sort(resourceIDs)
-		if len(resourceIDs) > 0 {
-			idData["resourceIDs"] = resourceIDs
-		}
-
-		if deployable.RuntimeConfig != nil {
-			serializedConfig, err := json.Marshal(deployable.RuntimeConfig)
-			if err != nil {
-				return fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
-			}
-
-			idData["config"] = serializedConfig
-		}
-
-		configDigest, err := schema.DigestOf(idData)
-		if err != nil {
-			return fnerrors.InternalError("failed to digest runtime configuration: %w", err)
-		}
-
-		configId := makeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
 
 		ensureConfig := kubedef.EnsureRuntimeConfig{
 			Description:         "Runtime configuration",
-			ConfigID:            configId,
 			RuntimeConfig:       deployable.RuntimeConfig,
 			Deployable:          deployable,
 			ResourceInstanceIDs: resourceIDs,
 		}
+
 		s.operations = append(s.operations, ensureConfig)
 
 		// Make sure we wait for the runtime configuration to be created before
 		// deploying a new deployment or statefulset.
 		schedAfter = append(schedAfter, ensureConfig.Category())
 
-		spec = spec.WithVolumes(applycorev1.Volume().
-			WithName(configId).
-			WithConfigMap(applycorev1.ConfigMapVolumeSource().WithName(configId)))
-
+		configVolumeName = "namespace-rtconfig"
 		mainContainer = mainContainer.WithVolumeMounts(
-			applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configId).WithReadOnly(true))
-
-		// We do manual cleanup of unused configs. In the future they'll be owned by a deployment intent.
-		annotations[kubedef.K8sRuntimeConfig] = configId
+			applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configVolumeName).WithReadOnly(true))
 	}
 
 	for _, sidecar := range deployable.Sidecars {
@@ -713,11 +682,13 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			desc = "One-shot"
 		}
 
-		s.operations = append(s.operations, kubedef.Apply{
-			Description:        firstStr(deployable.Description, desc),
-			InhibitEvents:      deployable.Class == schema.DeployableClass_MANUAL,
-			SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
-			SchedAfterCategory: schedAfter,
+		s.operations = append(s.operations, kubedef.EnsureDeployment{
+			Description:             firstStr(deployable.Description, desc),
+			Deployable:              deployable,
+			InhibitEvents:           deployable.Class == schema.DeployableClass_MANUAL,
+			SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
+			SchedAfterCategory:      schedAfter,
+			ConfigurationVolumeName: configVolumeName,
 			Resource: applycorev1.Pod(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithAnnotations(tmpl.Annotations).
@@ -730,10 +701,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	switch deployable.Class {
 	case schema.DeployableClass_STATELESS:
-		s.operations = append(s.operations, kubedef.Apply{
-			Description:        firstStr(deployable.Description, "Server Deployment"),
-			SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
-			SchedAfterCategory: schedAfter,
+		s.operations = append(s.operations, kubedef.EnsureDeployment{
+			Description:             firstStr(deployable.Description, "Server Deployment"),
+			Deployable:              deployable,
+			SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
+			SchedAfterCategory:      schedAfter,
+			ConfigurationVolumeName: configVolumeName,
 			Resource: appsv1.
 				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
@@ -746,10 +719,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		})
 
 	case schema.DeployableClass_STATEFUL:
-		s.operations = append(s.operations, kubedef.Apply{
-			Description:        firstStr(deployable.Description, "Server StatefulSet"),
-			SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
-			SchedAfterCategory: schedAfter,
+		s.operations = append(s.operations, kubedef.EnsureDeployment{
+			Description:             firstStr(deployable.Description, "Server StatefulSet"),
+			Deployable:              deployable,
+			SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
+			SchedAfterCategory:      schedAfter,
+			ConfigurationVolumeName: configVolumeName,
 			Resource: appsv1.
 				StatefulSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).
@@ -779,15 +754,6 @@ func firstStr(strs ...string) string {
 
 func isOneShotLike(class schema.DeployableClass) bool {
 	return class == schema.DeployableClass_ONESHOT || class == schema.DeployableClass_MANUAL
-}
-
-func makeVolumeName(deploymentId, name string) string {
-	if (len(deploymentId) + len(name) + 1) > 63 {
-		// Deployment id is too long, use an hash instead.
-		deploymentId = naming.StableIDN(deploymentId, 8)
-	}
-
-	return fmt.Sprintf("%s-%s", deploymentId, name)
 }
 
 type collector struct {

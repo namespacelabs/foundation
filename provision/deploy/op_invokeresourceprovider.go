@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -55,7 +56,7 @@ func register_OpInvokeResourceProvider() {
 				MainContainer: runtime.ContainerRunOpts{
 					Image:   imageID,
 					Command: invoke.BinaryConfig.Command,
-					Args:    invoke.BinaryConfig.Args,
+					Args:    append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson)),
 					Env:     invoke.BinaryConfig.Env,
 				},
 			}

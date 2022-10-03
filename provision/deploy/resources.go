@@ -7,6 +7,9 @@ package deploy
 import (
 	"context"
 
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/engine/compute"
@@ -82,12 +85,13 @@ func planResources(ctx context.Context, planner runtime.Planner, stack *provisio
 		imageIDs = append(imageIDs, imageID)
 
 		invocations = append(invocations, &resources.OpInvokeResourceProvider{
-			ResourceInstanceId: resource.ID,
-			BinaryRef:          provider.InitializeWith.BinaryRef,
-			BinaryConfig:       bin.Config,
-			ResourceClass:      resource.Class.Spec,
-			ResourceProvider:   provider,
-			InstanceTypeSource: resource.Class.InstanceType.Sources,
+			ResourceInstanceId:   resource.ID,
+			BinaryRef:            provider.InitializeWith.BinaryRef,
+			BinaryConfig:         bin.Config,
+			ResourceClass:        resource.Class.Spec,
+			ResourceProvider:     provider,
+			InstanceTypeSource:   resource.Class.InstanceType.Sources,
+			SerializedIntentJson: resource.JSONSerializedIntent,
 		})
 	}
 
@@ -121,9 +125,11 @@ type resourcePlanner struct {
 }
 
 type resourceInstance struct {
-	ID       string
-	Class    pkggraph.ResourceClass
-	Provider *schema.ResourceProvider
+	ID                   string
+	Class                pkggraph.ResourceClass
+	Provider             *schema.ResourceProvider
+	Intent               *anypb.Any
+	JSONSerializedIntent []byte
 }
 
 func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
@@ -152,6 +158,23 @@ func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoad
 		ID:       resourceID,
 		Class:    resource.Class,
 		Provider: resource.Provider,
+		Intent:   resource.Spec.Intent,
+	}
+
+	if instance.Intent != nil {
+		out := dynamicpb.NewMessage(resource.Class.IntentType.Descriptor).Interface()
+
+		if proto.Unmarshal(instance.Intent.Value, out); err != nil {
+			return fnerrors.InternalError("%s: failed to unmarshal intent: %w", resourceRef.Canonical(), err)
+		}
+
+		// json.Marshal is not capable of serializing a dynamicpb.
+		serialized, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(out)
+		if err != nil {
+			return fnerrors.InternalError("%s: failed to marshal intent to json: %w", resourceRef.Canonical(), err)
+		}
+
+		instance.JSONSerializedIntent = serialized
 	}
 
 	rp.resources[instance.ID] = instance

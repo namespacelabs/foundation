@@ -5,20 +5,26 @@
 package kubedef
 
 import (
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func IsDeployment(obj runtime.Object) bool {
-	return IsGVKDeployment(obj.GetObjectKind().GroupVersionKind())
+type Object interface {
+	GroupVersionKind() schema.GroupVersionKind
+	GetName() string
+	GetNamespace() string
+	GetLabels() map[string]string
 }
 
-func IsStatefulSet(obj runtime.Object) bool {
-	return IsGVKStatefulSet(obj.GetObjectKind().GroupVersionKind())
+func IsDeployment(obj Object) bool {
+	return IsGVKDeployment(obj.GroupVersionKind())
 }
 
-func IsPod(obj runtime.Object) bool {
-	return IsGVKPod(obj.GetObjectKind().GroupVersionKind())
+func IsStatefulSet(obj Object) bool {
+	return IsGVKStatefulSet(obj.GroupVersionKind())
+}
+
+func IsPod(obj Object) bool {
+	return IsGVKPod(obj.GroupVersionKind())
 }
 
 func IsGVKDeployment(gvk schema.GroupVersionKind) bool {
@@ -33,8 +39,8 @@ func IsGVKPod(gvk schema.GroupVersionKind) bool {
 	return gvk.GroupVersion().String() == "v1" && gvk.Kind == "Pod"
 }
 
-func IsCRD(obj runtime.Object) bool {
-	return IsGVKCRD(obj.GetObjectKind().GroupVersionKind())
+func IsCRD(obj Object) bool {
+	return IsGVKCRD(obj.GroupVersionKind())
 }
 
 func IsGVKCRD(gvk schema.GroupVersionKind) bool {

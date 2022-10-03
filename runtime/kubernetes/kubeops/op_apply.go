@@ -44,8 +44,8 @@ func registerApply() {
 			return &parsedApply{obj: &parsed, spec: apply}, nil
 		},
 
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, spec *parsedApply) (*ops.HandleResult, error) {
-			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), spec)
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedApply) (*ops.HandleResult, error) {
+			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, parsed.spec)
 		},
 
 		PlanOrder: func(apply *parsedApply) (*fnschema.ScheduleOrder, error) {
@@ -59,8 +59,8 @@ type parsedApply struct {
 	spec *kubedef.OpApply
 }
 
-func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply *parsedApply) (*ops.HandleResult, error) {
-	gv := apply.obj.GroupVersionKind().GroupVersion()
+func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubedef.Object, spec *kubedef.OpApply) (*ops.HandleResult, error) {
+	gv := obj.GroupVersionKind().GroupVersion()
 	if gv.Version == "" {
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
 	}
@@ -78,16 +78,16 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 	action := tasks.Action("kubernetes.apply").
 		Scope(scope...).
 		HumanReadablef(desc).
-		Arg("name", apply.obj.GetName())
+		Arg("name", obj.GetName())
 
-	if ns := apply.obj.GetNamespace(); ns != "" {
+	if ns := obj.GetNamespace(); ns != "" {
 		action = action.Arg("namespace", ns)
 	}
 
 	if err := action.RunWithOpts(ctx, tasks.RunOpts{
 		Wait: func(ctx context.Context) (bool, error) {
 			var err error
-			resource, err = resolveResource(ctx, cluster, apply.obj.GroupVersionKind())
+			resource, err = resolveResource(ctx, cluster, obj.GroupVersionKind())
 			if err != nil {
 				return false, err
 			}
@@ -98,19 +98,19 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 			// default service account, requires that the default service
 			// account actually exists. And creating the default service
 			// account takes a bit of time after creating a namespace.
-			waitOnNamespace, err := requiresWaitForNamespace(apply)
+			waitOnNamespace, err := requiresWaitForNamespace(obj, spec)
 			if err != nil {
 				return false, fnerrors.InternalError("failed to determine object namespace: %w", err)
 			}
 
 			if waitOnNamespace {
-				if err := waitForDefaultServiceAccount(ctx, cluster.PreparedClient().Clientset, apply.obj.GetNamespace()); err != nil {
+				if err := waitForDefaultServiceAccount(ctx, cluster.PreparedClient().Clientset, obj.GetNamespace()); err != nil {
 					return false, err
 				}
 			}
 
 			if !cluster.PreparedClient().Configuration.Ephemeral {
-				if apply.obj.GetAPIVersion() == "networking.k8s.io/v1" && apply.obj.GetKind() == "Ingress" {
+				if obj.GroupVersionKind().GroupVersion().String() == "networking.k8s.io/v1" && obj.GroupVersionKind().Kind == "Ingress" {
 					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
 					}
@@ -127,14 +127,14 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 
 			patchOpts := kubedef.Ego().ToPatchOptions()
 			req := client.Patch(types.ApplyPatchType)
-			if apply.obj.GetNamespace() != "" {
-				req = req.Namespace(apply.obj.GetNamespace())
+			if obj.GetNamespace() != "" {
+				req = req.Namespace(obj.GetNamespace())
 			}
 
 			prepReq := req.Resource(resource.Resource).
-				Name(apply.obj.GetName()).
+				Name(obj.GetName()).
 				VersionedParams(&patchOpts, metav1.ParameterCodec).
-				Body([]byte(apply.spec.BodyJson))
+				Body([]byte(spec.BodyJson))
 
 			if OutputKubeApiURLs {
 				fmt.Fprintf(console.Debug(ctx), "kubernetes: api patch call %q\n", prepReq.URL())
@@ -145,16 +145,16 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 		return nil, fnerrors.InvocationError("%s: failed to apply: %w", desc, err)
 	}
 
-	if err := checkResetCRDCache(ctx, cluster, apply.obj.GroupVersionKind()); err != nil {
+	if err := checkResetCRDCache(ctx, cluster, obj.GroupVersionKind()); err != nil {
 		return nil, err
 	}
 
-	if apply.obj.GetNamespace() == kubedef.AdminNamespace && !kubedef.HasFocusMark(apply.obj.GetLabels()) {
+	if obj.GetNamespace() == kubedef.AdminNamespace && !kubedef.HasFocusMark(obj.GetLabels()) {
 		// don't wait for changes to admin namespace, unless they are in focus
 		return &ops.HandleResult{}, nil
 	}
 
-	if apply.spec.CheckGenerationCondition.GetType() != "" {
+	if spec.CheckGenerationCondition.GetType() != "" {
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 		if err1 != nil {
 			return nil, fnerrors.InternalError("failed to wait on resource: %w", err)
@@ -165,20 +165,20 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 
 		return &ops.HandleResult{Waiters: []ops.Waiter{kobs.WaitOnGenerationCondition{
 			RestConfig:         restcfg,
-			Namespace:          apply.obj.GetNamespace(),
-			Name:               apply.obj.GetName(),
+			Namespace:          obj.GetNamespace(),
+			Name:               obj.GetName(),
 			ExpectedGeneration: generation,
-			ConditionType:      apply.spec.CheckGenerationCondition.Type,
+			ConditionType:      spec.CheckGenerationCondition.Type,
 			Resource:           *resource,
 		}.WaitUntilReady}}, nil
 	}
 
-	if apply.spec.InhibitEvents {
+	if spec.InhibitEvents {
 		return nil, nil
 	}
 
 	switch {
-	case kubedef.IsDeployment(apply.obj), kubedef.IsStatefulSet(apply.obj):
+	case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj):
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 		observedGen, found2, err2 := unstructured.NestedInt64(res.Object, "status", "observedGeneration")
 		if err2 != nil || !found2 {
@@ -192,9 +192,9 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 				w := kobs.WaitOnResource{
 					RestConfig:       restcfg,
 					Description:      desc,
-					Namespace:        apply.obj.GetNamespace(),
-					Name:             apply.obj.GetName(),
-					GroupVersionKind: apply.obj.GroupVersionKind(),
+					Namespace:        obj.GetNamespace(),
+					Name:             obj.GetName(),
+					GroupVersionKind: obj.GroupVersionKind(),
 					Scope:            sc,
 					PreviousGen:      observedGen,
 					ExpectedGen:      generation,
@@ -206,10 +206,10 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 			}, nil
 		} else {
 			fmt.Fprintf(console.Warnings(ctx), "missing generation data from %s: %v / %v [found1=%v found2=%v]\n",
-				apply.obj.GetKind(), err1, err2, found1, found2)
+				obj.GroupVersionKind().Kind, err1, err2, found1, found2)
 		}
 
-	case kubedef.IsPod(apply.obj):
+	case kubedef.IsPod(obj):
 		waiters := []ops.Waiter{func(ctx context.Context, ch chan *orchestration.Event) error {
 			if ch != nil {
 				defer close(ch)
@@ -217,8 +217,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 
 			return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("pod.wait").Scope(scope...),
 				kobs.WaitForPodConditition(
-					apply.obj.GetNamespace(),
-					kobs.PickPod(apply.obj.GetName()),
+					obj.GetNamespace(),
+					kobs.PickPod(obj.GetName()),
 					func(ps v1.PodStatus) (bool, error) {
 						meta, err := json.Marshal(ps)
 						if err != nil {
@@ -226,12 +226,12 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 						}
 
 						ev := &orchestration.Event{
-							ResourceId:          fmt.Sprintf("%s/%s", apply.obj.GetNamespace(), apply.obj.GetName()),
-							Kind:                apply.obj.GetKind(),
+							ResourceId:          fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName()),
+							Kind:                obj.GroupVersionKind().Kind,
 							Category:            "Servers deployed",
 							Ready:               orchestration.Event_NOT_READY,
 							ImplMetadata:        meta,
-							RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", apply.obj.GetNamespace(), apply.obj.GetName()),
+							RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", obj.GetNamespace(), obj.GetName()),
 						}
 
 						// XXX this under-reports scope.
@@ -239,7 +239,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 							ev.Scope = scope[0].String()
 						}
 
-						ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(apply.obj.GetNamespace(), apply.obj.GetName(), ps))
+						ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(obj.GetNamespace(), obj.GetName(), ps))
 
 						var done bool
 						if ps.Phase == v1.PodFailed || ps.Phase == v1.PodSucceeded {
@@ -267,30 +267,30 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, apply
 	return nil, nil
 }
 
-func requiresWaitForNamespace(apply *parsedApply) (bool, error) {
+func requiresWaitForNamespace(obj kubedef.Object, spec *kubedef.OpApply) (bool, error) {
 	switch {
-	case kubedef.IsDeployment(apply.obj):
+	case kubedef.IsDeployment(obj):
 		// XXX change to unstructured lookups.
 		var d appsv1.Deployment
-		if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
+		if err := json.Unmarshal([]byte(spec.BodyJson), &d); err != nil {
 			return false, err
 		}
 		if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
 			return true, nil
 		}
 
-	case kubedef.IsStatefulSet(apply.obj):
+	case kubedef.IsStatefulSet(obj):
 		var d appsv1.StatefulSet
-		if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
+		if err := json.Unmarshal([]byte(spec.BodyJson), &d); err != nil {
 			return false, err
 		}
 		if d.Spec.Template.Spec.ServiceAccountName == "" || d.Spec.Template.Spec.ServiceAccountName == "default" {
 			return true, nil
 		}
 
-	case kubedef.IsPod(apply.obj):
+	case kubedef.IsPod(obj):
 		var d v1.Pod
-		if err := json.Unmarshal([]byte(apply.spec.BodyJson), &d); err != nil {
+		if err := json.Unmarshal([]byte(spec.BodyJson), &d); err != nil {
 			return false, err
 		}
 		if d.Spec.ServiceAccountName == "" || d.Spec.ServiceAccountName == "default" {
