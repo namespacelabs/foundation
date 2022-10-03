@@ -54,10 +54,12 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		return nil, err
 	}
 
-	for _, provider := range pp.ResourceProviders {
+	for _, provider := range pp.ResourceProvidersSpecs {
 		if err := transformResourceProvider(ctx, pl, pp, provider); err != nil {
 			return nil, err
 		}
+
+		pp.ResourceProviders = append(pp.ResourceProviders, pkggraph.ResourceProvider{Spec: provider})
 	}
 
 	for _, r := range pp.ResourceInstanceSpecs {

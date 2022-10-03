@@ -253,7 +253,15 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.SerializedInvocation, error) {
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
-			return planResources(ctx, rc, stackAndDefs.Stack)
+
+			sealedCtx := stack.Servers[0].SealedContext()
+
+			var resources []*schema.PackageRef
+			for _, ps := range stackAndDefs.Stack.Servers {
+				resources = append(resources, ps.Proto().Resource...)
+			}
+
+			return planResources(ctx, sealedCtx, rc, resources)
 		})
 
 	deploymentPlan := compute.Map(

@@ -231,7 +231,10 @@ type NodejsIntegration struct {
 	NodePkgMgr NodejsIntegration_NodePkgMgr `protobuf:"varint,2,opt,name=node_pkg_mgr,json=nodePkgMgr,proto3,enum=foundation.schema.NodejsIntegration_NodePkgMgr" json:"node_pkg_mgr,omitempty"`
 	// Names of the scripts from `package.json`.
 	PackageJsonScripts []string `protobuf:"bytes,3,rep,name=package_json_scripts,json=packageJsonScripts,proto3" json:"package_json_scripts,omitempty"`
-	BuildOutputDir     string   `protobuf:"bytes,4,opt,name=build_output_dir,json=buildOutputDir,proto3" json:"build_output_dir,omitempty"`
+	// Relative path to copy to the output image. If set, the result image contains only these files.
+	// Only affects non-dev environments.
+	// TODO: Move copying the files out of the Node.js implementation.
+	BuildOutputDir string `protobuf:"bytes,4,opt,name=build_output_dir,json=buildOutputDir,proto3" json:"build_output_dir,omitempty"`
 }
 
 func (x *NodejsIntegration) Reset() {

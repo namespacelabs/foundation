@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -25,22 +24,17 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func planResources(ctx context.Context, planner runtime.Planner, stack *provision.Stack) ([]*schema.SerializedInvocation, error) {
-	// XXX this should be embedded in the provision.Stack.
-	if len(stack.Servers) == 0 {
+func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, resourceRefs []*schema.PackageRef) ([]*schema.SerializedInvocation, error) {
+	if len(resourceRefs) == 0 {
 		return nil, nil
 	}
-
-	sealedCtx := stack.Servers[0].SealedContext()
 
 	var rp resourcePlanner
 
 	var errs []error
-	for _, ps := range stack.Servers {
-		for _, ref := range ps.Proto().Resource {
-			if err := rp.checkAdd(ctx, sealedCtx, ref); err != nil {
-				errs = append(errs, err)
-			}
+	for _, ref := range resourceRefs {
+		if err := rp.checkAdd(ctx, sealedCtx, ref); err != nil {
+			errs = append(errs, err)
 		}
 	}
 
@@ -58,13 +52,18 @@ func planResources(ctx context.Context, planner runtime.Planner, stack *provisio
 
 	for _, resourceID := range rp.resourceIDs.Strings() {
 		resource := rp.resources[resourceID]
-		provider := resource.Provider
+		provider := resource.Provider.Spec
 
-		if provider.InitializeWith.RequiresKeys || provider.InitializeWith.Snapshots != nil || provider.InitializeWith.Inject != nil {
+		if provider.PrepareWith == nil {
+			return nil, fnerrors.InternalError("unimplemented")
+		}
+
+		initializer := provider.InitializedWith
+		if initializer.RequiresKeys || initializer.Snapshots != nil || initializer.Inject != nil {
 			return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
 		}
 
-		pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, provider.InitializeWith.BinaryRef)
+		pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, initializer.BinaryRef)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +85,7 @@ func planResources(ctx context.Context, planner runtime.Planner, stack *provisio
 
 		invocations = append(invocations, &resources.OpInvokeResourceProvider{
 			ResourceInstanceId:   resource.ID,
-			BinaryRef:            provider.InitializeWith.BinaryRef,
+			BinaryRef:            initializer.BinaryRef,
 			BinaryConfig:         bin.Config,
 			ResourceClass:        resource.Class.Spec,
 			ResourceProvider:     provider,
@@ -127,7 +126,7 @@ type resourcePlanner struct {
 type resourceInstance struct {
 	ID                   string
 	Class                pkggraph.ResourceClass
-	Provider             *schema.ResourceProvider
+	Provider             pkggraph.ResourceProvider
 	Intent               *anypb.Any
 	JSONSerializedIntent []byte
 }

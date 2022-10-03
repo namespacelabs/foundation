@@ -53,7 +53,7 @@ func transformResourceInstance(ctx context.Context, pl EarlyPackageLoader, pp *p
 		Spec:            r,
 		Class:           *class,
 		ProviderPackage: providerPkg,
-		Provider:        provider,
+		Provider:        *provider,
 	})
 
 	return nil

@@ -15,6 +15,7 @@ import (
 
 type cueResourceProvider struct {
 	InitializedWith *cuefrontend.CueInvokeBinary `json:"initializedWith"`
+	PrepareWith     *cuefrontend.CueInvokeBinary `json:"prepareWith"`
 
 	// TODO: parse resource dependencies.
 }
@@ -30,13 +31,23 @@ func parseResourceProvider(ctx context.Context, loc pkggraph.Location, key strin
 		return nil, err
 	}
 
-	invocation, err := bits.InitializedWith.ToInvocation()
+	initializedWith, err := bits.InitializedWith.ToInvocation()
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.ResourceProvider{
-		ProvidesClass:  classRef,
-		InitializeWith: invocation,
-	}, nil
+	rp := &schema.ResourceProvider{
+		ProvidesClass:   classRef,
+		InitializedWith: initializedWith,
+	}
+
+	if bits.PrepareWith != nil {
+		prepareWith, err := bits.PrepareWith.ToInvocation()
+		if err != nil {
+			return nil, err
+		}
+		rp.PrepareWith = prepareWith
+	}
+
+	return rp, nil
 }

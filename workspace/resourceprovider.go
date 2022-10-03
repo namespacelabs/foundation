@@ -14,12 +14,18 @@ import (
 )
 
 func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, provider *schema.ResourceProvider) error {
-	if provider.InitializeWith == nil {
+	if provider.InitializedWith == nil {
 		return fnerrors.UserError(pp.Location, "resource provider requires initializedWith")
 	}
 
-	if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.InitializeWith.BinaryRef); err != nil {
+	if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.InitializedWith.BinaryRef); err != nil {
 		return err
+	}
+
+	if provider.GetPrepareWith().GetBinaryRef() != nil {
+		if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.PrepareWith.BinaryRef); err != nil {
+			return err
+		}
 	}
 
 	pkg, err := pl.LoadByName(ctx, provider.ProvidesClass.AsPackageName())

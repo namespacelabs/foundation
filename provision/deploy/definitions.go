@@ -279,7 +279,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 	allOps = append(allOps, orderedOps...)
 
-	return &handlerResult{r.stack, allOps, perServer}, nil
+	return &handlerResult{Stack: r.stack, OrderedInvocations: allOps, ProvisionOutput: perServer}, nil
 }
 
 const controllerPkg = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"

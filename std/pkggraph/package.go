@@ -40,29 +40,34 @@ type Package struct {
 	PackageData []*types.Resource
 
 	// Parsed resources
-	Resources       []Resource
-	ResourceClasses []ResourceClass
+	Resources         []Resource
+	ResourceClasses   []ResourceClass
+	ResourceProviders []ResourceProvider
 
 	// Hooks
 	PrepareHooks []PrepareHook
 
 	// Raw resources definitions within a package.
-	ResourceClassSpecs    []*schema.ResourceClass
-	ResourceProviders     []*schema.ResourceProvider
-	ResourceInstanceSpecs []*schema.ResourceInstance
+	ResourceClassSpecs     []*schema.ResourceClass
+	ResourceProvidersSpecs []*schema.ResourceProvider
+	ResourceInstanceSpecs  []*schema.ResourceInstance
 }
 
 type Resource struct {
 	Spec            *schema.ResourceInstance
 	Class           ResourceClass
 	ProviderPackage *Package
-	Provider        *schema.ResourceProvider
+	Provider        ResourceProvider
 }
 
 type ResourceClass struct {
 	Spec         *schema.ResourceClass
 	IntentType   UserType
 	InstanceType UserType
+}
+
+type ResourceProvider struct {
+	Spec *schema.ResourceProvider
 }
 
 func (rc ResourceClass) PackageName() schema.PackageName {
@@ -115,10 +120,10 @@ func (pr *Package) LookupResourceClass(name string) *ResourceClass {
 	return nil
 }
 
-func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *schema.ResourceProvider {
+func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *ResourceProvider {
 	for _, p := range pr.ResourceProviders {
-		if p.ProvidesClass.Equals(classRef) {
-			return p
+		if p.Spec.ProvidesClass.Equals(classRef) {
+			return &p
 		}
 	}
 

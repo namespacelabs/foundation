@@ -80,7 +80,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 				return nil, err
 			}
 
-			parsedPkg.ResourceProviders = append(parsedPkg.ResourceProviders, parsedProvider)
+			parsedPkg.ResourceProvidersSpecs = append(parsedPkg.ResourceProvidersSpecs, parsedProvider)
 		}
 	}
 
