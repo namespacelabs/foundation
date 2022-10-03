@@ -10,7 +10,9 @@ import (
 	"fmt"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/rtypes"
@@ -132,6 +134,22 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 			}
 			state.Definitions = append(state.Definitions, def)
 		}
+	}
+
+	if !target.env.GetEphemeral() {
+		// TODO skip cleanup from CLI when orchestrator does it.
+		cleanup, err := anypb.New(&kubedef.OpCleanupRuntimeConfig{
+			Namespace: target.namespace,
+			CheckPods: deployAsPods(target.env),
+		})
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize cleanup: %w", err)
+		}
+
+		state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
+			Description: "Kubernetes: cleanup unused resources",
+			Impl:        cleanup,
+		})
 	}
 
 	state.Hints = append(state.Hints, fmt.Sprintf("Inspecting your deployment: %s",
