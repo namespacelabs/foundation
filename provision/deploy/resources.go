@@ -164,7 +164,7 @@ func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoad
 	if instance.Intent != nil {
 		out := dynamicpb.NewMessage(resource.Class.IntentType.Descriptor).Interface()
 
-		if proto.Unmarshal(instance.Intent.Value, out); err != nil {
+		if err := proto.Unmarshal(instance.Intent.Value, out); err != nil {
 			return fnerrors.InternalError("%s: failed to unmarshal intent: %w", resourceRef.Canonical(), err)
 		}
 
