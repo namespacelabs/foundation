@@ -5,6 +5,7 @@
 package simplelog
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
@@ -45,8 +46,11 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 		return
 	}
 
-	fmt.Fprint(sl.out, "↦ ")
-	consolesink.LogAction(sl.out, colors.NoColors, ra.Data)
+	var b bytes.Buffer
+	fmt.Fprint(&b, "↦ ")
+	consolesink.LogAction(&b, colors.NoColors, ra.Data)
+
+	sl.out.Write(b.Bytes())
 }
 
 func (sl *logger) Done(ra *tasks.RunningAction) {
@@ -57,10 +61,12 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 		return
 	}
 
+	var b bytes.Buffer
 	if AlsoReportStartEvents {
-		fmt.Fprint(sl.out, "✔ ")
+		fmt.Fprint(&b, "✔ ")
 	}
-	consolesink.LogAction(sl.out, colors.NoColors, ra.Data)
+	consolesink.LogAction(&b, colors.NoColors, ra.Data)
+	sl.out.Write(b.Bytes())
 }
 
 func (sl *logger) Instant(ev *tasks.EventData) {
@@ -71,10 +77,12 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 		return
 	}
 
+	var b bytes.Buffer
 	if AlsoReportStartEvents {
-		fmt.Fprint(sl.out, "✔ ")
+		fmt.Fprint(&b, "✔ ")
 	}
-	consolesink.LogAction(sl.out, colors.NoColors, *ev)
+	consolesink.LogAction(&b, colors.NoColors, *ev)
+	sl.out.Write(b.Bytes())
 }
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
