@@ -113,7 +113,7 @@ func (stack *Stack) Get(srv schema.PackageName) (Server, bool) {
 }
 
 func ComputeStack(ctx context.Context, servers parsed.Servers, opts ProvisionOpts) (*Stack, error) {
-	return tasks.Return(ctx, tasks.Action("provision.Compute").Scope(servers.Packages().PackageNames()...),
+	return tasks.Return(ctx, tasks.Action("provision.compute").Scope(servers.Packages().PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {
 			return computeStack(ctx, opts, servers...)
 		})

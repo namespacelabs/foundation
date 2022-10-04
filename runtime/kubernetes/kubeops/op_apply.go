@@ -149,11 +149,6 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		return nil, err
 	}
 
-	if obj.GetNamespace() == kubedef.AdminNamespace && !kubedef.HasFocusMark(obj.GetLabels()) {
-		// don't wait for changes to admin namespace, unless they are in focus
-		return &ops.HandleResult{}, nil
-	}
-
 	if spec.CheckGenerationCondition.GetType() != "" {
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 		if err1 != nil {

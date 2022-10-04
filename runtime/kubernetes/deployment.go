@@ -202,13 +202,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
 	labels := kubedef.MakeLabels(target.env, deployable)
-
 	annotations := kubedef.MakeAnnotations(target.env, deployable.PackageName)
-
-	if deployable.Focused {
-		labels = kubedef.WithFocusMark(labels)
-	}
-
 	deploymentId := kubedef.MakeDeploymentId(deployable)
 
 	tmpl := applycorev1.PodTemplateSpec().
@@ -675,6 +669,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
+	ensure := kubedef.EnsureDeployment{
+		Deployable:              deployable,
+		InhibitEvents:           deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
+		SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
+		SchedAfterCategory:      schedAfter,
+		ConfigurationVolumeName: configVolumeName,
+	}
+
 	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot
 	// servers which we want to control a bit more carefully. For example, we want to deploy
 	// them with restart_policy=never, which we would otherwise not be able to do with
@@ -685,32 +687,18 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			desc = "One-shot"
 		}
 
-		s.operations = append(s.operations, kubedef.EnsureDeployment{
-			Description:             firstStr(deployable.Description, desc),
-			Deployable:              deployable,
-			InhibitEvents:           deployable.Class == schema.DeployableClass_MANUAL,
-			SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
-			SchedAfterCategory:      schedAfter,
-			ConfigurationVolumeName: configVolumeName,
-			Resource: applycorev1.Pod(deploymentId, target.namespace).
-				WithAnnotations(annotations).
-				WithAnnotations(tmpl.Annotations).
-				WithLabels(labels).
-				WithLabels(tmpl.Labels).
-				WithSpec(tmpl.Spec.WithRestartPolicy(corev1.RestartPolicyNever)),
-		})
-		return nil
-	}
-
-	switch deployable.Class {
-	case schema.DeployableClass_STATELESS:
-		s.operations = append(s.operations, kubedef.EnsureDeployment{
-			Description:             firstStr(deployable.Description, "Server Deployment"),
-			Deployable:              deployable,
-			SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
-			SchedAfterCategory:      schedAfter,
-			ConfigurationVolumeName: configVolumeName,
-			Resource: appsv1.
+		ensure.Description = firstStr(deployable.Description, desc)
+		ensure.Resource = applycorev1.Pod(deploymentId, target.namespace).
+			WithAnnotations(annotations).
+			WithAnnotations(tmpl.Annotations).
+			WithLabels(labels).
+			WithLabels(tmpl.Labels).
+			WithSpec(tmpl.Spec.WithRestartPolicy(corev1.RestartPolicyNever))
+	} else {
+		switch deployable.Class {
+		case schema.DeployableClass_STATELESS:
+			ensure.Description = firstStr(deployable.Description, "Server Deployment")
+			ensure.Resource = appsv1.
 				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
@@ -718,17 +706,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					WithReplicas(1).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
-					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable)))),
-		})
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
 
-	case schema.DeployableClass_STATEFUL:
-		s.operations = append(s.operations, kubedef.EnsureDeployment{
-			Description:             firstStr(deployable.Description, "Server StatefulSet"),
-			Deployable:              deployable,
-			SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
-			SchedAfterCategory:      schedAfter,
-			ConfigurationVolumeName: configVolumeName,
-			Resource: appsv1.
+		case schema.DeployableClass_STATEFUL:
+			ensure.Description = firstStr(deployable.Description, "Server StatefulSet")
+			ensure.Resource = appsv1.
 				StatefulSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
@@ -736,13 +718,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					WithReplicas(1).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
-					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable)))),
-		})
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
 
-	default:
-		return fnerrors.InternalError("%s: unsupported deployable class", deployable.Class)
+		default:
+			return fnerrors.InternalError("%s: unsupported deployable class", deployable.Class)
+		}
 	}
 
+	s.operations = append(s.operations, ensure)
 	return nil
 }
 

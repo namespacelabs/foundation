@@ -29,35 +29,36 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 			runtime.InjectCluster(cluster)...)
 	}
 
-	return tasks.Action("orchestrator.deploy").Run(ctx, func(ctx context.Context) error {
-		raw, err := cluster.Cluster().EnsureState(ctx, orchestratorStateKey)
-		if err != nil {
-			return err
-		}
-
-		conn, err := raw.(*RemoteOrchestrator).Connect(ctx)
-		if err != nil {
-			return err
-		}
-
-		defer conn.Close()
-
-		id, err := CallDeploy(ctx, env, conn, plan)
-		if err != nil {
-			return err
-		}
-
-		if wait {
-			var ch chan *orchpb.Event
-			var handler = func(_ context.Context, err error) error { return err }
-
-			if outputProgress {
-				ch, handler = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
+	return tasks.Action("orchestrator.deploy").Scope(schema.PackageNames(plan.FocusServer...)...).
+		Run(ctx, func(ctx context.Context) error {
+			raw, err := cluster.Cluster().EnsureState(ctx, orchestratorStateKey)
+			if err != nil {
+				return err
 			}
 
-			return handler(ctx, WireDeploymentStatus(ctx, conn, id, ch))
-		}
+			conn, err := raw.(*RemoteOrchestrator).Connect(ctx)
+			if err != nil {
+				return err
+			}
 
-		return nil
-	})
+			defer conn.Close()
+
+			id, err := CallDeploy(ctx, env, conn, plan)
+			if err != nil {
+				return err
+			}
+
+			if wait {
+				var ch chan *orchpb.Event
+				var handler = func(_ context.Context, err error) error { return err }
+
+				if outputProgress {
+					ch, handler = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
+				}
+
+				return handler(ctx, WireDeploymentStatus(ctx, conn, id, ch))
+			}
+
+			return nil
+		})
 }
