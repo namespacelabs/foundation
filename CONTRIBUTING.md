@@ -84,6 +84,7 @@ To issue an actual release:
 1. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
 1. Run the release `goreleaser release --rm-dist` (add `-f .goreleaser.nsboot.yaml` to release `nsboot`).
 1. When releasing `nsboot` update the version in `install/install.sh`.
+1. After the release is complete, remember to remove the `dist` directory to keep your workspace size small.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
