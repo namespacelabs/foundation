@@ -92,7 +92,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 		for it.Next() {
 			val := &fncue.CueV{Val: it.Value()}
-			parsedResource, err := parseResourceInstance(ctx, ft.loader, loc, it.Label(), val)
+			parsedResource, err := cuefrontend.ParseResourceInstance(ctx, ft.loader, loc, it.Label(), val)
 			if err != nil {
 				return nil, err
 			}

@@ -6,9 +6,6 @@ package cuefrontend
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"sort"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -201,43 +198,6 @@ func sortAdditional(a, b *schema.Naming_AdditionalDomainName) bool {
 		return strings.Compare(a.Fqdn, b.Fqdn) < 0
 	}
 	return strings.Compare(a.AllocatedName, b.AllocatedName) < 0
-}
-
-type ArgsListOrMap struct {
-	args []string
-}
-
-var _ json.Unmarshaler = &ArgsListOrMap{}
-
-func (args *ArgsListOrMap) Parsed() []string {
-	if args == nil {
-		return nil
-	}
-	return args.args
-}
-
-func (args *ArgsListOrMap) UnmarshalJSON(contents []byte) error {
-	var list []string
-	if json.Unmarshal(contents, &list) == nil {
-		args.args = list
-		return nil
-	}
-
-	var m map[string]string
-	if json.Unmarshal(contents, &m) == nil {
-		for k, v := range m {
-			if v != "" {
-				args.args = append(args.args, fmt.Sprintf("--%s=%s", k, v))
-			} else {
-				args.args = append(args.args, fmt.Sprintf("--%s", k))
-			}
-		}
-		// Ensure deterministic arg order
-		sort.Strings(args.args)
-		return nil
-	}
-
-	return fnerrors.InternalError("args: expected a list of strings, or a map of string to string")
 }
 
 func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {
