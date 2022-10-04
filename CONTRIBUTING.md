@@ -10,7 +10,7 @@ Docker (e.g. Docker Desktop on MacOS).
 We use `nix` to guarantee a stable development environment (it's not used throughout yet, e.g. for
 releases, but that's a work in progress).
 
-- Install `nix` to your target environment, https://nixos.org/download.html. Both Linux (and WSL2)
+- [Install `nix`](https://nixos.org/download.html) to your target environment. Both Linux (and WSL2)
   as well as MacOS are supported.
 
 Foundation is regularly tested under Linux, MacOS 11+ and Windows WSL2.
@@ -33,7 +33,7 @@ ns
 ## Committing
 
 We use `pre-commit` to enforce consistent code formatting.
-Install `pre-commit` with one of the options at https://pre-commit.com/#install.
+Please, [install `pre-commit`](https://pre-commit.com/#install).
 
 [By default](https://pre-commit.com/#usage), `pre-commit` requires you to run `pre-commit install` for _every_ cloned repo containing a `.pre-commit-config.yaml` file.
 
@@ -95,7 +95,7 @@ Note: currently the notarization is not required. Namespace binaries are downloa
 and these tools do not set the quarantine flag (see [SO](https://stackoverflow.com/questions/67446317/why-are-executables-installed-with-homebrew-trusted-on-macos), verified on a fresh macOS install by Kirill).
 
 If needed, notarization is to be done in MacOSX, and requires XCode, and
-https://github.com/mitchellh/gon#installation. Currently Hugo is the only person to perform notarization
+[gon](https://github.com/mitchellh/gon#installation). Currently Hugo is the only person to perform notarization
 as he posesses the right Apple Developer Certificate.
 
 ## Development Workflows
@@ -105,7 +105,7 @@ as he posesses the right Apple Developer Certificate.
 The debugging configuration is not in the repository because different people may want to used
 different arguments. To bootstrap, create `.vscode/launch.json` and add the following content:
 
-```
+```bash
 {
   // Use IntelliSense to learn about possible attributes.
   // Hover to view descriptions of existing attributes.
@@ -173,7 +173,7 @@ ns build-binary --all --build_platforms=linux/arm64,linux/amd64 \
 
 #### Specific images
 
-```
+```bash
 nsdev build-binary std/networking/gateway/controller std/networking/gateway/server/configure \
      --build_platforms=linux/arm64,linux/amd64 --output_prebuilts \
      --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
@@ -212,7 +212,7 @@ And then configure `ns` to push traces, either set `enable_tracing` unconditiona
 FN_ENABLE_TRACING=true ns build ...
 ```
 
-Check out the trace at http://localhost:20000/.
+Check out the trace at [http://localhost:20000/](http://localhost:20000/).
 
 ### Iterating on the internal Dev UI
 
@@ -240,12 +240,12 @@ Users generate pub/private identities using `ns keys generate`, which can then b
 the keys which have been added as receipients to the encrypted payload. This list of keys is public,
 and kept in the repository as part of the bundle.
 
-```
+```bash
 $ ns keys generate
 Created age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz
 ```
 
-```
+```bash
 $ ns secrets set std/testdata/server/gogrpc --secret namespacelabs.dev/foundation/std/testdata/datastore:cert
 
 Specify a value for "cert" in namespacelabs.dev/foundation/std/testdata/datastore.
@@ -261,7 +261,7 @@ are encrypted.
 To grant access to the encrypted file, merely have your teammate generate a key (see above), add
 run:
 
-```
+```bash
 $ ns secrets add-reader std/testdata/server/gogrpc --key <pubkey>
 Wrote std/testdata/server/gogrpc/server.secrets
 ```
@@ -270,7 +270,7 @@ The resulting file can then be submitted to the repository.
 
 To inspect who has access to the bundle, and which secrets are stored, run:
 
-```
+```bash
 $ ns secrets info std/testdata/server/gogrpc
 Readers:
   age1mlefr5zhnesgzfl7aefy95qlem0feuyfpdpmee6lk50x4h6mlskqdffjxv
