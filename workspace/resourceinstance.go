@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func LoadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, r *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
+func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, r *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
 	r.PackageName = string(pp.PackageName())
 
 	if r.Provider == "" {
@@ -56,4 +56,33 @@ func LoadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		ProviderPackage: providerPkg,
 		Provider:        *provider,
 	}, nil
+}
+
+func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
+	var resources []pkggraph.ResourceInstance
+
+	for _, resource := range pack.GetResourceRef() {
+		pkg, err := pl.LoadByName(ctx, resource.AsPackageName())
+		if err != nil {
+			return nil, err
+		}
+
+		res := pkg.LookupResourceInstance(resource.Name)
+		if res == nil {
+			return nil, fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+		}
+
+		resources = append(resources, *res)
+	}
+
+	for _, resource := range pack.GetResourceInstance() {
+		instance, err := loadResourceInstance(ctx, pl, pkg, resource)
+		if err != nil {
+			return nil, err
+		}
+
+		resources = append(resources, *instance)
+	}
+
+	return resources, nil
 }

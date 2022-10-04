@@ -70,7 +70,7 @@ type ResourceClass struct {
 type ResourceProvider struct {
 	Spec *schema.ResourceProvider
 
-	InlineResources []ResourceInstance
+	Resources []ResourceInstance
 }
 
 func (rc ResourceClass) PackageName() schema.PackageName {

@@ -43,7 +43,7 @@ func ParseResourceInstanceFromCue(ctx context.Context, pl workspace.EarlyPackage
 	return ParseResourceInstance(ctx, pl, loc, name, instance)
 }
 
-func ParseResourceInstance(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, instance CueResourceInstance) (*schema.ResourceInstance, error) {
+func ParseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, name string, instance CueResourceInstance) (*schema.ResourceInstance, error) {
 	classRef, err := schema.ParsePackageRef(instance.Class)
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func ParseResourceInstance(ctx context.Context, pl workspace.EarlyPackageLoader,
 	}, nil
 }
 
-func parseResourceIntent(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
+func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
 	if value == nil {
 		return nil, nil
 	}
@@ -116,4 +116,47 @@ func (rl *ResourceList) UnmarshalJSON(contents []byte) error {
 
 	rl.Instances = instances
 	return nil
+}
+
+func (rl *ResourceList) ToPack(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location) (*schema.ResourcePack, error) {
+	pack := &schema.ResourcePack{}
+
+	for _, resource := range rl.Refs {
+		r, err := parseResourceRef(ctx, pl, loc, resource)
+		if err != nil {
+			return nil, err
+		}
+
+		pack.ResourceRef = append(pack.ResourceRef, r)
+	}
+
+	for name, instance := range rl.Instances {
+		instance, err := ParseResourceInstance(ctx, pl, loc, name, instance)
+		if err != nil {
+			return nil, err
+		}
+
+		pack.ResourceInstance = append(pack.ResourceInstance, instance)
+	}
+
+	return pack, nil
+}
+
+func parseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, packageRef string) (*schema.PackageRef, error) {
+	pkgRef, err := schema.ParsePackageRef(packageRef)
+	if err != nil {
+		return nil, err
+	}
+
+	pkg, err := pl.LoadByName(ctx, pkgRef.AsPackageName())
+	if err != nil {
+		return nil, err
+	}
+
+	r := pkg.LookupResourceInstance(pkgRef.Name)
+	if r == nil {
+		return nil, fnerrors.UserError(loc, "no such resource %q", pkgRef.Name)
+	}
+
+	return pkgRef, nil
 }

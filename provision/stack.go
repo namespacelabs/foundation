@@ -244,28 +244,12 @@ func computeServerContents(ctx context.Context, server parsed.Server, opts Provi
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
-		for _, resource := range server.Proto().ResourceRef {
-			pkg, err := server.SealedContext().LoadByName(ctx, resource.AsPackageName())
-			if err != nil {
-				return err
-			}
-
-			res := pkg.LookupResourceInstance(resource.Name)
-			if res == nil {
-				return fnerrors.BadInputError("%s: no such resource", resource.Canonical())
-			}
-
-			ps.Resources = append(ps.Resources, *res)
+		resources, err := workspace.LoadResources(ctx, server.SealedContext(), server.Package, server.Proto().GetResourcePack())
+		if err != nil {
+			return err
 		}
 
-		for _, resource := range server.Proto().ResourceInstance {
-			instance, err := workspace.LoadResourceInstance(ctx, server.SealedContext(), server.Package, resource)
-			if err != nil {
-				return err
-			}
-
-			ps.Resources = append(ps.Resources, *instance)
-		}
+		ps.Resources = resources
 
 		// Fill in env-bound data now, post ports allocation.
 		endpoints, internal, err := runtime.ComputeEndpoints(server, allocatedPorts.Ports)

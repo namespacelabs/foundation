@@ -199,7 +199,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 	}
 
 	// Add static resources required by providers.
-	for _, res := range resource.Provider.InlineResources {
+	for _, res := range resource.Provider.Resources {
 		scopedID := fmt.Sprintf("%s;%s:%s", resourceID, res.Spec.PackageName, res.Spec.Name)
 
 		if err := rp.checkAddResource(ctx, scopedID, res); err != nil {
@@ -207,7 +207,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 		}
 
 		instance.Dependencies = append(instance.Dependencies, &resources.ResourceDependency{
-			ResourceRef:        &schema.PackageRef{PackageName: res.Spec.PackageName, Name: res.Spec.Name},
+			ResourceRef:        res.Ref,
 			ResourceInstanceId: scopedID,
 		})
 	}

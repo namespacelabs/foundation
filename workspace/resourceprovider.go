@@ -13,34 +13,39 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, provider *schema.ResourceProvider) error {
+func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, provider *schema.ResourceProvider) (*pkggraph.ResourceProvider, error) {
 	if provider.InitializedWith == nil {
-		return fnerrors.UserError(pp.Location, "resource provider requires initializedWith")
+		return nil, fnerrors.UserError(pp.Location, "resource provider requires initializedWith")
 	}
 
 	if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.InitializedWith.BinaryRef); err != nil {
-		return err
+		return nil, err
 	}
 
 	if provider.GetPrepareWith().GetBinaryRef() != nil {
 		if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.PrepareWith.BinaryRef); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	pkg, err := pl.LoadByName(ctx, provider.ProvidesClass.AsPackageName())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rc := pkg.LookupResourceClass(provider.ProvidesClass.Name)
 	if rc == nil {
-		return fnerrors.UserError(pp.Location, "resource class %q not found in package %q", provider.ProvidesClass.Name, provider.ProvidesClass.PackageName)
+		return nil, fnerrors.UserError(pp.Location, "resource class %q not found in package %q", provider.ProvidesClass.Name, provider.ProvidesClass.PackageName)
 	}
 
-	if len(provider.ResourceInstance) > 0 {
-		return fnerrors.UserError(pp.Location, "%s: inline resources not yet supported", provider.ProvidesClass.Canonical())
+	rp := pkggraph.ResourceProvider{Spec: provider}
+
+	instances, err := LoadResources(ctx, pl, pp, provider.ResourcePack)
+	if err != nil {
+		return nil, err
 	}
+
+	rp.Resources = instances
 
 	// Make sure that all referenced classes and providers are loaded.
 	var errs []error
@@ -54,5 +59,9 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 		errs = append(errs, err)
 	}
 
-	return multierr.New(errs...)
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
+	return &rp, nil
 }

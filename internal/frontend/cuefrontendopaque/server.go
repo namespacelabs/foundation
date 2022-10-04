@@ -83,23 +83,12 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	}
 
 	if bits.Resources != nil {
-		for _, resource := range bits.Resources.Refs {
-			r, err := parseResourceRef(ctx, pl, loc, resource)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			out.ResourceRef = append(out.ResourceRef, r)
+		pack, err := bits.Resources.ToPack(ctx, pl, loc)
+		if err != nil {
+			return nil, nil, err
 		}
 
-		for name, instance := range bits.Resources.Instances {
-			instance, err := cuefrontend.ParseResourceInstance(ctx, pl, loc, name, instance)
-			if err != nil {
-				return nil, nil, err
-			}
-
-			out.ResourceInstance = append(out.ResourceInstance, instance)
-		}
+		out.ResourcePack = pack
 	}
 
 	return out, startupPlan, nil

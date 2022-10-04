@@ -16,7 +16,6 @@ import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/secret.proto";
 import "schema/volume.proto";
-import "schema/package.proto";
 
 enum Framework {
     FRAMEWORK_UNSPECIFIED = 0;
@@ -28,7 +27,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 35
+// Next ID: 36
 message Server {
     reserved 9, 13, 17, 19, 27, 30;
 
@@ -93,8 +92,9 @@ message Server {
 
     repeated SecretSpec secret = 28;
 
-    repeated PackageRef       resource_ref      = 32;
-    repeated ResourceInstance resource_instance = 34;
+    reserved 32, 34;
+
+    ResourcePack resource_pack = 35;
 
     message ServiceSpec {
         string                   name     = 1;
