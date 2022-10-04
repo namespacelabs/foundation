@@ -524,14 +524,19 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	// Before sidecars so they have access to the "runtime config" volume.
 	if deployable.RuntimeConfig != nil || len(deployable.ResourceIDs) > 0 {
-		resourceIDs := slices.Clone(deployable.ResourceIDs)
-		slices.Sort(resourceIDs)
+		resourceDeps := slices.Clone(deployable.ResourceIDs)
+		slices.SortFunc(resourceDeps, func(a, b *schema.PackageRef) bool {
+			if a.PackageName == b.PackageName {
+				return strings.Compare(a.Name, b.Name) < 0
+			}
+			return strings.Compare(a.PackageName, b.PackageName) < 0
+		})
 
 		ensureConfig := kubedef.EnsureRuntimeConfig{
-			Description:         "Runtime configuration",
-			RuntimeConfig:       deployable.RuntimeConfig,
-			Deployable:          deployable,
-			ResourceInstanceIDs: resourceIDs,
+			Description:          "Runtime configuration",
+			RuntimeConfig:        deployable.RuntimeConfig,
+			Deployable:           deployable,
+			ResourceDependencies: resourceDeps,
 		}
 
 		s.operations = append(s.operations, ensureConfig)

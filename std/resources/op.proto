@@ -22,4 +22,10 @@ message OpInvokeResourceProvider {
     foundation.schema.ResourceClass                             resource_class         = 6;
     foundation.schema.ResourceProvider                          resource_provider      = 7;
     foundation.workspace.source.protos.FileDescriptorSetAndDeps instance_type_source   = 8;
+    repeated ResourceDependency                                 dependency             = 9;
+}
+
+message ResourceDependency {
+    foundation.schema.PackageRef resource_ref         = 1;
+    string                       resource_instance_id = 2;
 }

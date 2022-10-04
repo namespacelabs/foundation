@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -30,13 +31,15 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 		return nil, err
 	}
 
+	rlist := rp.Resources()
+
 	var imageIDs []compute.Computable[oci.ImageID]
 	var invocations []*resources.OpInvokeResourceProvider
 
-	for _, resource := range rp.Resources() {
+	for _, resource := range rlist {
 		provider := resource.Provider.Spec
 
-		if provider.PrepareWith == nil {
+		if provider.PrepareWith != nil {
 			return nil, fnerrors.InternalError("unimplemented")
 		}
 
@@ -73,6 +76,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			ResourceProvider:     provider,
 			InstanceTypeSource:   resource.Class.InstanceType.Sources,
 			SerializedIntentJson: resource.JSONSerializedIntent,
+			Dependency:           resource.Dependencies,
 		})
 	}
 
@@ -90,10 +94,19 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			return nil, err
 		}
 
-		ops = append(ops, &schema.SerializedInvocation{
+		si := &schema.SerializedInvocation{
 			Description: "Invoke Resource Provider",
 			Impl:        wrapped,
-		})
+			Order:       &schema.ScheduleOrder{},
+		}
+
+		// Make sure this provider is invoked after its dependencies are done.
+		for _, dep := range rlist[k].Dependencies {
+			si.RequiredOutput = append(si.RequiredOutput, dep.ResourceInstanceId)
+			si.Order.SchedAfterCategory = append(si.Order.SchedAfterCategory, resources.ResourceInstanceCategory(dep.ResourceInstanceId))
+		}
+
+		ops = append(ops, si)
 	}
 
 	return ops, nil
@@ -111,6 +124,7 @@ type resourceInstance struct {
 	Provider             pkggraph.ResourceProvider
 	Intent               *anypb.Any
 	JSONSerializedIntent []byte
+	Dependencies         []*resources.ResourceDependency
 }
 
 func (rp *resourceList) Resources() []resourceInstance {
@@ -136,10 +150,6 @@ func (rp *resourceList) checkAddMultiple(ctx context.Context, pl pkggraph.Packag
 func (rp *resourceList) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
 	resourceID := resources.ResourceID(resourceRef)
 
-	if !rp.resourceIDs.Add(resourceID) {
-		return nil
-	}
-
 	pkg, err := pl.LoadByName(ctx, resourceRef.AsPackageName())
 	if err != nil {
 		return err
@@ -148,6 +158,14 @@ func (rp *resourceList) checkAdd(ctx context.Context, pl pkggraph.PackageLoader,
 	resource := pkg.LookupResourceInstance(resourceRef.Name)
 	if resource == nil {
 		return fnerrors.InternalError("%s: missing resource", resourceRef.Canonical())
+	}
+
+	return rp.checkAddResource(ctx, resourceID, *resource)
+}
+
+func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.Resource) error {
+	if !rp.resourceIDs.Add(resourceID) {
+		return nil
 	}
 
 	if rp.resources == nil {
@@ -166,18 +184,33 @@ func (rp *resourceList) checkAdd(ctx context.Context, pl pkggraph.PackageLoader,
 		out := dynamicpb.NewMessage(resource.Class.IntentType.Descriptor).Interface()
 
 		if err := proto.Unmarshal(instance.Intent.Value, out); err != nil {
-			return fnerrors.InternalError("%s: failed to unmarshal intent: %w", resourceRef.Canonical(), err)
+			return fnerrors.InternalError("%s: failed to unmarshal intent: %w", resourceID, err)
 		}
 
 		// json.Marshal is not capable of serializing a dynamicpb.
 		serialized, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(out)
 		if err != nil {
-			return fnerrors.InternalError("%s: failed to marshal intent to json: %w", resourceRef.Canonical(), err)
+			return fnerrors.InternalError("%s: failed to marshal intent to json: %w", resourceID, err)
 		}
 
 		instance.JSONSerializedIntent = serialized
 	}
 
+	// Add static resources required by providers.
+	for _, res := range resource.Provider.InlineResource {
+		scopedID := fmt.Sprintf("%s;%s:%s", resourceID, res.Spec.PackageName, res.Spec.Name)
+
+		if err := rp.checkAddResource(ctx, scopedID, res); err != nil {
+			return err
+		}
+
+		instance.Dependencies = append(instance.Dependencies, &resources.ResourceDependency{
+			ResourceRef:        &schema.PackageRef{PackageName: res.Spec.PackageName, Name: res.Spec.Name},
+			ResourceInstanceId: scopedID,
+		})
+	}
+
 	rp.resources[instance.ID] = instance
+
 	return nil
 }

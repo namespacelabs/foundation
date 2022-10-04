@@ -12,6 +12,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -38,26 +39,10 @@ func registerEnsureRuntimeConfig() {
 					data["runtime.json"] = string(serializedConfig)
 				}
 
-				if len(ensure.ResourceInstanceId) > 0 {
-					inputs, err := ops.Get(ctx, ops.InputsInjection)
+				if len(ensure.Dependency) > 0 {
+					resourceData, err := deploy.BuildResourceMap(ctx, ensure.Dependency)
 					if err != nil {
 						return nil, err
-					}
-
-					resourceData := map[string]any{}
-
-					var missing []string
-					for _, key := range ensure.ResourceInstanceId {
-						input, ok := inputs[key]
-						if ok {
-							resourceData[key] = input.OriginalJSON
-						} else {
-							missing = append(missing, key)
-						}
-					}
-
-					if len(missing) > 0 {
-						return nil, fnerrors.InvocationError("missing required resources: %v", missing)
 					}
 
 					serializedConfig, err := json.Marshal(resourceData)

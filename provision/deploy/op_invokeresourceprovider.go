@@ -6,11 +6,13 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/runtime"
@@ -44,6 +46,25 @@ func register_OpInvokeResourceProvider() {
 
 			id := ids.NewRandomBase32ID(8)
 
+			args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
+
+			// Resources are passed in as flags to minimize the number of k8s resources that are created.
+			// XXX security validate this.
+
+			if len(invoke.Dependency) > 0 {
+				resourceData, err := BuildResourceMap(ctx, invoke.Dependency)
+				if err != nil {
+					return nil, err
+				}
+
+				serializedResourceData, err := json.Marshal(resourceData)
+				if err != nil {
+					return nil, err
+				}
+
+				args = append(args, fmt.Sprintf("--resources=%s", serializedResourceData))
+			}
+
 			spec := runtime.DeployableSpec{
 				// ErrorLocation: resource.ProviderPackage.Location,
 
@@ -56,7 +77,7 @@ func register_OpInvokeResourceProvider() {
 				MainContainer: runtime.ContainerRunOpts{
 					Image:   imageID,
 					Command: invoke.BinaryConfig.Command,
-					Args:    append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson)),
+					Args:    args,
 					Env:     invoke.BinaryConfig.Env,
 				},
 			}
@@ -87,4 +108,29 @@ func register_OpInvokeResourceProvider() {
 
 		return ops, nil
 	})
+}
+
+func BuildResourceMap(ctx context.Context, dependencies []*resources.ResourceDependency) (map[string]any, error) {
+	inputs, err := ops.Get(ctx, ops.InputsInjection)
+	if err != nil {
+		return nil, err
+	}
+
+	resourceData := map[string]any{}
+
+	var missing []string
+	for _, dep := range dependencies {
+		input, ok := inputs[dep.ResourceInstanceId]
+		if ok {
+			resourceData[dep.GetResourceRef().Canonical()] = input.OriginalJSON
+		} else {
+			missing = append(missing, dep.GetResourceRef().Canonical())
+		}
+	}
+
+	if len(missing) > 0 {
+		return nil, fnerrors.InvocationError("missing required resources: %v", missing)
+	}
+
+	return resourceData, nil
 }

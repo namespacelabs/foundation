@@ -201,7 +201,7 @@ type DeployableSpec struct {
 
 	ConfigImage   *oci.ImageID
 	RuntimeConfig *runtimepb.RuntimeConfig
-	ResourceIDs   []string
+	ResourceIDs   []*schema.PackageRef
 
 	Extensions []*schema.DefExtension
 

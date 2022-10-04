@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -320,9 +319,7 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 			return nil, err
 		}
 
-		for _, resourceID := range srv.Proto().Resource {
-			run.ResourceIDs = append(run.ResourceIDs, resources.ResourceID(resourceID))
-		}
+		run.ResourceIDs = append(run.ResourceIDs, srv.Proto().Resource...)
 
 		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
 			return nil, err
