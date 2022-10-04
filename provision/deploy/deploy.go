@@ -256,12 +256,17 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 
 			sealedCtx := stack.Servers[0].SealedContext()
 
-			var resources []*schema.PackageRef
+			var resourceRefs []*schema.PackageRef
 			for _, ps := range stackAndDefs.Stack.Servers {
-				resources = append(resources, ps.Proto().Resource...)
+				resourceRefs = append(resourceRefs, ps.Proto().Resource...)
 			}
 
-			return planResources(ctx, sealedCtx, rc, resources)
+			var rp resourceList
+			if err := rp.checkAddMultiple(ctx, sealedCtx, resourceRefs...); err != nil {
+				return nil, err
+			}
+
+			return planResources(ctx, sealedCtx, rc, rp)
 		})
 
 	deploymentPlan := compute.Map(

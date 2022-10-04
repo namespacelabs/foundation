@@ -24,24 +24,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, resourceRefs []*schema.PackageRef) ([]*schema.SerializedInvocation, error) {
-	if len(resourceRefs) == 0 {
-		return nil, nil
-	}
-
-	var rp resourcePlanner
-
-	var errs []error
-	for _, ref := range resourceRefs {
-		if err := rp.checkAdd(ctx, sealedCtx, ref); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	if len(errs) > 0 {
-		return nil, multierr.New(errs...)
-	}
-
+func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, rp resourceList) ([]*schema.SerializedInvocation, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -50,8 +33,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 	var imageIDs []compute.Computable[oci.ImageID]
 	var invocations []*resources.OpInvokeResourceProvider
 
-	for _, resourceID := range rp.resourceIDs.Strings() {
-		resource := rp.resources[resourceID]
+	for _, resource := range rp.Resources() {
 		provider := resource.Provider.Spec
 
 		if provider.PrepareWith == nil {
@@ -117,7 +99,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 	return ops, nil
 }
 
-type resourcePlanner struct {
+type resourceList struct {
 	resourceIDs uniquestrings.List
 
 	resources map[string]resourceInstance
@@ -131,7 +113,27 @@ type resourceInstance struct {
 	JSONSerializedIntent []byte
 }
 
-func (rp *resourcePlanner) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
+func (rp *resourceList) Resources() []resourceInstance {
+	var resources []resourceInstance
+	for _, resourceID := range rp.resourceIDs.Strings() {
+		resource := rp.resources[resourceID]
+		resources = append(resources, resource)
+	}
+	return resources
+}
+
+func (rp *resourceList) checkAddMultiple(ctx context.Context, pl pkggraph.PackageLoader, resourceRefs ...*schema.PackageRef) error {
+	var errs []error
+	for _, ref := range resourceRefs {
+		if err := rp.checkAdd(ctx, pl, ref); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return multierr.New(errs...)
+}
+
+func (rp *resourceList) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
 	resourceID := resources.ResourceID(resourceRef)
 
 	if !rp.resourceIDs.Add(resourceID) {

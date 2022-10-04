@@ -19,7 +19,6 @@ server: {
 		}
 	}
 
-	// XXX work in progress.
 	resources: [
 		"namespacelabs.dev/foundation/integrations/testdata/resources/instances:test1",
 	]
