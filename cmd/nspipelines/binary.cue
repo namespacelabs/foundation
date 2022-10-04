@@ -5,7 +5,7 @@ binary: {
 		layer_build_plan: [
 			{dockerfile: "Dockerfile.baseimage"},
 			{go_build: {
-				rel_path:    "../ns"
+				rel_path:    "../nsboot"
 				binary_name: "ns"
 				binary_only: true
 			}},
