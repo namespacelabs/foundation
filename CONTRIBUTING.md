@@ -65,6 +65,8 @@ We have two distict packages to release:
   This is intended to be the primary entry point for end users and is published
   to the package repositories (along withj GitHub releases and the S3 bucket).
 
+Before releasing a new `ns` version, please verify that `ns test --include_servers` passes in other repos (e.g. examples, internal).
+
 You can test a release by running:
 
 ```bash
@@ -78,13 +80,13 @@ To issue an actual release:
 
 1. Create a Github PAT with `write_packages` permissions and place it in
    `~/.config/goreleaser/github_token`. This allows GoReleaser to upload to Github releases.
-1. Log into AWS with `aws --profile prod-main sso login`.
-1. Export AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds#installation)
+2. Log into AWS with `aws --profile prod-main sso login`.
+3. Export AWS temporary credentials with [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds#installation)
    `aws-sso-creds set default -p prod-main`.
-1. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
-1. Run the release `goreleaser release --rm-dist` (add `-f .goreleaser.nsboot.yaml` to release `nsboot`).
-1. When releasing `nsboot` update the version in `install/install.sh`.
-1. After the release is complete, remember to remove the `dist` directory to keep your workspace size small.
+4. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
+5. Run the release `goreleaser release --rm-dist` (add `-f .goreleaser.nsboot.yaml` to release `nsboot`).
+6. When releasing `nsboot` update the version in `install/install.sh`.
+7. After the release is complete, remember to remove the `dist` directory to keep your workspace size small.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
