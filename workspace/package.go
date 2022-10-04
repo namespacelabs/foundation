@@ -62,10 +62,10 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		rp := pkggraph.ResourceProvider{Spec: provider}
 
 		for _, resource := range provider.ResourceInstance {
-			if parsed, err := loadResourceInstance(ctx, pl, pp, resource); err != nil {
+			if parsed, err := LoadResourceInstance(ctx, pl, pp, resource); err != nil {
 				return nil, err
 			} else {
-				rp.InlineResource = append(rp.InlineResource, *parsed)
+				rp.InlineResources = append(rp.InlineResources, *parsed)
 			}
 		}
 
@@ -73,7 +73,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	for _, r := range pp.ResourceInstanceSpecs {
-		if parsed, err := loadResourceInstance(ctx, pl, pp, r); err != nil {
+		if parsed, err := LoadResourceInstance(ctx, pl, pp, r); err != nil {
 			return nil, err
 		} else {
 			pp.Resources = append(pp.Resources, *parsed)

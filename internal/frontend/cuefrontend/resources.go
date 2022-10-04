@@ -34,23 +34,27 @@ type CueResourceInstance struct {
 	Input      any              `json:"input"`
 }
 
-func ParseResourceInstance(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
-	var bits CueResourceInstance
-	if err := v.Val.Decode(&bits); err != nil {
+func ParseResourceInstanceFromCue(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
+	var instance CueResourceInstance
+	if err := v.Val.Decode(&instance); err != nil {
 		return nil, err
 	}
 
-	classRef, err := schema.ParsePackageRef(bits.Class)
+	return ParseResourceInstance(ctx, pl, loc, name, instance)
+}
+
+func ParseResourceInstance(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, instance CueResourceInstance) (*schema.ResourceInstance, error) {
+	classRef, err := schema.ParsePackageRef(instance.Class)
 	if err != nil {
 		return nil, err
 	}
 
-	intent, err := parseResourceIntent(ctx, pl, loc, classRef, bits.Input)
+	intent, err := parseResourceIntent(ctx, pl, loc, classRef, instance.Input)
 	if err != nil {
 		return nil, err
 	}
 
-	intentFrom, err := bits.IntentFrom.ToInvocation()
+	intentFrom, err := instance.IntentFrom.ToInvocation()
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +62,7 @@ func ParseResourceInstance(ctx context.Context, pl workspace.EarlyPackageLoader,
 	return &schema.ResourceInstance{
 		Name:       name,
 		Class:      classRef,
-		Provider:   bits.On,
+		Provider:   instance.On,
 		Intent:     intent,
 		IntentFrom: intentFrom,
 	}, nil

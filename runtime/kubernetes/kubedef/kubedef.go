@@ -84,7 +84,7 @@ type EnsureRuntimeConfig struct {
 	Description          string
 	RuntimeConfig        *stdruntime.RuntimeConfig
 	Deployable           runtime.Deployable
-	ResourceDependencies []*schema.PackageRef
+	ResourceDependencies []*resources.ResourceDependency
 }
 
 type EnsureDeployment struct {
@@ -296,16 +296,9 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...schema.PackageName) (*schema.
 	}
 
 	for _, dep := range a.ResourceDependencies {
-		rid := resources.ResourceID(dep)
-
-		op.Dependency = append(op.Dependency, &resources.ResourceDependency{
-			ResourceRef:        dep,
-			ResourceInstanceId: rid,
-		})
-
-		order.SchedAfterCategory = append(order.SchedAfterCategory, resources.ResourceInstanceCategory(rid))
-
-		inv.RequiredOutput = append(inv.RequiredOutput, rid)
+		op.Dependency = append(op.Dependency, dep)
+		order.SchedAfterCategory = append(order.SchedAfterCategory, resources.ResourceInstanceCategory(dep.ResourceInstanceId))
+		inv.RequiredOutput = append(inv.RequiredOutput, dep.ResourceInstanceId)
 	}
 
 	x, err := anypb.New(op)

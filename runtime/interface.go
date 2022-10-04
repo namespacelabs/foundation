@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/resources"
 	runtimepb "namespacelabs.dev/foundation/std/runtime"
 )
 
@@ -201,7 +202,7 @@ type DeployableSpec struct {
 
 	ConfigImage   *oci.ImageID
 	RuntimeConfig *runtimepb.RuntimeConfig
-	ResourceIDs   []*schema.PackageRef
+	Resources     []*resources.ResourceDependency
 
 	Extensions []*schema.DefExtension
 

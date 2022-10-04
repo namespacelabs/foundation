@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, r *schema.ResourceInstance) (*pkggraph.Resource, error) {
+func LoadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, r *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
 	r.PackageName = string(pp.PackageName())
 
 	if r.Provider == "" {
@@ -49,7 +49,8 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		return nil, fnerrors.UserError(pp.Location, "package %q does not a provider for resource class %q", r.Provider, r.Class.Canonical())
 	}
 
-	return &pkggraph.Resource{
+	return &pkggraph.ResourceInstance{
+		Ref:             &schema.PackageRef{PackageName: r.PackageName, Name: r.Name},
 		Spec:            r,
 		Class:           *class,
 		ProviderPackage: providerPkg,

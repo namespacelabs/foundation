@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -253,18 +254,14 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 		func(ctx context.Context, deps compute.Resolved) ([]*schema.SerializedInvocation, error) {
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 
-			sealedCtx := stack.Servers[0].SealedContext()
-
-			var resourceRefs []*schema.PackageRef
-			for _, ps := range stackAndDefs.Stack.Servers {
-				resourceRefs = append(resourceRefs, ps.Proto().Resource...)
-			}
-
 			var rp resourceList
-			if err := rp.checkAddMultiple(ctx, sealedCtx, resourceRefs...); err != nil {
-				return nil, err
+			for _, ps := range stackAndDefs.Stack.Servers {
+				if err := rp.checkAddMultiple(ctx, ps.Resources...); err != nil {
+					return nil, err
+				}
 			}
 
+			sealedCtx := stack.Servers[0].SealedContext()
 			return planResources(ctx, sealedCtx, rc, rp)
 		})
 
@@ -319,7 +316,12 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 			return nil, err
 		}
 
-		run.ResourceIDs = append(run.ResourceIDs, srv.Proto().Resource...)
+		for _, resource := range srv.Resources {
+			run.Resources = append(run.Resources, &resources.ResourceDependency{
+				ResourceRef:        resource.Ref,
+				ResourceInstanceId: resources.ResourceID(resource.Ref),
+			})
+		}
 
 		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
 			return nil, err

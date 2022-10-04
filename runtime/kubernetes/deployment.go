@@ -33,6 +33,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/go-ids"
 	"sigs.k8s.io/yaml"
 )
@@ -523,13 +524,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	var configVolumeName string
 
 	// Before sidecars so they have access to the "runtime config" volume.
-	if deployable.RuntimeConfig != nil || len(deployable.ResourceIDs) > 0 {
-		resourceDeps := slices.Clone(deployable.ResourceIDs)
-		slices.SortFunc(resourceDeps, func(a, b *schema.PackageRef) bool {
-			if a.PackageName == b.PackageName {
-				return strings.Compare(a.Name, b.Name) < 0
-			}
-			return strings.Compare(a.PackageName, b.PackageName) < 0
+	if deployable.RuntimeConfig != nil || len(deployable.Resources) > 0 {
+		resourceDeps := slices.Clone(deployable.Resources)
+		slices.SortFunc(resourceDeps, func(a, b *resources.ResourceDependency) bool {
+			return strings.Compare(a.ResourceInstanceId, b.ResourceInstanceId) < 0
 		})
 
 		ensureConfig := kubedef.EnsureRuntimeConfig{

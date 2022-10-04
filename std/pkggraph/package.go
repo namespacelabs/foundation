@@ -40,7 +40,7 @@ type Package struct {
 	PackageData []*types.Resource
 
 	// Parsed resources
-	Resources         []Resource
+	Resources         []ResourceInstance
 	ResourceClasses   []ResourceClass
 	ResourceProviders []ResourceProvider
 
@@ -53,7 +53,8 @@ type Package struct {
 	ResourceInstanceSpecs  []*schema.ResourceInstance
 }
 
-type Resource struct {
+type ResourceInstance struct {
+	Ref             *schema.PackageRef
 	Spec            *schema.ResourceInstance
 	Class           ResourceClass
 	ProviderPackage *Package
@@ -69,7 +70,7 @@ type ResourceClass struct {
 type ResourceProvider struct {
 	Spec *schema.ResourceProvider
 
-	InlineResource []Resource
+	InlineResources []ResourceInstance
 }
 
 func (rc ResourceClass) PackageName() schema.PackageName {
@@ -132,7 +133,7 @@ func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *Resource
 	return nil
 }
 
-func (pr *Package) LookupResourceInstance(name string) *Resource {
+func (pr *Package) LookupResourceInstance(name string) *ResourceInstance {
 	for _, r := range pr.Resources {
 		if r.Spec.Name == name {
 			return &r

@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -45,6 +46,7 @@ type Server struct {
 
 	DeclaredStack schema.PackageList
 	ParsedDeps    []*ParsedNode
+	Resources     []pkggraph.ResourceInstance
 
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
@@ -241,6 +243,29 @@ func computeServerContents(ctx context.Context, server parsed.Server, opts Provi
 		ps.Server = server
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
+
+		for _, resource := range server.Proto().ResourceRef {
+			pkg, err := server.SealedContext().LoadByName(ctx, resource.AsPackageName())
+			if err != nil {
+				return err
+			}
+
+			res := pkg.LookupResourceInstance(resource.Name)
+			if res == nil {
+				return fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+			}
+
+			ps.Resources = append(ps.Resources, *res)
+		}
+
+		for _, resource := range server.Proto().ResourceInstance {
+			instance, err := workspace.LoadResourceInstance(ctx, server.SealedContext(), server.Package, resource)
+			if err != nil {
+				return err
+			}
+
+			ps.Resources = append(ps.Resources, *instance)
+		}
 
 		// Fill in env-bound data now, post ports allocation.
 		endpoints, internal, err := runtime.ComputeEndpoints(server, allocatedPorts.Ports)

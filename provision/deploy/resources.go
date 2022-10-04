@@ -136,10 +136,12 @@ func (rp *resourceList) Resources() []resourceInstance {
 	return resources
 }
 
-func (rp *resourceList) checkAddMultiple(ctx context.Context, pl pkggraph.PackageLoader, resourceRefs ...*schema.PackageRef) error {
+func (rp *resourceList) checkAddMultiple(ctx context.Context, instances ...pkggraph.ResourceInstance) error {
 	var errs []error
-	for _, ref := range resourceRefs {
-		if err := rp.checkAdd(ctx, pl, ref); err != nil {
+	for _, instance := range instances {
+		resourceID := resources.ResourceID(instance.Ref)
+
+		if err := rp.checkAddResource(ctx, resourceID, instance); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -163,7 +165,7 @@ func (rp *resourceList) checkAdd(ctx context.Context, pl pkggraph.PackageLoader,
 	return rp.checkAddResource(ctx, resourceID, *resource)
 }
 
-func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.Resource) error {
+func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.ResourceInstance) error {
 	if !rp.resourceIDs.Add(resourceID) {
 		return nil
 	}
@@ -197,7 +199,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 	}
 
 	// Add static resources required by providers.
-	for _, res := range resource.Provider.InlineResource {
+	for _, res := range resource.Provider.InlineResources {
 		scopedID := fmt.Sprintf("%s;%s:%s", resourceID, res.Spec.PackageName, res.Spec.Name)
 
 		if err := rp.checkAddResource(ctx, scopedID, res); err != nil {

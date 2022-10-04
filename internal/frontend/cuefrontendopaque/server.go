@@ -22,8 +22,8 @@ type cueServer struct {
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
 
-	Services  map[string]cueService `json:"services"`
-	Resources []string              `json:"resources"`
+	Services  map[string]cueService     `json:"services"`
+	Resources *cuefrontend.ResourceList `json:"resources"`
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
@@ -82,13 +82,24 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 		out.MainContainer.Mounts = parsedMounts
 	}
 
-	for _, resource := range bits.Resources {
-		r, err := parseResourceRef(ctx, pl, loc, resource)
-		if err != nil {
-			return nil, nil, err
+	if bits.Resources != nil {
+		for _, resource := range bits.Resources.Refs {
+			r, err := parseResourceRef(ctx, pl, loc, resource)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			out.ResourceRef = append(out.ResourceRef, r)
 		}
 
-		out.Resource = append(out.Resource, r)
+		for name, instance := range bits.Resources.Instances {
+			instance, err := cuefrontend.ParseResourceInstance(ctx, pl, loc, name, instance)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			out.ResourceInstance = append(out.ResourceInstance, instance)
+		}
 	}
 
 	return out, startupPlan, nil

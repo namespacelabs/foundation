@@ -13,6 +13,7 @@ import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
 import "schema/reference.proto";
+import "schema/resource.proto";
 import "schema/secret.proto";
 import "schema/volume.proto";
 import "schema/package.proto";
@@ -27,7 +28,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 34
+// Next ID: 35
 message Server {
     reserved 9, 13, 17, 19, 27, 30;
 
@@ -92,7 +93,8 @@ message Server {
 
     repeated SecretSpec secret = 28;
 
-    repeated PackageRef resource = 32;
+    repeated PackageRef       resource_ref      = 32;
+    repeated ResourceInstance resource_instance = 34;
 
     message ServiceSpec {
         string                   name     = 1;
