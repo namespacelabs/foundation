@@ -64,7 +64,11 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 
 	var b bytes.Buffer
 	if AlsoReportStartEvents {
-		fmt.Fprint(&b, "✔ ")
+		if ra.Data.Err == nil {
+			fmt.Fprint(&b, "✔ ")
+		} else {
+			fmt.Fprint(&b, "✘ ")
+		}
 	}
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
 
@@ -82,7 +86,12 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 
 	var b bytes.Buffer
 	if AlsoReportStartEvents {
-		fmt.Fprint(&b, "✔ ")
+		// We use checkboxes here to distinguish Instant() vs Done()
+		if ev.Err == nil {
+			fmt.Fprint(&b, "☑ ")
+		} else {
+			fmt.Fprint(&b, "☒ ")
+		}
 	}
 	consolesink.LogAction(&b, colors.NoColors, *ev)
 
