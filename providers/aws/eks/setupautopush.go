@@ -97,9 +97,9 @@ func SetupAutopush(eksCluster *EKSCluster, iamRole string, roleArn string) ([]de
 			WithAnnotations(kubedef.BaseAnnotations()).
 			WithRules(
 				applyrbacv1.PolicyRule().WithAPIGroups("*").WithResources("*").
-					WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch"),
+					WithVerbs("apply", "create", "delete", "deletecollection", "get", "list", "patch", "update", "watch"),
 				applyrbacv1.PolicyRule().WithNonResourceURLs("*").
-					WithVerbs("apply", "create", "delete", "get", "list", "patch", "update", "watch")),
+					WithVerbs("apply", "create", "delete", "deletecollection", "get", "list", "patch", "update", "watch")),
 	})
 
 	group := fmt.Sprintf("ns:%s-group", iamRole)
