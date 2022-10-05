@@ -85,6 +85,10 @@ func main() {
 	err = proc.Run()
 	if err != nil {
 		format.Format(os.Stderr, err, format.WithStyle(style))
+
+		if exiterr, ok := err.(*exec.ExitError); ok {
+			os.Exit(exiterr.ExitCode())
+		}
 	}
 }
 
