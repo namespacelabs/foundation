@@ -5,7 +5,7 @@
 
 set -e
 
-VERSION=0.0.51
+VERSION=0.0.56
 
 is_wsl() {
 	case "$(uname -r)" in
@@ -31,15 +31,15 @@ do_install() {
 	  --dry_run)
 	    dry_run=true
 	    ;;
-      
+
       -v)
         version="$2"
         ;;
-      
+
       --version)
         version="$2"
-        ;;    
-		  
+        ;;
+
       --*)
         echo "Illegal option $1"
         ;;
@@ -61,7 +61,7 @@ do_install() {
   if is_darwin; then
     os="darwin"
   elif [ "$(expr substr $(uname -s) 1 5)" = "Linux" ]; then
-    os="linux"     
+    os="linux"
   elif is_wsl; then
     os="linux"
   else
@@ -107,7 +107,7 @@ do_install() {
 
   echo "Namespace CLI was installed successfully to ${bin_dir}/ns"
 
-  if ! $dry_run; then 
+  if ! $dry_run; then
     if command -v ns >/dev/null; then
       echo "Run 'ns create starter' to get started"
     else
@@ -120,7 +120,7 @@ do_install() {
 	    echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
 	    echo "Run '${bin_dir}/ns create starter' to get started"
 	  fi
-  fi 
+  fi
 }
 
 do_install "$@"
