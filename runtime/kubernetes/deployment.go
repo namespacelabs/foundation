@@ -514,8 +514,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithReadOnly(mount.Readonly))
 	}
 
-	var schedAfter []string
-	var configVolumeName string
+	ensure := kubedef.EnsureDeployment{
+		Deployable:         deployable,
+		InhibitEvents:      deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
+		SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
+		SetContainerFields: deployable.SetContainerField,
+	}
 
 	// Before sidecars so they have access to the "runtime config" volume.
 	if deployable.RuntimeConfig != nil || len(deployable.Resources) > 0 {
@@ -529,17 +533,23 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			RuntimeConfig:        deployable.RuntimeConfig,
 			Deployable:           deployable,
 			ResourceDependencies: resourceDeps,
+			PersistConfiguration: !deployable.InhibitPersistentRuntimeConfig,
 		}
 
 		s.operations = append(s.operations, ensureConfig)
 
 		// Make sure we wait for the runtime configuration to be created before
 		// deploying a new deployment or statefulset.
-		schedAfter = append(schedAfter, ensureConfig.Category())
+		ensure.RuntimeConfigDependency = kubedef.RuntimeConfigOutput(deployable)
 
-		configVolumeName = "namespace-rtconfig"
-		mainContainer = mainContainer.WithVolumeMounts(
-			applycorev1.VolumeMount().WithMountPath("/namespace/config").WithName(configVolumeName).WithReadOnly(true))
+		if !deployable.InhibitPersistentRuntimeConfig {
+			ensure.ConfigurationVolumeName = "namespace-rtconfig"
+			mainContainer = mainContainer.WithVolumeMounts(
+				applycorev1.VolumeMount().
+					WithMountPath("/namespace/config").
+					WithName(ensure.ConfigurationVolumeName).
+					WithReadOnly(true))
+		}
 	}
 
 	for _, sidecar := range deployable.Sidecars {
@@ -667,14 +677,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		if len(serviceAccountAnnotations) > 0 {
 			return fnerrors.UserError(deployable.ErrorLocation, "can't set service account annotations without ensure_service_account")
 		}
-	}
-
-	ensure := kubedef.EnsureDeployment{
-		Deployable:              deployable,
-		InhibitEvents:           deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
-		SchedCategory:           []string{runtime.DeployableCategoryID(deployable.Id)},
-		SchedAfterCategory:      schedAfter,
-		ConfigurationVolumeName: configVolumeName,
 	}
 
 	// We don't deploy managed deployments or statefulsets in tests, as these are one-shot

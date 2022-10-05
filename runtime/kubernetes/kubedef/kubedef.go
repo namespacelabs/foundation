@@ -85,6 +85,7 @@ type EnsureRuntimeConfig struct {
 	RuntimeConfig        *stdruntime.RuntimeConfig
 	Deployable           runtime.Deployable
 	ResourceDependencies []*resources.ResourceDependency
+	PersistConfiguration bool
 }
 
 type EnsureDeployment struct {
@@ -92,11 +93,13 @@ type EnsureDeployment struct {
 	Deployable              runtime.Deployable
 	Resource                any
 	ConfigurationVolumeName string
+	SetContainerFields      []*runtime.SetContainerField
+
+	RuntimeConfigDependency string
 
 	InhibitEvents bool
 
-	SchedCategory      []string
-	SchedAfterCategory []string
+	SchedCategory []string
 }
 
 type ExtendSpec struct {
@@ -281,12 +284,13 @@ func (ar ApplyRoleBinding) ToDefinition(scope ...schema.PackageName) (*schema.Se
 
 func (a EnsureRuntimeConfig) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	op := &OpEnsureRuntimeConfig{
-		RuntimeConfig: a.RuntimeConfig,
-		Deployable:    runtime.DeployableToProto(a.Deployable),
+		RuntimeConfig:        a.RuntimeConfig,
+		Deployable:           runtime.DeployableToProto(a.Deployable),
+		PersistConfiguration: a.PersistConfiguration,
 	}
 
 	order := &schema.ScheduleOrder{
-		SchedCategory: []string{a.Category()},
+		SchedCategory: []string{RuntimeConfigOutput(a.Deployable)},
 	}
 
 	inv := &schema.SerializedInvocation{
@@ -311,10 +315,6 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...schema.PackageName) (*schema.
 	return inv, nil
 }
 
-func (a EnsureRuntimeConfig) Category() string {
-	return fmt.Sprintf("rtconfig:" + a.Deployable.GetId())
-}
-
 func (a EnsureRuntimeConfig) AppliedResource() any {
 	return nil
 }
@@ -334,6 +334,7 @@ func (a EnsureDeployment) ToDefinition(scope ...schema.PackageName) (*schema.Ser
 		SerializedResource:      string(body), // We use strings for better debuggability.
 		InhibitEvents:           a.InhibitEvents,
 		ConfigurationVolumeName: a.ConfigurationVolumeName,
+		SetContainerField:       a.SetContainerFields,
 	}
 
 	inv := &schema.SerializedInvocation{
@@ -341,15 +342,13 @@ func (a EnsureDeployment) ToDefinition(scope ...schema.PackageName) (*schema.Ser
 		Scope:       scopeToStrings(scope),
 	}
 
-	if a.ConfigurationVolumeName != "" {
-		inv.RequiredOutput = []string{RuntimeConfigOutput(a.Deployable)}
+	inv.Order = &schema.ScheduleOrder{
+		SchedCategory: a.SchedCategory,
 	}
 
-	if len(a.SchedAfterCategory) > 0 || len(a.SchedCategory) > 0 {
-		inv.Order = &schema.ScheduleOrder{
-			SchedCategory:      a.SchedCategory,
-			SchedAfterCategory: a.SchedAfterCategory,
-		}
+	if a.RuntimeConfigDependency != "" {
+		inv.RequiredOutput = []string{a.RuntimeConfigDependency}
+		inv.Order.SchedAfterCategory = append(inv.Order.SchedAfterCategory, a.RuntimeConfigDependency)
 	}
 
 	x, err := anypb.New(op)

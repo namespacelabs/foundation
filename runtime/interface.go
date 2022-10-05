@@ -204,10 +204,19 @@ type DeployableSpec struct {
 	RuntimeConfig *runtimepb.RuntimeConfig
 	Resources     []*resources.ResourceDependency
 
+	// If set to true, don't generate a /namespace/config mount, and the
+	// corresponding persistent configuration.
+	InhibitPersistentRuntimeConfig bool
+
+	SetContainerField []*SetContainerField
+
 	Extensions []*schema.DefExtension
 
 	Endpoints         []*schema.Endpoint         // Owned by this deployable.
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
+}
+
+type X struct {
 }
 
 type AttachableKind string

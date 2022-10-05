@@ -25,7 +25,7 @@ func serverToRuntimeConfig(stack *provision.Stack, ps provision.Server, serverIm
 	srv := ps.Server
 	config := &runtime.RuntimeConfig{
 		Environment: makeEnv(srv.SealedContext().Environment()),
-		Current:     makeServer(stack, srv),
+		Current:     makeServerConfig(stack, srv),
 	}
 
 	config.Current.ImageRef = serverImage.String()
@@ -40,7 +40,7 @@ func serverToRuntimeConfig(stack *provision.Stack, ps provision.Server, serverIm
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServer(stack, ref.Server))
+		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref.Server))
 	}
 
 	return config, nil
@@ -61,7 +61,7 @@ func TestStackToRuntimeConfig(stack *provision.Stack, sutServers []string) (*run
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServer(stack, ref.Server))
+		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref.Server))
 	}
 
 	return config, nil
@@ -81,7 +81,17 @@ func makeEnv(env *schema.Environment) *runtime.ServerEnvironment {
 	return res
 }
 
-func makeServer(stack *provision.Stack, server parsed.Server) *runtime.Server {
+func MakeServerConfig(stack *provision.Stack, pkg schema.PackageName) *runtime.Server {
+	for _, srv := range stack.Servers {
+		if srv.PackageName() == pkg {
+			return makeServerConfig(stack, srv.Server)
+		}
+	}
+
+	return nil
+}
+
+func makeServerConfig(stack *provision.Stack, server parsed.Server) *runtime.Server {
 	current := &runtime.Server{
 		PackageName: server.Proto().PackageName,
 		ModuleName:  server.Proto().ModuleName,

@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/std/resources";
 import "schema/binary.proto";
 import "schema/package.proto";
 import "schema/resource.proto";
+import "std/runtime/config.proto";
 import "workspace/source/protos/filedescset.proto";
 
 message OpInvokeResourceProvider {
@@ -28,4 +29,10 @@ message OpInvokeResourceProvider {
 message ResourceDependency {
     foundation.schema.PackageRef resource_ref         = 1;
     string                       resource_instance_id = 2;
+    foundation.schema.PackageRef resource_class       = 3;
+}
+
+message OpCaptureServerConfig {
+    string                        resource_instance_id = 1;
+    foundation.std.runtime.Server server               = 2;
 }

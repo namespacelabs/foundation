@@ -7,9 +7,9 @@ package deploy
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"namespacelabs.dev/foundation/engine/ops"
@@ -81,8 +81,6 @@ func register_OpWaitForProviderResults() {
 			lines := bytes.Split(out.Bytes(), []byte("\n"))
 
 			var resultMessage proto.Message
-			var originalMessage map[string]any
-
 			for _, line := range lines {
 				if !bytes.HasPrefix(line, resultHeader) {
 					continue
@@ -94,12 +92,8 @@ func register_OpWaitForProviderResults() {
 
 				parsedMessage := dynamicpb.NewMessage(msgdesc).Interface()
 				original := bytes.TrimPrefix(line, resultHeader)
-				if err := json.Unmarshal(original, parsedMessage); err != nil {
+				if err := protojson.Unmarshal(original, parsedMessage); err != nil {
 					return nil, fnerrors.InvocationError("failed to unmarshal provision result: %w", err)
-				}
-
-				if err := json.Unmarshal(original, &originalMessage); err != nil {
-					return nil, fnerrors.InternalError("failed to parse original json: %w", err)
 				}
 
 				resultMessage = parsedMessage
@@ -110,11 +104,10 @@ func register_OpWaitForProviderResults() {
 			}
 
 			_ = tasks.Attachments(ctx).AttachSerializable("instance.json", "", resultMessage)
-			_ = tasks.Attachments(ctx).AttachSerializable("instance-raw.json", "", originalMessage)
 
 			return &ops.HandleResult{
 				Outputs: []ops.Output{
-					{InstanceID: wait.ResourceInstanceId, Message: resultMessage, OriginalJSON: originalMessage},
+					{InstanceID: wait.ResourceInstanceId, Message: resultMessage},
 				},
 			}, nil
 		})

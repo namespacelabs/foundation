@@ -17,6 +17,7 @@ import (
 var intent = flag.String("intent", "", "The serialized JSON intent.")
 
 func main() {
+	_ = flag.String("resources", "", "The serialized JSON resources.")
 	flag.Parse()
 
 	if *intent == "" {

@@ -42,3 +42,20 @@ message Diagnostics {
     int32                     exit_code         = 8;
     int32                     restart_count     = 9;
 }
+
+message SetContainerField {
+    enum ValueSource {
+        VALUE_SOURCE_UNKNOWN = 0;
+        RUNTIME_CONFIG       = 1;
+        RESOURCE_CONFIG      = 2;
+    }
+
+    repeated SetValue set_arg = 1;
+    repeated SetValue set_env = 2;
+
+    message SetValue {
+        string      container_name = 1;  // If empty, set all containers.
+        string      key            = 2;
+        ValueSource value          = 3;
+    }
+}

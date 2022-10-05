@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -31,12 +30,15 @@ func registerEnsureRuntimeConfig() {
 			return tasks.Return(ctx, action, func(ctx context.Context) (*ops.HandleResult, error) {
 				data := map[string]string{}
 
+				output := &kubedef.EnsureRuntimeConfigOutput{}
+
 				if ensure.RuntimeConfig != nil {
 					serializedConfig, err := json.Marshal(ensure.RuntimeConfig)
 					if err != nil {
 						return nil, fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
 					}
 					data["runtime.json"] = string(serializedConfig)
+					output.SerializedRuntimeJson = string(serializedConfig)
 				}
 
 				if len(ensure.Dependency) > 0 {
@@ -50,45 +52,47 @@ func registerEnsureRuntimeConfig() {
 						return nil, fnerrors.InternalError("failed to serialize resource configuration: %w", err)
 					}
 					data["resources.json"] = string(serializedConfig)
+
+					output.SerializedResourceJson = string(serializedConfig)
 				}
 
-				if len(data) == 0 {
-					return nil, nil
-				}
+				if len(data) > 0 && ensure.PersistConfiguration {
+					configDigest, err := schema.DigestOf(runtimeConfigVersion, data["runtime.json"], data["resources.json"])
+					if err != nil {
+						return nil, fnerrors.InternalError("failed to digest runtime configuration: %w", err)
+					}
 
-				configDigest, err := schema.DigestOf(runtimeConfigVersion, data["runtime.json"], data["resources.json"])
-				if err != nil {
-					return nil, fnerrors.InternalError("failed to digest runtime configuration: %w", err)
-				}
+					deploymentId := kubedef.MakeDeploymentId(ensure.Deployable)
+					configId := kubedef.MakeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
 
-				deploymentId := kubedef.MakeDeploymentId(ensure.Deployable)
-				configId := kubedef.MakeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
+					cluster, err := kubedef.InjectedKubeClusterNamespace(ctx)
+					if err != nil {
+						return nil, err
+					}
 
-				cluster, err := kubedef.InjectedKubeClusterNamespace(ctx)
-				if err != nil {
-					return nil, err
-				}
+					annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, schema.PackageName(ensure.Deployable.PackageName))
+					labels := kubedef.MakeLabels(cluster.KubeConfig().Environment, ensure.Deployable)
 
-				annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, schema.PackageName(ensure.Deployable.PackageName))
-				labels := kubedef.MakeLabels(cluster.KubeConfig().Environment, ensure.Deployable)
+					if _, err := cluster.Cluster().(kubedef.KubeCluster).PreparedClient().Clientset.CoreV1().
+						ConfigMaps(cluster.KubeConfig().Namespace).
+						Apply(ctx,
+							applycorev1.ConfigMap(configId, cluster.KubeConfig().Namespace).
+								WithAnnotations(annotations).
+								WithLabels(labels).
+								WithLabels(map[string]string{
+									kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
+								}).
+								WithImmutable(true).
+								WithData(data), kubedef.Ego()); err != nil {
+						return nil, err
+					}
 
-				if _, err := cluster.Cluster().(kubedef.KubeCluster).PreparedClient().Clientset.CoreV1().
-					ConfigMaps(cluster.KubeConfig().Namespace).
-					Apply(ctx,
-						applycorev1.ConfigMap(configId, cluster.KubeConfig().Namespace).
-							WithAnnotations(annotations).
-							WithLabels(labels).
-							WithLabels(map[string]string{
-								kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
-							}).
-							WithImmutable(true).
-							WithData(data), kubedef.Ego()); err != nil {
-					return nil, err
+					output.ConfigId = configId
 				}
 
 				return &ops.HandleResult{
 					Outputs: []ops.Output{
-						{InstanceID: kubedef.RuntimeConfigOutput(ensure.Deployable), Message: &wrapperspb.StringValue{Value: configId}},
+						{InstanceID: kubedef.RuntimeConfigOutput(ensure.Deployable), Message: output},
 					},
 				}, nil
 			})

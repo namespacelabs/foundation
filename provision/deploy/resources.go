@@ -18,14 +18,17 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
+	stdruntime "namespacelabs.dev/foundation/std/runtime"
+	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, rp resourceList) ([]*schema.SerializedInvocation, error) {
+func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, stack *provision.Stack, rp resourceList) ([]*schema.SerializedInvocation, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -34,9 +37,24 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 	rlist := rp.Resources()
 
 	var imageIDs []compute.Computable[oci.ImageID]
-	var invocations []*resources.OpInvokeResourceProvider
+	var invocations []proto.Message
 
-	for _, resource := range rlist {
+	imageMap := map[int]int{} // Map resource index to image index.
+
+	for k, resource := range rlist {
+		if workspace.IsServerResource(resource.Class.Ref) {
+			serverIntent := &stdruntime.ServerIntent{}
+			if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
+				return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
+			}
+
+			invocations = append(invocations, &resources.OpCaptureServerConfig{
+				ResourceInstanceId: resource.ID,
+				Server:             MakeServerConfig(stack, schema.PackageName(serverIntent.PackageName)),
+			})
+			continue
+		}
+
 		provider := resource.Provider.Spec
 
 		if provider.PrepareWith != nil {
@@ -66,6 +84,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			return nil, err
 		}
 
+		imageMap[k] = len(imageIDs)
 		imageIDs = append(imageIDs, imageID)
 
 		invocations = append(invocations, &resources.OpInvokeResourceProvider{
@@ -86,19 +105,25 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 	}
 
 	var ops []*schema.SerializedInvocation
-	for k, img := range builtImages {
-		invocations[k].BinaryImageId = img.Value.RepoAndDigest()
+	for k, resource := range rlist {
+		si := &schema.SerializedInvocation{
+			Description: "Invoke Resource Provider",
+			Order:       &schema.ScheduleOrder{},
+		}
+
+		if workspace.IsServerResource(resource.Class.Ref) {
+			si.Description = "Capture Runtime Config"
+		} else {
+			invocations[k].(*resources.OpInvokeResourceProvider).BinaryImageId = builtImages[imageMap[k]].Value.RepoAndDigest()
+			si.Description = "Invoke Resource Provider"
+		}
 
 		wrapped, err := anypb.New(invocations[k])
 		if err != nil {
 			return nil, err
 		}
 
-		si := &schema.SerializedInvocation{
-			Description: "Invoke Resource Provider",
-			Impl:        wrapped,
-			Order:       &schema.ScheduleOrder{},
-		}
+		si.Impl = wrapped
 
 		// Make sure this provider is invoked after its dependencies are done.
 		for _, dep := range rlist[k].Dependencies {
@@ -149,22 +174,6 @@ func (rp *resourceList) checkAddMultiple(ctx context.Context, instances ...pkggr
 	return multierr.New(errs...)
 }
 
-func (rp *resourceList) checkAdd(ctx context.Context, pl pkggraph.PackageLoader, resourceRef *schema.PackageRef) error {
-	resourceID := resources.ResourceID(resourceRef)
-
-	pkg, err := pl.LoadByName(ctx, resourceRef.AsPackageName())
-	if err != nil {
-		return err
-	}
-
-	resource := pkg.LookupResourceInstance(resourceRef.Name)
-	if resource == nil {
-		return fnerrors.InternalError("%s: missing resource", resourceRef.Canonical())
-	}
-
-	return rp.checkAddResource(ctx, resourceID, *resource)
-}
-
 func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.ResourceInstance) error {
 	if !rp.resourceIDs.Add(resourceID) {
 		return nil
@@ -208,6 +217,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 
 		instance.Dependencies = append(instance.Dependencies, &resources.ResourceDependency{
 			ResourceRef:        res.Ref,
+			ResourceClass:      res.Class.Ref,
 			ResourceInstanceId: scopedID,
 		})
 	}

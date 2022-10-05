@@ -262,7 +262,7 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, rc run
 			}
 
 			sealedCtx := stack.Servers[0].SealedContext()
-			return planResources(ctx, sealedCtx, rc, rp)
+			return planResources(ctx, sealedCtx, rc, stackAndDefs.Stack, rp)
 		})
 
 	deploymentPlan := compute.Map(
@@ -319,6 +319,7 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 		for _, resource := range srv.Resources {
 			run.Resources = append(run.Resources, &resources.ResourceDependency{
 				ResourceRef:        resource.Ref,
+				ResourceClass:      resource.Class.Ref,
 				ResourceInstanceId: resources.ResourceID(resource.Ref),
 			})
 		}

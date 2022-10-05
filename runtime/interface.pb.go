@@ -27,6 +27,55 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type SetContainerField_ValueSource int32
+
+const (
+	SetContainerField_VALUE_SOURCE_UNKNOWN SetContainerField_ValueSource = 0
+	SetContainerField_RUNTIME_CONFIG       SetContainerField_ValueSource = 1
+	SetContainerField_RESOURCE_CONFIG      SetContainerField_ValueSource = 2
+)
+
+// Enum value maps for SetContainerField_ValueSource.
+var (
+	SetContainerField_ValueSource_name = map[int32]string{
+		0: "VALUE_SOURCE_UNKNOWN",
+		1: "RUNTIME_CONFIG",
+		2: "RESOURCE_CONFIG",
+	}
+	SetContainerField_ValueSource_value = map[string]int32{
+		"VALUE_SOURCE_UNKNOWN": 0,
+		"RUNTIME_CONFIG":       1,
+		"RESOURCE_CONFIG":      2,
+	}
+)
+
+func (x SetContainerField_ValueSource) Enum() *SetContainerField_ValueSource {
+	p := new(SetContainerField_ValueSource)
+	*p = x
+	return p
+}
+
+func (x SetContainerField_ValueSource) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SetContainerField_ValueSource) Descriptor() protoreflect.EnumDescriptor {
+	return file_runtime_interface_proto_enumTypes[0].Descriptor()
+}
+
+func (SetContainerField_ValueSource) Type() protoreflect.EnumType {
+	return &file_runtime_interface_proto_enumTypes[0]
+}
+
+func (x SetContainerField_ValueSource) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SetContainerField_ValueSource.Descriptor instead.
+func (SetContainerField_ValueSource) EnumDescriptor() ([]byte, []int) {
+	return file_runtime_interface_proto_rawDescGZIP(), []int{4, 0}
+}
+
 type ContainerWaitStatus struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -335,17 +384,17 @@ func (x *Diagnostics) GetRestartCount() int32 {
 	return 0
 }
 
-type NamespaceId struct {
+type SetContainerField struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	UniqueId       string `protobuf:"bytes,1,opt,name=unique_id,json=uniqueId,proto3" json:"unique_id,omitempty"` //
-	HumanReference string `protobuf:"bytes,2,opt,name=human_reference,json=humanReference,proto3" json:"human_reference,omitempty"`
+	SetArg []*SetContainerField_SetValue `protobuf:"bytes,1,rep,name=set_arg,json=setArg,proto3" json:"set_arg,omitempty"`
+	SetEnv []*SetContainerField_SetValue `protobuf:"bytes,2,rep,name=set_env,json=setEnv,proto3" json:"set_env,omitempty"`
 }
 
-func (x *NamespaceId) Reset() {
-	*x = NamespaceId{}
+func (x *SetContainerField) Reset() {
+	*x = SetContainerField{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_runtime_interface_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -353,13 +402,13 @@ func (x *NamespaceId) Reset() {
 	}
 }
 
-func (x *NamespaceId) String() string {
+func (x *SetContainerField) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NamespaceId) ProtoMessage() {}
+func (*SetContainerField) ProtoMessage() {}
 
-func (x *NamespaceId) ProtoReflect() protoreflect.Message {
+func (x *SetContainerField) ProtoReflect() protoreflect.Message {
 	mi := &file_runtime_interface_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -371,23 +420,86 @@ func (x *NamespaceId) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NamespaceId.ProtoReflect.Descriptor instead.
-func (*NamespaceId) Descriptor() ([]byte, []int) {
+// Deprecated: Use SetContainerField.ProtoReflect.Descriptor instead.
+func (*SetContainerField) Descriptor() ([]byte, []int) {
 	return file_runtime_interface_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *NamespaceId) GetUniqueId() string {
+func (x *SetContainerField) GetSetArg() []*SetContainerField_SetValue {
 	if x != nil {
-		return x.UniqueId
+		return x.SetArg
+	}
+	return nil
+}
+
+func (x *SetContainerField) GetSetEnv() []*SetContainerField_SetValue {
+	if x != nil {
+		return x.SetEnv
+	}
+	return nil
+}
+
+type SetContainerField_SetValue struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ContainerName string                        `protobuf:"bytes,1,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"` // If empty, set all containers.
+	Key           string                        `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Value         SetContainerField_ValueSource `protobuf:"varint,3,opt,name=value,proto3,enum=foundation.runtime.SetContainerField_ValueSource" json:"value,omitempty"`
+}
+
+func (x *SetContainerField_SetValue) Reset() {
+	*x = SetContainerField_SetValue{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_runtime_interface_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SetContainerField_SetValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetContainerField_SetValue) ProtoMessage() {}
+
+func (x *SetContainerField_SetValue) ProtoReflect() protoreflect.Message {
+	mi := &file_runtime_interface_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetContainerField_SetValue.ProtoReflect.Descriptor instead.
+func (*SetContainerField_SetValue) Descriptor() ([]byte, []int) {
+	return file_runtime_interface_proto_rawDescGZIP(), []int{4, 0}
+}
+
+func (x *SetContainerField_SetValue) GetContainerName() string {
+	if x != nil {
+		return x.ContainerName
 	}
 	return ""
 }
 
-func (x *NamespaceId) GetHumanReference() string {
+func (x *SetContainerField_SetValue) GetKey() string {
 	if x != nil {
-		return x.HumanReference
+		return x.Key
 	}
 	return ""
+}
+
+func (x *SetContainerField_SetValue) GetValue() SetContainerField_ValueSource {
+	if x != nil {
+		return x.Value
+	}
+	return SetContainerField_VALUE_SOURCE_UNKNOWN
 }
 
 var File_runtime_interface_proto protoreflect.FileDescriptor
@@ -458,15 +570,34 @@ var file_runtime_interface_proto_rawDesc = []byte{
 	0x28, 0x05, 0x52, 0x08, 0x65, 0x78, 0x69, 0x74, 0x43, 0x6f, 0x64, 0x65, 0x12, 0x23, 0x0a, 0x0d,
 	0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x09, 0x20,
 	0x01, 0x28, 0x05, 0x52, 0x0c, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x43, 0x6f, 0x75, 0x6e,
-	0x74, 0x22, 0x53, 0x0a, 0x0b, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x49, 0x64,
-	0x12, 0x1b, 0x0a, 0x09, 0x75, 0x6e, 0x69, 0x71, 0x75, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x09, 0x52, 0x08, 0x75, 0x6e, 0x69, 0x71, 0x75, 0x65, 0x49, 0x64, 0x12, 0x27, 0x0a,
-	0x0f, 0x68, 0x75, 0x6d, 0x61, 0x6e, 0x5f, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65,
-	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x68, 0x75, 0x6d, 0x61, 0x6e, 0x52, 0x65, 0x66,
-	0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x42, 0x26, 0x5a, 0x24, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70,
-	0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e,
-	0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x62, 0x06,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x22, 0x86, 0x03, 0x0a, 0x11, 0x53, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e,
+	0x65, 0x72, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x12, 0x47, 0x0a, 0x07, 0x73, 0x65, 0x74, 0x5f, 0x61,
+	0x72, 0x67, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x2e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2e, 0x53, 0x65,
+	0x74, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x2e,
+	0x53, 0x65, 0x74, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x06, 0x73, 0x65, 0x74, 0x41, 0x72, 0x67,
+	0x12, 0x47, 0x0a, 0x07, 0x73, 0x65, 0x74, 0x5f, 0x65, 0x6e, 0x76, 0x18, 0x02, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x2e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x72,
+	0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2e, 0x53, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69,
+	0x6e, 0x65, 0x72, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x2e, 0x53, 0x65, 0x74, 0x56, 0x61, 0x6c, 0x75,
+	0x65, 0x52, 0x06, 0x73, 0x65, 0x74, 0x45, 0x6e, 0x76, 0x1a, 0x8c, 0x01, 0x0a, 0x08, 0x53, 0x65,
+	0x74, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69,
+	0x6e, 0x65, 0x72, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d,
+	0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x10, 0x0a,
+	0x03, 0x6b, 0x65, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12,
+	0x47, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x31,
+	0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x72, 0x75, 0x6e, 0x74,
+	0x69, 0x6d, 0x65, 0x2e, 0x53, 0x65, 0x74, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72,
+	0x46, 0x69, 0x65, 0x6c, 0x64, 0x2e, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x53, 0x6f, 0x75, 0x72, 0x63,
+	0x65, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x50, 0x0a, 0x0b, 0x56, 0x61, 0x6c, 0x75,
+	0x65, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x12, 0x18, 0x0a, 0x14, 0x56, 0x41, 0x4c, 0x55, 0x45,
+	0x5f, 0x53, 0x4f, 0x55, 0x52, 0x43, 0x45, 0x5f, 0x55, 0x4e, 0x4b, 0x4e, 0x4f, 0x57, 0x4e, 0x10,
+	0x00, 0x12, 0x12, 0x0a, 0x0e, 0x52, 0x55, 0x4e, 0x54, 0x49, 0x4d, 0x45, 0x5f, 0x43, 0x4f, 0x4e,
+	0x46, 0x49, 0x47, 0x10, 0x01, 0x12, 0x13, 0x0a, 0x0f, 0x52, 0x45, 0x53, 0x4f, 0x55, 0x52, 0x43,
+	0x45, 0x5f, 0x43, 0x4f, 0x4e, 0x46, 0x49, 0x47, 0x10, 0x02, 0x42, 0x26, 0x5a, 0x24, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69,
+	0x6d, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -481,30 +612,36 @@ func file_runtime_interface_proto_rawDescGZIP() []byte {
 	return file_runtime_interface_proto_rawDescData
 }
 
-var file_runtime_interface_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_runtime_interface_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_runtime_interface_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_runtime_interface_proto_goTypes = []interface{}{
-	(*ContainerWaitStatus)(nil),     // 0: foundation.runtime.ContainerWaitStatus
-	(*ContainerUnitWaitStatus)(nil), // 1: foundation.runtime.ContainerUnitWaitStatus
-	(*ContainerReference)(nil),      // 2: foundation.runtime.ContainerReference
-	(*Diagnostics)(nil),             // 3: foundation.runtime.Diagnostics
-	(*NamespaceId)(nil),             // 4: foundation.runtime.NamespaceId
-	(schema.ContainerKind)(0),       // 5: foundation.schema.ContainerKind
-	(*anypb.Any)(nil),               // 6: google.protobuf.Any
-	(*timestamppb.Timestamp)(nil),   // 7: google.protobuf.Timestamp
+	(SetContainerField_ValueSource)(0), // 0: foundation.runtime.SetContainerField.ValueSource
+	(*ContainerWaitStatus)(nil),        // 1: foundation.runtime.ContainerWaitStatus
+	(*ContainerUnitWaitStatus)(nil),    // 2: foundation.runtime.ContainerUnitWaitStatus
+	(*ContainerReference)(nil),         // 3: foundation.runtime.ContainerReference
+	(*Diagnostics)(nil),                // 4: foundation.runtime.Diagnostics
+	(*SetContainerField)(nil),          // 5: foundation.runtime.SetContainerField
+	(*SetContainerField_SetValue)(nil), // 6: foundation.runtime.SetContainerField.SetValue
+	(schema.ContainerKind)(0),          // 7: foundation.schema.ContainerKind
+	(*anypb.Any)(nil),                  // 8: google.protobuf.Any
+	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
 }
 var file_runtime_interface_proto_depIdxs = []int32{
-	1, // 0: foundation.runtime.ContainerWaitStatus.containers:type_name -> foundation.runtime.ContainerUnitWaitStatus
-	1, // 1: foundation.runtime.ContainerWaitStatus.initializers:type_name -> foundation.runtime.ContainerUnitWaitStatus
-	2, // 2: foundation.runtime.ContainerUnitWaitStatus.reference:type_name -> foundation.runtime.ContainerReference
-	3, // 3: foundation.runtime.ContainerUnitWaitStatus.status:type_name -> foundation.runtime.Diagnostics
-	5, // 4: foundation.runtime.ContainerReference.Kind:type_name -> foundation.schema.ContainerKind
-	6, // 5: foundation.runtime.ContainerReference.opaque:type_name -> google.protobuf.Any
-	7, // 6: foundation.runtime.Diagnostics.started:type_name -> google.protobuf.Timestamp
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	2,  // 0: foundation.runtime.ContainerWaitStatus.containers:type_name -> foundation.runtime.ContainerUnitWaitStatus
+	2,  // 1: foundation.runtime.ContainerWaitStatus.initializers:type_name -> foundation.runtime.ContainerUnitWaitStatus
+	3,  // 2: foundation.runtime.ContainerUnitWaitStatus.reference:type_name -> foundation.runtime.ContainerReference
+	4,  // 3: foundation.runtime.ContainerUnitWaitStatus.status:type_name -> foundation.runtime.Diagnostics
+	7,  // 4: foundation.runtime.ContainerReference.Kind:type_name -> foundation.schema.ContainerKind
+	8,  // 5: foundation.runtime.ContainerReference.opaque:type_name -> google.protobuf.Any
+	9,  // 6: foundation.runtime.Diagnostics.started:type_name -> google.protobuf.Timestamp
+	6,  // 7: foundation.runtime.SetContainerField.set_arg:type_name -> foundation.runtime.SetContainerField.SetValue
+	6,  // 8: foundation.runtime.SetContainerField.set_env:type_name -> foundation.runtime.SetContainerField.SetValue
+	0,  // 9: foundation.runtime.SetContainerField.SetValue.value:type_name -> foundation.runtime.SetContainerField.ValueSource
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_runtime_interface_proto_init() }
@@ -562,7 +699,19 @@ func file_runtime_interface_proto_init() {
 			}
 		}
 		file_runtime_interface_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NamespaceId); i {
+			switch v := v.(*SetContainerField); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_runtime_interface_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SetContainerField_SetValue); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -579,13 +728,14 @@ func file_runtime_interface_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_runtime_interface_proto_rawDesc,
-			NumEnums:      0,
-			NumMessages:   5,
+			NumEnums:      1,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_runtime_interface_proto_goTypes,
 		DependencyIndexes: file_runtime_interface_proto_depIdxs,
+		EnumInfos:         file_runtime_interface_proto_enumTypes,
 		MessageInfos:      file_runtime_interface_proto_msgTypes,
 	}.Build()
 	File_runtime_interface_proto = out.File

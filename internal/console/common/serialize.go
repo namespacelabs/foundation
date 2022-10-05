@@ -6,8 +6,15 @@ package common
 
 import (
 	"encoding/json"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func SerializeToBytes(msg interface{}) ([]byte, error) {
+	if msg, ok := msg.(proto.Message); ok {
+		protojson.MarshalOptions{UseProtoNames: true}.Marshal(msg)
+	}
+
 	return json.Marshal(msg)
 }

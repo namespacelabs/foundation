@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -26,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -249,7 +251,11 @@ func computeServerContents(ctx context.Context, server parsed.Server, opts Provi
 			return err
 		}
 
-		ps.Resources = resources
+		ps.Resources = append(ps.Resources, resources...)
+
+		if err := discoverDeclaredServers(resources, &ps.DeclaredStack); err != nil {
+			return err
+		}
 
 		// Fill in env-bound data now, post ports allocation.
 		endpoints, internal, err := runtime.ComputeEndpoints(server, allocatedPorts.Ports)
@@ -262,6 +268,25 @@ func computeServerContents(ctx context.Context, server parsed.Server, opts Provi
 
 		return err
 	})
+}
+
+func discoverDeclaredServers(resources []pkggraph.ResourceInstance, serverList *schema.PackageList) error {
+	for _, res := range resources {
+		if workspace.IsServerResource(res.Class.Ref) {
+			serverIntent := &stdruntime.ServerIntent{}
+			if err := proto.Unmarshal(res.Spec.Intent.Value, serverIntent); err != nil {
+				return fnerrors.InternalError("failed to unwrap Server")
+			}
+
+			serverList.Add(schema.PackageName(serverIntent.PackageName))
+		} else {
+			if err := discoverDeclaredServers(res.Provider.Resources, serverList); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func EvalProvision(ctx context.Context, server parsed.Server, n *pkggraph.Package) (*ParsedNode, error) {

@@ -54,14 +54,14 @@ type Package struct {
 }
 
 type ResourceInstance struct {
-	Ref             *schema.PackageRef
-	Spec            *schema.ResourceInstance
-	Class           ResourceClass
-	ProviderPackage *Package
-	Provider        ResourceProvider
+	Ref      *schema.PackageRef
+	Spec     *schema.ResourceInstance
+	Class    ResourceClass
+	Provider ResourceProvider
 }
 
 type ResourceClass struct {
+	Ref          *schema.PackageRef
 	Spec         *schema.ResourceClass
 	IntentType   UserType
 	InstanceType UserType

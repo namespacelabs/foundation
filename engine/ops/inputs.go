@@ -7,8 +7,7 @@ package ops
 import "google.golang.org/protobuf/proto"
 
 type Input struct {
-	OriginalJSON map[string]any
-	Message      proto.Message
+	Message proto.Message
 }
 
 type Inputs map[string]Input

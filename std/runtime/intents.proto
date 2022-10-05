@@ -2,10 +2,12 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package deploy
+syntax = "proto3";
 
-func RegisterDeployOps() {
-	register_OpInvokeResourceProvider()
-	register_OpWaitForProviderResults()
-	register_OpCaptureServerConfig()
+package foundation.std.runtime;
+
+option go_package = "namespacelabs.dev/foundation/std/runtime";
+
+message ServerIntent {
+    string package_name = 1;
 }
