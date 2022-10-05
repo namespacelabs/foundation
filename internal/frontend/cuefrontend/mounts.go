@@ -26,6 +26,7 @@ func ParseMounts(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggr
 		volumeName, err := it.Value().String()
 		if err != nil {
 			// Inline volume definition.
+			// TODO this can create invalid k8s resource names
 			volumeName = it.Label()
 
 			parsedVolume, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
