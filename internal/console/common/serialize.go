@@ -13,7 +13,7 @@ import (
 
 func SerializeToBytes(msg interface{}) ([]byte, error) {
 	if msg, ok := msg.(proto.Message); ok {
-		protojson.MarshalOptions{UseProtoNames: true}.Marshal(msg)
+		return protojson.MarshalOptions{UseProtoNames: true}.Marshal(msg)
 	}
 
 	return json.Marshal(msg)

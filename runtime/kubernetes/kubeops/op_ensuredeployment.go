@@ -95,7 +95,9 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 
 		patchConfigID(&d.ObjectMeta, &d.Spec.Template.Spec, output.ConfigId, spec.ConfigurationVolumeName)
-		patchSetFields(&d.ObjectMeta, &d.Spec.Template.Spec, setFields, output)
+		if err := patchSetFields(&d.ObjectMeta, &d.Spec.Template.Spec, setFields, output); err != nil {
+			return nil, err
+		}
 		return &d, nil
 
 	case kubedef.IsStatefulSet(obj):
@@ -105,7 +107,9 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 
 		patchConfigID(&d.ObjectMeta, &d.Spec.Template.Spec, output.ConfigId, spec.ConfigurationVolumeName)
-		patchSetFields(&d.ObjectMeta, &d.Spec.Template.Spec, setFields, output)
+		if err := patchSetFields(&d.ObjectMeta, &d.Spec.Template.Spec, setFields, output); err != nil {
+			return nil, err
+		}
 		return &d, nil
 
 	case kubedef.IsPod(obj):
@@ -115,7 +119,9 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 
 		patchConfigID(&d.ObjectMeta, &d.Spec, output.ConfigId, spec.ConfigurationVolumeName)
-		patchSetFields(&d.ObjectMeta, &d.Spec, setFields, output)
+		if err := patchSetFields(&d.ObjectMeta, &d.Spec, setFields, output); err != nil {
+			return nil, err
+		}
 		return &d, nil
 
 	default:
