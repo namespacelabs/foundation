@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -49,8 +48,6 @@ func NewDeployPlanCmd() *cobra.Command {
 			return fnerrors.New("failed to unmarshal %q: %w", args[0], err)
 		}
 
-		p := ops.NewPlan(plan.GetProgram().GetInvocation()...)
-
 		config, err := planning.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
 		if err != nil {
 			return err
@@ -63,7 +60,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		return completeDeployment(ctx, env, cluster, p, plan, opts)
+		return completeDeployment(ctx, env, cluster, plan, opts)
 	})
 
 	return cmd

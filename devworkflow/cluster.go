@@ -56,7 +56,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 	focus.AddMultiple(pi.focus...)
 	deployPlan := deploy.Serialize(pi.env.Workspace().Proto(), pi.env.Environment(), pi.stack, plan, focus.PackageNamesAsString())
 
-	if err := orchestration.Deploy(ctx, pi.env, pi.cluster, plan.Deployer, deployPlan, true, true); err != nil {
+	if err := orchestration.Deploy(ctx, pi.env, pi.cluster, deployPlan, true, true); err != nil {
 		return err
 	}
 

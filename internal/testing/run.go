@@ -106,7 +106,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
 
 	var waitErr error
-	if err := orchestration.Deploy(ctx, env, cluster, p.Deployer, deployPlan, true, test.OutputProgress); err != nil {
+	if err := orchestration.Deploy(ctx, env, cluster, deployPlan, true, test.OutputProgress); err != nil {
 		waitErr = fnerrors.Wrap(test.TestRef.AsPackageName(), err)
 	}
 

@@ -19,11 +19,13 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, p *ops.Plan, plan *schema.DeployPlan, wait, outputProgress bool) error {
+func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if !UseOrchestrator {
 		if !wait {
 			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
 		}
+
+		p := ops.NewPlan(plan.Program.Invocation...)
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
 		return ops.Execute(ctx, env, "deployment.execute", p,

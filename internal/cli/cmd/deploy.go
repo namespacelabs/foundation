@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -96,7 +95,7 @@ func NewDeployCmd() *cobra.Command {
 
 			sealed := pkggraph.MakeSealedContext(env, servers.SealedPackages)
 
-			return completeDeployment(ctx, sealed, cluster, computed.Deployer, deployPlan, deployOpts)
+			return completeDeployment(ctx, sealed, cluster, deployPlan, deployOpts)
 		})
 }
 
@@ -115,8 +114,8 @@ type Ingress struct {
 	Protocol []string `json:"protocol"`
 }
 
-func completeDeployment(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, p *ops.Plan, plan *schema.DeployPlan, opts deployOpts) error {
-	if err := orchestration.Deploy(ctx, env, cluster, p, plan, opts.alsoWait, true); err != nil {
+func completeDeployment(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, opts deployOpts) error {
+	if err := orchestration.Deploy(ctx, env, cluster, plan, opts.alsoWait, true); err != nil {
 		return err
 	}
 
