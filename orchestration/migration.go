@@ -6,8 +6,10 @@ package orchestration
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/engine/ops"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
@@ -31,6 +33,14 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 
 	return tasks.Action("orchestrator.deploy").Scope(schema.PackageNames(plan.FocusServer...)...).
 		Run(ctx, func(ctx context.Context) error {
+			debug := console.Debug(ctx)
+			fmt.Fprintf(debug, "deploying program:\n")
+			for k, inv := range plan.GetProgram().GetInvocation() {
+				fmt.Fprintf(debug, " #%d %q --> cats:%v after:%v\n", k, inv.Description,
+					inv.GetOrder().GetSchedCategory(),
+					inv.GetOrder().GetSchedAfterCategory())
+			}
+
 			raw, err := cluster.Cluster().EnsureState(ctx, orchestratorStateKey)
 			if err != nil {
 				return err
