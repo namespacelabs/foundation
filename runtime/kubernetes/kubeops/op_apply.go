@@ -65,12 +65,10 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
 	}
 
-	clusterns, err := kubedef.InjectedKubeClusterNamespace(ctx)
+	cluster, err := kubedef.InjectedKubeCluster(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	cluster := clusterns.Cluster().(kubedef.KubeCluster)
 
 	restcfg := cluster.PreparedClient().RESTConfig
 
@@ -116,8 +114,11 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			// objects. This is because we sometimes run in environments where
 			// there's no controller installed (e.g. in ephemeral nscloud
 			// clusters). And tests don't (yet) exercise ingress objects.
-			if !clusterns.KubeConfig().Environment.Ephemeral {
-				if obj.GroupVersionKind().GroupVersion().String() == "networking.k8s.io/v1" && obj.GroupVersionKind().Kind == "Ingress" {
+			if obj.GroupVersionKind().GroupVersion().String() == "networking.k8s.io/v1" && obj.GroupVersionKind().Kind == "Ingress" {
+				clusterns, _ := kubedef.InjectedKubeClusterNamespace(ctx)
+				// We check for clusterns presence as it's not present when
+				// deploying the ingress controller itself.
+				if clusterns != nil && !clusterns.KubeConfig().Environment.Ephemeral {
 					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
 					}
