@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -17,10 +16,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/resources"
-	runtimepb "namespacelabs.dev/foundation/std/runtime"
 )
 
 const (
@@ -53,13 +52,13 @@ type Cluster interface {
 	Bind(planning.Context) (ClusterNamespace, error)
 
 	// Fetch diagnostics of a particular container reference.
-	FetchDiagnostics(context.Context, *ContainerReference) (*Diagnostics, error)
+	FetchDiagnostics(context.Context, *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error)
 
 	// Fetch logs of a specific container reference.
-	FetchLogsTo(ctx context.Context, destination io.Writer, container *ContainerReference, opts FetchLogsOpts) error
+	FetchLogsTo(ctx context.Context, destination io.Writer, container *runtimepb.ContainerReference, opts FetchLogsOpts) error
 
 	// Attaches to a running container.
-	AttachTerminal(ctx context.Context, container *ContainerReference, io TerminalIO) error
+	AttachTerminal(ctx context.Context, container *runtimepb.ContainerReference, io TerminalIO) error
 
 	// Exposes the cluster's ingress, in the specified local address and port.
 	// This is used to create stable localhost-bound ingress addresses (for e.g.
@@ -131,7 +130,7 @@ type ClusterNamespace interface {
 	DeployedConfigImageID(context.Context, Deployable) (oci.ImageID, error)
 
 	// Returns a list of containers that the server has deployed.
-	ResolveContainers(context.Context, Deployable) ([]*ContainerReference, error)
+	ResolveContainers(context.Context, Deployable) ([]*runtimepb.ContainerReference, error)
 
 	// Fetch environment diagnostics, e.g. event list.
 	FetchEnvironmentDiagnostics(context.Context) (*storage.EnvironmentDiagnostics, error)
@@ -208,7 +207,7 @@ type DeployableSpec struct {
 	// corresponding persistent configuration.
 	InhibitPersistentRuntimeConfig bool
 
-	SetContainerField []*SetContainerField
+	SetContainerField []*runtimepb.SetContainerField
 
 	Extensions []*schema.DefExtension
 
@@ -255,7 +254,7 @@ type ContainerRunOpts struct {
 }
 
 type ContainerStatus struct {
-	Reference        *ContainerReference
+	Reference        *runtimepb.ContainerReference
 	TerminationError error
 }
 
@@ -282,7 +281,7 @@ type ObserveOpts struct {
 }
 
 type ObserveEvent struct {
-	ContainerReference *ContainerReference
+	ContainerReference *runtimepb.ContainerReference
 	HumanReadableID    string
 	Added              bool
 	Removed            bool
@@ -337,7 +336,7 @@ type ErrContainerFailed struct {
 	Name   string
 	Reason string
 
-	FailedContainers []*ContainerReference // A pointer that can be passed to the runtime to fetch logs.
+	FailedContainers []*runtimepb.ContainerReference // A pointer that can be passed to the runtime to fetch logs.
 }
 
 func (e ErrContainerFailed) Error() string {
@@ -349,41 +348,6 @@ type PortRange struct {
 }
 
 func DefaultPortRange() PortRange { return PortRange{40000, 41000} }
-
-func (cw *ContainerWaitStatus) WaitStatus() string {
-	var inits []string
-	for _, init := range cw.Initializers {
-		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, init.StatusLabel))
-	}
-
-	joinedInits := strings.Join(inits, "; ")
-
-	switch len(cw.Containers) {
-	case 0:
-		return joinedInits
-	case 1:
-		return box(cw.Containers[0].StatusLabel, joinedInits)
-	default:
-		var labels []string
-		for _, ctr := range cw.Containers {
-			labels = append(labels, fmt.Sprintf("%s: %s", ctr.Name, ctr.StatusLabel))
-		}
-
-		return box(fmt.Sprintf("{%s}", strings.Join(labels, "; ")), joinedInits)
-	}
-}
-
-func box(a, b string) string {
-	if b == "" {
-		return a
-	}
-
-	return fmt.Sprintf("%s [%s]", a, b)
-}
-
-func (d *Diagnostics) Failed() bool {
-	return d.Terminated && d.ExitCode > 0
-}
 
 func (g GroundedSecrets) Get(owner, name string) *schema.FileContents {
 	for _, secret := range g.Secrets {

@@ -8,9 +8,9 @@ package foundation.runtime.kubernetes.kubedef;
 
 option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/kubedef";
 
-import "runtime/interface.proto";
-import "std/runtime/config.proto";
-import "std/runtime/deployable.proto";
+import "schema/runtime/types.proto";
+import "schema/runtime/config.proto";
+import "schema/runtime/deployable.proto";
 import "std/resources/op.proto";
 import "std/types/certificates.proto";
 
@@ -30,18 +30,18 @@ message OpApply {
 }
 
 message OpEnsureDeployment {
-    std.runtime.Deployable deployable                                 = 1;
-    string                 serialized_resource                        = 2;
-    bool                   set_namespace                              = 3;
-    bool                   inhibit_events                             = 4;
-    string                 configuration_volume_name                  = 5;
-    repeated foundation.runtime.SetContainerField set_container_field = 6;
+    foundation.schema.runtime.Deployable deployable                          = 1;
+    string                               serialized_resource                 = 2;
+    bool                                 set_namespace                       = 3;
+    bool                                 inhibit_events                      = 4;
+    string                               configuration_volume_name           = 5;
+    repeated foundation.schema.runtime.SetContainerField set_container_field = 6;
 }
 
 message OpEnsureRuntimeConfig {
-    std.runtime.Deployable    deployable                            = 1;
-    std.runtime.RuntimeConfig runtime_config                        = 2;
-    repeated string           resource_instance_id                  = 3;  // XXX deprecated, use dependency.
+    foundation.schema.runtime.Deployable    deployable              = 1;
+    foundation.schema.runtime.RuntimeConfig runtime_config          = 2;
+    repeated string                         resource_instance_id    = 3;  // XXX deprecated, use dependency.
     repeated std.resources.ResourceDependency dependency            = 4;
     bool                                      persist_configuration = 5;
 }

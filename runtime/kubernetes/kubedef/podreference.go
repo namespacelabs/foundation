@@ -10,7 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
 func (cpr *ContainerPodReference) UniqueID() string {
@@ -20,14 +20,14 @@ func (cpr *ContainerPodReference) UniqueID() string {
 	return fmt.Sprintf("%s/%s/%s", cpr.Namespace, cpr.PodName, cpr.Container)
 }
 
-func MakePodRef(ns, name, containerName string, obj runtime.Deployable) *runtime.ContainerReference {
+func MakePodRef(ns, name, containerName string, obj runtime.Deployable) *runtimepb.ContainerReference {
 	cpr := &ContainerPodReference{
 		Namespace: ns,
 		PodName:   name,
 		Container: containerName,
 	}
 
-	return &runtime.ContainerReference{
+	return &runtimepb.ContainerReference{
 		UniqueId:       cpr.UniqueID(),
 		HumanReference: cpr.Container,
 		Kind:           decideKind(obj, containerName),
@@ -35,16 +35,16 @@ func MakePodRef(ns, name, containerName string, obj runtime.Deployable) *runtime
 	}
 }
 
-func decideKind(obj runtime.Deployable, containerName string) schema.ContainerKind {
+func decideKind(obj runtime.Deployable, containerName string) runtimepb.ContainerKind {
 	if obj == nil {
-		return schema.ContainerKind_CONTAINER_KIND_UNSPECIFIED
+		return runtimepb.ContainerKind_CONTAINER_KIND_UNSPECIFIED
 	}
 
 	if ServerCtrName(obj) == containerName {
-		return schema.ContainerKind_PRIMARY
+		return runtimepb.ContainerKind_PRIMARY
 	}
 
-	return schema.ContainerKind_SUPPORT
+	return runtimepb.ContainerKind_SUPPORT
 }
 
 func ServerCtrName(obj runtime.Deployable) string {

@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -232,7 +233,7 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 			}
 
 			if len(terminated) > 0 {
-				var failed []*runtime.ContainerReference
+				var failed []*runtimepb.ContainerReference
 				var labels []string
 				for _, t := range terminated {
 					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))

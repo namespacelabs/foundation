@@ -18,6 +18,7 @@ import (
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -63,10 +64,10 @@ func register_OpInvokeResourceProvider() {
 
 					InhibitPersistentRuntimeConfig: true,
 					Resources:                      invoke.Dependency,
-					SetContainerField: []*runtime.SetContainerField{
+					SetContainerField: []*runtimepb.SetContainerField{
 						// Resources are passed in as flags to minimize the number of k8s resources that are created.
 						// XXX security validate this.
-						{SetArg: []*runtime.SetContainerField_SetValue{{Key: "--resources", Value: runtime.SetContainerField_RESOURCE_CONFIG}}},
+						{SetArg: []*runtimepb.SetContainerField_SetValue{{Key: "--resources", Value: runtimepb.SetContainerField_RESOURCE_CONFIG}}},
 					},
 
 					MainContainer: runtime.ContainerRunOpts{

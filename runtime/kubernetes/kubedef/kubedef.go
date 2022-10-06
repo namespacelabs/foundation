@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/resources"
-	stdruntime "namespacelabs.dev/foundation/std/runtime"
 )
 
 const (
@@ -82,7 +82,7 @@ type ApplyRoleBinding struct {
 
 type EnsureRuntimeConfig struct {
 	Description          string
-	RuntimeConfig        *stdruntime.RuntimeConfig
+	RuntimeConfig        *runtimepb.RuntimeConfig
 	Deployable           runtime.Deployable
 	ResourceDependencies []*resources.ResourceDependency
 	PersistConfiguration bool
@@ -93,7 +93,7 @@ type EnsureDeployment struct {
 	Deployable              runtime.Deployable
 	Resource                any
 	ConfigurationVolumeName string
-	SetContainerFields      []*runtime.SetContainerField
+	SetContainerFields      []*runtimepb.SetContainerField
 
 	RuntimeConfigDependency string
 

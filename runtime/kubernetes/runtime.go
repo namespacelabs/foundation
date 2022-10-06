@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -133,7 +134,7 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 	}, nil
 }
 
-func (r *Cluster) AttachTerminal(ctx context.Context, reference *runtime.ContainerReference, rio runtime.TerminalIO) error {
+func (r *Cluster) AttachTerminal(ctx context.Context, reference *runtimepb.ContainerReference, rio runtime.TerminalIO) error {
 	cpr := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
 		return fnerrors.InternalError("invalid reference: %w", err)

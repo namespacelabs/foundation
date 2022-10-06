@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -34,9 +35,6 @@ import (
 
 const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
 const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nscloud.dev"
-
-// const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal-c.namespacelabs.nscloud.dev"
-// const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal-c.namespacelabs.nscloud.dev"
 
 var (
 	startCreateKubernetesCluster = fnapi.Call[CreateKubernetesClusterRequest]{
@@ -412,15 +410,15 @@ func (d *cluster) Planner(env planning.Context) runtime.Planner {
 	return planner{Planner: base, cluster: d, config: d.config, env: env.Environment(), workspace: env.Workspace().Proto()}
 }
 
-func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtime.ContainerReference) (*runtime.Diagnostics, error) {
+func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error) {
 	return d.cluster.FetchDiagnostics(ctx, cr)
 }
 
-func (d *cluster) FetchLogsTo(ctx context.Context, w io.Writer, cr *runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+func (d *cluster) FetchLogsTo(ctx context.Context, w io.Writer, cr *runtimepb.ContainerReference, opts runtime.FetchLogsOpts) error {
 	return d.cluster.FetchLogsTo(ctx, w, cr, opts)
 }
 
-func (d *cluster) AttachTerminal(ctx context.Context, container *runtime.ContainerReference, io runtime.TerminalIO) error {
+func (d *cluster) AttachTerminal(ctx context.Context, container *runtimepb.ContainerReference, io runtime.TerminalIO) error {
 	return d.cluster.AttachTerminal(ctx, container, io)
 }
 

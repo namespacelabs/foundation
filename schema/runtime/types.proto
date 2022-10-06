@@ -4,13 +4,18 @@
 
 syntax = "proto3";
 
-package foundation.runtime;
+package foundation.schema.runtime;
 
-option go_package = "namespacelabs.dev/foundation/runtime";
+option go_package = "namespacelabs.dev/foundation/schema/runtime";
 
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
-import "schema/runtime.proto";
+
+enum ContainerKind {
+    CONTAINER_KIND_UNSPECIFIED = 0;
+    PRIMARY                    = 1;
+    SUPPORT                    = 2;
+}
 
 message ContainerWaitStatus {
     repeated ContainerUnitWaitStatus containers   = 1;
@@ -25,10 +30,10 @@ message ContainerUnitWaitStatus {
 }
 
 message ContainerReference {
-    string               unique_id      = 1;
-    string               HumanReference = 2;
-    schema.ContainerKind Kind           = 3;
-    google.protobuf.Any  opaque         = 4;
+    string              unique_id      = 1;
+    string              HumanReference = 2;
+    ContainerKind       Kind           = 3;
+    google.protobuf.Any opaque         = 4;
 }
 
 message Diagnostics {

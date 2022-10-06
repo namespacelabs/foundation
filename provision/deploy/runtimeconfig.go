@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/runtime"
+	"namespacelabs.dev/foundation/schema/runtime"
 )
 
 var privateEntries schema.PackageList

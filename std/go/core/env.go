@@ -19,8 +19,8 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/core/types"
-	"namespacelabs.dev/foundation/std/runtime"
 )
 
 var (

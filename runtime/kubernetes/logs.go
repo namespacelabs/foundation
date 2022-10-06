@@ -13,9 +13,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
-func (r *Cluster) FetchLogsTo(ctx context.Context, w io.Writer, reference *runtime.ContainerReference, opts runtime.FetchLogsOpts) error {
+func (r *Cluster) FetchLogsTo(ctx context.Context, w io.Writer, reference *runtimepb.ContainerReference, opts runtime.FetchLogsOpts) error {
 	cpr := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
 		return fnerrors.InternalError("invalid reference: %w", err)

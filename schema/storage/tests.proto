@@ -9,7 +9,7 @@ package foundation.schema.storage;
 option go_package = "namespacelabs.dev/foundation/schema/storage";
 
 import "google/protobuf/timestamp.proto";
-import "schema/runtime.proto";
+import "schema/runtime/types.proto";
 import "schema/definition.proto";
 import "schema/serialized.proto";
 import "schema/environment.proto";
@@ -68,9 +68,9 @@ message TestResultBundle {
     EnvironmentDiagnostics                   env_diagnostics         = 6;
 
     message InlineLog {
-        string                          package_name   = 1;
-        string                          container_name = 3;
-        foundation.schema.ContainerKind container_kind = 4;
-        bytes                           output         = 2;
+        string                                  package_name   = 1;
+        string                                  container_name = 3;
+        foundation.schema.runtime.ContainerKind container_kind = 4;
+        bytes                                   output         = 2;
     }
 }

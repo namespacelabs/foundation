@@ -26,10 +26,10 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
-	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -52,7 +52,7 @@ type testRun struct {
 	Plan             compute.Computable[*deploy.Plan]
 	Debug            bool
 	OutputProgress   bool
-	RuntimeConfig    *stdruntime.RuntimeConfig
+	RuntimeConfig    *runtimepb.RuntimeConfig
 
 	compute.LocalScoped[*storage.TestResultBundle]
 }
@@ -250,7 +250,7 @@ func collectLogs(ctx context.Context, env planning.Context, rt runtime.ClusterNa
 	type serverLog struct {
 		PackageName   string
 		ContainerName string
-		ContainerKind schema.ContainerKind
+		ContainerKind runtimepb.ContainerKind
 		Buffer        *syncbuffer.ByteBuffer
 	}
 

@@ -9,20 +9,20 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
-func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtime.ContainerReference) (*runtime.Diagnostics, error) {
+func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error) {
 	opaque := &kubedef.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(opaque); err != nil {
-		return &runtime.Diagnostics{}, fnerrors.InternalError("invalid reference: %w", err)
+		return &runtimepb.Diagnostics{}, fnerrors.InternalError("invalid reference: %w", err)
 	}
 
 	pod, err := r.cli.CoreV1().Pods(opaque.Namespace).Get(ctx, opaque.PodName, metav1.GetOptions{})
 	if err != nil {
-		return &runtime.Diagnostics{}, err
+		return &runtimepb.Diagnostics{}, err
 	}
 
 	for _, init := range pod.Status.InitContainerStatuses {
@@ -37,5 +37,5 @@ func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtime.Conta
 		}
 	}
 
-	return &runtime.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
+	return &runtimepb.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
 }

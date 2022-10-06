@@ -13,7 +13,7 @@ import (
 	"github.com/gorilla/websocket"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
 func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID string) {
@@ -30,7 +30,7 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 		}
 
 		for _, ref := range refs {
-			if ref.Kind == schema.ContainerKind_PRIMARY {
+			if ref.Kind == runtimepb.ContainerKind_PRIMARY {
 				return cluster.Cluster().FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
 			}
 		}

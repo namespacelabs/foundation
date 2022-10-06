@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -63,7 +64,7 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 		defer t.Stop()
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
-		pending := map[string][]*runtime.ContainerWaitStatus{}
+		pending := map[string][]*runtimepb.ContainerWaitStatus{}
 		helps := map[string]string{}
 
 		runDiagnosis := func() {
@@ -73,7 +74,7 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 			}
 
 			for resourceID, wslist := range pending {
-				all := []*runtime.ContainerUnitWaitStatus{}
+				all := []*runtimepb.ContainerUnitWaitStatus{}
 				for _, w := range wslist {
 					all = append(all, w.Containers...)
 					all = append(all, w.Initializers...)
@@ -168,13 +169,13 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 
 					failed := false
 					for _, w := range ev.WaitStatus {
-						cws := &runtime.ContainerWaitStatus{}
+						cws := &runtimepb.ContainerWaitStatus{}
 						if err := w.Opaque.UnmarshalTo(cws); err != nil {
 							continue
 						}
 						pending[ev.ResourceId] = append(pending[ev.ResourceId], cws)
 
-						var ctrs []*runtime.ContainerUnitWaitStatus
+						var ctrs []*runtimepb.ContainerUnitWaitStatus
 						ctrs = append(ctrs, cws.Containers...)
 						ctrs = append(ctrs, cws.Initializers...)
 

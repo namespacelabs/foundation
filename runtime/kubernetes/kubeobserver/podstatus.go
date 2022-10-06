@@ -13,9 +13,9 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/schema/runtime"
 )
 
 func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) *orchestration.Event_WaitStatus {

@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -118,7 +119,7 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 
 func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
 	// XXX use a watch
-	announced := map[string]*runtime.ContainerReference{}
+	announced := map[string]*runtimepb.ContainerReference{}
 
 	for {
 		select {
@@ -136,9 +137,10 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 		}
 
 		type Key struct {
-			Instance  *runtime.ContainerReference
+			Instance  *runtimepb.ContainerReference
 			CreatedAt time.Time // used for sorting
 		}
+
 		keys := []Key{}
 		newM := map[string]struct{}{}
 		labels := map[string]string{}
@@ -255,23 +257,24 @@ func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deploy
 	return r.cluster.RawDialServer(ctx, r.target.namespace, kubedef.SelectById(server), int(containerPort))
 }
 
-func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtime.ContainerReference, error) {
-	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object, func(pod corev1.Pod) ([]*runtime.ContainerReference, bool) {
-		if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
-			return nil, false
-		}
+func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtimepb.ContainerReference, error) {
+	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object,
+		func(pod corev1.Pod) ([]*runtimepb.ContainerReference, bool) {
+			if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
+				return nil, false
+			}
 
-		var refs []*runtime.ContainerReference
+			var refs []*runtimepb.ContainerReference
 
-		for _, init := range pod.Status.InitContainerStatuses {
-			refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, object))
-		}
-		for _, container := range pod.Status.ContainerStatuses {
-			refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, object))
-		}
+			for _, init := range pod.Status.InitContainerStatuses {
+				refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, object))
+			}
+			for _, container := range pod.Status.ContainerStatuses {
+				refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, object))
+			}
 
-		return refs, true
-	})
+			return refs, true
+		})
 }
 
 func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clientset, w io.Writer, obj runtime.Deployable) (corev1.Pod, error) {

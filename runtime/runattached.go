@@ -11,7 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 )
@@ -41,9 +41,9 @@ func RunAttached(ctx context.Context, config planning.Context, cluster ClusterNa
 		return err
 	}
 
-	var mainContainers []*ContainerReference
+	var mainContainers []*runtime.ContainerReference
 	for _, container := range containers {
-		if container.Kind == schema.ContainerKind_PRIMARY {
+		if container.Kind == runtime.ContainerKind_PRIMARY {
 			mainContainers = append(mainContainers, container)
 		}
 	}

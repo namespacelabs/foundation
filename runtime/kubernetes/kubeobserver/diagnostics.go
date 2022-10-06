@@ -7,7 +7,7 @@ package kubeobserver
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	v1 "k8s.io/api/core/v1"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/schema/runtime"
 )
 
 func StatusToDiagnostic(status v1.ContainerStatus) *runtime.Diagnostics {

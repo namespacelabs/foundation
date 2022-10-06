@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.std.runtime;
+package foundation.schema.runtime;
 
-option go_package = "namespacelabs.dev/foundation/std/runtime";
+option go_package = "namespacelabs.dev/foundation/schema/runtime";
 
 message Deployable {
     string package_name     = 1;
