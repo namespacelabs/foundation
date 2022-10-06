@@ -10,5 +10,5 @@ server: fn.#OpaqueServer & {
 }
 
 configure: fn.#Configure & {
-	with: binary: "namespacelabs.dev/foundation/std/runtime/kubernetes/kube-state-metrics/configure"
+	with: binary: "namespacelabs.dev/foundation/universe/kubernetes/kube-state-metrics/configure"
 }
