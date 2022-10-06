@@ -180,7 +180,19 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			sidecars:       parsedSidecars,
 			initContainers: parsedInitContainers,
 		}
+		if requires := server.LookupPath("requires"); requires.Exists() {
+			phase1plan.declaredStack, err = parseRequires(ctx, ft.loader, loc, requires)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Old syntax - TODO remove when all uses have been migrated
 		if requires := v.LookupPath("requires"); requires.Exists() {
+			if len(phase1plan.declaredStack) > 0 {
+				return nil, fnerrors.UserError(loc, "please only specify either `server.requires` or `requires`")
+			}
+
 			phase1plan.declaredStack, err = parseRequires(ctx, ft.loader, loc, requires)
 			if err != nil {
 				return nil, err
