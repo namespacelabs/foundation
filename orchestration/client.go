@@ -21,12 +21,13 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/orchestration/proto"
-	awsprovider "namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/planning"
+	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/protolog"
 )
@@ -56,7 +57,7 @@ func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, err
 	)
 }
 
-func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, error) {
+func getAwsConf(ctx context.Context, env planning.Context) (*awsconf.Configuration, error) {
 	sesh, err := awsprovider.ConfiguredSession(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
@@ -75,9 +76,9 @@ func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, e
 		if creds.Expired() {
 			return nil, fmt.Errorf("aws credentials expired")
 		}
-		return &awsprovider.Conf{
+		return &awsconf.Configuration{
 			Region: cfg.Region,
-			Static: &awsprovider.Credentials{
+			Static: &awsconf.Credentials{
 				AccessKeyId:     creds.AccessKeyID,
 				Expiration:      timestamppb.New(creds.Expires),
 				SecretAccessKey: creds.SecretAccessKey,
@@ -92,9 +93,9 @@ func getAwsConf(ctx context.Context, env planning.Context) (*awsprovider.Conf, e
 		return nil, err
 	}
 
-	return &awsprovider.Conf{
+	return &awsconf.Configuration{
 		Region: cfg.Region,
-		Static: &awsprovider.Credentials{
+		Static: &awsconf.Credentials{
 			AccessKeyId:     aws.ToString(result.Credentials.AccessKeyId),
 			Expiration:      timestamppb.New(aws.ToTime(result.Credentials.Expiration)),
 			SecretAccessKey: aws.ToString(result.Credentials.SecretAccessKey),

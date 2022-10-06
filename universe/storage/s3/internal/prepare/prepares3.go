@@ -16,8 +16,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/providers/aws/eks"
-	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -25,6 +23,8 @@ import (
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/secrets"
+	"namespacelabs.dev/foundation/universe/aws/eks"
+	fniam "namespacelabs.dev/foundation/universe/aws/iam"
 	"namespacelabs.dev/foundation/universe/storage/s3"
 )
 

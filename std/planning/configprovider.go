@@ -13,7 +13,7 @@ import (
 
 var configProviders = map[string]func(*anypb.Any) ([]proto.Message, error){}
 
-func RegisterConfigurationProvider[V proto.Message](handle func(V) ([]proto.Message, error)) {
+func RegisterConfigurationProvider[V proto.Message](handle func(V) ([]proto.Message, error), aliases ...string) {
 	configProviders[protos.TypeUrl[V]()] = func(input *anypb.Any) ([]proto.Message, error) {
 		msg := protos.NewFromType[V]()
 		if err := input.UnmarshalTo(msg); err != nil {
@@ -26,5 +26,6 @@ func RegisterConfigurationProvider[V proto.Message](handle func(V) ([]proto.Mess
 	registeredKnownTypes = append(registeredKnownTypes, internalConfigType{
 		message:    protos.NewFromType[V](),
 		stacktrace: stacktrace.New(),
+		aliases:    aliases,
 	})
 }

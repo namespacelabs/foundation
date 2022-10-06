@@ -10,9 +10,12 @@ import (
 	"errors"
 	"io"
 	"io/fs"
+	"strings"
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -38,8 +41,12 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 			return err
 		}
 	} else {
-		if err := prototext.Unmarshal(devHostBytes, root.LoadedDevHost); err != nil {
-			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes.", DevHostFilename)
+		opt := prototext.UnmarshalOptions{
+			Resolver: configMessageLookup{},
+		}
+
+		if err := opt.Unmarshal(devHostBytes, root.LoadedDevHost); err != nil {
+			return fnerrors.BadInputError("Failed to parse %q. If you changed it manually, try to undo your changes. Saw: %w", DevHostFilename, err)
 		}
 	}
 
@@ -72,6 +79,36 @@ func Prepare(ctx context.Context, root *workspace.Root) error {
 	}
 
 	return nil
+}
+
+type configMessageLookup struct{}
+
+var _ protoregistry.MessageTypeResolver = configMessageLookup{}
+var _ protoregistry.ExtensionTypeResolver = configMessageLookup{}
+
+func (configMessageLookup) FindMessageByName(message protoreflect.FullName) (protoreflect.MessageType, error) {
+	mt := planning.LookupConfigMessage(message)
+	if mt == nil {
+		return nil, fnerrors.BadInputError("%s: no such configuration message", message)
+	}
+
+	return mt, nil
+}
+
+func (cl configMessageLookup) FindMessageByURL(url string) (protoreflect.MessageType, error) {
+	if i := strings.LastIndexByte(url, '/'); i >= 0 {
+		return cl.FindMessageByName(protoreflect.FullName(url[i+len("/"):]))
+	}
+
+	return nil, fnerrors.BadInputError("%s: no such configuration message url", url)
+}
+
+func (configMessageLookup) FindExtensionByName(field protoreflect.FullName) (protoreflect.ExtensionType, error) {
+	return protoregistry.GlobalTypes.FindExtensionByName(field)
+}
+
+func (configMessageLookup) FindExtensionByNumber(message protoreflect.FullName, field protoreflect.FieldNumber) (protoreflect.ExtensionType, error) {
+	return protoregistry.GlobalTypes.FindExtensionByNumber(message, field)
 }
 
 func validate(messages []*anypb.Any) error {

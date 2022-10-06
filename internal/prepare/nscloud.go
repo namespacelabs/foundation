@@ -8,10 +8,10 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/providers/nscloud"
-	"namespacelabs.dev/foundation/providers/nscloud/config"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -27,7 +27,7 @@ func PrepareNewNamespaceCluster(env planning.Context, machineType string, epheme
 				return nil, err
 			}
 
-			c, err := devhost.MakeConfiguration(&config.Cluster{ClusterId: cfg.ClusterId})
+			c, err := devhost.MakeConfiguration(&configuration.Cluster{ClusterId: cfg.ClusterId})
 			if err != nil {
 				return nil, err
 			}

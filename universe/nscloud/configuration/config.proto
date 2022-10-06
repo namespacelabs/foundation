@@ -1,0 +1,14 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.universe.nscloud.configuration;
+
+option go_package = "namespacelabs.dev/foundation/universe/nscloud/configuration";
+
+// Used as a configuration provider in an environment.
+message Cluster {
+    string cluster_id = 1;
+}

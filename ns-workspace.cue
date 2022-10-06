@@ -19,7 +19,6 @@ prebuilts: {
 		"namespacelabs.dev/foundation/std/startup/testdriver":                                         "sha256:87ed023cec48cade0a5cdb4a433cc7859863cb0c7cddab6fd913249a1ead5ad5"
 		"namespacelabs.dev/foundation/std/testdata/datastore/keygen":                                  "sha256:5733814d051904c67ec5543d2f63de700c2d55d6561f21fa6a44e8d8609a91ac"
 		"namespacelabs.dev/foundation/std/web/http/configure":                                         "sha256:128c028ef235bc9a2a2cd3ecce42298a4414b29acbddf1755f1f1c0014a927f5"
-		"namespacelabs.dev/foundation/universe/aws/ecr/configure":                                     "sha256:bf54f3fdc5bc1128e29c0164809a4df12d60c0688ea3cf5da74786016a032457"
 		"namespacelabs.dev/foundation/universe/aws/irsa/prepare":                                      "sha256:22f60c1f15911439a4711945245317acfa246184f94e2b7b5956131008c5dfe8"
 		"namespacelabs.dev/foundation/universe/aws/s3/internal/configure":                             "sha256:0f2760d58ee3d4ec8aee1bd47d24d25cd730b888af047bf11ef21db570fff01d"
 		"namespacelabs.dev/foundation/universe/aws/s3/internal/managebuckets/init":                    "sha256:40669c96749271e2f1247d98836d335949145415bda706c19bf6095a4a6df5f2"

@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/providers/aws/eks"
-	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
+	"namespacelabs.dev/foundation/universe/aws/eks"
+	fniam "namespacelabs.dev/foundation/universe/aws/iam"
 )
 
 func main() {

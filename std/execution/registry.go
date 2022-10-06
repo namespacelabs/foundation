@@ -13,6 +13,7 @@ import (
 )
 
 type Funcs[M proto.Message] struct {
+	Aliases   []string
 	Handle    func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
 	PlanOrder func(M) (*schema.ScheduleOrder, error)
 }
@@ -24,6 +25,7 @@ type VFuncs[M proto.Message, V any] struct {
 }
 
 type internalFuncs struct {
+	Aliases   []string
 	Parse     func(context.Context, *schema.SerializedInvocation, proto.Message) (any, error)
 	Handle    func(context.Context, *schema.SerializedInvocation, proto.Message, any) (*HandleResult, error)
 	PlanOrder func(proto.Message, any) (*schema.ScheduleOrder, error)
@@ -32,9 +34,9 @@ type internalFuncs struct {
 type compilerFunc func(context.Context, []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error)
 
 type registration struct {
-	key   string
-	tmpl  proto.Message
-	funcs internalFuncs
+	key       string
+	unmarshal func(*schema.SerializedInvocation) (proto.Message, error)
+	funcs     internalFuncs
 }
 
 var (
@@ -55,6 +57,7 @@ func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.S
 
 func RegisterFuncs[M proto.Message](funcs Funcs[M]) {
 	register[M](internalFuncs{
+		Aliases: funcs.Aliases,
 		Handle: func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message, _ any) (*HandleResult, error) {
 			return funcs.Handle(ctx, def, msg.(M))
 		},
@@ -87,13 +90,24 @@ func RegisterVFuncs[M proto.Message, V any](funcs VFuncs[M, V]) {
 }
 
 func register[M proto.Message](funcs internalFuncs) {
-	reg := registration{
-		key:   protos.TypeUrl[M](),
-		tmpl:  protos.NewFromType[M](),
-		funcs: funcs,
-	}
+	keys := append([]string{protos.TypeUrl[M]()}, funcs.Aliases...)
 
-	handlers[protos.TypeUrl[M]()] = &reg
+	for _, key := range keys {
+		reg := registration{
+			key: key,
+			unmarshal: func(si *schema.SerializedInvocation) (proto.Message, error) {
+				msg := protos.NewFromType[M]()
+				// Unmarshal from value directly as we tolerate type aliases.
+				if err := proto.Unmarshal(si.Impl.Value, msg); err != nil {
+					return nil, err
+				}
+				return msg, nil
+			},
+			funcs: funcs,
+		}
+
+		handlers[key] = &reg
+	}
 }
 
 func Compile[M proto.Message](compiler compilerFunc) {

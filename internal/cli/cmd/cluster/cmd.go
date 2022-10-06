@@ -22,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/providers/nscloud"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
 )
 
 func NewClusterCmd() *cobra.Command {

@@ -14,7 +14,7 @@ import (
 	clientauthenticationv1 "k8s.io/client-go/pkg/apis/clientauthentication/v1"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/providers/aws/eks"
+	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/std/planning"
 )
 

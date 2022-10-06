@@ -55,7 +55,6 @@ func Make[V MakeDefinition](ops ...V) ([]*schema.SerializedInvocation, error) {
 	return defs, nil
 }
 
-// XXX make public
 func Static(description string, impl proto.Message) MakeDefinition {
 	return staticDef{description, impl}
 }

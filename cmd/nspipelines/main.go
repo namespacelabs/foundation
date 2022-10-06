@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
-	"namespacelabs.dev/foundation/providers/aws/ecr"
+	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/tasks"

@@ -5,6 +5,8 @@
 package planning
 
 import (
+	"strings"
+
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
@@ -24,8 +26,8 @@ type Configuration interface {
 
 	Workspace() Workspace
 
-	checkGetMessage(proto.Message) bool
-	checkGetMessageForPlatform(specs.Platform, proto.Message) bool
+	checkGetMessage(proto.Message, string, []string) bool
+	checkGetMessageForPlatform(specs.Platform, proto.Message, string, []string) bool
 	fetchMultiple(string) []*anypb.Any
 }
 
@@ -125,8 +127,8 @@ func (cfg config) Workspace() Workspace {
 	return cfg.workspace
 }
 
-func (cfg config) checkGetMessage(msg proto.Message) bool {
-	return checkGet(cfg.atoms.Configuration, msg)
+func (cfg config) checkGetMessage(msg proto.Message, name string, aliases []string) bool {
+	return checkGet(cfg.atoms.Configuration, msg, name, aliases)
 }
 
 func (cfg config) fetchMultiple(typeUrl string) []*anypb.Any {
@@ -139,11 +141,11 @@ func (cfg config) fetchMultiple(typeUrl string) []*anypb.Any {
 	return response
 }
 
-func checkGet(merged []*anypb.Any, msg proto.Message) bool {
+func checkGet(merged []*anypb.Any, msg proto.Message, name string, aliases []string) bool {
 	for _, conf := range merged {
-		if conf.MessageIs(msg) {
+		if messageIs(conf, name, aliases) {
 			// XXX we're swallowing errors here.
-			if conf.UnmarshalTo(msg) == nil {
+			if proto.Unmarshal(conf.Value, msg) == nil {
 				return true
 			}
 		}
@@ -152,10 +154,30 @@ func checkGet(merged []*anypb.Any, msg proto.Message) bool {
 	return false
 }
 
-func (cfg config) checkGetMessageForPlatform(target specs.Platform, msg proto.Message) bool {
+func messageIs(x *anypb.Any, name string, aliases []string) bool {
+	url := x.GetTypeUrl()
+	if matchTypeUrl(url, name) {
+		return true
+	}
+	for _, alias := range aliases {
+		if matchTypeUrl(url, alias) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchTypeUrl(url, name string) bool {
+	if !strings.HasSuffix(url, name) {
+		return false
+	}
+	return len(url) == len(name) || url[len(url)-len(name)-1] == '/'
+}
+
+func (cfg config) checkGetMessageForPlatform(target specs.Platform, msg proto.Message, name string, aliases []string) bool {
 	for _, p := range cfg.atoms.PlatformConfiguration {
 		if platformMatches(p, target) {
-			if checkGet(p.Configuration, msg) {
+			if checkGet(p.Configuration, msg, name, aliases) {
 				return true
 			}
 
@@ -163,7 +185,7 @@ func (cfg config) checkGetMessageForPlatform(target specs.Platform, msg proto.Me
 		}
 	}
 
-	return cfg.checkGetMessage(msg)
+	return cfg.checkGetMessage(msg, name, aliases)
 }
 
 func (cfg config) EnvKey() string {

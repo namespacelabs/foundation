@@ -5,74 +5,97 @@
 package planning
 
 import (
+	"strings"
+
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 	"namespacelabs.dev/foundation/internal/protos"
 )
 
-type ConfigType[V proto.Message] struct{}
+const urlPrefix = "type.googleapis.com/"
+
+type ConfigType[V proto.Message] struct {
+	aliases []string
+}
 
 type internalConfigType struct {
 	message    proto.Message
 	stacktrace stacktrace.StackTrace
+	aliases    []string
 }
 
 var (
 	registeredKnownTypes []internalConfigType
-	wellKnownTypes       []string
+	wellKnownTypes       map[string]protoreflect.MessageType
 )
 
-func DefineConfigType[V proto.Message]() ConfigType[V] {
-	configType := ConfigType[V]{}
-	registeredKnownTypes = append(registeredKnownTypes, internalConfigType{protos.NewFromType[V](), stacktrace.New()})
+func DefineConfigType[V proto.Message](aliases ...string) ConfigType[V] {
+	message := protos.NewFromType[V]()
+
+	configType := ConfigType[V]{aliases: aliases}
+
+	registeredKnownTypes = append(registeredKnownTypes, internalConfigType{
+		message:    message,
+		stacktrace: stacktrace.New(),
+		aliases:    configType.aliases,
+	})
+
 	return configType
 }
 
-func ValidateNoConfigTypeCollisions() {
-	const urlPrefix = "type.googleapis.com/"
+func LookupConfigMessage(name protoreflect.FullName) protoreflect.MessageType {
+	return wellKnownTypes[string(name)]
+}
 
+func ValidateNoConfigTypeCollisions() {
 	seen := map[string]stacktrace.StackTrace{}
+	m := map[string]protoreflect.MessageType{}
 	for _, wkt := range registeredKnownTypes {
 		// We can only access ProtoReflect() after the proto package init() methods have been called.
 		name := string(wkt.message.ProtoReflect().Descriptor().FullName())
+		names := append([]string{name}, wkt.aliases...)
 
-		if st, ok := seen[name]; ok {
-			panic(name + ": registered multiple times: " + st[0].File() + " vs " + wkt.stacktrace[0].File())
+		for _, name := range names {
+			if st, ok := seen[name]; ok {
+				panic(name + ": registered multiple times: " + st[0].File() + " vs " + wkt.stacktrace[0].File())
+			}
+
+			seen[name] = wkt.stacktrace
+			m[name] = wkt.message.ProtoReflect().Type()
 		}
-
-		seen[name] = wkt.stacktrace
 	}
 
-	var strs []string
-	for key := range seen {
-		strs = append(strs, urlPrefix+key)
-	}
-
-	slices.Sort(strs)
-	wellKnownTypes = strs
+	wellKnownTypes = m
 
 	registeredKnownTypes = nil
 }
 
 func IsValidConfigType(msg *anypb.Any) bool {
-	return slices.Contains(wellKnownTypes, msg.TypeUrl)
+	if strings.HasPrefix(msg.TypeUrl, urlPrefix) {
+		_, ok := wellKnownTypes[strings.TrimPrefix(msg.TypeUrl, urlPrefix)]
+		return ok
+	}
+
+	return false
 }
 
-func (ConfigType[V]) CheckGet(cfg Configuration) (V, bool) {
-	v := protos.NewFromType[V]()
+func (ct ConfigType[V]) CheckGet(cfg Configuration) (V, bool) {
+	m := protos.NewFromType[V]()
 	if cfg == nil {
-		return v, false
+		return m, false
 	}
-	return v, cfg.checkGetMessage(v)
+	name := string(m.ProtoReflect().Descriptor().FullName())
+	return m, cfg.checkGetMessage(m, name, ct.aliases)
 }
 
-func (ConfigType[V]) CheckGetForPlatform(cfg Configuration, target specs.Platform) (V, bool) {
-	v := protos.NewFromType[V]()
+func (ct ConfigType[V]) CheckGetForPlatform(cfg Configuration, target specs.Platform) (V, bool) {
+	m := protos.NewFromType[V]()
 	if cfg == nil {
-		return v, false
+		return m, false
 	}
-	return v, cfg.checkGetMessageForPlatform(target, v)
+	name := string(m.ProtoReflect().Descriptor().FullName())
+	return m, cfg.checkGetMessageForPlatform(target, m, name, ct.aliases)
 }

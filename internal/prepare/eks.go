@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/providers/aws/eks/config"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/universe/aws/configuration/eks"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -21,7 +21,7 @@ func PrepareEksCluster(env planning.Context, clusterName string) compute.Computa
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			c, err := devhost.MakeConfiguration(&config.Cluster{Name: clusterName})
+			c, err := devhost.MakeConfiguration(&eks.Cluster{Name: clusterName})
 			if err != nil {
 				return nil, err
 			}

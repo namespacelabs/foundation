@@ -13,9 +13,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/providers/aws/eks"
+	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
+	fneks "namespacelabs.dev/foundation/universe/aws/eks"
 )
 
 func newComputeIrsaCmd() *cobra.Command {
@@ -41,7 +42,7 @@ func newComputeIrsaCmd() *cobra.Command {
 			return fnerrors.New("not an eks cluster")
 		}
 
-		result, err := eks.PrepareIrsa(eksCluster, iamRole, namespace, serviceAccount, nil)
+		result, err := fneks.PrepareIrsa(eksCluster, iamRole, namespace, serviceAccount, nil)
 		if err != nil {
 			return err
 		}

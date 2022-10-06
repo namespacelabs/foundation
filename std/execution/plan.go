@@ -101,26 +101,26 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 			return nil, fnerrors.InternalError("%v: no handler registered", key)
 		}
 
-		copy := proto.Clone(reg.tmpl)
-		if err := src.Impl.UnmarshalTo(copy); err != nil {
+		msg, err := reg.unmarshal(src)
+		if err != nil {
 			return nil, fnerrors.InternalError("%v: failed to unmarshal: %w", key, err)
 		}
 
 		node := &rnode{
 			def: src,
 			reg: reg,
-			obj: copy,
+			obj: msg,
 		}
 
 		if reg.funcs.Parse != nil {
 			var err error
-			node.value, err = reg.funcs.Parse(ctx, src, copy)
+			node.value, err = reg.funcs.Parse(ctx, src, msg)
 			if err != nil {
 				return nil, fnerrors.InternalError("%s: failed to parse: %w", key, err)
 			}
 		}
 
-		computedOrder, err := reg.funcs.PlanOrder(copy, node.value)
+		computedOrder, err := reg.funcs.PlanOrder(msg, node.value)
 		if err != nil {
 			return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 		}

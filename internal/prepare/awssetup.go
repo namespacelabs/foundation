@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/providers/aws"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -21,7 +21,7 @@ func PrepareAWSProfile(env planning.Context, profileName string) compute.Computa
 		compute.Inputs().Str("profileName", profileName).Proto("env", env.Environment()),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			hostEnv := &aws.Conf{
+			hostEnv := &awsconf.Configuration{
 				Profile: profileName,
 			}
 			c, err := devhost.MakeConfiguration(hostEnv)

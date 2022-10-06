@@ -13,10 +13,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/providers/aws"
-	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	aws "namespacelabs.dev/foundation/universe/aws/configuration"
+	"namespacelabs.dev/foundation/universe/aws/eks"
 	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
@@ -44,7 +44,7 @@ func newPrepareCmd() *cobra.Command {
 					Purpose: schema.Environment_DEVELOPMENT,
 					Configuration: protos.WrapAnysOrDie(
 						&registry.Provider{Provider: "aws/ecr"},
-						&aws.Conf{UseInjectedWebIdentity: true}),
+						&aws.Configuration{UseInjectedWebIdentity: true}),
 				}, {
 					Purpose: schema.Environment_DEVELOPMENT,
 					Runtime: "kubernetes",
@@ -54,7 +54,7 @@ func newPrepareCmd() *cobra.Command {
 					Purpose: schema.Environment_PRODUCTION,
 					Configuration: protos.WrapAnysOrDie(
 						&registry.Provider{Provider: "aws/ecr"},
-						&aws.Conf{
+						&aws.Configuration{
 							UseInjectedWebIdentity: true,
 							AssumeRoleArn:          roleArn,
 						}),
@@ -70,7 +70,7 @@ func newPrepareCmd() *cobra.Command {
 				}},
 
 			ConfigureTools: protos.WrapAnysOrDie(
-				&aws.Conf{UseInjectedWebIdentity: true},
+				&aws.Configuration{UseInjectedWebIdentity: true},
 				&registry.Provider{Provider: "aws/ecr"},
 				&client.HostEnv{Incluster: true}),
 

@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/providers/aws/eks"
+	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/std/planning"
 )
 

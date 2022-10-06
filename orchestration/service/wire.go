@@ -16,12 +16,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
-	"namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/universe/aws/iam"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
