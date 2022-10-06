@@ -16,7 +16,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	statuscodes "google.golang.org/grpc/codes"
-	"namespacelabs.dev/foundation/std/go/rpcerrors"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 )
 
 // pgx does not provide for instrumentation hooks, only logging. So we wrap access to it, retaining the API.

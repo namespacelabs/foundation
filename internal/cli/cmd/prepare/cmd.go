@@ -64,8 +64,6 @@ func baseline(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHost
 
 func prebuilts(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	var prebuilts = []schema.PackageName{
-		"namespacelabs.dev/foundation/devworkflow/web",
-		"namespacelabs.dev/foundation/std/dev/controller",
 		"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
 		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
 		"namespacelabs.dev/foundation/std/secrets/kubernetes",

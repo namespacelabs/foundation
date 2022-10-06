@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/dev/controller/admin"
+	"namespacelabs.dev/foundation/std/development/controller/admin"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/web/http"
@@ -37,7 +37,7 @@ import (
 )
 
 var (
-	controllerPkg = schema.MakePackageSingleRef("namespacelabs.dev/foundation/std/dev/controller")
+	controllerPkg = schema.MakePackageSingleRef("namespacelabs.dev/foundation/std/development/controller")
 )
 
 const (

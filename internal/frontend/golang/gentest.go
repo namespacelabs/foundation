@@ -47,7 +47,7 @@ import (
 	"fmt"
 
 	"{{.ServicePkg}}"
-	"namespacelabs.dev/foundation/testing"
+	"namespacelabs.dev/foundation/framework/testing"
 )
 
 func main() {

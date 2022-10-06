@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	pb "google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -20,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
-	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )

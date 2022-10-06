@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devsession"
+	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devui"
 
 	baseRepository = "us-docker.pkg.dev/foundation-344819/prebuilts"
-	prebuilt       = "sha256:13d961041080faed5cebac4ccfe2ccfa9302de115ea9303ea768bf580982bf90"
+	prebuilt       = "sha256:6c920558b6b92b241bb7a96f9af77b242a9a0fc6d56fe376ba67163358a1f457"
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {

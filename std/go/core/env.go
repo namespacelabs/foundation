@@ -17,9 +17,9 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
-	"namespacelabs.dev/foundation/std/go/rpcerrors"
 	"namespacelabs.dev/foundation/std/runtime"
 )
 

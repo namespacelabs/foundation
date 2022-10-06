@@ -13,7 +13,7 @@
 		"vite-plugin-rewrite-all": "^1.0.0"
 	},
 	"dependencies": {
-		"@namespacelabs.dev/webui-components": "fn:namespacelabs.dev/foundation/webui/components",
+		"@namespacelabs.dev/webui-components": "fn:namespacelabs.dev/foundation/internal/webui/components",
 		"classnames": "^2.3.1",
 		"date-fns": "^2.28.0",
 		"react": "^17.0.2",

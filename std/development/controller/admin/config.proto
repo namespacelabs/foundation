@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.std.dev.controller.admin;
+package foundation.std.development.controller.admin;
 
-option go_package = "namespacelabs.dev/foundation/std/dev/controller/admin";
+option go_package = "namespacelabs.dev/foundation/std/development/controller/admin";
 
 message Configuration {
     repeated Backend backend       = 1;

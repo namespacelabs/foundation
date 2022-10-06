@@ -10,8 +10,8 @@ import (
 	"sort"
 
 	"google.golang.org/protobuf/types/known/emptypb"
+	"namespacelabs.dev/foundation/framework/testing"
 	"namespacelabs.dev/foundation/std/testdata/service/proto"
-	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {

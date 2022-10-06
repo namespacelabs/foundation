@@ -20,7 +20,7 @@ import (
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
-	"namespacelabs.dev/foundation/std/dev/controller/admin"
+	"namespacelabs.dev/foundation/std/development/controller/admin"
 	"namespacelabs.dev/foundation/std/development/filesync"
 )
 

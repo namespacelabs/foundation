@@ -7,7 +7,7 @@ package kubetool
 import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/std/go/rpcerrors"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 )
 
 type perNode interface {

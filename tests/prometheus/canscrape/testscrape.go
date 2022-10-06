@@ -15,10 +15,10 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"namespacelabs.dev/foundation/framework/testing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/schemahelper"
 	"namespacelabs.dev/foundation/std/testdata/service/proto"
-	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {

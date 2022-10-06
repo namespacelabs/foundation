@@ -8,8 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"namespacelabs.dev/foundation/framework/testing"
 	"namespacelabs.dev/foundation/std/testdata/service/proto"
-	"namespacelabs.dev/foundation/testing"
 )
 
 func main() {

@@ -8,7 +8,6 @@ prebuilts: {
 		"namespacelabs.dev/foundation/cmd/ns":                                                         "sha256:fb3c5865afb37f0beecab641b9ab2d0f765ba2ff02aa32d21f81fa1d2be4867b"
 		"namespacelabs.dev/foundation/cmd/nspipelines":                                                "sha256:128a30f70a1dd1cc9f9a399a367bafac44225dc3619bdb118458b5b69090c3b3"
 		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                                "sha256:f2cf5502f9b6afc27f73386fbbfd31954434968b048723f37e22996228972ee3"
-		"namespacelabs.dev/foundation/std/dev/controller":                                             "sha256:bff9b0ed48a0cd129ad9015882fd130ae268b51b3dadf211467b0f84bea430cb"
 		"namespacelabs.dev/foundation/std/development/filesync/controller":                            "sha256:0bdc9f7dff58db8626c8cbb5cbac1d7aee3c93c4f1268d48ac667041ddb3c85b"
 		"namespacelabs.dev/foundation/std/grpc/httptranscoding/configure":                             "sha256:eae106958cb4886d5ffab9f661f758a242d31c8c02358dd96fc301a247a7328a"
 		"namespacelabs.dev/foundation/std/monitoring/grafana/tool":                                    "sha256:346a38e8301ba8366659280249a16ec287a14559f2855f5e7f2d07e5e4c190f9"
