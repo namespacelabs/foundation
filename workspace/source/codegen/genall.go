@@ -7,10 +7,10 @@ package codegen
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -19,7 +19,7 @@ import (
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
 func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
-	g := ops.NewEmptyPlan()
+	g := execution.NewEmptyPlan()
 	for _, loc := range locs {
 		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
 		if err != nil {
@@ -34,7 +34,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 				g.Add(defs...)
 			}
 		}
-		if err := ops.Execute(ctx, env, "workspace.generate.phase.node", g, nil,
+		if err := execution.Execute(ctx, env, "workspace.generate.phase.node", g, nil,
 			pkggraph.MutableModuleInjection.With(out),
 			pkggraph.PackageLoaderInjection.With(pl.Seal()),
 		); err != nil {
@@ -48,7 +48,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := workspace.NewPackageLoader(env)
 
-	g := ops.NewEmptyPlan()
+	g := execution.NewEmptyPlan()
 	for _, loc := range locs {
 		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
 		if err != nil {
@@ -86,7 +86,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env pl
 		}
 	}
 
-	return ops.Execute(ctx, env, "workspace.generate.phase.code", g, nil,
+	return execution.Execute(ctx, env, "workspace.generate.phase.code", g, nil,
 		pkggraph.MutableModuleInjection.With(out),
 		pkggraph.PackageLoaderInjection.With(pl.Seal()),
 	)

@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"

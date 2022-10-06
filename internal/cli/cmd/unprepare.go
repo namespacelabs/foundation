@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/buildkit"
-	"namespacelabs.dev/foundation/engine/cache"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/unprepare"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/module"

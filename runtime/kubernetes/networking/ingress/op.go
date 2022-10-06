@@ -13,7 +13,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -21,14 +20,15 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/runtime/naming"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Register() {
 	RegisterRuntimeState()
 
-	ops.RegisterFuncs(ops.Funcs[*OpMapAddress]{
-		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpMapAddress) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*OpMapAddress]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpMapAddress) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
@@ -48,8 +48,8 @@ func Register() {
 		},
 	})
 
-	ops.RegisterFuncs(ops.Funcs[*OpCleanupMigration]{
-		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpCleanupMigration) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*OpCleanupMigration]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpCleanupMigration) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err

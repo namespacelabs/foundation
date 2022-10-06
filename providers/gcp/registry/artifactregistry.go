@@ -10,8 +10,8 @@ import (
 	"os/exec"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	c "namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	c "namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"

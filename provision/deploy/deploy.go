@@ -13,10 +13,9 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/secrets"
@@ -27,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/resources"
@@ -140,7 +140,7 @@ type makeDeployGraph struct {
 }
 
 type Plan struct {
-	Deployer         *ops.Plan
+	Deployer         *execution.Plan
 	ComputedStack    *provision.Stack
 	IngressFragments []*schema.IngressFragment
 	Computed         *schema.ComputedConfigurations
@@ -167,7 +167,7 @@ func (m *makeDeployGraph) Output() compute.Output {
 func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*Plan, error) {
 	pbr := compute.MustGetDepValue(deps, m.prepare, "prepare")
 
-	g := ops.NewEmptyPlan()
+	g := execution.NewEmptyPlan()
 	g.Add(pbr.HandlerResult.OrderedInvocations...)
 	g.Add(pbr.Ops...)
 

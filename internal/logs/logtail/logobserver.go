@@ -13,8 +13,8 @@ import (
 	"sync"
 
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"

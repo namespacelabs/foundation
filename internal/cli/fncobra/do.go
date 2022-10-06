@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"namespacelabs.dev/foundation/engine/compute"
+	"namespacelabs.dev/foundation/internal/compute"
 )
 
 type CmdHandler func(context.Context, []string) error

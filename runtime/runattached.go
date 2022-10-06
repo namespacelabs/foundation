@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"os"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -30,9 +30,9 @@ func RunAttached(ctx context.Context, config planning.Context, cluster ClusterNa
 		}
 	}()
 
-	g := ops.NewPlan(plan.Definitions...)
+	g := execution.NewPlan(plan.Definitions...)
 	// ResolveContainers will wait until the deployable is running, so we don't rely on the waiters returned by Execute.
-	if err := ops.Execute(ctx, config, "deployable.run-attached", g, nil, InjectCluster(cluster)...); err != nil {
+	if err := execution.Execute(ctx, config, "deployable.run-attached", g, nil, InjectCluster(cluster)...); err != nil {
 		return fnerrors.New("failed to deploy: %w", err)
 	}
 

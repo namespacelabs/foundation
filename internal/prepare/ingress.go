@@ -7,12 +7,12 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -49,9 +49,9 @@ func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kuber
 		return err
 	}
 
-	g := ops.NewPlan(state.Definitions...)
+	g := execution.NewPlan(state.Definitions...)
 
-	if err := ops.Execute(ctx, env, "ingress.deploy", g, nil, runtime.ClusterInjection.With(kube)); err != nil {
+	if err := execution.Execute(ctx, env, "ingress.deploy", g, nil, runtime.ClusterInjection.With(kube)); err != nil {
 		return err
 	}
 

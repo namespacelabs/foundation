@@ -7,15 +7,15 @@ package deploy
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/resources"
 )
 
 func register_OpCaptureServerConfig() {
-	ops.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, capture *resources.OpCaptureServerConfig) (*ops.HandleResult, error) {
-		return &ops.HandleResult{
-			Outputs: []ops.Output{
+	execution.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, capture *resources.OpCaptureServerConfig) (*execution.HandleResult, error) {
+		return &execution.HandleResult{
+			Outputs: []execution.Output{
 				{InstanceID: capture.ResourceInstanceId, Message: capture.Server},
 			},
 		}, nil

@@ -7,10 +7,10 @@ package configure
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
 type StackRequest struct {

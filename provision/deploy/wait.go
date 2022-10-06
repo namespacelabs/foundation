@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/kr/text"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -26,7 +26,7 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func MaybeRenderBlock(env planning.Context, cluster runtime.ClusterNamespace, render bool) ops.WaitHandler {
+func MaybeRenderBlock(env planning.Context, cluster runtime.ClusterNamespace, render bool) execution.WaitHandler {
 	return func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
 		if !render {
 			return observeContainers(ctx, env, cluster, nil), func(ctx context.Context, err error) error { return err }

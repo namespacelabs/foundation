@@ -21,14 +21,14 @@ import (
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/rest"
-	"namespacelabs.dev/foundation/engine/ops"
-	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -38,8 +38,8 @@ var (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFuncs(ops.Funcs[*OpGenerateWebhookCert]{
-		Handle: func(ctx context.Context, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*OpGenerateWebhookCert]{
+		Handle: func(ctx context.Context, g *schema.SerializedInvocation, op *OpGenerateWebhookCert) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err

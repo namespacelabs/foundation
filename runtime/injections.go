@@ -4,12 +4,14 @@
 
 package runtime
 
-import "namespacelabs.dev/foundation/engine/ops"
+import (
+	"namespacelabs.dev/foundation/std/execution"
+)
 
-// ClusterInjection is used in ops.Execute to provide access to the cluster instance.
-var ClusterInjection = ops.Define[Cluster]("ns.runtime.cluster")
-var ClusterNamespaceInjection = ops.Define[ClusterNamespace]("ns.runtime.cluster-namespace")
+// ClusterInjection is used in execution.Execute to provide access to the cluster instance.
+var ClusterInjection = execution.Define[Cluster]("ns.runtime.cluster")
+var ClusterNamespaceInjection = execution.Define[ClusterNamespace]("ns.runtime.cluster-namespace")
 
-func InjectCluster(ns ClusterNamespace) []ops.InjectionInstance {
-	return []ops.InjectionInstance{ClusterInjection.With(ns.Cluster()), ClusterNamespaceInjection.With(ns)}
+func InjectCluster(ns ClusterNamespace) []execution.InjectionInstance {
+	return []execution.InjectionInstance{ClusterInjection.With(ns.Cluster()), ClusterNamespaceInjection.With(ns)}
 }

@@ -7,11 +7,11 @@ package kubedef
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 )
 
 type KubeCluster interface {
@@ -33,7 +33,7 @@ type KubeConfig struct {
 }
 
 func InjectedKubeCluster(ctx context.Context) (KubeCluster, error) {
-	c, err := ops.Get(ctx, runtime.ClusterInjection)
+	c, err := execution.Get(ctx, runtime.ClusterInjection)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func InjectedKubeCluster(ctx context.Context) (KubeCluster, error) {
 }
 
 func InjectedKubeClusterNamespace(ctx context.Context) (KubeClusterNamespace, error) {
-	c, err := ops.Get(ctx, runtime.ClusterNamespaceInjection)
+	c, err := execution.Get(ctx, runtime.ClusterNamespaceInjection)
 	if err != nil {
 		return nil, err
 	}

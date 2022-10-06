@@ -4,9 +4,9 @@
 
 package pkggraph
 
-import "namespacelabs.dev/foundation/engine/ops"
+import "namespacelabs.dev/foundation/std/execution"
 
 var (
-	PackageLoaderInjection = ops.Define[PackageLoader]("ns.pkggraph.package-loader")
-	MutableModuleInjection = ops.Define[MutableModule]("ns.pkggraph.mutable-module")
+	PackageLoaderInjection = execution.Define[PackageLoader]("ns.pkggraph.package-loader")
+	MutableModuleInjection = execution.Define[MutableModule]("ns.pkggraph.mutable-module")
 )

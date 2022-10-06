@@ -13,7 +13,6 @@ import (
 	"io/fs"
 	"strings"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -21,11 +20,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func generateWebBackend(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*ops.HandleResult, error) {
-	loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+func generateWebBackend(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenHttpBackend) (*execution.HandleResult, error) {
+	loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 	if err != nil {
 		return nil, err
 	}

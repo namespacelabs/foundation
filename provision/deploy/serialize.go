@@ -5,8 +5,8 @@
 package deploy
 
 import (
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 )
 
 func Serialize(ws *schema.Workspace, env *schema.Environment, stack *schema.Stack, computed *Plan, focus []string) *schema.DeployPlan {
@@ -19,7 +19,7 @@ func Serialize(ws *schema.Workspace, env *schema.Environment, stack *schema.Stac
 		Environment:     env,
 		Stack:           stack,
 		IngressFragment: computed.IngressFragments,
-		Program:         ops.Serialize(computed.Deployer),
+		Program:         execution.Serialize(computed.Deployer),
 		Hints:           computed.Hints,
 		FocusServer:     focus,
 	}

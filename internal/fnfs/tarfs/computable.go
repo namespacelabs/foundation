@@ -10,9 +10,9 @@ import (
 	"io"
 	"io/fs"
 
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 

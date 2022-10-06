@@ -10,9 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -20,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/providers/aws/auth"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -66,7 +66,7 @@ func newSetupAutopushCmd() *cobra.Command {
 
 		stdout := console.Stdout(ctx)
 
-		p := ops.NewEmptyPlan()
+		p := execution.NewEmptyPlan()
 		for _, inv := range result {
 			def, err := inv.ToDefinition()
 			if err != nil {
@@ -82,7 +82,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		if dryRun {
 			fmt.Fprintf(stdout, "Not making changes to the cluster, as --dry_run=true.\n\n")
 		} else {
-			if err := ops.Execute(ctx, env, "eks.autopush.apply", p, nil, runtime.ClusterInjection.With(cluster)); err != nil {
+			if err := execution.Execute(ctx, env, "eks.autopush.apply", p, nil, runtime.ClusterInjection.With(cluster)); err != nil {
 				return err
 			}
 		}

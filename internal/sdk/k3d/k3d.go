@@ -16,11 +16,11 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"golang.org/x/mod/semver"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/disk"
 	"namespacelabs.dev/foundation/internal/fnerrors"

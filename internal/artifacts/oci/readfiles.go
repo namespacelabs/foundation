@@ -12,7 +12,7 @@ import (
 	"sort"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"namespacelabs.dev/foundation/engine/compute"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"

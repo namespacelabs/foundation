@@ -10,8 +10,8 @@ import (
 	"io"
 	"os"
 
-	"namespacelabs.dev/foundation/engine/cache"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )

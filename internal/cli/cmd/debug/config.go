@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/startup"

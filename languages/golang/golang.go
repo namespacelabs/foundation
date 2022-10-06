@@ -13,9 +13,7 @@ import (
 	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
-	"namespacelabs.dev/foundation/engine/ops/defs"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/production"
@@ -24,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -40,9 +40,9 @@ func Register() {
 	languages.Register(schema.Framework_GO, impl{})
 	runtime.RegisterSupport(schema.Framework_GO, impl{})
 
-	ops.RegisterFuncs(ops.Funcs[*OpGenNode]{
-		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-			loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	execution.RegisterFuncs(execution.Funcs[*OpGenNode]{
+		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*execution.HandleResult, error) {
+			loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 			if err != nil {
 				return nil, err
 			}
@@ -56,9 +56,9 @@ func Register() {
 		},
 	})
 
-	ops.RegisterFuncs(ops.Funcs[*OpGenServer]{
-		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-			loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	execution.RegisterFuncs(execution.Funcs[*OpGenServer]{
+		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*execution.HandleResult, error) {
+			loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 			if err != nil {
 				return nil, err
 			}

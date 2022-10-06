@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/encoding/protojson"
-	"namespacelabs.dev/foundation/engine/compute"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/sdk/deno"

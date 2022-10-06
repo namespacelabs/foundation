@@ -10,9 +10,8 @@ import (
 	"io/fs"
 
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
@@ -20,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -27,7 +27,7 @@ import (
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, op *OpMultiProtoGen) (*ops.HandleResult, error) {
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, op *OpMultiProtoGen) (*execution.HandleResult, error) {
 		request := map[schema.Framework]*srcprotos.FileDescriptorSetAndDeps{}
 		var errs []error
 		for _, entry := range op.Protos {
@@ -40,12 +40,12 @@ func RegisterGraphHandlers() {
 			return nil, mergeErr
 		}
 
-		module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+		module, err := execution.Get(ctx, pkggraph.MutableModuleInjection)
 		if err != nil {
 			return nil, err
 		}
 
-		config, err := ops.Get(ctx, ops.ConfigurationInjection)
+		config, err := execution.Get(ctx, execution.ConfigurationInjection)
 		if err != nil {
 			return nil, err
 		}
@@ -57,13 +57,13 @@ func RegisterGraphHandlers() {
 		return nil, nil
 	})
 
-	ops.Compile[*OpProtoGen](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
-		module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+	execution.Compile[*OpProtoGen](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
+		module, err := execution.Get(ctx, pkggraph.MutableModuleInjection)
 		if err != nil {
 			return nil, err
 		}
 
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+		loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}

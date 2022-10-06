@@ -9,17 +9,17 @@ import (
 	"fmt"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerCleanup() {
-	ops.RegisterFuncs(ops.Funcs[*kubedef.OpCleanupRuntimeConfig]{
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, cleanup *kubedef.OpCleanupRuntimeConfig) (*ops.HandleResult, error) {
-			return tasks.Return(ctx, tasks.Action("kubernetes.cleanup").HumanReadablef(d.Description), func(ctx context.Context) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpCleanupRuntimeConfig]{
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, cleanup *kubedef.OpCleanupRuntimeConfig) (*execution.HandleResult, error) {
+			return tasks.Return(ctx, tasks.Action("kubernetes.cleanup").HumanReadablef(d.Description), func(ctx context.Context) (*execution.HandleResult, error) {
 				// TODO turn into noop when orchestrator with corresponding controller is published.
 
 				// Remove configmap runtime configs no longer being used.

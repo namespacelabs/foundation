@@ -7,7 +7,7 @@ package prepare
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/compute"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/providers/nscloud"
 	"namespacelabs.dev/foundation/providers/nscloud/config"
 	"namespacelabs.dev/foundation/schema"

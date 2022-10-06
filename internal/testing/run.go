@@ -15,9 +15,8 @@ import (
 	"github.com/morikuni/aec"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -28,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -158,10 +158,10 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 				return err
 			}
 
-			g := ops.NewPlan(plan.Definitions...)
+			g := execution.NewPlan(plan.Definitions...)
 
 			// Make sure that the cluster is accessible to a serialized invocation implementation.
-			if err := ops.Execute(ctx, env, "test.driver.deploy", g, nil, runtime.InjectCluster(cluster)...); err != nil {
+			if err := execution.Execute(ctx, env, "test.driver.deploy", g, nil, runtime.InjectCluster(cluster)...); err != nil {
 				return fnerrors.New("failed to deploy: %w", err)
 			}
 

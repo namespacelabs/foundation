@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/build/registry"
-	"namespacelabs.dev/foundation/engine/compute"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend"

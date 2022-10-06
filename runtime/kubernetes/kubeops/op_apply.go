@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -26,11 +25,12 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerApply() {
-	ops.RegisterVFuncs(ops.VFuncs[*kubedef.OpApply, *parsedApply]{
+	execution.RegisterVFuncs(execution.VFuncs[*kubedef.OpApply, *parsedApply]{
 		Parse: func(ctx context.Context, def *fnschema.SerializedInvocation, apply *kubedef.OpApply) (*parsedApply, error) {
 			if apply.BodyJson == "" {
 				return nil, fnerrors.InternalError("apply.Body is required")
@@ -44,7 +44,7 @@ func registerApply() {
 			return &parsedApply{obj: &parsed, spec: apply}, nil
 		},
 
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedApply) (*ops.HandleResult, error) {
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedApply) (*execution.HandleResult, error) {
 			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, parsed.spec)
 		},
 
@@ -59,7 +59,7 @@ type parsedApply struct {
 	spec *kubedef.OpApply
 }
 
-func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubedef.Object, spec *kubedef.OpApply) (*ops.HandleResult, error) {
+func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubedef.Object, spec *kubedef.OpApply) (*execution.HandleResult, error) {
 	gv := obj.GroupVersionKind().GroupVersion()
 	if gv.Version == "" {
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
@@ -166,7 +166,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			return nil, fnerrors.InternalError("failed to wait on resource: no metadata.generation")
 		}
 
-		return &ops.HandleResult{Waiters: []ops.Waiter{kobs.WaitOnGenerationCondition{
+		return &execution.HandleResult{Waiters: []execution.Waiter{kobs.WaitOnGenerationCondition{
 			RestConfig:         restcfg,
 			Namespace:          obj.GetNamespace(),
 			Name:               obj.GetName(),
@@ -190,7 +190,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 		// XXX print a warning if expected fields are missing.
 		if err1 == nil && found1 {
-			var waiters []ops.Waiter
+			var waiters []execution.Waiter
 			for _, sc := range scope {
 				w := kobs.WaitOnResource{
 					RestConfig:       restcfg,
@@ -204,7 +204,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				}
 				waiters = append(waiters, w.WaitUntilReady)
 			}
-			return &ops.HandleResult{
+			return &execution.HandleResult{
 				Waiters: waiters,
 			}, nil
 		} else {
@@ -213,7 +213,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		}
 
 	case kubedef.IsPod(obj):
-		waiters := []ops.Waiter{func(ctx context.Context, ch chan *orchestration.Event) error {
+		waiters := []execution.Waiter{func(ctx context.Context, ch chan *orchestration.Event) error {
 			if ch != nil {
 				defer close(ch)
 			}
@@ -262,7 +262,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 					}))
 		}}
 
-		return &ops.HandleResult{
+		return &execution.HandleResult{
 			Waiters: waiters,
 		}, nil
 	}

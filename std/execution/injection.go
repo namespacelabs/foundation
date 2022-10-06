@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package ops
+package execution
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 type injectionKey string
 
-var _injectionKey injectionKey = "fn.ops.injection"
+var _injectionKey injectionKey = "fn.execution.Injection"
 
 type Injection[V any] struct {
 	key string

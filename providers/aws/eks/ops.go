@@ -8,15 +8,15 @@ import (
 	"context"
 
 	awsauth "github.com/keikoproj/aws-auth/pkg/mapper"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 )
 
 func RegisterGraphHandlers() {
-	ops.RegisterFuncs(ops.Funcs[*OpEnsureAwsAuth]{
-		Handle: func(ctx context.Context, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*OpEnsureAwsAuth]{
+		Handle: func(ctx context.Context, def *schema.SerializedInvocation, a *OpEnsureAwsAuth) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err

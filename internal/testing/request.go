@@ -9,8 +9,8 @@ import (
 	"io/fs"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/workspace/tasks"

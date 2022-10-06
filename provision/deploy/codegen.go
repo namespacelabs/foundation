@@ -7,12 +7,12 @@ package deploy
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/compute"
-	"namespacelabs.dev/foundation/engine/ops"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
@@ -89,9 +89,9 @@ func codegenServer(ctx context.Context, srv parsed.Server) error {
 		return err
 	}
 
-	r := ops.NewPlan(codegen...)
+	r := execution.NewPlan(codegen...)
 
-	return ops.Execute(ctx, srv.SealedContext(), "workspace.codegen", r, nil,
+	return execution.Execute(ctx, srv.SealedContext(), "workspace.codegen", r, nil,
 		pkggraph.MutableModuleInjection.With(srv.Module()),
 		pkggraph.PackageLoaderInjection.With(srv.SealedContext()),
 	)

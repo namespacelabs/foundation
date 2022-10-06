@@ -8,13 +8,13 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -25,10 +25,10 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
 		}
 
-		p := ops.NewPlan(plan.Program.Invocation...)
+		p := execution.NewPlan(plan.Program.Invocation...)
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return ops.Execute(ctx, env, "deployment.execute", p,
+		return execution.Execute(ctx, env, "deployment.execute", p,
 			deploy.MaybeRenderBlock(env, cluster, outputProgress),
 			runtime.InjectCluster(cluster)...)
 	}

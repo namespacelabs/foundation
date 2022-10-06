@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 )
 
@@ -46,7 +46,7 @@ func newComputeIrsaCmd() *cobra.Command {
 			return err
 		}
 
-		p := ops.NewEmptyPlan()
+		p := execution.NewEmptyPlan()
 		for _, inv := range result.Invocations {
 			def, err := inv.ToDefinition()
 			if err != nil {
@@ -63,7 +63,7 @@ func newComputeIrsaCmd() *cobra.Command {
 		if dryRun {
 			fmt.Fprintf(console.Stdout(ctx), "Not making changes to the cluster, as --dry_run=true.\n\n")
 		} else {
-			if err := ops.Execute(ctx, env, "eks.irsa.apply", p, nil); err != nil {
+			if err := execution.Execute(ctx, env, "eks.irsa.apply", p, nil); err != nil {
 				return err
 			}
 		}

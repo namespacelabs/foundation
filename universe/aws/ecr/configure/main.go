@@ -8,12 +8,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/providers/aws/eks"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/provision/configure"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
 func main() {

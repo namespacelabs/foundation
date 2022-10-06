@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	"github.com/gorilla/mux"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/schema"
 )

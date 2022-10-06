@@ -8,8 +8,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages/golang"

@@ -9,7 +9,7 @@ import (
 	"reflect"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/engine/cache"
+	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )

@@ -11,17 +11,17 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/types"
 )
 
 func RegisterCreateSecret() {
-	ops.RegisterFuncs(ops.Funcs[*kubedef.OpCreateSecretConditionally]{
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpCreateSecretConditionally]{
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, create *kubedef.OpCreateSecretConditionally) (*execution.HandleResult, error) {
 			if create.Name == "" {
 				return nil, fnerrors.InternalError("%s: create.Name is required", d.Description)
 			}
@@ -74,7 +74,7 @@ func RegisterCreateSecret() {
 					create.UserSpecifiedName: bundleBytes,
 				}
 			} else {
-				resource, err := ops.Value[*types.Resource](d, "value")
+				resource, err := execution.Value[*types.Resource](d, "value")
 				if err != nil {
 					return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
 				}

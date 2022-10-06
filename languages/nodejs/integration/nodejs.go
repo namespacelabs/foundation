@@ -17,8 +17,6 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/engine/ops"
-	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -33,6 +31,8 @@ import (
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
@@ -53,8 +53,8 @@ var ()
 func Register() {
 	languages.Register(schema.Framework_NODEJS, impl{})
 
-	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*ops.HandleResult, error) {
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenServer) (*execution.HandleResult, error) {
+		loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
@@ -71,8 +71,8 @@ func Register() {
 		return nil, nil
 	})
 
-	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*ops.HandleResult, error) {
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*execution.HandleResult, error) {
+		loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
@@ -85,8 +85,8 @@ func Register() {
 		return nil, generateNode(ctx, loader, loc, x.Node, x.LoadedNode, loc.Module.ReadWriteFS())
 	})
 
-	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*ops.HandleResult, error) {
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNodeStub) (*execution.HandleResult, error) {
+		loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
@@ -99,8 +99,8 @@ func Register() {
 		return nil, generateNodeImplStub(ctx, pkg, x.Filename, x.Node)
 	})
 
-	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*ops.HandleResult, error) {
-		loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenGrpc) (*execution.HandleResult, error) {
+		loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 		if err != nil {
 			return nil, err
 		}
@@ -113,8 +113,8 @@ func Register() {
 		return nil, generateGrpcApi(ctx, x.Protos, loc)
 	})
 
-	ops.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenAllYarnRoots) (*ops.HandleResult, error) {
-		module, err := ops.Get(ctx, pkggraph.MutableModuleInjection)
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenAllYarnRoots) (*execution.HandleResult, error) {
+		module, err := execution.Get(ctx, pkggraph.MutableModuleInjection)
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func Register() {
 		return nil, nil
 	})
 
-	ops.Compile[*OpGenYarnRoot](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
+	execution.Compile[*OpGenYarnRoot](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
 		var roots uniquestrings.List
 
 		for _, input := range inputs {

@@ -7,15 +7,15 @@ package kubeops
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 )
 
 func registerDeleteList() {
-	ops.RegisterFuncs(ops.Funcs[*kubedef.OpDeleteList]{
-		Handle: func(ctx context.Context, d *schema.SerializedInvocation, deleteList *kubedef.OpDeleteList) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpDeleteList]{
+		Handle: func(ctx context.Context, d *schema.SerializedInvocation, deleteList *kubedef.OpDeleteList) (*execution.HandleResult, error) {
 			return nil, fnerrors.InternalError("unimplemented")
 		},
 

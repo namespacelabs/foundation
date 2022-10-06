@@ -12,17 +12,17 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerEnsureDeployment() {
-	ops.RegisterVFuncs(ops.VFuncs[*kubedef.OpEnsureDeployment, *parsedEnsureDeployment]{
+	execution.RegisterVFuncs(execution.VFuncs[*kubedef.OpEnsureDeployment, *parsedEnsureDeployment]{
 		Parse: func(ctx context.Context, def *fnschema.SerializedInvocation, ensure *kubedef.OpEnsureDeployment) (*parsedEnsureDeployment, error) {
 			if ensure.SerializedResource == "" {
 				return nil, fnerrors.InternalError("EnsureDeployment.SerializedResource is required")
@@ -36,9 +36,9 @@ func registerEnsureDeployment() {
 			return &parsedEnsureDeployment{obj: &parsed, spec: ensure}, nil
 		},
 
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedEnsureDeployment) (*ops.HandleResult, error) {
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedEnsureDeployment) (*execution.HandleResult, error) {
 			return tasks.Return(ctx, tasks.Action("kubernetes.ensure-deployment").Scope(fnschema.PackageName(parsed.spec.Deployable.PackageName)),
-				func(ctx context.Context) (*ops.HandleResult, error) {
+				func(ctx context.Context) (*execution.HandleResult, error) {
 					if parsed.spec.ConfigurationVolumeName == "" && len(parsed.spec.SetContainerField) == 0 {
 						return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, &kubedef.OpApply{
 							BodyJson:      parsed.spec.SerializedResource,
@@ -46,7 +46,7 @@ func registerEnsureDeployment() {
 						})
 					}
 
-					inputs, err := ops.Get(ctx, ops.InputsInjection)
+					inputs, err := execution.Get(ctx, execution.InputsInjection)
 					if err != nil {
 						return nil, err
 					}

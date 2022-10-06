@@ -10,11 +10,11 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fniam "namespacelabs.dev/foundation/providers/aws/iam"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
 // AWS account ID for our hosted CI pipeline.

@@ -19,14 +19,14 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
-	"namespacelabs.dev/foundation/engine/ops"
-	"namespacelabs.dev/foundation/engine/ops/defs"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	p "namespacelabs.dev/foundation/std/proto"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -35,11 +35,11 @@ import (
 const wellKnownResource = "foundation.std.types.Resource"
 
 func Register() {
-	ops.RegisterHandlerFunc(generateNode)
+	execution.RegisterHandlerFunc(generateNode)
 }
 
-func generateNode(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*ops.HandleResult, error) {
-	loader, err := ops.Get(ctx, pkggraph.PackageLoaderInjection)
+func generateNode(ctx context.Context, _ *schema.SerializedInvocation, msg *OpGenNode) (*execution.HandleResult, error) {
+	loader, err := execution.Get(ctx, pkggraph.PackageLoaderInjection)
 	if err != nil {
 		return nil, err
 	}

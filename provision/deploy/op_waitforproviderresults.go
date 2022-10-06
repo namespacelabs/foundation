@@ -12,12 +12,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -27,14 +27,14 @@ var GarbageCollectProviders = true
 var resultHeader = []byte("namespace.provision.result:")
 
 func register_OpWaitForProviderResults() {
-	ops.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults) (*ops.HandleResult, error) {
+	execution.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults) (*execution.HandleResult, error) {
 		action := tasks.Action("resource.complete-invocation").
 			Scope(schema.PackageName(wait.Deployable.PackageName)).
 			Arg("resource_instance_id", wait.ResourceInstanceId).
 			HumanReadablef(inv.Description)
 
-		return tasks.Return(ctx, action, func(ctx context.Context) (*ops.HandleResult, error) {
-			cluster, err := ops.Get(ctx, runtime.ClusterNamespaceInjection)
+		return tasks.Return(ctx, action, func(ctx context.Context) (*execution.HandleResult, error) {
+			cluster, err := execution.Get(ctx, runtime.ClusterNamespaceInjection)
 			if err != nil {
 				return nil, err
 			}
@@ -105,8 +105,8 @@ func register_OpWaitForProviderResults() {
 
 			_ = tasks.Attachments(ctx).AttachSerializable("instance.json", "", resultMessage)
 
-			return &ops.HandleResult{
-				Outputs: []ops.Output{
+			return &execution.HandleResult{
+				Outputs: []execution.Output{
 					{InstanceID: wait.ResourceInstanceId, Message: resultMessage},
 				},
 			}, nil

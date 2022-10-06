@@ -9,16 +9,16 @@ import (
 	"encoding/json"
 
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 )
 
 func registerApplyRoleBinding() {
-	ops.Compile[*kubedef.OpApplyRoleBinding](func(ctx context.Context, inputs []*fnschema.SerializedInvocation) ([]*fnschema.SerializedInvocation, error) {
+	execution.Compile[*kubedef.OpApplyRoleBinding](func(ctx context.Context, inputs []*fnschema.SerializedInvocation) ([]*fnschema.SerializedInvocation, error) {
 		ns, err := kubedef.InjectedKubeClusterNamespace(ctx)
 		if err != nil {
 			return nil, err

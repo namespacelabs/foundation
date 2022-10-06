@@ -20,7 +20,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -28,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/foundation/workspace/tasks/protolog"
@@ -77,7 +77,7 @@ type RunningDeployment struct {
 func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arrival time.Time) (*RunningDeployment, error) {
 	id := ids.NewRandomBase32ID(16)
 
-	p := ops.NewPlan(plan.GetProgram().GetInvocation()...)
+	p := execution.NewPlan(plan.GetProgram().GetInvocation()...)
 
 	dir := filepath.Join(d.statusDir, id)
 	if err := os.MkdirAll(dir, 0700); err != nil {
@@ -119,7 +119,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arriv
 	return &RunningDeployment{ID: id}, nil
 }
 
-func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *ops.Plan, env planning.Context, arrival time.Time) error {
+func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execution.Plan, env planning.Context, arrival time.Time) error {
 	eg := executor.New(ctx, "orchestrator.executeWithLog")
 
 	ch := make(chan *protolog.Log)
@@ -139,7 +139,7 @@ func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *ops.P
 	return eg.Wait()
 }
 
-func (d *deployer) execute(ctx context.Context, out *outputFile, p *ops.Plan, env planning.Context, arrival time.Time) error {
+func (d *deployer) execute(ctx context.Context, out *outputFile, p *execution.Plan, env planning.Context, arrival time.Time) error {
 	cluster, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
 		return err
@@ -157,7 +157,7 @@ func (d *deployer) execute(ctx context.Context, out *outputFile, p *ops.Plan, en
 	}
 	defer releaseLease()
 
-	return ops.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
+	return execution.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
 		ch := make(chan *orchestration.Event)
 		errCh := make(chan error)
 

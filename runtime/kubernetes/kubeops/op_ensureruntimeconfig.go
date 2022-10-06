@@ -9,25 +9,25 @@ import (
 	"encoding/json"
 
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const runtimeConfigVersion = 0
 
 func registerEnsureRuntimeConfig() {
-	ops.RegisterFuncs(ops.Funcs[*kubedef.OpEnsureRuntimeConfig]{
-		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, ensure *kubedef.OpEnsureRuntimeConfig) (*ops.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpEnsureRuntimeConfig]{
+		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, ensure *kubedef.OpEnsureRuntimeConfig) (*execution.HandleResult, error) {
 			action := tasks.Action("kubernetes.ensure-runtime-config").
 				Scope(schema.PackageName(ensure.Deployable.PackageName)).
 				Arg("deployable", ensure.Deployable.PackageName).
 				HumanReadablef(inv.Description)
 
-			return tasks.Return(ctx, action, func(ctx context.Context) (*ops.HandleResult, error) {
+			return tasks.Return(ctx, action, func(ctx context.Context) (*execution.HandleResult, error) {
 				data := map[string]string{}
 
 				output := &kubedef.EnsureRuntimeConfigOutput{}
@@ -90,8 +90,8 @@ func registerEnsureRuntimeConfig() {
 					output.ConfigId = configId
 				}
 
-				return &ops.HandleResult{
-					Outputs: []ops.Output{
+				return &execution.HandleResult{
+					Outputs: []execution.Output{
 						{InstanceID: kubedef.RuntimeConfigOutput(ensure.Deployable), Message: output},
 					},
 				}, nil

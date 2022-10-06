@@ -12,22 +12,22 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/strings/slices"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
 func register_OpInvokeResourceProvider() {
-	ops.Compile[*resources.OpInvokeResourceProvider](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
+	execution.Compile[*resources.OpInvokeResourceProvider](func(ctx context.Context, inputs []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
 		return tasks.Return(ctx, tasks.Action("deploy.compile-invoke-resource"), func(ctx context.Context) ([]*schema.SerializedInvocation, error) {
-			cluster, err := ops.Get(ctx, runtime.ClusterNamespaceInjection)
+			cluster, err := execution.Get(ctx, runtime.ClusterNamespaceInjection)
 			if err != nil {
 				return nil, err
 			}
@@ -110,7 +110,7 @@ type RawJSONObject map[string]any
 
 func BuildResourceMap(ctx context.Context, dependencies []*resources.ResourceDependency) (map[string]RawJSONObject, error) {
 	return tasks.Return(ctx, tasks.Action("deploy.build-resource-map"), func(ctx context.Context) (map[string]RawJSONObject, error) {
-		inputs, err := ops.Get(ctx, ops.InputsInjection)
+		inputs, err := execution.Get(ctx, execution.InputsInjection)
 		if err != nil {
 			return nil, err
 		}

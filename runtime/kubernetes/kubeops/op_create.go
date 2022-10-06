@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	"namespacelabs.dev/foundation/engine/ops"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
@@ -24,11 +23,12 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeparser"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func registerCreate() {
-	ops.RegisterVFuncs(ops.VFuncs[*kubedef.OpCreate, *parsedCreate]{
+	execution.RegisterVFuncs(execution.VFuncs[*kubedef.OpCreate, *parsedCreate]{
 		Parse: func(ctx context.Context, def *fnschema.SerializedInvocation, create *kubedef.OpCreate) (*parsedCreate, error) {
 			if create.BodyJson == "" {
 				return nil, fnerrors.InternalError("create.Body is required")
@@ -66,7 +66,7 @@ func registerCreate() {
 			return parsed, nil
 		},
 
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedCreate) (*ops.HandleResult, error) {
+		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedCreate) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
