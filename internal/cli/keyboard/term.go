@@ -206,7 +206,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 			}
 
 			if len(state) > 0 {
-				// Decouple changes made by devworkflow. Handlers should be able
+				// Decouple changes made by devsession. Handlers should be able
 				// to assume that the received event data is immutable.
 				env := protos.Clone(update.Env)
 				stack := protos.Clone(update.Stack)

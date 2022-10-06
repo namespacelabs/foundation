@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package devworkflow
+package devsession
 
 import (
 	"bytes"
@@ -199,7 +199,7 @@ func (s *Session) Run(ctx context.Context, extra func(*executor.Executor)) error
 
 	defer close(s.requestCh)
 
-	eg := executor.New(ctx, "devworkflow.session")
+	eg := executor.New(ctx, "devsession.session")
 	extra(eg)
 
 	eg.Go(func(ctx context.Context) error {

@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.devworkflow;
+package foundation.internal.devsession;
 
-option go_package = "namespacelabs.dev/foundation/devworkflow";
+option go_package = "namespacelabs.dev/foundation/internal/devsession";
 
 import "schema/stack.proto";
 import "schema/environment.proto";

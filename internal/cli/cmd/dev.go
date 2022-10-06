@@ -17,11 +17,11 @@ import (
 	"github.com/morikuni/aec"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"namespacelabs.dev/foundation/devworkflow"
-	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/engine/compute"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/devsession"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
@@ -76,16 +76,16 @@ func NewDevCmd() *cobra.Command {
 
 				updateWebUISticky(ctx, "preparing")
 
-				sesh, err := devworkflow.NewSession(console.Errors(ctx), sink, localHost,
+				sesh, err := devsession.NewSession(console.Errors(ctx), sink, localHost,
 					schema.SpecToEnv(planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace().Proto())...))
 				if err != nil {
 					return err
 				}
 
 				// Kick off the dev workflow.
-				sesh.DeferRequest(&devworkflow.DevWorkflowRequest{
-					Type: &devworkflow.DevWorkflowRequest_SetWorkspace_{
-						SetWorkspace: &devworkflow.DevWorkflowRequest_SetWorkspace{
+				sesh.DeferRequest(&devsession.DevWorkflowRequest{
+					Type: &devsession.DevWorkflowRequest_SetWorkspace_{
+						SetWorkspace: &devsession.DevWorkflowRequest_SetWorkspace{
 							AbsRoot:           env.Workspace().LoadedFrom().AbsPath,
 							PackageName:       serverPackages[0],
 							AdditionalServers: serverPackages[1:],
@@ -107,18 +107,18 @@ func NewDevCmd() *cobra.Command {
 					Handler: func(ctx context.Context) error {
 						r := mux.NewRouter()
 						fncobra.RegisterPprof(r)
-						devworkflow.RegisterEndpoints(sesh, r)
+						devsession.RegisterEndpoints(sesh, r)
 
 						if devWebServer {
 							localPort := lis.Addr().(*net.TCPAddr).Port
 							webPort := localPort + 1
-							proxyTarget, err := web.StartDevServer(ctx, env, devworkflow.WebPackage, localPort, webPort)
+							proxyTarget, err := web.StartDevServer(ctx, env, devsession.WebPackage, localPort, webPort)
 							if err != nil {
 								return err
 							}
 							r.PathPrefix("/").Handler(reverseproxy.Make(proxyTarget, reverseproxy.DefaultLocalProxy()))
 						} else {
-							mux, err := devworkflow.PrebuiltWebUI(ctx)
+							mux, err := devsession.PrebuiltWebUI(ctx)
 							if err != nil {
 								return err
 							}

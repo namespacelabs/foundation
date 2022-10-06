@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"context"
 
-	"namespacelabs.dev/foundation/devworkflow/keyboard"
+	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/provision/deploy/render"

@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/devworkflow"
-	"namespacelabs.dev/foundation/devworkflow/keyboard"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/keyboard"
+	"namespacelabs.dev/foundation/internal/devsession"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
@@ -60,7 +60,7 @@ func NewAttachCmd() *cobra.Command {
 					view.NewNetworkPlanKeybinding("ingress"),
 				},
 				Handler: func(ctx context.Context) error {
-					pfwd := devworkflow.NewPortFwd(ctx, nil, res.Env, cluster, "localhost")
+					pfwd := devsession.NewPortFwd(ctx, nil, res.Env, cluster, "localhost")
 					pfwd.OnUpdate = func(plan *storage.NetworkPlan) {
 						event := protos.Clone(event)
 						event.NetworkPlan = plan

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package devworkflow
+package devsession
 
 import (
 	"context"
@@ -54,6 +54,7 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 
 	var focus schema.PackageList
 	focus.AddMultiple(pi.focus...)
+
 	deployPlan := deploy.Serialize(pi.env.Workspace().Proto(), pi.env.Environment(), pi.stack, plan, focus.PackageNamesAsString())
 
 	if err := orchestration.Deploy(ctx, pi.env, pi.cluster, deployPlan, true, true); err != nil {

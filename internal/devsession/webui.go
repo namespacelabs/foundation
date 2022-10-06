@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package devworkflow
+package devsession
 
 import (
 	"context"
@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	WebPackage schema.PackageName = "namespacelabs.dev/foundation/devworkflow/web"
+	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devsession"
 
 	baseRepository = "us-docker.pkg.dev/foundation-344819/prebuilts"
-	prebuilt       = "sha256:7c23463fd307825ab082152a527e4863773e3d513699afd8affb1868aa0172c4"
+	prebuilt       = "sha256:13d961041080faed5cebac4ccfe2ccfa9302de115ea9303ea768bf580982bf90"
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {
