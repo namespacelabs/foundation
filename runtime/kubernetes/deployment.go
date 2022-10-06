@@ -777,7 +777,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 		return nil, nil, fnerrors.UserError(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
 
-	quantity := resource.NewScaledQuantity(int64(sizeBytes), resource.Scale(1))
+	quantity := resource.NewScaledQuantity(int64(sizeBytes), 0)
 
 	// Ephemeral environments are short lived, so there is no need for persistent volume claims.
 	// Admin servers are excluded here as they run as singletons in a global namespace.
