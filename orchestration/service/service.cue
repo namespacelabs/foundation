@@ -12,8 +12,8 @@ service: fn.#Service & {
 	exportService: $proto.services.OrchestrationService
 
 	requirePersistentStorage: {
-		persistentId: "ns-orchestration-data"
-		byteCount:    "10GiB"
+		persistentId: "ns-orchestration-state"
+		byteCount:    "1GiB"
 		mountPath:    "/namespace/orchestration/data"
 	}
 }
