@@ -37,15 +37,16 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		env            planning.Context
-		locs           fncobra.Locations
-		testOpts       testing.TestOpts
-		includeServers bool
-		parallel       bool
-		parallelWork   bool = true
-		rocketShip     bool
-		ephemeral      bool = true
-		explain        bool
+		env                 planning.Context
+		locs                fncobra.Locations
+		testOpts            testing.TestOpts
+		includeServers      bool
+		parallel            bool
+		parallelWork        bool = true
+		forceOutputProgress bool
+		rocketShip          bool
+		ephemeral           bool = true
+		explain             bool
 	)
 
 	return fncobra.
@@ -62,8 +63,10 @@ func NewTestCmd() *cobra.Command {
 			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 			flags.BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
+			flags.BoolVar(&forceOutputProgress, "force_output_progress", false, "If set to true, always output progress, regardless of whether parallel is set.")
 
 			_ = flags.MarkHidden("rocket_ship")
+			_ = flags.MarkHidden("force_output_progress")
 		}).
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
@@ -98,7 +101,7 @@ func NewTestCmd() *cobra.Command {
 			style := colors.Ctx(ctx)
 
 			testOpts.ParentRunID = storedrun.ParentID
-			testOpts.OutputProgress = !parallel
+			testOpts.OutputProgress = !parallel || forceOutputProgress
 
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testRefs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testRefs))}

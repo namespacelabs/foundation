@@ -65,10 +65,12 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
 	}
 
-	cluster, err := kubedef.InjectedKubeCluster(ctx)
+	clusterns, err := kubedef.InjectedKubeClusterNamespace(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	cluster := clusterns.Cluster().(kubedef.KubeCluster)
 
 	restcfg := cluster.PreparedClient().RESTConfig
 
@@ -109,7 +111,12 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				}
 			}
 
-			if !cluster.PreparedClient().Configuration.Ephemeral {
+			// On ephemeral environments, e.g. tests, we don't wait for an
+			// ingress controller to be present, before installing ingress
+			// objects. This is because we sometimes run in environments where
+			// there's no controller installed (e.g. in ephemeral nscloud
+			// clusters). And tests don't (yet) exercise ingress objects.
+			if !clusterns.KubeConfig().Environment.Ephemeral {
 				if obj.GroupVersionKind().GroupVersion().String() == "networking.k8s.io/v1" && obj.GroupVersionKind().Kind == "Ingress" {
 					if err := ingress.EnsureState(ctx, cluster); err != nil {
 						return false, err
