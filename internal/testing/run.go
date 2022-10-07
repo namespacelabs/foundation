@@ -96,6 +96,10 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	}
 
 	defer func() {
+		if !test.SealedContext.Environment().Ephemeral {
+			// skip cleanup for non-ephemeral environments (e.g. to allow manual inspection of the resources)
+			return
+		}
 		if _, err := cluster.DeleteRecursively(ctx, false); err != nil {
 			fmt.Fprintln(console.Errors(ctx), "Failed to cleanup: ", err)
 		}
