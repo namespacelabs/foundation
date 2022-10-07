@@ -23,8 +23,7 @@ import (
 )
 
 type HandleResult struct {
-	Waiters []Waiter
-
+	Waiter  Waiter
 	Outputs []Output
 }
 
@@ -196,7 +195,9 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 				}
 			}
 
-			waiters = append(waiters, res.Waiters...)
+			if res.Waiter != nil {
+				waiters = append(waiters, res.Waiter)
+			}
 		}
 	}
 
