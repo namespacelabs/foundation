@@ -5,8 +5,10 @@
 package cuefrontendopaque
 
 import (
+	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -15,6 +17,9 @@ type cueService struct {
 	Kind    string     `json:"kind"`
 	Port    int        `json:"port"`
 	Ingress cueIngress `json:"ingress"`
+
+	ReadinessProbe map[string]string            `json:"probe"`  // `probe: http: "/"`
+	Probes         map[string]map[string]string `json:"probes"` // `probes: readiness: http: "/"`
 }
 
 type cueIngress struct {
@@ -50,6 +55,7 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, err
 		}
 	}
+
 	parsed := &schema.Server_ServiceSpec{
 		Name: name,
 		Port: &schema.Endpoint_Port{Name: name, ContainerPort: int32(svc.Port)},
@@ -59,5 +65,52 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 		}},
 	}
 
+	if svc.Probes != nil && svc.ReadinessProbe != nil {
+		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.BadInputError("probes and probe are exclusive")
+	}
+
+	if svc.ReadinessProbe != nil {
+		md, err := parseProbe(runtime.FnServiceReadyz, svc.ReadinessProbe)
+		if err != nil {
+			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, err
+		}
+		parsed.Metadata = append(parsed.Metadata, md)
+	}
+
+	for name, data := range svc.Probes {
+		var kind string
+		switch name {
+		case "readiness":
+			kind = runtime.FnServiceReadyz
+		case "liveness":
+			kind = runtime.FnServiceLivez
+		default:
+			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.BadInputError("%s: unsupported probe kind", name)
+		}
+
+		md, err := parseProbe(kind, data)
+		if err != nil {
+			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, err
+		}
+		parsed.Metadata = append(parsed.Metadata, md)
+	}
+
 	return parsed, endpointType, nil
+}
+
+func parseProbe(kind string, data map[string]string) (*schema.ServiceMetadata, error) {
+	for _, key := range maps.Keys(data) {
+		if key == "http" {
+			httpmd := &schema.HttpExportedService{Path: data[key]}
+			serializedHttpmd, err := anypb.New(httpmd)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to serialize ServiceMetadata")
+			}
+			return &schema.ServiceMetadata{Kind: kind, Details: serializedHttpmd}, nil
+		} else {
+			return nil, fnerrors.BadInputError("%s: unsupported probe type", key)
+		}
+	}
+
+	return nil, nil
 }

@@ -16,6 +16,8 @@ server: {
 				internetFacing: true
 				httpRoutes: "*": ["/mypath"]
 			}
+
+			probe: http: "/readyz"
 		}
 	}
 

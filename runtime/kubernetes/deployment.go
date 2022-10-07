@@ -147,7 +147,7 @@ func deployAsPods(env *schema.Environment) bool {
 	return env.GetPurpose() == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
-func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, internalEndpoints []*schema.InternalEndpoint, opts deployOpts, s *serverRunState) error {
+func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, opts deployOpts, s *serverRunState) error {
 	if deployable.MainContainer.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.MainContainer.Image)
 	}
@@ -177,7 +177,20 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	var probes []*kubedef.ContainerExtension_Probe
-	for _, internal := range internalEndpoints {
+	for _, external := range deployable.Endpoints {
+		for _, md := range external.ServiceMetadata {
+			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
+				probe, err := toProbe(external.GetPort(), md)
+				if err != nil {
+					return err
+				}
+
+				probes = append(probes, probe)
+			}
+		}
+	}
+
+	for _, internal := range deployable.InternalEndpoints {
 		for _, md := range internal.ServiceMetadata {
 			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
 				probe, err := toProbe(internal.GetPort(), md)

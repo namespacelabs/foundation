@@ -92,7 +92,7 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 	for _, deployable := range d.Specs {
 		var singleState serverRunState
 
-		if err := prepareDeployment(ctx, target, deployable, deployable.InternalEndpoints, deployOpts, &singleState); err != nil {
+		if err := prepareDeployment(ctx, target, deployable, deployOpts, &singleState); err != nil {
 			return nil, err
 		}
 
