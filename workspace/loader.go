@@ -23,25 +23,13 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName, opts ...LoadPackageOpt) (*pkggraph.Package, error) {
+func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName) (*pkggraph.Package, error) {
 	pl := NewPackageLoader(env)
-	parsed, err := pl.LoadByNameWithOpts(ctx, name, opts...)
+	parsed, err := pl.LoadByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
 	return parsed, nil
-}
-
-type LoadPackageOpt func(*LoadPackageOpts)
-
-func DontLoadDependencies() LoadPackageOpt {
-	return func(lpo *LoadPackageOpts) {
-		lpo.LoadPackageReferences = false
-	}
-}
-
-type LoadPackageOpts struct {
-	LoadPackageReferences bool
 }
 
 // EarlyPackageLoader is available during package graph construction, and has
@@ -65,7 +53,7 @@ const (
 )
 
 type Frontend interface {
-	ParsePackage(context.Context, pkggraph.Location, LoadPackageOpts) (*pkggraph.Package, error)
+	ParsePackage(context.Context, pkggraph.Location) (*pkggraph.Package, error)
 	GuessPackageType(context.Context, schema.PackageName) (PackageType, error)
 }
 
@@ -75,16 +63,17 @@ var MakeFrontend func(EarlyPackageLoader, *schema.Environment) Frontend
 // complete whole sub-trees. During a single root load, we maintain a cache of
 // already loaded packages to minimize this fan-out cost.
 type PackageLoader struct {
-	absPath       string
-	workspace     planning.Workspace
-	env           *schema.Environment
-	frontend      Frontend
-	rootmodule    *pkggraph.Module
-	mu            sync.RWMutex
-	fsys          map[string]*memfs.IncrementalFS          // module name -> IncrementalFS
-	loaded        map[schema.PackageName]*pkggraph.Package // package name -> pkggraph.Package
-	loading       map[schema.PackageName]*loadingPackage   // pkggraph.Package name -> loadingPackage
-	loadedModules map[string]*pkggraph.Module              // module name -> Module
+	absPath        string
+	workspace      planning.Workspace
+	env            *schema.Environment
+	frontend       Frontend
+	rootmodule     *pkggraph.Module
+	moduleResolver MissingModuleResolver
+	mu             sync.RWMutex
+	fsys           map[string]*memfs.IncrementalFS          // module name -> IncrementalFS
+	loaded         map[schema.PackageName]*pkggraph.Package // package name -> pkggraph.Package
+	loading        map[schema.PackageName]*loadingPackage   // pkggraph.Package name -> loadingPackage
+	loadedModules  map[string]*pkggraph.Module              // module name -> Module
 }
 
 type sealedPackages struct {
@@ -101,7 +90,6 @@ type resultPair struct {
 type loadingPackage struct {
 	pl      *PackageLoader
 	loc     pkggraph.Location
-	opts    LoadPackageOpts
 	mu      sync.Mutex
 	waiters []chan resultPair
 	waiting int // The first waiter, will also get to the package load.
@@ -109,7 +97,15 @@ type loadingPackage struct {
 	result  resultPair
 }
 
-func NewPackageLoader(env planning.Context) *PackageLoader {
+type packageLoaderOpt func(*PackageLoader)
+
+func WithMissingModuleResolver(moduleResolver MissingModuleResolver) packageLoaderOpt {
+	return func(pl *PackageLoader) {
+		pl.moduleResolver = moduleResolver
+	}
+}
+
+func NewPackageLoader(env planning.Context, opt ...packageLoaderOpt) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = env.Workspace().LoadedFrom().AbsPath
 	pl.workspace = env.Workspace()
@@ -120,6 +116,12 @@ func NewPackageLoader(env planning.Context) *PackageLoader {
 	pl.loadedModules = map[string]*pkggraph.Module{}
 	pl.frontend = MakeFrontend(pl, env.Environment())
 	pl.rootmodule = pl.inject(env.Workspace().LoadedFrom(), env.Workspace().Proto(), "" /* version */)
+	pl.moduleResolver = &defaultMissingModuleResolver{workspace: env.Workspace()}
+
+	for _, o := range opt {
+		o(pl)
+	}
+
 	return pl
 }
 
@@ -186,7 +188,13 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		}
 	}
 
-	return pkggraph.Location{}, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", packageName, pl.workspace.LoadedFrom().DefinitionFile)
+	// Resolve missing workspace dependency.
+	mod, err := pl.moduleResolver.Resolve(ctx, packageName)
+	if err != nil {
+		return pkggraph.Location{}, err
+	}
+
+	return pl.ExternalLocation(ctx, mod, packageName)
 }
 
 func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName schema.PackageName) (*pkggraph.Location, error) {
@@ -226,24 +234,15 @@ func (pl *PackageLoader) WorkspaceOf(ctx context.Context, module *pkggraph.Modul
 }
 
 func (pl *PackageLoader) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
-	return pl.LoadByNameWithOpts(ctx, packageName)
-}
-
-func (pl *PackageLoader) LoadByNameWithOpts(ctx context.Context, packageName schema.PackageName, opt ...LoadPackageOpt) (*pkggraph.Package, error) {
 	loc, err := pl.Resolve(ctx, packageName)
 	if err != nil {
 		return nil, err
 	}
 
-	return pl.loadPackage(ctx, loc, opt...)
+	return pl.loadPackage(ctx, loc)
 }
 
-func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location, opt ...LoadPackageOpt) (*pkggraph.Package, error) {
-	opts := LoadPackageOpts{LoadPackageReferences: true}
-	for _, o := range opt {
-		o(&opts)
-	}
-
+func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location) (*pkggraph.Package, error) {
 	pkgName := loc.PackageName
 
 	// Fast path: was the package already loaded?
@@ -259,9 +258,8 @@ func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location,
 	loading := pl.loading[pkgName]
 	if loading == nil {
 		loading = &loadingPackage{
-			pl:   pl,
-			loc:  loc,
-			opts: opts,
+			pl:  pl,
+			loc: loc,
 		}
 		pl.loading[pkgName] = loading
 	}
@@ -386,12 +384,12 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 	l.mu.Unlock()
 	var res resultPair
 	res.value, res.err = tasks.Return(ctx, tasks.Action("package.load").Scope(l.loc.PackageName), func(ctx context.Context) (*pkggraph.Package, error) {
-		pp, err := l.pl.frontend.ParsePackage(ctx, l.loc, l.opts)
+		pp, err := l.pl.frontend.ParsePackage(ctx, l.loc)
 		if err != nil {
 			return nil, err
 		}
 
-		return FinalizePackage(ctx, l.pl.env, l.pl, pp, l.opts)
+		return FinalizePackage(ctx, l.pl.env, l.pl, pp)
 	})
 
 	l.mu.Lock()

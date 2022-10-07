@@ -24,7 +24,7 @@ type impl struct {
 }
 
 type NewSyntaxParser interface {
-	ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error)
+	ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location) (*pkggraph.Package, error)
 }
 
 type cueInjectedScope struct {
@@ -53,7 +53,7 @@ func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser NewSyntaxParser, 
 	}
 }
 
-func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error) {
+func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggraph.Package, error) {
 	partial, err := parsePackage(ctx, ft.evalctx, ft.loader, loc)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 	// Packages in the new syntax don't rely as much on cue features. They're
 	// streamlined data definitions without the constraints of json.
 	if isNewSyntax(partial) {
-		return ft.newSyntaxParser.ParsePackage(ctx, partial, loc, opts)
+		return ft.newSyntaxParser.ParsePackage(ctx, partial, loc)
 	}
 
 	v := &partial.CueV
@@ -74,21 +74,21 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location, opts wor
 
 	var count int
 	if extension := v.LookupPath("extension"); extension.Exists() {
-		if err := parseCueNode(ctx, ft.loader, loc, schema.Node_EXTENSION, v, extension, parsed, opts); err != nil {
+		if err := parseCueNode(ctx, ft.loader, loc, schema.Node_EXTENSION, v, extension, parsed); err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing extension")
 		}
 		count++
 	}
 
 	if service := v.LookupPath("service"); service.Exists() {
-		if err := parseCueNode(ctx, ft.loader, loc, schema.Node_SERVICE, v, service, parsed, opts); err != nil {
+		if err := parseCueNode(ctx, ft.loader, loc, schema.Node_SERVICE, v, service, parsed); err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing service")
 		}
 		count++
 	}
 
 	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, binaries, err := parseCueServer(ctx, ft.loader, loc, v, server, opts)
+		parsedSrv, binaries, err := parseCueServer(ctx, ft.loader, loc, v, server)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}

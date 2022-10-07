@@ -28,7 +28,7 @@ func NewFrontend(env *schema.Environment, pl workspace.EarlyPackageLoader) *Fron
 	return &Frontend{pl, env}
 }
 
-func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location, opts workspace.LoadPackageOpts) (*pkggraph.Package, error) {
+func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc pkggraph.Location) (*pkggraph.Package, error) {
 	v := &partial.CueV
 
 	// Ensure all fields are bound.

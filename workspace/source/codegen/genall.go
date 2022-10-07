@@ -21,7 +21,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 	pl := workspace.NewPackageLoader(env)
 	g := execution.NewEmptyPlan()
 	for _, loc := range locs {
-		pkg, err := pl.LoadByNameWithOpts(ctx, loc.AsPackageName(), workspace.DontLoadDependencies())
+		pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
 		if err != nil {
 			onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "loading schema", Err: err})
 			continue
