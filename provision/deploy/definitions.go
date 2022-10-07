@@ -210,6 +210,11 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 						handler.Source.PackageName, si.TargetServer)
 				}
 
+				if si.Owner != "" && si.Owner != handler.Source.PackageName.String() {
+					return nil, fnerrors.BadInputError("%s: unexpected Owner %q", handler.Source.PackageName, si.Owner)
+				}
+
+				si.Owner = handler.Source.PackageName.String()
 				sr.ServerExtensions = append(sr.ServerExtensions, si)
 			}
 

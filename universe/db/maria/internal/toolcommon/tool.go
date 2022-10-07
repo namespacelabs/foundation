@@ -126,13 +126,11 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 
 	initArgs = append(initArgs, args...)
 
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: "namespacelabs.dev/foundation/universe/db/maria/internal/init",
-				Arg:         initArgs,
-			}},
-		}})
+	out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
+		ExtendContainer: []*schema.ContainerExtension{
+			{BinaryRef: schema.MakePackageSingleRef("namespacelabs.dev/foundation/universe/db/maria/internal/init"), Args: initArgs},
+		},
+	})
 
 	return nil
 

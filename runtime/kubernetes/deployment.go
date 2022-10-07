@@ -620,7 +620,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				WithName(name).
 				WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 				WithImage(init.Image.RepoAndDigest()).
-				WithArgs(append(init.Args, initArgs[init.Owner.Canonical()]...)...).
+				WithArgs(append(init.Args, initArgs[init.BinaryRef.Canonical()]...)...).
 				WithCommand(init.Command...).
 				WithVolumeMounts(initVolumeMounts...))
 	}

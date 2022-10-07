@@ -16,7 +16,7 @@ type Source struct {
 
 type Definition struct {
 	TargetServer schema.PackageName
-	Source       Source
+	Source       Source // Where the invocation was declared.
 	Invocation   *invocation.Invocation
 }
 

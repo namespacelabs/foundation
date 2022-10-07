@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
 )
@@ -31,13 +30,15 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/db/maria/incluster/creds") {
 		switch secret.Name {
 		case "mariadb-password-file":
-			out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-				With: &kubedef.ContainerExtension{
-					Env: []*schema.BinaryConfig_EnvEntry{{
+			out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
+				ExtendContainer: []*schema.ContainerExtension{
+					{Env: []*schema.BinaryConfig_EnvEntry{{
 						Name:  "MARIADB_ROOT_PASSWORD_FILE",
 						Value: secret.FromPath,
-					}},
-				}})
+					}}},
+				},
+			})
+
 		default:
 		}
 	}

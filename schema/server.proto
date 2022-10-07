@@ -88,7 +88,7 @@ message Server {
     repeated EnvironmentRequirement environment_requirement = 24;
 
     // Includes file-level and inlined volumes.
-    repeated Volume volumes = 26;
+    repeated Volume volume = 26;
 
     repeated SecretSpec secret = 28;
 
@@ -168,6 +168,8 @@ message ServerExtension {
     string owner         = 1;  // Package name.
     string target_server = 2;  // Package name.
 
-    repeated Volume volume = 3;
-    repeated Mount  mount  = 4;
+    repeated Volume             volume           = 3;
+    repeated ContainerExtension extend_container = 5;
+
+    reserved 4;
 }

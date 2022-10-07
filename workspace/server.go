@@ -120,24 +120,24 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 	persistentVolumeCount := 0
 	for _, dep := range sealed.Deps {
 		if node := dep.Node(); node != nil {
-			for _, rs := range node.Volumes {
+			for _, rs := range node.Volume {
 				if rs.Owner != node.PackageName {
 					return nil, fnerrors.BadInputError("%s: volume: didn't expect owner to be %q", node.PackageName, rs.Owner)
 				}
 
-				sealed.Proto.Server.Volumes = append(sealed.Proto.Server.Volumes, rs)
+				sealed.Proto.Server.Volume = append(sealed.Proto.Server.Volume, rs)
 
 				if rs.Kind == constants.VolumeKindPersistent {
 					persistentVolumeCount++
 				}
 			}
 
-			for _, rs := range node.Mounts {
+			for _, rs := range node.Mount {
 				if rs.Owner != node.PackageName {
 					return nil, fnerrors.BadInputError("%s: mount: didn't expect owner to be %q", node.PackageName, rs.Owner)
 				}
 
-				sealed.Proto.Server.MainContainer.Mounts = append(sealed.Proto.Server.MainContainer.Mounts, rs)
+				sealed.Proto.Server.MainContainer.Mount = append(sealed.Proto.Server.MainContainer.Mount, rs)
 			}
 
 			for _, secret := range node.Secret {
@@ -194,14 +194,14 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 }
 
 func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Server) error {
-	for _, m := range srv.MainContainer.Mounts {
-		if findVolume(srv.Volumes, m.VolumeName) == nil {
+	for _, m := range srv.MainContainer.Mount {
+		if findVolume(srv.Volume, m.VolumeName) == nil {
 			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeName)
 		}
 	}
 
 	volumeNames := map[string]bool{}
-	for _, v := range srv.Volumes {
+	for _, v := range srv.Volume {
 		if volumeNames[v.Name] {
 			return fnerrors.UserError(loc, "volume %q is defined multiple times", v.Name)
 		}

@@ -265,8 +265,8 @@ type RunAs struct {
 }
 
 type SidecarRunOpts struct {
-	Name  string
-	Owner *schema.PackageRef
+	Name      string
+	BinaryRef *schema.PackageRef
 	ContainerRunOpts
 }
 

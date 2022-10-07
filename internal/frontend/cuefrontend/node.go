@@ -333,14 +333,14 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 			return fnerrors.Wrapf(loc, err, "failed to marshal persistent volume")
 		}
 
-		node.Volumes = append(node.Volumes, &schema.Volume{
+		node.Volume = append(node.Volume, &schema.Volume{
 			Owner:      node.PackageName,
 			Name:       d.PersistentID,
 			Kind:       constants.VolumeKindPersistent,
 			Definition: pv,
 		})
 
-		node.Mounts = append(node.Mounts, &schema.Mount{
+		node.Mount = append(node.Mount, &schema.Mount{
 			Owner:      node.PackageName,
 			Path:       d.MountPath,
 			VolumeName: d.PersistentID,
@@ -353,8 +353,8 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 			return fnerrors.Wrapf(loc, err, "parsing mounts")
 		}
 
-		node.Volumes = append(node.Volumes, inlinedVolumes...)
-		node.Mounts = parsedMounts
+		node.Volume = append(node.Volume, inlinedVolumes...)
+		node.Mount = parsedMounts
 	}
 
 	if environment := v.LookupPath("environment"); environment.Exists() {

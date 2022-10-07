@@ -113,7 +113,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			if err != nil {
 				return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 			}
-			parsedSrv.Volumes = append(parsedSrv.Volumes, parsedVolumes...)
+			parsedSrv.Volume = append(parsedSrv.Volume, parsedVolumes...)
 		}
 
 		var parsedSidecars []*schema.SidecarContainer
@@ -131,7 +131,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 					return nil, err
 				}
 
-				parsedSrv.Volumes = append(parsedSrv.Volumes, parsedContainer.inlineVolumes...)
+				parsedSrv.Volume = append(parsedSrv.Volume, parsedContainer.inlineVolumes...)
 				parsedPkg.Binaries = append(parsedPkg.Binaries, parsedContainer.inlineBinaries...)
 
 				if v, _ := val.LookupPath("init").Val.Bool(); v {

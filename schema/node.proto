@@ -78,9 +78,9 @@ message Node {
 
     reserved 18;
 
-    repeated Volume volumes = 22;
+    repeated Volume volume = 22;
 
-    repeated Mount mounts = 23;
+    repeated Mount mount = 23;
 
     repeated SecretSpec secret = 24;
 

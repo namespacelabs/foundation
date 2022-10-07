@@ -104,6 +104,14 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, handlers AllH
 		}
 
 		response.ApplyResponse = &protocol.ApplyResponse{}
+		for _, ext := range out.ServerExtensions {
+			if ext.TargetServer == "" {
+				ext.TargetServer = p.Focus.GetPackageName().String()
+			}
+
+			response.ApplyResponse.ServerExtension = append(response.ApplyResponse.ServerExtension, ext)
+		}
+
 		for _, input := range out.Extensions {
 			packed, err := input.ToDefinition()
 			if err != nil {

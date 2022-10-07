@@ -14,7 +14,6 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
@@ -69,15 +68,11 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 		return err
 	}
 
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			Args: []string{fmt.Sprintf("--%s=%s", incluster.EndpointFlag, value)},
-			// XXX remove when backwards compat no longer necessary.
-			ArgTuple: []*kubedef.ContainerExtension_ArgTuple{{
-				Name:  incluster.EndpointFlag,
-				Value: string(value),
-			}},
-		}})
+	out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
+		ExtendContainer: []*schema.ContainerExtension{
+			{Args: []string{fmt.Sprintf("--%s=%s", incluster.EndpointFlag, value)}},
+		},
+	})
 
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {

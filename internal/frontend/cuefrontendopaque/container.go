@@ -50,7 +50,7 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl workspac
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		var err error
-		out.container.Mounts, out.inlineVolumes, err = cuefrontend.ParseMounts(ctx, pl, loc, mounts)
+		out.container.Mount, out.inlineVolumes, err = cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}

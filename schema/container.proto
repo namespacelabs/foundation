@@ -23,6 +23,16 @@ message SidecarContainer {
     string          name = 3;
     repeated string args = 2;
 
-    repeated BinaryConfig.EnvEntry env    = 6;
-    repeated Mount                 mounts = 7;
+    repeated BinaryConfig.EnvEntry env   = 6;
+    repeated Mount                 mount = 7;
+}
+
+message ContainerExtension {
+    // One of name, or package ref, must be set.
+    string     name       = 1;
+    PackageRef binary_ref = 2;
+
+    repeated string args                 = 3;
+    repeated BinaryConfig.EnvEntry env   = 4;
+    repeated Mount                 mount = 5;
 }

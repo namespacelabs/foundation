@@ -11,7 +11,6 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/aws/s3"
@@ -80,13 +79,12 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 		args = append(args, string(json))
 	}
 
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			InitContainer: []*kubedef.ContainerExtension_InitContainer{{
-				PackageName: initContainerToConfigure,
-				Arg:         args,
-			}},
-		}})
+	out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
+		ExtendContainer: []*schema.ContainerExtension{
+			{BinaryRef: schema.MakePackageSingleRef(initContainerToConfigure), Args: args},
+		},
+	})
+
 	return nil
 }
 

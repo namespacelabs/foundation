@@ -78,8 +78,8 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
 
-		out.Volumes = append(out.Volumes, inlinedVolumes...)
-		out.MainContainer.Mounts = parsedMounts
+		out.Volume = append(out.Volume, inlinedVolumes...)
+		out.MainContainer.Mount = parsedMounts
 	}
 
 	if bits.Resources != nil {

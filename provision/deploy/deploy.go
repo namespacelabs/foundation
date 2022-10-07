@@ -343,7 +343,20 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 
 			for _, ext := range sr.ServerExtensions {
 				run.Volumes = append(run.Volumes, ext.Volume...)
-				run.MainContainer.Mounts = append(run.MainContainer.Mounts, ext.Mount...)
+
+				for _, cext := range ext.ExtendContainer {
+					if cext.Name == "" && cext.BinaryRef == nil {
+						extendContainer(&run.MainContainer, cext)
+					} else {
+						if updatedSidecars, ok := checkExtend(run.Sidecars, cext); ok {
+							run.Sidecars = updatedSidecars
+						} else if updatedInits, ok := checkExtend(run.Inits, cext); ok {
+							run.Inits = updatedInits
+						} else {
+							return nil, fnerrors.BadInputError("%s: no such container", cext.Name)
+						}
+					}
+				}
 			}
 		}
 
@@ -363,6 +376,24 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 		Specs:   serverRuns,
 		Secrets: secrets,
 	})
+}
+
+func extendContainer(target *runtime.ContainerRunOpts, cext *schema.ContainerExtension) {
+	target.Mounts = append(target.Mounts, cext.Mount...)
+	target.Args = append(target.Args, cext.Args...)
+	target.Env = append(target.Env, cext.Env...)
+}
+
+func checkExtend(sidecars []runtime.SidecarRunOpts, cext *schema.ContainerExtension) ([]runtime.SidecarRunOpts, bool) {
+	for k, sidecar := range sidecars {
+		if (cext.Name != "" && sidecar.Name == cext.Name) || (cext.BinaryRef != nil && cext.BinaryRef.Equals(sidecar.BinaryRef)) {
+			extendContainer(&sidecar.ContainerRunOpts, cext)
+			sidecars[k] = sidecar
+			return sidecars, true
+		}
+	}
+
+	return nil, false
 }
 
 func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
@@ -615,8 +646,8 @@ func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Serv
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Id = proto.Id
 	out.Name = proto.Name
-	out.Volumes = append(out.Volumes, proto.Volumes...)
-	out.MainContainer.Mounts = append(out.MainContainer.Mounts, proto.MainContainer.Mounts...)
+	out.Volumes = append(out.Volumes, proto.Volume...)
+	out.MainContainer.Mounts = append(out.MainContainer.Mounts, proto.MainContainer.Mount...)
 
 	out.MainContainer.Image = imgs.Binary
 	if imgs.Config.Repository != "" {
@@ -682,8 +713,8 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved Res
 		}
 
 		*out = append(*out, runtime.SidecarRunOpts{
-			Name:  container.Name,
-			Owner: binRef,
+			Name:      container.Name,
+			BinaryRef: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
 				Image:   sidecarBinary.Binary,
 				Args:    container.Args,

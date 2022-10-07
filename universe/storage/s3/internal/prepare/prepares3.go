@@ -240,16 +240,10 @@ func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out 
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", serializedFlag, serializedBuckets))
 	initArgs = append(initArgs, commonArgs...)
 
-	out.Extensions = append(out.Extensions, kubedef.ExtendContainer{
-		With: &kubedef.ContainerExtension{
-			Args: commonArgs,
-		},
-	})
-
-	out.Extensions = append(out.Extensions, kubedef.ExtendInitContainer{
-		With: &kubedef.InitContainerExtension{
-			PackageRef: initContainer,
-			Args:       initArgs,
+	out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
+		ExtendContainer: []*schema.ContainerExtension{
+			{Args: commonArgs},
+			{BinaryRef: initContainer, Args: initArgs},
 		},
 	})
 
