@@ -139,7 +139,7 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 	props.ProvisionInput = append(props.ProvisionInput, rtypes.ProvisionInput{
 		Message: eksCluster, Aliases: []string{"foundation.providers.aws.eks.EKSCluster"}})
 	props.ProvisionInput = append(props.ProvisionInput, rtypes.ProvisionInput{
-		Message: eksServerDetails, Aliases: []string{"foundation.providers.aws.eks.EKSClusterDetails"}})
+		Message: eksServerDetails, Aliases: []string{"foundation.providers.aws.eks.EKSServerDetails"}})
 	return props, nil
 }
 
