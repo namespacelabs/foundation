@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/runtime/naming"
+	"namespacelabs.dev/foundation/internal/dns"
 )
 
 func newDnsQuery() *cobra.Command {
@@ -22,7 +22,7 @@ func newDnsQuery() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			d := naming.Resolver{Timeout: 2 * time.Second, Nameservers: []string{"1.1.1.1:53"}}
+			d := dns.Resolver{Timeout: 2 * time.Second, Nameservers: []string{"1.1.1.1:53"}}
 
 			out := console.Stdout(ctx)
 			for _, arg := range args {

@@ -5,8 +5,8 @@ resourceClasses: {
 			source: "./intents.proto"
 		}
 		produces: {
-			type:   "foundation.std.runtime.Server"
-			source: "./config.proto"
+			type:   "foundation.schema.runtime.Server"
+			source: "../../schema/runtime/config.proto"
 		}
 	}
 }

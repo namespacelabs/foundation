@@ -93,69 +93,6 @@ func (x *LocalMapping) GetContainerPath() string {
 	return ""
 }
 
-type Port struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	ContainerPort int32  `protobuf:"varint,2,opt,name=container_port,json=containerPort,proto3" json:"container_port,omitempty"`
-	HostPort      int32  `protobuf:"varint,3,opt,name=host_port,json=hostPort,proto3" json:"host_port,omitempty"`
-}
-
-func (x *Port) Reset() {
-	*x = Port{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_rtypes_integration_proto_msgTypes[1]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *Port) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Port) ProtoMessage() {}
-
-func (x *Port) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_rtypes_integration_proto_msgTypes[1]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Port.ProtoReflect.Descriptor instead.
-func (*Port) Descriptor() ([]byte, []int) {
-	return file_runtime_rtypes_integration_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *Port) GetName() string {
-	if x != nil {
-		return x.Name
-	}
-	return ""
-}
-
-func (x *Port) GetContainerPort() int32 {
-	if x != nil {
-		return x.ContainerPort
-	}
-	return 0
-}
-
-func (x *Port) GetHostPort() int32 {
-	if x != nil {
-		return x.HostPort
-	}
-	return 0
-}
-
 type ProvisionProps struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -170,7 +107,7 @@ type ProvisionProps struct {
 func (x *ProvisionProps) Reset() {
 	*x = ProvisionProps{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_runtime_rtypes_integration_proto_msgTypes[2]
+		mi := &file_runtime_rtypes_integration_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -183,7 +120,7 @@ func (x *ProvisionProps) String() string {
 func (*ProvisionProps) ProtoMessage() {}
 
 func (x *ProvisionProps) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_rtypes_integration_proto_msgTypes[2]
+	mi := &file_runtime_rtypes_integration_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -196,7 +133,7 @@ func (x *ProvisionProps) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProvisionProps.ProtoReflect.Descriptor instead.
 func (*ProvisionProps) Descriptor() ([]byte, []int) {
-	return file_runtime_rtypes_integration_proto_rawDescGZIP(), []int{2}
+	return file_runtime_rtypes_integration_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *ProvisionProps) GetProvisionInput() []*anypb.Any {
@@ -247,13 +184,7 @@ var file_runtime_rtypes_integration_proto_rawDesc = []byte{
 	0x01, 0x28, 0x09, 0x52, 0x08, 0x68, 0x6f, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x12, 0x25, 0x0a,
 	0x0e, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x18,
 	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72,
-	0x50, 0x61, 0x74, 0x68, 0x22, 0x5e, 0x0a, 0x04, 0x50, 0x6f, 0x72, 0x74, 0x12, 0x12, 0x0a, 0x04,
-	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65,
-	0x12, 0x25, 0x0a, 0x0e, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x5f, 0x70, 0x6f,
-	0x72, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0d, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69,
-	0x6e, 0x65, 0x72, 0x50, 0x6f, 0x72, 0x74, 0x12, 0x1b, 0x0a, 0x09, 0x68, 0x6f, 0x73, 0x74, 0x5f,
-	0x70, 0x6f, 0x72, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x05, 0x52, 0x08, 0x68, 0x6f, 0x73, 0x74,
-	0x50, 0x6f, 0x72, 0x74, 0x22, 0xac, 0x02, 0x0a, 0x0e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69,
+	0x50, 0x61, 0x74, 0x68, 0x22, 0xac, 0x02, 0x0a, 0x0e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x73, 0x69,
 	0x6f, 0x6e, 0x50, 0x72, 0x6f, 0x70, 0x73, 0x12, 0x3d, 0x0a, 0x0f, 0x70, 0x72, 0x6f, 0x76, 0x69,
 	0x73, 0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x6e, 0x70, 0x75, 0x74, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b,
 	0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
@@ -290,21 +221,20 @@ func file_runtime_rtypes_integration_proto_rawDescGZIP() []byte {
 	return file_runtime_rtypes_integration_proto_rawDescData
 }
 
-var file_runtime_rtypes_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_runtime_rtypes_integration_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_runtime_rtypes_integration_proto_goTypes = []interface{}{
 	(*LocalMapping)(nil),                // 0: foundation.runtime.rtypes.LocalMapping
-	(*Port)(nil),                        // 1: foundation.runtime.rtypes.Port
-	(*ProvisionProps)(nil),              // 2: foundation.runtime.rtypes.ProvisionProps
-	(*anypb.Any)(nil),                   // 3: google.protobuf.Any
-	(*schema.SerializedInvocation)(nil), // 4: foundation.schema.SerializedInvocation
-	(*schema.DefExtension)(nil),         // 5: foundation.schema.DefExtension
-	(*schema.ServerExtension)(nil),      // 6: foundation.schema.ServerExtension
+	(*ProvisionProps)(nil),              // 1: foundation.runtime.rtypes.ProvisionProps
+	(*anypb.Any)(nil),                   // 2: google.protobuf.Any
+	(*schema.SerializedInvocation)(nil), // 3: foundation.schema.SerializedInvocation
+	(*schema.DefExtension)(nil),         // 4: foundation.schema.DefExtension
+	(*schema.ServerExtension)(nil),      // 5: foundation.schema.ServerExtension
 }
 var file_runtime_rtypes_integration_proto_depIdxs = []int32{
-	3, // 0: foundation.runtime.rtypes.ProvisionProps.provision_input:type_name -> google.protobuf.Any
-	4, // 1: foundation.runtime.rtypes.ProvisionProps.invocation:type_name -> foundation.schema.SerializedInvocation
-	5, // 2: foundation.runtime.rtypes.ProvisionProps.extension:type_name -> foundation.schema.DefExtension
-	6, // 3: foundation.runtime.rtypes.ProvisionProps.server_extension:type_name -> foundation.schema.ServerExtension
+	2, // 0: foundation.runtime.rtypes.ProvisionProps.provision_input:type_name -> google.protobuf.Any
+	3, // 1: foundation.runtime.rtypes.ProvisionProps.invocation:type_name -> foundation.schema.SerializedInvocation
+	4, // 2: foundation.runtime.rtypes.ProvisionProps.extension:type_name -> foundation.schema.DefExtension
+	5, // 3: foundation.runtime.rtypes.ProvisionProps.server_extension:type_name -> foundation.schema.ServerExtension
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -331,18 +261,6 @@ func file_runtime_rtypes_integration_proto_init() {
 			}
 		}
 		file_runtime_rtypes_integration_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Port); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_runtime_rtypes_integration_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ProvisionProps); i {
 			case 0:
 				return &v.state
@@ -361,7 +279,7 @@ func file_runtime_rtypes_integration_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_runtime_rtypes_integration_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

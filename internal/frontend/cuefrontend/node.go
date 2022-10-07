@@ -23,9 +23,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/source/protos"
@@ -336,7 +336,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 		node.Volumes = append(node.Volumes, &schema.Volume{
 			Owner:      node.PackageName,
 			Name:       d.PersistentID,
-			Kind:       storage.VolumeKindPersistent,
+			Kind:       constants.VolumeKindPersistent,
 			Definition: pv,
 		})
 

@@ -30,10 +30,10 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/resources"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/go-ids"
 	"sigs.k8s.io/yaml"
 )
@@ -57,7 +57,7 @@ type perEnvConf struct {
 	failureThreshold      int32
 }
 
-var constants = map[schema.Environment_Purpose]*perEnvConf{
+var perEnvConfMapping = map[schema.Environment_Purpose]*perEnvConf{
 	schema.Environment_DEVELOPMENT: {
 		dashnessPeriod:        1,
 		livenessInitialDelay:  1,
@@ -353,7 +353,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	probevalues := constants[target.env.GetPurpose()]
+	probevalues := perEnvConfMapping[target.env.GetPurpose()]
 	if readinessProbe != nil || livenessProbe != nil {
 		if probevalues == nil {
 			return fnerrors.InternalError("%s: no constants configured", target.env.GetPurpose())
@@ -387,10 +387,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		name := fmt.Sprintf("v-%s", volume.Name)
 
 		switch volume.Kind {
-		case storage.VolumeKindEphemeral:
+		case constants.VolumeKindEphemeral:
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
 
-		case storage.VolumeKindPersistent:
+		case constants.VolumeKindPersistent:
 			pv := &schema.PersistentVolume{}
 			if err := volume.Definition.UnmarshalTo(pv); err != nil {
 				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
@@ -408,7 +408,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			spec = spec.WithVolumes(v)
 			s.operations = append(s.operations, operations...)
 
-		case storage.VolumeKindConfigurable:
+		case constants.VolumeKindConfigurable:
 			cv := &schema.ConfigurableVolume{}
 			if err := volume.Definition.UnmarshalTo(cv); err != nil {
 				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", volume.Name, err)

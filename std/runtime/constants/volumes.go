@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package storage
+package constants
 
 const (
 	VolumeKindEphemeral    = "namespace.so/volume/ephemeral"

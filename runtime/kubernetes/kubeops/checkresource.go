@@ -70,61 +70,62 @@ func fetchResource(ctx context.Context, cluster kubedef.KubeCluster, description
 }
 
 func resolveResource(ctx context.Context, cluster kubedef.KubeCluster, gvk schema.GroupVersionKind) (*schema.GroupVersionResource, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-resource").Arg("gvk", gvk.String()), func(ctx context.Context) (*schema.GroupVersionResource, error) {
-		state := "first-query"
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-resource").Arg("gvk", gvk.String()).LogLevel(1),
+		func(ctx context.Context) (*schema.GroupVersionResource, error) {
+			state := "first-query"
 
-		for {
-			// Optimistic path -- assume the target Kind exists and is available.
-			resource, queryErr := resolveResourceImpl(ctx, cluster, gvk)
-			if queryErr == nil {
-				return resource, nil
-			}
-
-			if state == "final-attempt" || !meta.IsNoMatchError(queryErr) {
-				return nil, queryErr
-			}
-
-			// We don't know yet why, but didn't get a match. Perhaps need a rest mapper cache refresh?
-			if state == "first-query" {
-				state = "cache-reset-query"
-
-				if err := resetCRDCache(ctx, cluster); err != nil {
-					return nil, err
-				}
-			} else {
-				state = "final-attempt"
-				cli, err := apiextensionsv1.NewForConfig(cluster.PreparedClient().RESTConfig)
-				if err != nil {
-					return nil, fnerrors.InternalError("failed to prepare apiextensionsv1 client when querying resource: %v: %w", gvk, err)
+			for {
+				// Optimistic path -- assume the target Kind exists and is available.
+				resource, queryErr := resolveResourceImpl(ctx, cluster, gvk)
+				if queryErr == nil {
+					return resource, nil
 				}
 
-				// Still got a no match with a clean cache; could be that the target CRD is still being installed.
-				crds, err := cli.CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
-				if err != nil {
-					return nil, fnerrors.InternalError("failed to query crd when querying resource:  %v: %w", gvk, err)
-				}
-
-				var matching *v1.CustomResourceDefinition
-				for _, crd := range crds.Items {
-					if gvk.Kind == crd.Spec.Names.Kind {
-						matching = &crd
-						break
-					}
-				}
-
-				if matching == nil {
-					// No CRD matches the Kind we're attempting to resolve: return the original error.
+				if state == "final-attempt" || !meta.IsNoMatchError(queryErr) {
 					return nil, queryErr
 				}
 
-				if err := kubeobserver.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
-					ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", matching.Name),
-					waitForCRD{name: matching.Name, plural: matching.Spec.Names.Plural}); err != nil {
-					return nil, err
+				// We don't know yet why, but didn't get a match. Perhaps need a rest mapper cache refresh?
+				if state == "first-query" {
+					state = "cache-reset-query"
+
+					if err := resetCRDCache(ctx, cluster); err != nil {
+						return nil, err
+					}
+				} else {
+					state = "final-attempt"
+					cli, err := apiextensionsv1.NewForConfig(cluster.PreparedClient().RESTConfig)
+					if err != nil {
+						return nil, fnerrors.InternalError("failed to prepare apiextensionsv1 client when querying resource: %v: %w", gvk, err)
+					}
+
+					// Still got a no match with a clean cache; could be that the target CRD is still being installed.
+					crds, err := cli.CustomResourceDefinitions().List(ctx, metav1.ListOptions{})
+					if err != nil {
+						return nil, fnerrors.InternalError("failed to query crd when querying resource:  %v: %w", gvk, err)
+					}
+
+					var matching *v1.CustomResourceDefinition
+					for _, crd := range crds.Items {
+						if gvk.Kind == crd.Spec.Names.Kind {
+							matching = &crd
+							break
+						}
+					}
+
+					if matching == nil {
+						// No CRD matches the Kind we're attempting to resolve: return the original error.
+						return nil, queryErr
+					}
+
+					if err := kubeobserver.WaitForCondition[*apiextensionsv1.ApiextensionsV1Client](
+						ctx, cli, tasks.Action("kubernetes.wait-for-crd").Arg("crd", matching.Name),
+						waitForCRD{name: matching.Name, plural: matching.Spec.Names.Plural}); err != nil {
+						return nil, err
+					}
 				}
 			}
-		}
-	})
+		})
 }
 
 func resolveResourceImpl(ctx context.Context, cluster kubedef.KubeCluster, gvk schema.GroupVersionKind) (*schema.GroupVersionResource, error) {

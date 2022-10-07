@@ -13,9 +13,9 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/support/naming"
-	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
@@ -127,7 +127,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 
 				sealed.Proto.Server.Volumes = append(sealed.Proto.Server.Volumes, rs)
 
-				if rs.Kind == storage.VolumeKindPersistent {
+				if rs.Kind == constants.VolumeKindPersistent {
 					persistentVolumeCount++
 				}
 			}
@@ -207,7 +207,7 @@ func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Serv
 		}
 		volumeNames[v.Name] = true
 
-		if v.Kind == storage.VolumeKindConfigurable {
+		if v.Kind == constants.VolumeKindConfigurable {
 			cv := &schema.ConfigurableVolume{}
 			if err := v.Definition.UnmarshalTo(cv); err != nil {
 				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)

@@ -23,12 +23,6 @@ message LocalMapping {
     string container_path = 3;
 }
 
-message Port {
-    string name           = 1;
-    int32  container_port = 2;
-    int32  host_port      = 3;
-}
-
 message ProvisionProps {
     reserved 1;
     repeated google.protobuf.Any provision_input     = 2;

@@ -13,12 +13,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/internal/dns"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
-	"namespacelabs.dev/foundation/runtime/naming"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -116,7 +116,7 @@ func waitForIngress(ctx context.Context, cli *k8s.Clientset, ingressSvc *nginx.N
 }
 
 func checkMap(ctx context.Context, lb corev1.LoadBalancerStatus, fqdn string) (bool, error) {
-	addr, uptodate := lbAddr(ctx, lb, fqdn)
+	addr, uptodate := loadBalancerAddress(ctx, lb, fqdn)
 	if uptodate {
 		return true, nil
 	}
@@ -132,8 +132,8 @@ func checkMap(ctx context.Context, lb corev1.LoadBalancerStatus, fqdn string) (b
 	return true, nil
 }
 
-func lbAddr(ctx context.Context, lb corev1.LoadBalancerStatus, fqdn string) (string, bool) {
-	resolver := naming.Resolver{
+func loadBalancerAddress(ctx context.Context, lb corev1.LoadBalancerStatus, fqdn string) (string, bool) {
+	resolver := dns.Resolver{
 		Timeout:     2 * time.Second,
 		Nameservers: []string{"1.1.1.1:53"},
 	}

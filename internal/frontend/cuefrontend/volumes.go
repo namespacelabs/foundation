@@ -19,9 +19,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/runtime/storage"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/workspace"
 )
 
@@ -89,19 +89,19 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggr
 	// Parsing shortcuts
 	if bits.Kind == "" {
 		if bits.Ephemeral != nil {
-			bits.Kind = storage.VolumeKindEphemeral
+			bits.Kind = constants.VolumeKindEphemeral
 		}
 		if bits.Persistent != nil {
 			bits.cuePersistentVolume = *bits.Persistent
-			bits.Kind = storage.VolumeKindPersistent
+			bits.Kind = constants.VolumeKindPersistent
 		}
 		if bits.PackageSync != nil {
 			bits.cueFilesetVolume = *bits.PackageSync
-			bits.Kind = storage.VolumeKindPackageSync
+			bits.Kind = constants.VolumeKindPackageSync
 		}
 		if bits.Configurable != nil {
 			// Parsing can't be done via JSON unmarshalling, so doing it manually below.
-			bits.Kind = storage.VolumeKindConfigurable
+			bits.Kind = constants.VolumeKindConfigurable
 		}
 	}
 
@@ -114,10 +114,10 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggr
 	var definition proto.Message
 
 	switch bits.Kind {
-	case storage.VolumeKindEphemeral:
+	case constants.VolumeKindEphemeral:
 		definition = &schema.EphemeralVolume{}
 
-	case storage.VolumeKindPersistent:
+	case constants.VolumeKindPersistent:
 		sizeBytes, err := units.FromHumanSize(bits.Size)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to parse value")
@@ -127,7 +127,7 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggr
 			SizeBytes: uint64(sizeBytes),
 		}
 
-	case storage.VolumeKindConfigurable:
+	case constants.VolumeKindConfigurable:
 		val := &fncue.CueV{Val: value}
 		if bits.Configurable != nil {
 			cueV := fncue.CueV{Val: value}
