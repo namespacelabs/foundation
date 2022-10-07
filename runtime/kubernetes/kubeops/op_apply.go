@@ -166,14 +166,18 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			return nil, fnerrors.InternalError("failed to wait on resource: no metadata.generation")
 		}
 
-		return &execution.HandleResult{Waiters: []execution.Waiter{kobs.WaitOnGenerationCondition{
-			RestConfig:         restcfg,
-			Namespace:          obj.GetNamespace(),
-			Name:               obj.GetName(),
-			ExpectedGeneration: generation,
-			ConditionType:      spec.CheckGenerationCondition.Type,
-			Resource:           *resource,
-		}.WaitUntilReady}}, nil
+		return &execution.HandleResult{
+			Waiters: []execution.Waiter{
+				kobs.WaitOnGenerationCondition{
+					RestConfig:         restcfg,
+					Namespace:          obj.GetNamespace(),
+					Name:               obj.GetName(),
+					ExpectedGeneration: generation,
+					ConditionType:      spec.CheckGenerationCondition.Type,
+					Resource:           *resource,
+				}.WaitUntilReady,
+			},
+		}, nil
 	}
 
 	if spec.InhibitEvents {
@@ -190,22 +194,22 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 		// XXX print a warning if expected fields are missing.
 		if err1 == nil && found1 {
-			var waiters []execution.Waiter
-			for _, sc := range scope {
-				w := kobs.WaitOnResource{
-					RestConfig:       restcfg,
-					Description:      desc,
-					Namespace:        obj.GetNamespace(),
-					Name:             obj.GetName(),
-					GroupVersionKind: obj.GroupVersionKind(),
-					Scope:            sc,
-					PreviousGen:      observedGen,
-					ExpectedGen:      generation,
-				}
-				waiters = append(waiters, w.WaitUntilReady)
+			w := kobs.WaitOnResource{
+				RestConfig:       restcfg,
+				Description:      desc,
+				Namespace:        obj.GetNamespace(),
+				Name:             obj.GetName(),
+				GroupVersionKind: obj.GroupVersionKind(),
+				PreviousGen:      observedGen,
+				ExpectedGen:      generation,
 			}
+
+			if spec.Deployable != nil {
+				w.Scope = fnschema.PackageName(spec.Deployable.GetPackageName())
+			}
+
 			return &execution.HandleResult{
-				Waiters: waiters,
+				Waiters: []execution.Waiter{w.WaitUntilReady},
 			}, nil
 		} else {
 			fmt.Fprintf(console.Warnings(ctx), "missing generation data from %s: %v / %v [found1=%v found2=%v]\n",
@@ -237,9 +241,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 							RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", obj.GetNamespace(), obj.GetName()),
 						}
 
-						// XXX this under-reports scope.
-						if len(scope) > 0 {
-							ev.Scope = scope[0].String()
+						if spec.Deployable != nil {
+							ev.Scope = spec.Deployable.GetPackageName()
 						}
 
 						ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(obj.GetNamespace(), obj.GetName(), ps))

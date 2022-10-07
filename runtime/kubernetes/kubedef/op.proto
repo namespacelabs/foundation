@@ -17,10 +17,11 @@ import "std/types/certificates.proto";
 message OpApply {
     reserved 6;
 
-    string                   body_json                  = 4;
-    bool                     set_namespace              = 8;
-    CheckGenerationCondition check_generation_condition = 7;
-    bool                     inhibit_events             = 9;
+    string                               body_json                  = 4;
+    bool                                 set_namespace              = 8;
+    CheckGenerationCondition             check_generation_condition = 7;
+    bool                                 inhibit_events             = 9;
+    foundation.schema.runtime.Deployable deployable                 = 10;
 
     message CheckGenerationCondition {
         string type = 1;

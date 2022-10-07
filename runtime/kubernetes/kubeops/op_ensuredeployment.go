@@ -76,6 +76,7 @@ func registerEnsureDeployment() {
 					return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), &reparsed, &kubedef.OpApply{
 						BodyJson:      string(serializedRenewed),
 						InhibitEvents: parsed.spec.InhibitEvents,
+						Deployable:    parsed.spec.Deployable,
 					})
 				})
 		},
