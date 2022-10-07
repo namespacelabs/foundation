@@ -1,4 +1,4 @@
-![Logo](/devworkflow/web/public/icons/logo_filled.svg)
+![Logo](/internal/webui/devui/public/icons/logo_filled.svg)
 
 # Namespace
 
