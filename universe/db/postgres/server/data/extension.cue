@@ -5,7 +5,7 @@ import (
 extension: fn.#Extension & {
 	requirePersistentStorage: {
 		persistentId: "postgres-data"
-		byteCount:    "10GiB"
+		byteCount:    "100GiB" // XXX this was originally 10GiB, bumped to workaround the unit bug.
 		mountPath:    "/postgres/data"
 	}
 }
