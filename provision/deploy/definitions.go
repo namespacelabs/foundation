@@ -18,10 +18,12 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -44,12 +46,28 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 
 	for k, srv := range stack.Servers {
 		invokeProps := tool.InvokeProps{Event: event}
-
-		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, props.ProvisionInput...)
+		anys, err := expandAnys(props.ProvisionInput)
+		if err != nil {
+			return nil, err
+		}
+		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, anys...)
 
 		for _, dep := range srv.ParsedDeps {
 			// XXX breaks isolation.
-			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, dep.PrepareProps.ProvisionInput...)
+			for _, input := range dep.PrepareProps.SerializedProvisionInput {
+				for _, name := range input.Name {
+					invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, &anypb.Any{
+						TypeUrl: protos.TypeUrlPrefix + name,
+						Value:   input.Value,
+					})
+				}
+			}
+
+			anys, err := expandAnys(dep.PrepareProps.ProvisionInput)
+			if err != nil {
+				return nil, err
+			}
+			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, anys...)
 
 			extensions = append(extensions, dep.PrepareProps.Extension...)
 			serverExtensions = append(serverExtensions, dep.PrepareProps.ServerExtension...)
@@ -81,6 +99,26 @@ func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.P
 		extensions:       extensions,
 		serverExtensions: serverExtensions,
 	}, nil
+}
+
+func expandAnys(inputs []rtypes.ProvisionInput) ([]*anypb.Any, error) {
+	var anys []*anypb.Any
+	for _, input := range inputs {
+		serialized, err := anypb.New(input.Message)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize input: %w", err)
+		}
+
+		anys = append(anys, serialized)
+
+		for _, name := range input.Aliases {
+			anys = append(anys, &anypb.Any{
+				TypeUrl: protos.TypeUrlPrefix + name,
+				Value:   serialized.Value,
+			})
+		}
+	}
+	return anys, nil
 }
 
 type handlerResult struct {

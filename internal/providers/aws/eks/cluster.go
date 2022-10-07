@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/aws/auth"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	eksconfig "namespacelabs.dev/foundation/universe/aws/configuration/eks"
@@ -99,7 +100,7 @@ func provideEKS(ctx context.Context, config planning.Configuration) (client.Clus
 	}, nil
 }
 
-func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*frontend.PrepareProps, error) {
+func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*frontend.InternalPrepareProps, error) {
 	// XXX this breaks test/production similarity, but for the moment hide EKS
 	// from tests. This removes the ability for tests to allocate IAM resources.
 	if env.Environment().Ephemeral {
@@ -134,12 +135,11 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 			len(eksServerDetails.ComputedIamRoleName), eksServerDetails.ComputedIamRoleName)
 	}
 
-	props := &frontend.PrepareProps{}
-
-	if err := props.AppendInputs(eksCluster, eksServerDetails); err != nil {
-		return nil, err
-	}
-
+	props := &frontend.InternalPrepareProps{}
+	props.ProvisionInput = append(props.ProvisionInput, rtypes.ProvisionInput{
+		Message: eksCluster, Aliases: []string{"foundation.providers.aws.eks.EKSCluster"}})
+	props.ProvisionInput = append(props.ProvisionInput, rtypes.ProvisionInput{
+		Message: eksServerDetails, Aliases: []string{"foundation.providers.aws.eks.EKSClusterDetails"}})
 	return props, nil
 }
 

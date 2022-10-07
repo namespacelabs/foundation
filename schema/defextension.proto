@@ -15,3 +15,8 @@ message DefExtension {
     string for = 2;
     google.protobuf.Any impl = 3;
 }
+
+message SerializedMessage {
+    repeated string name  = 1;  // Full proto name.
+    bytes           value = 2;
+}

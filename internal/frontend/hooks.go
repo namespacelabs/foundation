@@ -8,9 +8,8 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -21,32 +20,31 @@ var registrations struct {
 	prepare map[string]PrepareHookFunc
 }
 
-type PrepareProps struct {
-	pkggraph.PreparedProvisionPlan
-	ProvisionInput  []*anypb.Any
-	Extension       []*schema.DefExtension
-	ServerExtension []*schema.ServerExtension
+type ProvisionResult struct {
+	ProvisionInput           []rtypes.ProvisionInput
+	SerializedProvisionInput []*schema.SerializedMessage
+	Extension                []*schema.DefExtension
+	ServerExtension          []*schema.ServerExtension
 }
 
-func (p *PrepareProps) AppendWith(rhs PrepareProps) {
+type InternalPrepareProps struct {
+	pkggraph.PreparedProvisionPlan
+	ProvisionResult
+}
+
+func (p *InternalPrepareProps) AppendWith(rhs InternalPrepareProps) {
 	p.PreparedProvisionPlan.AppendWith(rhs.PreparedProvisionPlan)
+	p.ProvisionResult.AppendWith(rhs.ProvisionResult)
+}
+
+func (p *ProvisionResult) AppendWith(rhs ProvisionResult) {
 	p.ProvisionInput = append(p.ProvisionInput, rhs.ProvisionInput...)
+	p.SerializedProvisionInput = append(p.SerializedProvisionInput, rhs.SerializedProvisionInput...)
 	p.Extension = append(p.Extension, rhs.Extension...)
 	p.ServerExtension = append(p.ServerExtension, rhs.ServerExtension...)
 }
 
-func (p *PrepareProps) AppendInputs(msgs ...proto.Message) error {
-	for _, m := range msgs {
-		any, err := anypb.New(m)
-		if err != nil {
-			return err
-		}
-		p.ProvisionInput = append(p.ProvisionInput, any)
-	}
-	return nil
-}
-
-type PrepareHookFunc func(context.Context, planning.Context, *schema.Stack_Entry) (*PrepareProps, error)
+type PrepareHookFunc func(context.Context, planning.Context, *schema.Stack_Entry) (*InternalPrepareProps, error)
 
 func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	if registrations.prepare == nil {
@@ -56,9 +54,9 @@ func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	registrations.prepare[name] = f
 }
 
-func InvokeInternalPrepareHook(ctx context.Context, name string, env planning.Context, srv *schema.Stack_Entry) (*PrepareProps, error) {
+func InvokeInternalPrepareHook(ctx context.Context, name string, env planning.Context, srv *schema.Stack_Entry) (*InternalPrepareProps, error) {
 	if f, ok := registrations.prepare[name]; ok {
-		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(srv.GetPackageName()).Arg("name", name), func(ctx context.Context) (*PrepareProps, error) {
+		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(srv.GetPackageName()).Arg("name", name), func(ctx context.Context) (*InternalPrepareProps, error) {
 			return f(ctx, env, srv)
 		})
 	}

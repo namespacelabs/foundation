@@ -13,6 +13,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
+const TypeUrlPrefix = "type.googleapis.com/"
+
 func NewFromType[V proto.Message]() V {
 	var m V
 	return reflect.New(reflect.TypeOf(m).Elem()).Interface().(V)
@@ -23,8 +25,7 @@ func TypeUrl[V proto.Message]() string {
 }
 
 func TypeUrlForInstance(m proto.Message) string {
-	const urlPrefix = "type.googleapis.com/"
-	return urlPrefix + string(m.ProtoReflect().Descriptor().FullName())
+	return TypeUrlPrefix + string(m.ProtoReflect().Descriptor().FullName())
 }
 
 func WrapAnysOrDie(srcs ...protoreflect.ProtoMessage) []*anypb.Any {

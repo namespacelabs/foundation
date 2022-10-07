@@ -147,11 +147,12 @@ type NetworkPlanSummary_Service struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Label       *Label                                  `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
-	Focus       bool                                    `protobuf:"varint,2,opt,name=focus,proto3" json:"focus,omitempty"`
-	LocalPort   uint32                                  `protobuf:"varint,4,opt,name=local_port,json=localPort,proto3" json:"local_port,omitempty"`
-	PackageName string                                  `protobuf:"bytes,5,opt,name=package_name,json=packageName,proto3" json:"package_name,omitempty"`
-	AccessCmd   []*NetworkPlanSummary_Service_AccessCmd `protobuf:"bytes,6,rep,name=access_cmd,json=accessCmd,proto3" json:"access_cmd,omitempty"`
+	Label       *Label `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Focus       bool   `protobuf:"varint,2,opt,name=focus,proto3" json:"focus,omitempty"`
+	LocalPort   uint32 `protobuf:"varint,4,opt,name=local_port,json=localPort,proto3" json:"local_port,omitempty"`
+	PackageName string `protobuf:"bytes,5,opt,name=package_name,json=packageName,proto3" json:"package_name,omitempty"`
+	// Guaranteed to be non-empty.
+	AccessCmd []*NetworkPlanSummary_Service_AccessCmd `protobuf:"bytes,6,rep,name=access_cmd,json=accessCmd,proto3" json:"access_cmd,omitempty"`
 }
 
 func (x *NetworkPlanSummary_Service) Reset() {

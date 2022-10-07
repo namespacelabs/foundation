@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -107,16 +106,6 @@ func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApp
 }
 
 func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
-	packedHostEnv, err := anypb.New(&kubetool.KubernetesEnv{Namespace: ns})
-	if err != nil {
-		return nil, err
-	}
-
-	packedSystemInfo, err := anypb.New(systemInfo)
-	if err != nil {
-		return nil, err
-	}
-
 	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
@@ -129,8 +118,11 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 
 	// Pass the computed namespace to the provisioning tool.
 	return &rtypes.ProvisionProps{
-		ProvisionInput: []*anypb.Any{packedHostEnv, packedSystemInfo},
-		Invocation:     []*schema.SerializedInvocation{def},
+		ProvisionInput: []rtypes.ProvisionInput{
+			{Message: &kubetool.KubernetesEnv{Namespace: ns}},
+			{Message: systemInfo},
+		},
+		Invocation: []*schema.SerializedInvocation{def},
 	}, nil
 }
 
