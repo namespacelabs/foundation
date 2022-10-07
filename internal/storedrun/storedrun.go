@@ -115,7 +115,6 @@ func nsErrorToStatus(err error) *status.Status {
 
 	// Extract nearest stack.
 	var stackTracer fnerrors.StackTracer
-
 	if actionErr != nil {
 		errors.As(actionErr, &stackTracer)
 
@@ -126,6 +125,7 @@ func nsErrorToStatus(err error) *status.Status {
 			st := tasks.MakeStoreProto(&ev, nil)
 			att.Task = append(att.Task, st)
 		}
+
 		if newSt, err := st.WithDetails(att); err == nil {
 			st = newSt
 		}

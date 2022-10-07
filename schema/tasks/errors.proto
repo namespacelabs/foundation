@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.schema.tasks;
+
+option go_package = "namespacelabs.dev/foundation/schema/tasks";
+
+import "google/rpc/status.proto";
+
+// Attached to status protos when the action that produced the error is known.
+message ErrorDetail_ActionID {
+    string action_id = 1;
+}
+
+message ErrorDetail_OriginalErrors {
+    repeated google.rpc.Status status = 1;
+}

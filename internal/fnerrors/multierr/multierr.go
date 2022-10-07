@@ -9,11 +9,44 @@ package multierr
 import (
 	"errors"
 	"strings"
+
+	spb "google.golang.org/genproto/googleapis/rpc/status"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/schema/tasks"
 )
 
 // An Error represents multiple errors.
 type Error struct {
 	errs []error
+}
+
+func (e Error) GRPCStatus() *status.Status {
+	statuses := make([]*status.Status, len(e.errs))
+	protos := make([]*spb.Status, len(e.errs))
+	for k, err := range e.errs {
+		statuses[k], _ = status.FromError(err)
+		protos[k] = statuses[k].Proto()
+	}
+
+	st := status.New(dominantCode(statuses), e.Error())
+	p, _ := st.WithDetails(&tasks.ErrorDetail_OriginalErrors{Status: protos})
+	return p
+}
+
+func dominantCode(statuses []*status.Status) codes.Code {
+	if len(statuses) == 0 {
+		return codes.Unknown
+	}
+
+	expected := statuses[0].Code()
+	for i := 1; i < len(statuses); i++ {
+		if expected != statuses[i].Code() {
+			return codes.Unknown
+		}
+	}
+
+	return expected
 }
 
 // Error implements the error interface.

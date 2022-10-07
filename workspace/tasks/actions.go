@@ -672,7 +672,7 @@ func (af *RunningAction) Done(err error) error {
 	// XXX serialize additional error data.
 
 	if err != nil {
-		err = WrapActionError(err, af.ID())
+		err = wrapErrorWithAction(err, af.ID())
 	}
 
 	af.CustomDone(time.Now(), err)

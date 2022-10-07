@@ -91,7 +91,7 @@ message RunMetadata {
 
 // This is an attachment to a RunStorage Run.
 message InvocationDescription {
-    Kind   kind         = 1;
+    Kind kind = 1;
 
     // The invocation command line that can be used to reproduce the invocation.
     // It should include flags having semantic meaning (e.g. --include_servers)
@@ -123,7 +123,7 @@ message StackTrace {
 
     message Frame {
         string filename = 1;
-        int32 line = 2;
-        string symbol = 3;
+        int32  line     = 2;
+        string symbol   = 3;
     }
 }
