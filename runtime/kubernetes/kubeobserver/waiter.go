@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
-	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -213,37 +212,33 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	for _, pod := range list.Items {
 		// If the pod is configured to never restart, we check if it's in an unrecoverable state.
 		if pod.Spec.RestartPolicy == corev1.RestartPolicyNever {
-			var terminated [][2]string
+			var failures []runtime.ErrContainerFailed_Failure
 			for _, init := range pod.Status.InitContainerStatuses {
 				if init.State.Terminated != nil && init.State.Terminated.ExitCode != 0 {
-					terminated = append(terminated, [2]string{
-						init.Name,
-						fmt.Sprintf("%s: exit code %d", init.State.Terminated.Reason, init.State.Terminated.ExitCode),
+					failures = append(failures, runtime.ErrContainerFailed_Failure{
+						Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, nil),
+						Reason:    init.State.Terminated.Reason,
+						Message:   init.State.Terminated.Message,
+						ExitCode:  init.State.Terminated.ExitCode,
 					})
 				}
 			}
 
 			for _, container := range pod.Status.ContainerStatuses {
 				if container.State.Terminated != nil && container.State.Terminated.ExitCode != 0 {
-					terminated = append(terminated, [2]string{
-						container.Name,
-						fmt.Sprintf("%s: exit code %d", container.State.Terminated.Reason, container.State.Terminated.ExitCode),
+					failures = append(failures, runtime.ErrContainerFailed_Failure{
+						Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
+						Reason:    container.State.Terminated.Reason,
+						Message:   container.State.Terminated.Message,
+						ExitCode:  container.State.Terminated.ExitCode,
 					})
 				}
 			}
 
-			if len(terminated) > 0 {
-				var failed []*runtimepb.ContainerReference
-				var labels []string
-				for _, t := range terminated {
-					labels = append(labels, fmt.Sprintf("%s: %s", t[0], t[1]))
-					failed = append(failed, kubedef.MakePodRef(pod.Namespace, pod.Name, t[0], nil))
-				}
-
+			if len(failures) > 0 {
 				return false, runtime.ErrContainerFailed{
-					Name:             fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
-					Reason:           strings.Join(labels, "; "),
-					FailedContainers: failed,
+					Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+					Failures: failures,
 				}
 			}
 		}

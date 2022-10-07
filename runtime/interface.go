@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -333,14 +334,33 @@ func (e ErrContainerExitStatus) Error() string {
 }
 
 type ErrContainerFailed struct {
-	Name   string
-	Reason string
+	Name     string
+	Failures []ErrContainerFailed_Failure
+}
 
-	FailedContainers []*runtimepb.ContainerReference // A pointer that can be passed to the runtime to fetch logs.
+type ErrContainerFailed_Failure struct {
+	Reference *runtimepb.ContainerReference // A pointer that can be passed to the runtime to fetch logs.
+	Reason    string
+	Message   string
+	ExitCode  int32
 }
 
 func (e ErrContainerFailed) Error() string {
-	return fmt.Sprintf("%s: container failed with: %s", e.Name, e.Reason)
+	if len(e.Failures) == 0 {
+		return fmt.Sprintf("%s: unknown failure", e.Name)
+	}
+
+	var labels []string
+	for _, failure := range e.Failures {
+		labels = append(labels, fmt.Sprintf("%s: failed with %q: exit code %d: last message %q",
+			failure.Reference.HumanReference, failure.Reason, failure.ExitCode, failure.Message))
+	}
+
+	if len(labels) == 1 {
+		return fmt.Sprintf("%s: %s", e.Name, labels[0])
+	}
+
+	return fmt.Sprintf("%s: multiple failures:\n%s", e.Name, strings.Join(labels, "\n"))
 }
 
 type PortRange struct {
