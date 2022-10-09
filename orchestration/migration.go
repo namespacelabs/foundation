@@ -62,13 +62,21 @@ func Deploy(ctx context.Context, env planning.Context, cluster runtime.ClusterNa
 
 			if wait {
 				var ch chan *orchpb.Event
-				var handler = func(_ context.Context, err error) error { return err }
+				var cleanup func(ctx context.Context) error
 
 				if outputProgress {
-					ch, handler = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
+					ch, cleanup = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
 				}
 
-				return handler(ctx, WireDeploymentStatus(ctx, conn, id, ch))
+				err := WireDeploymentStatus(ctx, conn, id, ch)
+				if cleanup != nil {
+					cleanupErr := cleanup(ctx)
+					if err == nil {
+						return cleanupErr
+					}
+				}
+
+				return err
 			}
 
 			return nil

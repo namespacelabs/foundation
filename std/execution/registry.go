@@ -10,16 +10,19 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
 type Funcs[M proto.Message] struct {
 	Aliases   []string
+	EmitStart func(context.Context, *schema.SerializedInvocation, M, chan *orchestration.Event)
 	Handle    func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
 	PlanOrder func(M) (*schema.ScheduleOrder, error)
 }
 
 type VFuncs[M proto.Message, V any] struct {
 	Parse     func(context.Context, *schema.SerializedInvocation, M) (V, error)
+	EmitStart func(context.Context, *schema.SerializedInvocation, V, chan *orchestration.Event)
 	Handle    func(context.Context, *schema.SerializedInvocation, V) (*HandleResult, error)
 	PlanOrder func(V) (*schema.ScheduleOrder, error)
 }
@@ -27,6 +30,7 @@ type VFuncs[M proto.Message, V any] struct {
 type internalFuncs struct {
 	Aliases   []string
 	Parse     func(context.Context, *schema.SerializedInvocation, proto.Message) (any, error)
+	EmitStart func(context.Context, *schema.SerializedInvocation, proto.Message, any, chan *orchestration.Event)
 	Handle    func(context.Context, *schema.SerializedInvocation, proto.Message, any) (*HandleResult, error)
 	PlanOrder func(proto.Message, any) (*schema.ScheduleOrder, error)
 }
@@ -58,8 +62,13 @@ func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.S
 func RegisterFuncs[M proto.Message](funcs Funcs[M]) {
 	register[M](internalFuncs{
 		Aliases: funcs.Aliases,
-		Handle: func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message, _ any) (*HandleResult, error) {
-			return funcs.Handle(ctx, def, msg.(M))
+		EmitStart: func(ctx context.Context, inv *schema.SerializedInvocation, msg proto.Message, _ any, ch chan *orchestration.Event) {
+			if funcs.EmitStart != nil {
+				funcs.EmitStart(ctx, inv, msg.(M), ch)
+			}
+		},
+		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, msg proto.Message, _ any) (*HandleResult, error) {
+			return funcs.Handle(ctx, inv, msg.(M))
 		},
 		PlanOrder: func(msg proto.Message, _ any) (*schema.ScheduleOrder, error) {
 			if funcs.PlanOrder == nil {
@@ -75,6 +84,11 @@ func RegisterVFuncs[M proto.Message, V any](funcs VFuncs[M, V]) {
 	register[M](internalFuncs{
 		Parse: func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message) (any, error) {
 			return funcs.Parse(ctx, def, msg.(M))
+		},
+		EmitStart: func(ctx context.Context, inv *schema.SerializedInvocation, msg proto.Message, value any, ch chan *orchestration.Event) {
+			if funcs.EmitStart != nil {
+				funcs.EmitStart(ctx, inv, value.(V), ch)
+			}
 		},
 		Handle: func(ctx context.Context, def *schema.SerializedInvocation, _ proto.Message, value any) (*HandleResult, error) {
 			return funcs.Handle(ctx, def, value.(V))

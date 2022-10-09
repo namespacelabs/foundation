@@ -28,24 +28,14 @@ const (
 )
 
 func MaybeRenderBlock(env planning.Context, cluster runtime.ClusterNamespace, render bool) execution.WaitHandler {
-	return func(ctx context.Context) (chan *orchestration.Event, func(context.Context, error) error) {
+	return func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
 		if !render {
-			return observeContainers(ctx, env, cluster, nil), func(ctx context.Context, err error) error { return err }
+			return observeContainers(ctx, env, cluster, nil), func(ctx context.Context) error { return nil }
 		}
 
 		rwb := renderwait.NewBlock(ctx, "deploy")
-		cleanup := func(ctx context.Context, waitErr error) error {
-			// Make sure that rwb completes before further output below (for ordering purposes).
-			if err := rwb.Wait(ctx); err != nil {
-				if waitErr == nil {
-					return err
-				}
-			}
 
-			return waitErr
-		}
-
-		return observeContainers(ctx, env, cluster, rwb.Ch()), cleanup
+		return observeContainers(ctx, env, cluster, rwb.Ch()), rwb.Wait
 	}
 }
 

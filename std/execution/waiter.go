@@ -14,23 +14,6 @@ import (
 // A waiter implementation is required to close the received channel when it's done.
 type Waiter func(context.Context, chan *orchestration.Event) error
 
-func WaitMultipleWithHandler(ctx context.Context, waiters []Waiter, channelHandler WaitHandler) error {
-	var ch chan *orchestration.Event
-	var handleErr func(context.Context, error) error
-
-	if channelHandler != nil {
-		ch, handleErr = channelHandler(ctx)
-	}
-
-	waitErr := waitMultiple(ctx, waiters, ch)
-
-	if handleErr != nil {
-		return handleErr(ctx, waitErr)
-	}
-
-	return waitErr
-}
-
 // waitMultiple waits for multiple Waiters to become ready. If `ch` is not null,
 // it receives state change events, emitted by the waiters themselves.
 func waitMultiple(ctx context.Context, waiters []Waiter, ch chan *orchestration.Event) error {

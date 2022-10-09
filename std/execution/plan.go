@@ -38,17 +38,17 @@ type Plan struct {
 	scope       schema.PackageList
 }
 
-type parsedPlan struct {
+type compiledPlan struct {
 	definitions []*schema.SerializedInvocation
-	nodes       []*rnode
+	nodes       []*executionNode
 }
 
-type rnode struct {
-	def   *schema.SerializedInvocation
-	obj   proto.Message
-	order *schema.ScheduleOrder
-	reg   *registration
-	value any
+type executionNode struct {
+	invocation    *schema.SerializedInvocation
+	message       proto.Message
+	parsed        any
+	computedOrder *schema.ScheduleOrder
+	dispatch      internalFuncs
 }
 
 func NewEmptyPlan() *Plan {
@@ -67,8 +67,8 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) *Plan {
 	return g
 }
 
-func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedPlan, error) {
-	g := &parsedPlan{}
+func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*compiledPlan, error) {
+	g := &compiledPlan{}
 
 	var defs []*schema.SerializedInvocation
 	tocompile := map[string][]*schema.SerializedInvocation{}
@@ -92,7 +92,7 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 		defs = append(defs, compiled...)
 	}
 
-	var nodes []*rnode
+	var nodes []*executionNode
 	for _, src := range defs {
 		key := src.Impl.GetTypeUrl()
 		reg, ok := handlers[key]
@@ -105,21 +105,21 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 			return nil, fnerrors.InternalError("%v: failed to unmarshal: %w", key, err)
 		}
 
-		node := &rnode{
-			def: src,
-			reg: reg,
-			obj: msg,
+		node := &executionNode{
+			invocation: src,
+			dispatch:   reg.funcs,
+			message:    msg,
 		}
 
 		if reg.funcs.Parse != nil {
 			var err error
-			node.value, err = reg.funcs.Parse(ctx, src, msg)
+			node.parsed, err = reg.funcs.Parse(ctx, src, msg)
 			if err != nil {
 				return nil, fnerrors.InternalError("%s: failed to parse: %w", key, err)
 			}
 		}
 
-		computedOrder, err := reg.funcs.PlanOrder(msg, node.value)
+		computedOrder, err := reg.funcs.PlanOrder(msg, node.parsed)
 		if err != nil {
 			return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 		}
@@ -131,7 +131,7 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*parsedP
 		computedOrder.SchedCategory = append(computedOrder.SchedCategory, src.Order.GetSchedCategory()...)
 		computedOrder.SchedAfterCategory = append(computedOrder.SchedAfterCategory, src.Order.GetSchedAfterCategory()...)
 
-		node.order = computedOrder
+		node.computedOrder = computedOrder
 
 		nodes = append(nodes, node)
 	}
@@ -150,7 +150,7 @@ type recordedOutput struct {
 	Used    bool
 }
 
-func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
+func (g *compiledPlan) apply(ctx context.Context) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -166,12 +166,12 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 	outputs := map[string]*recordedOutput{}
 	for _, n := range nodes {
-		typeUrl := n.def.Impl.GetTypeUrl()
+		typeUrl := n.invocation.Impl.GetTypeUrl()
 
-		fmt.Fprintf(console.Debug(ctx), "executing %q (%s)\n", typeUrl, n.def.Description)
+		fmt.Fprintf(console.Debug(ctx), "executing %q (%s)\n", typeUrl, n.invocation.Description)
 
 		invCtx := ctx
-		inputs, err := prepareInputs(outputs, n.def)
+		inputs, err := prepareInputs(outputs, n.invocation)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -181,7 +181,7 @@ func (g *parsedPlan) apply(ctx context.Context) ([]Waiter, error) {
 			invCtx = injectValues(invCtx, InputsInjection.With(inputs))
 		}
 
-		res, err := n.reg.funcs.Handle(invCtx, n.def, n.obj, n.value)
+		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed)
 		if err != nil {
 			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, err))
 		} else if res != nil {
@@ -245,19 +245,19 @@ func (g *Plan) Definitions() []*schema.SerializedInvocation {
 	return g.definitions
 }
 
-func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
+func topoSortNodes(ctx context.Context, nodes []*executionNode) ([]*executionNode, error) {
 	graph := toposort.NewGraph(len(nodes))
 
 	categories := map[string]struct{}{}
 	for _, n := range nodes {
-		for _, cat := range n.order.GetSchedCategory() {
+		for _, cat := range n.computedOrder.GetSchedCategory() {
 			if _, has := categories[cat]; !has {
 				graph.AddNode("cat:" + cat)
 				categories[cat] = struct{}{}
 			}
 		}
 
-		for _, cat := range n.order.GetSchedAfterCategory() {
+		for _, cat := range n.computedOrder.GetSchedAfterCategory() {
 			if _, has := categories[cat]; !has {
 				graph.AddNode("cat:" + cat)
 				categories[cat] = struct{}{}
@@ -271,11 +271,11 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 
 		graph.AddNode(ks)
 
-		for _, cat := range n.order.GetSchedCategory() {
+		for _, cat := range n.computedOrder.GetSchedCategory() {
 			graph.AddEdge(ks, "cat:"+cat)
 		}
 
-		for _, cat := range n.order.GetSchedAfterCategory() {
+		for _, cat := range n.computedOrder.GetSchedAfterCategory() {
 			graph.AddEdge("cat:"+cat, ks)
 		}
 	}
@@ -285,9 +285,9 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 		fmt.Fprintf(console.Errors(ctx), "execution sort failed:\n")
 
 		for k, n := range nodes {
-			fmt.Fprintf(console.Errors(ctx), " #%d %q --> cats:%v after:%v\n", k, n.def.Description,
-				n.order.GetSchedCategory(),
-				n.order.GetSchedAfterCategory())
+			fmt.Fprintf(console.Errors(ctx), " #%d %q --> cats:%v after:%v\n", k, n.invocation.Description,
+				n.computedOrder.GetSchedCategory(),
+				n.computedOrder.GetSchedAfterCategory())
 		}
 
 		return nil, fnerrors.InternalError("ops dependencies are not solvable")
@@ -295,7 +295,7 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 
 	var debug bytes.Buffer
 
-	end := make([]*rnode, 0, len(nodes))
+	end := make([]*executionNode, 0, len(nodes))
 	for _, k := range sorted {
 		parsed := strings.TrimPrefix(k, "iid:")
 		if parsed == k {
@@ -309,9 +309,9 @@ func topoSortNodes(ctx context.Context, nodes []*rnode) ([]*rnode, error) {
 		}
 		end = append(end, nodes[i])
 
-		fmt.Fprintf(&debug, " #%d %q --> cats:%v after:%v\n", i, nodes[i].def.Description,
-			nodes[i].order.GetSchedCategory(),
-			nodes[i].order.GetSchedAfterCategory())
+		fmt.Fprintf(&debug, " #%d %q --> cats:%v after:%v\n", i, nodes[i].invocation.Description,
+			nodes[i].computedOrder.GetSchedCategory(),
+			nodes[i].computedOrder.GetSchedAfterCategory())
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "execution sorted:\n%s", debug.Bytes())
