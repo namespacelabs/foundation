@@ -127,7 +127,7 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 			var ready bool
 			var took string
 			if blk.AlreadyExisted && !blk.Ready {
-				took = box("waiting for previous deployment ...", mergeWaitStatus(blk.WaitStatus))
+				took = box("Waiting for previous deployment ...", mergeWaitStatus(blk.WaitStatus))
 			} else if blk.AlreadyExisted {
 				ready = true
 				took = "(no update required)"
@@ -137,7 +137,7 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 			} else {
 				took = mergeWaitStatus(blk.WaitStatus)
 				if took == "" {
-					took = "waiting ..."
+					took = "Waiting..."
 				}
 			}
 

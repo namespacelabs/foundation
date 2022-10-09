@@ -45,7 +45,7 @@ func registerApply() {
 		},
 
 		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedApply) (*execution.HandleResult, error) {
-			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, parsed.spec)
+			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, parsed.spec, nil)
 		},
 
 		PlanOrder: func(apply *parsedApply) (*fnschema.ScheduleOrder, error) {
@@ -59,7 +59,7 @@ type parsedApply struct {
 	spec *kubedef.OpApply
 }
 
-func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubedef.Object, spec *kubedef.OpApply) (*execution.HandleResult, error) {
+func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubedef.Object, spec *kubedef.OpApply, ch chan *orchestration.Event) (*execution.HandleResult, error) {
 	gv := obj.GroupVersionKind().GroupVersion()
 	if gv.Version == "" {
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
@@ -182,6 +182,17 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		return nil, nil
 	}
 
+	if ch != nil {
+		switch {
+		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj):
+			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
+				Description: "Commited...",
+			})
+			ch <- ev
+		}
+	}
+
 	switch {
 	case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj):
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
@@ -220,28 +231,15 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				}
 
 				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("pod.wait").Scope(scope...),
-					kobs.WaitForPodConditition(
-						obj.GetNamespace(),
-						kobs.PickPod(obj.GetName()),
+					kobs.WaitForPodConditition(obj.GetNamespace(), kobs.PickPod(obj.GetName()),
 						func(ps v1.PodStatus) (bool, error) {
 							meta, err := json.Marshal(ps)
 							if err != nil {
 								return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
 							}
 
-							ev := &orchestration.Event{
-								ResourceId:          fmt.Sprintf("%s/%s", obj.GetNamespace(), obj.GetName()),
-								Kind:                obj.GroupVersionKind().Kind,
-								Category:            "Servers deployed",
-								Ready:               orchestration.Event_NOT_READY,
-								ImplMetadata:        meta,
-								RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe pod %s", obj.GetNamespace(), obj.GetName()),
-							}
-
-							if spec.Deployable != nil {
-								ev.Scope = spec.Deployable.GetPackageName()
-							}
-
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+							ev.ImplMetadata = meta
 							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(obj.GetNamespace(), obj.GetName(), ps))
 
 							var done bool
@@ -250,9 +248,10 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 								done = true
 							} else {
 								done, _ = kobs.MatchPodCondition(v1.PodReady)(ps)
-								if done {
-									ev.Ready = orchestration.Event_READY
-								}
+							}
+
+							if done {
+								ev.Ready = orchestration.Event_READY
 							}
 
 							if ch != nil {

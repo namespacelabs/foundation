@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -150,7 +151,7 @@ type recordedOutput struct {
 	Used    bool
 }
 
-func (g *compiledPlan) apply(ctx context.Context) ([]Waiter, error) {
+func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -163,6 +164,14 @@ func (g *compiledPlan) apply(ctx context.Context) ([]Waiter, error) {
 
 	var errs []error
 	var waiters []Waiter
+
+	if ch != nil {
+		for _, node := range nodes {
+			if node.dispatch.EmitStart != nil {
+				node.dispatch.EmitStart(ctx, node.invocation, node.message, node.parsed, ch)
+			}
+		}
+	}
 
 	outputs := map[string]*recordedOutput{}
 	for _, n := range nodes {
@@ -181,7 +190,7 @@ func (g *compiledPlan) apply(ctx context.Context) ([]Waiter, error) {
 			invCtx = injectValues(invCtx, InputsInjection.With(inputs))
 		}
 
-		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed)
+		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed, ch)
 		if err != nil {
 			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, err))
 		} else if res != nil {

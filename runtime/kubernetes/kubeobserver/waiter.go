@@ -44,6 +44,28 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 	})
 }
 
+func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, deployable runtime.Deployable) *orchestration.Event {
+	ev := &orchestration.Event{
+		ResourceId:          fmt.Sprintf("%s/%s", namespace, name),
+		Kind:                gvk.Kind,
+		RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", namespace, strings.ToLower(gvk.Kind), name),
+		Ready:               orchestration.Event_NOT_READY,
+	}
+
+	switch {
+	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
+		ev.Category = "Servers deployed"
+	default:
+		ev.Category = desc
+	}
+
+	if deployable != nil {
+		ev.Scope = deployable.GetPackageName()
+	}
+
+	return ev
+}
+
 type WaitOnResource struct {
 	RestConfig *rest.Config
 
@@ -73,20 +95,8 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 	}
 
 	return ev.Run(ctx, func(ctx context.Context) error {
-		ev := &orchestration.Event{
-			ResourceId:          fmt.Sprintf("%s/%s", w.Namespace, w.Name),
-			Kind:                w.GroupVersionKind.Kind,
-			Scope:               w.Scope.String(),
-			RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", w.Namespace, strings.ToLower(w.GroupVersionKind.Kind), w.Name),
-		}
-
-		switch {
-		case kubedef.IsGVKDeployment(w.GroupVersionKind), kubedef.IsGVKStatefulSet(w.GroupVersionKind):
-			ev.Category = "Servers deployed"
-		default:
-			ev.Category = w.Description
-		}
-
+		ev := PrepareEvent(w.GroupVersionKind, w.Namespace, w.Name, w.Description, nil)
+		ev.Scope = w.Scope.String()
 		if w.PreviousGen > 0 && w.PreviousGen == w.ExpectedGen {
 			ev.AlreadyExisted = true
 		}

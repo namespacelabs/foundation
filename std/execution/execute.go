@@ -65,14 +65,6 @@ func rawExecute(ctx context.Context, env planning.Context, actionName string, g 
 			return nil, err
 		}
 
-		if ch != nil {
-			for _, node := range compiled.nodes {
-				if node.dispatch.EmitStart != nil {
-					node.dispatch.EmitStart(ctx, node.invocation, node.message, node.parsed, ch)
-				}
-			}
-		}
-
-		return compiled.apply(ctx)
+		return compiled.apply(ctx, ch)
 	})
 }

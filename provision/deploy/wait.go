@@ -159,6 +159,10 @@ func observeContainers(ctx context.Context, env planning.Context, cluster runtim
 
 					failed := false
 					for _, w := range ev.WaitStatus {
+						if w.Opaque == nil {
+							continue
+						}
+
 						cws := &runtimepb.ContainerWaitStatus{}
 						if err := w.Opaque.UnmarshalTo(cws); err != nil {
 							continue

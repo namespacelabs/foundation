@@ -15,7 +15,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	fnschema "namespacelabs.dev/foundation/schema"
+	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -36,14 +38,23 @@ func registerEnsureDeployment() {
 			return &parsedEnsureDeployment{obj: &parsed, spec: ensure}, nil
 		},
 
-		Handle: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedEnsureDeployment) (*execution.HandleResult, error) {
+		EmitStart: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedEnsureDeployment, ch chan *orchpb.Event) {
+			if parsed.spec.InhibitEvents {
+				return
+			}
+
+			ev := kubeobserver.PrepareEvent(parsed.obj.GroupVersionKind(), parsed.obj.GetNamespace(), parsed.obj.GetName(), d.Description, parsed.spec.Deployable)
+			ch <- ev
+		},
+
+		HandleWithEvents: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedEnsureDeployment, ch chan *orchpb.Event) (*execution.HandleResult, error) {
 			return tasks.Return(ctx, tasks.Action("kubernetes.ensure-deployment").Scope(fnschema.PackageName(parsed.spec.Deployable.PackageName)),
 				func(ctx context.Context) (*execution.HandleResult, error) {
 					if parsed.spec.ConfigurationVolumeName == "" && len(parsed.spec.SetContainerField) == 0 {
 						return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, &kubedef.OpApply{
 							BodyJson:      parsed.spec.SerializedResource,
 							InhibitEvents: parsed.spec.InhibitEvents,
-						})
+						}, ch)
 					}
 
 					inputs, err := execution.Get(ctx, execution.InputsInjection)
@@ -77,7 +88,7 @@ func registerEnsureDeployment() {
 						BodyJson:      string(serializedRenewed),
 						InhibitEvents: parsed.spec.InhibitEvents,
 						Deployable:    parsed.spec.Deployable,
-					})
+					}, ch)
 				})
 		},
 
