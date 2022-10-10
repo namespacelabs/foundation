@@ -6,8 +6,8 @@ package testboot
 
 import (
 	"flag"
-	"io/ioutil"
 	"log"
+	"os"
 	"time"
 
 	"google.golang.org/protobuf/encoding/prototext"
@@ -50,7 +50,7 @@ func BootstrapTest(testTimeout time.Duration, debug bool) TestData {
 		log.Fatal("test timed out after", testTimeout)
 	}()
 
-	reqBytes, err := ioutil.ReadFile("/" + TestRequestPath)
+	reqBytes, err := os.ReadFile("/" + TestRequestPath)
 	if err != nil {
 		log.Fatal(err)
 	}

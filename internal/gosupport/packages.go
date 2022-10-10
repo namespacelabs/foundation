@@ -6,7 +6,7 @@ package gosupport
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"golang.org/x/mod/modfile"
@@ -35,7 +35,7 @@ func LookupGoModule(srcPath string) (*modfile.File, string, error) {
 	}
 
 	gomodFile := filepath.Join(gomodDir, "go.mod")
-	gomodBytes, err := ioutil.ReadFile(gomodFile)
+	gomodBytes, err := os.ReadFile(gomodFile)
 	if err != nil {
 		return nil, gomodFile, err
 	}

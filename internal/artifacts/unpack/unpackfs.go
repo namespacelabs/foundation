@@ -13,7 +13,6 @@ import (
 	"hash"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -89,7 +88,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 
 	tasks.Attachments(ctx).AddResult("dir", targetDir)
 
-	if checksumsBytes, err := ioutil.ReadFile(targetChecksum); err == nil {
+	if checksumsBytes, err := os.ReadFile(targetChecksum); err == nil {
 		// Target exists, verify contents.
 		var checksums []checksumEntry
 		if err := json.Unmarshal(checksumsBytes, &checksums); err == nil {
@@ -198,7 +197,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 		return Unpacked{}, fnerrors.InternalError("failed to serialize checksums: %w", err)
 	}
 
-	if err := ioutil.WriteFile(targetChecksum, serializedChecksums, 0444); err != nil {
+	if err := os.WriteFile(targetChecksum, serializedChecksums, 0444); err != nil {
 		return Unpacked{}, fnerrors.InternalError("failed to write checksum file: %w", err)
 	}
 

@@ -7,14 +7,14 @@ package runs
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/storedrun"
 )
 
 func MakeUrl(path string) (string, error) {
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", fnerrors.BadInputError("%s: failed to read: %w", path, err)
 	}

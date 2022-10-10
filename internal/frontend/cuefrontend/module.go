@@ -7,7 +7,6 @@ package cuefrontend
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,11 +40,11 @@ func (moduleLoader) FindModuleRoot(dir string) (string, error) {
 func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.WorkspaceData, error) {
 	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (pkggraph.WorkspaceData, error) {
 		wfile := WorkspaceFile
-		data, err := ioutil.ReadFile(filepath.Join(dir, WorkspaceFile))
+		data, err := os.ReadFile(filepath.Join(dir, WorkspaceFile))
 		if err != nil {
 			if os.IsNotExist(err) {
 				wfile = LegacyWorkspaceFile
-				data, err = ioutil.ReadFile(filepath.Join(dir, LegacyWorkspaceFile))
+				data, err = os.ReadFile(filepath.Join(dir, LegacyWorkspaceFile))
 			}
 		}
 

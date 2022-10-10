@@ -10,7 +10,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -146,7 +145,7 @@ func getOrGenerateEphemeralCliID(ctx context.Context) ephemeralCliID {
 	}
 
 	idfile := filepath.Join(configDir, "clientid.json")
-	idcontents, err := ioutil.ReadFile(idfile)
+	idcontents, err := os.ReadFile(idfile)
 	if err == nil {
 		var clientID ephemeralCliID
 		if err := json.Unmarshal(idcontents, &clientID); err == nil {
@@ -169,7 +168,7 @@ func writeJSON(path string, msg interface{}) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0644)
 }
 
 func fullCommand(cmd *cobra.Command) string {

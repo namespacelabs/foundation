@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"hash"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -90,7 +89,7 @@ func (c *localCache) Bytes(ctx context.Context, h schema.Digest) ([]byte, error)
 	if h.Algorithm == "" || h.Hex == "" {
 		return nil, fnerrors.InternalError("digest not set")
 	}
-	return ioutil.ReadFile(c.blobPath(h))
+	return os.ReadFile(c.blobPath(h))
 }
 
 func (c *localCache) Blob(h schema.Digest) (io.ReadCloser, error) {
@@ -221,7 +220,7 @@ func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, out
 		}
 
 		indexFile := filepath.Join(indexDir, input.String()+".json")
-		t, err := ioutil.ReadFile(indexFile)
+		t, err := os.ReadFile(indexFile)
 		if err == nil {
 			var existing CachedOutput
 			if err := json.Unmarshal(t, &existing); err == nil {
@@ -239,7 +238,7 @@ func (c *localCache) StoreEntry(ctx context.Context, inputs []schema.Digest, out
 		tmpid := ids.NewRandomBase32ID(4)
 
 		tmpFile := indexFile + "." + tmpid
-		if err := ioutil.WriteFile(tmpFile, marshalled, 0600); err != nil {
+		if err := os.WriteFile(tmpFile, marshalled, 0600); err != nil {
 			return fnerrors.InternalError("failed to write cached output: %w", err)
 		}
 

@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -95,7 +95,7 @@ func ensureDb(ctx context.Context, conn *pgx.Conn, db *postgres.Database) error 
 }
 
 func applySchema(ctx context.Context, conn *pgx.Conn, db *postgres.Database) error {
-	schema, err := ioutil.ReadFile(db.SchemaFile.Path)
+	schema, err := os.ReadFile(db.SchemaFile.Path)
 	if err != nil {
 		return fmt.Errorf("unable to read file %s: %v", db.SchemaFile.Path, err)
 	}
@@ -121,7 +121,7 @@ func readSecret(secret *postgres.Database_Credentials_Secret, cache map[string]s
 		return nil
 	}
 
-	bytes, err := ioutil.ReadFile(secret.FromPath)
+	bytes, err := os.ReadFile(secret.FromPath)
 	if err != nil {
 		return fmt.Errorf("unable to read file %s: %w", secret.FromPath, err)
 	}
@@ -159,7 +159,7 @@ func ReadConfigs() ([]*postgres.Database, error) {
 	dbs := []*postgres.Database{}
 
 	for _, path := range flag.Args() {
-		file, err := ioutil.ReadFile(path)
+		file, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read file %s: %v", path, err)
 		}

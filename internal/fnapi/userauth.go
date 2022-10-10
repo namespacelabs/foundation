@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -39,7 +38,7 @@ func StoreUser(ctx context.Context, userAuth *UserAuth) (string, error) {
 		return "", err
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(configDir, userAuthJson), userAuthData, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, userAuthJson), userAuthData, 0600); err != nil {
 		return "", err
 	}
 
@@ -53,7 +52,7 @@ func LoadUser() (*UserAuth, error) {
 	}
 
 	p := filepath.Join(dir, userAuthJson)
-	data, err := ioutil.ReadFile(p)
+	data, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// XXX use fnerrors

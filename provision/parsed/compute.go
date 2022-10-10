@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -186,7 +186,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 		for buffer := range bufferCh {
 			dirty := false
 			for _, ev := range buffer {
-				contents, err := ioutil.ReadFile(ev.Name)
+				contents, err := os.ReadFile(ev.Name)
 				if err == nil {
 					if !bytes.Equal(contents, expected[ev.Name]) {
 						err = fmt.Errorf("%s: contents differ", ev.Name)

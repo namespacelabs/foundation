@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -164,7 +164,7 @@ func Attach(m proto.Message) {
 }
 
 func LoadStoredID(path string) (StoredRunID, error) {
-	contents, err := ioutil.ReadFile(path)
+	contents, err := os.ReadFile(path)
 	if err != nil {
 		return StoredRunID{}, fnerrors.InternalError("failed to load run id: %w", err)
 	}

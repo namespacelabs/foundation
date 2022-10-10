@@ -7,7 +7,7 @@ package secrets
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
@@ -77,7 +77,7 @@ func newSetCmd() *cobra.Command {
 
 			var value []byte
 			if fromFile != "" {
-				value, err = ioutil.ReadFile(fromFile)
+				value, err = os.ReadFile(fromFile)
 				if err != nil {
 					return fnerrors.BadInputError("%s: failed to load: %w", fromFile, err)
 				}

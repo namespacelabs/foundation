@@ -6,7 +6,7 @@ package nodejs
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/schema"
@@ -104,5 +104,5 @@ func writeLockFileToTemp(target string, lockFileStruct lockFile) error {
 		return err
 	}
 
-	return ioutil.WriteFile(target, lock, 0644)
+	return os.WriteFile(target, lock, 0644)
 }

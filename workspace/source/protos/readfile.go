@@ -5,7 +5,7 @@
 package protos
 
 import (
-	"io/ioutil"
+	"os"
 	"reflect"
 
 	"google.golang.org/protobuf/proto"
@@ -15,7 +15,7 @@ import (
 func ReadFileAndBytes[V proto.Message](path string) (V, []byte, error) {
 	var empty V
 
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return empty, nil, fnerrors.New("%s: failed to load: %w", path, err)
 	}

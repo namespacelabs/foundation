@@ -9,7 +9,6 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"io/ioutil"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
@@ -34,7 +33,7 @@ func LayerFromFS(ctx context.Context, vfs fs.FS) (Layer, error) {
 	}
 
 	return tarball.LayerFromOpener(func() (io.ReadCloser, error) {
-		return ioutil.NopCloser(bytes.NewReader(buf.Bytes())), nil
+		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
 	}, tarball.WithCompressedCaching)
 }
 

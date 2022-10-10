@@ -8,8 +8,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/universe/aws/client"
@@ -70,11 +70,11 @@ func apply(ctx context.Context) error {
 
 func getMinioCreds() (*minio.Creds, error) {
 	if *minioPasswordFile != "" && *minioUserFile != "" {
-		pass, err := ioutil.ReadFile(*minioPasswordFile)
+		pass, err := os.ReadFile(*minioPasswordFile)
 		if err != nil {
 			return nil, err
 		}
-		user, err := ioutil.ReadFile(*minioUserFile)
+		user, err := os.ReadFile(*minioUserFile)
 		if err != nil {
 			return nil, err
 		}

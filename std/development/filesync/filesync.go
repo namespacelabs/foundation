@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -60,7 +59,7 @@ func (s sinkServer) Push(ctx context.Context, req *wsremote.PushRequest) (*wsrem
 
 		switch ev.Event {
 		case wscontents.FileEvent_WRITE:
-			if err := ioutil.WriteFile(filePath, ev.NewContents, fs.FileMode(ev.Mode)); err != nil {
+			if err := os.WriteFile(filePath, ev.NewContents, fs.FileMode(ev.Mode)); err != nil {
 				return nil, err
 			}
 

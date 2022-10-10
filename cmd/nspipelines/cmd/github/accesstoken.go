@@ -7,8 +7,8 @@ package github
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/spf13/cobra"
@@ -67,7 +67,7 @@ func newAccessTokenCmd() *cobra.Command {
 			return fmt.Errorf("failed to compute token")
 		}
 
-		return ioutil.WriteFile(*output, []byte(token), 0644)
+		return os.WriteFile(*output, []byte(token), 0644)
 	})
 
 	return cmd

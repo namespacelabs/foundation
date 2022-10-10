@@ -5,7 +5,6 @@
 package protos
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -25,7 +24,7 @@ func WriteFile(path string, msg proto.Message) error {
 		return fnerrors.New("mkdir: failed: %w", err)
 	}
 
-	if err := ioutil.WriteFile(path, serialized, 0644); err != nil {
+	if err := os.WriteFile(path, serialized, 0644); err != nil {
 		return fnerrors.New("failed to write %q: %w", path, err)
 	}
 

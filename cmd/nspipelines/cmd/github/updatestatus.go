@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"text/template"
@@ -198,7 +197,7 @@ type PipelineState struct {
 }
 
 func readState(file string, out *PipelineState) error {
-	content, err := ioutil.ReadFile(file)
+	content, err := os.ReadFile(file)
 	if err != nil {
 		return fnerrors.New("unable to read pipeline state: %w", err)
 	}
@@ -256,7 +255,7 @@ func updateState(current Phase, success bool, file string, state *PipelineState)
 		return err
 	}
 
-	if err := ioutil.WriteFile(file, serialized, 0644); err != nil {
+	if err := os.WriteFile(file, serialized, 0644); err != nil {
 		return fnerrors.New("failed to write %q: %w", file, err)
 	}
 

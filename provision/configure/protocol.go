@@ -8,7 +8,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -104,7 +103,7 @@ func decodeInput(target interface{}) error {
 	var bytes []byte
 
 	if *inlineInvocationInput != "" {
-		bytes, err = ioutil.ReadFile(*inlineInvocationInput)
+		bytes, err = os.ReadFile(*inlineInvocationInput)
 	} else {
 		bytes, err = io.ReadAll(os.Stdin)
 	}

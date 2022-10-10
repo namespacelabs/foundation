@@ -6,8 +6,8 @@ package cuefrontend
 
 import (
 	"context"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -217,7 +217,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 				return err
 			}
 
-			contents, err := ioutil.ReadAll(r)
+			contents, err := io.ReadAll(r)
 			if err != nil {
 				return fnerrors.InternalError("%s: failed to read contents: %w", path, err)
 			}

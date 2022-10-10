@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -168,7 +167,7 @@ func loadVersionCache() (*versionCache, error) {
 	if err != nil {
 		return nil, err
 	}
-	bs, err := ioutil.ReadFile(cachePath)
+	bs, err := os.ReadFile(cachePath)
 	if os.IsNotExist(err) {
 		// Missing the cache is okay.
 		return nil, nil
@@ -201,7 +200,7 @@ func persistCache(version *toolVersion) error {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(cachePath, bs, 0644); err != nil {
+	if err := os.WriteFile(cachePath, bs, 0644); err != nil {
 		return err
 	}
 	return nil

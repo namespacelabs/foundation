@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -93,7 +92,7 @@ func newNewCmd() *cobra.Command {
 				return err
 			}
 
-			eventData, err := ioutil.ReadFile(*githubEvent)
+			eventData, err := os.ReadFile(*githubEvent)
 			if err != nil {
 				return err
 			}
@@ -196,7 +195,7 @@ func newNewCmd() *cobra.Command {
 			fmt.Fprintf(os.Stdout, "%s\n", text)
 		}
 
-		return ioutil.WriteFile(*storeRunID, r, 0644)
+		return os.WriteFile(*storeRunID, r, 0644)
 	})
 
 	return cmd

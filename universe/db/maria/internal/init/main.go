@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -97,7 +97,7 @@ func applySchema(ctx context.Context, db *maria.Database, password string) error
 	}
 	defer conn.Close()
 
-	schema, err := ioutil.ReadFile(db.SchemaFile.Path)
+	schema, err := os.ReadFile(db.SchemaFile.Path)
 	if err != nil {
 		return fmt.Errorf("unable to read file %s: %v", db.SchemaFile.Path, err)
 	}
@@ -124,7 +124,7 @@ func readConfigs() ([]*maria.Database, error) {
 	dbs := []*maria.Database{}
 
 	for _, path := range flag.Args() {
-		file, err := ioutil.ReadFile(path)
+		file, err := os.ReadFile(path)
 		if err != nil {
 			return nil, fmt.Errorf("unable to read file %s: %v", path, err)
 		}
@@ -147,7 +147,7 @@ func main() {
 	ctx := context.Background()
 
 	// TODO: creds should be definable per db instance #217
-	password, err := ioutil.ReadFile(*passwordFile)
+	password, err := os.ReadFile(*passwordFile)
 	if err != nil {
 		log.Fatalf("unable to read file %s: %v", *passwordFile, err)
 	}

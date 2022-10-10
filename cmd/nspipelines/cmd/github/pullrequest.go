@@ -7,7 +7,6 @@ package github
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -64,7 +63,7 @@ func newPullRequestCmd() *cobra.Command {
 		}
 
 		hasPr := len(relatedPrs) > 0
-		return ioutil.WriteFile(*output, []byte(fmt.Sprintf("%v", hasPr)), 0644)
+		return os.WriteFile(*output, []byte(fmt.Sprintf("%v", hasPr)), 0644)
 	})
 	return cmd
 }

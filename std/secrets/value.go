@@ -6,11 +6,11 @@ package secrets
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 )
 
 func (v *Value) Value() ([]byte, error) {
-	return ioutil.ReadFile(v.Path)
+	return os.ReadFile(v.Path)
 }
 
 func (v *Value) MustValue() []byte {
