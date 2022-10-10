@@ -46,19 +46,18 @@ func GetRegistry(ctx context.Context, env planning.Context) (Manager, error) {
 }
 
 func GetRegistryFromConfig(ctx context.Context, env string, cfg planning.Configuration) (Manager, error) {
-	r, ok := registryConfigType.CheckGet(cfg)
+	p, ok := registryProviderConfigType.CheckGet(cfg)
+	if ok && p.Provider != "" {
+		return getRegistryByName(ctx, cfg, p.Provider)
+	}
 
+	r, ok := registryConfigType.CheckGet(cfg)
 	if ok && r.Url != "" {
 		if trimmed := strings.TrimPrefix(r.Url, "http://"); trimmed != r.Url {
 			r.Url = trimmed
 			r.Insecure = true
 		}
 		return MakeStaticRegistry(r), nil
-	}
-
-	p, ok := registryProviderConfigType.CheckGet(cfg)
-	if ok && p.Provider != "" {
-		return GetRegistryByName(ctx, cfg, p.Provider)
 	}
 
 	if env == "" {
@@ -70,7 +69,7 @@ func GetRegistryFromConfig(ctx context.Context, env string, cfg planning.Configu
 		"No registry configured in the environment %q.", env)
 }
 
-func GetRegistryByName(ctx context.Context, conf planning.Configuration, name string) (Manager, error) {
+func getRegistryByName(ctx context.Context, conf planning.Configuration, name string) (Manager, error) {
 	if m, ok := mapping[name]; ok {
 		return m(ctx, conf)
 	}
