@@ -51,6 +51,27 @@ func (t Test) WaitForEndpoint(ctx context.Context, endpoint *schema.Endpoint) er
 	}
 }
 
+func (t Test) MustEndpoint(owner, name string) *schema.Endpoint {
+	for _, endpoint := range t.Request.Endpoint {
+		if endpoint.EndpointOwner == owner && endpoint.ServiceName == name {
+			return endpoint
+		}
+	}
+
+	log.Fatalf("Expected endpoint to be present in the stack: endpoint_owner=%q service_name=%q", owner, name)
+	return nil
+}
+
+func (t Test) InternalOf(serverOwner string) []*schema.InternalEndpoint {
+	var filtered []*schema.InternalEndpoint
+	for _, ie := range t.Request.InternalEndpoint {
+		if ie.ServerOwner == serverOwner {
+			filtered = append(filtered, ie)
+		}
+	}
+	return filtered
+}
+
 func Do(testFunc func(context.Context, Test) error) {
 	t := testboot.BootstrapTest(*testTimeout, *debug)
 

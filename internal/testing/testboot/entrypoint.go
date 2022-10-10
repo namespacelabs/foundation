@@ -12,32 +12,10 @@ import (
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/schema"
 )
 
 type TestData struct {
 	Request *TestRequest
-}
-
-func (t TestData) MustEndpoint(owner, name string) *schema.Endpoint {
-	for _, endpoint := range t.Request.Endpoint {
-		if endpoint.EndpointOwner == owner && endpoint.ServiceName == name {
-			return endpoint
-		}
-	}
-
-	log.Fatalf("Expected endpoint to be present in the stack: endpoint_owner=%q service_name=%q", owner, name)
-	return nil
-}
-
-func (t TestData) InternalOf(serverOwner string) []*schema.InternalEndpoint {
-	var filtered []*schema.InternalEndpoint
-	for _, ie := range t.Request.InternalEndpoint {
-		if ie.ServerOwner == serverOwner {
-			filtered = append(filtered, ie)
-		}
-	}
-	return filtered
 }
 
 func BootstrapTest(testTimeout time.Duration, debug bool) TestData {
