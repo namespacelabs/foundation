@@ -70,7 +70,7 @@ func MakeOrchestratorContext(ctx context.Context, conf planning.Configuration) (
 	cfg := conf.Derive(kubedef.AdminNamespace, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
 		previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
 			&kubetool.KubernetesEnv{Namespace: kubedef.AdminNamespace}, // pin deployments to admin namespace
-			&binary.Prebuilts{PrebuiltBinary: prebuilts},
+			&binary.Prebuilts{PrebuiltBinary: prebuilts},               // TODO: prebuilt overwrites are internal for now. Consider merging if these become more frequently used.
 		)...)
 		return previous
 	})

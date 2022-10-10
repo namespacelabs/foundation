@@ -30,12 +30,11 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 
 	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
 		if UseNamespaceCloud {
-			return planning.ConfigurationSlice{
-				Configuration: protos.WrapAnysOrDie(
-					&registry.Provider{Provider: "nscloud"},
-					&client.HostEnv{Provider: "nscloud"},
-				),
-			}
+			// Prepend as this configuration should take precedence.
+			previous.Configuration = append(protos.WrapAnysOrDie(
+				&registry.Provider{Provider: "nscloud"},
+				&client.HostEnv{Provider: "nscloud"},
+			), previous.Configuration...)
 		}
 
 		return previous
