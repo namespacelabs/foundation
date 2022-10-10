@@ -526,12 +526,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 				return nil, err
 			}
 
-			image, err := prepared.Image(ctx, pctx)
-			if err != nil {
-				return nil, err
-			}
-
-			tag, err := registry.AllocateName(ctx, pctx, bin.PackageName())
+			pbin, _, err := ensureImage(ctx, pctx, prepared.Plan)
 			if err != nil {
 				return nil, err
 			}
@@ -539,7 +534,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, s
 			res = append(res, containerImage{
 				PackageRef:  binRef,
 				OwnerServer: srv.PackageName(),
-				Image:       oci.PublishResolvable(tag, image),
+				Image:       pbin,
 				Command:     prepared.Command,
 			})
 		}
