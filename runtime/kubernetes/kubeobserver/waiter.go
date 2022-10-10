@@ -47,7 +47,6 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, deployable runtime.Deployable) *orchestration.Event {
 	ev := &orchestration.Event{
 		ResourceId:          fmt.Sprintf("%s/%s", namespace, name),
-		Kind:                gvk.Kind,
 		RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", namespace, strings.ToLower(gvk.Kind), name),
 		Ready:               orchestration.Event_NOT_READY,
 	}

@@ -11,11 +11,10 @@ option go_package = "namespacelabs.dev/foundation/schema/orchestration";
 import "google/protobuf/any.proto";
 
 message Event {
+    reserved 2;
+
     // Opaque value that uniquely identifies the resource.
     string resource_id = 1;
-
-    // A resource identifier that is implementation specified.
-    string kind = 2;
 
     // A human-readable label that describes the resource.
     string category = 3;
