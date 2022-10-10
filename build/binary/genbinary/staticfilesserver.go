@@ -48,9 +48,12 @@ func (i nginxImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 }`, i.config.Port, i.config.Dir)))
 	config := oci.MakeLayer("conf", compute.Precomputed[fs.FS](&defaultConf, digestfs.Digest))
 
-	return oci.MergeImageLayers(
-		oci.ResolveImage("nginx:1.21.5-alpine", *conf.TargetPlatform()),
-		oci.MakeImageFromScratch("nginx-configuration", config)), nil
+	nginx := oci.ResolveImage("nginx:1.21.5-alpine", *conf.TargetPlatform())
+
+	// Workaround nscloud related pull-to-push authentication challenges.
+	localNginx := oci.LocalCopy(nginx)
+
+	return oci.MergeImageLayers(localNginx, oci.MakeImageFromScratch("nginx-configuration", config)), nil
 }
 
 func (nginxImage) PlatformIndependent() bool { return false }

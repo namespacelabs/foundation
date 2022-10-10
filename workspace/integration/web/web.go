@@ -62,13 +62,15 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		return nodejsBinary, nil
 	} else {
 		return &schema.Binary{
-			BuildPlan: &schema.LayeredImageBuildPlan{LayerBuildPlan: append(
-				[]*schema.ImageBuildPlan{{
-					StaticFilesServer: &schema.ImageBuildPlan_StaticFilesServer{
-						Dir:  filepath.Join(binary.AppRootPath, data.BuildOutputDir),
-						Port: data.Port,
-					}}},
-				nodejsBinary.BuildPlan.LayerBuildPlan...),
+			BuildPlan: &schema.LayeredImageBuildPlan{
+				LayerBuildPlan: append(
+					[]*schema.ImageBuildPlan{{
+						StaticFilesServer: &schema.ImageBuildPlan_StaticFilesServer{
+							Dir:  filepath.Join(binary.AppRootPath, data.BuildOutputDir),
+							Port: data.Port,
+						}}},
+					nodejsBinary.BuildPlan.LayerBuildPlan...,
+				),
 			},
 			Config: &schema.BinaryConfig{
 				Command: []string{"nginx"},

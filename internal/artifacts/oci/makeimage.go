@@ -51,7 +51,7 @@ func MakeImageFromScratch(description string, layers ...NamedLayer) NamedImage {
 }
 
 func MakeImage(description string, base NamedImage, layers ...NamedLayer) NamedImage {
-	return &makeImage{base: base, layers: layers}
+	return &makeImage{description: description, base: base, layers: layers}
 }
 
 type namedImageID struct {

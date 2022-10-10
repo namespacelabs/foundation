@@ -264,7 +264,7 @@ func (imageCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.
 	return schema.Digest(d), err
 }
 
-func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, t compute.CacheableInstance, h schema.Digest) (compute.Result[v1.Image], error) {
+func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, _ compute.CacheableInstance, h schema.Digest) (compute.Result[v1.Image], error) {
 	img, err := loadFromCache(ctx, c, v1.Hash(h))
 	if err != nil {
 		return compute.Result[v1.Image]{}, err
