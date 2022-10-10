@@ -64,7 +64,7 @@ type inlineAnyJson struct {
 }
 
 // Returns generated binaries that need to be added to the package.
-func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV, opts workspace.LoadPackageOpts) (*schema.Server, []*schema.Binary, error) {
+func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Server, []*schema.Binary, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, nil, err

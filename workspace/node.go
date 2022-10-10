@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
-func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, node *schema.Node, kind schema.Node_Kind, opts LoadPackageOpts) error {
+func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, node *schema.Node, kind schema.Node_Kind) error {
 	if kind == schema.Node_EXTENSION {
 		if node.Ingress != schema.Endpoint_INGRESS_UNSPECIFIED {
 			return fnerrors.New("ingress can only be specified for services")
@@ -98,23 +98,20 @@ func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 			// These are dependencies that depend on the properties of the node, and as such as still considered user-provided imports.
 			deps.AddMultiple(r.Import...)
 
-			if opts.LoadPackageReferences {
-				for _, pkg := range r.LoadPackages {
-					if _, err := pl.LoadByName(ctx, pkg); err != nil {
-						return err
-					}
+			for _, pkg := range r.LoadPackages {
+				if _, err := pl.LoadByName(ctx, pkg); err != nil {
+					return err
 				}
 			}
+
 		}
 	}
 
 	node.UserImports = deps.PackageNamesAsString()
 
-	if opts.LoadPackageReferences {
-		err := validateDependencies(ctx, pl, loc, deps.PackageNames(), &deps)
-		if err != nil {
-			return err
-		}
+	err := validateDependencies(ctx, pl, loc, deps.PackageNames(), &deps)
+	if err != nil {
+		return err
 	}
 
 	node.Import = deps.PackageNamesAsString()

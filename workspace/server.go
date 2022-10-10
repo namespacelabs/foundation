@@ -32,7 +32,7 @@ func ValidateServerID(n *schema.Server) error {
 	return nil
 }
 
-func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package, opts LoadPackageOpts) (*schema.Server, error) {
+func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package) (*schema.Server, error) {
 	if srv.Name == "" {
 		return nil, fnerrors.UserError(pp.Location, "server name is required")
 	}
@@ -64,11 +64,6 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		if ext.FrameworkSpecific != nil {
 			srv.Ext = append(srv.Ext, ext.FrameworkSpecific)
 		}
-	}
-
-	// Used by `ns tidy`.
-	if !opts.LoadPackageReferences {
-		return srv, nil
 	}
 
 	s := newSealer(ctx, pl, loc.PackageName, nil)

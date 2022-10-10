@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/dirs"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -251,4 +252,16 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 		*downloaded = LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
 		return nil
 	})
+}
+
+type MissingModuleResolver interface {
+	Resolve(context.Context, schema.PackageName) (*schema.Workspace_Dependency, error)
+}
+
+type defaultMissingModuleResolver struct {
+	workspace planning.Workspace
+}
+
+func (r *defaultMissingModuleResolver) Resolve(ctx context.Context, pkg schema.PackageName) (*schema.Workspace_Dependency, error) {
+	return nil, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", pkg, r.workspace.LoadedFrom().DefinitionFile)
 }

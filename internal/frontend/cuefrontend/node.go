@@ -84,7 +84,7 @@ type cueEnvironmentRequirements struct {
 	RequiredLabels map[string]string `json:"required"`
 }
 
-func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package, opts workspace.LoadPackageOpts) error {
+func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package) error {
 	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
 		ModuleName:  loc.Module.ModuleName(),
@@ -178,7 +178,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 	}
 
 	if provides := v.LookupPath("provides"); provides.Exists() {
-		if err := handleProvides(ctx, pl, loc, provides, out, opts, node); err != nil {
+		if err := handleProvides(ctx, pl, loc, provides, out, node); err != nil {
 			return err
 		}
 	}
@@ -242,19 +242,17 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 				})
 			}
 
-			if opts.LoadPackageReferences {
-				constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
-				if err != nil {
-					return err
-				}
-
-				node.Instantiate = append(node.Instantiate, &schema.Instantiate{
-					PackageName: inst.PackageName,
-					Type:        inst.Type,
-					Name:        name,
-					Constructor: constructor,
-				})
+			constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
+			if err != nil {
+				return err
 			}
+
+			node.Instantiate = append(node.Instantiate, &schema.Instantiate{
+				PackageName: inst.PackageName,
+				Type:        inst.Type,
+				Name:        name,
+				Constructor: constructor,
+			})
 		}
 	}
 
@@ -442,7 +440,7 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 		return err
 	}
 
-	return workspace.TransformNode(ctx, pl, loc, node, kind, opts)
+	return workspace.TransformNode(ctx, pl, loc, node, kind)
 }
 
 func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {
@@ -507,7 +505,7 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkg
 	return nil
 }
 
-func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, provides *fncue.CueV, pkg *pkggraph.Package, opts workspace.LoadPackageOpts, out *schema.Node) error {
+func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, provides *fncue.CueV, pkg *pkggraph.Package, out *schema.Node) error {
 	it, err := provides.Val.Fields()
 	if err != nil {
 		return err
@@ -633,19 +631,17 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 					})
 				}
 
-				if opts.LoadPackageReferences {
-					constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
-					if err != nil {
-						return err
-					}
-
-					p.Instantiate = append(p.Instantiate, &schema.Instantiate{
-						PackageName: inst.PackageName,
-						Type:        inst.Type,
-						Name:        name,
-						Constructor: constructor,
-					})
+				constructor, err := constructAny(ctx, inst, v, newAPI, pl, loc)
+				if err != nil {
+					return err
 				}
+
+				p.Instantiate = append(p.Instantiate, &schema.Instantiate{
+					PackageName: inst.PackageName,
+					Type:        inst.Type,
+					Name:        name,
+					Constructor: constructor,
+				})
 			}
 		}
 

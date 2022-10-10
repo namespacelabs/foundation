@@ -14,7 +14,7 @@ import (
 )
 
 // This function contains frontend-agnostic validation and processing code.
-func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPackageLoader, pp *pkggraph.Package, opts LoadPackageOpts) (*pkggraph.Package, error) {
+func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPackageLoader, pp *pkggraph.Package) (*pkggraph.Package, error) {
 	var err error
 
 	if pp.Integration != nil {
@@ -24,7 +24,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	if pp.Server != nil {
-		pp.Server, err = TransformServer(ctx, pl, pp.Server, pp, opts)
+		pp.Server, err = TransformServer(ctx, pl, pp.Server, pp)
 		if err != nil {
 			return nil, err
 		}
