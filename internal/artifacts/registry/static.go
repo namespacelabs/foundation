@@ -16,6 +16,10 @@ type staticRegistry struct{ r *registry.Registry }
 
 var _ Manager = staticRegistry{}
 
+func MakeStaticRegistry(r *registry.Registry) Manager {
+	return staticRegistry{r}
+}
+
 func (sr staticRegistry) IsInsecure() bool {
 	return sr.r.Insecure
 }

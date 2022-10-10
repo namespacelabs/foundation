@@ -14,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
@@ -28,7 +29,7 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, stack *provision.Stack, rp resourceList) ([]*schema.SerializedInvocation, error) {
+func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *provision.Stack, rp resourceList) ([]*schema.SerializedInvocation, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			return nil, err
 		}
 
-		imageID, _, err := ensureImage(ctx, sealedCtx, prepared.Plan)
+		imageID, _, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
 		if err != nil {
 			return nil, err
 		}

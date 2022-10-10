@@ -42,10 +42,10 @@ type Manager interface {
 }
 
 func GetRegistry(ctx context.Context, env planning.Context) (Manager, error) {
-	return GetRegistryFromConfig(ctx, env.Configuration())
+	return GetRegistryFromConfig(ctx, env.Environment().Name, env.Configuration())
 }
 
-func GetRegistryFromConfig(ctx context.Context, cfg planning.Configuration) (Manager, error) {
+func GetRegistryFromConfig(ctx context.Context, env string, cfg planning.Configuration) (Manager, error) {
 	r, ok := registryConfigType.CheckGet(cfg)
 
 	if ok && r.Url != "" {
@@ -53,7 +53,7 @@ func GetRegistryFromConfig(ctx context.Context, cfg planning.Configuration) (Man
 			r.Url = trimmed
 			r.Insecure = true
 		}
-		return staticRegistry{r}, nil
+		return MakeStaticRegistry(r), nil
 	}
 
 	p, ok := registryProviderConfigType.CheckGet(cfg)
@@ -61,7 +61,13 @@ func GetRegistryFromConfig(ctx context.Context, cfg planning.Configuration) (Man
 		return GetRegistryByName(ctx, cfg, p.Provider)
 	}
 
-	return nil, nil
+	if env == "" {
+		return nil, ErrNoRegistry
+	}
+
+	return nil, fnerrors.UsageError(
+		fmt.Sprintf("Run `ns prepare local --env=%s` to set it up.", env),
+		"No registry configured in the environment %q.", env)
 }
 
 func GetRegistryByName(ctx context.Context, conf planning.Configuration, name string) (Manager, error) {
@@ -87,26 +93,18 @@ func StaticName(registry *registry.Registry, imageID oci.ImageID, keychain oci.K
 }
 
 func AllocateName(ctx context.Context, env planning.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
-	allocated, err := RawAllocateName(ctx, env.Configuration(), pkg.String())
+	registry, err := GetRegistry(ctx, env)
 	if err != nil {
-		if errors.Is(err, ErrNoRegistry) {
-			return nil, fnerrors.UsageError(
-				fmt.Sprintf("Run `ns prepare local --env=%s` to set it up.", env.Environment().GetName()),
-				"No registry configured in the environment %q.", env.Environment().GetName())
-		}
 		return nil, err
 	}
-	return allocated, nil
+
+	return registry.AllocateName(pkg.String()), nil
 }
 
 func RawAllocateName(ctx context.Context, ck planning.Configuration, repo string) (compute.Computable[oci.AllocatedName], error) {
-	registry, err := GetRegistryFromConfig(ctx, ck)
+	registry, err := GetRegistryFromConfig(ctx, "", ck)
 	if err != nil {
 		return nil, err
-	}
-
-	if registry == nil {
-		return nil, ErrNoRegistry
 	}
 
 	return registry.AllocateName(repo), nil

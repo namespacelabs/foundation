@@ -19,6 +19,8 @@ type TextAndBinary struct {
 	Text   []byte
 	JSON   []byte
 	Binary []byte
+
+	PerFormat map[string][]byte // Key, one of: binarypb, textpb, json
 }
 
 type SerializeOpts struct {
@@ -42,7 +44,7 @@ func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, err
 			return nil, fnerrors.New("proto serialized failed: %w", err)
 		}
 
-		tb := TextAndBinary{Binary: binary}
+		tb := TextAndBinary{Binary: binary, PerFormat: map[string][]byte{"binarypb": binary}}
 
 		if opts.TextProto {
 			text, err := prototext.MarshalOptions{Multiline: true, Resolver: opts.Resolver}.Marshal(m)
@@ -50,6 +52,7 @@ func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, err
 				return nil, fnerrors.New("textproto serialized failed: %w", err)
 			}
 			tb.Text = text
+			tb.PerFormat["textpb"] = text
 		}
 
 		if opts.JSON {
@@ -58,6 +61,7 @@ func (opts SerializeOpts) Serialize(msgs ...proto.Message) ([]TextAndBinary, err
 				return nil, fnerrors.New("json serialized failed: %w", err)
 			}
 			tb.JSON = json
+			tb.PerFormat["json"] = json
 		}
 
 		res = append(res, tb)

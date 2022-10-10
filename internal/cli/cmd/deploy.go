@@ -8,17 +8,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
+	buildr "namespacelabs.dev/foundation/build/registry"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/orchestration"
@@ -31,13 +39,13 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func NewDeployCmd() *cobra.Command {
 	var (
 		explain       bool
 		serializePath string
+		uploadTo      string
 		deployOpts    deployOpts
 		env           planning.Context
 		locs          fncobra.Locations
@@ -56,6 +64,7 @@ func NewDeployCmd() *cobra.Command {
 			flags.BoolVar(&runtime.NamingNoTLS, "naming_no_tls", runtime.NamingNoTLS, "If set to true, no TLS certificate is requested for ingress names.")
 			flags.Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 			flags.StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
+			flags.StringVar(&uploadTo, "upload_plan_to", "", "If set, rather than execute on the plan, upload a serialized version of the plan.")
 			flags.StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 		}).
 		With(
@@ -73,7 +82,20 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, env, cluster.Planner(), stack)
+			reg, err := registry.GetRegistry(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			// When uploading a plan, any server and container images should be
+			// pushed to the same repository, so they're accessible by the plan.
+			if uploadTo != "" {
+				reg = registry.MakeStaticRegistry(&buildr.Registry{
+					Url: uploadTo,
+				})
+			}
+
+			plan, err := deploy.PrepareDeployStackToRegistry(ctx, env, cluster.Planner(), reg, stack)
 			if err != nil {
 				return err
 			}
@@ -91,6 +113,10 @@ func NewDeployCmd() *cobra.Command {
 
 			if serializePath != "" {
 				return protos.WriteFile(serializePath, deployPlan)
+			}
+
+			if uploadTo != "" {
+				return uploadPlanTo(ctx, uploadTo, deployPlan)
 			}
 
 			sealed := pkggraph.MakeSealedContext(env, servers.SealedPackages)
@@ -206,5 +232,32 @@ func completeDeployment(ctx context.Context, env planning.Context, cluster runti
 		fmt.Fprintf(out, "   · %s\n", hint)
 	}
 
+	return nil
+}
+
+func uploadPlanTo(ctx context.Context, targetRepo string, plan *schema.DeployPlan) error {
+	messages, err := protos.SerializeOpts{TextProto: true}.Serialize(plan)
+	if err != nil {
+		return err
+	}
+
+	var contents memfs.FS
+	for ext, data := range messages[0].PerFormat {
+		contents.Add(fmt.Sprintf("deployplan.%s", ext), data)
+	}
+
+	image := oci.MakeImageFromScratch("deploy plan", oci.MakeLayer("deploy plan contents", compute.Precomputed[fs.FS](&contents, digestfs.Digest)))
+
+	result := oci.PublishImage(registry.Precomputed(oci.AllocatedName{
+		ImageID: oci.ImageID{
+			Repository: filepath.Join(targetRepo, "plan"),
+		},
+	}), image)
+	resultImageID, err := compute.GetValue(ctx, result.ImageID())
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Stdout(ctx), "Pushed plan to %s\n", resultImageID.RepoAndDigest())
 	return nil
 }
