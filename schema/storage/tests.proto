@@ -45,6 +45,7 @@ message TestRuns {
 
     message IncompatibleTest {
         string                  test_package       = 1;
+        string                  test_name          = 6;
         string                  server_package     = 2;
         string                  requirement_owner  = 3;
         foundation.schema.Label required_label     = 4;

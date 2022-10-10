@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -36,8 +37,8 @@ import (
 type StoredTestResults struct {
 	Bundle            *storage.TestResultBundle
 	TestBundleSummary *storage.TestBundle
-	ImageRef          oci.ImageID
-	Package           schema.PackageName
+	TestPackage       schema.PackageName
+	Packages          pkggraph.SealedPackageLoader
 }
 
 type TestOpts struct {
@@ -47,9 +48,7 @@ type TestOpts struct {
 	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
-type LoadSUTFunc func(context.Context, *workspace.PackageLoader, *schema.Test) (*provision.Stack, error)
-
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts, loadSUT LoadSUTFunc) (compute.Computable[StoredTestResults], error) {
+func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -79,13 +78,12 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	}
 
 	planner := cluster.Planner(env)
-
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	stack, err := loadSUT(ctx, pl, testDef)
+	stack, err := loadSUT(ctx, env, pl, testDef)
 	if err != nil {
 		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
 	}
@@ -128,11 +126,6 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 	}
 
 	fixtureImage := oci.PublishResolvable(testBinTag, bin)
-
-	tag, err := registry.AllocateName(ctx, env, testPkg.PackageName())
-	if err != nil {
-		return nil, err
-	}
 
 	sutServers := stack.Focus.PackageNamesAsString()
 	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
@@ -178,18 +171,36 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 			}, nil
 		})
 
-	toFS := compute.Map(tasks.Action("test.to-fs"),
-		compute.Inputs().Computable("bundle", results).
-			Computable("testBundle", testBundle).
+	return compute.Map(tasks.Action("test.make-results"),
+		compute.Inputs().
 			Indigestible("packages", packages).
-			JSON("opts", opts).
-			Proto("test", testDef).
-			Proto("createdTs", createdTs).
-			Strs("sut", sutServers),
+			Computable("bundle", results).
+			Computable("testBundle", testBundle),
+		compute.Output{NotCacheable: true},
+		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
+			return StoredTestResults{
+				Bundle:            compute.MustGetDepValue(deps, results, "bundle"),
+				TestBundleSummary: compute.MustGetDepValue(deps, testBundle, "testBundle"),
+				TestPackage:       testRef.AsPackageName(),
+				Packages:          packages,
+			}, nil
+		}), nil
+}
+
+func UploadResults(ctx context.Context, env planning.Context, testPkg schema.PackageName, storedResults compute.Computable[StoredTestResults]) (compute.Computable[oci.ImageID], error) {
+	tag, err := registry.AllocateName(ctx, env, testPkg)
+	if err != nil {
+		return nil, err
+	}
+
+	toFS := compute.Map(tasks.Action("test.serialize-results"),
+		compute.Inputs().
+			Computable("storedResults", storedResults),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-			bundle := compute.MustGetDepValue(deps, results, "bundle")
-			tostore := protos.Clone(compute.MustGetDepValue(deps, testBundle, "testBundle"))
+			results := compute.MustGetDepValue(deps, storedResults, "storedResults")
+			bundle := results.Bundle
+			tostore := protos.Clone(results.TestBundleSummary)
 
 			// We only add timestamps in the transformation step, as it would
 			// otherwise break the ability to cache test results.
@@ -224,7 +235,7 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 				})
 			}
 
-			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, packages)}.Serialize(tostore)
+			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, results.Packages)}.Serialize(tostore)
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to marshal results: %w", err)
 			}
@@ -241,22 +252,26 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 			return &fsys, nil
 		})
 
-	imageID := oci.PublishImage(tag, oci.MakeImageFromScratch("test-results", oci.MakeLayer("test-results", toFS))).ImageID()
+	return oci.PublishImage(tag, oci.MakeImageFromScratch("test-results", oci.MakeLayer("test-results", toFS))).ImageID(), nil
+}
 
-	return compute.Map(tasks.Action("test.make-results"),
-		compute.Inputs().
-			Computable("stored", imageID).
-			Computable("bundle", results).
-			Computable("testBundle", testBundle),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (StoredTestResults, error) {
-			return StoredTestResults{
-				Bundle:            compute.MustGetDepValue(deps, results, "bundle"),
-				TestBundleSummary: compute.MustGetDepValue(deps, testBundle, "testBundle"),
-				ImageRef:          compute.MustGetDepValue(deps, imageID, "stored"),
-				Package:           testRef.AsPackageName(),
-			}, nil
-		}), nil
+func loadSUT(ctx context.Context, env planning.Context, pl *workspace.PackageLoader, test *schema.Test) (*provision.Stack, error) {
+	var suts []parsed.Server
+
+	for _, pkg := range test.ServersUnderTest {
+		sut, err := parsed.RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
+		if err != nil {
+			return nil, err
+		}
+		suts = append(suts, sut)
+	}
+
+	stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+	if err != nil {
+		return nil, err
+	}
+
+	return stack, nil
 }
 
 func findTest(loc pkggraph.Location, tests []*schema.Test, name string) (*schema.Test, error) {

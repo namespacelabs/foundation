@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -23,9 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/parsed"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
@@ -37,16 +35,17 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		env                 planning.Context
-		locs                fncobra.Locations
-		testOpts            testing.TestOpts
-		includeServers      bool
-		parallel            bool
-		parallelWork        bool = true
-		forceOutputProgress bool
-		rocketShip          bool
-		ephemeral           bool = true
-		explain             bool
+		env                     planning.Context
+		locs                    fncobra.Locations
+		testOpts                testing.TestOpts
+		includeServers          bool
+		parallel                bool
+		parallelWork            bool = true
+		forceOutputProgress     bool
+		rocketShip              bool
+		ephemeral               bool = true
+		explain                 bool
+		uploadResultsToRegistry bool
 	)
 
 	return fncobra.
@@ -61,9 +60,10 @@ func NewTestCmd() *cobra.Command {
 			flags.BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
 			flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
-			flags.BoolVar(&explain, "explain", false, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-			flags.BoolVar(&rocketShip, "rocket_ship", false, "If set, go full parallel without constraints.")
-			flags.BoolVar(&forceOutputProgress, "force_output_progress", false, "If set to true, always output progress, regardless of whether parallel is set.")
+			flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+			flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
+			flags.BoolVar(&forceOutputProgress, "force_output_progress", forceOutputProgress, "If set to true, always output progress, regardless of whether parallel is set.")
+			flags.BoolVar(&uploadResultsToRegistry, "upload_results_to_registry", uploadResultsToRegistry, "If set to true, uploads the test results to the configured registry.")
 
 			_ = flags.MarkHidden("rocket_ship")
 			_ = flags.MarkHidden("force_output_progress")
@@ -72,8 +72,8 @@ func NewTestCmd() *cobra.Command {
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 			fncobra.HardcodeEnv(&env, "dev"),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
-		Do(func(ctx context.Context) error {
-			ctx = prepareContext(ctx, parallelWork, rocketShip)
+		Do(func(originalCtx context.Context) error {
+			ctx := prepareContext(originalCtx, parallelWork, rocketShip)
 
 			if rocketShip {
 				parallel = true
@@ -104,6 +104,7 @@ func NewTestCmd() *cobra.Command {
 			testOpts.OutputProgress = !parallel || forceOutputProgress
 
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testRefs))
+			testResults := make([]compute.Computable[oci.ImageID], len(testRefs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testRefs))}
 			incompatible := make([]*fnerrors.IncompatibleEnvironmentErr, len(testRefs))
 
@@ -121,31 +122,13 @@ func NewTestCmd() *cobra.Command {
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
 
-						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts, func(ctx context.Context, pl *workspace.PackageLoader, test *schema.Test) (*provision.Stack, error) {
-							var suts []parsed.Server
-
-							for _, pkg := range test.ServersUnderTest {
-								sut, err := parsed.RequireServerWith(ctx, buildEnv, pl, schema.PackageName(pkg))
-								if err != nil {
-									return nil, err
-								}
-								suts = append(suts, sut)
-							}
-
-							stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
-							if err != nil {
-								return nil, err
-							}
-
-							return stack, nil
-						})
+						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts)
 						if err != nil {
 							var inc fnerrors.IncompatibleEnvironmentErr
 							if errors.As(err, &inc) {
 								incompatible[k] = &inc
 								if !parallel && !parallelWork {
-									var noResults compute.ResultWithTimestamp[testing.StoredTestResults]
-									printResult(stderr, style, testRef, noResults, false)
+									printIncompatible(stderr, style, testRef)
 								}
 
 								return nil
@@ -156,6 +139,13 @@ func NewTestCmd() *cobra.Command {
 
 						if parallel || parallelWork {
 							parallelTests[k] = testComp
+
+							if uploadResultsToRegistry {
+								testResults[k], err = testing.UploadResults(ctx, buildEnv, testRef.AsPackageName(), testComp)
+								if err != nil {
+									return fnerrors.InternalError("failed to allocate image tag: %w", err)
+								}
+							}
 						} else {
 							if explain {
 								return compute.Explain(ctx, console.Stdout(ctx), testComp)
@@ -166,13 +156,26 @@ func NewTestCmd() *cobra.Command {
 								return err
 							}
 
-							printResult(stderr, style, testRef, testResults, false)
-
 							runs.Run[k] = &storage.TestRuns_Run{
-								TestBundleId: testResults.Value.ImageRef.ImageRef(),
-								TestSummary:  testResults.Value.TestBundleSummary,
-								TestResults:  testResults.Value.Bundle,
+								TestSummary: testResults.Value.TestBundleSummary,
+								TestResults: testResults.Value.Bundle,
 							}
+
+							if uploadResultsToRegistry {
+								img, err := testing.UploadResults(ctx, buildEnv, testRef.AsPackageName(), testComp)
+								if err != nil {
+									return fnerrors.InternalError("failed to allocate image tag: %w", err)
+								}
+
+								res, err := compute.GetValue(ctx, img)
+								if err != nil {
+									return err
+								}
+
+								runs.Run[k].TestBundleId = res.ImageRef()
+							}
+
+							printResult(stderr, style, testRef, runs.Run[k], false)
 						}
 
 						return nil
@@ -191,6 +194,18 @@ func NewTestCmd() *cobra.Command {
 					return compute.Explain(ctx, console.Stdout(ctx), runTests)
 				}
 
+				var resultImages []oci.ImageID
+				if uploadResultsToRegistry {
+					results, err := compute.GetValue(ctx, compute.Collect(tasks.Action("test.upload-results"), testResults...))
+					if err != nil {
+						return err
+					}
+
+					for _, r := range results {
+						resultImages = append(resultImages, r.Value)
+					}
+				}
+
 				results, err := compute.GetValue(ctx, runTests)
 				if err != nil {
 					return err
@@ -199,13 +214,16 @@ func NewTestCmd() *cobra.Command {
 				for k, res := range results {
 					if res.Set {
 						runs.Run[k] = &storage.TestRuns_Run{
-							TestBundleId: res.Value.ImageRef.ImageRef(),
-							TestSummary:  res.Value.TestBundleSummary,
-							TestResults:  res.Value.Bundle,
+							TestSummary: res.Value.TestBundleSummary,
+							TestResults: res.Value.Bundle,
+						}
+						if uploadResultsToRegistry {
+							runs.Run[k].TestBundleId = resultImages[k].ImageRef()
 						}
 					} else {
 						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{
 							TestPackage:       testRefs[k].AsPackageName().String(),
+							TestName:          testRefs[k].Name,
 							ServerPackage:     incompatible[k].ServerPackageName.String(),
 							RequirementOwner:  incompatible[k].RequirementOwner.String(),
 							RequiredLabel:     incompatible[k].RequiredLabel,
@@ -214,13 +232,20 @@ func NewTestCmd() *cobra.Command {
 					}
 				}
 
+				sortedRuns := slices.Clone(runs.Run)
 				// Sorting after processing results since the indices need to be synchronized with other slices.
-				slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[testing.StoredTestResults]) bool {
-					return a.Value.Bundle.Result.Success && !b.Value.Bundle.Result.Success
+				slices.SortFunc(sortedRuns, func(a, b *storage.TestRuns_Run) bool {
+					return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
 				})
-				for _, res := range results {
-					pkgRef := schema.MakePackageRef(res.Result.Value.Package, res.Result.Value.TestBundleSummary.TestName)
+
+				for _, res := range sortedRuns {
+					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestSummary.TestPackage), res.TestSummary.TestName)
 					printResult(stderr, style, pkgRef, res, true)
+				}
+
+				for _, res := range runs.IncompatibleTest {
+					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestPackage), res.TestName)
+					printIncompatible(stderr, style, pkgRef)
 				}
 			}
 
@@ -253,6 +278,7 @@ func NewTestCmd() *cobra.Command {
 
 func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.Context {
 	if rocketShip {
+		fmt.Fprintln(console.Stdout(ctx), "Engaging 🚀 mode; all throttling disabled.")
 		return tasks.ContextWithThrottler(ctx, console.Debug(ctx), &tasks.ThrottleConfigurations{})
 	}
 
@@ -268,36 +294,37 @@ func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.
 	return ctx
 }
 
-func printResult(out io.Writer, style colors.Style, testRef *schema.PackageRef, res compute.ResultWithTimestamp[testing.StoredTestResults], printResults bool) {
+func printResult(out io.Writer, style colors.Style, testRef *schema.PackageRef, res *storage.TestRuns_Run, printResults bool) {
 	status := style.TestSuccess.Apply("PASSED")
-	cached := ""
 
-	if res.Set {
-		if !res.Value.Bundle.Result.Success {
-			if printResults {
-				for _, srv := range res.Value.Bundle.ServerLog {
-					printLog(out, srv)
-				}
-				if res.Value.Bundle.TestLog != nil {
-					printLog(out, res.Value.Bundle.TestLog)
-				}
+	r := res.TestResults.Result
+	if !r.Success {
+		if printResults {
+			for _, srv := range res.TestResults.ServerLog {
+				printLog(out, srv)
 			}
-
-			status = style.TestFailure.Apply("FAILED")
-
-			if res.Value.Bundle.Result.ErrorMessage != "" {
-				status += style.TestFailure.Apply(fmt.Sprintf(" (%s)", res.Value.Bundle.Result.ErrorMessage))
+			if res.TestResults.TestLog != nil {
+				printLog(out, res.TestResults.TestLog)
 			}
 		}
 
-		if res.Cached {
-			cached = style.LogCachedName.Apply(" (CACHED)")
+		status = style.TestFailure.Apply("FAILED")
+
+		if r.ErrorMessage != "" {
+			status += style.TestFailure.Apply(fmt.Sprintf(" (%s)", r.ErrorMessage))
 		}
-	} else {
-		status = style.LogCachedName.Apply("INCOMPATIBLE")
 	}
 
-	fmt.Fprintf(out, "%s: Test %s%s %s\n", testRef.Canonical(), status, cached, style.Comment.Apply(res.Value.ImageRef.ImageRef()))
+	var suffix string
+	if res.TestBundleId != "" {
+		suffix = fmt.Sprintf(" %s", style.Comment.Apply(res.TestBundleId))
+	}
+
+	fmt.Fprintf(out, "%s: Test %s%s\n", testRef.Canonical(), status, suffix)
+}
+
+func printIncompatible(out io.Writer, style colors.Style, testRef *schema.PackageRef) {
+	fmt.Fprintf(out, "%s: Test %s\n", testRef.Canonical(), style.LogCachedName.Apply("INCOMPATIBLE"))
 }
 
 func printLog(out io.Writer, log *storage.TestResultBundle_InlineLog) {
