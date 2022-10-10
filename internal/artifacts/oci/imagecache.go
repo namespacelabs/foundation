@@ -107,8 +107,8 @@ func writeImageIndex(ctx context.Context, cache cache.Cache, index v1.ImageIndex
 	// Walk the descriptors and write any v1.Image or v1.ImageIndex that we find.
 	// If we come across something we don't expect, just write it as a blob.
 	for _, desc := range manifest.Manifests {
-		switch desc.MediaType {
-		case types.OCIImageIndex, types.DockerManifestList:
+		switch {
+		case isIndexMediaType(desc.MediaType):
 			index, err := index.ImageIndex(desc.Digest)
 			if err != nil {
 				return schema.Digest{}, err
@@ -116,7 +116,8 @@ func writeImageIndex(ctx context.Context, cache cache.Cache, index v1.ImageIndex
 			if _, err := writeImageIndex(ctx, cache, index); err != nil {
 				return schema.Digest{}, err
 			}
-		case types.OCIManifestSchema1, types.DockerManifestSchema2:
+
+		case isImageMediaType(desc.MediaType):
 			img, err := index.Image(desc.Digest)
 			if err != nil {
 				return schema.Digest{}, err
@@ -125,6 +126,7 @@ func writeImageIndex(ctx context.Context, cache cache.Cache, index v1.ImageIndex
 			if _, err := (imageCacheable{}).Cache(ctx, cache, img); err != nil {
 				return schema.Digest{}, err
 			}
+
 		default:
 			return schema.Digest{}, fnerrors.BadInputError("don't support caching image indexes with %s", desc.MediaType)
 		}
@@ -320,8 +322,7 @@ func loadFromCache(ctx context.Context, cache cache.Cache, d v1.Hash) (v1.Image,
 		return nil, nil
 	}
 
-	switch m.MediaType {
-	case types.DockerManifestSchema2:
+	if isImageMediaType(m.MediaType) {
 		rawConfig, err := cache.Bytes(ctx, schema.Digest(m.Config.Digest))
 		if err != nil {
 			return nil, err
@@ -373,11 +374,11 @@ func (resolvableCacheable) Cache(ctx context.Context, c cache.Cache, r Resolvabl
 	return r.cache(ctx, c)
 }
 
-func isIndex(md types.MediaType) bool {
+func isIndexMediaType(md types.MediaType) bool {
 	return md == types.DockerManifestList || md == types.OCIImageIndex
 }
 
-func isImage(md types.MediaType) bool {
+func isImageMediaType(md types.MediaType) bool {
 	return md == types.DockerManifestSchema2 || md == types.OCIManifestSchema1
 }
 
@@ -392,7 +393,7 @@ func loadCachedResolvable(ctx context.Context, cache cache.Cache, h v1.Hash) (Re
 	}
 
 	switch {
-	case isIndex(m.MediaType):
+	case isIndexMediaType(m.MediaType):
 		idx, err := v1.ParseIndexManifest(bytes.NewReader(rawManifest))
 		if err != nil {
 			return nil, fnerrors.InternalError("cached image index manifest failed to load: %w", err)
@@ -414,7 +415,7 @@ func loadCachedResolvable(ctx context.Context, cache cache.Cache, h v1.Hash) (Re
 
 		return rawImageIndex{index: cachedIndex{rawManifest: rawManifest, parsed: idx, cache: cache, children: children}}, nil
 
-	case isImage(m.MediaType):
+	case isImageMediaType(m.MediaType):
 		image, err := loadFromCache(ctx, cache, h)
 		if err != nil {
 			return nil, err
@@ -437,7 +438,7 @@ func (c cachedIndex) MediaType() (types.MediaType, error) {
 	if string(c.parsed.MediaType) != "" {
 		return c.parsed.MediaType, nil
 	}
-	return types.DockerManifestList, nil
+	return types.OCIImageIndex, nil
 }
 
 func (c cachedIndex) Digest() (v1.Hash, error) {

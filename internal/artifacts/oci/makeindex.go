@@ -70,7 +70,7 @@ func (al *makeImageIndex) Compute(ctx context.Context, deps compute.Resolved) (R
 			return nil, err
 		}
 
-		if mediaType != types.DockerManifestSchema2 && mediaType != types.OCIManifestSchema1 {
+		if !isImageMediaType(mediaType) {
 			return nil, fnerrors.InternalError("%s: unexpected media type: %s", digest.String(), mediaType)
 		}
 
