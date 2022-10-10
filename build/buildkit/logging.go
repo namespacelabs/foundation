@@ -136,11 +136,13 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 
 				existing := running[vid]
 				if vertex.Started != nil && vertex.Completed == nil {
-					existing = &vertexState{
-						action:   tasks.Action(name).Category("buildkit").StartTimestamp(*vertex.Started).Start(ctx),
-						statuses: map[string]*tasks.RunningAction{},
+					if existing == nil {
+						existing = &vertexState{
+							action:   tasks.Action(name).Category("buildkit").StartTimestamp(*vertex.Started).Start(ctx),
+							statuses: map[string]*tasks.RunningAction{},
+						}
+						running[vid] = existing
 					}
-					running[vid] = existing
 				}
 
 				if vertex.Completed != nil && existing != nil {
