@@ -134,9 +134,11 @@ func maybeUpdateWorkspace(ctx context.Context, env planning.Context) error {
 		pl.LoadByName(ctx, loc.AsPackageName())
 	}
 
-	// Always add a dep on the foundation module.
-	if _, err := res.Resolve(ctx, foundationModule); err != nil {
-		return err
+	if root.ModuleName() != foundationModule {
+		// Always add a dep on the foundation module.
+		if _, err := res.Resolve(ctx, foundationModule); err != nil {
+			return err
+		}
 	}
 
 	return rewriteWorkspace(ctx, root, root.EditableWorkspace().WithReplacedDependencies(res.deps))
