@@ -14,10 +14,11 @@ import (
 )
 
 type Funcs[M proto.Message] struct {
-	Aliases   []string
-	EmitStart func(context.Context, *schema.SerializedInvocation, M, chan *orchestration.Event)
-	Handle    func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
-	PlanOrder func(M) (*schema.ScheduleOrder, error)
+	Aliases          []string
+	EmitStart        func(context.Context, *schema.SerializedInvocation, M, chan *orchestration.Event)
+	Handle           func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
+	HandleWithEvents func(context.Context, *schema.SerializedInvocation, M, chan *orchestration.Event) (*HandleResult, error)
+	PlanOrder        func(M) (*schema.ScheduleOrder, error)
 }
 
 type VFuncs[M proto.Message, V any] struct {
@@ -68,7 +69,10 @@ func RegisterFuncs[M proto.Message](funcs Funcs[M]) {
 				funcs.EmitStart(ctx, inv, msg.(M), ch)
 			}
 		},
-		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, msg proto.Message, _ any, _ chan *orchestration.Event) (*HandleResult, error) {
+		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, msg proto.Message, _ any, ch chan *orchestration.Event) (*HandleResult, error) {
+			if funcs.HandleWithEvents != nil {
+				return funcs.HandleWithEvents(ctx, inv, msg.(M), ch)
+			}
 			return funcs.Handle(ctx, inv, msg.(M))
 		},
 		PlanOrder: func(msg proto.Message, _ any) (*schema.ScheduleOrder, error) {

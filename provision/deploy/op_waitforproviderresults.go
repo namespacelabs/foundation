@@ -17,6 +17,7 @@ import (
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/workspace/source/protos"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -28,7 +29,15 @@ var resultHeader = []byte("namespace.provision.result:")
 
 func register_OpWaitForProviderResults() {
 	execution.RegisterFuncs(execution.Funcs[*internalres.OpWaitForProviderResults]{
-		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults) (*execution.HandleResult, error) {
+		EmitStart: func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults, ch chan *orchpb.Event) {
+			ch <- &orchpb.Event{
+				ResourceId: wait.ResourceInstanceId,
+				Category:   "Resources deployed",
+				Ready:      orchpb.Event_NOT_READY,
+			}
+		},
+
+		HandleWithEvents: func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults, ch chan *orchpb.Event) (*execution.HandleResult, error) {
 			action := tasks.Action("resource.complete-invocation").
 				Scope(schema.PackageName(wait.Deployable.PackageName)).
 				Arg("resource_instance_id", wait.ResourceInstanceId).
@@ -46,6 +55,15 @@ func register_OpWaitForProviderResults() {
 							fmt.Fprintf(console.Errors(ctx), "Deleting %s failed: %v\n", wait.Deployable.Name, err)
 						}
 					}()
+				}
+
+				if ch != nil {
+					ch <- &orchpb.Event{
+						ResourceId: wait.ResourceInstanceId,
+						Category:   "Resources deployed",
+						Ready:      orchpb.Event_NOT_READY,
+						WaitStatus: []*orchpb.Event_WaitStatus{{Description: "Waiting for provider..."}},
+					}
 				}
 
 				// XXX add a maximum time we're willing to wait.
@@ -105,6 +123,14 @@ func register_OpWaitForProviderResults() {
 				}
 
 				_ = tasks.Attachments(ctx).AttachSerializable("instance.json", "", resultMessage)
+
+				if ch != nil {
+					ch <- &orchpb.Event{
+						ResourceId: wait.ResourceInstanceId,
+						Category:   "Resources deployed",
+						Ready:      orchpb.Event_READY,
+					}
+				}
 
 				return &execution.HandleResult{
 					Outputs: []execution.Output{

@@ -29,7 +29,7 @@ type consRenderer struct {
 
 type blockState struct {
 	Category       string
-	Scope          string
+	Title          string
 	Ready          bool
 	AlreadyExisted bool
 	Start, End     time.Time
@@ -69,9 +69,14 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				ids = append(ids, ev.ResourceId)
 				sort.Strings(ids)
 
+				title := ev.Scope
+				if title == "" {
+					title = ev.ResourceId
+				}
+
 				m[ev.ResourceId] = &blockState{
 					Category: ev.Category,
-					Scope:    ev.Scope,
+					Title:    title,
 					Ready:    ev.Ready == orchestration.Event_READY,
 					Start:    time.Now(),
 				}
@@ -141,7 +146,7 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 				}
 			}
 
-			fmt.Fprintf(&b, "  %s %s %s\n", icon(ready), blk.Scope, aec.LightBlackF.Apply(took))
+			fmt.Fprintf(&b, "  %s %s %s\n", icon(ready), blk.Title, aec.LightBlackF.Apply(took))
 			if details := blk.WaitDetails; !ready && details != "" {
 				fmt.Fprint(text.NewIndentWriter(&b, []byte("      ")), details)
 			}
