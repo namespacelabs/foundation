@@ -6,7 +6,6 @@ package binary
 
 import (
 	"context"
-	"fmt"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -16,6 +15,7 @@ import (
 
 type mergeSpecs struct {
 	specs               []build.Spec
+	descriptions        []string // Same indexing as specs.
 	platformIndependent bool
 }
 
@@ -29,10 +29,7 @@ func (m mergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 			return nil, err
 		}
 
-		images[k] = oci.MakeNamedImage(
-			fmt.Sprintf("plan#%d", k), // XXX propagate better names.
-			image,
-		)
+		images[k] = oci.MakeNamedImage(m.descriptions[k], image)
 	}
 
 	return oci.MergeImageLayers(images...), nil

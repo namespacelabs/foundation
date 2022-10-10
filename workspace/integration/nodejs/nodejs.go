@@ -77,7 +77,10 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 			return nil, err
 		}
 
-		layers = append(layers, &schema.ImageBuildPlan{Binary: hotreload.ControllerPkg})
+		layers = append(layers, &schema.ImageBuildPlan{
+			Description: "development controller",
+			Binary:      hotreload.ControllerPkg,
+		})
 
 		config.Command = []string{"/filesync-controller"}
 		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), cliName, "run", devScript}

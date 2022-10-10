@@ -176,6 +176,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env planni
 	}
 
 	specs := make([]build.Spec, len(src.LayerBuildPlan))
+	descriptions := make([]string, len(src.LayerBuildPlan))
 	platformIndependent := true
 	for k, plan := range src.LayerBuildPlan {
 		var err error
@@ -183,12 +184,19 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env planni
 		if err != nil {
 			return nil, err
 		}
+
 		if !specs[k].PlatformIndependent() {
 			platformIndependent = false
 		}
+
+		if plan.Description == "" {
+			descriptions[k] = fmt.Sprintf("plan#%d", k)
+		} else {
+			descriptions[k] = plan.Description
+		}
 	}
 
-	return mergeSpecs{specs, platformIndependent}, nil
+	return mergeSpecs{specs: specs, descriptions: descriptions, platformIndependent: platformIndependent}, nil
 }
 
 func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env planning.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, opts BuildImageOpts) (build.Spec, error) {

@@ -65,6 +65,7 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 			BuildPlan: &schema.LayeredImageBuildPlan{
 				LayerBuildPlan: append(
 					[]*schema.ImageBuildPlan{{
+						Description: "nginx",
 						StaticFilesServer: &schema.ImageBuildPlan_StaticFilesServer{
 							Dir:  filepath.Join(binary.AppRootPath, data.BuildOutputDir),
 							Port: data.Port,

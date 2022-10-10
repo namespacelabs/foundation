@@ -26,8 +26,10 @@ message Binary {
     LayeredImageBuildPlan build_plan = 8;
 }
 
-// Next ID: 9
+// Next ID: 13
 message ImageBuildPlan {
+    string description = 12;  // A human-readable description of what's being built. Optional.
+
     string            go_package          = 1;  // Use go binary builder.
     GoBuild           go_build            = 7;  // Use go binary builder.
     string            dockerfile          = 2;  // Use Dockerfile builder.
