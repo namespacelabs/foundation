@@ -329,30 +329,9 @@ type runtimeClass struct{}
 var _ runtime.Class = runtimeClass{}
 
 func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
-	if _, ok := clusterConfigType.CheckGet(cfg); !ok {
-		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
-	}
-
-	return d.EnsureCluster(ctx, cfg)
-}
-
-func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
 	conf, ok := clusterConfigType.CheckGet(cfg)
 	if !ok {
-		ephemeral := true
-		result, err := CreateAndWaitCluster(ctx, "", ephemeral, cfg.EnvKey()) // EnvKey is the best we can do re: purpose.
-		if err != nil {
-			return nil, err
-		}
-
-		cfg = cfg.Derive(cfg.EnvKey(), func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
-			previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
-				&PrebuiltCluster{ClusterId: result.ClusterId, Ephemeral: ephemeral},
-			)...)
-			return previous
-		})
-
-		return d.ensureCluster(ctx, cfg, result.Cluster)
+		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
 	}
 
 	cluster, err := GetCluster(ctx, conf.ClusterId)
@@ -361,6 +340,27 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 	}
 
 	return d.ensureCluster(ctx, cfg, cluster)
+}
+
+func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configuration, purpose string) (runtime.Cluster, error) {
+	if _, ok := clusterConfigType.CheckGet(cfg); ok {
+		return d.AttachToCluster(ctx, cfg)
+	}
+
+	ephemeral := true
+	result, err := CreateAndWaitCluster(ctx, "", ephemeral, purpose)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg = cfg.Derive(cfg.EnvKey(), func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
+		previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
+			&PrebuiltCluster{ClusterId: result.ClusterId, Ephemeral: ephemeral},
+		)...)
+		return previous
+	})
+
+	return d.ensureCluster(ctx, cfg, result.Cluster)
 }
 
 func (d runtimeClass) ensureCluster(ctx context.Context, cfg planning.Configuration, kc *KubernetesCluster) (runtime.Cluster, error) {
