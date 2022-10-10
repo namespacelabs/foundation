@@ -30,7 +30,14 @@ func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, 
 	}
 
 	if p.BuildKind != storage.Build_KIND_UNKNOWN && p.SourcePackage != "" {
-		img = compute.TransformResult("attach build to results", img, func(ctx context.Context, v compute.ResultWithTimestamp[oci.ResolvableImage]) (oci.ResolvableImage, error) {
+		img = compute.Consume(tasks.Action("build.attach-results"), img, func(ctx context.Context, v compute.ResultWithTimestamp[oci.ResolvableImage]) error {
+			d, _ := v.Value.Digest()
+
+			tasks.Attachments(ctx).
+				AddResult("package_name", p.SourcePackage).
+				AddResult("digest", d.String()).
+				AddResult("cached", v.Cached)
+
 			var platforms []string
 			for _, plat := range p.Platforms {
 				platforms = append(platforms, devhost.FormatPlatform(plat))
@@ -46,7 +53,7 @@ func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, 
 				Platform:  platforms,
 			})
 
-			return v.Value, nil
+			return nil
 		})
 	}
 

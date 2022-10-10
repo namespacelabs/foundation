@@ -48,6 +48,7 @@ func (al *mergeImages) Inputs() *compute.In {
 
 func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	var layers []v1.Layer
+	var digests []string
 	for k, image := range al.images {
 		if image.Image() == nil {
 			continue
@@ -58,12 +59,17 @@ func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Imag
 			continue
 		}
 
+		digests = append(digests, image.Digest.String())
+
 		imageLayers, err := image.Value.Layers()
 		if err != nil {
 			return nil, err
 		}
+
 		layers = append(layers, imageLayers...)
 	}
+
+	tasks.Attachments(ctx).AddResult("digests", digests)
 
 	return mutate.AppendLayers(empty.Image, layers...)
 }
