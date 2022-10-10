@@ -85,7 +85,7 @@ func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg planning.Confi
 	return ConnectToCluster(ctx, cfg)
 }
 
-func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg planning.Configuration, purpose string) (runtime.Cluster, error) {
 	return ConnectToCluster(ctx, cfg)
 }
 

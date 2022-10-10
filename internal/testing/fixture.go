@@ -70,8 +70,10 @@ func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.
 		return nil, fnerrors.Wrap(testPkg.Location, err)
 	}
 
+	purpose := fmt.Sprintf("Test cluster for %s", testPkg.Location)
+
 	// This can block for a non-trivial amount of time.
-	cluster, err := deferred.EnsureCluster(ctx, env.Configuration())
+	cluster, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
 	if err != nil {
 		return nil, fnerrors.Wrap(testPkg.Location, err)
 	}
