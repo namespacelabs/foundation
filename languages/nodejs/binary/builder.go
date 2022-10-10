@@ -69,7 +69,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		return nil, err
 	}
 
-	nodejsImage, err := buildkit.LLBToImage(ctx, env, conf, state, local...)
+	nodejsImage, err := buildkit.BuildImage(ctx, env, conf, state, local...)
 	if err != nil {
 		return nil, err
 	}

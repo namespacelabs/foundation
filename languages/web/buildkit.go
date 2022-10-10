@@ -51,7 +51,7 @@ func ViteProductionBuild(ctx context.Context, loc pkggraph.Location, env plannin
 		Run(llb.Shlexf("node_modules/vite/bin/vite.js build --base=%s --outDir=%s --emptyOutDir --config=prodweb.config.js", basePath, filepath.Join("/out", baseOutput)), llb.Dir(filepath.Join("/app", loc.Rel()))).
 		AddMount("/out", llb.Scratch())
 
-	image, err := buildkit.LLBToImage(ctx, env, conf, out, local...)
+	image, err := buildkit.BuildImage(ctx, env, conf, out, local...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func viteDevBuild(ctx context.Context, env planning.Context, targetDir string, l
 		return nil, err
 	}
 
-	image, err := buildkit.LLBToImage(ctx, env, conf, state, local...)
+	image, err := buildkit.BuildImage(ctx, env, conf, state, local...)
 	if err != nil {
 		return nil, err
 	}

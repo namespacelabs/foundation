@@ -104,5 +104,5 @@ func MakeProtoSrcs(ctx context.Context, conf planning.Configuration, request map
 		out = out.File(llb.Copy(result, ".", "."), llb.WithCustomNamef("copying %s generated sources", fmwk))
 	}
 
-	return buildkit.LLBToFS(ctx, conf, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
+	return buildkit.BuildFilesystem(ctx, conf, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
 }

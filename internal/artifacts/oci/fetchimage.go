@@ -70,7 +70,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 	descriptor := compute.MustGetDepValue(deps, r.descriptor, "descriptor")
 
 	switch types.MediaType(descriptor.MediaType) {
-	case types.DockerManifestList:
+	case types.DockerManifestList, types.OCIImageIndex:
 		idx, err := v1.ParseIndexManifest(bytes.NewReader(descriptor.RawManifest))
 		if err != nil {
 			return nil, fnerrors.BadInputError("expected to parse an image index: %w", err)
@@ -86,7 +86,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 			return compute.GetValue(ctx, ImageP(d.ImageRef(), nil, r.opts))
 		})
 
-	case types.DockerManifestSchema2:
+	case types.DockerManifestSchema2, types.OCIManifestSchema1:
 		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
 
 		ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), r.opts)
@@ -151,7 +151,7 @@ func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	// Also cache the config manifest, if this is an image.
-	if d.MediaType == types.DockerManifestSchema2 {
+	if d.MediaType == types.DockerManifestSchema2 || d.MediaType == types.OCIManifestSchema1 {
 		img, err := d.Image()
 		if err != nil {
 			return nil, fnerrors.BadInputError("expected an image: %w", err)

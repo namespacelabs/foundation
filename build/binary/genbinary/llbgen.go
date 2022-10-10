@@ -86,7 +86,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 				return nil, err
 			}
 
-			return compute.GetValue(ctx, buildkit.DefinitionToImage(env, conf, def))
+			return compute.GetValue(ctx, buildkit.BuildDefinitionToImage(env, conf, def))
 		}), nil
 }
 

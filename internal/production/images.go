@@ -66,7 +66,7 @@ func DevelopmentImage(ctx context.Context, name string, env planning.Context, ta
 
 	t := build.NewBuildTarget(target.TargetPlatform()).WithTargetName(target.PublishName())
 
-	img, err := buildkit.LLBToImage(ctx, env, t.WithSourceLabel("base:"+name), state)
+	img, err := buildkit.BuildImage(ctx, env, t.WithSourceLabel("base:"+name), state)
 	if err != nil {
 		return nil, err
 	}

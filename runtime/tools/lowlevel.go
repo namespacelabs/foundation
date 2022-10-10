@@ -185,7 +185,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context,
 		run.AddMount("/request", requestState, llb.Readonly)
 		out := run.AddMount("/out", llb.Scratch())
 
-		output, err := buildkit.LLBToFS(ctx, conf, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
+		output, err := buildkit.BuildFilesystem(ctx, conf, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
 		if err != nil {
 			return resp, err
 		}

@@ -49,7 +49,7 @@ func RunNodejs(ctx context.Context, env planning.Context, relPath string, comman
 		return err
 	}
 
-	nodejsImage, err := buildkit.LLBToImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs+yarn: %s", nodeImageName), nodeImageState)
+	nodejsImage, err := buildkit.BuildImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs+yarn: %s", nodeImageName), nodeImageState)
 	if err != nil {
 		return err
 	}

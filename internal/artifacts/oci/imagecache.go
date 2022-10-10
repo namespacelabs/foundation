@@ -373,6 +373,14 @@ func (resolvableCacheable) Cache(ctx context.Context, c cache.Cache, r Resolvabl
 	return r.cache(ctx, c)
 }
 
+func isIndex(md types.MediaType) bool {
+	return md == types.DockerManifestList || md == types.OCIImageIndex
+}
+
+func isImage(md types.MediaType) bool {
+	return md == types.DockerManifestSchema2 || md == types.OCIManifestSchema1
+}
+
 func loadCachedResolvable(ctx context.Context, cache cache.Cache, h v1.Hash) (ResolvableImage, error) {
 	rawManifest, m, err := loadCachedManifest(ctx, cache, v1.Hash(h))
 	if err != nil {
@@ -383,8 +391,8 @@ func loadCachedResolvable(ctx context.Context, cache cache.Cache, h v1.Hash) (Re
 		return nil, nil
 	}
 
-	switch m.MediaType {
-	case types.DockerManifestList:
+	switch {
+	case isIndex(m.MediaType):
 		idx, err := v1.ParseIndexManifest(bytes.NewReader(rawManifest))
 		if err != nil {
 			return nil, fnerrors.InternalError("cached image index manifest failed to load: %w", err)
@@ -406,7 +414,7 @@ func loadCachedResolvable(ctx context.Context, cache cache.Cache, h v1.Hash) (Re
 
 		return rawImageIndex{index: cachedIndex{rawManifest: rawManifest, parsed: idx, cache: cache, children: children}}, nil
 
-	case types.DockerManifestSchema2:
+	case isImage(m.MediaType):
 		image, err := loadFromCache(ctx, cache, h)
 		if err != nil {
 			return nil, err

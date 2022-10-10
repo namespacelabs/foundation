@@ -70,7 +70,7 @@ func (al *makeImageIndex) Compute(ctx context.Context, deps compute.Resolved) (R
 			return nil, err
 		}
 
-		if mediaType != types.DockerManifestSchema2 {
+		if mediaType != types.DockerManifestSchema2 && mediaType != types.OCIManifestSchema1 {
 			return nil, fnerrors.InternalError("%s: unexpected media type: %s", digest.String(), mediaType)
 		}
 
@@ -87,7 +87,7 @@ func (al *makeImageIndex) Compute(ctx context.Context, deps compute.Resolved) (R
 		})
 	}
 
-	idx := mutate.AppendManifests(mutate.IndexMediaType(empty.Index, types.DockerManifestList), adds...)
+	idx := mutate.AppendManifests(mutate.IndexMediaType(empty.Index, types.OCIImageIndex), adds...)
 
 	// The Digest() is requested here to guarantee that the index can indeed be created.
 	// This will also mark the digest "computed", which is the closest we can get to a
