@@ -354,9 +354,10 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 	}
 
 	cfg = cfg.Derive(cfg.EnvKey(), func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
-		previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
+		// Prepend to ensure that the prebuilt cluster is returned first.
+		previous.Configuration = append(protos.WrapAnysOrDie(
 			&PrebuiltCluster{ClusterId: result.ClusterId, Ephemeral: ephemeral},
-		)...)
+		), previous.Configuration...)
 		return previous
 	})
 
