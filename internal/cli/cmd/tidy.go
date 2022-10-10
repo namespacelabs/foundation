@@ -131,7 +131,9 @@ func maybeUpdateWorkspace(ctx context.Context, env planning.Context) error {
 	}
 
 	for _, loc := range locs {
-		pl.LoadByName(ctx, loc.AsPackageName())
+		if _, err := pl.LoadByName(ctx, loc.AsPackageName()); err != nil {
+			return err
+		}
 	}
 
 	if root.ModuleName() != foundationModule {
