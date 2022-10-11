@@ -24,6 +24,14 @@ message ResourceInstance {
     // A resource is instantiated from an intent, which can be either specified inline, or be computed.
     google.protobuf.Any intent      = 5;
     Invocation          intent_from = 6;
+
+    // Set of resources passed to provider. Must match the requirements set by the provider.
+    repeated InputResource input_resource = 7;
+
+    message InputResource {
+        PackageRef name         = 1;
+        PackageRef resource_ref = 2;
+    }
 }
 
 message ResourceClass {
@@ -46,10 +54,17 @@ message ResourceProvider {
     Invocation initialized_with = 3;  // Run this invocation to create the resource.
     Invocation prepare_with     = 5;  // Programatically specify a set of resources.
 
+    repeated ResourceInput resource_input = 8;
+
     ResourcePack resource_pack = 4;  // Resources this provider depends on in order to instantiate its own resource.
 
     repeated PackageRef resource_instance_from_available_classes   = 6;  // Resource classes that an invocation may produce (any instance of a different class will be rejected).
     repeated PackageRef resource_instance_from_available_providers = 7;  // Resource providers that an invocation may reference (any instance of a different class will be rejected).
+
+    message ResourceInput {
+        PackageRef name  = 1;
+        PackageRef class = 2;
+    }
 }
 
 message ResourcePack {

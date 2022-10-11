@@ -5,6 +5,8 @@
 package pkggraph
 
 import (
+	"context"
+
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -53,16 +55,21 @@ type Package struct {
 	ResourceInstanceSpecs  []*schema.ResourceInstance
 }
 
+type ResourceSpec struct {
+	Source         *schema.ResourceInstance
+	Class          ResourceClass
+	Provider       ResourceProvider
+	ResourceInputs []ResourceInstance // Resources passed to the provider.
+}
+
 type ResourceInstance struct {
-	Ref      *schema.PackageRef
-	Spec     *schema.ResourceInstance
-	Class    ResourceClass
-	Provider ResourceProvider
+	Name *schema.PackageRef
+	Spec ResourceSpec
 }
 
 type ResourceClass struct {
 	Ref          *schema.PackageRef
-	Spec         *schema.ResourceClass
+	Source       *schema.ResourceClass
 	IntentType   UserType
 	InstanceType UserType
 }
@@ -70,11 +77,17 @@ type ResourceClass struct {
 type ResourceProvider struct {
 	Spec *schema.ResourceProvider
 
-	Resources []ResourceInstance
+	Resources      []ResourceInstance
+	ResourceInputs []ExpectedResourceInstance
+}
+
+type ExpectedResourceInstance struct {
+	Name  *schema.PackageRef
+	Class ResourceClass
 }
 
 func (rc ResourceClass) PackageName() schema.PackageName {
-	return schema.PackageName(rc.Spec.PackageName)
+	return schema.PackageName(rc.Source.PackageName)
 }
 
 type UserType struct {
@@ -116,7 +129,7 @@ func (pr *Package) LookupBinary(name string) (*schema.Binary, error) {
 
 func (pr *Package) LookupResourceClass(name string) *ResourceClass {
 	for _, rc := range pr.ResourceClasses {
-		if rc.Spec.Name == name {
+		if rc.Source.Name == name {
 			return &rc
 		}
 	}
@@ -135,10 +148,34 @@ func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *Resource
 
 func (pr *Package) LookupResourceInstance(name string) *ResourceInstance {
 	for _, r := range pr.Resources {
-		if r.Spec.Name == name {
+		if r.Name.Name == name {
 			return &r
 		}
 	}
 
 	return nil
+}
+
+func (rp ResourceProvider) LookupExpected(name *schema.PackageRef) *ExpectedResourceInstance {
+	for _, x := range rp.ResourceInputs {
+		if x.Name.Equals(name) {
+			return &x
+		}
+	}
+
+	return nil
+}
+
+func LookupResourceClass(ctx context.Context, pl PackageLoader, ref *schema.PackageRef) (*ResourceClass, error) {
+	pkg, err := pl.LoadByName(ctx, ref.AsPackageName())
+	if err != nil {
+		return nil, err
+	}
+
+	rc := pkg.LookupResourceClass(ref.Name)
+	if rc == nil {
+		return nil, fnerrors.BadInputError("resource class %q not found in package %q", ref.Name, ref.PackageName)
+	}
+
+	return rc, nil
 }

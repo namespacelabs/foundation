@@ -7,6 +7,8 @@ package cuefrontendopaque
 import (
 	"context"
 
+	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
@@ -18,7 +20,7 @@ type cueResourceProvider struct {
 	InitializedWith *cuefrontend.CueInvokeBinary `json:"initializedWith"`
 	PrepareWith     *cuefrontend.CueInvokeBinary `json:"prepareWith"`
 	Resources       *cuefrontend.ResourceList    `json:"resources"`
-
+	ResourceInputs  map[string]string            `json:"inputs"` // Key: name, Value: serialized class ref
 	// TODO: parse prepare hook.
 }
 
@@ -50,6 +52,31 @@ func parseResourceProvider(ctx context.Context, pl workspace.EarlyPackageLoader,
 		}
 		rp.ResourcePack = pack
 	}
+
+	var errs []error
+	for key, value := range bits.ResourceInputs {
+		class, err := schema.ParsePackageRef(value)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			rp.ResourceInput = append(rp.ResourceInput, &schema.ResourceProvider_ResourceInput{
+				Name:  schema.MakePackageRef(loc.PackageName, key),
+				Class: class,
+			})
+		}
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
+	slices.SortFunc(rp.ResourceInput, func(a, b *schema.ResourceProvider_ResourceInput) bool {
+		x := a.Name.Compare(b.Name)
+		if x == 0 {
+			return a.Class.Compare(b.Class) < 0
+		}
+		return x < 0
+	})
 
 	if bits.PrepareWith != nil {
 		prepareWith, err := bits.PrepareWith.ToInvocation()

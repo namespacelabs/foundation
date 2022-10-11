@@ -332,9 +332,9 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 
 		for _, resource := range srv.Resources {
 			run.Resources = append(run.Resources, &resources.ResourceDependency{
-				ResourceRef:        resource.Ref,
-				ResourceClass:      resource.Class.Ref,
-				ResourceInstanceId: resources.ResourceID(resource.Ref),
+				ResourceRef:        resource.Name,
+				ResourceClass:      resource.Spec.Class.Ref,
+				ResourceInstanceId: resources.ResourceID(resource.Name),
 			})
 		}
 

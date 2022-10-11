@@ -62,7 +62,8 @@ func createServerStartupTest(ctx context.Context, pl pkggraph.PackageLoader, pkg
 	}
 
 	return &schema.Test{
-		Name: "startup-test",
+		PackageName: pkgName.String(),
+		Name:        "startup-test",
 		ServersUnderTest: []string{
 			pkgName.String(),
 		},

@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime"
@@ -46,10 +47,10 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		return nil, fnerrors.UserError(pp.Location, "no such resource class %q", r.Class.Canonical())
 	}
 
-	ri := &pkggraph.ResourceInstance{
-		Ref:   &schema.PackageRef{PackageName: r.PackageName, Name: r.Name},
-		Spec:  r,
-		Class: *class,
+	name := &schema.PackageRef{PackageName: r.PackageName, Name: r.Name}
+	ri := pkggraph.ResourceSpec{
+		Source: r,
+		Class:  *class,
 	}
 
 	// XXX Add generic package loading annotation to avoid special-casing this
@@ -83,7 +84,44 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		return nil, fnerrors.UserError(pp.Location, "missing provider for resource instance %q", r.Name)
 	}
 
-	return ri, nil
+	if len(r.InputResource) > 0 {
+		if r.Provider == "" {
+			return nil, fnerrors.UserError(pp.Location, "input resources have been set, without a provider")
+		}
+
+		var resErrs []error
+		for _, input := range r.InputResource {
+			expected := ri.Provider.LookupExpected(input.Name)
+
+			if expected == nil {
+				resErrs = append(resErrs, fnerrors.BadInputError("resource %q is provided but not required", input.Name))
+			} else {
+				class := expected.Class
+				resPkg, err := pl.LoadByName(ctx, input.ResourceRef.AsPackageName())
+				if err != nil {
+					resErrs = append(resErrs, fnerrors.BadInputError("resource %q failed to load package: %w", input.Name, err))
+				} else {
+					instance := resPkg.LookupResourceInstance(input.ResourceRef.Name)
+					if instance == nil {
+						resErrs = append(resErrs, fnerrors.BadInputError("resource %q refers to non-existing resource %q", input.Name, input.ResourceRef.Canonical()))
+					} else if instance.Spec.Class.Ref.Canonical() != class.Ref.Canonical() {
+						resErrs = append(resErrs, fnerrors.BadInputError("resource %q is of class %q, expected %q", input.Name, instance.Spec.Class.Ref.Canonical(), class.Ref.Canonical()))
+					} else {
+						ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
+							Name: input.Name,
+							Spec: instance.Spec,
+						})
+					}
+				}
+			}
+		}
+
+		if err := multierr.New(resErrs...); err != nil {
+			return nil, err
+		}
+	}
+
+	return &pkggraph.ResourceInstance{Name: name, Spec: ri}, nil
 }
 
 func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {

@@ -92,7 +92,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			ResourceInstanceId:   resource.ID,
 			BinaryRef:            initializer.BinaryRef,
 			BinaryConfig:         bin.Config,
-			ResourceClass:        resource.Class.Spec,
+			ResourceClass:        resource.Class.Source,
 			ResourceProvider:     provider,
 			InstanceTypeSource:   resource.Class.InstanceType.Sources,
 			SerializedIntentJson: resource.JSONSerializedIntent,
@@ -165,9 +165,9 @@ func (rp *resourceList) Resources() []resourceInstance {
 func (rp *resourceList) checkAddMultiple(ctx context.Context, instances ...pkggraph.ResourceInstance) error {
 	var errs []error
 	for _, instance := range instances {
-		resourceID := resources.ResourceID(instance.Ref)
+		resourceID := resources.ResourceID(instance.Name)
 
-		if err := rp.checkAddResource(ctx, resourceID, instance); err != nil {
+		if err := rp.checkAddResource(ctx, resourceID, instance.Spec); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -175,7 +175,7 @@ func (rp *resourceList) checkAddMultiple(ctx context.Context, instances ...pkggr
 	return multierr.New(errs...)
 }
 
-func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.ResourceInstance) error {
+func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.ResourceSpec) error {
 	if !rp.resourceIDs.Add(resourceID) {
 		return nil
 	}
@@ -189,7 +189,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 		ID:       resourceID,
 		Class:    resource.Class,
 		Provider: resource.Provider,
-		Intent:   resource.Spec.Intent,
+		Intent:   resource.Source.Intent,
 	}
 
 	if instance.Intent != nil {
@@ -208,17 +208,21 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 		instance.JSONSerializedIntent = serialized
 	}
 
-	// Add static resources required by providers.
-	for _, res := range resource.Provider.Resources {
-		scopedID := fmt.Sprintf("%s;%s:%s", resourceID, res.Spec.PackageName, res.Spec.Name)
+	var inputs []pkggraph.ResourceInstance
+	inputs = append(inputs, resource.Provider.Resources...)
+	inputs = append(inputs, resource.ResourceInputs...)
 
-		if err := rp.checkAddResource(ctx, scopedID, res); err != nil {
+	// Add static resources required by providers.
+	for _, res := range inputs {
+		scopedID := fmt.Sprintf("%s;%s:%s", resourceID, res.Name.PackageName, res.Name.Name)
+
+		if err := rp.checkAddResource(ctx, scopedID, res.Spec); err != nil {
 			return err
 		}
 
 		instance.Dependencies = append(instance.Dependencies, &resources.ResourceDependency{
-			ResourceRef:        res.Ref,
-			ResourceClass:      res.Class.Ref,
+			ResourceRef:        res.Name,
+			ResourceClass:      res.Spec.Class.Ref,
 			ResourceInstanceId: scopedID,
 		})
 	}

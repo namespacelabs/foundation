@@ -7,12 +7,16 @@ package cuefrontend
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -28,10 +32,17 @@ type ResourceList struct {
 var _ json.Unmarshaler = &ResourceList{}
 
 type CueResourceInstance struct {
-	Class      string           `json:"kind"`
-	On         string           `json:"on"`
+	Class     string            `json:"class"`
+	Provider  string            `json:"provider"`
+	RawIntent any               `json:"intent"`
+	Resources map[string]string `json:"resources"`
+
 	IntentFrom *CueInvokeBinary `json:"from"`
-	Input      any              `json:"input"`
+
+	// Prefer the definition above.
+	Kind     string `json:"kind"`
+	On       string `json:"on"`
+	RawInput any    `json:"input"`
 }
 
 func ParseResourceInstanceFromCue(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
@@ -40,32 +51,103 @@ func ParseResourceInstanceFromCue(ctx context.Context, pl workspace.EarlyPackage
 		return nil, err
 	}
 
-	return ParseResourceInstance(ctx, pl, loc, name, instance)
+	return parseResourceInstance(ctx, pl, loc, name, instance)
 }
 
-func ParseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, name string, instance CueResourceInstance) (*schema.ResourceInstance, error) {
-	classRef, err := schema.ParsePackageRef(instance.Class)
+func exclusiveFieldsErr(fieldName ...string) error {
+	if len(fieldName) < 2 {
+		return nil
+	}
+
+	var quoted []string
+	for _, name := range fieldName {
+		quoted = append(quoted, fmt.Sprintf("%q", name))
+	}
+
+	return fnerrors.BadInputError("%s and %s are exclusive: only one of them can be set", strings.Join(quoted[:len(quoted)-1], ", "), quoted[len(quoted)-1])
+}
+
+func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, name string, src CueResourceInstance) (*schema.ResourceInstance, error) {
+	class, err1 := parseStrFieldCompat("class", src.Class, "kind", src.Kind, true)
+	provider, err2 := parseStrFieldCompat("provider", src.Provider, "on", src.On, false)
+	if err := multierr.New(err1, err2); err != nil {
+		return nil, err
+	}
+
+	classRef, err := schema.ParsePackageRef(class)
 	if err != nil {
 		return nil, err
 	}
 
-	intent, err := parseResourceIntent(ctx, pl, loc, classRef, instance.Input)
+	rawIntent := src.RawIntent
+	if rawIntent != nil {
+		if src.RawInput != nil {
+			return nil, exclusiveFieldsErr("intent", "input")
+		}
+	} else {
+		rawIntent = src.RawInput
+	}
+
+	intent, err := parseResourceIntent(ctx, pl, loc, classRef, rawIntent)
 	if err != nil {
 		return nil, err
 	}
 
-	intentFrom, err := instance.IntentFrom.ToInvocation()
+	intentFrom, err := src.IntentFrom.ToInvocation()
 	if err != nil {
 		return nil, err
 	}
 
-	return &schema.ResourceInstance{
+	instance := &schema.ResourceInstance{
 		Name:       name,
 		Class:      classRef,
-		Provider:   instance.On,
+		Provider:   provider,
 		Intent:     intent,
 		IntentFrom: intentFrom,
-	}, nil
+	}
+
+	var parseErrs []error
+	for key, value := range src.Resources {
+		ref, err := schema.ParsePackageRef(value)
+		if err != nil {
+			parseErrs = append(parseErrs, err)
+		} else {
+			instance.InputResource = append(instance.InputResource, &schema.ResourceInstance_InputResource{
+				Name:        &schema.PackageRef{PackageName: provider, Name: key},
+				ResourceRef: ref,
+			})
+		}
+	}
+
+	slices.SortFunc(instance.InputResource, func(a, b *schema.ResourceInstance_InputResource) bool {
+		x := a.Name.Compare(b.Name)
+		if x == 0 {
+			return strings.Compare(a.GetResourceRef().Canonical(), b.GetResourceRef().Canonical()) < 0
+		}
+		return x < 0
+	})
+
+	return instance, multierr.New(parseErrs...)
+}
+
+func parseStrFieldCompat(namev2, valuev2, namev1, valuev1 string, required bool) (string, error) {
+	if valuev2 != "" && valuev1 != "" {
+		return "", exclusiveFieldsErr(namev2, namev1)
+	}
+
+	if valuev2 != "" {
+		return valuev2, nil
+	}
+
+	if valuev1 != "" {
+		return valuev1, nil
+	}
+
+	if required {
+		return "", fnerrors.BadInputError("a %q value required", namev2)
+	}
+
+	return "", nil
 }
 
 func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
@@ -131,7 +213,7 @@ func (rl *ResourceList) ToPack(ctx context.Context, pl pkggraph.PackageLoader, l
 	}
 
 	for name, instance := range rl.Instances {
-		instance, err := ParseResourceInstance(ctx, pl, loc, name, instance)
+		instance, err := parseResourceInstance(ctx, pl, loc, name, instance)
 		if err != nil {
 			return nil, err
 		}

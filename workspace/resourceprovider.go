@@ -28,27 +28,44 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 		}
 	}
 
-	pkg, err := pl.LoadByName(ctx, provider.ProvidesClass.AsPackageName())
-	if err != nil {
-		return nil, err
-	}
+	var errs []error
 
-	rc := pkg.LookupResourceClass(provider.ProvidesClass.Name)
-	if rc == nil {
-		return nil, fnerrors.UserError(pp.Location, "resource class %q not found in package %q", provider.ProvidesClass.Name, provider.ProvidesClass.PackageName)
+	if _, err := pkggraph.LookupResourceClass(ctx, pl, provider.ProvidesClass); err != nil {
+		errs = append(errs, err)
 	}
 
 	rp := pkggraph.ResourceProvider{Spec: provider}
 
-	instances, err := LoadResources(ctx, pl, pp, provider.ResourcePack)
-	if err != nil {
-		return nil, err
+	for _, input := range provider.ResourceInput {
+		if rp.LookupExpected(input.Name) != nil {
+			errs = append(errs, fnerrors.BadInputError("resource input %q defined more than once", input.Name.Canonical()))
+			continue
+		}
+
+		class, err := pkggraph.LookupResourceClass(ctx, pl, input.Class)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			rp.ResourceInputs = append(rp.ResourceInputs, pkggraph.ExpectedResourceInstance{
+				Name:  input.Name,
+				Class: *class,
+			})
+		}
 	}
 
-	rp.Resources = instances
+	if instances, err := LoadResources(ctx, pl, pp, provider.ResourcePack); err != nil {
+		errs = append(errs, err)
+	} else {
+		for _, instance := range instances {
+			if rp.LookupExpected(instance.Name) != nil {
+				errs = append(errs, fnerrors.BadInputError("%q is both a resource input and a static input", instance.Name.Name))
+			} else {
+				rp.Resources = append(rp.Resources, instance)
+			}
+		}
+	}
 
 	// Make sure that all referenced classes and providers are loaded.
-	var errs []error
 	for _, pkg := range provider.ResourceInstanceFromAvailableClasses {
 		_, err := pl.LoadByName(ctx, pkg.AsPackageName())
 		errs = append(errs, err)
@@ -60,7 +77,7 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 	}
 
 	if err := multierr.New(errs...); err != nil {
-		return nil, err
+		return nil, fnerrors.Wrap(pp.Location, err)
 	}
 
 	return &rp, nil
