@@ -30,3 +30,20 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 		},
 		[]string{"/" + pkg.Server.Name})
 }
+
+func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.GoIntegration) (*schema.Binary, error) {
+	goPkg := data.Pkg
+	if goPkg == "" {
+		goPkg = "."
+	}
+
+	// TODO consider validating that goPkg is valid (e.g. a Go test and a Go server cannot live in the same package)
+
+	return &schema.Binary{
+		BuildPlan: &schema.LayeredImageBuildPlan{
+			LayerBuildPlan: []*schema.ImageBuildPlan{{
+				GoPackage: goPkg,
+			}},
+		},
+	}, nil
+}

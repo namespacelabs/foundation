@@ -234,12 +234,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			// Same syntax as docker integration so we can reuse the parser.
 			dockerparser.NewParser(),
 			shellparser.NewParser(),
+			// Same syntax as go integration so we can reuse the parser.
+			goparser.NewParser(),
 		})
 
 		// Opaque integrations: applying
 		integrationapplying.RegisterPackageIntegration(dockerapplier.ApplyToPackage)
 		integrationapplying.RegisterBinaryIntegration(dockerapplier.CreateBinary)
 		integrationapplying.RegisterPackageIntegration(goapplier.Apply)
+		integrationapplying.RegisterBinaryIntegration(goapplier.CreateBinary)
 		integrationapplying.RegisterPackageIntegration(nodejsapplier.Apply)
 		integrationapplying.RegisterBinaryIntegration(nodejsapplier.CreateBinary)
 		integrationapplying.RegisterPackageIntegration(webapplier.Apply)
