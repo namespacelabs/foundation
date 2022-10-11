@@ -40,7 +40,7 @@ func (b *buildAlpine) BuildImage(ctx context.Context, env pkggraph.SealedContext
 	}
 
 	state := llbutil.Image(image, *conf.TargetPlatform()).
-		Run(llb.Shlexf("apk add --no-cache %s", strings.Join(b.plan.Install, " ")))
+		Run(llb.Shlexf("apk add --no-cache %s", strings.Join(b.plan.Package, " ")))
 
 	def, err := state.Marshal(ctx)
 	if err != nil {

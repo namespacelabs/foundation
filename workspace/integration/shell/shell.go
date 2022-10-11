@@ -29,13 +29,14 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 	return &schema.Binary{
 		BuildPlan: &schema.LayeredImageBuildPlan{
 			LayerBuildPlan: []*schema.ImageBuildPlan{{
-				AlpineBuild: &schema.ImageBuildPlan_AlpineBuild{Install: install},
+				AlpineBuild: &schema.ImageBuildPlan_AlpineBuild{Package: install},
 			}, {
 				SnapshotFiles: []string{data.Script},
 			}},
 		},
 		Config: &schema.BinaryConfig{
-			Command: []string{data.Script},
+			WorkingDir: "/",
+			Command:    []string{data.Script},
 		},
 	}, nil
 }
