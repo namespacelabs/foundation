@@ -36,8 +36,6 @@ func prepareApplyServerExtensions(_ context.Context, _ planning.Context, srv *sc
 
 	serviceAccount := kubedef.MakeDeploymentId(srv.Server)
 
-	saDetails := &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}
-
 	packedExt, err := anypb.New(&kubedef.SpecExtension{
 		EnsureServiceAccount: true,
 		ServiceAccount:       serviceAccount,
@@ -48,7 +46,7 @@ func prepareApplyServerExtensions(_ context.Context, _ planning.Context, srv *sc
 
 	var props frontend.InternalPrepareProps
 	props.ProvisionInput = []rtypes.ProvisionInput{
-		{Message: saDetails},
+		{Message: &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}},
 	}
 	props.Extension = []*schema.DefExtension{{
 		For:  srv.Server.PackageName,

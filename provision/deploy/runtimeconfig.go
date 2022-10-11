@@ -15,12 +15,6 @@ import (
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-var privateEntries schema.PackageList
-
-func init() {
-	privateEntries.Add("namespacelabs.dev/foundation/std/runtime/kubernetes/controller") // Don't include the kube controller as a dep.
-}
-
 func serverToRuntimeConfig(stack *provision.Stack, ps provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	srv := ps.Server
 	config := &runtime.RuntimeConfig{
@@ -31,7 +25,7 @@ func serverToRuntimeConfig(stack *provision.Stack, ps provision.Server, serverIm
 	config.Current.ImageRef = serverImage.String()
 
 	for _, pkg := range ps.DeclaredStack.PackageNames() {
-		if pkg == ps.PackageName() || privateEntries.Includes(pkg) {
+		if pkg == ps.PackageName() {
 			continue
 		}
 

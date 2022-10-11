@@ -325,8 +325,6 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	return &handlerResult{Stack: r.stack, OrderedInvocations: allOps, ProvisionOutput: perServer}, nil
 }
 
-const controllerPkg = "namespacelabs.dev/foundation/std/runtime/kubernetes/controller"
-
 func sortServers(ctx context.Context, stack *provision.Stack) ([]schema.PackageName, error) {
 	graph := toposort.NewGraph(0)
 
@@ -343,10 +341,6 @@ func sortServers(ctx context.Context, stack *provision.Stack) ([]schema.PackageN
 		for _, dep := range stack.Servers[k].ParsedDeps {
 			for _, backend := range dep.ProvisionPlan.DeclaredStack {
 				if backend == srv.PackageName() {
-					if srv.PackageName() == controllerPkg {
-						// This is expected because the controller is added as a dependency to all servers (including itself).
-						continue
-					}
 					return nil, fnerrors.InternalError("unexpected loop: %s depends on itself", srv.PackageName())
 				}
 
