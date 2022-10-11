@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -39,8 +40,11 @@ func (b *buildAlpine) BuildImage(ctx context.Context, env pkggraph.SealedContext
 		return nil, fnerrors.InternalError("alpine builds require a platform")
 	}
 
+	packages := slices.Clone(b.plan.Package)
+	slices.Sort(packages)
+
 	state := llbutil.Image(image, *conf.TargetPlatform()).
-		Run(llb.Shlexf("apk add --no-cache %s", strings.Join(b.plan.Package, " ")))
+		Run(llb.Shlexf("apk add --no-cache %s", strings.Join(packages, " ")))
 
 	def, err := state.Marshal(ctx)
 	if err != nil {
