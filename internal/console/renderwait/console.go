@@ -15,8 +15,9 @@ import (
 
 	"github.com/kr/text"
 	"github.com/morikuni/aec"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
-	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
@@ -50,7 +51,7 @@ func (rwb consRenderer) Wait(ctx context.Context) error {
 func (rwb consRenderer) Loop(ctx context.Context) {
 	defer close(rwb.done) // Signal parent we're done.
 
-	m := map[string]*blockState{}
+	resourceState := map[string]*blockState{} // Key: ResourceId
 	ids := []string{}
 
 	for {
@@ -60,12 +61,12 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 
 		case ev, ok := <-rwb.ch:
 			if !ok {
-				fmt.Fprint(rwb.flushLog, render(m, ids, true))
+				fmt.Fprint(rwb.flushLog, render(resourceState, ids, true))
 				rwb.setSticky("")
 				return
 			}
 
-			if _, has := m[ev.ResourceId]; !has {
+			if _, has := resourceState[ev.ResourceId]; !has {
 				ids = append(ids, ev.ResourceId)
 				sort.Strings(ids)
 
@@ -74,7 +75,7 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 					title = ev.ResourceId
 				}
 
-				m[ev.ResourceId] = &blockState{
+				resourceState[ev.ResourceId] = &blockState{
 					Category: ev.Category,
 					Title:    title,
 					Ready:    ev.Ready == orchestration.Event_READY,
@@ -82,18 +83,18 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				}
 			}
 
-			m[ev.ResourceId].AlreadyExisted = ev.AlreadyExisted
-			m[ev.ResourceId].Ready = ev.Ready == orchestration.Event_READY
-			m[ev.ResourceId].WaitStatus = ev.WaitStatus
-			if m[ev.ResourceId].Ready {
-				m[ev.ResourceId].End = time.Now()
+			resourceState[ev.ResourceId].AlreadyExisted = ev.AlreadyExisted
+			resourceState[ev.ResourceId].Ready = ev.Ready == orchestration.Event_READY
+			resourceState[ev.ResourceId].WaitStatus = ev.WaitStatus
+			if resourceState[ev.ResourceId].Ready {
+				resourceState[ev.ResourceId].End = time.Now()
 			} else {
 				if ev.WaitDetails != "" {
-					m[ev.ResourceId].WaitDetails = ev.WaitDetails
+					resourceState[ev.ResourceId].WaitDetails = ev.WaitDetails
 				}
 			}
 
-			rwb.setSticky(render(m, ids, false))
+			rwb.setSticky(render(resourceState, ids, false))
 		}
 	}
 }
@@ -104,12 +105,14 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 		fmt.Fprintln(&b)
 	}
 
-	var cats uniquestrings.List
+	cats := map[string]struct{}{}
 	for _, bs := range m {
-		cats.Add(bs.Category)
+		cats[bs.Category] = struct{}{}
 	}
 
-	sortedCats := cats.Strings()
+	sortedCats := maps.Keys(cats)
+	slices.Sort(sortedCats)
+
 	perCat := map[string][]*blockState{}
 
 	for _, id := range ids {
