@@ -20,6 +20,13 @@ message DockerIntegration {
     string dockerfile = 1;
 }
 
+message ShellIntegration {
+    string script = 1;
+
+    // Additional packages to install in the base image. By default, bash and curl are installed.
+    repeated string install = 2;
+}
+
 message GoIntegration {
     string pkg = 1;
 }

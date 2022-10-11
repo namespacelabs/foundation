@@ -32,6 +32,7 @@ var (
 var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
 var BuildWeb func(pkggraph.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
+var BuildShell func(pkggraph.Location, *schema.ImageBuildPlan_ShellBuild) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
 var BuildNodejs func(planning.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, bool /* isFocus */) (build.Spec, error)
 var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
@@ -245,6 +246,10 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env planning.Cont
 		}
 
 		return BuildLLBGen(loc.PackageName, loc.Module, spec), nil
+	}
+
+	if shell := src.ShellBuild; shell != nil {
+		return BuildShell(loc, shell), nil
 	}
 
 	if nix := src.NixFlake; nix != "" {

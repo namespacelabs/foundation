@@ -26,7 +26,7 @@ message Binary {
     LayeredImageBuildPlan build_plan = 8;
 }
 
-// Next ID: 13
+// Next ID: 14
 message ImageBuildPlan {
     string description = 12;  // A human-readable description of what's being built. Optional.
 
@@ -34,13 +34,14 @@ message ImageBuildPlan {
     GoBuild           go_build            = 7;  // Use go binary builder.
     string            dockerfile          = 2;  // Use Dockerfile builder.
     string            web_build           = 3;  // Use Web build (temporary).
-    LLBPlan           llb_plan            = 4;  // Build  binary which itself produces LLB.
+    LLBPlan           llb_plan            = 4;  // Build binary which itself produces LLB.
     string            nix_flake           = 5;  // Build a docker image from a nix flake.
     repeated string   snapshot_files      = 6;  // Add all referenced files, and directories, recursively visiting their children.
     string            image_id            = 8;  // Use an existing image.
     NodejsBuild       nodejs_build        = 9;
     PackageRef        binary              = 10;  // Add another binary as a layer.
     StaticFilesServer static_files_server = 11;
+    ShellBuild        shell_build         = 13;  // Build a docker image that installs required packages and runs a shell script.
 
     message LLBPlan {
         Binary output_of = 1;
@@ -67,6 +68,13 @@ message ImageBuildPlan {
         // Only affects non-dev environments.
         // TODO: Move copying the files out of the Node.js implementation.
         string build_out_dir = 4;
+    }
+
+    message ShellBuild {
+        string script = 1;
+
+        // Additional packages to install in the base image. By default, bash and curl are installed.
+        repeated string install = 2;
     }
 
     message StaticFilesServer {
