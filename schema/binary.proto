@@ -71,7 +71,7 @@ message ImageBuildPlan {
     }
 
     message AlpineBuild {
-        repeated string install = 2;
+        repeated string install = 1;
     }
 
     message StaticFilesServer {
