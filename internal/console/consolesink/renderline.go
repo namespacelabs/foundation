@@ -27,7 +27,7 @@ func renderLine(w io.Writer, s colors.Style, li lineItem) {
 	data := li.data
 
 	if OutputActionID {
-		fmt.Fprint(w, s.Header.Apply("["+data.ActionID.String()[:8]+"] "))
+		fmt.Fprint(w, s.Header.Apply("["+trim(data.ActionID.String(), 12)+"] "))
 	}
 
 	if data.Category != "" {

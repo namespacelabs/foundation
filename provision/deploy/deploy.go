@@ -248,7 +248,8 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, planne
 
 	secretData := compute.Map(
 		tasks.Action("server.collect-secret-data").
-			Scope(stack.AllPackageList().PackageNames()...),
+			Scope(stack.AllPackageList().PackageNames()...).
+			Arg("env", env.Environment().Name),
 		compute.Inputs().
 			Proto("env", env.Environment()).
 			Computable("stackAndDefs", stackDef),

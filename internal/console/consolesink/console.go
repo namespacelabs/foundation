@@ -21,6 +21,7 @@ import (
 
 	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/truncate"
+	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -85,6 +86,14 @@ func init() {
 	for _, t := range ColorsToolBar {
 		toolBars = append(toolBars, aec.Color8BitB(t).Apply(" ")+" ")
 	}
+}
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&OutputActionID, "console_output_action_id", OutputActionID, "If set to true, each action is prefixed with its internal ID.")
+	flags.BoolVar(&DisplayWaitingActions, "console_display_waiting_actions", DisplayWaitingActions, "If set to true, internal waiting actions are also rendered.")
+
+	flags.MarkHidden("console_output_action_id")
+	flags.MarkHidden("console_display_waiting_actions")
 }
 
 type consoleOutput struct {
@@ -965,10 +974,6 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			// XXX precompute these lines as they don't change if the arguments don't change.
 			lineb.Reset()
 
-			if OutputActionID {
-				fmt.Fprint(&lineb, aec.LightBlackF.Apply(" ["+data.ActionID.String()[:8]+"]"))
-			}
-
 			fmt.Fprint(&lineb, renderPrefix(prefix))
 
 			renderLine(&lineb, colors.WithColors, *child.item)
@@ -987,6 +992,13 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 
 		c.renderLineRec(out, width, child, t, prefix, currDepth+1, maxDepth)
 	}
+}
+
+func trim(str string, n int) string {
+	if len(str) < n {
+		return str
+	}
+	return str[:n]
 }
 
 func (c *ConsoleSink) writeLineWithMaxW(w io.Writer, width uint, line string, suffix string) {

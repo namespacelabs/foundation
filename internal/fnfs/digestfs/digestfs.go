@@ -19,6 +19,7 @@ func Digest(ctx context.Context, fsys fs.FS) (schema.Digest, error) {
 
 func DigestWithOpts(ctx context.Context, fsys fs.FS, includeFiles []string, excludeFiles []string) (schema.Digest, error) {
 	h := sha256.New()
+	// Assumes that TarFS() produces a reproducible output.
 	err := maketarfs.TarFS(ctx, h, fsys, includeFiles, excludeFiles)
 	return schema.FromHash("sha256", h), err
 }

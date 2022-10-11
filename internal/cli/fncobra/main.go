@@ -274,6 +274,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	})
 
 	tasks.SetupFlags(rootCmd.PersistentFlags())
+	consolesink.SetupFlags(rootCmd.PersistentFlags())
 	fnapi.SetupFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
