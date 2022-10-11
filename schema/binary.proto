@@ -41,7 +41,7 @@ message ImageBuildPlan {
     NodejsBuild       nodejs_build        = 9;
     PackageRef        binary              = 10;  // Add another binary as a layer.
     StaticFilesServer static_files_server = 11;
-    ShellBuild        shell_build         = 13;  // Build a docker image that installs required packages and runs a shell script.
+    AlpineBuild       alpine_build        = 13;  // Build an alpine image that installs required packages.
 
     message LLBPlan {
         Binary output_of = 1;
@@ -70,10 +70,7 @@ message ImageBuildPlan {
         string build_out_dir = 4;
     }
 
-    message ShellBuild {
-        string script = 1;
-
-        // Additional packages to install in the base image. By default, bash and curl are installed.
+    message AlpineBuild {
         repeated string install = 2;
     }
 

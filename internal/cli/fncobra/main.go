@@ -175,7 +175,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildGo = golang.GoBuilder
 		binary.BuildWeb = web.WebBuilder
 		binary.BuildLLBGen = genbinary.LLBBinary
-		binary.BuildShell = genbinary.BuildShell
+		binary.BuildAlpine = genbinary.BuildAlpine
 		binary.BuildNix = genbinary.NixImageBuilder
 		binary.BuildNodejs = nodebinary.NodejsBuilder
 		binary.BuildStaticFilesServer = genbinary.StaticFilesServerBuilder

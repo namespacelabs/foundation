@@ -23,13 +23,15 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		return nil, fnerrors.Wrapf(loc, err, "could not find %q file, please verify that the specified script path is correct", data.Script)
 	}
 
+	install := []string{"bash", "curl"}
+	install = append(install, data.Install...)
+
 	return &schema.Binary{
 		BuildPlan: &schema.LayeredImageBuildPlan{
 			LayerBuildPlan: []*schema.ImageBuildPlan{{
-				ShellBuild: &schema.ImageBuildPlan_ShellBuild{
-					Script:  data.Script,
-					Install: data.Install,
-				},
+				AlpineBuild: &schema.ImageBuildPlan_AlpineBuild{Install: install},
+			}, {
+				SnapshotFiles: []string{data.Script},
 			}},
 		},
 		Config: &schema.BinaryConfig{
