@@ -260,6 +260,7 @@ _#ConfigureBase: {
 		nix_flake?:  string
 		web_build?:  string
 		llb_plan?: {output_of: #Binary}
+		alpine_build?: {package?: [...string]}
 	}
 
 	config?: {

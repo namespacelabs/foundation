@@ -89,6 +89,10 @@ func codegenServer(ctx context.Context, srv parsed.Server) error {
 		return err
 	}
 
+	if len(codegen) == 0 {
+		return nil
+	}
+
 	r := execution.NewPlan(codegen...)
 
 	return execution.Execute(ctx, srv.SealedContext(), "workspace.codegen", r, nil,

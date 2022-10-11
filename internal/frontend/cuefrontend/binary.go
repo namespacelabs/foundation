@@ -27,13 +27,14 @@ type cueLayeredImageBuildPlan struct {
 }
 
 type cueImageBuildPlan struct {
-	GoPackage     string                         `json:"go_package,omitempty"`
-	GoBuild       *schema.ImageBuildPlan_GoBuild `json:"go_build,omitempty"`
-	Dockerfile    string                         `json:"dockerfile,omitempty"`
-	WebBuild      string                         `json:"web_build,omitempty"`
-	LlbPlan       *cueImageBuildPlan_LLBPlan     `json:"llb_plan,omitempty"`
-	NixFlake      string                         `json:"nix_flake,omitempty"`
-	SnapshotFiles []string                       `json:"snapshot_files,omitempty"`
+	GoPackage     string                             `json:"go_package,omitempty"`
+	GoBuild       *schema.ImageBuildPlan_GoBuild     `json:"go_build,omitempty"`
+	Dockerfile    string                             `json:"dockerfile,omitempty"`
+	WebBuild      string                             `json:"web_build,omitempty"`
+	LlbPlan       *cueImageBuildPlan_LLBPlan         `json:"llb_plan,omitempty"`
+	NixFlake      string                             `json:"nix_flake,omitempty"`
+	SnapshotFiles []string                           `json:"snapshot_files,omitempty"`
+	AlpineBuild   *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
 }
 
 type cueImageBuildPlan_LLBPlan struct {
@@ -144,6 +145,11 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	if bp.SnapshotFiles != nil {
 		plan.SnapshotFiles = bp.SnapshotFiles
 		set = append(set, "snapshot_files")
+	}
+
+	if bp.AlpineBuild != nil {
+		plan.AlpineBuild = bp.AlpineBuild
+		set = append(set, "alpine_build")
 	}
 
 	if len(set) == 0 {

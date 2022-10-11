@@ -6,8 +6,6 @@ package parsed
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision/compatibility"
@@ -72,7 +70,6 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 	sealed, err := workspace.Seal(ctx, loader, pkgname, &workspace.SealHelper{
 		AdditionalServerDeps: func(fmwk schema.Framework) ([]schema.PackageName, error) {
 			var pkgs schema.PackageList
-			pkgs.Add(schema.PackageName(fmt.Sprintf("namespacelabs.dev/foundation/std/runtime/%s", strings.ToLower(env.Runtime))))
 			if handler, ok := workspace.FrameworkHandlers[fmwk]; ok {
 				pkgs.AddMultiple(handler.DevelopmentPackages()...)
 			}
