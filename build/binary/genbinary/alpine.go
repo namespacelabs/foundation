@@ -36,7 +36,7 @@ func (b *buildAlpine) BuildImage(ctx context.Context, env pkggraph.SealedContext
 	}
 
 	if conf.TargetPlatform() == nil {
-		return nil, fnerrors.InternalError("shell builds require a platform")
+		return nil, fnerrors.InternalError("alpine builds require a platform")
 	}
 
 	state := llbutil.Image(image, *conf.TargetPlatform()).
