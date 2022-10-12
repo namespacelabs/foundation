@@ -5,7 +5,9 @@
 package cuefrontend
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -23,8 +25,14 @@ type cueBinary struct {
 }
 
 type cueLayeredImageBuildPlan struct {
+	LayerBuildPlan []*cueImageBuildPlan
+}
+
+type cueLayeredImageBuildPlanJSON struct {
 	LayerBuildPlan []*cueImageBuildPlan `json:"layer_build_plan,omitempty"`
 }
+
+var _ json.Unmarshaler = &cueLayeredImageBuildPlan{}
 
 type cueImageBuildPlan struct {
 	GoPackage                string                             `json:"go_package,omitempty"`
@@ -93,7 +101,32 @@ func (srcBin cueBinary) ToSchema(loc fnerrors.Location) (*schema.Binary, error) 
 	return bin, nil
 }
 
-func (lbp cueLayeredImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.LayeredImageBuildPlan, error) {
+func (lbp *cueLayeredImageBuildPlan) UnmarshalJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+
+	switch tok {
+	case json.Delim('['):
+		return json.Unmarshal(data, &lbp.LayerBuildPlan)
+
+	case json.Delim('{'):
+		var x cueLayeredImageBuildPlanJSON
+		if err := json.Unmarshal(data, &x); err != nil {
+			return err
+		}
+		lbp.LayerBuildPlan = x.LayerBuildPlan
+		return nil
+
+	default:
+		return fnerrors.BadInputError("unexpected input, expected array or object")
+	}
+}
+
+func (lbp *cueLayeredImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.LayeredImageBuildPlan, error) {
 	plan := &schema.LayeredImageBuildPlan{}
 	for _, def := range lbp.LayerBuildPlan {
 		parsed, err := def.ToSchema(loc)
