@@ -5,12 +5,17 @@
 package protolog
 
 import (
+	"io"
+
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewSink(ch chan *Log) *logger {
 	return &logger{ch: ch}
 }
+
+var _ tasks.ActionSink = &logger{}
 
 type logger struct {
 	ch chan *Log
@@ -53,3 +58,7 @@ func (l *logger) Instant(ev *tasks.EventData) {
 }
 
 func (l *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
+
+func (l *logger) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+	return nil
+}
