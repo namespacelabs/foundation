@@ -47,7 +47,7 @@ func Debug(ctx context.Context) io.Writer {
 	if DebugToConsole {
 		return TypedOutput(ctx, "debug", common.CatOutputDebug)
 	} else {
-		return tasks.Attachments(ctx).Output(tasks.Output(string(common.CatOutputDebug), "text/plain"))
+		return tasks.Attachments(ctx).Output(tasks.Output(string(common.CatOutputDebug), "text/plain"), common.CatOutputDebug)
 	}
 }
 
@@ -64,7 +64,7 @@ func ConsoleOutputName(name string) tasks.OutputName {
 }
 
 func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
-	stored := tasks.Attachments(ctx).Output(ConsoleOutputName(name))
+	stored := tasks.Attachments(ctx).Output(ConsoleOutputName(name), cat)
 	return consoleOutputFromCtx(ctx, name, cat, writeStored{stored})
 }
 

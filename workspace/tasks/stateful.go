@@ -9,6 +9,7 @@ import (
 	"io"
 	"sync"
 
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 )
 
@@ -236,6 +237,10 @@ func (s *statefulState) AttachmentsUpdated(actionID ActionID, data *ResultData) 
 			obs.OnUpdate(r)
 		}
 	}
+}
+
+func (s *statefulState) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+	return nil
 }
 
 func (s *statefulState) Unwrap() ActionSink {

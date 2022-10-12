@@ -15,7 +15,7 @@ import (
 )
 
 func TestMultipleError(t *testing.T) {
-	ctx := WithSink(context.Background(), dummySink{})
+	ctx := WithSink(context.Background(), nullSink{})
 	af := Action("foobar").Start(ctx)
 	_ = af.Done(multierr.New(errors.New("foobar0"), errors.New("foobar1")))
 
@@ -59,11 +59,3 @@ func TestMultipleError(t *testing.T) {
 	}
 
 }
-
-type dummySink struct{}
-
-func (dummySink) Waiting(*RunningAction)                   {}
-func (dummySink) Started(*RunningAction)                   {}
-func (dummySink) Done(*RunningAction)                      {}
-func (dummySink) Instant(*EventData)                       {}
-func (dummySink) AttachmentsUpdated(ActionID, *ResultData) {}

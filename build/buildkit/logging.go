@@ -16,6 +16,7 @@ import (
 	"github.com/moby/buildkit/util/progress/progressui"
 	"github.com/opencontainers/go-digest"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/workspace/tasks"
@@ -34,8 +35,8 @@ type jsonEvent struct {
 
 func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLike, parentCh chan *client.SolveStatus) {
 	attachments := tasks.Attachments(ctx)
-	outText := attachments.Output(tasks.TaskOutputTextLog)
-	outJSON := attachments.Output(TaskOutputBuildkitJsonLog)
+	outText := attachments.Output(tasks.TaskOutputTextLog, common.CatOutputTool)
+	outJSON := attachments.Output(TaskOutputBuildkitJsonLog, common.CatOutputTool)
 
 	console.GetErrContext(ctx).AddLog(tasks.TaskOutputTextLog)
 
@@ -189,7 +190,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 				if streams[key] == nil {
 					name := consoleName(logid, log.Vertex, log.Stream)
 					outputName := tasks.Output(name, "text/plain")
-					output := tasks.Attachments(ctx).Output(outputName)
+					output := tasks.Attachments(ctx).Output(outputName, common.CatOutputTool)
 					streams[key] = io.MultiWriter(output, console.Output(ctx, name))
 					console.GetErrContext(ctx).AddLog(outputName)
 				}

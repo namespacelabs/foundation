@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
@@ -100,3 +101,7 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 }
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
+
+func (sl *logger) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+	return nil
+}

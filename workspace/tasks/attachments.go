@@ -34,6 +34,7 @@ type readerWriter interface {
 
 type attachedBuffer struct {
 	buffer      readerWriter
+	writer      io.Writer
 	id          string
 	name        string
 	contentType string
@@ -171,7 +172,7 @@ func (ev *EventAttachments) ReaderByName(name string) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(nil))
 }
 
-func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io.Writer, bool) {
+func (ev *EventAttachments) ensureOutput(name OutputName, outputType common.CatOutputType, addIfMissing bool) (io.Writer, bool) {
 	if ev == nil {
 		return syncbuffer.Discard, false
 	}
@@ -191,21 +192,30 @@ func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io
 			return syncbuffer.Discard, false
 		}
 
+		buf := syncbuffer.NewByteBuffer()
+		out := buf.Writer()
+
+		if sinkOutput := ev.sink.Output(name.name, name.contentType, outputType); sinkOutput != nil {
+			out = io.MultiWriter(out, sinkOutput)
+		}
+
 		ev.buffers[name.computed] = attachedBuffer{
 			id:          ids.NewRandomBase62ID(8),
-			buffer:      syncbuffer.NewByteBuffer(),
+			buffer:      buf,
+			writer:      out,
 			name:        name.name,
 			contentType: name.contentType,
 		}
+
 		ev.insertionOrder = append(ev.insertionOrder, name)
 		added = true
 	}
 
-	return ev.buffers[name.computed].buffer.Writer(), added
+	return ev.buffers[name.computed].writer, added
 }
 
-func (ev *EventAttachments) Output(name OutputName) io.Writer {
-	w, added := ev.ensureOutput(name, true)
+func (ev *EventAttachments) Output(name OutputName, cat common.CatOutputType) io.Writer {
+	w, added := ev.ensureOutput(name, cat, true)
 	if added {
 		ev.sink.AttachmentsUpdated(ev.actionID, nil)
 	}
