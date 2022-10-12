@@ -31,9 +31,15 @@ type buildAlpine struct {
 }
 
 func (b *buildAlpine) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	image, err := pins.CheckDefault("alpine")
-	if err != nil {
-		return nil, err
+	var image string
+	if b.plan.Version != "" {
+		image = "docker.io/library/alpine@" + b.plan.Version
+	} else {
+		var err error
+		image, err = pins.CheckDefault("alpine")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if conf.TargetPlatform() == nil {

@@ -71,6 +71,7 @@ message ImageBuildPlan {
     }
 
     message AlpineBuild {
+        string          version = 2;  // An optional version + digest.
         repeated string package = 1;
     }
 
