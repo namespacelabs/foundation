@@ -92,8 +92,8 @@ func SetupFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&OutputActionID, "console_output_action_id", OutputActionID, "If set to true, each action is prefixed with its internal ID.")
 	flags.BoolVar(&DisplayWaitingActions, "console_display_waiting_actions", DisplayWaitingActions, "If set to true, internal waiting actions are also rendered.")
 
-	flags.MarkHidden("console_output_action_id")
-	flags.MarkHidden("console_display_waiting_actions")
+	_ = flags.MarkHidden("console_output_action_id")
+	_ = flags.MarkHidden("console_display_waiting_actions")
 }
 
 type consoleOutput struct {
