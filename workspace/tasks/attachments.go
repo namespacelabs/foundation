@@ -27,11 +27,9 @@ type EventAttachments struct {
 }
 
 type readerWriter interface {
-	Writer() syncbuffer.Writer
+	Writer() io.Writer
 	Reader() io.ReadCloser
-
-	// Returns a potentially shared snapshot of the contents. Copy before modifying.
-	SharedSnapshot() []byte
+	Snapshot() []byte
 }
 
 type attachedBuffer struct {
@@ -173,7 +171,7 @@ func (ev *EventAttachments) ReaderByName(name string) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(nil))
 }
 
-func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (syncbuffer.Writer, bool) {
+func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (io.Writer, bool) {
 	if ev == nil {
 		return syncbuffer.Discard, false
 	}
@@ -206,7 +204,7 @@ func (ev *EventAttachments) ensureOutput(name OutputName, addIfMissing bool) (sy
 	return ev.buffers[name.computed].buffer.Writer(), added
 }
 
-func (ev *EventAttachments) Output(name OutputName) syncbuffer.Writer {
+func (ev *EventAttachments) Output(name OutputName) io.Writer {
 	w, added := ev.ensureOutput(name, true)
 	if added {
 		ev.sink.AttachmentsUpdated(ev.actionID, nil)

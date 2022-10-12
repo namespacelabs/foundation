@@ -16,7 +16,7 @@ import (
 
 func TestBuffers(t *testing.T) {
 	var liner bufferedLiner
-	w := &consoleBuffer{actual: []writerLiner{&liner}, name: "foobar"}
+	w := &consoleBuffer{actual: []writesLines{&liner}, name: "foobar"}
 
 	fmt.Fprint(w, "foo")
 	fmt.Fprint(w, "bar")

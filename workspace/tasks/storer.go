@@ -55,7 +55,7 @@ func (st *Storer) store(af *RunningAction) error {
 		for _, name := range af.attachments.insertionOrder {
 			buf := af.attachments.buffers[name.computed]
 
-			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id), buf.buffer.SharedSnapshot(), 0600); err != nil {
+			if err := st.bundle.WriteFile(context.Background(), filepath.Join(actionId.String(), buf.id), buf.buffer.Snapshot(), 0600); err != nil {
 				return err
 			}
 		}

@@ -570,7 +570,7 @@ func addOutputsToSpan(ctx context.Context, results map[string]ResultWithTimestam
 func verifyCacheHits(ctx context.Context, c rawComputable, hits []cacheHit, d schema.Digest) {
 	for _, hit := range hits {
 		if hit.Hit && hit.OutputDigest != d {
-			console.JSON(console.Errors(ctx),
+			console.WriteJSON(console.Errors(ctx),
 				fmt.Sprintf("VerifyCache: found non-determinism evaluating %q", typeStr(c)),
 				map[string]interface{}{
 					"expected":                hit.OutputDigest,

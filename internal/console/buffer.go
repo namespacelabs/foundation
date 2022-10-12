@@ -13,12 +13,12 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
-type writerLiner interface {
+type writesLines interface {
 	WriteLines(common.IdAndHash, string, common.CatOutputType, tasks.ActionID, time.Time, [][]byte)
 }
 
 type consoleBuffer struct {
-	actual   []writerLiner
+	actual   []writesLines
 	name     string
 	cat      common.CatOutputType
 	id       common.IdAndHash

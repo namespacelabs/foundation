@@ -16,7 +16,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/console/common"
-	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/workspace/tasks"
 	"namespacelabs.dev/go-ids"
@@ -70,7 +69,7 @@ func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.
 }
 
 type writeStored struct {
-	stored syncbuffer.Writer
+	stored io.Writer
 }
 
 func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
@@ -87,15 +86,15 @@ func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.Cat
 		Line:           strLines,
 		Timestamp:      timestamppb.New(ts),
 	}); err == nil {
-		w.stored.GuaranteedWrite(append(m, []byte("\n")...))
+		_, _ = w.stored.Write(append(m, []byte("\n")...))
 	} else {
-		w.stored.GuaranteedWrite([]byte(`{"failure":"serialization failure"}\n`))
+		_, _ = w.stored.Write([]byte(`{"failure":"serialization failure"}\n`))
 	}
 }
 
-func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType, extra ...writerLiner) io.Writer {
+func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType, extra ...writesLines) io.Writer {
 	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
-	if t, ok := unwrapped.(writerLiner); ok {
+	if t, ok := unwrapped.(writesLines); ok {
 		actionID := tasks.Attachments(ctx).ActionID()
 		id := actionID.String()
 		if actionID == "" {
@@ -107,7 +106,7 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 		}
 
 		buf := &consoleBuffer{
-			actual: append([]writerLiner{t}, extra...),
+			actual: append([]writesLines{t}, extra...),
 			name:   name,
 			cat:    cat,
 			id:     common.IdAndHashFrom(id),
@@ -129,11 +128,11 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 }
 
 // ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.
-func ConsoleOutput(console writerLiner, name string) io.Writer {
-	return &consoleBuffer{actual: []writerLiner{console}, name: name}
+func ConsoleOutput(console writesLines, name string) io.Writer {
+	return &consoleBuffer{actual: []writesLines{console}, name: name}
 }
 
-func JSON(w io.Writer, message string, data interface{}) {
+func WriteJSON(w io.Writer, message string, data interface{}) {
 	fmt.Fprint(w, message, " ")
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(data); err != nil {

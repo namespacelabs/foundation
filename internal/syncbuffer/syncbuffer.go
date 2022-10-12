@@ -24,11 +24,6 @@ type byteBufferReader struct {
 	off int // The reader is not thread-safe.
 }
 
-type Writer interface {
-	io.Writer
-	GuaranteedWrite([]byte)
-}
-
 var Discard = discard{io.Discard}
 
 func Seal(b []byte) *Sealed {
@@ -41,7 +36,7 @@ func NewByteBuffer() *ByteBuffer {
 	return x
 }
 
-func (sb *ByteBuffer) Writer() Writer {
+func (sb *ByteBuffer) Writer() io.Writer {
 	return sb
 }
 
@@ -49,7 +44,7 @@ func (sb *ByteBuffer) Reader() io.ReadCloser {
 	return &byteBufferReader{sb: sb, off: 0}
 }
 
-func (sb *ByteBuffer) SharedSnapshot() []byte {
+func (sb *ByteBuffer) Snapshot() []byte {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	return slices.Clone(sb.buf.Bytes())
@@ -59,11 +54,6 @@ func (sb *ByteBuffer) Seal() *Sealed {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
 	return &Sealed{sb.buf.Bytes()}
-}
-
-func (sb *ByteBuffer) GuaranteedWrite(p []byte) {
-	// Writes to a memory buffer never fail.
-	_, _ = sb.Write(p)
 }
 
 func (sb *ByteBuffer) Write(p []byte) (int, error) {
@@ -106,7 +96,7 @@ type Sealed struct {
 	finalized []byte
 }
 
-func (s *Sealed) Writer() Writer {
+func (s *Sealed) Writer() io.Writer {
 	return failedWriter{}
 }
 
@@ -114,7 +104,7 @@ func (s *Sealed) Reader() io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(s.finalized))
 }
 
-func (s *Sealed) SharedSnapshot() []byte {
+func (s *Sealed) Snapshot() []byte {
 	return s.finalized
 }
 
