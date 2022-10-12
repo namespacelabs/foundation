@@ -261,6 +261,8 @@ _#ConfigureBase: {
 		web_build?:  string
 		llb_plan?: {output_of: #Binary}
 		alpine_build?: {package?: [...string]}
+		files: [...string]
+		snapshot_files: [...string]
 	}
 
 	config?: {

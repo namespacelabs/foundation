@@ -27,14 +27,15 @@ type cueLayeredImageBuildPlan struct {
 }
 
 type cueImageBuildPlan struct {
-	GoPackage     string                             `json:"go_package,omitempty"`
-	GoBuild       *schema.ImageBuildPlan_GoBuild     `json:"go_build,omitempty"`
-	Dockerfile    string                             `json:"dockerfile,omitempty"`
-	WebBuild      string                             `json:"web_build,omitempty"`
-	LlbPlan       *cueImageBuildPlan_LLBPlan         `json:"llb_plan,omitempty"`
-	NixFlake      string                             `json:"nix_flake,omitempty"`
-	SnapshotFiles []string                           `json:"snapshot_files,omitempty"`
-	AlpineBuild   *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
+	GoPackage                string                             `json:"go_package,omitempty"`
+	GoBuild                  *schema.ImageBuildPlan_GoBuild     `json:"go_build,omitempty"`
+	Dockerfile               string                             `json:"dockerfile,omitempty"`
+	WebBuild                 string                             `json:"web_build,omitempty"`
+	LlbPlan                  *cueImageBuildPlan_LLBPlan         `json:"llb_plan,omitempty"`
+	NixFlake                 string                             `json:"nix_flake,omitempty"`
+	Deprecated_SnapshotFiles []string                           `json:"snapshot_files,omitempty"` // Use `files` instead.
+	Files                    []string                           `json:"files,omitempty"`
+	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
 }
 
 type cueImageBuildPlan_LLBPlan struct {
@@ -142,9 +143,14 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 		set = append(set, "nix_flake")
 	}
 
-	if bp.SnapshotFiles != nil {
-		plan.SnapshotFiles = bp.SnapshotFiles
+	if bp.Deprecated_SnapshotFiles != nil {
+		plan.SnapshotFiles = bp.Deprecated_SnapshotFiles
 		set = append(set, "snapshot_files")
+	}
+
+	if bp.Files != nil {
+		plan.SnapshotFiles = bp.Files
+		set = append(set, "files")
 	}
 
 	if bp.AlpineBuild != nil {
