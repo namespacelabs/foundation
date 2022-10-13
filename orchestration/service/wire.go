@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/codes"
 	pb "google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -70,4 +71,6 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 
 	// Always log actions, we filter if we show them on the client.
 	tasks.LogActions = true
+	// Always log debug to console, we redirect the log on the client.
+	console.DebugToConsole = true
 }

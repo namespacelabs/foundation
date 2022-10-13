@@ -186,13 +186,15 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 }
 
 func forwardsLogs(ctx context.Context, maxLogLevel int32, log *protolog.Log) {
-	if log.Debug != nil {
-		fmt.Fprintln(console.Debug(ctx), log.Debug.Message)
-	}
-
 	if l := log.Lines; l != nil {
 		for _, line := range l.Lines {
-			fmt.Fprintln(console.TypedOutput(ctx, l.Name, common.CatOutputType(l.Cat)), string(line))
+			outputType := common.CatOutputType(l.Cat)
+			if outputType == common.CatOutputDebug {
+				// Call console.Debug to respect DebugToConsole
+				fmt.Fprintln(console.Debug(ctx), string(line))
+			} else {
+				fmt.Fprintln(console.TypedOutput(ctx, l.Name, outputType), string(line))
+			}
 		}
 	}
 

@@ -5,12 +5,10 @@
 package protolog
 
 import (
-	"bufio"
 	"io"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/console/common"
-	"namespacelabs.dev/foundation/internal/syncbuffer"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -63,24 +61,7 @@ func (l *logger) Instant(ev *tasks.EventData) {
 func (l *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
 
 func (l *logger) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
-	if outputType != common.CatOutputDebug {
-		// All non-debug outputs are forwarded via WriteLines(...)
-		return nil
-	}
-
-	buffer := syncbuffer.NewByteBuffer()
-	scanner := bufio.NewScanner(buffer.Reader())
-	go func() {
-		for scanner.Scan() {
-			l.ch <- &Log{
-				Debug: &Log_Debug{
-					Message: scanner.Text(),
-				},
-			}
-		}
-	}()
-
-	return buffer
+	return nil
 }
 
 func (l *logger) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {

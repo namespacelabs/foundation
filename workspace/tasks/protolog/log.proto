@@ -31,9 +31,5 @@ message Log {
         repeated bytes lines = 7;
     }
 
-    Debug debug = 5;
-
-    message Debug {
-        string message = 1;
-    }
+    reserved 5;
 }
