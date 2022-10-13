@@ -51,7 +51,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl workspace.EarlyP
 		ServersUnderTest: bits.Servers,
 	}
 
-	if build := v.LookupPath("build"); build.Exists() {
+	if build := v.LookupPath(builderPath); build.Exists() {
 		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
 		if err != nil {
 			return nil, err

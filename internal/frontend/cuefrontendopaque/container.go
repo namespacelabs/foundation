@@ -17,6 +17,8 @@ import (
 	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
+const builderPath = "builder"
+
 type cueContainer struct {
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
 	Env  map[string]string          `json:"env"`
@@ -70,9 +72,9 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl workspac
 		out.inlineBinaries = append(out.inlineBinaries, inlineBinary)
 	}
 
-	if build := v.LookupPath("build"); build.Exists() {
+	if build := v.LookupPath(builderPath); build.Exists() {
 		if out.container.BinaryRef != nil {
-			return nil, fnerrors.UserError(loc, "cannot specify both 'build' and 'image'")
+			return nil, fnerrors.UserError(loc, "cannot specify both '%s' and 'image'", builderPath)
 		}
 
 		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)

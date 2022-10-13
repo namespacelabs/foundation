@@ -19,8 +19,8 @@ server: {
 
 sidecars: {
 	sc1: {
-		build: {
-			with:       "namespace.so/from-dockerfile"
+		builder: {
+			kind:       "namespace.so/from-dockerfile"
 			dockerfile: "mysidecar/Dockerfile"
 		}
 

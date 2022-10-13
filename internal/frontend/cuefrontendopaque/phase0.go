@@ -187,17 +187,6 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			}
 		}
 
-		// Old syntax - TODO remove when all uses have been migrated
-		if requires := v.LookupPath("requires"); requires.Exists() {
-			if len(phase1plan.declaredStack) > 0 {
-				return nil, fnerrors.UserError(loc, "please only specify either `server.requires` or `requires`")
-			}
-
-			phase1plan.declaredStack, err = parseRequires(ctx, ft.loader, loc, requires)
-			if err != nil {
-				return nil, err
-			}
-		}
 		parsedPkg.Parsed = phase1plan
 	}
 

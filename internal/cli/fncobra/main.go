@@ -40,7 +40,7 @@ import (
 	dockerparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/docker"
 	goparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/golang"
 	nodejsparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
-	shellparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/shell"
+	shellparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/shellscript"
 	webparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/web"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/git"
@@ -80,7 +80,7 @@ import (
 	dockerapplier "namespacelabs.dev/foundation/workspace/integration/docker"
 	goapplier "namespacelabs.dev/foundation/workspace/integration/golang"
 	nodejsapplier "namespacelabs.dev/foundation/workspace/integration/nodejs"
-	shellapplier "namespacelabs.dev/foundation/workspace/integration/shell"
+	shellapplier "namespacelabs.dev/foundation/workspace/integration/shellscript"
 	webapplier "namespacelabs.dev/foundation/workspace/integration/web"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
@@ -230,7 +230,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			&nodejsparser.Parser{},
 			&webparser.Parser{},
 		})
-		integrationparsing.BuildParser = entity.NewDispatchingEntityParser("with", []entity.EntityParser{
+		integrationparsing.BuildParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
 			// Same syntax as docker integration so we can reuse the parser.
 			dockerparser.NewParser(),
 			shellparser.NewParser(),
