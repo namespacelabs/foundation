@@ -90,7 +90,7 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl workspac
 	}
 
 	if out.container.BinaryRef == nil {
-		return nil, fnerrors.UserError(loc, "missing 'build' or 'image' definition")
+		return nil, fnerrors.UserError(loc, "missing '%s' or 'image' definition", builderPath)
 	}
 
 	return out, nil
