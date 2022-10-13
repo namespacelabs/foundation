@@ -499,8 +499,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 						WithLabels(map[string]string{
 							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
 						}).
-						WithStringData(configs.data).
-						WithData(configs.binaryData),
+						WithStringData(secrets.data).
+						WithData(secrets.binaryData),
 				})
 			}
 
