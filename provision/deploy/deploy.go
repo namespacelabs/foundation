@@ -417,7 +417,7 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fnerrors.InternalError("%s: failed to read %q: %w", module.Workspace.ModuleName, secrets.ServerBundleName, err)
+		return nil, fnerrors.InternalError("%s: failed to read %q: %w", module.Workspace.ModuleName, secrets.WorkspaceBundleName, err)
 	}
 
 	return secrets.LoadBundle(ctx, keyDir, contents)
