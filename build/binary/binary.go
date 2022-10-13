@@ -12,6 +12,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -62,17 +63,17 @@ type BuildImageOpts struct {
 }
 
 // Returns a Prepared.
-func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggraph.SealedContext, opts BuildImageOpts) (*Prepared, error) {
+func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggraph.SealedContext, assets assets.AvailableBuildAssets, opts BuildImageOpts) (*Prepared, error) {
 	binary, err := pkg.LookupBinary(binName)
 	if err != nil {
 		return nil, err
 	}
 
-	return PlanBinary(ctx, env, env, pkg.Location, binary, opts)
+	return PlanBinary(ctx, env, env, pkg.Location, binary, assets, opts)
 }
 
-func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, binary *schema.Binary, opts BuildImageOpts) (*Prepared, error) {
-	spec, err := planImage(ctx, pl, env, loc, binary, opts)
+func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, binary *schema.Binary, assets assets.AvailableBuildAssets, opts BuildImageOpts) (*Prepared, error) {
+	spec, err := planImage(ctx, pl, env, loc, binary, assets, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +144,10 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg cfg.Configu
 	return selected, nil
 }
 
-func planImage(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func planImage(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, assets assets.AvailableBuildAssets, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
-	spec, err := buildLayeredSpec(ctx, pl, env, loc, bin, opts)
+	spec, err := buildLayeredSpec(ctx, pl, env, loc, bin, assets, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +166,7 @@ func planImage(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	return spec, nil
 }
 
-func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, assets assets.AvailableBuildAssets, opts BuildImageOpts) (build.Spec, error) {
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
@@ -173,7 +174,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 	}
 
 	if len(src.LayerBuildPlan) == 1 {
-		return buildSpec(ctx, pl, env, loc, bin, src.LayerBuildPlan[0], opts)
+		return buildSpec(ctx, pl, env, loc, bin, src.LayerBuildPlan[0], assets, opts)
 	}
 
 	specs := make([]build.Spec, len(src.LayerBuildPlan))
@@ -181,7 +182,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 	platformIndependent := true
 	for k, plan := range src.LayerBuildPlan {
 		var err error
-		specs[k], err = buildSpec(ctx, pl, env, loc, bin, plan, opts)
+		specs[k], err = buildSpec(ctx, pl, env, loc, bin, plan, assets, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +201,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 	return mergeSpecs{specs: specs, descriptions: descriptions, platformIndependent: platformIndependent}, nil
 }
 
-func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, opts BuildImageOpts) (build.Spec, error) {
+func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, assets assets.AvailableBuildAssets, opts BuildImageOpts) (build.Spec, error) {
 	if src == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}
@@ -240,7 +241,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if llb := src.LlbPlan; llb != nil {
-		spec, err := buildLayeredSpec(ctx, pl, env, loc, llb.OutputOf, opts)
+		spec, err := buildLayeredSpec(ctx, pl, env, loc, llb.OutputOf, assets, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -275,7 +276,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 			return nil, err
 		}
 
-		spec, err := planImage(ctx, pl, env, binPkg.Location, binary, opts)
+		spec, err := planImage(ctx, pl, env, binPkg.Location, binary, assets, opts)
 		if err != nil {
 			return nil, err
 		}

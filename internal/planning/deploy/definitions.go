@@ -14,6 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -487,7 +488,7 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, err
 	}
 
-	prepared, err := binary.Plan(ctx, pkg, ref.Name, env, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
+	prepared, err := binary.Plan(ctx, pkg, ref.Name, env, assets.AvailableBuildAssets{}, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
 	if err != nil {
 		return nil, nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
@@ -70,7 +71,7 @@ func NewDebugShellCmd() *cobra.Command {
 
 			sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
 
-			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, sealedCtx, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
+			prepared, err := binary.Plan(ctx, pkg, binaryRef.Name, sealedCtx, assets.AvailableBuildAssets{}, binary.BuildImageOpts{Platforms: platforms, UsePrebuilts: true})
 			if err != nil {
 				return err
 			}

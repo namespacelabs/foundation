@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
@@ -73,14 +74,14 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 	return []schema.PackageName{controllerPkg.AsPackageName()}
 }
 
-func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv planning.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, buildAssets assets.AvailableBuildAssets, srv planning.Server, isFocus bool) (build.Spec, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, srv.SealedContext(), binary.BuildImageOpts{UsePrebuilts: false})
+		p, err := binary.Plan(ctx, pkg, controllerPkg.Name, srv.SealedContext(), buildAssets, binary.BuildImageOpts{UsePrebuilts: false})
 		if err != nil {
 			return nil, err
 		}
