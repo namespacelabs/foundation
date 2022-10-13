@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -165,7 +166,6 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 		return err
 	}
 
-	sink := tasks.SinkFrom(ctx)
 	for {
 		in, err := stream.Recv()
 		if err != nil {
@@ -179,21 +179,39 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 			ch <- in.Event
 		}
 
-		if sink != nil && in.Log != nil && in.Log.LogLevel <= maxLogLevel {
-			ra := tasks.ActionFromProto(ctx, "orchestrator", in.Log.Task)
+		if in.Log != nil {
+			forwardsLogs(ctx, maxLogLevel, in.Log)
+		}
+	}
+}
 
-			switch in.Log.Purpose {
-			case protolog.Log_PURPOSE_WAITING:
-				sink.Waiting(ra)
-			case protolog.Log_PURPOSE_STARTED:
-				sink.Started(ra)
-			case protolog.Log_PURPOSE_DONE:
-				sink.Done(ra)
-			case protolog.Log_PURPOSE_INSTANT:
-				sink.Instant(&ra.Data)
-			default:
-				fmt.Fprintf(console.Warnings(ctx), "unknown log purpose %s", in.Log.Purpose)
-			}
+func forwardsLogs(ctx context.Context, maxLogLevel int32, log *protolog.Log) {
+	if log.Debug != nil {
+		fmt.Fprintln(console.Debug(ctx), log.Debug.Message)
+	}
+
+	if l := log.Lines; l != nil {
+		for _, line := range l.Lines {
+			fmt.Fprintln(console.TypedOutput(ctx, l.Name, common.CatOutputType(l.Cat)), string(line))
+		}
+	}
+
+	if log.Task != nil && log.LogLevel <= maxLogLevel {
+		sink := tasks.SinkFrom(ctx)
+
+		ra := tasks.ActionFromProto(ctx, "orchestrator", log.Task)
+
+		switch log.Purpose {
+		case protolog.Log_PURPOSE_WAITING:
+			sink.Waiting(ra)
+		case protolog.Log_PURPOSE_STARTED:
+			sink.Started(ra)
+		case protolog.Log_PURPOSE_DONE:
+			sink.Done(ra)
+		case protolog.Log_PURPOSE_INSTANT:
+			sink.Instant(&ra.Data)
+		default:
+			fmt.Fprintf(console.Warnings(ctx), "unknown orchestrator log purpose %s", log.Purpose)
 		}
 	}
 }

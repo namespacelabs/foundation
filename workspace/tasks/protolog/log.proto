@@ -22,4 +22,18 @@ message Log {
         PURPOSE_DONE    = 3;
         PURPOSE_INSTANT = 4;
     }
+
+    Lines lines = 4;
+
+    message Lines {
+        string         name  = 3;
+        string         cat   = 4;
+        repeated bytes lines = 7;
+    }
+
+    Debug debug = 5;
+
+    message Debug {
+        string message = 1;
+    }
 }
