@@ -41,13 +41,15 @@ message ConfigurableVolume {
     repeated Entry entries = 1;
 
     message Entry {
+        reserved 3;
+
         // A single file or a directory, relative to the mount path.
         string path = 1;
 
         // One of.
         FileContents inline                       = 2;
         ResourceSet         inline_set            = 4;
-        PackageRef          secret_ref            = 3;
+        PackageRef          secret_ref            = 6;
         KubernetesSecretRef kubernetes_secret_ref = 5;
 
         message KubernetesSecretRef {
