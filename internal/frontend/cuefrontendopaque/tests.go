@@ -64,7 +64,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl workspace.EarlyP
 
 		out.Driver = binary
 	} else {
-		return nil, fnerrors.UserError(loc, "missing build definition")
+		return nil, fnerrors.UserError(loc, "missing '%s' definition for test %s", builderPath, name)
 	}
 
 	return out, nil
