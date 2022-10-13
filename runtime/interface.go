@@ -238,8 +238,7 @@ type GroundedSecrets struct {
 }
 
 type GroundedSecret struct {
-	Owner schema.PackageName
-	Name  string
+	Ref   *schema.PackageRef
 	Value *schema.FileContents
 }
 
@@ -369,9 +368,9 @@ type PortRange struct {
 
 func DefaultPortRange() PortRange { return PortRange{40000, 41000} }
 
-func (g GroundedSecrets) Get(owner, name string) *schema.FileContents {
+func (g GroundedSecrets) Get(ref *schema.PackageRef) *schema.FileContents {
 	for _, secret := range g.Secrets {
-		if secret.Owner.Equals(owner) && secret.Name == name {
+		if secret.Ref.Equals(ref) {
 			return secret.Value
 		}
 	}

@@ -243,10 +243,7 @@ func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader
 		return &schema.ConfigurableVolume_Entry{Inline: rsc}, nil
 
 	case bits.FromSecret != "":
-		return &schema.ConfigurableVolume_Entry{SecretRef: &schema.ConfigurableVolume_Entry_SecretRef{
-			Owner: loc.PackageName.String(),
-			Name:  bits.FromSecret,
-		}}, nil
+		return &schema.ConfigurableVolume_Entry{SecretRef: schema.MakePackageRef(loc.PackageName, bits.FromSecret)}, nil
 
 	case bits.FromKubernetesSecret != "":
 		parts := strings.SplitN(bits.FromKubernetesSecret, ":", 2)

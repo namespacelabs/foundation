@@ -83,8 +83,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 			}
 
 			g.Secrets = append(g.Secrets, runtime.GroundedSecret{
-				Owner: schema.PackageName(secret.Owner),
-				Name:  secret.Name,
+				Ref:   schema.MakePackageRef(srv.PackageName(), secret.Name),
 				Value: value,
 			})
 		}

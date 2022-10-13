@@ -447,9 +447,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					}
 
 				case entry.SecretRef != nil:
-					resource := opts.secrets.Get(entry.SecretRef.Owner, entry.SecretRef.Name)
+					resource := opts.secrets.Get(entry.SecretRef)
 					if resource == nil {
-						return fnerrors.BadInputError("%s/%s: missing secret value", entry.SecretRef.Owner, entry.SecretRef.Name)
+						return fnerrors.BadInputError("%q: missing secret value", entry.SecretRef.Canonical())
 					}
 
 					secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource, secrets).WithPath(entry.Path))
