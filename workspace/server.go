@@ -77,7 +77,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		return nil, err
 	}
 
-	if err := validateServer(ctx, pp.Location, srv); err != nil {
+	if err := validateServer(ctx, pl, pp.Location, srv); err != nil {
 		return nil, err
 	}
 
@@ -135,14 +135,6 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 				sealed.Proto.Server.MainContainer.Mount = append(sealed.Proto.Server.MainContainer.Mount, rs)
 			}
 
-			for _, secret := range node.Secret {
-				if secret.Owner != node.PackageName {
-					return nil, fnerrors.BadInputError("%s: secret: didn't expect owner to be %q", node.PackageName, secret.Owner)
-				}
-
-				sealed.Proto.Server.Secret = append(sealed.Proto.Server.Secret, secret)
-			}
-
 			if node.EnvironmentRequirement != nil {
 				sealed.Proto.Server.EnvironmentRequirement = append(sealed.Proto.Server.EnvironmentRequirement, &schema.Server_EnvironmentRequirement{
 					Package:                     node.PackageName,
@@ -188,7 +180,8 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 	return nil
 }
 
-func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Server) error {
+// Mutates srv.SecretRefs.
+func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server) error {
 	for _, m := range srv.MainContainer.Mount {
 		if findVolume(srv.Volume, m.VolumeName) == nil {
 			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeName)
@@ -209,23 +202,13 @@ func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.Serv
 			}
 
 			for _, e := range cv.Entries {
-				if e.SecretRef != nil && e.SecretRef.Name != "" &&
-					findSecret(srv.Secret, e.SecretRef.Name) == nil {
-					return fnerrors.UserError(loc, "secret %q does not exist", e.SecretRef.Name)
+				if e.SecretRef != nil && e.SecretRef.Name != "" {
+					srv.SecretRefs = append(srv.SecretRefs, e.SecretRef)
 				}
 			}
 		}
 	}
 
-	return nil
-}
-
-func findSecret(secrets []*schema.SecretSpec, name string) *schema.SecretSpec {
-	for _, s := range secrets {
-		if s.Name == name {
-			return s
-		}
-	}
 	return nil
 }
 

@@ -12,9 +12,9 @@ import "google/protobuf/any.proto";
 import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
+import "schema/package.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
-import "schema/secret.proto";
 import "schema/volume.proto";
 
 enum Framework {
@@ -27,9 +27,9 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 36
+// Next ID: 37
 message Server {
-    reserved 9, 13, 17, 19, 27, 30;
+    reserved 9, 13, 17, 19, 27, 28, 30, 32, 34;
 
     // The package name (computed).
     string package_name = 1;
@@ -90,9 +90,8 @@ message Server {
     // Includes file-level and inlined volumes.
     repeated Volume volume = 26;
 
-    repeated SecretSpec secret = 28;
-
-    reserved 32, 34;
+    // Computed from mounts.
+    repeated PackageRef secret_refs = 36;
 
     ResourcePack resource_pack = 35;
 

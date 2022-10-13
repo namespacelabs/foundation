@@ -143,10 +143,12 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 
 		if secrets := v.LookupPath("secrets"); secrets.Exists() {
-			parsedSrv.Secret, err = parseSecrets(ctx, loc, secrets)
+			secretSpecs, err := parseSecrets(ctx, secrets)
 			if err != nil {
 				return nil, err
 			}
+
+			parsedPkg.Secrets = append(parsedPkg.Secrets, secretSpecs...)
 		}
 
 		parsedPkg.Server = parsedSrv

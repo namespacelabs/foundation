@@ -14,7 +14,6 @@ import "schema/environment.proto";
 import "schema/reference.proto";
 import "schema/server.proto";
 import "schema/volume.proto";
-import "schema/secret.proto";
 
 // This is temporary; without extensions protos are pretty monolithic.
 // And we don't want to be in a situation where all possible integrations
@@ -76,13 +75,11 @@ message Node {
     // Framework-specific extensions.
     repeated google.protobuf.Any ext = 15;
 
-    reserved 18;
+    reserved 18, 24;
 
     repeated Volume volume = 22;
 
     repeated Mount mount = 23;
-
-    repeated SecretSpec secret = 24;
 
     // Environment requirements determine whether a particular node is compatible with a particular environment.
     EnvironmentRequirement environment_requirement = 21;

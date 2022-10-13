@@ -10,14 +10,13 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type cueSecret struct {
 	Description string `json:"description,omitempty"`
 }
 
-func parseSecrets(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) ([]*schema.SecretSpec, error) {
+func parseSecrets(ctx context.Context, v *fncue.CueV) ([]*schema.SecretSpec, error) {
 	var parsedSecrets []*schema.SecretSpec
 	it, err := v.Val.Fields()
 	if err != nil {
@@ -25,7 +24,7 @@ func parseSecrets(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) ([]
 	}
 
 	for it.Next() {
-		parsedSecret, err := parseSecret(ctx, loc, it.Label(), it.Value())
+		parsedSecret, err := parseSecret(ctx, it.Label(), it.Value())
 		if err != nil {
 			return nil, err
 		}
@@ -36,14 +35,13 @@ func parseSecrets(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) ([]
 	return parsedSecrets, nil
 }
 
-func parseSecret(ctx context.Context, loc pkggraph.Location, name string, v cue.Value) (*schema.SecretSpec, error) {
+func parseSecret(ctx context.Context, name string, v cue.Value) (*schema.SecretSpec, error) {
 	var bits cueSecret
 	if err := v.Decode(&bits); err != nil {
 		return nil, err
 	}
 
 	return &schema.SecretSpec{
-		Owner:       loc.PackageName.String(),
 		Name:        name,
 		Description: bits.Description,
 	}, nil

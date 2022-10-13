@@ -36,6 +36,9 @@ type Package struct {
 	// Shouldn't be used outside of workspace.SealPackage.
 	Integration *schema.PackageIntegration
 
+	// Parsed secret definitions within the package.
+	Secrets []*schema.SecretSpec
+
 	// Resources associated with node types.
 	Provides    map[string]*protos.FileDescriptorSetAndDeps // key: `Provides.Name`
 	Services    map[string]*protos.FileDescriptorSetAndDeps // key: fully qualified service name

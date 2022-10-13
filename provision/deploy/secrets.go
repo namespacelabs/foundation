@@ -34,11 +34,11 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 
 	g := &runtime.GroundedSecrets{}
 
-	var missing []*schema.SecretSpec
+	var missing []*schema.PackageRef
 	var missingServer []schema.PackageName
 	for _, ps := range stack.Servers {
 		srv := ps.Server
-		if len(srv.Proto().Secret) == 0 {
+		if len(srv.Proto().SecretRefs) == 0 {
 			continue
 		}
 
@@ -68,22 +68,24 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 			}
 		}
 
-		for _, secret := range srv.Proto().Secret {
-			value, err := lookupSecret(ctx, env, secret, bundle, workspaceSecrets[srv.Module().ModuleName()])
+		for _, secretRef := range srv.Proto().SecretRefs {
+			if !strings.HasPrefix(secretRef.PackageName, srv.Module().ModuleName()) {
+				return nil, fnerrors.InternalError("%s: secret %q is not in the same module as the server, which is not supported yet", srv.PackageName(), secretRef.PackageName)
+			}
+
+			value, err := lookupSecret(ctx, env, secretRef, bundle, workspaceSecrets[srv.Module().ModuleName()])
 			if err != nil {
 				return nil, err
 			}
 
 			if value == nil {
-				if !secret.Optional {
-					missing = append(missing, secret)
-					missingServer = append(missingServer, srv.PackageName())
-				}
+				missing = append(missing, secretRef)
+				missingServer = append(missingServer, srv.PackageName())
 				continue
 			}
 
 			g.Secrets = append(g.Secrets, runtime.GroundedSecret{
-				Ref:   schema.MakePackageRef(srv.PackageName(), secret.Name),
+				Ref:   secretRef,
 				Value: value,
 			})
 		}
@@ -92,8 +94,8 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 	if len(missing) > 0 {
 		labels := make([]string, len(missing))
 
-		for k, secret := range missing {
-			labels[k] = fmt.Sprintf("  ns secrets set %s --secret %s:%s", missingServer[k], secret.Owner, secret.Name)
+		for k, secretRef := range missing {
+			labels[k] = fmt.Sprintf("  ns secrets set %s --secret %s", missingServer[k], secretRef.Canonical())
 		}
 
 		return nil, fnerrors.UsageError(
@@ -105,8 +107,8 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 	return g, nil
 }
 
-func lookupSecret(ctx context.Context, env *schema.Environment, secret *schema.SecretSpec, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
-	key := &secrets.ValueKey{PackageName: secret.Owner, Key: secret.Name, EnvironmentName: env.Name}
+func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
+	key := &secrets.ValueKey{PackageName: secretRef.PackageName, Key: secretRef.Name, EnvironmentName: env.Name}
 
 	if server != nil {
 		value, err := server.Lookup(ctx, key)
