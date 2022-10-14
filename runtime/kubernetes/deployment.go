@@ -18,9 +18,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -194,9 +192,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	if _, err := fillEnv(mainContainer, deployable.MainContainer.Env); err != nil {
-		return err
-	}
+	mainEnv := slices.Clone(deployable.MainContainer.Env)
 
 	if deployable.MainContainer.WorkingDir != "" {
 		mainContainer = mainContainer.WithWorkingDir(deployable.MainContainer.WorkingDir)
@@ -221,7 +217,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	var createServiceAccount bool
 	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
 
-	env := make(map[string]*schema.BinaryConfig_EnvEntry)
 	var specifiedSec *kubedef.SpecExtension_SecurityContext
 
 	for _, input := range deployable.Extensions {
@@ -295,14 +290,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			for _, kv := range containerExt.Env {
-				current, found := env[kv.Name]
-				if !found {
-					env[kv.Name] = kv
-					continue
-				}
-
-				if !proto.Equal(current, kv) {
-					return fnerrors.UserError(deployable.ErrorLocation, "env variable %q is already set, but would be overwritten by container extension", kv.Name)
+				var err error
+				mainEnv, err = runtime.SetEnv(mainEnv, kv)
+				if err != nil {
+					return err
 				}
 			}
 
@@ -379,7 +370,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				probevalues, livenessProbe))
 	}
 
-	if _, err := fillEnv(mainContainer, maps.Values(env)); err != nil {
+	// XXX Think through this, should it also be hashed + immutable?
+	secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
+	secrets := newDataItemCollector()
+
+	if _, err := fillEnv(mainContainer, mainEnv, secretId, opts.secrets, secrets); err != nil {
 		return err
 	}
 
@@ -424,7 +419,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			configs := newDataItemCollector()
-			secrets := newDataItemCollector()
 
 			configHash := sha256.New()
 
@@ -480,24 +474,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			if len(secretItems) > 0 {
-				// XXX Think through this, should it also be hashed + immutable?
-				secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
-
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
 					applycorev1.SecretProjection().WithName(secretId).WithItems(secretItems...)))
-
-				// Needs to be declared before it's used.
-				s.operations = append(s.operations, kubedef.Apply{
-					Description: "Server secrets",
-					Resource: applycorev1.Secret(secretId, target.namespace).
-						WithAnnotations(annotations).
-						WithLabels(labels).
-						WithLabels(map[string]string{
-							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
-						}).
-						WithStringData(secrets.data).
-						WithData(secrets.binaryData),
-				})
 			}
 
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithProjected(projected))
@@ -592,7 +570,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(scntr, sidecar.Env); err != nil {
+		if _, err := fillEnv(scntr, sidecar.Env, secretId, opts.secrets, secrets); err != nil {
 			return err
 		}
 
@@ -613,16 +591,36 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				return fnerrors.UserError(deployable.ErrorLocation, "duplicate init container name: %s", name)
 			}
 		}
+
 		containers = append(containers, name)
 
-		spec.WithInitContainers(
-			applycorev1.Container().
-				WithName(name).
-				WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
-				WithImage(init.Image.RepoAndDigest()).
-				WithArgs(append(init.Args, initArgs[init.BinaryRef.Canonical()]...)...).
-				WithCommand(init.Command...).
-				WithVolumeMounts(initVolumeMounts...))
+		scntr := applycorev1.Container().
+			WithName(name).
+			WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
+			WithImage(init.Image.RepoAndDigest()).
+			WithArgs(append(init.Args, initArgs[init.BinaryRef.Canonical()]...)...).
+			WithCommand(init.Command...).
+			WithVolumeMounts(initVolumeMounts...)
+
+		if _, err := fillEnv(scntr, init.Env, secretId, opts.secrets, secrets); err != nil {
+			return err
+		}
+
+		spec.WithInitContainers(scntr)
+	}
+
+	if (len(secrets.data) + len(secrets.binaryData)) > 0 {
+		s.operations = append(s.operations, kubedef.Apply{
+			Description: "Server secrets",
+			Resource: applycorev1.Secret(secretId, target.namespace).
+				WithAnnotations(annotations).
+				WithLabels(labels).
+				WithLabels(map[string]string{
+					kubedef.K8sKind: kubedef.K8sStaticConfigKind,
+				}).
+				WithStringData(secrets.data).
+				WithData(secrets.binaryData),
+		})
 	}
 
 	podSecCtx := applycorev1.PodSecurityContext()
@@ -774,12 +772,12 @@ func (cm *collector) set(key string, rsc *schema.FileContents) {
 	}
 }
 
-func makeConfigEntry(h io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
+func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
 	key := fmt.Sprintf("%s.%s", ids.EncodeToBase62String([]byte(entry.Path)), ids.EncodeToBase62String([]byte(rsc.Path)))
 
-	fmt.Fprintf(h, "%s:", key)
-	_, _ = h.Write(rsc.Contents)
-	fmt.Fprintln(h)
+	fmt.Fprintf(hash, "%s:", key)
+	_, _ = hash.Write(rsc.Contents)
+	fmt.Fprintln(hash)
 	cm.set(key, rsc)
 
 	return applycorev1.KeyToPath().WithKey(key)
@@ -863,23 +861,44 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	return nil, nil
 }
 
-func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secretId string, secrets runtime.GroundedSecrets, out *collector) (*applycorev1.ContainerApplyConfiguration, error) {
 	sort.SliceStable(env, func(i, j int) bool {
 		return env[i].Name < env[j].Name
 	})
 
 	for _, kv := range env {
 		entry := applycorev1.EnvVar().WithName(kv.Name)
-		if kv.ExperimentalFromSecret != "" {
+
+		switch {
+		case kv.ExperimentalFromSecret != "":
 			parts := strings.SplitN(kv.ExperimentalFromSecret, ":", 2)
 			if len(parts) < 2 {
 				return nil, fnerrors.New("invalid experimental_from_secret format")
 			}
 			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
 				applycorev1.SecretKeySelector().WithName(parts[0]).WithKey(parts[1])))
-		} else {
+
+		case kv.FromSecretRef != nil:
+			if out == nil {
+				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
+			}
+
+			contents := secrets.Get(kv.FromSecretRef)
+			if contents == nil {
+				return nil, fnerrors.BadInputError("%q: missing secret value", kv.FromSecretRef.Canonical())
+			}
+
+			key := kv.FromSecretRef.Canonical()
+			out.set(key, contents)
+
+			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
+				applycorev1.SecretKeySelector().WithName(secretId).WithKey(key),
+			))
+
+		default:
 			entry = entry.WithValue(kv.Value)
 		}
+
 		container = container.WithEnv(entry)
 	}
 

@@ -7,9 +7,10 @@ package startup
 import (
 	"context"
 
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -44,19 +45,14 @@ func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
 	merged.Args = append(merged.Args, plan.Args...)
 
 	// XXX O(n^2)
+	var errs []error
 	for _, entry := range plan.Env {
-		for _, existing := range merged.Env {
-			if entry.Name == existing.Name {
-				if proto.Equal(entry, existing) {
-					continue
-				}
-
-				return fnerrors.BadInputError("incompatible values being set for env key %q (%v vs %v)", entry.Name, entry, existing)
-			}
+		var err error
+		merged.Env, err = runtime.SetEnv(merged.Env, entry)
+		if err != nil {
+			errs = append(errs, err)
 		}
-
-		merged.Env = append(merged.Env, entry)
 	}
 
-	return nil
+	return multierr.New(errs...)
 }

@@ -95,8 +95,9 @@ message BinaryConfig {
     string            working_dir = 4;
 
     message EnvEntry {
-        string name                     = 1;
-        string value                    = 2;
-        string experimental_from_secret = 3;  // Runtime specific.
+        string     name                     = 1;
+        string     value                    = 2;
+        string     experimental_from_secret = 3;  // Runtime specific.
+        PackageRef from_secret_ref          = 4;
     }
 }
