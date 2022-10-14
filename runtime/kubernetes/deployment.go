@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
@@ -90,16 +91,6 @@ type definition interface {
 
 type serverRunState struct {
 	operations definitions
-}
-
-func lookupByName(env []*schema.BinaryConfig_EnvEntry, name string) (*schema.BinaryConfig_EnvEntry, bool) {
-	for _, env := range env {
-		if env.Name == name {
-			return env, true
-		}
-	}
-
-	return nil, false
 }
 
 func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bool) {
@@ -230,7 +221,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	var createServiceAccount bool
 	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
 
-	var env []*schema.BinaryConfig_EnvEntry
+	env := make(map[string]*schema.BinaryConfig_EnvEntry)
 	var specifiedSec *kubedef.SpecExtension_SecurityContext
 
 	for _, input := range deployable.Extensions {
@@ -303,13 +294,16 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				}
 			}
 
-			// XXX O(n^2)
 			for _, kv := range containerExt.Env {
-				if current, found := lookupByName(env, kv.Name); found && !proto.Equal(current, kv) {
-					return fnerrors.UserError(deployable.ErrorLocation, "env variable %q is already set, but would be overwritten by container extension", kv.Name)
+				current, found := env[kv.Name]
+				if !found {
+					env[kv.Name] = kv
+					continue
 				}
 
-				env = append(env, kv)
+				if !proto.Equal(current, kv) {
+					return fnerrors.UserError(deployable.ErrorLocation, "env variable %q is already set, but would be overwritten by container extension", kv.Name)
+				}
 			}
 
 			if containerExt.Args != nil {
@@ -385,7 +379,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				probevalues, livenessProbe))
 	}
 
-	if _, err := fillEnv(mainContainer, env); err != nil {
+	if _, err := fillEnv(mainContainer, maps.Values(env)); err != nil {
 		return err
 	}
 
