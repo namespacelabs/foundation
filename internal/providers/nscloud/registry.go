@@ -90,7 +90,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fnerrors.InvocationError("%s: unexpected status when fetching an access token: %d", r, resp.StatusCode)
 	}
 

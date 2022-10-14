@@ -30,7 +30,7 @@ func fetchGithubSshKeys(ctx context.Context, username string) ([]string, error) 
 
 	defer response.Body.Close()
 
-	if response.StatusCode != 200 {
+	if response.StatusCode != http.StatusOK {
 		return nil, fnerrors.InvocationError("unexpected status code %d", response.StatusCode)
 	}
 
