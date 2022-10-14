@@ -56,11 +56,11 @@ func loadBundleFromArgs(ctx context.Context, env planning.Context, loc fnfs.Loca
 		return nil, nil, err
 	}
 
-	if pkg.Server == nil {
-		return nil, nil, fnerrors.BadInputError("%s: expected a server", loc.AsPackageName())
+	if !isModuleRoot(pkg.Location) && pkg.Server == nil {
+		return nil, nil, fnerrors.BadInputError("%s: expected a server or a workspace root", loc.AsPackageName())
 	}
 
-	contents, err := fs.ReadFile(pkg.Location.Module.ReadWriteFS(), pkg.Location.Rel(secrets.ServerBundleName))
+	contents, err := fs.ReadFile(pkg.Location.Module.ReadWriteFS(), secretBundle(pkg.Location))
 	if err != nil {
 		if os.IsNotExist(err) && createIfMissing != nil {
 			bundle, err := createIfMissing(ctx)
@@ -89,7 +89,19 @@ func parseKey(v string, defaultPkgName string) (*secrets.ValueKey, error) {
 }
 
 func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.ReadWriteFS(), loc.loc.Rel(secrets.ServerBundleName), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.ReadWriteFS(), secretBundle(loc.loc), func(w io.Writer) error {
 		return bundle.SerializeTo(ctx, w, encrypt)
 	})
+}
+
+func secretBundle(loc pkggraph.Location) string {
+	if isModuleRoot(loc) {
+		return secrets.WorkspaceBundleName
+	}
+
+	return loc.Rel(secrets.ServerBundleName)
+}
+
+func isModuleRoot(loc pkggraph.Location) bool {
+	return loc.PackageName == loc.Module.RootLocation().PackageName
 }
