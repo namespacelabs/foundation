@@ -7,6 +7,7 @@ package startup
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
@@ -23,7 +24,9 @@ func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan 
 		}
 	}
 
-	mergePlan(serverStartupPlan, computed)
+	if err := mergePlan(serverStartupPlan, computed); err != nil {
+		return nil, err
+	}
 
 	return computed, nil
 }
@@ -34,14 +37,26 @@ func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *provision.P
 		return fnerrors.Wrap(dep.Package.Location, err)
 	}
 
-	mergePlan(plan, merged)
-	return nil
+	return mergePlan(plan, merged)
 }
 
-func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) {
+func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
 	merged.Args = append(merged.Args, plan.Args...)
 
-	for k, v := range plan.Env {
-		merged.Env = append(merged.Env, &schema.BinaryConfig_EnvEntry{Name: k, Value: v})
+	// XXX O(n^2)
+	for _, entry := range plan.Env {
+		for _, existing := range merged.Env {
+			if entry.Name == existing.Name {
+				if proto.Equal(entry, existing) {
+					continue
+				}
+
+				return fnerrors.BadInputError("incompatible values being set for env key %q (%v vs %v)", entry.Name, entry, existing)
+			}
+		}
+
+		merged.Env = append(merged.Env, entry)
 	}
+
+	return nil
 }

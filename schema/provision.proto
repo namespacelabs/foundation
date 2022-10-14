@@ -8,6 +8,7 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
+import "schema/binary.proto";
 import "schema/package.proto";
 
 message Invocation {
@@ -36,6 +37,6 @@ message InvocationSnapshot {
 }
 
 message StartupPlan {
-    repeated string     args = 1;
-    map<string, string> env  = 2;
+    repeated string args               = 1;
+    repeated BinaryConfig.EnvEntry env = 2;
 }

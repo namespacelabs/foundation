@@ -20,7 +20,7 @@ type cueServer struct {
 	Class string `json:"class"`
 
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
-	Env  map[string]string          `json:"env"`
+	Env  *cuefrontend.EnvMap        `json:"env"`
 
 	Services  map[string]cueService     `json:"services"`
 	Resources *cuefrontend.ResourceList `json:"resources"`
@@ -68,8 +68,8 @@ func parseCueServer(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	}
 
 	startupPlan := &schema.StartupPlan{
-		Env:  bits.Env,
 		Args: bits.Args.Parsed(),
+		Env:  bits.Env.Parsed(),
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {

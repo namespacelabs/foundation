@@ -23,8 +23,8 @@ type phase2plan struct {
 }
 
 type cueStartupPlan struct {
-	Args *ArgsListOrMap    `json:"args"`
-	Env  map[string]string `json:"env"`
+	Args *ArgsListOrMap `json:"args"`
+	Env  *EnvMap        `json:"env"`
 }
 
 var _ pkggraph.PreStartup = phase2plan{}
@@ -59,7 +59,7 @@ func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info 
 			return nil, err
 		}
 
-		plan.Env = raw.Env
+		plan.Env = raw.Env.Parsed()
 		plan.Args = raw.Args.Parsed()
 	}
 
