@@ -13,9 +13,11 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -53,19 +55,9 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 			}
 		}
 
-		contents, err := fs.ReadFile(srv.Location.Module.ReadOnlyFS(), srv.Location.Rel(secrets.ServerBundleName))
+		serverBundle, err := getServerBundle(ctx, srv, keyDir)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-			return nil, fnerrors.InternalError("%s: failed to read %q: %w", srv.PackageName(), secrets.ServerBundleName, err)
-		}
-
-		bundle, err := secrets.LoadBundle(ctx, keyDir, contents)
-		if err != nil {
-			if !errors.Is(err, keys.ErrKeyGen) {
-				return nil, err
-			}
+			return nil, err
 		}
 
 		for _, secretRef := range srv.Proto().SecretRefs {
@@ -73,7 +65,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 				return nil, fnerrors.InternalError("%s: secret %q is not in the same module as the server, which is not supported yet", srv.PackageName(), secretRef.PackageName)
 			}
 
-			value, err := lookupSecret(ctx, env, secretRef, bundle, workspaceSecrets[srv.Module().ModuleName()])
+			value, err := lookupSecret(ctx, env, secretRef, serverBundle, workspaceSecrets[srv.Module().ModuleName()])
 			if err != nil {
 				return nil, err
 			}
@@ -105,6 +97,24 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 	}
 
 	return g, nil
+}
+
+func getServerBundle(ctx context.Context, srv parsed.Server, keyDir fnfs.LocalFS) (*secrets.Bundle, error) {
+	contents, err := fs.ReadFile(srv.Location.Module.ReadOnlyFS(), srv.Location.Rel(secrets.ServerBundleName))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fnerrors.InternalError("%s: failed to read %q: %w", srv.PackageName(), secrets.ServerBundleName, err)
+	}
+
+	bundle, err := secrets.LoadBundle(ctx, keyDir, contents)
+	if err != nil {
+		if !errors.Is(err, keys.ErrKeyGen) {
+			return nil, err
+		}
+	}
+	return bundle, nil
 }
 
 func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
