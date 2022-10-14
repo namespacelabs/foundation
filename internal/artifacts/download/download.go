@@ -46,7 +46,7 @@ func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestr
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fnerrors.InvocationError("failed to download %s: got status", dl.url, resp.StatusCode)
+		return nil, fnerrors.InvocationError("failed to download %s: got status %d", dl.url, resp.StatusCode)
 	}
 
 	bsw, err := compute.NewByteStream(ctx)
