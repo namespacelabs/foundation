@@ -386,12 +386,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	volumes := deployable.Volumes
 	mounts := deployable.MainContainer.Mounts
 
+	volumeNames := make(map[string]string)
 	for k, volume := range volumes {
 		if volume.Name == "" {
 			return fnerrors.InternalError("volume #%d is missing a name", k)
 		}
 
-		name := fmt.Sprintf("v-%s", volume.Name)
+		name := VolumeName(volume)
+		volumeNames[volume.Name] = name
 
 		switch volume.Kind {
 		case constants.VolumeKindEphemeral:
@@ -514,7 +516,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.InternalError("mount %q is missing a target volume", mount.Path)
 		}
 
-		volumeName := fmt.Sprintf("v-%s", mount.VolumeName)
+		volumeName, ok := volumeNames[mount.VolumeName]
+		if !ok {
+			return fnerrors.InternalError("unknown target volume %q for mount %q", mount.VolumeName, mount.Path)
+		}
+
 		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
 			WithMountPath(mount.Path).
 			WithName(volumeName).

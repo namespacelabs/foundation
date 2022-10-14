@@ -106,9 +106,10 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggr
 	}
 
 	out := &schema.Volume{
-		Owner: loc.PackageName.String(),
-		Kind:  bits.Kind,
-		Name:  name,
+		Owner:  loc.PackageName.String(),
+		Kind:   bits.Kind,
+		Name:   name,
+		Inline: isInlined,
 	}
 
 	var definition proto.Message

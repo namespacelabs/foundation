@@ -23,9 +23,12 @@ message Volume {
 
     // The type of volume.
     string kind = 2;
-    // Explicit if defined at the file level, auto-generated from the mount point if inlined.
+    // Explicit if defined at the file level, auto-generated if inlined.
     // Volumes then referenced by the name from "mounts".
     string name = 3;
+
+    // If true, runtimes may generate a new, compliant name for this volume and its mounts.
+    bool inline = 5;
 
     google.protobuf.Any definition = 4;
 }
