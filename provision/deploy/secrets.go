@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.Stack) (*runtime.GroundedSecrets, error) {
@@ -55,7 +56,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 			}
 		}
 
-		serverBundle, err := getServerBundle(ctx, srv, keyDir)
+		srvSecrets, err := loadServerSecrets(ctx, keyDir, srv)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +66,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 				return nil, fnerrors.InternalError("%s: secret %q is not in the same module as the server, which is not supported yet", srv.PackageName(), secretRef.PackageName)
 			}
 
-			value, err := lookupSecret(ctx, env, secretRef, serverBundle, workspaceSecrets[srv.Module().ModuleName()])
+			value, err := lookupSecret(ctx, env, secretRef, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
 			if err != nil {
 				return nil, err
 			}
@@ -99,7 +100,19 @@ func loadSecrets(ctx context.Context, env *schema.Environment, stack *provision.
 	return g, nil
 }
 
-func getServerBundle(ctx context.Context, srv parsed.Server, keyDir fnfs.LocalFS) (*secrets.Bundle, error) {
+func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
+	contents, err := fs.ReadFile(module.ReadOnlyFS(), secrets.WorkspaceBundleName)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fnerrors.InternalError("%s: failed to read %q: %w", module.Workspace.ModuleName, secrets.WorkspaceBundleName, err)
+	}
+
+	return secrets.LoadBundle(ctx, keyDir, contents)
+}
+
+func loadServerSecrets(ctx context.Context, keyDir fnfs.LocalFS, srv parsed.Server) (*secrets.Bundle, error) {
 	contents, err := fs.ReadFile(srv.Location.Module.ReadOnlyFS(), srv.Location.Rel(secrets.ServerBundleName))
 	if err != nil {
 		if os.IsNotExist(err) {

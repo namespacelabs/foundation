@@ -7,8 +7,6 @@ package deploy
 import (
 	"context"
 	"fmt"
-	"io/fs"
-	"os"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
@@ -18,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/parsed"
@@ -409,18 +406,6 @@ func checkExtend(sidecars []runtime.SidecarRunOpts, cext *schema.ContainerExtens
 	}
 
 	return nil, false
-}
-
-func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
-	contents, err := fs.ReadFile(module.ReadOnlyFS(), secrets.WorkspaceBundleName)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fnerrors.InternalError("%s: failed to read %q: %w", module.Workspace.ModuleName, secrets.WorkspaceBundleName, err)
-	}
-
-	return secrets.LoadBundle(ctx, keyDir, contents)
 }
 
 func prepareServerImages(ctx context.Context, env planning.Context, planner runtime.Planner,
