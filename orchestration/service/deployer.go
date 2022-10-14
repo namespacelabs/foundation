@@ -145,17 +145,24 @@ func (d *deployer) execute(ctx context.Context, out *outputFile, p *execution.Pl
 		return err
 	}
 
-	ns := cluster.Planner().Namespace()
+	var releaseLease func()
+	if env.Environment().Purpose != schema.Environment_DEVELOPMENT {
+		// For non-dev environments, we only allow one ongoing deployment per namespace to improve robustness.
+		// For dev environments, we do allow concurrent deployments to not slow down edit-refesh cycles.
+		ns := cluster.Planner().Namespace()
 
-	releaseLease, err := d.leaser.acquireLease(ns.UniqueID(), arrival)
-	if err != nil {
-		if err == errDeployPlanTooOld {
-			// We already finished a later deployment -> skip this one.
-			return nil
+		releaseLease, err = d.leaser.acquireLease(ns.UniqueID(), arrival)
+		if err != nil {
+			if err == errDeployPlanTooOld {
+				// We already finished a later deployment -> skip this one.
+				return nil
+			}
+			return err
 		}
-		return err
 	}
-	defer releaseLease()
+	if releaseLease != nil {
+		defer releaseLease()
+	}
 
 	return execution.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
 		ch := make(chan *orchestration.Event)
