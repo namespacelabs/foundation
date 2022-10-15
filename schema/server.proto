@@ -12,7 +12,6 @@ import "google/protobuf/any.proto";
 import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
-import "schema/package.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/volume.proto";
@@ -83,15 +82,12 @@ message Server {
     // A set of ports that this server exports and require no configuration.
     repeated Endpoint.Port static_port = 16;
 
-    reserved 18, 22;
+    reserved 18, 22, 36;
 
     repeated EnvironmentRequirement environment_requirement = 24;
 
     // Includes file-level and inlined volumes.
     repeated Volume volume = 26;
-
-    // Computed from mounts.
-    repeated PackageRef secret_refs = 36;
 
     ResourcePack resource_pack = 35;
 

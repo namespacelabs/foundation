@@ -188,25 +188,12 @@ func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph
 		}
 	}
 
-	volumeNames := map[string]bool{}
+	volumeNames := map[string]struct{}{}
 	for _, v := range srv.Volume {
-		if volumeNames[v.Name] {
+		if _, ok := volumeNames[v.Name]; ok {
 			return fnerrors.UserError(loc, "volume %q is defined multiple times", v.Name)
 		}
-		volumeNames[v.Name] = true
-
-		if v.Kind == constants.VolumeKindConfigurable {
-			cv := &schema.ConfigurableVolume{}
-			if err := v.Definition.UnmarshalTo(cv); err != nil {
-				return fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)
-			}
-
-			for _, e := range cv.Entries {
-				if e.SecretRef != nil && e.SecretRef.Name != "" {
-					srv.SecretRefs = append(srv.SecretRefs, e.SecretRef)
-				}
-			}
-		}
+		volumeNames[v.Name] = struct{}{}
 	}
 
 	return nil

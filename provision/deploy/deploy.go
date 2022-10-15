@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/resources"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
@@ -243,20 +244,6 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, planne
 			return m, nil
 		})
 
-	secretData := compute.Map(
-		tasks.Action("server.collect-secret-data").
-			Scope(stack.AllPackageList().PackageNames()...).
-			Arg("env", env.Environment().Name),
-		compute.Inputs().
-			Proto("env", env.Environment()).
-			Computable("stackAndDefs", stackDef),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (*runtime.GroundedSecrets, error) {
-			handlerR := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
-
-			return loadSecrets(ctx, env.Environment(), handlerR.Stack)
-		})
-
 	resourcePlan := compute.Map(
 		tasks.Action("resource.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
@@ -281,18 +268,17 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, planne
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		finalInputs.
+			Proto("env", env.Environment()).
 			Computable("images", imageIDs).
-			Computable("stackAndDefs", stackDef).
-			Computable("secretData", secretData),
+			Computable("stackAndDefs", stackDef),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (*runtime.DeploymentPlan, error) {
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
-			secrets := compute.MustGetDepValue(deps, secretData, "secretData")
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, *secrets)
+			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -310,10 +296,12 @@ func prepareBuildAndDeployment(ctx context.Context, env planning.Context, planne
 		}), nil
 }
 
-func planDeployment(ctx context.Context, planner runtime.Planner, stack *provision.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, secrets runtime.GroundedSecrets) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *provision.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages) (*runtime.DeploymentPlan, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
+	var secretSources []secretSource
+
 	for k, srv := range stack.Servers {
 		resolved, ok := imageIDs[srv.PackageName()]
 		if !ok {
@@ -381,12 +369,50 @@ func planDeployment(ctx context.Context, planner runtime.Planner, stack *provisi
 		run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
 		run.Focused = stack.Focus.Includes(srv.PackageName())
 
+		// Collect all secret references.
+		var secretRefs []*schema.PackageRef
+		for _, v := range run.Volumes {
+			if v.Kind == constants.VolumeKindConfigurable {
+				cv := &schema.ConfigurableVolume{}
+				if err := v.Definition.UnmarshalTo(cv); err != nil {
+					return nil, fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)
+				}
+
+				for _, e := range cv.Entries {
+					if e.SecretRef != nil && e.SecretRef.Name != "" {
+						secretRefs = append(secretRefs, e.SecretRef)
+					}
+				}
+			}
+		}
+
+		var allEnv []*schema.BinaryConfig_EnvEntry
+		allEnv = append(allEnv, run.MainContainer.Env...)
+		for _, container := range run.Sidecars {
+			allEnv = append(allEnv, container.Env...)
+		}
+		for _, container := range run.Inits {
+			allEnv = append(allEnv, container.Env...)
+		}
+
+		for _, env := range allEnv {
+			if env.FromSecretRef != nil {
+				secretRefs = append(secretRefs, env.FromSecretRef)
+			}
+		}
+
 		serverRuns = append(serverRuns, run)
+		secretSources = append(secretSources, secretSource{srv.Server, secretRefs})
+	}
+
+	grounded, err := loadSecrets(ctx, env, secretSources...)
+	if err != nil {
+		return nil, err
 	}
 
 	return planner.PlanDeployment(ctx, runtime.DeploymentSpec{
 		Specs:   serverRuns,
-		Secrets: secrets,
+		Secrets: *grounded,
 	})
 }
 
