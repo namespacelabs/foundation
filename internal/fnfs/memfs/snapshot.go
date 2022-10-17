@@ -10,12 +10,14 @@ import (
 
 	"github.com/mattn/go-zglob"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 )
 
 type SnapshotOpts struct {
-	IncludeFiles      []string
-	IncludeFilesGlobs []string
-	ExcludeFilesGlobs []string
+	RequireIncludeFiles bool
+	IncludeFiles        []string
+	IncludeFilesGlobs   []string
+	ExcludeFilesGlobs   []string
 }
 
 type SnapshotFS interface {
@@ -23,18 +25,19 @@ type SnapshotFS interface {
 }
 
 type matcher struct {
-	requiredFileMap map[string]bool
-	includeGlobs    []hasMatch
-	excludeGlobs    []hasMatch
+	requiredFileMap map[string]struct{}
+	observedFileMap map[string]struct{}
+	includeGlobs    []WithMatch
+	excludeGlobs    []WithMatch
 }
 
 func newMatcher(opts SnapshotOpts) (*matcher, error) {
 	m := &matcher{}
 
 	if len(opts.IncludeFiles) > 0 {
-		m.requiredFileMap = map[string]bool{}
+		m.requiredFileMap = map[string]struct{}{}
 		for _, f := range opts.IncludeFiles {
-			m.requiredFileMap[f] = true
+			m.requiredFileMap[f] = struct{}{}
 		}
 	}
 
@@ -57,6 +60,38 @@ func newMatcher(opts SnapshotOpts) (*matcher, error) {
 	return m, nil
 }
 
+func ExcludeMatcher(globs []string) (WithMatch, error) {
+	var errs []error
+	var excludeGlobs []WithMatch
+	for _, glob := range globs {
+		x, err := zglob.New(glob)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			excludeGlobs = append(excludeGlobs, x)
+		}
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
+	return matchAny{excludeGlobs}, nil
+}
+
+type matchAny struct {
+	matches []WithMatch
+}
+
+func (m matchAny) Match(str string) bool {
+	for _, x := range m.matches {
+		if x.Match(str) {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *matcher) excludes(name string) bool {
 	for _, m := range m.excludeGlobs {
 		if m.Match(name) {
@@ -69,8 +104,11 @@ func (m *matcher) excludes(name string) bool {
 
 func (m *matcher) includes(path, name string) bool {
 	if m.requiredFileMap != nil {
-		if m.requiredFileMap[path] {
-			delete(m.requiredFileMap, path)
+		if _, ok := m.requiredFileMap[path]; ok {
+			if m.observedFileMap == nil {
+				m.observedFileMap = map[string]struct{}{}
+			}
+			m.observedFileMap[path] = struct{}{}
 			return true
 		}
 
@@ -146,10 +184,12 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 		return nil, err
 	}
 
-	if len(m.requiredFileMap) > 0 {
+	if opts.RequireIncludeFiles && len(m.requiredFileMap) != len(m.observedFileMap) {
 		var left []string
 		for k := range m.requiredFileMap {
-			left = append(left, k)
+			if _, ok := m.observedFileMap[k]; !ok {
+				left = append(left, k)
+			}
 		}
 		sort.Strings(left)
 		return nil, fnerrors.BadInputError("failed to load required files: %v", left)
@@ -158,6 +198,6 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 	return &snapshot, nil
 }
 
-type hasMatch interface {
+type WithMatch interface {
 	Match(name string) bool
 }

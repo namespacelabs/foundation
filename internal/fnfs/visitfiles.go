@@ -8,11 +8,9 @@ import (
 	"context"
 	"io"
 	"io/fs"
-	"sort"
 
 	"github.com/mattn/go-zglob"
 	"namespacelabs.dev/foundation/internal/bytestream"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type File struct {
@@ -62,71 +60,25 @@ func (b reader) Reader() (io.ReadCloser, error) {
 	return b.fsys.Open(b.path)
 }
 
-type VisitFilesOpts struct {
+type MatcherOpts struct {
 	IncludeFiles      []string
 	IncludeFilesGlobs []string
 	ExcludeFilesGlobs []string
 }
 
-func VisitFilesWithOpts(fsys fs.FS, dir string, opts VisitFilesOpts, callback fs.WalkDirFunc) error {
-	m, err := newMatcher(opts)
-	if err != nil {
-		return err
-	}
-
-	if err := fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if m.excludes(d.Name()) {
-			if d.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
-
-		if d.IsDir() {
-			if path == dir {
-				return nil
-			}
-			return fs.SkipDir
-		}
-
-		if !m.includes(path, d.Name()) {
-			return nil
-		}
-
-		return callback(path, d, nil)
-	}); err != nil {
-		return err
-	}
-
-	if len(m.requiredFileMap) > 0 {
-		var left []string
-		for k := range m.requiredFileMap {
-			left = append(left, k)
-		}
-		sort.Strings(left)
-		return fnerrors.BadInputError("failed to visit required files: %v", left)
-	}
-
-	return nil
-}
-
 type matcher struct {
-	requiredFileMap map[string]bool
+	requiredFileMap map[string]struct{}
 	includeGlobs    []HasMatch
 	excludeGlobs    []HasMatch
 }
 
-func newMatcher(opts VisitFilesOpts) (*matcher, error) {
+func NewMatcher(opts MatcherOpts) (*matcher, error) {
 	m := &matcher{}
 
 	if len(opts.IncludeFiles) > 0 {
-		m.requiredFileMap = map[string]bool{}
+		m.requiredFileMap = map[string]struct{}{}
 		for _, f := range opts.IncludeFiles {
-			m.requiredFileMap[f] = true
+			m.requiredFileMap[f] = struct{}{}
 		}
 	}
 
@@ -149,7 +101,7 @@ func newMatcher(opts VisitFilesOpts) (*matcher, error) {
 	return m, nil
 }
 
-func (m *matcher) excludes(name string) bool {
+func (m *matcher) Excludes(name string) bool {
 	for _, m := range m.excludeGlobs {
 		if m.Match(name) {
 			return true
@@ -159,26 +111,18 @@ func (m *matcher) excludes(name string) bool {
 	return false
 }
 
-func (m *matcher) includes(path, name string) bool {
-	if m.requiredFileMap != nil {
-		if m.requiredFileMap[path] {
-			delete(m.requiredFileMap, path)
+func (m *matcher) Includes(name string) bool {
+	if _, ok := m.requiredFileMap[name]; ok {
+		return true
+	}
+
+	for _, glob := range m.includeGlobs {
+		if glob.Match(name) {
 			return true
 		}
-
-		return false
 	}
 
-	if len(m.includeGlobs) > 0 {
-		for _, glob := range m.includeGlobs {
-			if glob.Match(name) {
-				return true
-			}
-		}
-		return false
-	}
-
-	return true
+	return len(m.requiredFileMap) == 0 && len(m.includeGlobs) == 0
 }
 
 type HasMatch interface {

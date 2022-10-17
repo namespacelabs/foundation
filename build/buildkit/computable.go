@@ -39,8 +39,8 @@ type LocalContents struct {
 	TemporaryIsWeb bool
 }
 
-func (l LocalContents) Name() string {
-	return filepath.Join(l.Module.ModuleName(), l.Path)
+func (l LocalContents) Abs() string {
+	return filepath.Join(l.Module.Abs(), l.Path)
 }
 
 func precomputedReq(req *frontendReq) compute.Computable[*frontendReq] {

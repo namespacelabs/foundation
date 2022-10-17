@@ -25,5 +25,5 @@ var (
 // Returns false if the directory shouldn't be scanned for Namespace source files (.cue, .proto).
 // This doesn't affect the content that is copied to the build image.
 func IsExcludedAsSource(name string) bool {
-	return (len(name) > 1 && name[0] == '.') || slices.Contains(dirsToExclude, name)
+	return slices.Contains(dirsToExclude, name)
 }

@@ -204,7 +204,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keych
 				}
 			}
 
-			solveOpt.LocalDirs[p.Name()] = filepath.Join(p.Module.Abs(), p.Path)
+			solveOpt.LocalDirs[p.Abs()] = filepath.Join(p.Module.Abs(), p.Path)
 		}
 	}
 

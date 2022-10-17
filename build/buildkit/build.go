@@ -121,10 +121,10 @@ func MakeCustomLocalState(src LocalContents, opts MakeLocalStateOpts) llb.State 
 		excludePatterns = append(excludePatterns, "tsconfig.json")
 	}
 
-	return llb.Local(src.Name(),
+	return llb.Local(src.Abs(),
 		llb.WithCustomName(fmt.Sprintf("Workspace %s (from %s)", src.Path, src.Module.ModuleName())),
-		llb.SharedKeyHint(src.Name()),
-		llb.LocalUniqueID(src.Name()),
+		llb.SharedKeyHint(src.Abs()),
+		llb.LocalUniqueID(src.Abs()),
 		llb.ExcludePatterns(excludePatterns),
 		llb.IncludePatterns(opts.Include))
 }

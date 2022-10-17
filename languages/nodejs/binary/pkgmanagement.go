@@ -22,7 +22,7 @@ var (
 type packageManager struct {
 	CLI                 string
 	State               llb.StateOption
-	FilePatterns        []string // Files patterns which are relevant to this package manager.
+	Files               []string // Files patterns which are relevant to this package manager.
 	WildcardDirectories []string
 	ExcludePatterns     []string
 }
@@ -40,22 +40,22 @@ func PackageManagerCLI(pkgMgr schema.NodejsIntegration_NodePkgMgr) (string, erro
 	}
 }
 
-func handlePackageManager(workspace llb.State, platform specs.Platform, pkgMgr schema.NodejsIntegration_NodePkgMgr) (*packageManager, error) {
+func handlePackageManager(platform specs.Platform, pkgMgr schema.NodejsIntegration_NodePkgMgr) (*packageManager, error) {
 	switch pkgMgr {
 	case schema.NodejsIntegration_NPM:
 		return &packageManager{
 			CLI: "npm",
 			// Not installing the "npm" binary itself: relying on the base version built into the "node:alpine" image.
-			State:        nil,
-			FilePatterns: npmFiles,
+			State: nil,
+			Files: npmFiles,
 		}, nil
 
 	case schema.NodejsIntegration_YARN, schema.NodejsIntegration_YARN3:
 		pm := &packageManager{
 			CLI: "yarn",
 			// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
-			State:        nil,
-			FilePatterns: yarnFiles,
+			State: nil,
+			Files: yarnFiles,
 		}
 
 		if pkgMgr == schema.NodejsIntegration_YARN3 {
@@ -71,7 +71,7 @@ func handlePackageManager(workspace llb.State, platform specs.Platform, pkgMgr s
 			State: func(base llb.State) llb.State {
 				return base.Run(llb.Shlexf("npm --no-update-notifier --no-fund --global install pnpm@%s", versions().Pnpm)).Root()
 			},
-			FilePatterns: pnpmFiles,
+			Files: pnpmFiles,
 		}, nil
 	}
 

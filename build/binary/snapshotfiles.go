@@ -31,7 +31,7 @@ func (m snapshotFiles) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		func(ctx context.Context, r compute.Resolved) (oci.Image, error) {
 			y := compute.MustGetDepValue(r, w, "fsys").FS()
 
-			result, err := memfs.Snapshot(y, memfs.SnapshotOpts{IncludeFiles: m.globs})
+			result, err := memfs.Snapshot(y, memfs.SnapshotOpts{IncludeFiles: m.globs, RequireIncludeFiles: true})
 			if err != nil {
 				return nil, err
 			}

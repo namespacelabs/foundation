@@ -59,5 +59,5 @@ func copy(src llb.State, srcPath string, dest llb.State, destPath string, opts .
 		opt(copyInfo)
 	}
 
-	return dest.File(llb.Copy(src, srcPath, destPath, copyInfo), llb.WithCustomNamef("COPY src:%s --> dst:%s", srcPath, destPath))
+	return dest.File(llb.Copy(src, srcPath, destPath, copyInfo), llb.WithCustomNamef("COPY %s to %s", srcPath, destPath))
 }

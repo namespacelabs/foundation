@@ -6,12 +6,16 @@ package binary
 
 import (
 	"context"
+	"io/fs"
 	"path/filepath"
 
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/bytestream"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 )
@@ -35,12 +39,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	local := buildkit.LocalContents{Module: n.module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
-	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-		Exclude: NodejsExclude,
-	})
-
-	packageManagerState, err := handlePackageManager(src, *conf.TargetPlatform(), bnj.config.NodePkgMgr)
+	packageManagerState, err := handlePackageManager(*conf.TargetPlatform(), bnj.config.NodePkgMgr)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -51,17 +50,43 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		base = base.With(packageManagerState.State)
 	}
 
-	baseWithPackageSources := base.
-		File(llb.Mkdir(AppRootPath, 0644)).
-		With(llbutil.CopyPatterns(src, append([]string{"package.json"}, packageManagerState.FilePatterns...),
-			packageManagerState.ExcludePatterns, AppRootPath))
+	fsys, err := compute.GetValue(ctx, conf.Workspace().VersionedFS(bnj.loc.Rel(), false))
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
+	baseWithPackageSources := base.File(llb.Mkdir(AppRootPath, 0644))
+
+	local := buildkit.LocalContents{Module: n.module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
+	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
+		Exclude: NodejsExclude,
+	})
+
+	opts := fnfs.MatcherOpts{
+		IncludeFiles:      append([]string{"package.json"}, packageManagerState.Files...),
+		ExcludeFilesGlobs: packageManagerState.ExcludePatterns,
+	}
 
 	for _, wc := range packageManagerState.WildcardDirectories {
-		baseWithPackageSources = baseWithPackageSources.With(llbutil.CopyWildcard(src, wc+"/*", packageManagerState.ExcludePatterns, filepath.Join(AppRootPath, wc)))
+		opts.IncludeFilesGlobs = append(opts.IncludeFilesGlobs, wc+"/**/*")
+	}
+
+	m, err := fnfs.NewMatcher(opts)
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
+	if err := fnfs.VisitFiles(ctx, fsys.FS(), func(path string, bs bytestream.ByteStream, _ fs.DirEntry) error {
+		if !m.Excludes(path) && m.Includes(path) {
+			baseWithPackageSources = baseWithPackageSources.With(llbutil.CopyFrom(src, path, filepath.Join(AppRootPath, path)))
+		}
+		return nil
+	}); err != nil {
+		return llb.State{}, nil, err
 	}
 
 	srcWithPkgMgr := baseWithPackageSources.
-		Run(llb.Shlexf("%s install", packageManagerState.CLI), llb.Dir(AppRootPath)).Root().
+		Run(llb.Shlexf("%s install", packageManagerState.CLI), llb.Dir(AppRootPath)).
 		With(llbutil.CopyFrom(src, ".", AppRootPath))
 
 	var out llb.State
