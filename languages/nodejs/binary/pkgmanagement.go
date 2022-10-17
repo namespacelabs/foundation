@@ -7,7 +7,6 @@ package binary
 import (
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/schema"
@@ -16,7 +15,7 @@ import (
 var (
 	npmFiles  = []string{".npmrc", "package-lock.json"}
 	yarnFiles = []string{"yarn.lock", ".yarnrc.yml", ".yarn/releases", ".yarn/plugins", ".yarn/patches", ".yarn/versions"}
-	pnpmFiles = []string{"pnpm-lock.yaml"}
+	pnpmFiles = []string{"pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"}
 
 	packageManagerSources = makeAllFiles(npmFiles, yarnFiles, pnpmFiles)
 )
@@ -56,23 +55,12 @@ func handlePackageManager(workspace llb.State, platform specs.Platform, pkgMgr s
 		}, nil
 
 	case schema.NodejsIntegration_PNPM:
-		alpineName, err := pins.CheckDefault("alpine")
-		if err != nil {
-			return nil, err
-		}
-
-		pnpmPath := "/bin/pnpm"
-		pnpmBase := llbutil.Image(alpineName, platform).
-			Run(llb.Shlex("apk add --no-cache curl")).Root().
-			Run(llb.Shlexf(`curl -fsSL "https://github.com/pnpm/pnpm/releases/download/v%s/pnpm-linuxstatic-x64" -o %s`,
-				versions().Pnpm, pnpmPath)).Root().
-			Run(llb.Shlexf("chmod +x %s", pnpmPath)).Root()
-
 		return &packageManager{
 			cli: "pnpm",
 			makeState: func(base llb.State) llb.State {
-				return base.With(
-					llbutil.CopyFrom(pnpmBase, pnpmPath, pnpmPath),
+				withPnpm := base.Run(llb.Shlexf("npm --no-update-notifier --no-fund --global install pnpm@%s", versions().Pnpm)).Root()
+
+				return withPnpm.With(
 					llbutil.CopyPatterns(workspace, append([]string{"package.json"}, pnpmFiles...), "."),
 				)
 			},
