@@ -17,14 +17,24 @@ import (
 )
 
 type EnvMap struct {
-	Values map[string]envValue `json:",inline"`
+	Values map[string]envValue
 }
 
 type envValue struct {
 	v *schema.BinaryConfig_EnvEntry
 }
 
+var _ json.Unmarshaler = &EnvMap{}
 var _ json.Unmarshaler = &envValue{}
+
+func (cem *EnvMap) UnmarshalJSON(data []byte) error {
+	var values map[string]envValue
+	if err := json.Unmarshal(data, &values); err != nil {
+		return err
+	}
+	cem.Values = values
+	return nil
+}
 
 func (cem *EnvMap) Parsed() []*schema.BinaryConfig_EnvEntry {
 	if cem == nil {
