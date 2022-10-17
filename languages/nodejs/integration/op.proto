@@ -10,7 +10,7 @@ option go_package = "namespacelabs.dev/foundation/languages/nodejs/integration";
 
 import "schema/node.proto";
 import "schema/server.proto";
-import "workspace/source/protos/filedescset.proto";
+import "internal/codegen/protos/filedescset.proto";
 
 message OpGenServer {
     foundation.schema.Server server             = 1;

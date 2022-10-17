@@ -11,12 +11,12 @@ import (
 	"sort"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime/constants"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func ValidateServerID(n *schema.Server) error {

@@ -13,9 +13,9 @@ import (
 	"github.com/bradleyjkemp/cupaloy"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"gotest.tools/assert"
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/languages/nodejs/grpcgen"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 const (

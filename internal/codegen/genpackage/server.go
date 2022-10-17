@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package codegen
+package genpackage
 
 import (
 	"namespacelabs.dev/foundation/languages"

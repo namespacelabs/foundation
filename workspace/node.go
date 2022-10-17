@@ -8,10 +8,10 @@ import (
 	"context"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, node *schema.Node, kind schema.Node_Kind) error {

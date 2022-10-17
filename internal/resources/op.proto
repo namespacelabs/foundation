@@ -10,7 +10,7 @@ option go_package = "namespacelabs.dev/foundation/internal/resources";
 
 import "schema/runtime/deployable.proto";
 import "schema/resource.proto";
-import "workspace/source/protos/filedescset.proto";
+import "internal/codegen/protos/filedescset.proto";
 
 message OpWaitForProviderResults {
     string                                                      resource_instance_id = 1;

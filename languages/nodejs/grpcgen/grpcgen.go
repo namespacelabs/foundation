@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages/nodejs/imports"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type GenOpts struct {

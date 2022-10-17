@@ -10,6 +10,7 @@ import (
 	"github.com/philopon/go-toposort"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
@@ -19,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/module"
-	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
 func NewGenerateCmd() *cobra.Command {
@@ -54,7 +54,7 @@ func NewGenerateCmd() *cobra.Command {
 			}
 
 			// Generate code.
-			if err := codegen.ForLocationsGenCode(ctx, root, env, list.Locations, errorCollector.Append); err != nil {
+			if err := genpackage.ForLocationsGenCode(ctx, root, env, list.Locations, errorCollector.Append); err != nil {
 				return err
 			}
 
@@ -101,7 +101,7 @@ func generateProtos(ctx context.Context, env planning.Context, root *workspace.R
 		return err
 	}
 
-	return codegen.ForLocationsGenProto(ctx, root, env, topoSorted, handleGenErr)
+	return genpackage.ForLocationsGenProto(ctx, root, env, topoSorted, handleGenErr)
 }
 
 func topoSortNodes(nodes []fnfs.Location, imports map[schema.PackageName]uniquestrings.List) ([]fnfs.Location, error) {

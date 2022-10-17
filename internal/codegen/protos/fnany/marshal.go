@@ -9,9 +9,9 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	wsprotos "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	wsprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func Marshal(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {

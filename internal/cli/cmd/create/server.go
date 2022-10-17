@@ -12,13 +12,13 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/scaffold"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
 const serverSuffix = "server"
@@ -103,7 +103,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			// Aggregates and prints all accumulated codegen errors on return.
 			var errorCollector fnerrors.ErrorCollector
 
-			if err := codegen.ForLocationsGenCode(ctx, targetPkg.Root, env, []fnfs.Location{targetPkg.Location}, errorCollector.Append); err != nil {
+			if err := genpackage.ForLocationsGenCode(ctx, targetPkg.Root, env, []fnfs.Location{targetPkg.Location}, errorCollector.Append); err != nil {
 				return err
 			}
 

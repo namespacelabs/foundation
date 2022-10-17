@@ -8,10 +8,10 @@ import (
 	"context"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package) error {

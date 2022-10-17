@@ -12,7 +12,7 @@ import "schema/binary.proto";
 import "schema/package.proto";
 import "schema/resource.proto";
 import "schema/runtime/config.proto";
-import "workspace/source/protos/filedescset.proto";
+import "internal/codegen/protos/filedescset.proto";
 
 message OpInvokeResourceProvider {
     string                                                      resource_instance_id   = 1;

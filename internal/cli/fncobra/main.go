@@ -22,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/build/binary/genbinary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/codegen"
+	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -85,8 +87,6 @@ import (
 	nodejsapplier "namespacelabs.dev/foundation/workspace/integration/nodejs"
 	shellapplier "namespacelabs.dev/foundation/workspace/integration/shellscript"
 	webapplier "namespacelabs.dev/foundation/workspace/integration/web"
-	"namespacelabs.dev/foundation/workspace/source"
-	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
 var (
@@ -236,8 +236,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		integrationapplying.RegisterBinaryIntegration(shellapplier.CreateBinary)
 
 		// Codegen
-		codegen.Register()
-		source.RegisterGraphHandlers()
+		genpackage.Register()
+		codegen.RegisterGraphHandlers()
 
 		// Providers.
 		ecr.Register()

@@ -7,6 +7,7 @@ package deploy
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -16,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
 type codegenWorkspace struct {
@@ -84,7 +84,7 @@ func codegenServer(ctx context.Context, srv parsed.Server) error {
 		return nil
 	}
 
-	codegen, err := codegen.ForServerAndDeps(srv)
+	codegen, err := genpackage.ForServerAndDeps(srv)
 	if err != nil {
 		return err
 	}

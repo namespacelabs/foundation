@@ -6,8 +6,8 @@ package allocations
 
 import (
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/source/protos/fnany"
 )
 
 func Visit[V proto.Message](allocs []*schema.Allocation, owner schema.PackageName, tmpl V, f func(*schema.Allocation_Instance, *schema.Instantiate, V) error) error {

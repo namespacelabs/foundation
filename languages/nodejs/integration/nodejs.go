@@ -17,6 +17,8 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
+	source "namespacelabs.dev/foundation/internal/codegen"
+	srcprotos "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -36,8 +38,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/source"
-	srcprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 const (

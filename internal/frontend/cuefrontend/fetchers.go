@@ -13,12 +13,12 @@ import (
 
 	"cuelang.org/go/cue"
 	"google.golang.org/protobuf/types/descriptorpb"
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 type cueWorkspace struct {

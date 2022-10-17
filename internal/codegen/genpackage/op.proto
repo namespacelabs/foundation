@@ -4,12 +4,12 @@
 
 syntax = "proto3";
 
-package foundation.workspace.source.codegen;
+package foundation.internal.codegen.genpackage;
 
-option go_package = "namespacelabs.dev/foundation/workspace/source/codegen";
+option go_package = "namespacelabs.dev/foundation/internal/codegen/genpackage";
 
 import "schema/node.proto";
-import "workspace/source/protos/filedescset.proto";
+import "internal/codegen/protos/filedescset.proto";
 
 message OpGenNode {
     foundation.schema.Node                                      node   = 1;

@@ -9,11 +9,11 @@ import (
 	"io"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/languages/nodejs/grpcgen"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func generateGrpcApi(ctx context.Context, protos *protos.FileDescriptorSetAndDeps, loc pkggraph.Location) error {

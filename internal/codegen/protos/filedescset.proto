@@ -6,11 +6,11 @@ syntax = "proto3";
 
 package foundation.workspace.source.protos;
 
-option go_package = "namespacelabs.dev/foundation/workspace/source/protos";
+option go_package = "namespacelabs.dev/foundation/internal/codegen/protos";
 
 import "google/protobuf/descriptor.proto";
 
 message FileDescriptorSetAndDeps {
-    repeated google.protobuf.FileDescriptorProto file = 1;
+    repeated google.protobuf.FileDescriptorProto file       = 1;
     repeated google.protobuf.FileDescriptorProto dependency = 2;
 }

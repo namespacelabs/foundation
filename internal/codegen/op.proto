@@ -6,9 +6,9 @@ syntax = "proto3";
 
 package foundation.workspace.source;
 
-option go_package = "namespacelabs.dev/foundation/workspace/source";
+option go_package = "namespacelabs.dev/foundation/internal/codegen";
 
-import "workspace/source/protos/filedescset.proto";
+import "internal/codegen/protos/filedescset.proto";
 import "schema/server.proto";
 
 message OpProtoGen {

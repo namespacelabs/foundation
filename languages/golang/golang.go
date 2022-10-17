@@ -13,6 +13,8 @@ import (
 	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
+	source "namespacelabs.dev/foundation/internal/codegen"
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
@@ -27,8 +29,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/source"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 const (

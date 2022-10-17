@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package source
+package codegen
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/bytestream"
+	srcprotos "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -23,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace"
-	srcprotos "namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func RegisterGraphHandlers() {

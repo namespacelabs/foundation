@@ -8,9 +8,9 @@ import (
 	"context"
 	"io/fs"
 
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 func MakeProtoParseOpts(ctx context.Context, p pkggraph.PackageLoader, workspace *schema.Workspace) (protos.ParseOpts, error) {

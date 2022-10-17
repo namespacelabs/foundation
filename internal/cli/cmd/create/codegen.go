@@ -7,11 +7,11 @@ package create
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/source/codegen"
 )
 
 func codegenNode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, loc fnfs.Location) error {
@@ -19,11 +19,11 @@ func codegenNode(ctx context.Context, out pkggraph.MutableModule, env planning.C
 	var errorCollector fnerrors.ErrorCollector
 
 	// Generate protos before generating code for this extension as code (our generated code may depend on the protos).
-	if err := codegen.ForLocationsGenProto(ctx, out, env, []fnfs.Location{loc}, errorCollector.Append); err != nil {
+	if err := genpackage.ForLocationsGenProto(ctx, out, env, []fnfs.Location{loc}, errorCollector.Append); err != nil {
 		return err
 	}
 
-	if err := codegen.ForLocationsGenCode(ctx, out, env, []fnfs.Location{loc}, errorCollector.Append); err != nil {
+	if err := genpackage.ForLocationsGenCode(ctx, out, env, []fnfs.Location{loc}, errorCollector.Append); err != nil {
 		return err
 	}
 

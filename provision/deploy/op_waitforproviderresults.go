@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	internalres "namespacelabs.dev/foundation/internal/resources"
@@ -20,7 +21,6 @@ import (
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace/source/protos"
 )
 
 var GarbageCollectProviders = true
