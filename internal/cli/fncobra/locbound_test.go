@@ -5,9 +5,12 @@
 package fncobra
 
 import (
+	"context"
 	"testing"
 
 	"gotest.tools/assert"
+	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing"
 )
 
 func TestPackagesFromArgs(t *testing.T) {
@@ -28,11 +31,13 @@ func TestPackagesFromArgs(t *testing.T) {
 	assertLocationFromArgsForModule(t, "services", "namespacelabs.com/myuser2/othermodule/servers/server1",
 		"servers/server1", "namespacelabs.com/myuser2/othermodule")
 
+	assertLocationFromArgs(t, ".", "servers/...", "servers/server1")
+
 	// Error cases
-	_, err := locationsFromArgs(moduleName, allModules, "servers", []string{"/abs/path"})
+	_, err := locationsFromArgs(context.Background(), moduleName, allModules, "servers", []string{"/abs/path"}, nil)
 	assert.ErrorContains(t, err, "absolute paths are not supported")
 
-	_, err = locationsFromArgs(moduleName, allModules, "servers", []string{"../../othermodule"})
+	_, err = locationsFromArgs(context.Background(), moduleName, allModules, "servers", []string{"../../othermodule"}, nil)
 	assert.ErrorContains(t, err, "can't refer to packages outside of the module root")
 }
 
@@ -45,7 +50,14 @@ func assertLocationFromArgs(t *testing.T, relCwd string, arg string, expectedRel
 }
 
 func assertLocationFromArgsForModule(t *testing.T, relCwd string, arg string, expectedRelPath string, expectedModuleName string) {
-	locations, err := locationsFromArgs(moduleName, allModules, relCwd, []string{arg})
+	locations, err := locationsFromArgs(context.Background(), moduleName, allModules, relCwd, []string{arg}, func() (parsing.SchemaList, error) {
+		var p parsing.SchemaList
+		p.Locations = append(p.Locations, fnfs.Location{
+			ModuleName: moduleName,
+			RelPath:    "servers/server1",
+		})
+		return p, nil
+	})
 	assert.NilError(t, err)
 	assert.Equal(t, len(locations), 1)
 	assert.Equal(t, locations[0].ModuleName, expectedModuleName)

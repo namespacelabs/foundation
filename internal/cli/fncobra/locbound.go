@@ -6,11 +6,14 @@ package fncobra
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -79,22 +82,36 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	locs, err := locationsFromArgs(root.Workspace().ModuleName(), root.Workspace().Proto().AllReferencedModules(), relCwd, args)
-	if err != nil {
-		return err
+	var once sync.Once
+	var previousSchemaList parsing.SchemaList
+	var previousErr error
+
+	schemaList := func() (parsing.SchemaList, error) {
+		once.Do(func() {
+			previousSchemaList, previousErr = parsing.ListSchemas(ctx, *p.env, root)
+		})
+
+		return previousSchemaList, previousErr
 	}
 
-	if p.opts.RequireSingle && len(locs) != 1 {
-		return fnerrors.UserError(nil, "expected exactly one package")
-	}
-
-	if p.opts.ReturnAllIfNoneSpecified && len(locs) == 0 {
-		schemaList, err := parsing.ListSchemas(ctx, *p.env, root)
+	var locs []fnfs.Location
+	if p.opts.ReturnAllIfNoneSpecified && len(args) == 0 {
+		schemaList, err := schemaList()
 		if err != nil {
 			return err
 		}
 
 		locs = schemaList.Locations
+	} else {
+		var err error
+		locs, err = locationsFromArgs(ctx, root.Workspace().ModuleName(), root.Workspace().Proto().AllReferencedModules(), relCwd, args, schemaList)
+		if err != nil {
+			return err
+		}
+	}
+
+	if p.opts.RequireSingle && len(locs) != 1 {
+		return fnerrors.UserError(nil, "expected exactly one package")
 	}
 
 	*p.locsOut = Locations{
@@ -106,38 +123,71 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	return nil
 }
 
-func locationsFromArgs(mainModuleName string, moduleNames []string, relCwd string, args []string) ([]fnfs.Location, error) {
+func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames []string, cwd string, args []string, listSchemas func() (parsing.SchemaList, error)) ([]fnfs.Location, error) {
 	var locations []fnfs.Location
 	for _, arg := range args {
 		if filepath.IsAbs(arg) {
 			return nil, fnerrors.UserError(nil, "absolute paths are not supported: %s", arg)
 		}
 
-		var rel string
-		var moduleName string
-		for _, m := range moduleNames {
-			modulePrefix := m + "/"
-			if strings.HasPrefix(arg, modulePrefix) {
-				moduleName = m
-				rel = arg[len(modulePrefix):]
-				break
-			}
+		origArg := arg
+		expando := false
+		if strings.HasSuffix(arg, "/...") {
+			expando = true
+			arg = strings.TrimSuffix(arg, "/...")
 		}
-		if rel == "" {
+
+		moduleName, rel := matchModule(moduleNames, arg)
+		if moduleName == "" {
 			moduleName = mainModuleName
-			rel = filepath.Join(relCwd, filepath.Clean(arg))
+			rel = filepath.Join(cwd, arg)
 		}
+
+		fmt.Fprintf(console.Debug(ctx), "location parsing: %s -> moduleName: %q rel: %q expando: %v\n", origArg, moduleName, rel, expando)
 
 		if strings.HasPrefix(rel, "..") {
 			return nil, fnerrors.UserError(nil, "can't refer to packages outside of the module root: %s", rel)
 		}
 
-		fsloc := fnfs.Location{
-			ModuleName: moduleName,
-			RelPath:    rel,
+		if expando {
+			schemas, err := listSchemas()
+			if err != nil {
+				return nil, err
+			}
+
+			for _, p := range schemas.Locations {
+				if matchesExpando(p, moduleName, rel) {
+					locations = append(locations, p)
+				}
+			}
+		} else {
+			fsloc := fnfs.Location{
+				ModuleName: moduleName,
+				RelPath:    rel,
+			}
+
+			locations = append(locations, fsloc)
 		}
-		locations = append(locations, fsloc)
 	}
 
 	return locations, nil
+}
+
+func matchModule(moduleNames []string, arg string) (string, string) {
+	for _, m := range moduleNames {
+		modulePrefix := m + "/"
+		if strings.HasPrefix(arg, modulePrefix) {
+			return m, arg[len(modulePrefix):]
+		}
+	}
+
+	return "", arg
+}
+
+func matchesExpando(p fnfs.Location, moduleName, rel string) bool {
+	if p.ModuleName != moduleName {
+		return false
+	}
+
+	return p.RelPath == rel || strings.HasPrefix(p.RelPath, rel+"/")
 }
