@@ -237,3 +237,15 @@ func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keych
 
 	return exp.Provide(ctx, solveRes)
 }
+
+func Unwrap(c compute.Computable[oci.Image]) (llb.State, []LocalContents, bool) {
+	image, ok := c.(*reqToImage)
+	if ok {
+		v, ok := compute.IsPrecomputed(image.req)
+		if ok && v != nil && v.OriginalState != nil {
+			return *v.OriginalState, image.localDirs, true
+		}
+	}
+
+	return llb.State{}, nil, false
+}

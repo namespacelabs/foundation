@@ -27,7 +27,7 @@ func BuildFilesystem(ctx context.Context, conf cfg.Configuration, target build.B
 		sourcePackage:  target.SourcePackage(),
 		config:         conf,
 		targetPlatform: platformOrDefault(target.TargetPlatform()),
-		req:            precomputedReq(&frontendReq{Def: serialized}),
+		req:            precomputedReq(&frontendReq{Def: serialized, OriginalState: &state}),
 		localDirs:      localDirs,
 	}
 	return &reqToFS{baseRequest: base}, nil

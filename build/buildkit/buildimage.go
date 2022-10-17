@@ -28,7 +28,7 @@ func BuildImage(ctx context.Context, env cfg.Context, conf build.BuildTarget, st
 		return nil, err
 	}
 
-	return makeImage(env, conf, precomputedReq(&frontendReq{Def: serialized}), localDirs, conf.PublishName()), nil
+	return makeImage(env, conf, precomputedReq(&frontendReq{Def: serialized, OriginalState: &state}), localDirs, conf.PublishName()), nil
 }
 
 type reqToImage struct {

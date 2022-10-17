@@ -94,6 +94,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*clie
 
 type frontendReq struct {
 	Def            *llb.Definition
+	OriginalState  *llb.State
 	Frontend       string
 	FrontendOpt    map[string]string
 	FrontendInputs map[string]llb.State

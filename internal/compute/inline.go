@@ -72,6 +72,15 @@ func Precomputed[V any](v V, computeDigest func(context.Context, V) (schema.Dige
 	return precomputed[V]{value: v, computeDigest: computeDigest}
 }
 
+func IsPrecomputed[V any](c Computable[V]) (V, bool) {
+	if v, ok := c.(precomputed[V]); ok {
+		return v.value, true
+	}
+
+	var empty V
+	return empty, false
+}
+
 type precomputed[V any] struct {
 	value         V
 	err           error

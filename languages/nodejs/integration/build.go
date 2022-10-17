@@ -64,11 +64,8 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		return nil, err
 	}
 
-	nodejsImage, err := buildkit.BuildImage(ctx, env, conf, state, local...)
-	if err != nil {
-		return nil, err
-	}
-
+	var devControllerPlan build.Plan
+	var devControllerImage compute.Computable[oci.Image]
 	if bnj.isDevBuild {
 		// Adding dev controller
 		pkg, err := bnj.serverEnv.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
@@ -81,18 +78,45 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 			return nil, err
 		}
 
-		devControllerImage, err := p.Plan.Spec.BuildImage(ctx, env,
-			build.NewBuildTarget(conf.TargetPlatform()).
-				WithTargetName(conf.PublishName()).
-				WithSourcePackage(p.Plan.SourcePackage).
-				WithSourceLabel(p.Plan.SourceLabel).
-				WithWorkspace(p.Plan.Workspace))
-		if err != nil {
-			return nil, err
+		devControllerPlan = p.Plan
+
+		if img, ok := build.IsPrebuilt(p.Plan.Spec); ok {
+			// XXX handle this more generically.
+			controllerState := llbutil.Image(img.RepoAndDigest(), *conf.TargetPlatform())
+			return buildkit.BuildImage(ctx, env, conf, llb.Merge([]llb.State{state, controllerState}), local...)
+		} else {
+			var err error
+			devControllerImage, err = p.Plan.Spec.BuildImage(ctx, env,
+				build.NewBuildTarget(conf.TargetPlatform()).
+					WithTargetName(conf.PublishName()).
+					WithSourcePackage(p.Plan.SourcePackage).
+					WithSourceLabel(p.Plan.SourceLabel).
+					WithWorkspace(p.Plan.Workspace).
+					WithPrefersBuildkit(true))
+			if err != nil {
+				return nil, err
+			}
+
+			// XXX handle this more generically.
+			controllerState, controllerLocal, ok := buildkit.Unwrap(devControllerImage)
+			if ok {
+				mergedState := llb.Merge([]llb.State{state, controllerState})
+				mergedLocal := append(local, controllerLocal...)
+				return buildkit.BuildImage(ctx, env, conf, mergedState, mergedLocal...)
+			}
 		}
+	}
 
-		images := []oci.NamedImage{oci.MakeNamedImage(fmt.Sprintf("%s + %s", nodeImage, bnj.module.ModuleName()), nodejsImage), oci.MakeNamedImage(p.Plan.SourceLabel, devControllerImage)}
+	nodejsImage, err := buildkit.BuildImage(ctx, env, conf, state, local...)
+	if err != nil {
+		return nil, err
+	}
 
+	if bnj.isDevBuild {
+		images := []oci.NamedImage{
+			oci.MakeNamedImage(fmt.Sprintf("%s + %s", nodeImage, bnj.module.ModuleName()), nodejsImage),
+			oci.MakeNamedImage(devControllerPlan.SourceLabel, devControllerImage),
+		}
 		return oci.MergeImageLayers(images...), nil
 	}
 

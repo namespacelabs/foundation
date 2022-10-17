@@ -23,8 +23,7 @@ func (m mergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 	images := make([]oci.NamedImage, len(m.specs))
 
 	for k, spec := range m.specs {
-		// Prefer buildkit when doing merges, as they can be optimized later on.
-		xconf := build.CopyConfiguration(conf).WithPrefersBuildkit(true).WithSourceLabel(m.descriptions[k])
+		xconf := build.CopyConfiguration(conf).WithSourceLabel(m.descriptions[k])
 
 		// XXX we ignore whether the request is platform-specific.
 		image, err := spec.BuildImage(ctx, env, xconf)
