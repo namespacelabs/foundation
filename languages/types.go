@@ -9,7 +9,7 @@ import (
 	"io"
 
 	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/runtime"
@@ -18,15 +18,11 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type AvailableBuildAssets struct {
-	IngressFragments compute.Computable[[]*schema.IngressFragment]
-}
-
 type Integration interface {
 	parsing.FrameworkHandler
 
 	// Called on `ns build`, `ns deploy`.
-	PrepareBuild(context.Context, AvailableBuildAssets, planning.Server, bool /*isFocus*/) (build.Spec, error)
+	PrepareBuild(context.Context, assets.AvailableBuildAssets, planning.Server, bool /*isFocus*/) (build.Spec, error)
 	PrepareRun(context.Context, planning.Server, *runtime.ContainerRunOpts) error
 
 	// Called on `ns tidy`
@@ -62,7 +58,7 @@ func IntegrationFor(fmwk schema.Framework) Integration {
 
 type MaybePrepare struct{}
 
-func (MaybePrepare) PrepareBuild(context.Context, AvailableBuildAssets, planning.Server, bool) (build.Spec, error) {
+func (MaybePrepare) PrepareBuild(context.Context, assets.AvailableBuildAssets, planning.Server, bool) (build.Spec, error) {
 	return nil, nil
 }
 func (MaybePrepare) PrepareRun(context.Context, planning.Server, *runtime.ContainerRunOpts) error {

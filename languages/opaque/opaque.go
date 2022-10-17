@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -28,7 +29,7 @@ type OpaqueIntegration struct {
 	languages.NoDev
 }
 
-func (OpaqueIntegration) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
+func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
 	if binRef == nil {
@@ -40,7 +41,7 @@ func (OpaqueIntegration) PrepareBuild(ctx context.Context, _ languages.Available
 		return nil, err
 	}
 
-	prep, err := binary.Plan(ctx, pkg, binRef.GetName(), server.SealedContext(),
+	prep, err := binary.Plan(ctx, pkg, binRef.GetName(), server.SealedContext(), assets,
 		binary.BuildImageOpts{UsePrebuilts: true, IsFocus: isFocus})
 	if err != nil {
 		return nil, err

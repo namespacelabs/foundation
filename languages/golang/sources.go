@@ -14,8 +14,8 @@ import (
 	"golang.org/x/exp/slices"
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/internal/planning"
-	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -29,7 +29,7 @@ func ComputeSources(ctx context.Context, root string, srv planning.Server, platf
 }
 
 func computeSources(ctx context.Context, root string, srv planning.Server, platforms []specs.Platform) (*D, error) {
-	spec, err := (impl{}).PrepareBuild(ctx, languages.AvailableBuildAssets{}, srv, false)
+	spec, err := (impl{}).PrepareBuild(ctx, assets.AvailableBuildAssets{}, srv, false)
 	if err != nil {
 		return nil, err
 	}

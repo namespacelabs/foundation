@@ -13,6 +13,7 @@ import (
 	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	source "namespacelabs.dev/foundation/internal/codegen"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -78,7 +79,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.Wrap(server.Location, err)

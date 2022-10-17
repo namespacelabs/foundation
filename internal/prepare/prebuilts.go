@@ -8,6 +8,7 @@ import (
 	"context"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -47,7 +48,7 @@ func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName
 
 			var images []compute.Computable[oci.ResolvableImage]
 			for k, p := range pkgs {
-				prepared, err := binary.PlanBinary(ctx, pl, env, p.Location, bins[k], binary.BuildImageOpts{
+				prepared, err := binary.PlanBinary(ctx, pl, env, p.Location, bins[k], assets.AvailableBuildAssets{}, binary.BuildImageOpts{
 					UsePrebuilts: true,
 					Platforms:    []specs.Platform{platform},
 				})

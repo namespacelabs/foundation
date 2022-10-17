@@ -14,6 +14,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -68,7 +69,7 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 		return nil, err
 	}
 
-	prepared, err := binary.PlanBinary(ctx, pl, env, pkg.Location, bin, binary.BuildImageOpts{
+	prepared, err := binary.PlanBinary(ctx, pl, env, pkg.Location, bin, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
 		UsePrebuilts: true,
 		Platforms:    target,
 	})

@@ -13,6 +13,7 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -75,7 +76,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 			return nil, err
 		}
 
-		p, err := binary.Plan(ctx, pkg, hotreload.ControllerPkg.Name, env, binary.BuildImageOpts{UsePrebuilts: true})
+		p, err := binary.Plan(ctx, pkg, hotreload.ControllerPkg.Name, env, assets.AvailableBuildAssets{}, binary.BuildImageOpts{UsePrebuilts: true})
 		if err != nil {
 			return nil, err
 		}

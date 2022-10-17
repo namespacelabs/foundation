@@ -17,6 +17,7 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	source "namespacelabs.dev/foundation/internal/codegen"
 	srcprotos "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/console"
@@ -174,7 +175,7 @@ func GetExternalModuleForDeps(server planning.Server) []build.Workspace {
 	return modules
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
 	yarnRoot, err := findYarnRoot(server.Location)
 	if err != nil {
 		return nil, err

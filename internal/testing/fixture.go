@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -92,7 +93,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	// All packages have been bound to the environment, and sealed.
 	packages := pl.Seal()
 
-	testBin, err := binary.PlanBinary(ctx, packages, env, driverLoc, testDef.Driver, binary.BuildImageOpts{
+	testBin, err := binary.PlanBinary(ctx, packages, env, driverLoc, testDef.Driver, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
 		Platforms: platforms,
 	})
 	if err != nil {

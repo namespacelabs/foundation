@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
@@ -111,7 +112,7 @@ func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations
 
 		// TODO: allow to choose what binary to build within a package.
 		for _, b := range pkg.Binaries {
-			bin, err := binary.Plan(ctx, pkg, b.Name, sealedCtx, imgOpts)
+			bin, err := binary.Plan(ctx, pkg, b.Name, sealedCtx, assets.AvailableBuildAssets{}, imgOpts)
 			if err != nil {
 				return err
 			}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -107,8 +108,8 @@ func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner 
 	return g, nil
 }
 
-func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult]) languages.AvailableBuildAssets {
-	return languages.AvailableBuildAssets{
+func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult]) assets.AvailableBuildAssets {
+	return assets.AvailableBuildAssets{
 		IngressFragments: compute.Transform("return fragments", ingressFragments, func(_ context.Context, res *ComputeIngressResult) ([]*schema.IngressFragment, error) {
 			return res.Fragments, nil
 		}),
@@ -220,7 +221,7 @@ type prepareAndBuildResult struct {
 	Hints         []string
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
 	packages, images, err := computeStackAndImages(ctx, env, planner, registry, stack, stackDef, buildAssets)
 	if err != nil {
 		return nil, err
@@ -435,7 +436,7 @@ func checkExtend(sidecars []runtime.SidecarRunOpts, cext *schema.ContainerExtens
 }
 
 func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.Planner,
-	registry registry.Manager, stack *planning.Stack, buildAssets languages.AvailableBuildAssets,
+	registry registry.Manager, stack *planning.Stack, buildAssets assets.AvailableBuildAssets,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) ([]serverBuildSpec, error) {
 	imageList := []serverBuildSpec{}
 
@@ -512,7 +513,7 @@ type containerImage struct {
 	Command     []string
 }
 
-func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack) ([]containerImage, error) {
+func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, assets assets.AvailableBuildAssets) ([]containerImage, error) {
 	res := []containerImage{}
 	for k, srv := range stack.Servers {
 		platforms, err := planner.TargetPlatforms(ctx)
@@ -535,7 +536,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 				return nil, err
 			}
 
-			prepared, err := binary.Plan(ctx, bin, binRef.Name, pctx,
+			prepared, err := binary.Plan(ctx, bin, binRef.Name, pctx, assets,
 				binary.BuildImageOpts{
 					UsePrebuilts: true,
 					Platforms:    platforms,
@@ -582,7 +583,7 @@ func ComputeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 	return stack, images, err
 }
 
-func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, def compute.Computable[*handlerResult], buildAssets languages.AvailableBuildAssets) ([]schema.PackageName, []compute.Computable[ResolvedServerImages], error) {
+func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, def compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets) ([]schema.PackageName, []compute.Computable[ResolvedServerImages], error) {
 	computedOnly := compute.Transform("return computed", def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.MergedComputedConfigurations(), nil
 	})
@@ -592,7 +593,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 		return nil, nil, err
 	}
 
-	sidecarImages, err := prepareSidecarAndInitImages(ctx, planner, registry, stack)
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, planner, registry, stack, buildAssets)
 	if err != nil {
 		return nil, nil, err
 	}
