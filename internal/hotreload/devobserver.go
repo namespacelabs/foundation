@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -38,7 +38,7 @@ type FileSyncDevObserver struct {
 	conn *grpc.ClientConn
 }
 
-func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
+func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server) (context.Context, languages.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
 		return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 	}
@@ -50,7 +50,7 @@ func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNa
 	return newCtx, devObserver, nil
 }
 
-func newFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server, fileSyncPort int32) *FileSyncDevObserver {
+func newFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server, fileSyncPort int32) *FileSyncDevObserver {
 	return &FileSyncDevObserver{
 		log:          console.TypedOutput(ctx, "hot reload", console.CatOutputUs),
 		server:       srv.Proto(),

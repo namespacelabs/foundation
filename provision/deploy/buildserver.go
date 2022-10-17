@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -30,7 +29,7 @@ import (
 
 var RunCodegen = true
 
-func MakePlan(ctx context.Context, rc runtime.Planner, server parsed.Server, spec build.Spec) (build.Plan, error) {
+func MakePlan(ctx context.Context, rc runtime.Planner, server provision.Server, spec build.Spec) (build.Plan, error) {
 	return tasks.Return(ctx, tasks.Action("fn.deploy.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
 			platforms, err := rc.TargetPlatforms(ctx)
@@ -127,7 +126,7 @@ type moduleAndFiles struct {
 	files      fs.FS
 }
 
-func prepareConfigImage(ctx context.Context, env planning.Context, planner runtime.Planner, server parsed.Server, stack *provision.Stack,
+func prepareConfigImage(ctx context.Context, env planning.Context, planner runtime.Planner, server provision.Server, stack *provision.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 	var modulesSrcs []moduleAndFiles
 	for _, srcs := range server.SealedContext().Sources() {

@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -172,12 +172,12 @@ func grpcAccessCmd(tls, trusted bool, port uint32, hostname string, serviceName 
 }
 
 func isIngress(endpoint *storage.Endpoint) bool {
-	return endpoint != nil && endpoint.EndpointOwner == "" && endpoint.ServiceName == runtime.IngressServiceName
+	return endpoint != nil && endpoint.EndpointOwner == "" && endpoint.ServiceName == provision.IngressServiceName
 }
 
 func isInternal(endpoint *storage.Endpoint) bool {
 	for _, md := range endpoint.ServiceMetadata {
-		if md.Kind == runtime.ManualInternalService {
+		if md.Kind == provision.ManualInternalService {
 			return true
 		}
 	}
@@ -207,7 +207,7 @@ func MakeServiceLabel(endpoint *storage.Endpoint) *Label {
 	}
 
 	if endpoint.ServerName != "" {
-		if endpoint.ServiceName == runtime.GrpcGatewayServiceName {
+		if endpoint.ServiceName == provision.GrpcGatewayServiceName {
 			return &Label{Label: "gRPC gateway"}
 		}
 

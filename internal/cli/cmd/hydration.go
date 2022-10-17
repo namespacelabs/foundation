@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
+	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -114,7 +115,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 		h.resultOut.Ingress = rehydrated.IngressFragments
 		h.resultOut.Rehydrated = rehydrated
 	} else {
-		stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+		stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 		if err != nil {
 			return err
 		}

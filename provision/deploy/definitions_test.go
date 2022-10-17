@@ -11,15 +11,14 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/testing/protocmp"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func TestEnsureInvocationOrder(t *testing.T) {
 	stack := &provision.Stack{
-		Servers: []provision.Server{{
-			Server: parsed.Server{
+		Servers: []provision.PlannedServer{{
+			Server: provision.Server{
 				Location: pkggraph.Location{
 					PackageName: "a",
 				},
@@ -32,7 +31,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 				},
 			}},
 		}, {
-			Server: parsed.Server{
+			Server: provision.Server{
 				Location: pkggraph.Location{
 					PackageName: "b",
 				},
@@ -45,7 +44,7 @@ func TestEnsureInvocationOrder(t *testing.T) {
 				},
 			}},
 		}, {
-			Server: parsed.Server{
+			Server: provision.Server{
 				Location: pkggraph.Location{
 					PackageName: "c",
 				},

@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type Servers struct {
-	Servers        parsed.Servers
+	Servers        provision.Servers
 	SealedPackages pkggraph.SealedPackageLoader
 }
 
@@ -48,7 +48,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 		return fnerrors.InternalError("env must be set")
 	}
 
-	var servers []parsed.Server
+	var servers []provision.Server
 	pl := parsing.NewPackageLoader(*p.env)
 	for _, loc := range p.locs.Locs {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
@@ -65,7 +65,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return nil
 			}
 
-			server, err := parsed.RequireServerWith(ctx, *p.env, pl, loc.AsPackageName())
+			server, err := provision.RequireServerWith(ctx, *p.env, pl, loc.AsPackageName())
 			if err != nil {
 				return err
 			}

@@ -362,12 +362,6 @@ func (e ErrContainerFailed) Error() string {
 	return fmt.Sprintf("%s: multiple failures:\n%s", e.Name, strings.Join(labels, "\n"))
 }
 
-type PortRange struct {
-	Base, Max int32
-}
-
-func DefaultPortRange() PortRange { return PortRange{40000, 41000} }
-
 func (g GroundedSecrets) Get(ref *schema.PackageRef) *schema.FileContents {
 	for _, secret := range g.Secrets {
 		if secret.Ref.Equals(ref) {

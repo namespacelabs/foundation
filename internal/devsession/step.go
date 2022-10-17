@@ -18,7 +18,8 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision/eval"
+	"namespacelabs.dev/foundation/provision/snapshot"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
@@ -28,7 +29,7 @@ import (
 func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
-		focusServers := parsed.RequireServers(env, serverPackages...)
+		focusServers := snapshot.RequireServers(env, serverPackages...)
 
 		fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
 
@@ -58,7 +59,7 @@ type buildAndDeploy struct {
 	portForward    *endpointfwd.PortForward
 	env            planning.Context
 	serverPackages []schema.PackageName
-	focusServers   compute.Computable[*parsed.ServerSnapshot]
+	focusServers   compute.Computable[*snapshot.ServerSnapshot]
 	cluster        runtime.ClusterNamespace
 
 	mu            sync.Mutex
@@ -118,7 +119,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			}
 		}
 
-		stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+		stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 		if err != nil {
 			return err
 		}
@@ -203,7 +204,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Environment, focus []parsed.Server) {
+func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Environment, focus []provision.Server) {
 	workspace := protos.Clone(env.Workspace().Proto())
 
 	out.AbsRoot = env.Workspace().LoadedFrom().AbsPath

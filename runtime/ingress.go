@@ -16,33 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/types"
 )
 
-const (
-	HttpServiceName    = "http"
-	IngressServiceName = "ingress"
-	IngressServiceKind = "ingress"
-
-	ManualInternalService = "internal-service"
-)
-
-var reservedServiceNames = []string{HttpServiceName, GrpcGatewayServiceName, IngressServiceName}
-
 const LocalIngressPort = 40080
-
-type LanguageRuntimeSupport interface {
-	InternalEndpoints(*schema.Environment, *schema.Server, []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error)
-}
-
-var supportByFramework = map[string]LanguageRuntimeSupport{}
-
-// XXX this is not the right place for protocol handling.
-func RegisterSupport(fmwk schema.Framework, f LanguageRuntimeSupport) {
-	supportByFramework[fmwk.String()] = f
-}
 
 func ComputeIngress(ctx context.Context, env planning.Context, planner Planner, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
 	var ingresses []*schema.IngressFragment
@@ -171,7 +151,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, planner Planner, 
 	if needsHTTP := len(sch.Server.UrlMap) > 0; needsHTTP {
 		var httpEndpoints []*schema.Endpoint
 		for _, endpoint := range serverEndpoints {
-			if endpoint.ServiceName == HttpServiceName {
+			if endpoint.ServiceName == provision.HttpServiceName {
 				httpEndpoints = append(httpEndpoints, endpoint)
 				break
 			}

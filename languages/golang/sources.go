@@ -15,11 +15,11 @@ import (
 	"golang.org/x/tools/go/packages"
 	"golang.org/x/tools/imports"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func ComputeSources(ctx context.Context, root string, srv parsed.Server, platforms []specs.Platform) (d *D, err error) {
+func ComputeSources(ctx context.Context, root string, srv provision.Server, platforms []specs.Platform) (d *D, err error) {
 	err = tasks.Action("go.compute-sources").Run(ctx, func(ctx context.Context) error {
 		var err error
 		d, err = computeSources(ctx, root, srv, platforms)
@@ -28,7 +28,7 @@ func ComputeSources(ctx context.Context, root string, srv parsed.Server, platfor
 	return
 }
 
-func computeSources(ctx context.Context, root string, srv parsed.Server, platforms []specs.Platform) (*D, error) {
+func computeSources(ctx context.Context, root string, srv provision.Server, platforms []specs.Platform) (*D, error) {
 	spec, err := (impl{}).PrepareBuild(ctx, languages.AvailableBuildAssets{}, srv, false)
 	if err != nil {
 		return nil, err

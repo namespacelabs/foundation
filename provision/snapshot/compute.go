@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package parsed
+package snapshot
 
 import (
 	"bytes"
@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -40,7 +41,7 @@ type requiredServers struct {
 }
 
 type ServerSnapshot struct {
-	servers []Server
+	servers []provision.Server
 	sealed  pkggraph.SealedPackageLoader
 	// Used in Observe()
 	env      planning.Context
@@ -68,9 +69,9 @@ func (rs *requiredServers) Compute(ctx context.Context, _ compute.Resolved) (*Se
 func computeSnapshot(ctx context.Context, env planning.Context, packages []schema.PackageName) (*ServerSnapshot, error) {
 	pl := parsing.NewPackageLoader(env)
 
-	var servers []Server
+	var servers []provision.Server
 	for _, pkg := range packages {
-		server, err := RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
+		server, err := provision.RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
 		if err != nil {
 			return nil, err
 		}
@@ -81,8 +82,8 @@ func computeSnapshot(ctx context.Context, env planning.Context, packages []schem
 	return &ServerSnapshot{servers: servers, sealed: pl.Seal(), env: env, packages: packages}, nil
 }
 
-func (snap *ServerSnapshot) Get(pkgs ...schema.PackageName) ([]Server, error) {
-	var servers []Server
+func (snap *ServerSnapshot) Get(pkgs ...schema.PackageName) ([]provision.Server, error) {
+	var servers []provision.Server
 
 start:
 	for _, pkg := range pkgs {

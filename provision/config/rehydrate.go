@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -31,7 +31,7 @@ type Rehydrated struct {
 	ComputedConfigs  *schema.ComputedConfigurations
 }
 
-func Rehydrate(ctx context.Context, srv parsed.Server, imageID oci.ImageID) (*Rehydrated, error) {
+func Rehydrate(ctx context.Context, srv provision.Server, imageID oci.ImageID) (*Rehydrated, error) {
 	return tasks.Return(ctx, tasks.Action("rehydrate").Scope(srv.PackageName()).Str("ref", imageID), func(ctx context.Context) (*Rehydrated, error) {
 		reg, err := registry.GetRegistry(ctx, srv.SealedContext())
 		if err != nil {

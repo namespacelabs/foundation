@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 )
 
-var UseKubernetesRuntime = false
+var MakeAlternativeRuntime func(planning.Configuration) Runtime
 
 type Runtime interface {
 	RunWithOpts(context.Context, rtypes.RunToolOpts, func()) error
@@ -38,8 +38,8 @@ func CanConsumePublicImages(conf planning.Configuration) bool {
 }
 
 func impl(conf planning.Configuration) Runtime {
-	if UseKubernetesRuntime {
-		return k8stools{conf}
+	if MakeAlternativeRuntime != nil {
+		return MakeAlternativeRuntime(conf)
 	}
 
 	return docker.Impl()

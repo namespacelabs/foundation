@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/provision/startup"
 	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime"
@@ -58,13 +58,13 @@ type serverBuildSpec struct {
 	Config      compute.Computable[oci.ImageID]
 }
 
-func PrepareDeployServers(ctx context.Context, env planning.Context, planner runtime.Planner, focus ...parsed.Server) (compute.Computable[*Plan], error) {
+func PrepareDeployServers(ctx context.Context, env planning.Context, planner runtime.Planner, focus ...provision.Server) (compute.Computable[*Plan], error) {
 	reg, err := registry.GetRegistry(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
-	stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+	stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
@@ -452,7 +452,7 @@ func prepareServerImages(ctx context.Context, env planning.Context, planner runt
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = srv.Integration().PrepareBuild(ctx, buildAssets, srv.Server, stack.Focus.Includes(srv.PackageName()))
+			spec, err = languages.IntegrationFor(srv.Framework()).PrepareBuild(ctx, buildAssets, srv.Server, stack.Focus.Includes(srv.PackageName()))
 		}
 		if err != nil {
 			return nil, err
@@ -560,13 +560,13 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 	return res, nil
 }
 
-func ComputeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, servers parsed.Servers) (*provision.Stack, []compute.Computable[ResolvedServerImages], error) {
+func ComputeStackAndImages(ctx context.Context, env planning.Context, planner runtime.Planner, servers provision.Servers) (*provision.Stack, []compute.Computable[ResolvedServerImages], error) {
 	reg, err := registry.GetRegistry(ctx, env)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+	stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -657,7 +657,7 @@ func computeStackAndImages(ctx context.Context, env planning.Context, planner ru
 	return pkgs, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv parsed.Server, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
+func prepareRunOpts(ctx context.Context, stack *provision.Stack, srv provision.Server, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
 	out.ErrorLocation = srv.Location
 	out.PackageName = srv.PackageName()

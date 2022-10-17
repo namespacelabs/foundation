@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package tools
+package toolsonk8s
 
 import (
 	"context"
@@ -21,15 +21,15 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
-type k8stools struct {
-	config planning.Configuration
+type Runtime struct {
+	Config planning.Configuration
 }
 
 const toolNamespace = "fn-pipeline-tools"
 
-func (k k8stools) CanConsumePublicImages() bool { return true }
+func (k Runtime) CanConsumePublicImages() bool { return true }
 
-func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
+func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
 	k8s, ck, err := k.makeRuntime(ctx)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (k k8stools) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSt
 	}, onStart)
 }
 
-func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
+func (k Runtime) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	k8s, _, err := k.makeRuntime(ctx)
 	if err != nil {
 		return specs.Platform{}, err
@@ -107,13 +107,13 @@ func (k k8stools) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (kt k8stools) makeRuntime(ctx context.Context) (*kubernetes.Cluster, planning.Configuration, error) {
+func (kt Runtime) makeRuntime(ctx context.Context) (*kubernetes.Cluster, planning.Configuration, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ck := planning.MakeConfigurationWith("tools", kt.config.Workspace(), planning.ConfigurationSlice{
+	ck := planning.MakeConfigurationWith("tools", kt.Config.Workspace(), planning.ConfigurationSlice{
 		Configuration:         root.DevHost().ConfigureTools,
 		PlatformConfiguration: root.DevHost().ConfigurePlatform,
 	})

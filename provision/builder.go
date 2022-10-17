@@ -14,10 +14,10 @@ import (
 
 type stackBuilder struct {
 	mu      sync.Mutex
-	servers map[schema.PackageName]*Server
+	servers map[schema.PackageName]*PlannedServer
 }
 
-func (stack *stackBuilder) claim(pkgname schema.PackageName) (*Server, bool) {
+func (stack *stackBuilder) claim(pkgname schema.PackageName) (*PlannedServer, bool) {
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 
@@ -27,10 +27,10 @@ func (stack *stackBuilder) claim(pkgname schema.PackageName) (*Server, bool) {
 	}
 
 	if stack.servers == nil {
-		stack.servers = map[schema.PackageName]*Server{}
+		stack.servers = map[schema.PackageName]*PlannedServer{}
 	}
 
-	ps := &Server{}
+	ps := &PlannedServer{}
 	stack.servers[pkgname] = ps
 	return ps, false
 }

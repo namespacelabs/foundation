@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/config"
 	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -256,17 +256,17 @@ func UploadResults(ctx context.Context, env planning.Context, testPkg schema.Pac
 }
 
 func loadSUT(ctx context.Context, env planning.Context, pl *parsing.PackageLoader, test *schema.Test) (*provision.Stack, error) {
-	var suts []parsed.Server
+	var suts []provision.Server
 
 	for _, pkg := range test.ServersUnderTest {
-		sut, err := parsed.RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
+		sut, err := provision.RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
 		if err != nil {
 			return nil, err
 		}
 		suts = append(suts, sut)
 	}
 
-	stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+	stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}

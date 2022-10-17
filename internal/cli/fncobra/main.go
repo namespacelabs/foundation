@@ -79,6 +79,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/runtime/tools"
+	"namespacelabs.dev/foundation/runtime/tools/toolsonk8s"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
@@ -92,6 +93,7 @@ import (
 var (
 	enableErrorTracing   = false
 	disableCommandBundle = false
+	useKubernetesRuntime = false
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
@@ -143,6 +145,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		parsing.ModuleLoader = cuefrontend.ModuleLoader
 		parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
 			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
+		}
+
+		if useKubernetesRuntime {
+			tools.MakeAlternativeRuntime = func(cfg planning.Configuration) tools.Runtime {
+				return toolsonk8s.Runtime{Config: cfg}
+			}
 		}
 
 		filewatcher.SetupFileWatcher()
@@ -292,7 +300,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, ignores checking whether the base system is ZFS based.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
-	rootCmd.PersistentFlags().BoolVar(&tools.UseKubernetesRuntime, "run_tools_on_kubernetes", tools.UseKubernetesRuntime,
+	rootCmd.PersistentFlags().BoolVar(&useKubernetesRuntime, "run_tools_on_kubernetes", useKubernetesRuntime,
 		"If set to true, runs tools in Kubernetes, instead of Docker.")
 	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
 	rootCmd.PersistentFlags().BoolVar(&deploy.PushPrebuiltsToRegistry, "deploy_push_prebuilts_to_registry", deploy.PushPrebuiltsToRegistry,

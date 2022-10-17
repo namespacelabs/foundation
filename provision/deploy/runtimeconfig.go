@@ -10,12 +10,11 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-func serverToRuntimeConfig(stack *provision.Stack, ps provision.Server, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack *provision.Stack, ps provision.PlannedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	srv := ps.Server
 	config := &runtime.RuntimeConfig{
 		Environment: makeEnv(srv.SealedContext().Environment()),
@@ -85,7 +84,7 @@ func MakeServerConfig(stack *provision.Stack, pkg schema.PackageName) *runtime.S
 	return nil
 }
 
-func makeServerConfig(stack *provision.Stack, server parsed.Server) *runtime.Server {
+func makeServerConfig(stack *provision.Stack, server provision.Server) *runtime.Server {
 	current := &runtime.Server{
 		PackageName: server.Proto().PackageName,
 		ModuleName:  server.Proto().ModuleName,

@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/languages"
 	nodejsintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/development/controller/admin"
@@ -72,7 +72,7 @@ func (impl) DevelopmentPackages() []schema.PackageName {
 	return []schema.PackageName{controllerPkg.AsPackageName()}
 }
 
-func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv parsed.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBuildAssets, srv provision.Server, isFocus bool) (build.Spec, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		pkg, err := srv.SealedContext().LoadByName(ctx, controllerPkg.AsPackageName())
 		if err != nil {
@@ -92,7 +92,7 @@ func (impl) PrepareBuild(ctx context.Context, buildAssets languages.AvailableBui
 	}, nil
 }
 
-func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv parsed.Server, isFocus bool) ([]oci.NamedImage, error) {
+func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv provision.Server, isFocus bool) ([]oci.NamedImage, error) {
 	var builds []oci.NamedImage
 
 	for _, entry := range srv.Proto().UrlMap {
@@ -203,11 +203,11 @@ func generateProdViteConfig() *memfs.FS {
 	return &prodwebConfig
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv parsed.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server) (context.Context, languages.DevObserver, error) {
 	return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 }
 
-func (impl) PrepareRun(ctx context.Context, srv parsed.Server, run *runtime.ContainerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ContainerRunOpts) error {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		configuration := &admin.Configuration{
 			PackageBase:  "/packages",
@@ -326,7 +326,7 @@ func (i impl) GenerateNode(pkg *pkggraph.Package, available []*schema.Node) ([]*
 
 type buildDevServer struct {
 	baseImage        build.Plan
-	srv              parsed.Server
+	srv              provision.Server
 	isFocus          bool
 	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }
@@ -355,7 +355,7 @@ func (bws buildDevServer) BuildImage(ctx context.Context, env pkggraph.SealedCon
 func (bws buildDevServer) PlatformIndependent() bool { return false }
 
 type buildProdWebServer struct {
-	srv              parsed.Server
+	srv              provision.Server
 	isFocus          bool
 	ingressFragments compute.Computable[[]*schema.IngressFragment]
 }

@@ -10,8 +10,8 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/orchestration/proto"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
@@ -49,7 +49,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, 
 		return nil, err
 	}
 
-	focus, err := parsed.RequireServer(ctx, env, schema.PackageName(serverPkg))
+	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
 	}

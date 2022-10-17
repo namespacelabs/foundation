@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/planning"
 )
@@ -55,7 +55,7 @@ func newPrintSealedCmd() *cobra.Command {
 
 				return output(ctx, pl, sealed.Proto, outputType)
 			} else {
-				t, err := parsed.RequireServer(ctx, env, loc.AsPackageName())
+				t, err := provision.RequireServer(ctx, env, loc.AsPackageName())
 				if err != nil {
 					return err
 				}

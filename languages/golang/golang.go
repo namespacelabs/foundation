@@ -22,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
@@ -38,7 +38,7 @@ const (
 
 func Register() {
 	languages.Register(schema.Framework_GO, impl{})
-	runtime.RegisterSupport(schema.Framework_GO, impl{})
+	provision.RegisterEndpointProvider(schema.Framework_GO, impl{})
 
 	execution.RegisterFuncs(execution.Funcs[*OpGenNode]{
 		Handle: func(ctx context.Context, _ *schema.SerializedInvocation, x *OpGenNode) (*execution.HandleResult, error) {
@@ -78,7 +78,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server parsed.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.Wrap(server.Location, err)
@@ -97,7 +97,7 @@ func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, 
 	return bin, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, t parsed.Server, run *runtime.ContainerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, t provision.Server, run *runtime.ContainerRunOpts) error {
 	run.Command = []string{"/server"}
 	run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAs(production.Distroless)

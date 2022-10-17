@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/provision/parsed"
+	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -24,7 +24,7 @@ import (
 )
 
 type secretSource struct {
-	Server  parsed.Server
+	Server  provision.Server
 	Secrets []*schema.PackageRef
 }
 
@@ -121,7 +121,7 @@ func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Mo
 	return secrets.LoadBundle(ctx, keyDir, contents)
 }
 
-func loadServerSecrets(ctx context.Context, keyDir fnfs.LocalFS, srv parsed.Server) (*secrets.Bundle, error) {
+func loadServerSecrets(ctx context.Context, keyDir fnfs.LocalFS, srv provision.Server) (*secrets.Bundle, error) {
 	contents, err := fs.ReadFile(srv.Location.Module.ReadOnlyFS(), srv.Location.Rel(secrets.ServerBundleName))
 	if err != nil {
 		if os.IsNotExist(err) {

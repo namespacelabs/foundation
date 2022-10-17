@@ -35,6 +35,7 @@ import (
 	"namespacelabs.dev/foundation/provision/deploy/render"
 	deploystorage "namespacelabs.dev/foundation/provision/deploy/storage"
 	"namespacelabs.dev/foundation/provision/deploy/view"
+	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -77,7 +78,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := provision.ComputeStack(ctx, servers.Servers, provision.ProvisionOpts{PortRange: runtime.DefaultPortRange()})
+			stack, err := provision.ComputeStack(ctx, servers.Servers, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 			if err != nil {
 				return err
 			}

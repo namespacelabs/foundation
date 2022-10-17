@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package runtime
+package provision
 
 import (
 	"fmt"
@@ -11,12 +11,38 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func ComputeEndpoints(srv parsed.Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+const (
+	HttpServiceName    = "http"
+	IngressServiceName = "ingress"
+	IngressServiceKind = "ingress"
+
+	ManualInternalService = "internal-service"
+
+	GrpcGatewayServiceName = "grpc-gateway"
+
+	// XXX this is not quite right; it's just a simple mechanism for language and runtime
+	// to communicate. Ideally the schema would incorporate a gRPC map.
+	kindNeedsGrpcGateway = "needs-grpc-gateway"
+)
+
+var reservedServiceNames = []string{HttpServiceName, GrpcGatewayServiceName, IngressServiceName}
+
+type EndpointProvider interface {
+	InternalEndpoints(*schema.Environment, *schema.Server, []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error)
+}
+
+var endpointProviderByFramework = map[string]EndpointProvider{}
+
+// XXX this is not the right place for protocol handling.
+func RegisterEndpointProvider(fmwk schema.Framework, f EndpointProvider) {
+	endpointProviderByFramework[fmwk.String()] = f
+}
+
+func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
 	sch := srv.StackEntry()
 
 	serverPorts := append([]*schema.Endpoint_Port{}, sch.Server.StaticPort...)
@@ -95,7 +121,7 @@ func ComputeEndpoints(srv parsed.Server, allocatedPorts []*schema.Endpoint_Port)
 
 	var internal []*schema.InternalEndpoint
 
-	if f, ok := supportByFramework[server.Framework.String()]; ok {
+	if f, ok := endpointProviderByFramework[server.Framework.String()]; ok {
 		var err error
 		internal, err = f.InternalEndpoints(srv.SealedContext().Environment(), server, allocatedPorts)
 		if err != nil {
