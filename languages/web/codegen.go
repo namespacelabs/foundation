@@ -154,5 +154,12 @@ func generateBackendConf(ctx context.Context, loc pkggraph.Location, backend *Op
 		backends[b.InstanceName] = backend
 	}
 
-	return binary.GenerateBackendConfFromMap(ctx, backends, placeholder, "config/backends.fn.js")
+	bytes, err := binary.GenerateBackendConfFromMap(ctx, backends, placeholder)
+	if err != nil {
+		return nil, err
+	}
+
+	var fsys memfs.FS
+	fsys.Add("config/backends.fn.js", bytes)
+	return &fsys, nil
 }

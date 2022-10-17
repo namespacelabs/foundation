@@ -71,7 +71,7 @@ message ImageBuildPlan {
 
         // For Web builds. It is here because building the image for Web is done by the Node.js builder.
         // This is a temporary internal API. Will be replaced with a nodejs-independent way in the future.
-        repeated NodejsIntegration.Backend temporary_backend = 5;
+        repeated NodejsIntegration.Backend internal_do_not_use_backend = 5;
     }
 
     message AlpineBuild {

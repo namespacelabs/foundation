@@ -18,12 +18,14 @@ import (
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 )
 
 const (
-	AppRootPath = "/app"
+	AppRootPath      = "/app"
+	backendsConfigFn = "src/config/backends.ns.js"
 )
 
 var (
@@ -136,28 +138,28 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 }
 
 func generateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJS) (llb.State, error) {
-	if len(bnj.config.TemporaryBackend) > 0 {
+	if len(bnj.config.InternalDoNotUseBackend) > 0 {
 		if _, err := fs.Stat(bnj.loc.Module.ReadOnlyFS(), bnj.loc.Rel(backendsConfigFn)); os.IsNotExist(err) {
+			bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, true /* placeholder */)
+			if err != nil {
+				return llb.State{}, err
+			}
+
 			return base, fnerrors.UserError(bnj.loc, `%q must be present in the source tree when Web backends are used. Example content:
 
-export const Backends = {
-  // The content will be injected by Namespace during build.
-  <backend name>: { managed: "" },
-};
-
-`, backendsConfigFn)
+%s
+`, backendsConfigFn, bytes)
 		}
 
-		if bnj.assets.IngressFragments == nil {
-			return llb.State{}, fnerrors.InternalError("Ingress fragments are missing when building NodeJS image")
-		}
-
-		fsys, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.TemporaryBackend, bnj.assets.IngressFragments)
+		bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, false /* placeholder */)
 		if err != nil {
 			return llb.State{}, err
 		}
 
-		return llbutil.WriteFS(ctx, fsys, base, filepath.Join(AppRootPath))
+		var fsys memfs.FS
+		fsys.Add(backendsConfigFn, bytes)
+
+		return llbutil.WriteFS(ctx, &fsys, base, filepath.Join(AppRootPath))
 	} else {
 		return base, nil
 	}

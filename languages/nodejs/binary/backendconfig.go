@@ -9,40 +9,44 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-const (
-	backendsConfigFn = "src/config/backends.ns.js"
-)
-
 // Generates a "backends.fn.js" with ingress addresses for required backends.
-func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends []*schema.NodejsIntegration_Backend, ingressFragments compute.Computable[[]*schema.IngressFragment]) (fs.FS, error) {
-	fragments, err := compute.GetValue(ctx, ingressFragments)
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to build a nodejs app while waiting on ingress computation: %w", err)
+func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends []*schema.NodejsIntegration_Backend, ingressFragments compute.Computable[[]*schema.IngressFragment], placeholder bool) ([]byte, error) {
+	var fragments []*schema.IngressFragment
+	if ingressFragments != nil {
+		var err error
+		fragments, err = compute.GetValue(ctx, ingressFragments)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to build a nodejs app while waiting on ingress computation: %w", err)
+		}
 	}
 
 	backendsMap := map[string]*BackendDefinition{}
 
 	for _, backend := range backends {
-		backendDef, err := resolveBackend(loc, backend.Service, fragments)
-		if err != nil {
-			return nil, err
-		}
+		if placeholder {
+			backendsMap[backend.Name] = &BackendDefinition{
+				Managed: "placeholder",
+			}
+		} else {
+			backendDef, err := resolveBackend(loc, backend.Service, fragments)
+			if err != nil {
+				return nil, err
+			}
 
-		backendsMap[backend.Name] = backendDef
+			backendsMap[backend.Name] = backendDef
+		}
 	}
 
-	return GenerateBackendConfFromMap(ctx, backendsMap, false /* placeholder */, backendsConfigFn)
+	return GenerateBackendConfFromMap(ctx, backendsMap, placeholder)
 }
 
 type BackendDefinition struct {
@@ -50,7 +54,7 @@ type BackendDefinition struct {
 	Unmanaged []string `json:"unmanaged,omitempty"`
 }
 
-func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*BackendDefinition, placeholder bool, filename string) (*memfs.FS, error) {
+func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*BackendDefinition, placeholder bool) ([]byte, error) {
 	var b bytes.Buffer
 
 	fmt.Fprintln(&b, "// This is an automatically generated file.")
@@ -81,9 +85,7 @@ func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*Backen
 		return nil, err
 	}
 
-	var fsys memfs.FS
-	fsys.Add(filename, b.Bytes())
-	return &fsys, nil
+	return b.Bytes(), nil
 }
 
 func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragments []*schema.IngressFragment) (*BackendDefinition, error) {

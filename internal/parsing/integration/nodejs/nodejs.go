@@ -52,11 +52,10 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 	}
 
 	nodejsBuild := &schema.ImageBuildPlan_NodejsBuild{
-		RelPath:     nodePkg,
-		NodePkgMgr:  data.NodePkgMgr,
-		BuildOutDir: data.BuildOutputDir,
-		// TODO: add backends as "required" servers to the stack.
-		TemporaryBackend: data.Backend,
+		RelPath:                 nodePkg,
+		NodePkgMgr:              data.NodePkgMgr,
+		BuildOutDir:             data.BuildOutputDir,
+		InternalDoNotUseBackend: data.Backend,
 	}
 	if slices.Contains(data.PackageJsonScripts, buildScript) {
 		nodejsBuild.BuildScript = buildScript

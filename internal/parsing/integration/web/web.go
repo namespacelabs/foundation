@@ -69,7 +69,7 @@ func injectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader
 		pkg.Server.ResourcePack = &schema.ResourcePack{}
 	}
 
-	// Making sure that the runtime package is loaded.
+	// Must ensure that the server runtime class (ServerIntent) is loaded.
 	if _, err := pl.LoadByName(ctx, runtimePkg); err != nil {
 		return err
 	}
