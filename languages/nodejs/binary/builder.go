@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/build/assets"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -20,10 +21,11 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.ImageBuildPlan_NodejsBuild, isFocus bool) (build.Spec, error) {
+func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.ImageBuildPlan_NodejsBuild, assets assets.AvailableBuildAssets, isFocus bool) (build.Spec, error) {
 	return &buildNodeJS{
 		loc:        loc.Module.MakeLocation(loc.Rel(config.RelPath)),
 		config:     config,
+		assets:     assets,
 		isDevBuild: opaque.UseDevBuild(env.Environment()),
 		isFocus:    isFocus,
 	}, nil
@@ -32,6 +34,7 @@ func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.ImageB
 type buildNodeJS struct {
 	loc        pkggraph.Location
 	config     *schema.ImageBuildPlan_NodejsBuild
+	assets     assets.AvailableBuildAssets
 	isDevBuild bool
 	isFocus    bool
 }

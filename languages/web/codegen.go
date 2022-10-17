@@ -5,9 +5,7 @@
 package web
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -18,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
@@ -56,10 +55,10 @@ func generateWebBackend(ctx context.Context, _ *schema.SerializedInvocation, msg
 	})
 }
 
-type genFunc func(context.Context, pkggraph.Location, *OpGenHttpBackend_Backend) (*backendDefinition, error)
+type genFunc func(context.Context, pkggraph.Location, *OpGenHttpBackend_Backend) (*binary.BackendDefinition, error)
 
 func generatePlaceholder(loader pkggraph.PackageLoader) genFunc {
-	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
+	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*binary.BackendDefinition, error) {
 		parsed, err := loader.LoadByName(ctx, schema.PackageName(backend.EndpointOwner))
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "failed to load referenced endpoint %q", backend.EndpointOwner)
@@ -73,8 +72,8 @@ func generatePlaceholder(loader pkggraph.PackageLoader) genFunc {
 	}
 }
 
-func resolveBackend(wenv pkggraph.Context, fragments []*schema.IngressFragment) genFunc {
-	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*backendDefinition, error) {
+func resolveBackend(fragments []*schema.IngressFragment) genFunc {
+	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*binary.BackendDefinition, error) {
 		var matching []*schema.IngressFragment
 
 		for _, fragment := range fragments {
@@ -120,7 +119,7 @@ func resolveBackend(wenv pkggraph.Context, fragments []*schema.IngressFragment) 
 				strings.Join(matches, " "))
 		}
 
-		bd := &backendDefinition{}
+		bd := &binary.BackendDefinition{}
 		for _, fragment := range matching {
 			d := fragment.Domain
 			if d.Managed == schema.Domain_LOCAL_MANAGED {
@@ -139,13 +138,8 @@ func resolveBackend(wenv pkggraph.Context, fragments []*schema.IngressFragment) 
 	}
 }
 
-type backendDefinition struct {
-	Managed   string   `json:"managed,omitempty"`
-	Unmanaged []string `json:"unmanaged,omitempty"`
-}
-
 func generateBackendConf(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend, gen genFunc, placeholder bool) (*memfs.FS, error) {
-	backends := map[string]*backendDefinition{}
+	backends := map[string]*binary.BackendDefinition{}
 
 	for _, b := range backend.Backend {
 		backend, err := gen(ctx, loc, b)
@@ -154,43 +148,11 @@ func generateBackendConf(ctx context.Context, loc pkggraph.Location, backend *Op
 		}
 
 		if backend == nil {
-			backend = &backendDefinition{}
+			backend = &binary.BackendDefinition{}
 		}
 
 		backends[b.InstanceName] = backend
 	}
 
-	var b bytes.Buffer
-
-	fmt.Fprintln(&b, "// This is an automatically generated file.")
-	if placeholder {
-		fmt.Fprintln(&b, "//")
-		fmt.Fprintln(&b, "// This placeholder file exists as a convenience. The actual values are")
-		fmt.Fprintln(&b, "// resolved at build time, when the build is bound to an environment")
-		fmt.Fprintln(&b, "// and the server dependencies can be introspected.")
-		fmt.Fprintln(&b, "//")
-		fmt.Fprintln(&b, "// Each backend will have a list of URLs, separated by foundation-managed")
-		fmt.Fprintln(&b, "// domains, and user-specified. E.g.")
-		fmt.Fprintln(&b, "//")
-		fmt.Fprintln(&b, "//   export const Backends = {")
-		fmt.Fprintln(&b, "//     apiBackend: {")
-		fmt.Fprintln(&b, "//       managed: 'foobar.prod.org.nscloud.dev'")
-		fmt.Fprintln(&b, "//       unmanaged: ['foobar.myorg.com']")
-		fmt.Fprintln(&b, "//     }")
-		fmt.Fprintln(&b, "//   }")
-		fmt.Fprintln(&b, "//")
-		fmt.Fprintln(&b, "//")
-	}
-	fmt.Fprintln(&b)
-	fmt.Fprint(&b, "export const Backends = ")
-
-	enc := json.NewEncoder(&b)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(backends); err != nil {
-		return nil, err
-	}
-
-	var fsys memfs.FS
-	fsys.Add("config/backends.fn.js", b.Bytes())
-	return &fsys, nil
+	return binary.GenerateBackendConfFromMap(ctx, backends, placeholder, "config/backends.fn.js")
 }

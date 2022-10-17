@@ -27,6 +27,10 @@ type cueIntegrationWeb struct {
 	// The service that corresponds to this web integration.
 	// Needed to get the port for prod serving.
 	Service string `json:"service"`
+
+	// Name -> package name.
+	// The ingress urls for backends are injected into the built image as a JS file.
+	Backends map[string]string `json:"backends"`
 }
 
 type cueIntegrationWebBuild struct {
@@ -51,6 +55,18 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		if err := v.Val.Decode(&bits); err != nil {
 			return nil, err
 		}
+	}
+
+	for k, v := range bits.Backends {
+		serviceRef, err := schema.ParsePackageRef(v)
+		if err != nil {
+			return nil, err
+		}
+
+		nodejsInt.Backend = append(nodejsInt.Backend, &schema.NodejsIntegration_Backend{
+			Name:    k,
+			Service: serviceRef,
+		})
 	}
 
 	if bits.Service == "" {

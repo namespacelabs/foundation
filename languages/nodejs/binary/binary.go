@@ -7,6 +7,7 @@ package binary
 import (
 	"context"
 	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/moby/buildkit/client/llb"
@@ -15,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
@@ -92,16 +94,21 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		Run(llb.Shlexf("%s install", packageManagerState.CLI), llb.Dir(AppRootPath)).
 		With(llbutil.CopyFrom(src, ".", AppRootPath))
 
+	srcWithBackendsConfig, err := generateBackendsJs(ctx, srcWithPkgMgr, bnj)
+	if err != nil {
+		return llb.State{}, nil, err
+	}
+
 	var out llb.State
 	// The dev and prod builds are different:
 	//  - For prod we produce the smallest image, without the package manager and its dependencies.
 	//  - For dev we keep the base image with the package manager.
 	// This can cause discrepancies between environments however the risk seems to be small.
 	if bnj.isDevBuild {
-		out = srcWithPkgMgr
+		out = srcWithBackendsConfig
 	} else {
 		if bnj.config.BuildScript != "" {
-			srcWithPkgMgr = srcWithPkgMgr.Run(
+			srcWithBackendsConfig = srcWithBackendsConfig.Run(
 				llb.Shlexf("%s run %s", packageManagerState.CLI, bnj.config.BuildScript),
 				llb.Dir(AppRootPath),
 			).Root()
@@ -112,13 +119,13 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			// TODO: do it outside of the Node.js implementation.
 			pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
 
-			out = llb.Scratch().With(llbutil.CopyFrom(srcWithPkgMgr, pathToCopy, "/"))
+			out = llb.Scratch().With(llbutil.CopyFrom(srcWithBackendsConfig, pathToCopy, "/"))
 		} else {
 			// For non-dev builds creating an optimized, small image.
 			// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 			out = base.With(
 				production.NonRootUser(),
-				llbutil.CopyFrom(srcWithPkgMgr, AppRootPath, AppRootPath),
+				llbutil.CopyFrom(srcWithBackendsConfig, AppRootPath, AppRootPath),
 			)
 		}
 	}
@@ -126,4 +133,32 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	out = out.AddEnv("NODE_ENV", n.nodejsEnv)
 
 	return out, []buildkit.LocalContents{local}, nil
+}
+
+func generateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJS) (llb.State, error) {
+	if len(bnj.config.TemporaryBackend) > 0 {
+		if _, err := fs.Stat(bnj.loc.Module.ReadOnlyFS(), bnj.loc.Rel(backendsConfigFn)); os.IsNotExist(err) {
+			return base, fnerrors.UserError(bnj.loc, `%q must be present in the source tree when Web backends are used. Example content:
+
+export const Backends = {
+  // The content will be injected by Namespace during build.
+  <backend name>: { managed: "" },
+};
+
+`, backendsConfigFn)
+		}
+
+		if bnj.assets.IngressFragments == nil {
+			return llb.State{}, fnerrors.InternalError("Ingress fragments are missing when building NodeJS image")
+		}
+
+		fsys, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.TemporaryBackend, bnj.assets.IngressFragments)
+		if err != nil {
+			return llb.State{}, err
+		}
+
+		return llbutil.WriteFS(ctx, fsys, base, filepath.Join(AppRootPath))
+	} else {
+		return base, nil
+	}
 }

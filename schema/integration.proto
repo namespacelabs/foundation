@@ -9,6 +9,7 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
+import "schema/package.proto";
 
 // For whole packages.
 message PackageIntegration {
@@ -46,12 +47,22 @@ message NodejsIntegration {
     // TODO: Move copying the files out of the Node.js implementation.
     string build_output_dir = 4;
 
+    // For Web builds. It is here because building the image for Web is done by the Node.js builder.
+    repeated Backend backend = 5;
+
     enum NodePkgMgr {
         PKG_MGR_UNKNOWN = 0;
         NPM             = 1;
         YARN            = 2;
         YARN3           = 4;
         PNPM            = 3;
+    }
+
+    message Backend {
+        // The name of the backend for this particular Web build, e.g. "api".
+        string name = 1;
+
+        PackageRef service = 2;
     }
 }
 
