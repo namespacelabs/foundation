@@ -6,10 +6,12 @@ package nodejs
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"path/filepath"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -45,6 +47,8 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		return nil, err
 	}
 
+	fmt.Fprintf(console.Debug(ctx), "nodejs: %s: detected package manager: %s\n", loc.Abs(), pkgMgr)
+
 	packageJson, err := readPackageJson(ctx, pl, loc)
 	if err != nil {
 		return nil, err
@@ -70,6 +74,9 @@ func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 
 	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), npmLockfile)); err == nil {
 		return schema.NodejsIntegration_NPM, nil
+	}
+	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), ".yarn", "releases")); err == nil {
+		return schema.NodejsIntegration_YARN3, nil
 	}
 	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), yarnLockfile)); err == nil {
 		return schema.NodejsIntegration_YARN, nil

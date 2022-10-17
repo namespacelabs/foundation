@@ -50,6 +50,7 @@ message NodejsIntegration {
         PKG_MGR_UNKNOWN = 0;
         NPM             = 1;
         YARN            = 2;
+        YARN3           = 4;
         PNPM            = 3;
     }
 }

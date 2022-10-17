@@ -117,7 +117,7 @@ func (ws *FnWorkspace) SnapshotDir(ctx context.Context, pkgname schema.PackageNa
 			return fnfs.Location{}, "", err
 		}
 
-		fsys, err = w.SnapshotDir(loc.Rel(), opts)
+		fsys, err = memfs.SnapshotDir(w, loc.Rel(), opts)
 		if err != nil {
 			return fnfs.Location{}, "", err
 		}

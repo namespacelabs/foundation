@@ -22,16 +22,29 @@ func CopyFrom(src llb.State, srcPath, destPath string, copyInfo ...copyOpt) llb.
 	}
 }
 
-func CopyPatterns(src llb.State, include []string, destPath string, copyInfo ...copyOpt) llb.StateOption {
+func CopyPatterns(src llb.State, include []string, exclude []string, destPath string) llb.StateOption {
 	return func(s llb.State) llb.State {
 		copyInfo := &llb.CopyInfo{
 			AllowWildcard:   true,
-			AttemptUnpack:   true,
 			CreateDestPath:  true,
 			IncludePatterns: include,
+			ExcludePatterns: exclude,
 		}
 
 		return s.File(llb.Copy(src, "./*", destPath, copyInfo), llb.WithCustomNamef("COPY %s to %s", include, destPath))
+	}
+}
+
+func CopyWildcard(src llb.State, wildcard string, exclude []string, destPath string) llb.StateOption {
+	return func(s llb.State) llb.State {
+		copyInfo := &llb.CopyInfo{
+			AllowWildcard:      true,
+			AllowEmptyWildcard: true,
+			CreateDestPath:     true,
+			ExcludePatterns:    exclude,
+		}
+
+		return s.File(llb.Copy(src, wildcard, destPath, copyInfo), llb.WithCustomNamef("COPY %s to %s", wildcard, destPath))
 	}
 }
 

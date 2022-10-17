@@ -8,28 +8,30 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/schema"
 )
 
 var (
 	npmFiles  = []string{".npmrc", "package-lock.json"}
-	yarnFiles = []string{"yarn.lock", ".yarnrc.yml", ".yarn/releases", ".yarn/plugins", ".yarn/patches", ".yarn/versions"}
+	yarnFiles = []string{"yarn.lock", ".yarnrc.yml"}
 	pnpmFiles = []string{"pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"}
 
 	packageManagerSources = makeAllFiles(npmFiles, yarnFiles, pnpmFiles)
 )
 
 type packageManager struct {
-	cli       string
-	makeState llb.StateOption
+	CLI                 string
+	State               llb.StateOption
+	FilePatterns        []string // Files patterns which are relevant to this package manager.
+	WildcardDirectories []string
+	ExcludePatterns     []string
 }
 
 func PackageManagerCLI(pkgMgr schema.NodejsIntegration_NodePkgMgr) (string, error) {
 	switch pkgMgr {
 	case schema.NodejsIntegration_NPM:
 		return "npm", nil
-	case schema.NodejsIntegration_YARN:
+	case schema.NodejsIntegration_YARN, schema.NodejsIntegration_YARN3:
 		return "yarn", nil
 	case schema.NodejsIntegration_PNPM:
 		return "pnpm", nil
@@ -42,28 +44,34 @@ func handlePackageManager(workspace llb.State, platform specs.Platform, pkgMgr s
 	switch pkgMgr {
 	case schema.NodejsIntegration_NPM:
 		return &packageManager{
-			cli: "npm",
+			CLI: "npm",
 			// Not installing the "npm" binary itself: relying on the base version built into the "node:alpine" image.
-			makeState: llbutil.CopyPatterns(workspace, append([]string{"package.json"}, npmFiles...), "."),
+			State:        nil,
+			FilePatterns: npmFiles,
 		}, nil
 
-	case schema.NodejsIntegration_YARN:
-		return &packageManager{
-			cli: "yarn",
+	case schema.NodejsIntegration_YARN, schema.NodejsIntegration_YARN3:
+		pm := &packageManager{
+			CLI: "yarn",
 			// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
-			makeState: llbutil.CopyPatterns(workspace, append([]string{"package.json"}, yarnFiles...), "."),
-		}, nil
+			State:        nil,
+			FilePatterns: yarnFiles,
+		}
+
+		if pkgMgr == schema.NodejsIntegration_YARN3 {
+			pm.WildcardDirectories = []string{".yarn"}
+			pm.ExcludePatterns = []string{".yarn/cache/**"}
+		}
+
+		return pm, nil
 
 	case schema.NodejsIntegration_PNPM:
 		return &packageManager{
-			cli: "pnpm",
-			makeState: func(base llb.State) llb.State {
-				withPnpm := base.Run(llb.Shlexf("npm --no-update-notifier --no-fund --global install pnpm@%s", versions().Pnpm)).Root()
-
-				return withPnpm.With(
-					llbutil.CopyPatterns(workspace, append([]string{"package.json"}, pnpmFiles...), "."),
-				)
+			CLI: "pnpm",
+			State: func(base llb.State) llb.State {
+				return base.Run(llb.Shlexf("npm --no-update-notifier --no-fund --global install pnpm@%s", versions().Pnpm)).Root()
 			},
+			FilePatterns: pnpmFiles,
 		}, nil
 	}
 

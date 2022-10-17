@@ -159,14 +159,14 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 
 	expected := map[string][]byte{}
 
-	for _, srcs := range snap.sealed.Sources() {
+	for _, mod := range snap.sealed.Modules() {
 		// Don't monitor changes to external modules, assume they're immutable.
-		if srcs.Module.IsExternal() {
+		if mod.IsExternal() {
 			continue
 		}
 
 		// XXX we don't watch directories, which may end up being a miss.
-		if err := fnfs.VisitFiles(ctx, srcs.Snapshot, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
+		if err := fnfs.VisitFiles(ctx, mod.ReadOnlyFS(), func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 			if de.IsDir() {
 				return nil
 			}
@@ -174,7 +174,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 			if err != nil {
 				return err
 			}
-			p := filepath.Join(srcs.Module.Abs(), path)
+			p := filepath.Join(mod.Abs(), path)
 			expected[p] = contents // Don't really care about permissions etc, only contents.
 			return watcher.AddFile(p)
 		}); err != nil {

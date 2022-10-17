@@ -6,7 +6,6 @@ package pkggraph
 
 import (
 	"context"
-	"io/fs"
 
 	"namespacelabs.dev/foundation/schema"
 )
@@ -16,12 +15,8 @@ type PackageLoader interface {
 	LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error)
 }
 
-type ModuleSources struct {
-	Module   *Module
-	Snapshot fs.FS
-}
-
 type SealedPackageLoader interface {
 	PackageLoader
-	Sources() []ModuleSources
+
+	Modules() []*Module
 }

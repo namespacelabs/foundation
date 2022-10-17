@@ -9,14 +9,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/bytestream"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -38,7 +36,7 @@ func LoadPackageByName(ctx context.Context, env cfg.Context, name schema.Package
 // image, so that package loading is fully reproducible.
 type EarlyPackageLoader interface {
 	pkggraph.PackageLoader
-	WorkspaceOf(context.Context, *pkggraph.Module) (*memfs.IncrementalFS, error)
+	WorkspaceOf(context.Context, *pkggraph.Module) (fs.FS, error)
 }
 
 type PackageType int
@@ -70,14 +68,12 @@ type PackageLoader struct {
 	rootmodule     *pkggraph.Module
 	moduleResolver MissingModuleResolver
 	mu             sync.RWMutex
-	fsys           map[string]*memfs.IncrementalFS          // module name -> IncrementalFS
 	loaded         map[schema.PackageName]*pkggraph.Package // package name -> pkggraph.Package
 	loading        map[schema.PackageName]*loadingPackage   // pkggraph.Package name -> loadingPackage
 	loadedModules  map[string]*pkggraph.Module              // module name -> Module
 }
 
 type sealedPackages struct {
-	sources  []pkggraph.ModuleSources
 	modules  map[string]*pkggraph.Module              // module name -> Module
 	packages map[schema.PackageName]*pkggraph.Package // package name -> pkggraph.Package
 }
@@ -99,6 +95,8 @@ type loadingPackage struct {
 
 type packageLoaderOpt func(*PackageLoader)
 
+var _ pkggraph.SealedPackageLoader = sealedPackages{}
+
 func WithMissingModuleResolver(moduleResolver MissingModuleResolver) packageLoaderOpt {
 	return func(pl *PackageLoader) {
 		pl.moduleResolver = moduleResolver
@@ -112,7 +110,6 @@ func NewPackageLoader(env cfg.Context, opt ...packageLoaderOpt) *PackageLoader {
 	pl.env = env.Environment()
 	pl.loaded = map[schema.PackageName]*pkggraph.Package{}
 	pl.loading = map[schema.PackageName]*loadingPackage{}
-	pl.fsys = map[string]*memfs.IncrementalFS{}
 	pl.loadedModules = map[string]*pkggraph.Module{}
 	pl.frontend = MakeFrontend(pl, env.Environment())
 	pl.rootmodule = pl.inject(env.Workspace().LoadedFrom(), env.Workspace().Proto(), "" /* version */)
@@ -137,22 +134,11 @@ func (pl *PackageLoader) Seal() pkggraph.SealedPackageLoader {
 		sealed.modules[name] = module
 	}
 
-	for name, fs := range pl.fsys {
-		sealed.sources = append(sealed.sources, pkggraph.ModuleSources{
-			Module:   sealed.modules[name],
-			Snapshot: fs.Clone(),
-		})
-	}
-
 	for name, p := range pl.loaded {
 		sealed.packages[name] = p
 	}
 
 	pl.mu.Unlock()
-
-	sort.Slice(sealed.sources, func(i, j int) bool {
-		return strings.Compare(sealed.sources[i].Module.ModuleName(), sealed.sources[j].Module.ModuleName()) < 0
-	})
 
 	return sealed
 }
@@ -219,18 +205,8 @@ func (pl *PackageLoader) MatchModuleReplace(ctx context.Context, packageName sch
 	return nil, nil
 }
 
-func (pl *PackageLoader) WorkspaceOf(ctx context.Context, module *pkggraph.Module) (*memfs.IncrementalFS, error) {
-	moduleName := module.ModuleName()
-
-	pl.mu.RLock()
-	fsys := pl.fsys[moduleName]
-	pl.mu.RUnlock()
-
-	if fsys == nil {
-		return nil, fnerrors.InternalError("%s: no fsys?", moduleName)
-	}
-
-	return fsys, nil
+func (pl *PackageLoader) WorkspaceOf(ctx context.Context, module *pkggraph.Module) (fs.FS, error) {
+	return module.ReadOnlyFS(), nil
 }
 
 func (pl *PackageLoader) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
@@ -295,14 +271,8 @@ func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Works
 func (pl *PackageLoader) inject(lf *schema.Workspace_LoadedFrom, w *schema.Workspace, version string) *pkggraph.Module {
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
-
 	m := pkggraph.NewModule(w, lf, version)
-
 	pl.loadedModules[m.ModuleName()] = m
-	pl.fsys[m.ModuleName()] = memfs.IncrementalSnapshot(fnfs.Local(lf.AbsPath))
-
-	pl.fsys[m.ModuleName()].Direct().Add(lf.DefinitionFile, lf.Contents)
-
 	return m
 }
 
@@ -348,16 +318,6 @@ func (pl *PackageLoader) Stats(ctx context.Context) PackageLoaderStats {
 
 	stats.LoadedPackageCount = len(pl.loaded)
 	stats.PerModule = map[string][]string{}
-	for name, mod := range pl.fsys {
-		name := name // Close mod.
-
-		// Ignore errors; we're best effort.
-		_ = fnfs.VisitFiles(ctx, mod, func(path string, _ bytestream.ByteStream, _ fs.DirEntry) error {
-			stats.PerModule[name] = append(stats.PerModule[name], path)
-			return nil
-		})
-	}
-
 	stats.LoadedModuleCount = len(pl.loadedModules)
 
 	return stats
@@ -457,8 +417,12 @@ func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.
 	return nil, fnerrors.InternalError("%s: package not loaded! See https://docs.namespace.so/reference/debug#package-loading", packageName)
 }
 
-func (sealed sealedPackages) Sources() []pkggraph.ModuleSources {
-	return sealed.sources
+func (sealed sealedPackages) Modules() []*pkggraph.Module {
+	mods := maps.Values(sealed.modules)
+	slices.SortFunc(mods, func(a, b *pkggraph.Module) bool {
+		return strings.Compare(a.ModuleName(), b.ModuleName()) < 0
+	})
+	return mods
 }
 
 func Ensure(ctx context.Context, packages pkggraph.PackageLoader, packageName schema.PackageName) error {

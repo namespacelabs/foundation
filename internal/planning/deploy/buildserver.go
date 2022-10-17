@@ -7,16 +7,11 @@ package deploy
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
-	"sort"
-	"strings"
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
@@ -62,32 +57,18 @@ type prepareServerConfig struct {
 	serverPackage   schema.PackageName
 	env             cfg.Context
 	stack           *schema.Stack
-	moduleSrcs      []moduleAndFiles
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]
 
 	compute.LocalScoped[fs.FS]
 }
 
 func (c *prepareServerConfig) Inputs() *compute.In {
-	in := compute.Inputs().
+	return compute.Inputs().
 		Indigestible("planner", c.planner).
 		JSON("serverPackage", c.serverPackage).
 		Indigestible("env", c.env).
 		Proto("stack", c.stack).
 		Computable("computedConfigs", c.computedConfigs)
-
-	return in.Marshal("moduleSrcs", func(ctx context.Context, w io.Writer) error {
-		for _, m := range c.moduleSrcs {
-			digest, err := fscache.ComputeDigest(ctx, m.files)
-			if err != nil {
-				return err
-			}
-
-			fmt.Fprintln(w, m.moduleName, ":", digest.String())
-		}
-
-		return nil
-	})
 }
 
 func (c *prepareServerConfig) Action() *tasks.ActionEvent {
@@ -112,12 +93,6 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 		return nil, err
 	}
 
-	for _, m := range c.moduleSrcs {
-		if err := fnfs.CopyTo(ctx, files, "config/srcs/"+m.moduleName+"/", m.files); err != nil {
-			return nil, err
-		}
-	}
-
 	return files, nil
 }
 
@@ -128,17 +103,6 @@ type moduleAndFiles struct {
 
 func prepareConfigImage(ctx context.Context, env cfg.Context, planner runtime.Planner, server planning.Server, stack *planning.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
-	var modulesSrcs []moduleAndFiles
-	for _, srcs := range server.SealedContext().Sources() {
-		modulesSrcs = append(modulesSrcs, moduleAndFiles{
-			moduleName: srcs.Module.ModuleName(),
-			files:      srcs.Snapshot,
-		})
-	}
-
-	sort.Slice(modulesSrcs, func(i, j int) bool {
-		return strings.Compare(modulesSrcs[i].moduleName, modulesSrcs[j].moduleName) < 0
-	})
 
 	return oci.MakeImageFromScratch(fmt.Sprintf("config %s", server.PackageName()),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
@@ -148,6 +112,5 @@ func prepareConfigImage(ctx context.Context, env cfg.Context, planner runtime.Pl
 				env:             env,
 				stack:           stack.Proto(),
 				computedConfigs: computedConfigs,
-				moduleSrcs:      modulesSrcs,
 			}))
 }

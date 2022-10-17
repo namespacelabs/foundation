@@ -64,6 +64,7 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		Description: loc.PackageName.String(),
 		NodejsBuild: nodejsBuild,
 	}}
+
 	config := &schema.BinaryConfig{
 		WorkingDir: binary.AppRootPath,
 		Command:    []string{cliName},

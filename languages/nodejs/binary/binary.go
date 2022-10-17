@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	NodejsExclude = []string{"**/.yarn", "**/.pnp.*"}
+	NodejsExclude = []string{"**/.yarn/cache", "**/.pnp.*"}
 )
 
 type nodeJsBinary struct {
@@ -45,11 +45,24 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	srcWithPkgMgr := llbutil.Image(nodeImage, *conf.TargetPlatform()).
+	base := llbutil.Image(nodeImage, *conf.TargetPlatform())
+
+	if packageManagerState.State != nil {
+		base = base.With(packageManagerState.State)
+	}
+
+	baseWithPackageSources := base.
 		File(llb.Mkdir(AppRootPath, 0644)).
-		With(llb.Dir(AppRootPath), packageManagerState.makeState).
-		Run(llb.Shlexf("%s install", packageManagerState.cli)).Root().
-		With(llbutil.CopyFrom(src, ".", "."))
+		With(llbutil.CopyPatterns(src, append([]string{"package.json"}, packageManagerState.FilePatterns...),
+			packageManagerState.ExcludePatterns, AppRootPath))
+
+	for _, wc := range packageManagerState.WildcardDirectories {
+		baseWithPackageSources = baseWithPackageSources.With(llbutil.CopyWildcard(src, wc+"/*", packageManagerState.ExcludePatterns, filepath.Join(AppRootPath, wc)))
+	}
+
+	srcWithPkgMgr := baseWithPackageSources.
+		Run(llb.Shlexf("%s install", packageManagerState.CLI), llb.Dir(AppRootPath)).Root().
+		With(llbutil.CopyFrom(src, ".", AppRootPath))
 
 	var out llb.State
 	// The dev and prod builds are different:
@@ -60,7 +73,10 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		out = srcWithPkgMgr
 	} else {
 		if bnj.config.BuildScript != "" {
-			srcWithPkgMgr = srcWithPkgMgr.Run(llb.Shlexf("%s run %s", packageManagerState.cli, bnj.config.BuildScript)).Root()
+			srcWithPkgMgr = srcWithPkgMgr.Run(
+				llb.Shlexf("%s run %s", packageManagerState.CLI, bnj.config.BuildScript),
+				llb.Dir(AppRootPath),
+			).Root()
 		}
 
 		if bnj.config.BuildOutDir != "" {
@@ -68,15 +84,14 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			// TODO: do it outside of the Node.js implementation.
 			pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
 
-			out = llb.Scratch().With(llbutil.CopyFrom(srcWithPkgMgr, pathToCopy, pathToCopy))
+			out = llb.Scratch().With(llbutil.CopyFrom(srcWithPkgMgr, pathToCopy, "/"))
 		} else {
 			// For non-dev builds creating an optimized, small image.
 			// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-			out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
-				With(packageManagerState.makeState,
-					production.NonRootUser(),
-					llbutil.CopyFrom(srcWithPkgMgr, AppRootPath, AppRootPath),
-				)
+			out = base.With(
+				production.NonRootUser(),
+				llbutil.CopyFrom(srcWithPkgMgr, AppRootPath, AppRootPath),
+			)
 		}
 	}
 
