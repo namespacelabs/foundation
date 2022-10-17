@@ -28,6 +28,8 @@ type ActionState string
 // Globally keeps track of all running actions in order to be able to reconstruct action trace for errors.
 var runningActionsSink = NewStatefulSink(nil, false)
 
+var ActionStorer func(*RunningAction)
+
 const (
 	ActionCreated = "fn.action.created"
 	ActionWaiting = "fn.action.waiting"
@@ -632,6 +634,11 @@ func (af *RunningAction) CustomDone(t time.Time, err error) bool {
 
 		af.sink.Done(af)
 		runningActionsSink.Sink().Done(af)
+
+		if ActionStorer != nil {
+			ActionStorer(af)
+		}
+
 		return true
 	}
 

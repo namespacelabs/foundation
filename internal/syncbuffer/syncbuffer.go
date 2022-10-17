@@ -44,9 +44,15 @@ func (sb *ByteBuffer) Reader() io.ReadCloser {
 	return &byteBufferReader{sb: sb, off: 0}
 }
 
-func (sb *ByteBuffer) Snapshot() []byte {
+func (sb *ByteBuffer) Snapshot(copyBytes bool) []byte {
 	sb.mu.Lock()
 	defer sb.mu.Unlock()
+	if copyBytes {
+		input := sb.buf.Bytes()
+		c := make([]byte, len(input))
+		copy(input, c)
+		return c
+	}
 	return slices.Clone(sb.buf.Bytes())
 }
 
@@ -104,7 +110,7 @@ func (s *Sealed) Reader() io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(s.finalized))
 }
 
-func (s *Sealed) Snapshot() []byte {
+func (s *Sealed) Snapshot(_ bool) []byte {
 	return s.finalized
 }
 

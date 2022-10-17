@@ -29,7 +29,7 @@ type EventAttachments struct {
 type readerWriter interface {
 	Writer() io.Writer
 	Reader() io.ReadCloser
-	Snapshot() []byte
+	Snapshot(copy bool) []byte
 }
 
 type attachedBuffer struct {

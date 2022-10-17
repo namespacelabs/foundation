@@ -35,6 +35,9 @@ var (
 
 type Run struct {
 	Started time.Time
+
+	mu     sync.Mutex
+	merged *storage.Command
 }
 
 type StoredRunID struct {
@@ -56,10 +59,32 @@ func New() *Run {
 		return nil
 	}
 
-	return &Run{Started: time.Now()}
+	r := &Run{Started: time.Now(), merged: &storage.Command{}}
+
+	if tasks.ActionStorer != nil {
+		panic("tasks.ActionStorer already set?")
+	}
+
+	tasks.ActionStorer = func(ra *tasks.RunningAction) {
+		cmd := tasks.Retain(ra)
+
+		r.mu.Lock()
+		r.merged.ActionLog = append(r.merged.ActionLog, cmd.ActionLog...)
+		r.merged.AttachedLog = append(r.merged.AttachedLog, cmd.AttachedLog...)
+		r.mu.Unlock()
+	}
+
+	return r
 }
 
 func (s *Run) Output(ctx context.Context, execErr error) error {
+	s.mu.Lock()
+	cmd := s.merged
+	s.merged = &storage.Command{}
+	s.mu.Unlock()
+
+	Attach(cmd)
+
 	st := nsErrorToStatus(execErr)
 
 	run := &storage.UndifferentiatedRun{
