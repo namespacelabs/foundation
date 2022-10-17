@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/runtime/docker/install"
-	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 func newPrepareCmd() *cobra.Command {

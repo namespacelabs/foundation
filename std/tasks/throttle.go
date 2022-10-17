@@ -14,7 +14,7 @@ import (
 
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/environment"
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 type WellKnown string

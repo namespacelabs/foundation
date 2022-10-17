@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/internal/support/naming"
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func NewDiscoveryClient(config *rest.Config, ephemeral bool) (discovery.CachedDiscoveryInterface, error) {

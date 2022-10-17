@@ -12,8 +12,8 @@ import (
 	"github.com/moby/buildkit/client"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 func exportToFS() exporter[fs.FS] { return &exportFS{} }

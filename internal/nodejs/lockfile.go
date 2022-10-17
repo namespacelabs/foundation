@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/dirs"
 )
 
 const (

@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func Visit(ctx context.Context, keysDir fs.FS, callback func(*age.X25519Identity) error) error {

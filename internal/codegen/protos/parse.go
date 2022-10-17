@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 
 	// Include descriptors for generated googleapis.
 	_ "google.golang.org/genproto/googleapis/api/annotations"

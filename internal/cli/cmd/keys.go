@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func NewKeysCmd() *cobra.Command {

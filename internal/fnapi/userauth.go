@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/workspace/dirs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 var ErrRelogin = errors.New("not logged in, please run `ns login`")
