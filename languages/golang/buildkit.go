@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var (
@@ -69,13 +68,7 @@ func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf
 		llbutil.PrefixSh(label, conf.TargetPlatform(), "go "+strings.Join(goBuild, " "))...).
 		AddMount("/out", prodBase)
 
-	image, err := buildkit.BuildImage(ctx, env, conf, state, local)
-	if err != nil {
-		return nil, err
-	}
-
-	return compute.Named(
-		tasks.Action("go.build.binary").Scope(bin.PackageName), image), nil
+	return buildkit.BuildImage(ctx, env, conf, state, local)
 }
 
 func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {

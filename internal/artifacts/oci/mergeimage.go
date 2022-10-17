@@ -15,7 +15,16 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+var MergeOptimizer func(images []NamedImage) compute.Computable[Image]
+
 func MergeImageLayers(images ...NamedImage) compute.Computable[Image] {
+	if MergeOptimizer != nil {
+		optimized := MergeOptimizer(images)
+		if optimized != nil {
+			return optimized
+		}
+	}
+
 	return &mergeImages{images: images}
 }
 

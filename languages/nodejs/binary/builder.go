@@ -69,12 +69,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		return nil, err
 	}
 
-	nodejsImage, err := buildkit.BuildImage(ctx, env, conf, state, local...)
-	if err != nil {
-		return nil, err
-	}
-
-	return nodejsImage, nil
+	return buildkit.BuildImage(ctx, env, conf, state, local...)
 }
 
 func nodeEnv(env cfg.Context) string {

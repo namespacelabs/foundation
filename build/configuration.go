@@ -20,9 +20,10 @@ type buildTarget struct {
 
 type buildConfiguration struct {
 	*buildTarget
-	source    schema.PackageName
-	label     string
-	workspace Workspace
+	source          schema.PackageName
+	label           string
+	workspace       Workspace
+	prefersBuildkit bool
 }
 
 func NewBuildTarget(target *specs.Platform) *buildTarget {
@@ -49,6 +50,11 @@ func (c *buildTarget) WithWorkspace(w Workspace) *buildConfiguration {
 	return d.WithWorkspace(w)
 }
 
+func (d *buildConfiguration) WithPrefersBuildkit(prefers bool) *buildConfiguration {
+	d.prefersBuildkit = prefers
+	return d
+}
+
 func (d *buildConfiguration) WithWorkspace(w Workspace) *buildConfiguration {
 	d.workspace = w
 	return d
@@ -64,8 +70,18 @@ func (d *buildConfiguration) WithSourceLabel(format string, args ...any) *buildC
 	return d
 }
 
+func CopyConfiguration(b Configuration) *buildConfiguration {
+	t := NewBuildTarget(b.TargetPlatform())
+	if x := b.PublishName(); x != nil {
+		t = t.WithTargetName(x)
+	}
+
+	return t.WithSourcePackage(b.SourcePackage()).WithSourceLabel(b.SourceLabel()).WithPrefersBuildkit(b.PrefersBuildkit()).WithWorkspace(b.Workspace())
+}
+
 func (c *buildTarget) TargetPlatform() *specs.Platform                    { return c.target }
 func (c *buildTarget) PublishName() compute.Computable[oci.AllocatedName] { return c.name }
 func (d *buildConfiguration) SourcePackage() schema.PackageName           { return d.source }
 func (d *buildConfiguration) SourceLabel() string                         { return d.label }
+func (d *buildConfiguration) PrefersBuildkit() bool                       { return d.prefersBuildkit }
 func (d *buildConfiguration) Workspace() Workspace                        { return d.workspace }

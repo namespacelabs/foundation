@@ -60,7 +60,10 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		nodejsBuild.BuildScript = buildScript
 	}
 
-	layers := []*schema.ImageBuildPlan{{NodejsBuild: nodejsBuild}}
+	layers := []*schema.ImageBuildPlan{{
+		Description: loc.PackageName.String(),
+		NodejsBuild: nodejsBuild,
+	}}
 	config := &schema.BinaryConfig{
 		WorkingDir: binary.AppRootPath,
 		Command:    []string{cliName},
@@ -78,7 +81,7 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		}
 
 		layers = append(layers, &schema.ImageBuildPlan{
-			Description: "development controller",
+			Description: hotreload.ControllerPkg.PackageName,
 			Binary:      hotreload.ControllerPkg,
 		})
 

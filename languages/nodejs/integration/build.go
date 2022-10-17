@@ -84,6 +84,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		devControllerImage, err := p.Plan.Spec.BuildImage(ctx, env,
 			build.NewBuildTarget(conf.TargetPlatform()).
 				WithTargetName(conf.PublishName()).
+				WithSourcePackage(p.Plan.SourcePackage).
 				WithSourceLabel(p.Plan.SourceLabel).
 				WithWorkspace(p.Plan.Workspace))
 		if err != nil {
