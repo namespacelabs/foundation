@@ -6,7 +6,6 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
@@ -23,7 +22,7 @@ func main() {
 	depgraph := core.NewDependencyGraph()
 	RegisterInitializers(depgraph)
 	if err := depgraph.RunInitializers(ctx); err != nil {
-		log.Fatal(err)
+		core.Log.Fatal(err)
 	}
 
 	server.InitializationDone()
@@ -31,9 +30,9 @@ func main() {
 	server.Listen(ctx, func(srv server.Server) {
 		if errs := WireServices(ctx, srv, depgraph); len(errs) > 0 {
 			for _, err := range errs {
-				log.Println(err)
+				core.Log.Println(err)
 			}
-			log.Fatalf("%d services failed to initialize.", len(errs))
+			core.Log.Fatalf("%d services failed to initialize.", len(errs))
 		}
 	})
 }

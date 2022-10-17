@@ -89,6 +89,7 @@ func (s *Run) Output(ctx context.Context, execErr error) error {
 		if err != nil {
 			return fnerrors.InternalError("failed to serialize attachment: %w", err)
 		}
+
 		run.Attachment = append(run.Attachment, serialized)
 	}
 
