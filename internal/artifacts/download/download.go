@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/ctxio"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {

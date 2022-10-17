@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func exportToRegistry(ref string, insecure bool) exporter[oci.Image] {

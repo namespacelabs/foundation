@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func BuildFilesystem(ctx context.Context, conf planning.Configuration, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {

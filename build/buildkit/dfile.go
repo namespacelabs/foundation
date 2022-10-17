@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 // A Dockerfile build is always relative to the module it lives in. Within that

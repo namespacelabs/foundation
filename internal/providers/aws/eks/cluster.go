@@ -26,9 +26,9 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	eksconfig "namespacelabs.dev/foundation/universe/aws/configuration/eks"
 	fneks "namespacelabs.dev/foundation/universe/aws/eks"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const minimumTokenExpiry = 5 * time.Minute

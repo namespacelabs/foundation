@@ -11,8 +11,8 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func PrepareExistingK8s(env planning.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {

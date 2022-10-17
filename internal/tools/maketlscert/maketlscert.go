@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func CreateSelfSignedCertificateChain(ctx context.Context, env *schema.Environment, r *types.TLSCertificateSpec) (*types.CertificateChain, error) {

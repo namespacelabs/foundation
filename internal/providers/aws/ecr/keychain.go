@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/internal/providers/aws/auth"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var DefaultKeychain oci.Keychain = defaultKeychain{}

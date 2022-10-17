@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func Unzip(contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {

@@ -25,8 +25,8 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/sdk/octant"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/module"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewSdkCmd() *cobra.Command {

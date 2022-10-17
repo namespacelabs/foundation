@@ -27,8 +27,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	stdruntime "namespacelabs.dev/foundation/std/runtime"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Stack struct {

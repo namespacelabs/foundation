@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func WithCanonicalManifest(ctx context.Context, img Image) (Image, error) {

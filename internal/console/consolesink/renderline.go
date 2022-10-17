@@ -12,7 +12,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const StampMilliTZ = "Jan _2 15:04:05.000 MST"

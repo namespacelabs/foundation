@@ -14,8 +14,8 @@ import (
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName) compute.Computable[[]oci.ResolvableImage] {

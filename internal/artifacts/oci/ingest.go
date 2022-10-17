@@ -13,7 +13,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool) (Image, error) {

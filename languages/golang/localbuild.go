@@ -23,9 +23,9 @@ import (
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func Build(ctx context.Context, env planning.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {

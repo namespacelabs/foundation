@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"namespacelabs.dev/foundation/internal/console/common"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type writesLines interface {

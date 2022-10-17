@@ -22,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *endpointfwd.PortForward) error {

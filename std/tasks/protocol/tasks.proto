@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package foundation.workspace.tasks.protocol;
 
-option go_package = "namespacelabs.dev/foundation/workspace/tasks/protocol";
+option go_package = "namespacelabs.dev/foundation/std/tasks/protocol";
 
 message Task {
     string            id                   = 1;

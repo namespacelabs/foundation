@@ -10,7 +10,7 @@ import (
 	"io"
 
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func Map[V any](action *tasks.ActionEvent, inputs *In, output Output,

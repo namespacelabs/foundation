@@ -15,8 +15,8 @@ import (
 
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func NewByteStream(ctx context.Context) (*ByteStreamWriter, error) {

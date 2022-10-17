@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func newActionDemoCmd() *cobra.Command {

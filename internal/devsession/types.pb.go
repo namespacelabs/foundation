@@ -15,7 +15,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	schema "namespacelabs.dev/foundation/schema"
 	storage "namespacelabs.dev/foundation/schema/storage"
-	protocol "namespacelabs.dev/foundation/workspace/tasks/protocol"
+	protocol "namespacelabs.dev/foundation/std/tasks/protocol"
 	reflect "reflect"
 	sync "sync"
 )

@@ -11,9 +11,9 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func PrepareNewNamespaceCluster(env planning.Context, machineType string, ephemeral bool) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {

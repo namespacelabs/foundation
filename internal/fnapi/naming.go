@@ -9,7 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var NamingForceStored = false

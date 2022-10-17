@@ -7,7 +7,7 @@ package fnapi
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type MapRequest struct {

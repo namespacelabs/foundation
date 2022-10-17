@@ -19,8 +19,8 @@ import (
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {

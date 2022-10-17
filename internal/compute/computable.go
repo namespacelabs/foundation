@@ -8,7 +8,7 @@ import (
 	"context"
 	"reflect"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
 

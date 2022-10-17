@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func readerLoop(ctx context.Context, ws *websocket.Conn, f func([]byte) error) {

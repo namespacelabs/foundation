@@ -24,9 +24,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/zipfs"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/dirs"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const version = "1.25.4"

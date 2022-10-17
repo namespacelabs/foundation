@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName) (*pkggraph.Package, error) {

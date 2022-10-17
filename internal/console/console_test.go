@@ -11,7 +11,7 @@ import (
 
 	"gotest.tools/assert"
 	"namespacelabs.dev/foundation/internal/console/common"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func TestBuffers(t *testing.T) {

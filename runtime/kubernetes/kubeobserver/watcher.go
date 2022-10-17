@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func WatchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool)) (V, error) {

@@ -7,7 +7,7 @@ package console
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func SetStickyContent(ctx context.Context, name string, content string) {

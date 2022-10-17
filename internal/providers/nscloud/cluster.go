@@ -29,8 +29,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"

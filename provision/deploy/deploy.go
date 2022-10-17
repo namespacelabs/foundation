@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/runtime/constants"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var (

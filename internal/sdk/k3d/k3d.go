@@ -27,8 +27,8 @@ import (
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const version = "5.2.2"

@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/console/common"
-	"namespacelabs.dev/foundation/workspace/tasks/protocol"
+	"namespacelabs.dev/foundation/std/tasks/protocol"
 )
 
 // Keeps track of which actions are running, and have run in the past.

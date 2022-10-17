@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type HasToLayer interface {

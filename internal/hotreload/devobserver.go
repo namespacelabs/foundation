@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type FileSyncDevObserver struct {

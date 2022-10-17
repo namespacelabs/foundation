@@ -10,7 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func PublishImage(tag compute.Computable[oci.AllocatedName], image compute.Computable[oci.ResolvableImage]) compute.Computable[oci.ImageID] {

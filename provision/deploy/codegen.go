@@ -15,8 +15,8 @@ import (
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type codegenWorkspace struct {

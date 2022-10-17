@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/pins"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (

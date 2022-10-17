@@ -13,7 +13,7 @@ import (
 
 	"github.com/spf13/viper"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const (

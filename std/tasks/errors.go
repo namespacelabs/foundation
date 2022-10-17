@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/protocol"
+	"namespacelabs.dev/foundation/std/tasks/protocol"
 )
 
 type errType string

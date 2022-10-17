@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Servers struct {

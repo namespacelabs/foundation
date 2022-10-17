@@ -16,7 +16,7 @@ import (
 	"golang.org/x/tools/imports"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/parsed"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func ComputeSources(ctx context.Context, root string, srv parsed.Server, platforms []specs.Platform) (d *D, err error) {

@@ -24,8 +24,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func RequireServers(env planning.Context, servers ...schema.PackageName) compute.Computable[*ServerSnapshot] {

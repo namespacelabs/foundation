@@ -28,8 +28,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func invokeHandlers(ctx context.Context, env planning.Context, planner runtime.Planner, stack *provision.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {

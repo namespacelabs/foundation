@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func Scratch() NamedImage {

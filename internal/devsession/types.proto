@@ -13,7 +13,7 @@ import "schema/environment.proto";
 import "schema/networking.proto";
 import "schema/storage/deploy.proto";
 import "schema/workspace.proto";
-import "workspace/tasks/protocol/tasks.proto";
+import "std/tasks/protocol/tasks.proto";
 
 // Next ID: 13
 message Stack {

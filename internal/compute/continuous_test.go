@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
+	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/simplelog"
 )
 
 func TestSink(t *testing.T) {

@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 	"sigs.k8s.io/yaml"
 )
 

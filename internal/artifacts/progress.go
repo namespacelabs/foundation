@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/dustin/go-humanize"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type ProgressReader interface {

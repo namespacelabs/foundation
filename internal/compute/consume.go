@@ -7,7 +7,7 @@ package compute
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 // Consume ensures that the specified method is called on the value when it is

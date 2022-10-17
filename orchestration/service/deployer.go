@@ -29,8 +29,8 @@ import (
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/protolog"
+	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/protolog"
 	"namespacelabs.dev/go-ids"
 )
 

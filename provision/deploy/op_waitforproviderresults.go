@@ -19,8 +19,8 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/source/protos"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var GarbageCollectProviders = true

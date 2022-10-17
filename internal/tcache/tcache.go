@@ -8,7 +8,7 @@ import (
 	"context"
 	"sync"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type Cache[V any] struct {

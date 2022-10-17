@@ -4,7 +4,7 @@
 
 package console
 
-import "namespacelabs.dev/foundation/workspace/tasks"
+import "namespacelabs.dev/foundation/std/tasks"
 
 func UnwrapSink(sink tasks.ActionSink) tasks.ActionSink {
 	if sink != nil {

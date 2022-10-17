@@ -22,8 +22,8 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/aws/iam"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 type Service struct {

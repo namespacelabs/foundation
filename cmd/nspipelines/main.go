@@ -18,9 +18,9 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/simplelog"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
 
 const maxLogLevel = 0

@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func TarGunzip(contents compute.Computable[bytestream.ByteStream]) compute.Computable[fs.FS] {

@@ -25,8 +25,8 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
 	stdruntime "namespacelabs.dev/foundation/std/runtime"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *provision.Stack, rp resourceList) ([]*schema.SerializedInvocation, error) {

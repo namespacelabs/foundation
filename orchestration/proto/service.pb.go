@@ -17,7 +17,7 @@ import (
 	schema "namespacelabs.dev/foundation/schema"
 	orchestration "namespacelabs.dev/foundation/schema/orchestration"
 	configuration "namespacelabs.dev/foundation/universe/aws/configuration"
-	protolog "namespacelabs.dev/foundation/workspace/tasks/protolog"
+	protolog "namespacelabs.dev/foundation/std/tasks/protolog"
 	reflect "reflect"
 	sync "sync"
 )

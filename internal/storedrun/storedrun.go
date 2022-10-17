@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/source/protos"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 var (

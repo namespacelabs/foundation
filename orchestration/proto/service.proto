@@ -12,7 +12,7 @@ import "universe/aws/configuration/aws.proto";
 import "internal/fnapi/userauth.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
-import "workspace/tasks/protolog/log.proto";
+import "std/tasks/protolog/log.proto";
 
 message DeployRequest {
     foundation.schema.DeployPlan                        plan = 1;

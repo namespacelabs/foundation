@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func Collect[V any](ev *tasks.ActionEvent, computables ...Computable[V]) Computable[[]ResultWithTimestamp[V]] {

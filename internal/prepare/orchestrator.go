@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func PrepareOrchestrator(env planning.Context, kube compute.Computable[*kubernetes.Cluster], confs ...compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {

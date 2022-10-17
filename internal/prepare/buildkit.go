@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func PrepareBuildkit(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {

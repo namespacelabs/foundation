@@ -6,9 +6,9 @@ syntax = "proto3";
 
 package foundation.workspace.tasks.protolog;
 
-option go_package = "namespacelabs.dev/foundation/workspace/tasks/protolog";
+option go_package = "namespacelabs.dev/foundation/std/tasks/protolog";
 
-import "workspace/tasks/protocol/tasks.proto";
+import "std/tasks/protocol/tasks.proto";
 
 message Log {
     int32                                    log_level = 1;

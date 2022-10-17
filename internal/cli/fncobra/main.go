@@ -72,6 +72,9 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/planning/knobs"
+	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/actiontracing"
+	"namespacelabs.dev/foundation/std/tasks/simplelog"
 	"namespacelabs.dev/foundation/universe/aws/iam"
 	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/foundation/workspace/devhost"
@@ -84,9 +87,6 @@ import (
 	webapplier "namespacelabs.dev/foundation/workspace/integration/web"
 	"namespacelabs.dev/foundation/workspace/source"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
-	"namespacelabs.dev/foundation/workspace/tasks"
-	"namespacelabs.dev/foundation/workspace/tasks/actiontracing"
-	"namespacelabs.dev/foundation/workspace/tasks/simplelog"
 )
 
 var (

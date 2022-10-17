@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func RunGo(ctx context.Context, loc pkggraph.Location, sdk golang.LocalSDK, args ...string) error {

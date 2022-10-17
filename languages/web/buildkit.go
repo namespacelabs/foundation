@@ -25,9 +25,9 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
 	"namespacelabs.dev/foundation/workspace/pins"
-	"namespacelabs.dev/foundation/workspace/tasks"
 )
 
 const yarnLockFn = "yarn.lock"

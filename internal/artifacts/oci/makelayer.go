@@ -9,7 +9,7 @@ import (
 	"io/fs"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func MakeLayer(name string, vfs compute.Computable[fs.FS]) NamedLayer {

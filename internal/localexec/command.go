@@ -10,7 +10,7 @@ import (
 	"os/exec"
 
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type Command struct {

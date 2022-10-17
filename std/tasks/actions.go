@@ -19,7 +19,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/workspace/tasks/protocol"
+	"namespacelabs.dev/foundation/std/tasks/protocol"
 	"namespacelabs.dev/go-ids"
 )
 

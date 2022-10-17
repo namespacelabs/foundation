@@ -12,7 +12,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/workspace/tasks"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func MergeImageLayers(images ...NamedImage) compute.Computable[Image] {
