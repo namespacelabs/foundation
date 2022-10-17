@@ -97,7 +97,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 
 		switch x := bits.Binary.(type) {
 		case string:
-			pkgRef, err := schema.ParsePackageRef(x)
+			pkgRef, err := schema.ParsePackageRef(loc.PackageName, x)
 			if err != nil {
 				return nil, nil, fnerrors.UserError(loc, "invalid package reference: %s", x)
 			}

@@ -67,9 +67,14 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		}
 	}
 
+	env, err := bits.Env.Parsed(loc.PackageName)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
-		Env:  bits.Env.Parsed(),
+		Env:  env,
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {

@@ -18,8 +18,9 @@ func TestParsePackageRef(t *testing.T) {
 	}{
 		{"foobar/quux", &PackageRef{PackageName: "foobar/quux"}},
 		{"foobar/quux:bar", &PackageRef{PackageName: "foobar/quux", Name: "bar"}},
+		{":baz", &PackageRef{PackageName: "owner/pkg", Name: "baz"}},
 	} {
-		got, err := ParsePackageRef(test.Source)
+		got, err := ParsePackageRef("owner/pkg", test.Source)
 		if err != nil {
 			t.Error(err)
 		} else {

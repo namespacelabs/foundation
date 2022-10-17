@@ -17,6 +17,7 @@ import (
 )
 
 type phase2plan struct {
+	owner   schema.PackageName
 	partial *fncue.Partial
 	Value   *fncue.CueV
 	Left    []fncue.KeyAndPath // injected values left to be filled.
@@ -59,7 +60,12 @@ func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info 
 			return nil, err
 		}
 
-		plan.Env = raw.Env.Parsed()
+		envVar, err := raw.Env.Parsed(s.owner)
+		if err != nil {
+			return nil, err
+		}
+
+		plan.Env = envVar
 		plan.Args = raw.Args.Parsed()
 	}
 

@@ -20,11 +20,18 @@ func MakePackageRef(pkg PackageName, name string) *PackageRef {
 }
 
 // Parses from a canonical string representation.
-func ParsePackageRef(str string) (*PackageRef, error) {
-	parts := strings.SplitN(str, ":", 2)
+func ParsePackageRef(owner PackageName, ref string) (*PackageRef, error) {
+	parts := strings.SplitN(ref, ":", 2)
 
 	pr := &PackageRef{}
-	pr.PackageName = parts[0]
+
+	if parts[0] == "" {
+		// Ref is of form ":foo", which implicitly references a name in the owning package.
+		pr.PackageName = owner.String()
+	} else {
+		pr.PackageName = parts[0]
+	}
+
 	if len(parts) > 1 {
 		pr.Name = parts[1]
 	}

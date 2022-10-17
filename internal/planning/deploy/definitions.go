@@ -467,8 +467,15 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 
 	var ref *schema.PackageRef
 	if inv.Binary != "" {
+		// Legacy path, this should never be an implicit package reference.
+		if strings.HasPrefix(inv.Binary, ":") {
+			return nil, nil, fnerrors.InternalError("missing package name in reference %q", inv.Binary)
+		}
+		// Hack! Remove when we retire the legacy path.
+		fakeOwner := schema.PackageName(env.Workspace().ModuleName())
+
 		var err error
-		ref, err = schema.ParsePackageRef(inv.Binary)
+		ref, err = schema.ParsePackageRef(fakeOwner, inv.Binary)
 		if err != nil {
 			return nil, nil, fnerrors.New("%s: failed to parse package ref: %w", inv.Binary, err)
 		}
