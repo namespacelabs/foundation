@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/scaffold"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const serverSuffix = "server"
@@ -26,7 +26,7 @@ const serverSuffix = "server"
 func newServerCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
 	var (
 		targetPkg targetPkg
-		env       planning.Context
+		env       cfg.Context
 		fmwkFlag  string
 		name      string
 	)

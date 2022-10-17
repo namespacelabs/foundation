@@ -26,20 +26,20 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/planning/deploy/render"
+	deploystorage "namespacelabs.dev/foundation/internal/planning/deploy/storage"
+	"namespacelabs.dev/foundation/internal/planning/deploy/view"
+	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/orchestration"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/deploy/render"
-	deploystorage "namespacelabs.dev/foundation/provision/deploy/storage"
-	"namespacelabs.dev/foundation/provision/deploy/view"
-	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func NewDeployCmd() *cobra.Command {
@@ -48,7 +48,7 @@ func NewDeployCmd() *cobra.Command {
 		serializePath string
 		uploadTo      string
 		deployOpts    deployOpts
-		env           planning.Context
+		env           cfg.Context
 		locs          fncobra.Locations
 		servers       fncobra.Servers
 	)
@@ -78,7 +78,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			stack, err := provision.ComputeStack(ctx, servers.Servers, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+			stack, err := planning.ComputeStack(ctx, servers.Servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 			if err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ type Ingress struct {
 	Protocol []string `json:"protocol"`
 }
 
-func completeDeployment(ctx context.Context, env planning.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, opts deployOpts) error {
+func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, opts deployOpts) error {
 	if err := orchestration.Deploy(ctx, env, cluster, plan, opts.alsoWait, true); err != nil {
 		return err
 	}

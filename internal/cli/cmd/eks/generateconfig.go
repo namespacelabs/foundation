@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newGenerateConfigCmd() *cobra.Command {
@@ -20,7 +20,7 @@ func newGenerateConfigCmd() *cobra.Command {
 		Use:   "kube-config",
 		Short: "Generates a EKS kubeconfig.",
 		Args:  cobra.ExactArgs(1),
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		s, err := eks.NewSession(ctx, env.Configuration())
 		if err != nil {
 			return err

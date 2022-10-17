@@ -15,13 +15,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newBufGenerateCmd() *cobra.Command {
 	var (
 		lang string
-		env  planning.Context
+		env  cfg.Context
 		locs fncobra.Locations
 	)
 

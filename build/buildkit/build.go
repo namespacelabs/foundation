@@ -29,7 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 
 	_ "github.com/moby/buildkit/client/connhelper/dockercontainer"
@@ -48,9 +48,9 @@ type clientInstance struct {
 	compute.DoScoped[*client.Client] // Only connect once per configuration.
 }
 
-var OverridesConfigType = planning.DefineConfigType[*Overrides]()
+var OverridesConfigType = cfg.DefineConfigType[*Overrides]()
 
-func connectToClient(config planning.Configuration, targetPlatform specs.Platform) compute.Computable[*client.Client] {
+func connectToClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*client.Client] {
 	conf, _ := OverridesConfigType.CheckGetForPlatform(config, targetPlatform)
 
 	if conf.BuildkitAddr == "" && conf.ContainerName == "" {

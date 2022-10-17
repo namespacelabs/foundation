@@ -11,7 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	deploystorage "namespacelabs.dev/foundation/provision/deploy/storage"
+	deploystorage "namespacelabs.dev/foundation/internal/planning/deploy/storage"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"

@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/development/localstack/s3"

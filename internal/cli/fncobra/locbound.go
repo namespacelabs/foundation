@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type Locations struct {
@@ -28,7 +28,7 @@ type Locations struct {
 
 type LocationsParser struct {
 	locsOut *Locations
-	env     *planning.Context
+	env     *cfg.Context
 	opts    ParseLocationsOpts
 }
 
@@ -39,7 +39,7 @@ type ParseLocationsOpts struct {
 	ReturnAllIfNoneSpecified bool
 }
 
-func ParseLocations(locsOut *Locations, env *planning.Context, opts ...ParseLocationsOpts) *LocationsParser {
+func ParseLocations(locsOut *Locations, env *cfg.Context, opts ...ParseLocationsOpts) *LocationsParser {
 	var merged ParseLocationsOpts
 	for _, opt := range opts {
 		if opt.ReturnAllIfNoneSpecified {

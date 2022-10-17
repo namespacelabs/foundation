@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 // Represents an Fn workspace with its partially-parsed Cue files.
@@ -34,7 +34,7 @@ type FnWorkspace struct {
 	root      *parsing.Root
 	openFiles *OpenFiles // Paths (in URIs) are absolute!
 	evalCtx   *fncue.EvalCtx
-	env       planning.Context
+	env       cfg.Context
 }
 
 func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWorkspace, wsPath string, err error) {
@@ -45,7 +45,7 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 	}
 	wsPath = loc.RelPath
 
-	env, err := planning.LoadContext(root, "dev")
+	env, err := cfg.LoadContext(root, "dev")
 	if err != nil {
 		return nil, "", err
 	}

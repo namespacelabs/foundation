@@ -13,16 +13,16 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/startup"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/planning/startup"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newComputeConfigCmd() *cobra.Command {
 	var (
-		env     planning.Context
+		env     cfg.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)

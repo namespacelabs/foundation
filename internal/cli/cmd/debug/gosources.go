@@ -16,12 +16,12 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newGoSourcesCmd() *cobra.Command {
 	var (
-		env     planning.Context
+		env     cfg.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)

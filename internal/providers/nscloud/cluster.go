@@ -28,7 +28,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
@@ -83,13 +83,13 @@ var (
 	}
 )
 
-var clusterConfigType = planning.DefineConfigType[*PrebuiltCluster]()
+var clusterConfigType = cfg.DefineConfigType[*PrebuiltCluster]()
 
 func RegisterClusterProvider() {
 	client.RegisterConfigurationProvider("nscloud", provideCluster)
 	kubernetes.RegisterOverrideClass("nscloud", provideClass)
 
-	planning.RegisterConfigurationProvider(func(cluster *configuration.Cluster) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(cluster *configuration.Cluster) ([]proto.Message, error) {
 		if cluster.ClusterId == "" {
 			return nil, fnerrors.BadInputError("cluster_id must be specified")
 		}
@@ -102,7 +102,7 @@ func RegisterClusterProvider() {
 	}, "foundation.providers.nscloud.config.Cluster")
 }
 
-func provideCluster(ctx context.Context, cfg planning.Configuration) (client.ClusterConfiguration, error) {
+func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterConfiguration, error) {
 	conf, ok := clusterConfigType.CheckGet(cfg)
 	if !ok {
 		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
@@ -320,7 +320,7 @@ func reparse(obj interface{}, target interface{}) error {
 	return json.Unmarshal(b, target)
 }
 
-func provideClass(ctx context.Context, cfg planning.Configuration) (runtime.Class, error) {
+func provideClass(ctx context.Context, cfg cfg.Configuration) (runtime.Class, error) {
 	return runtimeClass{}, nil
 }
 
@@ -328,7 +328,7 @@ type runtimeClass struct{}
 
 var _ runtime.Class = runtimeClass{}
 
-func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration) (runtime.Cluster, error) {
 	conf, ok := clusterConfigType.CheckGet(cfg)
 	if !ok {
 		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
@@ -342,9 +342,9 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg planning.Configur
 	return d.ensureCluster(ctx, cfg, cluster)
 }
 
-func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configuration, purpose string) (runtime.Cluster, error) {
-	if _, ok := clusterConfigType.CheckGet(cfg); ok {
-		return d.AttachToCluster(ctx, cfg)
+func (d runtimeClass) EnsureCluster(ctx context.Context, srv cfg.Configuration, purpose string) (runtime.Cluster, error) {
+	if _, ok := clusterConfigType.CheckGet(srv); ok {
+		return d.AttachToCluster(ctx, srv)
 	}
 
 	ephemeral := true
@@ -353,7 +353,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 		return nil, err
 	}
 
-	cfg = cfg.Derive(cfg.EnvKey(), func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
+	srv = srv.Derive(srv.EnvKey(), func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
 		// Prepend to ensure that the prebuilt cluster is returned first.
 		previous.Configuration = append(protos.WrapAnysOrDie(
 			&PrebuiltCluster{ClusterId: result.ClusterId, Ephemeral: ephemeral},
@@ -361,10 +361,10 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, cfg planning.Configurat
 		return previous
 	})
 
-	return d.ensureCluster(ctx, cfg, result.Cluster)
+	return d.ensureCluster(ctx, srv, result.Cluster)
 }
 
-func (d runtimeClass) ensureCluster(ctx context.Context, cfg planning.Configuration, kc *KubernetesCluster) (runtime.Cluster, error) {
+func (d runtimeClass) ensureCluster(ctx context.Context, cfg cfg.Configuration, kc *KubernetesCluster) (runtime.Cluster, error) {
 	// XXX This is confusing. We can call NewCluster because the runtime class
 	// and cluster providers are registered with the same provider key. We
 	// should instead create the cluster here, when the CreateCluster intent is
@@ -396,7 +396,7 @@ func (d *cluster) Class() runtime.Class {
 	return runtimeClass{}
 }
 
-func (d *cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
+func (d *cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
 	bound, err := d.cluster.Bind(env)
 	if err != nil {
 		return nil, err
@@ -405,7 +405,7 @@ func (d *cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
 	return clusterNamespace{ClusterNamespace: bound.(*kubernetes.ClusterNamespace), Config: d.config}, nil
 }
 
-func (d *cluster) Planner(env planning.Context) runtime.Planner {
+func (d *cluster) Planner(env cfg.Context) runtime.Planner {
 	base := kubernetes.NewPlanner(env, d.cluster.SystemInfo)
 
 	return planner{Planner: base, cluster: d, config: d.config, env: env.Environment(), workspace: env.Workspace().Proto()}

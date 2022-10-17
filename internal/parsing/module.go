@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -259,7 +259,7 @@ type MissingModuleResolver interface {
 }
 
 type defaultMissingModuleResolver struct {
-	workspace planning.Workspace
+	workspace cfg.Workspace
 }
 
 func (r *defaultMissingModuleResolver) Resolve(ctx context.Context, pkg schema.PackageName) (*schema.Workspace_Dependency, error) {

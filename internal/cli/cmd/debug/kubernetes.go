@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newKubernetesCmd() *cobra.Command {
@@ -33,7 +33,7 @@ func newKubernetesCmd() *cobra.Command {
 				return err
 			}
 
-			env, err := planning.LoadContext(root, envBound)
+			env, err := cfg.LoadContext(root, envBound)
 			if err != nil {
 				return err
 			}

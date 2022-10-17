@@ -21,11 +21,11 @@ import (
 	"namespacelabs.dev/foundation/runtime/docker"
 	kubeclient "namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareK3d(clusterName string, env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),

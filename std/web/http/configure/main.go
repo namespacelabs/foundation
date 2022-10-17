@@ -9,9 +9,9 @@ import (
 	"log"
 
 	"google.golang.org/grpc"
+	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/web/http"

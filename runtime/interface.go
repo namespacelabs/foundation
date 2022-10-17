@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/resources"
 )
 
@@ -34,11 +34,11 @@ const (
 type Class interface {
 	// Attaches to an existing cluster. Fails if the cluster doesn't exist or
 	// the provider used would have instantiated a new cluster.
-	AttachToCluster(context.Context, planning.Configuration) (Cluster, error)
+	AttachToCluster(context.Context, cfg.Configuration) (Cluster, error)
 
 	// Attaches to an existing cluster (if not is specified in the
 	// configuration), or creates a new cluster as needed.
-	EnsureCluster(context.Context, planning.Configuration, string) (Cluster, error)
+	EnsureCluster(context.Context, cfg.Configuration, string) (Cluster, error)
 }
 
 // A cluster represents a cluster where Namespace is capable of deployment one
@@ -46,11 +46,11 @@ type Class interface {
 type Cluster interface {
 	// Returns a Planner implementation which emits deployment plans that target
 	// a namespace within this cluster.
-	Planner(planning.Context) Planner
+	Planner(cfg.Context) Planner
 
 	// Returns a namespace'd cluster -- one for a particular application use,
-	// bound to the workspace identified by the planning.Context.
-	Bind(planning.Context) (ClusterNamespace, error)
+	// bound to the workspace identified by the cfg.Context.
+	Bind(cfg.Context) (ClusterNamespace, error)
 
 	// Fetch diagnostics of a particular container reference.
 	FetchDiagnostics(context.Context, *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error)

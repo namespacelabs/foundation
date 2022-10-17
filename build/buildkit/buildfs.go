@@ -12,11 +12,11 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func BuildFilesystem(ctx context.Context, conf planning.Configuration, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
+func BuildFilesystem(ctx context.Context, conf cfg.Configuration, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err

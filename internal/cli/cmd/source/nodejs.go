@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newNodejsCmd() *cobra.Command {
@@ -28,7 +28,7 @@ func newNodejsCmd() *cobra.Command {
 	yarn := fncobra.CmdWithEnv(&cobra.Command{
 		Use:   "yarn",
 		Short: "Run Yarn.",
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		root, err := module.FindRoot(ctx, ".")
 		if err != nil {
 			return err
@@ -54,7 +54,7 @@ func newNodejsCmd() *cobra.Command {
 
 	cmd.AddCommand(yarn)
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
 		relPath, err := relCwd(ctx)
 		if err != nil {
 			return err

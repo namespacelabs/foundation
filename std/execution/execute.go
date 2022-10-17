@@ -9,18 +9,18 @@ import (
 
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var (
-	ConfigurationInjection = Define[planning.Configuration]("ns.configuration")
+	ConfigurationInjection = Define[cfg.Configuration]("ns.configuration")
 	EnvironmentInjection   = Define[*schema.Environment]("ns.schema.environment")
 )
 
 type WaitHandler func(context.Context) (chan *orchestration.Event, func(context.Context) error)
 
-func Execute(ctx context.Context, config planning.Context, actionName string, g *Plan, channelHandler WaitHandler, injected ...InjectionInstance) error {
+func Execute(ctx context.Context, config cfg.Context, actionName string, g *Plan, channelHandler WaitHandler, injected ...InjectionInstance) error {
 	var ch chan *orchestration.Event
 	var cleanup func(context.Context) error
 
@@ -48,12 +48,12 @@ func Execute(ctx context.Context, config planning.Context, actionName string, g 
 }
 
 // Don't use this method if you don't have a use-case for it, use Execute.
-func RawExecute(ctx context.Context, config planning.Context, actionName string, g *Plan, injected ...InjectionInstance) error {
+func RawExecute(ctx context.Context, config cfg.Context, actionName string, g *Plan, injected ...InjectionInstance) error {
 	_, err := rawExecute(ctx, config, actionName, g, nil, injected...)
 	return err
 }
 
-func rawExecute(ctx context.Context, env planning.Context, actionName string, g *Plan, ch chan *orchestration.Event, injected ...InjectionInstance) ([]Waiter, error) {
+func rawExecute(ctx context.Context, env cfg.Context, actionName string, g *Plan, ch chan *orchestration.Event, injected ...InjectionInstance) ([]Waiter, error) {
 	injections := append([]InjectionInstance{
 		ConfigurationInjection.With(env.Configuration()),
 		EnvironmentInjection.With(env.Environment()),

@@ -19,12 +19,12 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewGenerateCmd() *cobra.Command {
 	var (
-		env planning.Context
+		env cfg.Context
 	)
 
 	return fncobra.
@@ -62,7 +62,7 @@ func NewGenerateCmd() *cobra.Command {
 		})
 }
 
-func generateProtos(ctx context.Context, env planning.Context, root *parsing.Root, handleGenErr func(fnerrors.CodegenError)) error {
+func generateProtos(ctx context.Context, env cfg.Context, root *parsing.Root, handleGenErr func(fnerrors.CodegenError)) error {
 	list, err := parsing.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err

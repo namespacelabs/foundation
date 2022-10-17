@@ -16,13 +16,13 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
 type Runtime struct {
-	Config planning.Configuration
+	Config cfg.Configuration
 }
 
 const toolNamespace = "fn-pipeline-tools"
@@ -107,13 +107,13 @@ func (k Runtime) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (kt Runtime) makeRuntime(ctx context.Context) (*kubernetes.Cluster, planning.Configuration, error) {
+func (kt Runtime) makeRuntime(ctx context.Context) (*kubernetes.Cluster, cfg.Configuration, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ck := planning.MakeConfigurationWith("tools", kt.Config.Workspace(), planning.ConfigurationSlice{
+	ck := cfg.MakeConfigurationWith("tools", kt.Config.Workspace(), cfg.ConfigurationSlice{
 		Configuration:         root.DevHost().ConfigureTools,
 		PlatformConfiguration: root.DevHost().ConfigurePlatform,
 	})

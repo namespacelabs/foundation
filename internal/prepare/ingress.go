@@ -12,12 +12,12 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareIngress(env planning.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngress(env cfg.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller"),
 		compute.Inputs().Str("kind", "ingress").Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
@@ -34,7 +34,7 @@ func PrepareIngress(env planning.Context, kube compute.Computable[*kubernetes.Cl
 		})
 }
 
-func PrepareIngressInKube(ctx context.Context, env planning.Context, kube *kubernetes.Cluster) error {
+func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes.Cluster) error {
 	for _, lbl := range kube.PreparedClient().Configuration.Labels {
 		if lbl.Name == ingress.LblNameStatus {
 			if lbl.Value == "installed" {

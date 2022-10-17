@@ -13,12 +13,12 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/versions"
-	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/types"
 )
@@ -51,7 +51,7 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 }
 
 type invokeTool struct {
-	conf       planning.Configuration // Does not affect the output.
+	conf       cfg.Configuration // Does not affect the output.
 	invocation *types.DeferredInvocation
 	imageID    oci.ImageID // Use buildkit to invoke instead of the tools runtime.
 	image      compute.Computable[oci.Image]

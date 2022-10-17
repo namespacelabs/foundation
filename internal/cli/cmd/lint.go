@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewLintCmd() *cobra.Command {
@@ -24,7 +24,7 @@ func NewLintCmd() *cobra.Command {
 	}
 
 	var (
-		env  planning.Context
+		env  cfg.Context
 		locs fncobra.Locations
 	)
 

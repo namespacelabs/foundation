@@ -8,8 +8,8 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 type phase1plan struct {
@@ -19,7 +19,7 @@ type phase1plan struct {
 	initContainers []*schema.SidecarContainer
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
+func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
 	var pdata pkggraph.ProvisionPlan
 
 	pdata.Startup = phase2plan{startupPlan: p1.startupPlan}

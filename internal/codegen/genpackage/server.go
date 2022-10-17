@@ -5,8 +5,8 @@
 package genpackage
 
 import (
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -20,7 +20,7 @@ func ForServer(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.Seria
 	return defs, nil
 }
 
-func ForServerAndDeps(server provision.Server) ([]*schema.SerializedInvocation, error) {
+func ForServerAndDeps(server planning.Server) ([]*schema.SerializedInvocation, error) {
 	var allDefs []*schema.SerializedInvocation
 	for _, dep := range server.Deps() {
 		// We only update co-located nodes.

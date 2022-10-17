@@ -11,14 +11,14 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress/nginx"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const nginxIngressState = "ns.kubernetes.nginx"
 
 func RegisterRuntimeState() {
-	runtime.RegisterPrepare(nginxIngressState, func(ctx context.Context, cfg planning.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(nginxIngressState, func(ctx context.Context, cfg cfg.Configuration, cluster runtime.Cluster) (any, error) {
 		kube, ok := cluster.(kubedef.KubeCluster)
 		if !ok {
 			return nil, fnerrors.InternalError("%s: only supported with Kubernetes clusters", nginxIngressState)

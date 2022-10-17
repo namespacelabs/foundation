@@ -28,11 +28,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/provision/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -58,7 +58,7 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 	}
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf planning.Configuration, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf cfg.Configuration, pkg schema.PackageName, opts rtypes.RunToolOpts, req Req, resolve ResolveMethodFunc[Req, Resp]) (Resp, error) {
 	// XXX security: think through whether it is OK or not to expose Snapshots here.
 	// For now, assume not.
 	attachToAction(ctx, "request", req, oo.RedactRequest)
@@ -154,7 +154,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf plan
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, conf planning.Configuration, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, conf cfg.Configuration, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
 	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 

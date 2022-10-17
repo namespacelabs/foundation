@@ -10,12 +10,12 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
 )
 
-func PrepareAWSProfile(env planning.Context, profileName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareAWSProfile(env cfg.Context, profileName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.aws-profile").HumanReadablef("Prepare the AWS profile configuration"),
 		compute.Inputs().Str("profileName", profileName).Proto("env", env.Environment()),

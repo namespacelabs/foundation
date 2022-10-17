@@ -10,18 +10,18 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/config"
-	"namespacelabs.dev/foundation/provision/eval"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/config"
+	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type hydrateParser struct {
 	resultOut *hydrateResult
 
-	env     *planning.Context
+	env     *cfg.Context
 	servers *fncobra.Servers
 
 	rehydrateOnly bool
@@ -36,14 +36,14 @@ type hydrateOpts struct {
 }
 
 type hydrateResult struct {
-	Env        planning.Context
+	Env        cfg.Context
 	Stack      *schema.Stack
 	Focus      []schema.PackageName
 	Ingress    []*schema.IngressFragment
 	Rehydrated *config.Rehydrated
 }
 
-func parseHydration(resultOut *hydrateResult, env *planning.Context, servers *fncobra.Servers, opts *hydrateOpts) *hydrateParser {
+func parseHydration(resultOut *hydrateResult, env *cfg.Context, servers *fncobra.Servers, opts *hydrateOpts) *hydrateParser {
 	return &hydrateParser{
 		resultOut:     resultOut,
 		env:           env,
@@ -56,7 +56,7 @@ func parseHydration(resultOut *hydrateResult, env *planning.Context, servers *fn
 // Initializes parseHydration() with its dependencies.
 func parseHydrationWithDeps(resultOut *hydrateResult, locationsOpts *fncobra.ParseLocationsOpts, opts *hydrateOpts) []fncobra.ArgsParser {
 	var (
-		env     planning.Context
+		env     cfg.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 	)
@@ -115,7 +115,7 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 		h.resultOut.Ingress = rehydrated.IngressFragments
 		h.resultOut.Rehydrated = rehydrated
 	} else {
-		stack, err := provision.ComputeStack(ctx, servers, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+		stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 		if err != nil {
 			return err
 		}

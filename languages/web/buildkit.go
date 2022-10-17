@@ -25,15 +25,15 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const yarnLockFn = "yarn.lock"
 
 // Returns a Computable[v1.Image] with the results of the compilation.
-func ViteProductionBuild(ctx context.Context, loc pkggraph.Location, env planning.Context, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
+func ViteProductionBuild(ctx context.Context, loc pkggraph.Location, env cfg.Context, description, baseOutput, basePath string, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
 	hostPlatform := buildkit.HostPlatform()
 	conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel(description)
 
@@ -60,7 +60,7 @@ func ViteProductionBuild(ctx context.Context, loc pkggraph.Location, env plannin
 		compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image)), nil
 }
 
-func viteDevBuild(ctx context.Context, env planning.Context, targetDir string, loc pkggraph.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
+func viteDevBuild(ctx context.Context, env cfg.Context, targetDir string, loc pkggraph.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
 	var module build.Workspace
 
 	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {

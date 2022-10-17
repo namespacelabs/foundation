@@ -22,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 var DefaultKeychain oci.Keychain = defaultKeychain{}
@@ -32,7 +32,7 @@ const loginEndpoint = "login.namespace.so/token"
 type r struct{}
 
 func RegisterRegistry() {
-	reg.Register("nscloud", func(ctx context.Context, ck planning.Configuration) (reg.Manager, error) {
+	reg.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (reg.Manager, error) {
 		return r{}, nil
 	})
 

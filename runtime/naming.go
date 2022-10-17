@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const (
@@ -36,7 +36,7 @@ var (
 var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
 	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
-func ComputeNaming(ctx context.Context, ws string, env planning.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
+func ComputeNaming(ctx context.Context, ws string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
 	result, err := computeNaming(ctx, ws, env, cluster, source)
 	if err != nil {
 		return nil, err
@@ -47,7 +47,7 @@ func ComputeNaming(ctx context.Context, ws string, env planning.Context, cluster
 	return result, nil
 }
 
-func computeNaming(ctx context.Context, workspace string, env planning.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
+func computeNaming(ctx context.Context, workspace string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
 	naming, err := computeInnerNaming(ctx, env, cluster, source)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func computeNaming(ctx context.Context, workspace string, env planning.Context, 
 	return naming, nil
 }
 
-func computeInnerNaming(ctx context.Context, rootenv planning.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
+func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
 	base, err := cluster.ComputeBaseNaming(source)
 	if err != nil {
 		return nil, err

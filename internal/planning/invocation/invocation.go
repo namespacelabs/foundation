@@ -22,8 +22,8 @@ import (
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 type Invocation struct {
@@ -44,7 +44,7 @@ type Snapshot struct {
 	Contents fs.FS
 }
 
-func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
+func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
 	p, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Con
 	return MakeForPlatforms(ctx, pl, env, serverLocRef, with, p)
 }
 
-func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env planning.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
+func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
 	var binRef *schema.PackageRef
 	if with.BinaryRef != nil {
 		binRef = with.BinaryRef

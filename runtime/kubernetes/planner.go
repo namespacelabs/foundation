@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	fnschema "namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"sigs.k8s.io/yaml"
 )
@@ -30,7 +30,7 @@ type Planner struct {
 var _ runtime.Namespace = Planner{}
 var _ runtime.Planner = Planner{}
 
-func NewPlanner(env planning.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
+func NewPlanner(env cfg.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
 	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env)}
 }
 

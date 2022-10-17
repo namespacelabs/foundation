@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/protolog"
 	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
@@ -58,7 +58,7 @@ func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, err
 	)
 }
 
-func getAwsConf(ctx context.Context, env planning.Context) (*awsconf.Configuration, error) {
+func getAwsConf(ctx context.Context, env cfg.Context) (*awsconf.Configuration, error) {
 	sesh, err := awsprovider.ConfiguredSession(ctx, env.Configuration())
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
 	return auth, nil
 }
 
-func CallDeploy(ctx context.Context, env planning.Context, conn *grpc.ClientConn, plan *schema.DeployPlan) (string, error) {
+func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, plan *schema.DeployPlan) (string, error) {
 	req := &proto.DeployRequest{
 		Plan: plan,
 	}

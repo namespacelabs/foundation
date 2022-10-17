@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	eksconfig "namespacelabs.dev/foundation/universe/aws/configuration/eks"
 	fneks "namespacelabs.dev/foundation/universe/aws/eks"
@@ -33,7 +33,7 @@ import (
 
 const minimumTokenExpiry = 5 * time.Minute
 
-var clusterConfigType = planning.DefineConfigType[*fneks.EKSCluster]("foundation.providers.aws.eks.EKSCluster")
+var clusterConfigType = cfg.DefineConfigType[*fneks.EKSCluster]("foundation.providers.aws.eks.EKSCluster")
 
 func Register() {
 	planninghooks.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
@@ -41,7 +41,7 @@ func Register() {
 	client.RegisterConfigurationProvider("eks", provideEKS)
 	client.RegisterConfigurationProvider("aws/eks", provideEKS)
 
-	planning.RegisterConfigurationProvider(func(cluster *eksconfig.Cluster) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(cluster *eksconfig.Cluster) ([]proto.Message, error) {
 		if cluster.Name == "" {
 			return nil, fnerrors.BadInputError("cluster name must be specified")
 		}
@@ -56,7 +56,7 @@ func Register() {
 	RegisterGraphHandlers()
 }
 
-func provideEKS(ctx context.Context, config planning.Configuration) (client.ClusterConfiguration, error) {
+func provideEKS(ctx context.Context, config cfg.Configuration) (client.ClusterConfiguration, error) {
 	conf, ok := clusterConfigType.CheckGet(config)
 	if !ok {
 		return client.ClusterConfiguration{}, fnerrors.BadInputError("eks provider configured, but missing EKSCluster")
@@ -100,7 +100,7 @@ func provideEKS(ctx context.Context, config planning.Configuration) (client.Clus
 	}, nil
 }
 
-func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*planninghooks.InternalPrepareProps, error) {
+func prepareDescribeCluster(ctx context.Context, env cfg.Context, se *schema.Stack_Entry) (*planninghooks.InternalPrepareProps, error) {
 	// XXX this breaks test/production similarity, but for the moment hide EKS
 	// from tests. This removes the ability for tests to allocate IAM resources.
 	if env.Environment().Ephemeral {

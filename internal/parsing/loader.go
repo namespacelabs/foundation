@@ -18,12 +18,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func LoadPackageByName(ctx context.Context, env planning.Context, name schema.PackageName) (*pkggraph.Package, error) {
+func LoadPackageByName(ctx context.Context, env cfg.Context, name schema.PackageName) (*pkggraph.Package, error) {
 	pl := NewPackageLoader(env)
 	parsed, err := pl.LoadByName(ctx, name)
 	if err != nil {
@@ -64,7 +64,7 @@ var MakeFrontend func(EarlyPackageLoader, *schema.Environment) Frontend
 // already loaded packages to minimize this fan-out cost.
 type PackageLoader struct {
 	absPath        string
-	workspace      planning.Workspace
+	workspace      cfg.Workspace
 	env            *schema.Environment
 	frontend       Frontend
 	rootmodule     *pkggraph.Module
@@ -105,7 +105,7 @@ func WithMissingModuleResolver(moduleResolver MissingModuleResolver) packageLoad
 	}
 }
 
-func NewPackageLoader(env planning.Context, opt ...packageLoaderOpt) *PackageLoader {
+func NewPackageLoader(env cfg.Context, opt ...packageLoaderOpt) *PackageLoader {
 	pl := &PackageLoader{}
 	pl.absPath = env.Workspace().LoadedFrom().AbsPath
 	pl.workspace = env.Workspace()

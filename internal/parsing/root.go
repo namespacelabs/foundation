@@ -10,20 +10,20 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 type Root struct {
-	workspace planning.Workspace
+	workspace cfg.Workspace
 	editable  pkggraph.EditableWorkspaceData
 
 	LoadedDevHost *schema.DevHost
 }
 
-var _ planning.RootContext = &Root{}
+var _ cfg.RootContext = &Root{}
 
-func NewRoot(w planning.Workspace, editable pkggraph.EditableWorkspaceData) *Root {
+func NewRoot(w cfg.Workspace, editable pkggraph.EditableWorkspaceData) *Root {
 	return &Root{
 		workspace: w,
 		editable:  editable,
@@ -33,7 +33,7 @@ func NewRoot(w planning.Workspace, editable pkggraph.EditableWorkspaceData) *Roo
 func (root *Root) Abs() string                                       { return root.workspace.LoadedFrom().AbsPath }
 func (root *Root) ModuleName() string                                { return root.workspace.ModuleName() }
 func (root *Root) DevHost() *schema.DevHost                          { return root.LoadedDevHost }
-func (root *Root) Workspace() planning.Workspace                     { return root.workspace }
+func (root *Root) Workspace() cfg.Workspace                          { return root.workspace }
 func (root *Root) EditableWorkspace() pkggraph.EditableWorkspaceData { return root.editable }
 func (root *Root) ReadOnlyFS() fs.ReadDirFS                          { return fnfs.Local(root.Abs()) }
 func (root *Root) ReadWriteFS() fnfs.ReadWriteFS                     { return fnfs.ReadWriteLocalFS(root.Abs()) }

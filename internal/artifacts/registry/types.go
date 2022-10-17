@@ -15,21 +15,21 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var (
-	mapping = map[string]func(context.Context, planning.Configuration) (Manager, error){}
+	mapping = map[string]func(context.Context, cfg.Configuration) (Manager, error){}
 
 	ErrNoRegistry = errors.New("no registry configured")
 
-	registryConfigType         = planning.DefineConfigType[*registry.Registry]()
-	registryProviderConfigType = planning.DefineConfigType[*registry.Provider]()
+	registryConfigType         = cfg.DefineConfigType[*registry.Registry]()
+	registryProviderConfigType = cfg.DefineConfigType[*registry.Provider]()
 )
 
 // XXX use external plugin system.
-func Register(name string, make func(context.Context, planning.Configuration) (Manager, error)) {
+func Register(name string, make func(context.Context, cfg.Configuration) (Manager, error)) {
 	mapping[strings.ToLower(name)] = make
 }
 
@@ -41,11 +41,11 @@ type Manager interface {
 	AuthRepository(oci.ImageID) (oci.AllocatedName, error)
 }
 
-func GetRegistry(ctx context.Context, env planning.Context) (Manager, error) {
+func GetRegistry(ctx context.Context, env cfg.Context) (Manager, error) {
 	return GetRegistryFromConfig(ctx, env.Environment().Name, env.Configuration())
 }
 
-func GetRegistryFromConfig(ctx context.Context, env string, cfg planning.Configuration) (Manager, error) {
+func GetRegistryFromConfig(ctx context.Context, env string, cfg cfg.Configuration) (Manager, error) {
 	p, ok := registryProviderConfigType.CheckGet(cfg)
 	if ok && p.Provider != "" {
 		return getRegistryByName(ctx, cfg, p.Provider)
@@ -69,7 +69,7 @@ func GetRegistryFromConfig(ctx context.Context, env string, cfg planning.Configu
 		"No registry configured in the environment %q.", env)
 }
 
-func getRegistryByName(ctx context.Context, conf planning.Configuration, name string) (Manager, error) {
+func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string) (Manager, error) {
 	if m, ok := mapping[name]; ok {
 		return m(ctx, conf)
 	}
@@ -91,7 +91,7 @@ func StaticName(registry *registry.Registry, imageID oci.ImageID, keychain oci.K
 		})
 }
 
-func AllocateName(ctx context.Context, env planning.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
+func AllocateName(ctx context.Context, env cfg.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
 	registry, err := GetRegistry(ctx, env)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func AllocateName(ctx context.Context, env planning.Context, pkg schema.PackageN
 	return registry.AllocateName(pkg.String()), nil
 }
 
-func RawAllocateName(ctx context.Context, ck planning.Configuration, repo string) (compute.Computable[oci.AllocatedName], error) {
+func RawAllocateName(ctx context.Context, ck cfg.Configuration, repo string) (compute.Computable[oci.AllocatedName], error) {
 	registry, err := GetRegistryFromConfig(ctx, "", ck)
 	if err != nil {
 		return nil, err

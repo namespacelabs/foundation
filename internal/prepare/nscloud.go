@@ -11,12 +11,12 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
 
-func PrepareNewNamespaceCluster(env planning.Context, machineType string, ephemeral bool) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral bool) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.nscloud.new-cluster"),
 		compute.Inputs().Proto("env", env.Environment()).Indigestible("foobar", "foobar"),

@@ -20,17 +20,17 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/config"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/config"
-	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/eval"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -48,7 +48,7 @@ type TestOpts struct {
 	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
-func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts) (compute.Computable[StoredTestResults], error) {
+func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context, testRef *schema.PackageRef, opts TestOpts) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env planning.Co
 		}), nil
 }
 
-func UploadResults(ctx context.Context, env planning.Context, testPkg schema.PackageName, storedResults compute.Computable[StoredTestResults]) (compute.Computable[oci.ImageID], error) {
+func UploadResults(ctx context.Context, env cfg.Context, testPkg schema.PackageName, storedResults compute.Computable[StoredTestResults]) (compute.Computable[oci.ImageID], error) {
 	tag, err := registry.AllocateName(ctx, env, testPkg)
 	if err != nil {
 		return nil, err
@@ -255,18 +255,18 @@ func UploadResults(ctx context.Context, env planning.Context, testPkg schema.Pac
 	return oci.PublishImage(tag, oci.MakeImageFromScratch("test-results", oci.MakeLayer("test-results", toFS))).ImageID(), nil
 }
 
-func loadSUT(ctx context.Context, env planning.Context, pl *parsing.PackageLoader, test *schema.Test) (*provision.Stack, error) {
-	var suts []provision.Server
+func loadSUT(ctx context.Context, env cfg.Context, pl *parsing.PackageLoader, test *schema.Test) (*planning.Stack, error) {
+	var suts []planning.Server
 
 	for _, pkg := range test.ServersUnderTest {
-		sut, err := provision.RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
+		sut, err := planning.RequireServerWith(ctx, env, pl, schema.PackageName(pkg))
 		if err != nil {
 			return nil, err
 		}
 		suts = append(suts, sut)
 	}
 
-	stack, err := provision.ComputeStack(ctx, suts, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+	stack, err := planning.ComputeStack(ctx, suts, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}

@@ -20,10 +20,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -32,7 +32,7 @@ func NewBuildCmd() *cobra.Command {
 		explain                = false
 		continuously           = false
 		prebuiltBaseRepository string
-		env                    planning.Context
+		env                    cfg.Context
 		locs                   fncobra.Locations
 		servers                fncobra.Servers
 	)

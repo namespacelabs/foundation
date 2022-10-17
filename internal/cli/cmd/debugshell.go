@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -34,7 +34,7 @@ func NewDebugShellCmd() *cobra.Command {
 	cmd.Flags().StringVar(&imageRef, "image", imageRef, "If specified, use this image as the basis of the debug shell.")
 	cmd.Flags().StringVar(&binaryPackage, "binary_package", binaryPackage, "If specified, use the resulting image binary as the basis of the debug shell.")
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
 		var imageID oci.ImageID
 
 		cluster, err := runtime.NamespaceFor(ctx, env)

@@ -15,12 +15,12 @@ import (
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newGoCmd(goVersion string) *cobra.Command {
 	var (
-		env planning.Context
+		env cfg.Context
 	)
 
 	return fncobra.Cmd(

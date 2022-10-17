@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type SchemaList struct {
@@ -24,7 +24,7 @@ type SchemaList struct {
 }
 
 // Returns a list of all of the schema definitions found under root.
-func ListSchemas(ctx context.Context, env planning.Context, root *Root) (SchemaList, error) {
+func ListSchemas(ctx context.Context, env cfg.Context, root *Root) (SchemaList, error) {
 	sl := SchemaList{Root: root}
 
 	pl := NewPackageLoader(env)

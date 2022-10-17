@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewDeploymentCmd() *cobra.Command {
@@ -30,7 +30,7 @@ func NewDeploymentCmd() *cobra.Command {
 		Use:   "remove --env {dev|staging|prod}",
 		Short: "Removes all deployment assets associated with the specified environment.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		if !defaultYes {
 			if err := checkDelete(ctx, env.Environment().Name, true); err != nil {
 				return err
@@ -59,7 +59,7 @@ func NewDeploymentCmd() *cobra.Command {
 		Use:   "remove-all",
 		Short: "Removes all deployment assets associated with the specified environment.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		if !defaultYes {
 			if err := checkDelete(ctx, env.Environment().Name, false); err != nil {
 				return err

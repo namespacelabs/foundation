@@ -10,18 +10,18 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/provision"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type Servers struct {
-	Servers        provision.Servers
+	Servers        planning.Servers
 	SealedPackages pkggraph.SealedPackageLoader
 }
 
-func ParseServers(serversOut *Servers, env *planning.Context, locs *Locations) *ServersParser {
+func ParseServers(serversOut *Servers, env *cfg.Context, locs *Locations) *ServersParser {
 	return &ServersParser{
 		serversOut: serversOut,
 		locs:       locs,
@@ -32,7 +32,7 @@ func ParseServers(serversOut *Servers, env *planning.Context, locs *Locations) *
 type ServersParser struct {
 	serversOut *Servers
 	locs       *Locations
-	env        *planning.Context
+	env        *cfg.Context
 }
 
 func (p *ServersParser) AddFlags(cmd *cobra.Command) {}
@@ -48,7 +48,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 		return fnerrors.InternalError("env must be set")
 	}
 
-	var servers []provision.Server
+	var servers []planning.Server
 	pl := parsing.NewPackageLoader(*p.env)
 	for _, loc := range p.locs.Locs {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
@@ -65,7 +65,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 				return nil
 			}
 
-			server, err := provision.RequireServerWith(ctx, *p.env, pl, loc.AsPackageName())
+			server, err := planning.RequireServerWith(ctx, *p.env, pl, loc.AsPackageName())
 			if err != nil {
 				return err
 			}

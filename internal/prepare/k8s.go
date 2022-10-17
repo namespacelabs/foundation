@@ -11,11 +11,11 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareExistingK8s(env planning.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareExistingK8s(env cfg.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
 		compute.Inputs().Proto("env", env.Environment()),

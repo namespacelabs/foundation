@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewCacheCmd() *cobra.Command {
@@ -53,7 +53,7 @@ func newPruneCmd() *cobra.Command {
 			if slices.Contains(what, "buildkit") {
 				eg.Go(func(ctx context.Context) error {
 					// XXX make platform configurable.
-					return buildkit.Prune(ctx, planning.MakeConfigurationWith("prune", root.Workspace(), planning.ConfigurationSlice{
+					return buildkit.Prune(ctx, cfg.MakeConfigurationWith("prune", root.Workspace(), cfg.ConfigurationSlice{
 						PlatformConfiguration: root.DevHost().ConfigurePlatform,
 					}), buildkit.HostPlatform())
 				})

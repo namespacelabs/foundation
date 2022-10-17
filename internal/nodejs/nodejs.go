@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const (
@@ -32,7 +32,7 @@ type RunNodejsOpts struct {
 	IsInteractive bool
 }
 
-func RunNodejs(ctx context.Context, env planning.Context, relPath string, command string, opts *RunNodejsOpts) error {
+func RunNodejs(ctx context.Context, env cfg.Context, relPath string, command string, opts *RunNodejsOpts) error {
 	p, err := tools.HostPlatform(ctx, env.Configuration())
 	if err != nil {
 		return err

@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const (
@@ -45,7 +45,7 @@ func ServerImage(name string, target specs.Platform) (oci.NamedImage, error) {
 // DevelopmentImage returns a minimal base image where we add tools for development. Use of
 // development images is temporary, and likely to only be used when ephemeral containers
 // are not available.
-func DevelopmentImage(ctx context.Context, name string, env planning.Context, target build.BuildTarget) (oci.NamedImage, error) {
+func DevelopmentImage(ctx context.Context, name string, env cfg.Context, target build.BuildTarget) (oci.NamedImage, error) {
 	base := pins.Server(name)
 	if base == nil || base.Base == "" {
 		return nil, fnerrors.InternalError("missing base server definition for %q", name)

@@ -24,11 +24,11 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func Build(ctx context.Context, env planning.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func Build(ctx context.Context, env cfg.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	if conf.Workspace() == nil {
 		panic(conf)
 	}
@@ -36,7 +36,7 @@ func Build(ctx context.Context, env planning.Context, bin GoBinary, conf build.C
 	return buildLocalImage(ctx, env, conf.Workspace(), bin, conf)
 }
 
-func buildLocalImage(ctx context.Context, env planning.Context, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
+func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
 	sdk, err := golang.MatchSDK(bin.GoVersion, golang.HostPlatform())
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func buildLocalImage(ctx context.Context, env planning.Context, workspace build.
 		oci.MakeImage(fmt.Sprintf("Go binary %s", bin.PackageName), base, layers...).Image()), nil
 }
 
-func baseImage(ctx context.Context, env planning.Context, target build.BuildTarget) (oci.NamedImage, error) {
+func baseImage(ctx context.Context, env cfg.Context, target build.BuildTarget) (oci.NamedImage, error) {
 	// We use a different base for development because most Kubernetes installations don't
 	// yet support ephemeral containers, which would allow us to side-load into the same
 	// namespace as the running server, for debugging. So we instead add a base with some

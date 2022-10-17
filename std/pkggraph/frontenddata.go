@@ -8,11 +8,11 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type PreProvision interface {
-	EvalProvision(context.Context, planning.Context, ProvisionInputs) (ProvisionPlan, error)
+	EvalProvision(context.Context, cfg.Context, ProvisionInputs) (ProvisionPlan, error)
 }
 
 type PreStartup interface {

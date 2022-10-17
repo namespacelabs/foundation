@@ -12,21 +12,22 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/config"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/planning/eval"
+	"namespacelabs.dev/foundation/internal/planning/snapshot"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/config"
-	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/eval"
-	"namespacelabs.dev/foundation/provision/snapshot"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
+
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *endpointfwd.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
 		focusServers := snapshot.RequireServers(env, serverPackages...)
@@ -57,7 +58,7 @@ func setWorkspace(ctx context.Context, env planning.Context, rt runtime.ClusterN
 type buildAndDeploy struct {
 	session        *Session
 	portForward    *endpointfwd.PortForward
-	env            planning.Context
+	env            cfg.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*snapshot.ServerSnapshot]
 	cluster        runtime.ClusterNamespace
@@ -119,7 +120,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			}
 		}
 
-		stack, err := provision.ComputeStack(ctx, focus, provision.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+		stack, err := planning.ComputeStack(ctx, focus, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 		if err != nil {
 			return err
 		}
@@ -204,7 +205,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func resetStack(out *Stack, env planning.Context, availableEnvs []*schema.Environment, focus []provision.Server) {
+func resetStack(out *Stack, env cfg.Context, availableEnvs []*schema.Environment, focus []planning.Server) {
 	workspace := protos.Clone(env.Workspace().Proto())
 
 	out.AbsRoot = env.Workspace().LoadedFrom().AbsPath

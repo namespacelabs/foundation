@@ -10,8 +10,8 @@ import (
 
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/provision/tool/protocol"
+	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/universe/aws/eks"

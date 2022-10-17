@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewFnServicesCmd() *cobra.Command {
@@ -28,7 +28,7 @@ func NewFnServicesCmd() *cobra.Command {
 		Use:   "robot-login",
 		Short: "Attempts to login as a robot.",
 		Args:  cobra.ExactArgs(1),
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		accessToken, err := tui.Ask(ctx, "Which Access Token would you like to use today?", "That would be a Github access token.", "access token")
 		if err != nil {
 			return err
@@ -50,7 +50,7 @@ func NewFnServicesCmd() *cobra.Command {
 		Use:   "naming-map",
 		Short: "Maps a FQDN within Namespace Cloud's scope to a particular target (e.g. CNAME, or IP address).",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		return fnapi.Map(ctx, fqdn, target)
 	})
 
@@ -66,7 +66,7 @@ func NewFnServicesCmd() *cobra.Command {
 		Use:   "naming-allocate-name",
 		Short: "Allocates a TLS certificate within Namespace Cloud's scope.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		if fqdn == "" && subDomain == "" {
 			return fnerrors.BadInputError("either --fqdn or --subdomain need to be specified")
 		}

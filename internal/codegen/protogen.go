@@ -21,9 +21,9 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/sdk/buf"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func RegisterGraphHandlers() {
@@ -106,7 +106,7 @@ func RegisterGraphHandlers() {
 	})
 }
 
-func generateProtoSrcs(ctx context.Context, env planning.Configuration, request map[schema.Framework]*srcprotos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
+func generateProtoSrcs(ctx context.Context, env cfg.Configuration, request map[schema.Framework]*srcprotos.FileDescriptorSetAndDeps, out fnfs.ReadWriteFS) error {
 	protogen, err := buf.MakeProtoSrcs(ctx, env, request)
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func generateProtoSrcs(ctx context.Context, env planning.Configuration, request 
 	return nil
 }
 
-func GenProtosAtPaths(ctx context.Context, env planning.Context, fmwk schema.Framework, fsys fs.FS, paths []string, out fnfs.ReadWriteFS) error {
+func GenProtosAtPaths(ctx context.Context, env cfg.Context, fmwk schema.Framework, fsys fs.FS, paths []string, out fnfs.ReadWriteFS) error {
 	opts, err := parsing.MakeProtoParseOpts(ctx, parsing.NewPackageLoader(env), env.Workspace().Proto())
 	if err != nil {
 		return err

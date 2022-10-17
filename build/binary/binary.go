@@ -21,8 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 var (
@@ -34,10 +34,10 @@ var BuildWeb func(pkggraph.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
-var BuildNodejs func(planning.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, bool /* isFocus */) (build.Spec, error)
+var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, bool /* isFocus */) (build.Spec, error)
 var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
 
-var prebuiltsConfType = planning.DefineConfigType[*Prebuilts]()
+var prebuiltsConfType = cfg.DefineConfigType[*Prebuilts]()
 
 const LLBGenBinaryName = "llbgen"
 
@@ -71,7 +71,7 @@ func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggra
 	return PlanBinary(ctx, env, env, pkg.Location, binary, opts)
 }
 
-func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env planning.Context, loc pkggraph.Location, binary *schema.Binary, opts BuildImageOpts) (*Prepared, error) {
+func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, binary *schema.Binary, opts BuildImageOpts) (*Prepared, error) {
 	spec, err := planImage(ctx, pl, env, loc, binary, opts)
 	if err != nil {
 		return nil, err
@@ -103,7 +103,7 @@ func (p Prepared) Image(ctx context.Context, env pkggraph.SealedContext) (comput
 	return multiplatform.PrepareMultiPlatformImage(ctx, env, p.Plan)
 }
 
-func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg planning.Configuration) (*oci.ImageID, error) {
+func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg cfg.Configuration) (*oci.ImageID, error) {
 	if !UsePrebuilts {
 		return nil, nil
 	}
@@ -143,7 +143,7 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg planning.Co
 	return selected, nil
 }
 
-func planImage(ctx context.Context, pl pkggraph.PackageLoader, env planning.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func planImage(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
 	// We prepare the build spec, as we need information, e.g. whether it's platform independent,
 	// if a prebuilt is specified.
 	spec, err := buildLayeredSpec(ctx, pl, env, loc, bin, opts)
@@ -165,7 +165,7 @@ func planImage(ctx context.Context, pl pkggraph.PackageLoader, env planning.Cont
 	return spec, nil
 }
 
-func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env planning.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
+func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, opts BuildImageOpts) (build.Spec, error) {
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
@@ -200,7 +200,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env planni
 	return mergeSpecs{specs: specs, descriptions: descriptions, platformIndependent: platformIndependent}, nil
 }
 
-func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env planning.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, opts BuildImageOpts) (build.Spec, error) {
+func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, opts BuildImageOpts) (build.Spec, error) {
 	if src == nil {
 		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
 	}

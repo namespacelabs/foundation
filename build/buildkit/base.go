@@ -25,16 +25,16 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/go-ids"
 )
 
 const buildkitIntegrationVersion = 1
 
 type baseRequest[V any] struct {
-	sourceLabel    string                 // For description purposes only, does not affect output.
-	sourcePackage  schema.PackageName     // For description purposes only, does not affect output.
-	config         planning.Configuration // Doesn't affect the output.
+	sourceLabel    string             // For description purposes only, does not affect output.
+	sourcePackage  schema.PackageName // For description purposes only, does not affect output.
+	config         cfg.Configuration  // Doesn't affect the output.
 	targetPlatform specs.Platform
 	req            compute.Computable[*frontendReq]
 	localDirs      []LocalContents // If set, the output is not cachable by us.

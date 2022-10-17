@@ -10,11 +10,11 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
-func codegenNode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, loc fnfs.Location) error {
+func codegenNode(ctx context.Context, out pkggraph.MutableModule, env cfg.Context, loc fnfs.Location) error {
 	// Aggregates and prints all accumulated codegen errors on return.
 	var errorCollector fnerrors.ErrorCollector
 

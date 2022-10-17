@@ -4,15 +4,15 @@
 
 package pkggraph
 
-import "namespacelabs.dev/foundation/std/planning"
+import "namespacelabs.dev/foundation/std/cfg"
 
 type Context interface {
-	planning.Context
+	cfg.Context
 	PackageLoader
 }
 
 type SealedContext interface {
-	planning.Context
+	cfg.Context
 	SealedPackageLoader
 }
 
@@ -22,12 +22,12 @@ type ContextWithMutableModule interface {
 }
 
 type sealedCtx struct {
-	planning.Context
+	cfg.Context
 	SealedPackageLoader
 }
 
 var _ SealedContext = sealedCtx{}
 
-func MakeSealedContext(env planning.Context, pr SealedPackageLoader) SealedContext {
+func MakeSealedContext(env cfg.Context, pr SealedPackageLoader) SealedContext {
 	return sealedCtx{Context: env, SealedPackageLoader: pr}
 }

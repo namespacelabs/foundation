@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newPrepareCmd() *cobra.Command {
@@ -19,7 +19,7 @@ func newPrepareCmd() *cobra.Command {
 		Use:   "prepare-ingress",
 		Short: "Runs ingress preparation.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		rt, err := kubernetes.ConnectToCluster(ctx, env.Configuration())
 		if err != nil {
 			return err

@@ -25,8 +25,8 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	nodejsbinary "namespacelabs.dev/foundation/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 const appRootPath = "/app"
@@ -97,7 +97,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 	return nodejsImage, nil
 }
 
-func nodeEnv(env planning.Context) string {
+func nodeEnv(env cfg.Context) string {
 	if env.Environment().GetPurpose() == schema.Environment_PRODUCTION {
 		return "production"
 	} else {

@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const DevHostFilename = "devhost.textpb"
@@ -87,7 +87,7 @@ var _ protoregistry.MessageTypeResolver = configMessageLookup{}
 var _ protoregistry.ExtensionTypeResolver = configMessageLookup{}
 
 func (configMessageLookup) FindMessageByName(message protoreflect.FullName) (protoreflect.MessageType, error) {
-	mt := planning.LookupConfigMessage(message)
+	mt := cfg.LookupConfigMessage(message)
 	if mt == nil {
 		return nil, fnerrors.BadInputError("%s: no such configuration message", message)
 	}
@@ -113,7 +113,7 @@ func (configMessageLookup) FindExtensionByNumber(message protoreflect.FullName, 
 
 func validate(messages []*anypb.Any) error {
 	for _, msg := range messages {
-		if !planning.IsValidConfigType(msg) {
+		if !cfg.IsValidConfigType(msg) {
 			return fnerrors.InternalError("%s: unsupported configuration type", msg.TypeUrl)
 		}
 	}

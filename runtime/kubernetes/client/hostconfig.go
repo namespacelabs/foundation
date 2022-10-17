@@ -4,11 +4,9 @@
 
 package client
 
-import (
-	"namespacelabs.dev/foundation/std/planning"
-)
+import "namespacelabs.dev/foundation/std/cfg"
 
-func NewLocalHostEnv(contextName string, env planning.Context) *HostEnv {
+func NewLocalHostEnv(contextName string, env cfg.Context) *HostEnv {
 	hostEnv := &HostEnv{
 		Kubeconfig: "~/.kube/config",
 		Context:    contextName,

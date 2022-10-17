@@ -10,13 +10,13 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newInfoCmd() *cobra.Command {
 	var (
 		locs fncobra.Locations
-		env  planning.Context
+		env  cfg.Context
 	)
 
 	return fncobra.Cmd(

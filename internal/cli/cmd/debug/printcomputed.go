@@ -17,13 +17,13 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos/resolver"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newPrintComputedCmd() *cobra.Command {
 	var (
-		env        planning.Context
+		env        cfg.Context
 		locs       fncobra.Locations
 		outputType string
 	)

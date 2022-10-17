@@ -12,11 +12,11 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func Prune(ctx context.Context, cfg planning.Configuration, targetPlatform specs.Platform) error {
+func Prune(ctx context.Context, cfg cfg.Configuration, targetPlatform specs.Platform) error {
 	return tasks.Action("buildkit.prune").Run(ctx, func(ctx context.Context) error {
 		cli, err := compute.GetValue(ctx, connectToClient(cfg, targetPlatform))
 		if err != nil {

@@ -30,8 +30,8 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -39,7 +39,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 	var (
 		baseRepository string
 		buildOpts      buildOpts
-		env            planning.Context
+		env            cfg.Context
 		cmdLocs        fncobra.Locations
 	)
 
@@ -72,7 +72,7 @@ type buildOpts struct {
 
 const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 
-func buildLocations(ctx context.Context, env planning.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
+func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := parsing.NewPackageLoader(env)
 
 	var pkgs []*pkggraph.Package

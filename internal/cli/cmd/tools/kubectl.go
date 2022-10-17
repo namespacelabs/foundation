@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newKubeCtlCmd() *cobra.Command {
@@ -31,7 +31,7 @@ func newKubeCtlCmd() *cobra.Command {
 
 	keepConfig := cmd.Flags().Bool("keep_config", false, "If set to true, does not delete the generated configuration.")
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
 		cfg, err := writeKubeconfig(ctx, env, *keepConfig)
 		if err != nil {
 			return err
@@ -64,7 +64,7 @@ type Kubeconfig struct {
 	keepConfig bool
 }
 
-func writeKubeconfig(ctx context.Context, env planning.Context, keepConfig bool) (*Kubeconfig, error) {
+func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Kubeconfig, error) {
 	cluster, err := kubernetes.ConnectToNamespace(ctx, env)
 	if err != nil {
 		return nil, err

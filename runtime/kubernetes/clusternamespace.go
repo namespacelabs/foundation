@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 
 	fnschema "namespacelabs.dev/foundation/schema"
@@ -43,7 +43,7 @@ type clusterTarget struct {
 var _ runtime.ClusterNamespace = &ClusterNamespace{}
 var _ kubedef.KubeClusterNamespace = &ClusterNamespace{}
 
-func ConnectToNamespace(ctx context.Context, env planning.Context) (*ClusterNamespace, error) {
+func ConnectToNamespace(ctx context.Context, env cfg.Context) (*ClusterNamespace, error) {
 	cluster, err := ConnectToCluster(ctx, env.Configuration())
 	if err != nil {
 		return nil, err

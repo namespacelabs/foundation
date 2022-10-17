@@ -9,14 +9,14 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 var (
 	registrations = map[string]InstantiateClassFunc{}
 )
 
-type InstantiateClassFunc func(context.Context, planning.Configuration) (Class, error)
+type InstantiateClassFunc func(context.Context, cfg.Configuration) (Class, error)
 
 func Register(name string, r InstantiateClassFunc) {
 	registrations[strings.ToLower(name)] = r
@@ -27,7 +27,7 @@ func HasRuntime(name string) bool {
 	return ok
 }
 
-func ClusterFor(ctx context.Context, env planning.Context) (Cluster, error) {
+func ClusterFor(ctx context.Context, env cfg.Context) (Cluster, error) {
 	deferred, err := ClassFor(ctx, env)
 	if err != nil {
 		return nil, err
@@ -36,7 +36,7 @@ func ClusterFor(ctx context.Context, env planning.Context) (Cluster, error) {
 	return deferred.AttachToCluster(ctx, env.Configuration())
 }
 
-func PlannerFor(ctx context.Context, env planning.Context) (Planner, error) {
+func PlannerFor(ctx context.Context, env cfg.Context) (Planner, error) {
 	cluster, err := ClusterFor(ctx, env)
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func PlannerFor(ctx context.Context, env planning.Context) (Planner, error) {
 	return cluster.Planner(env), nil
 }
 
-func NamespaceFor(ctx context.Context, env planning.Context) (ClusterNamespace, error) {
+func NamespaceFor(ctx context.Context, env cfg.Context) (ClusterNamespace, error) {
 	cluster, err := ClusterFor(ctx, env)
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func NamespaceFor(ctx context.Context, env planning.Context) (ClusterNamespace, 
 	return cluster.Bind(env)
 }
 
-func ClassFor(ctx context.Context, env planning.Context) (Class, error) {
+func ClassFor(ctx context.Context, env cfg.Context) (Class, error) {
 	rt := strings.ToLower(env.Environment().Runtime)
 	if obtain, ok := registrations[rt]; ok {
 		r, err := obtain(ctx, env.Configuration())

@@ -18,12 +18,12 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewLogsCmd() *cobra.Command {
 	var (
-		env     planning.Context
+		env     cfg.Context
 		locs    fncobra.Locations
 		servers fncobra.Servers
 

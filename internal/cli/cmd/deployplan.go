@@ -22,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewDeployPlanCmd() *cobra.Command {
@@ -51,7 +51,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		config, err := planning.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
+		config, err := cfg.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
 		if err != nil {
 			return err
 		}
@@ -71,14 +71,14 @@ func NewDeployPlanCmd() *cobra.Command {
 
 type serializedContext struct {
 	root   *parsing.Root
-	config planning.Configuration
+	config cfg.Configuration
 	env    *schema.Environment
 }
 
-func (se serializedContext) Workspace() planning.Workspace         { return se.root.Workspace() }
-func (se serializedContext) Environment() *schema.Environment      { return se.env }
-func (se serializedContext) ErrorLocation() string                 { return se.root.ErrorLocation() }
-func (se serializedContext) Configuration() planning.Configuration { return se.config }
+func (se serializedContext) Workspace() cfg.Workspace         { return se.root.Workspace() }
+func (se serializedContext) Environment() *schema.Environment { return se.env }
+func (se serializedContext) ErrorLocation() string            { return se.root.ErrorLocation() }
+func (se serializedContext) Configuration() cfg.Configuration { return se.config }
 
 func loadPlan(ctx context.Context, image bool, path string) (*schema.DeployPlan, error) {
 	raw, err := loadPlanContents(ctx, image, path)

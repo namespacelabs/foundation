@@ -19,8 +19,8 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/aws/auth"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 const appURL = "https://github.com/apps/namespace-continuous-integration/installations/new"
@@ -33,7 +33,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		Use:   "setup-autopush",
 		Short: "Sets up production cluster for automatic deployments to a staging environment.",
 		Args:  cobra.NoArgs,
-	}, func(ctx context.Context, env planning.Context, args []string) error {
+	}, func(ctx context.Context, env cfg.Context, args []string) error {
 		cluster, err := runtime.ClusterFor(ctx, env)
 		if err != nil {
 			return err
@@ -100,7 +100,7 @@ func newSetupAutopushCmd() *cobra.Command {
 	return cmd
 }
 
-func getAwsAccount(ctx context.Context, env planning.Context) (string, error) {
+func getAwsAccount(ctx context.Context, env cfg.Context) (string, error) {
 	cfg, err := awsprovider.MustConfiguredSession(ctx, env.Configuration())
 	if err != nil {
 		return "", err

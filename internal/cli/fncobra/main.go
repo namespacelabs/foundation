@@ -56,6 +56,8 @@ import (
 	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
 	shellapplier "namespacelabs.dev/foundation/internal/parsing/integration/shellscript"
 	webapplier "namespacelabs.dev/foundation/internal/parsing/integration/web"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
@@ -73,17 +75,15 @@ import (
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
 	"namespacelabs.dev/foundation/orchestration"
-	"namespacelabs.dev/foundation/provision/deploy"
-	"namespacelabs.dev/foundation/provision/tool"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/runtime/tools/toolsonk8s"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/cfg/knobs"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/std/planning/knobs"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/actiontracing"
 	"namespacelabs.dev/foundation/std/tasks/simplelog"
@@ -148,7 +148,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		}
 
 		if useKubernetesRuntime {
-			tools.MakeAlternativeRuntime = func(cfg planning.Configuration) tools.Runtime {
+			tools.MakeAlternativeRuntime = func(cfg cfg.Configuration) tools.Runtime {
 				return toolsonk8s.Runtime{Config: cfg}
 			}
 		}
@@ -198,7 +198,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		})
 
 		// Runtime
-		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env planning.Context, planner runtime.Planner, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
+		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env cfg.Context, planner runtime.Planner, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
 			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName(), env, planner, s.ServerNaming)
 		})
 
@@ -260,7 +260,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		kubeops.Register()
 		orchestration.RegisterPrepare()
 
-		planning.ValidateNoConfigTypeCollisions()
+		cfg.ValidateNoConfigTypeCollisions()
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)

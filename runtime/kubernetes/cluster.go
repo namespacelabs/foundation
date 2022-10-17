@@ -15,14 +15,14 @@ import (
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type Cluster struct {
 	cli            *k8s.Clientset
 	computedClient client.Prepared
-	config         planning.Configuration
+	config         cfg.Configuration
 
 	FetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
 
@@ -43,7 +43,7 @@ type state struct {
 
 var _ kubedef.KubeCluster = &Cluster{}
 
-func ConnectToCluster(ctx context.Context, config planning.Configuration) (*Cluster, error) {
+func ConnectToCluster(ctx context.Context, config cfg.Configuration) (*Cluster, error) {
 	cli, err := client.NewClient(ctx, config)
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (u *Cluster) Class() runtime.Class {
 	return kubernetesClass{}
 }
 
-func (u *Cluster) Planner(env planning.Context) runtime.Planner {
+func (u *Cluster) Planner(env cfg.Context) runtime.Planner {
 	return NewPlanner(env, u.SystemInfo)
 }
 
@@ -77,7 +77,7 @@ func (u *Cluster) PreparedClient() client.Prepared {
 	return u.computedClient
 }
 
-func (u *Cluster) Bind(env planning.Context) (runtime.ClusterNamespace, error) {
+func (u *Cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
 	return &ClusterNamespace{cluster: u, target: newTarget(env)}, nil
 }
 
@@ -98,7 +98,7 @@ func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
 	return r.ClusterAttachedState.EnsureState(ctx, key, r.config, r, nil)
 }
 
-func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config planning.Configuration, cluster runtime.Cluster, key *string) (any, error) {
+func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config cfg.Configuration, cluster runtime.Cluster, key *string) (any, error) {
 	r.mu.Lock()
 	if r.attachedState == nil {
 		r.attachedState = map[string]*state{}

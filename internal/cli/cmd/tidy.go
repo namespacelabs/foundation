@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 const (
@@ -31,7 +31,7 @@ const (
 
 func NewTidyCmd() *cobra.Command {
 	var (
-		env planning.Context
+		env cfg.Context
 	)
 
 	return fncobra.Cmd(
@@ -56,7 +56,7 @@ func NewTidyCmd() *cobra.Command {
 			}
 
 			// Reload env since root was potentially updated.
-			env, err := planning.LoadContext(root, envRef)
+			env, err := cfg.LoadContext(root, envRef)
 			if err != nil {
 				return err
 			}
@@ -114,7 +114,7 @@ func NewTidyCmd() *cobra.Command {
 		})
 }
 
-func maybeUpdateWorkspace(ctx context.Context, env planning.Context) error {
+func maybeUpdateWorkspace(ctx context.Context, env cfg.Context) error {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return err

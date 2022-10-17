@@ -26,18 +26,18 @@ import (
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/languages/opaque"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 const (
@@ -157,7 +157,7 @@ type impl struct {
 	languages.NoDev
 }
 
-func GetExternalModuleForDeps(server provision.Server) []build.Workspace {
+func GetExternalModuleForDeps(server planning.Server) []build.Workspace {
 	moduleMap := map[string]*pkggraph.Module{}
 	for _, dep := range server.Deps() {
 		if dep.Location.Module.ModuleName() != server.Module().ModuleName() &&
@@ -174,7 +174,7 @@ func GetExternalModuleForDeps(server provision.Server) []build.Workspace {
 	return modules
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
 	yarnRoot, err := findYarnRoot(server.Location)
 	if err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func pkgSupportsNodejs(pkg *pkggraph.Package) bool {
 		(pkg.Node() != nil && slices.Contains(pkg.Node().CodegeneratedFrameworks(), schema.Framework_NODEJS))
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 	}
@@ -219,7 +219,7 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 	return ctx, nil, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.ContainerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, srv planning.Server, run *runtime.ContainerRunOpts) error {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		// For dev builds we use runtime complication of Typescript.
 		run.ReadOnlyFilesystem = false
@@ -239,7 +239,7 @@ func (impl) PrepareRun(ctx context.Context, srv provision.Server, run *runtime.C
 	return nil
 }
 
-func (impl) TidyWorkspace(ctx context.Context, env planning.Context, packages []*pkggraph.Package) error {
+func (impl) TidyWorkspace(ctx context.Context, env cfg.Context, packages []*pkggraph.Package) error {
 	yarnRoots := []pkggraph.Location{}
 	yarnRootsMap := map[string]struct{}{} // Abs path -> presence.
 	for _, pkg := range packages {

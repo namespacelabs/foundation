@@ -10,17 +10,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type Session struct {
-	cfg  planning.Configuration
+	cfg  cfg.Configuration
 	sesh *awsprovider.Session
 	eks  *eks.Client
 	iam  *iam.Client
 }
 
-func NewSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+func NewSession(ctx context.Context, cfg cfg.Configuration) (*Session, error) {
 	sesh, err := awsprovider.MustConfiguredSession(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func NewSession(ctx context.Context, cfg planning.Configuration) (*Session, erro
 	}, nil
 }
 
-func NewOptionalSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+func NewOptionalSession(ctx context.Context, cfg cfg.Configuration) (*Session, error) {
 	sesh, err := awsprovider.ConfiguredSession(ctx, cfg)
 	if err != nil {
 		return nil, err

@@ -21,10 +21,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
-func MakeProtoSrcs(ctx context.Context, conf planning.Configuration, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
+func MakeProtoSrcs(ctx context.Context, conf cfg.Configuration, request map[schema.Framework]*protos.FileDescriptorSetAndDeps) (compute.Computable[fs.FS], error) {
 	platform, err := tools.HostPlatform(ctx, conf)
 	if err != nil {
 		return nil, err

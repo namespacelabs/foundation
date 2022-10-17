@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newDenoCmd() *cobra.Command {
@@ -22,7 +22,7 @@ func newDenoCmd() *cobra.Command {
 		Short: "Run Namespace-configured deno.",
 	}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
 		d, err := deno.EnsureSDK(ctx)
 		if err != nil {
 			return err

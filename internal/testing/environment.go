@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -19,7 +19,7 @@ var (
 	UseNamespaceCloud = false
 )
 
-func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool) planning.Context {
+func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) cfg.Context {
 	testInv := ids.NewRandomBase32ID(8)
 	testEnv := &schema.Environment{
 		Name:      "test-" + testInv,
@@ -28,7 +28,7 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		Ephemeral: ephemeral,
 	}
 
-	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous planning.ConfigurationSlice) planning.ConfigurationSlice {
+	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
 		if UseNamespaceCloud {
 			// Prepend as this configuration should take precedence.
 			previous.Configuration = append(protos.WrapAnysOrDie(
@@ -40,5 +40,5 @@ func PrepareEnv(ctx context.Context, sourceEnv planning.Context, ephemeral bool)
 		return previous
 	})
 
-	return planning.MakeUnverifiedContext(newCfg, testEnv)
+	return cfg.MakeUnverifiedContext(newCfg, testEnv)
 }

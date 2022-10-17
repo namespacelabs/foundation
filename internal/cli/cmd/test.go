@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -35,7 +35,7 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		env                     planning.Context
+		env                     cfg.Context
 		locs                    fncobra.Locations
 		testOpts                testing.TestOpts
 		includeServers          bool

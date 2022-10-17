@@ -12,11 +12,11 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareBuildkit(env planning.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareBuildkit(env cfg.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.buildkit").HumanReadablef("Preparing the buildkit daemon"),
 		compute.Inputs().Indigestible("env", env),

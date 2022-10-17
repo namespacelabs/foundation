@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newRevealCmd() *cobra.Command {
 	var (
-		locLoadingEnv          planning.Context
+		locLoadingEnv          cfg.Context
 		secretKey, specificEnv string
 		locs                   fncobra.Locations
 	)
@@ -45,7 +45,7 @@ func newRevealCmd() *cobra.Command {
 				// Need some env for package loading.
 				envStr = "dev"
 			}
-			env, err := planning.LoadContext(locs.Root, envStr)
+			env, err := cfg.LoadContext(locs.Root, envStr)
 			if err != nil {
 				return err
 			}

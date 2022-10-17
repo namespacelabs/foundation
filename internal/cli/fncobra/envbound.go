@@ -10,11 +10,11 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 // Deprecated, use "ParseEnv"/"FixedEnv" instead.
-func CmdWithEnv(cmd *cobra.Command, f func(context.Context, planning.Context, []string) error) *cobra.Command {
+func CmdWithEnv(cmd *cobra.Command, f func(context.Context, cfg.Context, []string) error) *cobra.Command {
 	var envRef string
 
 	cmd.Flags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
@@ -25,7 +25,7 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, planning.Context, []
 			return err
 		}
 
-		env, err := planning.LoadContext(root, envRef)
+		env, err := cfg.LoadContext(root, envRef)
 		if err != nil {
 			return err
 		}
@@ -37,16 +37,16 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, planning.Context, []
 }
 
 type parseEnv struct {
-	envOut *planning.Context
+	envOut *cfg.Context
 	envRef string
 }
 
-func ParseEnv(envOut *planning.Context) ArgsParser {
+func ParseEnv(envOut *cfg.Context) ArgsParser {
 	return &parseEnv{envOut: envOut}
 }
 
 // HardcodeEnv is a temporary facility to trigger context loading with a predefined environment name.
-func HardcodeEnv(envOut *planning.Context, env string) ArgsParser {
+func HardcodeEnv(envOut *cfg.Context, env string) ArgsParser {
 	return &parseEnv{envOut: envOut, envRef: env}
 }
 
@@ -66,7 +66,7 @@ func (p *parseEnv) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	env, err := planning.LoadContext(root, p.envRef)
+	env, err := cfg.LoadContext(root, p.envRef)
 	if err != nil {
 		return err
 	}

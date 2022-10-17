@@ -11,8 +11,8 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -28,7 +28,7 @@ type OpaqueIntegration struct {
 	languages.NoDev
 }
 
-func (OpaqueIntegration) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server provision.Server, isFocus bool) (build.Spec, error) {
+func (OpaqueIntegration) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 
 	if binRef == nil {
@@ -49,7 +49,7 @@ func (OpaqueIntegration) PrepareBuild(ctx context.Context, _ languages.Available
 	return prep.Plan.Spec, nil
 }
 
-func (OpaqueIntegration) PrepareRun(ctx context.Context, server provision.Server, run *runtime.ContainerRunOpts) error {
+func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server, run *runtime.ContainerRunOpts) error {
 	binRef := server.Proto().GetMainContainer().GetBinaryRef()
 	if binRef != nil {
 		_, binary, err := pkggraph.LoadBinary(ctx, server.SealedContext(), binRef)

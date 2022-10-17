@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newNewClusterCmd() *cobra.Command {
@@ -32,7 +32,7 @@ func newNewClusterCmd() *cobra.Command {
 			return err
 		}
 
-		env, err := planning.LoadContext(root, envRef)
+		env, err := cfg.LoadContext(root, envRef)
 		if err != nil {
 			return err
 		}

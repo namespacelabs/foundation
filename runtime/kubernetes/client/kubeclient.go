@@ -18,10 +18,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	fnschema "namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
-var hostEnvConfigType = planning.DefineConfigType[*HostEnv]()
+var hostEnvConfigType = cfg.DefineConfigType[*HostEnv]()
 
 type ClusterConfiguration struct {
 	Config           clientcmdapi.Config
@@ -35,7 +35,7 @@ type DeferredProvider struct{}
 
 type TokenProviderFunc func(context.Context) (string, error)
 
-type ProviderFunc func(context.Context, planning.Configuration) (ClusterConfiguration, error)
+type ProviderFunc func(context.Context, cfg.Configuration) (ClusterConfiguration, error)
 
 var (
 	providers = map[string]ProviderFunc{}
@@ -58,7 +58,7 @@ type configResult struct {
 	ClusterConfiguration
 }
 
-func computeConfig(ctx context.Context, c *HostEnv, config planning.Configuration) (*configResult, error) {
+func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*configResult, error) {
 	if c.Incluster {
 		return nil, nil
 	}
@@ -125,7 +125,7 @@ func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configRes
 	return restcfg, nil
 }
 
-func NewClient(ctx context.Context, cfg planning.Configuration) (*Prepared, error) {
+func NewClient(ctx context.Context, cfg cfg.Configuration) (*Prepared, error) {
 	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
 
 	hostEnv, err := CheckGetHostEnv(cfg)
@@ -189,7 +189,7 @@ func copyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config
 	return &config
 }
 
-func CheckGetHostEnv(cfg planning.Configuration) (*HostEnv, error) {
+func CheckGetHostEnv(cfg cfg.Configuration) (*HostEnv, error) {
 	hostEnv, ok := hostEnvConfigType.CheckGet(cfg)
 	if !ok {
 		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", cfg.EnvKey())

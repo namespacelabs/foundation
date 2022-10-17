@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type targetPkg struct {
@@ -23,7 +23,7 @@ type targetPkg struct {
 
 func parseTargetPkgWithDeps(targetPkgOut *targetPkg, typ string) []fncobra.ArgsParser {
 	var (
-		env  planning.Context
+		env  cfg.Context
 		locs fncobra.Locations
 	)
 	return []fncobra.ArgsParser{

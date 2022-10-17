@@ -20,13 +20,14 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/parsing/module"
+	"namespacelabs.dev/foundation/internal/planning/deploy/render"
+	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/provision/deploy/render"
-	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/protocol"
 )
@@ -49,7 +50,7 @@ type Session struct {
 	}
 	cancelWorkspace func()
 	currentStack    *Stack
-	currentEnv      planning.Context
+	currentEnv      cfg.Context
 	cluster         runtime.ClusterNamespace
 	pfw             *endpointfwd.PortForward
 }
@@ -163,14 +164,14 @@ func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Exe
 	return nil
 }
 
-func loadWorkspace(ctx context.Context, absRoot, envName string) (planning.Context, error) {
+func loadWorkspace(ctx context.Context, absRoot, envName string) (cfg.Context, error) {
 	// Re-create loc/root here, to dump the cache.
 	root, err := module.FindRoot(ctx, absRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	return planning.LoadContext(root, envName)
+	return cfg.LoadContext(root, envName)
 }
 
 type sinkObserver struct{ s *Session }
@@ -242,7 +243,7 @@ func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(tasks.ActionID(taskID), name)
 }
 
-func (s *Session) setEnvironment(parentCtx context.Context, env planning.Context) (runtime.ClusterNamespace, *endpointfwd.PortForward, error) {
+func (s *Session) setEnvironment(parentCtx context.Context, env cfg.Context) (runtime.ClusterNamespace, *endpointfwd.PortForward, error) {
 	if s.pfw != nil && proto.Equal(s.currentEnv.Environment(), env.Environment()) {
 		// Nothing to do.
 		return s.cluster, s.pfw, nil

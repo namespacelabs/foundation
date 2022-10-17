@@ -8,7 +8,7 @@ import (
 	"io"
 
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type EditableWorkspaceData interface {
@@ -19,7 +19,7 @@ type EditableWorkspaceData interface {
 }
 
 type WorkspaceData interface {
-	planning.Workspace
+	cfg.Workspace
 
 	AbsPath() string
 	DefinitionFile() string

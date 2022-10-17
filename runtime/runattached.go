@@ -12,11 +12,11 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema/runtime"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
-func RunAttached(ctx context.Context, config planning.Context, cluster ClusterNamespace, spec DeployableSpec, io TerminalIO) error {
+func RunAttached(ctx context.Context, config cfg.Context, cluster ClusterNamespace, spec DeployableSpec, io TerminalIO) error {
 	plan, err := cluster.Planner().PlanDeployment(ctx, DeploymentSpec{
 		Specs: []DeployableSpec{spec},
 	})
@@ -55,7 +55,7 @@ func RunAttached(ctx context.Context, config planning.Context, cluster ClusterNa
 	return cluster.Cluster().AttachTerminal(ctx, mainContainers[0], io)
 }
 
-func RunAttachedStdio(ctx context.Context, config planning.Context, cluster ClusterNamespace, spec DeployableSpec) error {
+func RunAttachedStdio(ctx context.Context, config cfg.Context, cluster ClusterNamespace, spec DeployableSpec) error {
 	return RunAttached(ctx, config, cluster, spec, TerminalIO{
 		TTY:    true,
 		Stdin:  os.Stdin,

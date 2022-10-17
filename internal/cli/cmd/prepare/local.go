@@ -15,8 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func newLocalCmd() *cobra.Command {
@@ -32,7 +32,7 @@ func newLocalCmd() *cobra.Command {
 				return err
 			}
 
-			env, err := planning.LoadContext(root, envRef)
+			env, err := cfg.LoadContext(root, envRef)
 			if err != nil {
 				return err
 			}
@@ -58,7 +58,7 @@ func newLocalCmd() *cobra.Command {
 	return localCmd
 }
 
-func prepareK8s(ctx context.Context, env planning.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func prepareK8s(ctx context.Context, env cfg.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	if contextName != "" {
 		return prepare.PrepareExistingK8s(env, contextName)
 	}

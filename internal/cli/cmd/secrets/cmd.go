@@ -19,8 +19,8 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func NewSecretsCmd() *cobra.Command {
@@ -45,7 +45,7 @@ type location struct {
 	loc  pkggraph.Location
 }
 
-func loadBundleFromArgs(ctx context.Context, env planning.Context, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
+func loadBundleFromArgs(ctx context.Context, env cfg.Context, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
 		return nil, nil, err

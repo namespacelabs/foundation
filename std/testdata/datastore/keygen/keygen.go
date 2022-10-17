@@ -7,8 +7,8 @@ package main
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/provision/configure"
-	"namespacelabs.dev/foundation/provision/tool/protocol"
+	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/go-ids"
 )

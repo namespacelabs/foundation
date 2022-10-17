@@ -11,8 +11,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -44,7 +44,7 @@ func (p *ProvisionResult) AppendWith(rhs ProvisionResult) {
 	p.ServerExtension = append(p.ServerExtension, rhs.ServerExtension...)
 }
 
-type PrepareHookFunc func(context.Context, planning.Context, *schema.Stack_Entry) (*InternalPrepareProps, error)
+type PrepareHookFunc func(context.Context, cfg.Context, *schema.Stack_Entry) (*InternalPrepareProps, error)
 
 func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	if registrations.prepare == nil {
@@ -54,7 +54,7 @@ func RegisterPrepareHook(name string, f PrepareHookFunc) {
 	registrations.prepare[name] = f
 }
 
-func InvokeInternalPrepareHook(ctx context.Context, name string, env planning.Context, srv *schema.Stack_Entry) (*InternalPrepareProps, error) {
+func InvokeInternalPrepareHook(ctx context.Context, name string, env cfg.Context, srv *schema.Stack_Entry) (*InternalPrepareProps, error) {
 	if f, ok := registrations.prepare[name]; ok {
 		return tasks.Return(ctx, tasks.Action("prepare.invoke-hook").Scope(srv.GetPackageName()).Arg("name", name), func(ctx context.Context) (*InternalPrepareProps, error) {
 			return f(ctx, env, srv)

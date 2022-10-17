@@ -13,11 +13,11 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	kubenode "namespacelabs.dev/foundation/std/runtime/kubernetes"
 )
 
-func prepareApplyServerExtensions(_ context.Context, _ planning.Context, srv *schema.Stack_Entry) (*planninghooks.InternalPrepareProps, error) {
+func prepareApplyServerExtensions(_ context.Context, _ cfg.Context, srv *schema.Stack_Entry) (*planninghooks.InternalPrepareProps, error) {
 	var ensureServiceAccount bool
 
 	if err := allocations.Visit(srv.Server.Allocation, kubeNode, &kubenode.ServerExtensionArgs{},

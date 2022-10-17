@@ -12,19 +12,19 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/types"
 )
 
 const LocalIngressPort = 40080
 
-func ComputeIngress(ctx context.Context, env planning.Context, planner Planner, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
+func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *schema.Stack_Entry, allEndpoints []*schema.Endpoint) ([]*schema.IngressFragment, error) {
 	var ingresses []*schema.IngressFragment
 
 	var serverEndpoints []*schema.Endpoint
@@ -151,7 +151,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, planner Planner, 
 	if needsHTTP := len(sch.Server.UrlMap) > 0; needsHTTP {
 		var httpEndpoints []*schema.Endpoint
 		for _, endpoint := range serverEndpoints {
-			if endpoint.ServiceName == provision.HttpServiceName {
+			if endpoint.ServiceName == planning.HttpServiceName {
 				httpEndpoints = append(httpEndpoints, endpoint)
 				break
 			}
@@ -218,7 +218,7 @@ func ComputeIngress(ctx context.Context, env planning.Context, planner Planner, 
 	return ingresses, nil
 }
 
-func AttachComputedDomains(ctx context.Context, ws string, env planning.Context, cluster Planner, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
+func AttachComputedDomains(ctx context.Context, ws string, env cfg.Context, cluster Planner, sch *schema.Stack_Entry, template *schema.IngressFragment, allocatedName DomainsRequest) ([]*schema.IngressFragment, error) {
 	domains, err := computeDomains(ctx, ws, env, cluster, sch.ServerNaming, allocatedName)
 	if err != nil {
 		return nil, err
@@ -258,7 +258,7 @@ func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment
 	return nil, nil
 }
 
-func computeDomains(ctx context.Context, ws string, env planning.Context, cluster Planner, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+func computeDomains(ctx context.Context, ws string, env cfg.Context, cluster Planner, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
 	computed, err := ComputeNaming(ctx, ws, env, cluster, naming)
 	if err != nil {
 		return nil, err

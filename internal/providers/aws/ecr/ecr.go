@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -30,7 +30,7 @@ type ecrManager struct {
 var _ registry.Manager = ecrManager{}
 
 func Register() {
-	registry.Register("aws/ecr", func(ctx context.Context, ck planning.Configuration) (m registry.Manager, finalErr error) {
+	registry.Register("aws/ecr", func(ctx context.Context, ck cfg.Configuration) (m registry.Manager, finalErr error) {
 		sesh, err := awsprovider.MustConfiguredSession(ctx, ck)
 		if err != nil {
 			return nil, err

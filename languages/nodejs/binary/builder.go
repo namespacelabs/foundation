@@ -16,11 +16,11 @@ import (
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
-func NodejsBuilder(env planning.Context, loc pkggraph.Location, config *schema.ImageBuildPlan_NodejsBuild, isFocus bool) (build.Spec, error) {
+func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.ImageBuildPlan_NodejsBuild, isFocus bool) (build.Spec, error) {
 	return &buildNodeJS{
 		loc:        loc.Module.MakeLocation(loc.Rel(config.RelPath)),
 		config:     config,
@@ -77,7 +77,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 	return nodejsImage, nil
 }
 
-func nodeEnv(env planning.Context) string {
+func nodeEnv(env cfg.Context) string {
 	if env.Environment().GetPurpose() == schema.Environment_PRODUCTION {
 		return "production"
 	} else {

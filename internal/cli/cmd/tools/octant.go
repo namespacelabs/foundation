@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/octant"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newOctantCmd() *cobra.Command {
@@ -21,7 +21,7 @@ func newOctantCmd() *cobra.Command {
 		Short: "[Experimental] Run Octant, configured for the specified environment.",
 	}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env planning.Context, args []string) error {
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
 		bin, err := octant.EnsureSDK(ctx)
 		if err != nil {
 			return err

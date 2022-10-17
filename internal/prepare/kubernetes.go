@@ -10,11 +10,11 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareCluster(env planning.Context, confs ...compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareCluster(env cfg.Context, confs ...compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	kube := instantiateKube(env, confs...)
 
 	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
@@ -25,7 +25,7 @@ func PrepareCluster(env planning.Context, confs ...compute.Computable[[]*schema.
 	return prepares
 }
 
-func instantiateKube(env planning.Context, confs ...compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[*kubernetes.Cluster] {
+func instantiateKube(env cfg.Context, confs ...compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) compute.Computable[*kubernetes.Cluster] {
 	return compute.Map(tasks.Action("prepare.kubernetes"),
 		compute.Inputs().Computable("conf", compute.Transform("parse results", compute.Collect(tasks.Action("prepare.kubernetes.configs"), confs...),
 			func(ctx context.Context, computed []compute.ResultWithTimestamp[[]*schema.DevHost_ConfigureEnvironment]) ([]*schema.DevHost_ConfigureEnvironment, error) {
@@ -41,7 +41,7 @@ func instantiateKube(env planning.Context, confs ...compute.Computable[[]*schema
 
 			devhost := &schema.DevHost{Configure: computed.Value}
 
-			config, err := planning.MakeConfigurationCompat(env, env.Workspace(), devhost, env.Environment())
+			config, err := cfg.MakeConfigurationCompat(env, env.Workspace(), devhost, env.Environment())
 			if err != nil {
 				return nil, err
 			}

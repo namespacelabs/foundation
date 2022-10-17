@@ -10,12 +10,12 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/aws/configuration/eks"
 )
 
-func PrepareEksCluster(env planning.Context, clusterName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareEksCluster(env cfg.Context, clusterName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.eks-cluster-config").HumanReadablef("Prepare the EKS cluster configuration"),
 		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),

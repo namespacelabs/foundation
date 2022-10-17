@@ -11,13 +11,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/languages"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
-func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
+func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env cfg.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := parsing.NewPackageLoader(env)
 	g := execution.NewEmptyPlan()
 	for _, loc := range locs {
@@ -45,7 +45,7 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 }
 
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
-func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
+func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env cfg.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
 	pl := parsing.NewPackageLoader(env)
 
 	g := execution.NewEmptyPlan()

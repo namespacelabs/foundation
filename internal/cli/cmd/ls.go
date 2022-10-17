@@ -13,12 +13,12 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewLsCmd() *cobra.Command {
 	var (
-		env planning.Context
+		env cfg.Context
 	)
 
 	return fncobra.Cmd(

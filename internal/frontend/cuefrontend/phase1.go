@@ -13,8 +13,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 type phase1plan struct {
@@ -45,7 +45,7 @@ type cueContainer struct {
 	Args   *ArgsListOrMap `json:"args"`
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, env planning.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
+func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
 	if env.Environment() == nil {
 		return pkggraph.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
 	}

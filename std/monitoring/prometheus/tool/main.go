@@ -8,7 +8,7 @@ import (
 	"flag"
 	"log"
 
-	"namespacelabs.dev/foundation/provision/configure"
+	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/schema"
 )
 

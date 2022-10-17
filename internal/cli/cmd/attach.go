@@ -14,12 +14,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/observers"
+	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewAttachCmd() *cobra.Command {
@@ -49,7 +49,7 @@ func NewAttachCmd() *cobra.Command {
 				Provider: observer,
 				Keybindings: []keyboard.Handler{
 					logtail.Keybinding{
-						LoadEnvironment: func(name string) (planning.Context, error) {
+						LoadEnvironment: func(name string) (cfg.Context, error) {
 							if name == res.Env.Environment().Name {
 								return res.Env, nil
 							}

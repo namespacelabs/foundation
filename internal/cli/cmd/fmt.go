@@ -20,12 +20,12 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewFmtCmd() *cobra.Command {
 	var (
-		env planning.Context
+		env cfg.Context
 	)
 
 	all := false
@@ -92,7 +92,7 @@ func NewFmtCmd() *cobra.Command {
 		})
 }
 
-func walkSchemas(ctx context.Context, env planning.Context, root *parsing.Root, f func(fnfs.Location, string)) error {
+func walkSchemas(ctx context.Context, env cfg.Context, root *parsing.Root, f func(fnfs.Location, string)) error {
 	list, err := parsing.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err

@@ -25,11 +25,11 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
+	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/languages/web"
-	"namespacelabs.dev/foundation/provision/deploy/view"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -37,7 +37,7 @@ func NewDevCmd() *cobra.Command {
 	var (
 		servingAddr  string
 		devWebServer = false
-		env          planning.Context
+		env          cfg.Context
 		locs         fncobra.Locations
 		servers      fncobra.Servers
 	)
@@ -77,7 +77,7 @@ func NewDevCmd() *cobra.Command {
 				updateWebUISticky(ctx, "preparing")
 
 				sesh, err := devsession.NewSession(console.Errors(ctx), sink, localHost,
-					schema.SpecToEnv(planning.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace().Proto())...))
+					schema.SpecToEnv(cfg.EnvsOrDefault(locs.Root.DevHost(), locs.Root.Workspace().Proto())...))
 				if err != nil {
 					return err
 				}
@@ -98,8 +98,8 @@ func NewDevCmd() *cobra.Command {
 					Provider: sesh,
 					Keybindings: []keyboard.Handler{
 						logtail.Keybinding{
-							LoadEnvironment: func(envName string) (planning.Context, error) {
-								return planning.LoadContext(locs.Root, envName)
+							LoadEnvironment: func(envName string) (cfg.Context, error) {
+								return cfg.LoadContext(locs.Root, envName)
 							},
 						},
 						view.NewNetworkPlanKeybinding("stack"),

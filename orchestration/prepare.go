@@ -9,13 +9,13 @@ import (
 
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/orchestration/proto"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -31,14 +31,14 @@ func RegisterPrepare() {
 		return
 	}
 
-	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target planning.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target cfg.Configuration, cluster runtime.Cluster) (any, error) {
 		return tasks.Return(ctx, tasks.Action("orchestrator.prepare"), func(ctx context.Context) (any, error) {
 			return PrepareOrchestrator(ctx, target, cluster, true)
 		})
 	})
 }
 
-func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, cluster runtime.Cluster, wait bool) (any, error) {
+func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, cluster runtime.Cluster, wait bool) (any, error) {
 	env, err := MakeOrchestratorContext(ctx, targetEnv)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv planning.Configuration, 
 		return nil, err
 	}
 
-	focus, err := provision.RequireServer(ctx, env, schema.PackageName(serverPkg))
+	focus, err := planning.RequireServer(ctx, env, schema.PackageName(serverPkg))
 	if err != nil {
 		return nil, err
 	}

@@ -16,13 +16,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/universe/aws/configuration"
 )
 
 const identityTokenEnv = "AWS_WEB_IDENTITY_TOKEN_FILE"
 
-var confConfigType = planning.DefineConfigType[*configuration.Configuration]("foundation.providers.aws.Conf")
+var confConfigType = cfg.DefineConfigType[*configuration.Configuration]("foundation.providers.aws.Conf")
 
 func hasWebIdentityEnvVar() bool {
 	// Check if we run inside an AWS cluster with a configured IAM role.
@@ -30,11 +30,11 @@ func hasWebIdentityEnvVar() bool {
 	return token != ""
 }
 
-func ConfiguredSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+func ConfiguredSession(ctx context.Context, cfg cfg.Configuration) (*Session, error) {
 	return configuredSession(ctx, cfg)
 }
 
-func configuredSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+func configuredSession(ctx context.Context, cfg cfg.Configuration) (*Session, error) {
 	makeSession, conf, err := innerSession(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func configuredSession(ctx context.Context, cfg planning.Configuration) (*Sessio
 	return &Session{aws: session, conf: conf}, nil
 }
 
-func currentConfiguration(cfg planning.Configuration) *configuration.Configuration {
+func currentConfiguration(cfg cfg.Configuration) *configuration.Configuration {
 	if conf, ok := confConfigType.CheckGet(cfg); ok {
 		return conf
 	}
@@ -74,7 +74,7 @@ func currentConfiguration(cfg planning.Configuration) *configuration.Configurati
 	return nil
 }
 
-func innerSession(ctx context.Context, cfg planning.Configuration) (func(...func(*config.LoadOptions) error) (aws.Config, error), *configuration.Configuration, error) {
+func innerSession(ctx context.Context, cfg cfg.Configuration) (func(...func(*config.LoadOptions) error) (aws.Config, error), *configuration.Configuration, error) {
 	conf := currentConfiguration(cfg)
 	if conf == nil {
 		return nil, nil, nil
@@ -133,7 +133,7 @@ func (s *Session) RefreshUsage() string {
 }
 
 // MustConfiguredSession also returns a cache key.
-func MustConfiguredSession(ctx context.Context, cfg planning.Configuration) (*Session, error) {
+func MustConfiguredSession(ctx context.Context, cfg cfg.Configuration) (*Session, error) {
 	session, err := configuredSession(ctx, cfg)
 	if err != nil {
 		return nil, err

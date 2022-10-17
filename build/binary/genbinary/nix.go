@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/planning"
 )
 
 func NixImageBuilder(packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) build.Spec {
@@ -37,7 +37,7 @@ func (l nixImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, co
 
 func (l nixImage) PlatformIndependent() bool { return false }
 
-func NixImage(ctx context.Context, conf planning.Configuration, target build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
+func NixImage(ctx context.Context, conf cfg.Configuration, target build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
 	if target.TargetPlatform() == nil {
 		return nil, fnerrors.BadInputError("nix: target platform is missing")
 	}

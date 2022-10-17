@@ -20,18 +20,18 @@ import (
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 var (
 	ObserveInitContainerLogs = false
 
-	kubernetesEnvConfigType = planning.DefineConfigType[*kubetool.KubernetesEnv]()
+	kubernetesEnvConfigType = cfg.DefineConfigType[*kubetool.KubernetesEnv]()
 )
 
 const RestmapperStateKey = "kubernetes.restmapper"
 
-type ProvideOverrideFunc func(context.Context, planning.Configuration) (runtime.Class, error)
+type ProvideOverrideFunc func(context.Context, cfg.Configuration) (runtime.Class, error)
 
 var classOverrides = map[string]ProvideOverrideFunc{}
 
@@ -40,7 +40,7 @@ func RegisterOverrideClass(name string, p ProvideOverrideFunc) {
 }
 
 func Register() {
-	runtime.Register("kubernetes", func(ctx context.Context, cfg planning.Configuration) (runtime.Class, error) {
+	runtime.Register("kubernetes", func(ctx context.Context, cfg cfg.Configuration) (runtime.Class, error) {
 		hostEnv, err := client.CheckGetHostEnv(cfg)
 		if err != nil {
 			return nil, err
@@ -65,7 +65,7 @@ func Register() {
 		return kubernetesClass{}, nil
 	})
 
-	runtime.RegisterPrepare(RestmapperStateKey, func(ctx context.Context, _ planning.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(RestmapperStateKey, func(ctx context.Context, _ cfg.Configuration, cluster runtime.Cluster) (any, error) {
 		kube, ok := cluster.(*Cluster)
 		if !ok {
 			return nil, fnerrors.InternalError("expected kubernetes cluster")
@@ -81,15 +81,15 @@ type kubernetesClass struct{}
 
 var _ runtime.Class = kubernetesClass{}
 
-func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg planning.Configuration) (runtime.Cluster, error) {
+func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration) (runtime.Cluster, error) {
 	return ConnectToCluster(ctx, cfg)
 }
 
-func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg planning.Configuration, purpose string) (runtime.Cluster, error) {
+func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg cfg.Configuration, purpose string) (runtime.Cluster, error) {
 	return ConnectToCluster(ctx, cfg)
 }
 
-func newTarget(env planning.Context) clusterTarget {
+func newTarget(env cfg.Context) clusterTarget {
 	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
 	if conf, ok := kubernetesEnvConfigType.CheckGet(env.Configuration()); ok {

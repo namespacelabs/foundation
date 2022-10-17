@@ -14,15 +14,15 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func BuildDefinitionToImage(env planning.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
+func BuildDefinitionToImage(env cfg.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
 	return makeImage(env, conf, precomputedReq(&frontendReq{Def: def}), nil, nil)
 }
 
-func BuildImage(ctx context.Context, env planning.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
+func BuildImage(ctx context.Context, env cfg.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
 	serialized, err := state.Marshal(ctx)
 	if err != nil {
 		return nil, err

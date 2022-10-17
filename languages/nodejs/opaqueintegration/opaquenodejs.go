@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/hotreload"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/languages/opaque"
-	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -23,7 +23,7 @@ type impl struct {
 	opaque.OpaqueIntegration
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv provision.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 	}

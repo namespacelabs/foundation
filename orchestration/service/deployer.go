@@ -27,8 +27,8 @@ import (
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/protolog"
 	"namespacelabs.dev/go-ids"
@@ -74,7 +74,7 @@ type RunningDeployment struct {
 	ID string
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arrival time.Time) (*RunningDeployment, error) {
+func (d *deployer) Schedule(plan *schema.DeployPlan, env cfg.Context, arrival time.Time) (*RunningDeployment, error) {
 	id := ids.NewRandomBase32ID(16)
 
 	p := execution.NewPlan(plan.GetProgram().GetInvocation()...)
@@ -119,7 +119,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env planning.Context, arriv
 	return &RunningDeployment{ID: id}, nil
 }
 
-func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execution.Plan, env planning.Context, arrival time.Time) error {
+func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execution.Plan, env cfg.Context, arrival time.Time) error {
 	eg := executor.New(ctx, "orchestrator.executeWithLog")
 
 	ch := make(chan *protolog.Log)
@@ -139,7 +139,7 @@ func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execu
 	return eg.Wait()
 }
 
-func (d *deployer) execute(ctx context.Context, out *outputFile, p *execution.Plan, env planning.Context, arrival time.Time) error {
+func (d *deployer) execute(ctx context.Context, out *outputFile, p *execution.Plan, env cfg.Context, arrival time.Time) error {
 	cluster, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
 		return err

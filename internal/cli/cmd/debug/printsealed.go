@@ -12,17 +12,17 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/provision"
-	"namespacelabs.dev/foundation/provision/deploy"
+	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/std/planning"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newPrintSealedCmd() *cobra.Command {
 	var (
 		outputType  string = "json"
 		printDeploy bool
-		env         planning.Context
+		env         cfg.Context
 		locs        fncobra.Locations
 	)
 
@@ -55,7 +55,7 @@ func newPrintSealedCmd() *cobra.Command {
 
 				return output(ctx, pl, sealed.Proto, outputType)
 			} else {
-				t, err := provision.RequireServer(ctx, env, loc.AsPackageName())
+				t, err := planning.RequireServer(ctx, env, loc.AsPackageName())
 				if err != nil {
 					return err
 				}
