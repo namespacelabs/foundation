@@ -96,11 +96,6 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 	return files, nil
 }
 
-type moduleAndFiles struct {
-	moduleName string
-	files      fs.FS
-}
-
 func prepareConfigImage(ctx context.Context, env cfg.Context, planner runtime.Planner, server planning.Server, stack *planning.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 
