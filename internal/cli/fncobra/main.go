@@ -114,8 +114,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	sink, style, flushLogs := ConsoleToSink(StandardConsole())
 	ctxWithSink := fnapi.WithTelemetry(colors.WithStyle(tasks.WithSink(ctx, sink), style), tel)
 
-	debugSink := console.Debug(ctx)
-
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
 	// effort attempt at increasing the file limit to a number we can be more
@@ -123,12 +121,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	ulimit.SetFileLimit(ctxWithSink, 4096)
 
 	var remoteStatusChan chan remoteStatus
-
-	cmdBundle := NewCommandBundle(disableCommandBundle)
-	// Remove stale commands asynchronously on startup.
-	defer func() {
-		_ = cmdBundle.RemoveStaleCommands()
-	}()
 
 	var run *storedrun.Run
 	var useTelemetry bool
@@ -142,12 +134,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		if viper.GetBool("enable_pprof") {
 			go ListenPProf(console.Debug(cmd.Context()))
 		}
-
-		if err := cmdBundle.RegisterCommand(cmd, args); err != nil {
-			return err
-		}
-
-		tasks.ActionStorer = cmdBundle.CreateActionStorer(cmd.Context(), flushLogs)
 
 		run = storedrun.New()
 
@@ -345,7 +331,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
 		"If set to true, we log a start event for each action, if --log_actions is also set.")
 
-	cmdBundle.SetupFlags(rootCmd.PersistentFlags())
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
 	knobs.SetupFlags(rootCmd.PersistentFlags())
@@ -392,27 +377,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
 	err := rootCmd.ExecuteContext(cmdCtx)
 
-	serializedErrToBundle := false
-
 	if run != nil {
-		if err != nil {
-			// This is a write into an in-memory FS and does not incur any I/O overhead.
-			if writeErr := cmdBundle.WriteError(ctx, err); writeErr != nil {
-				fmt.Fprintf(debugSink, "Failed to serialize the command execution error in the bundle: %v\n", writeErr)
-			}
-			// We set the bit to ensure we don't try re-serializing the error.
-			serializedErrToBundle = true
-		}
-
-		actionLogs, logErr := cmdBundle.ActionLogs(ctxWithSink)
-		if actionLogs != nil {
-			storedrun.Attach(actionLogs)
-		}
-
-		if logErr != nil {
-			fmt.Fprintf(debugSink, "Failed to write action logs: %v\n", logErr)
-		}
-
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.
 		if err == nil {
 			// Make sure that failing to output fails the execution.
@@ -442,12 +407,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit(ctx)
-	defer func() {
-		// Capture useful information about the environment helpful for diagnostics in the bundle.
-		if flushErr := cmdBundle.FlushWithExitInfo(ctxWithSink); flushErr != nil {
-			fmt.Fprintf(debugSink, "Failed to flush the bundle with exit info: %v\n", flushErr)
-		}
-	}()
 
 	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(style, err, remoteStatusChan)
@@ -456,13 +415,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			// Record errors only after the user sees them to hide potential latency implications.
 			// We pass the original ctx without sink since logs have already been flushed.
 			tel.RecordError(ctx, err)
-		}
-
-		// Ensure that the error with stack trace is a part of the command bundle if not written already.
-		if !serializedErrToBundle {
-			if writeErr := cmdBundle.WriteError(ctx, err); writeErr != nil {
-				fmt.Fprintf(debugSink, "Failed to serialize the command execution error in the bundle: %v\n", writeErr)
-			}
 		}
 
 		// Ensures graceful invocation of deferred routines in the block above before we exit.

@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -23,8 +22,6 @@ import (
 	"namespacelabs.dev/foundation/workspace/tasks/protocol"
 	"namespacelabs.dev/go-ids"
 )
-
-var ActionStorer *Storer = nil
 
 type ActionState string
 
@@ -273,14 +270,6 @@ func panicHandler(ctx context.Context) {
 	if _, ok := r.(handledPanic); ok {
 		// bubble up panic.
 		panic(r)
-	}
-
-	if ActionStorer != nil {
-		// Capture the stack on panic.
-		_ = ActionStorer.WriteRuntimeStack(ctx, debug.Stack())
-
-		// Ensure that we always have an audit trail.
-		_ = ActionStorer.Flush(ctx)
 	}
 
 	// Mark panic as handled and bubble it up.
@@ -643,13 +632,6 @@ func (af *RunningAction) CustomDone(t time.Time, err error) bool {
 
 		af.sink.Done(af)
 		runningActionsSink.Sink().Done(af)
-
-		// It's fundamental that seal() is called above before Store(); else
-		// we'll spin forever trying to consume the open buffers.
-		if ActionStorer != nil {
-			ActionStorer.Store(af)
-		}
-
 		return true
 	}
 

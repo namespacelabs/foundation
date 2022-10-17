@@ -41,7 +41,6 @@ type attachedBuffer struct {
 }
 
 func (ev *EventAttachments) IsRecording() bool { return ev != nil }
-func (ev *EventAttachments) IsStoring() bool   { return ActionStorer != nil }
 
 func (ev *EventAttachments) init() {
 	if ev.buffers == nil {

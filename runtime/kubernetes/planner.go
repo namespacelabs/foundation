@@ -103,7 +103,7 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 			}
 		}
 
-		if at := tasks.Attachments(ctx); deployable.PackageName != "" && at.IsStoring() {
+		if at := tasks.Attachments(ctx); deployable.PackageName != "" {
 			output := &bytes.Buffer{}
 			count := 0
 			for _, decl := range singleState.operations {

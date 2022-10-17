@@ -180,7 +180,6 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 	return nil
 }
 
-// Mutates srv.SecretRefs.
 func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server) error {
 	for _, m := range srv.MainContainer.Mount {
 		if findVolume(srv.Volume, m.VolumeName) == nil {
