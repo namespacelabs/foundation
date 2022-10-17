@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -44,18 +45,38 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 		g := &runtime.GroundedSecrets{}
 
 		var missing []*schema.PackageRef
+		var missingSpecs []*schema.SecretSpec
 		var missingServer []schema.PackageName
 		for _, ps := range sources {
 			srv := ps.Server
-			refs := ps.Secrets
 
-			if len(refs) == 0 {
+			if len(ps.Secrets) == 0 {
 				continue
+			}
+
+			var errs []error
+			var specs []*schema.SecretSpec // Same indexing as secrets.
+			for _, ref := range ps.Secrets {
+				secretPackage, err := srv.SealedContext().LoadByName(ctx, ref.AsPackageName())
+				if err != nil {
+					errs = append(errs, err)
+				} else {
+					if spec := secretPackage.LookupSecret(ref.Name); spec == nil {
+						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "no such secret %q", ref.Name))
+					} else {
+						specs = append(specs, spec)
+					}
+				}
+			}
+
+			if err := multierr.New(errs...); err != nil {
+				return nil, err
 			}
 
 			if _, has := workspaceSecrets[srv.Module().ModuleName()]; !has {
 				wss, err := loadWorkspaceSecrets(ctx, keyDir, srv.Module())
 				if err != nil {
+					// XXX print a warning?
 					if !errors.Is(err, keys.ErrKeyGen) {
 						return nil, err
 					}
@@ -69,11 +90,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 				return nil, err
 			}
 
-			for _, secretRef := range refs {
-				if !strings.HasPrefix(secretRef.PackageName, srv.Module().ModuleName()) {
-					return nil, fnerrors.InternalError("%s: secret %q is not in the same module as the server, which is not supported yet", srv.PackageName(), secretRef.PackageName)
-				}
-
+			for k, secretRef := range ps.Secrets {
 				value, err := lookupSecret(ctx, env, secretRef, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
 				if err != nil {
 					return nil, err
@@ -81,12 +98,14 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 
 				if value == nil {
 					missing = append(missing, secretRef)
+					missingSpecs = append(missingSpecs, specs[k])
 					missingServer = append(missingServer, srv.PackageName())
 					continue
 				}
 
 				g.Secrets = append(g.Secrets, runtime.GroundedSecret{
 					Ref:   secretRef,
+					Spec:  specs[k],
 					Value: value,
 				})
 			}
@@ -96,7 +115,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 			labels := make([]string, len(missing))
 
 			for k, secretRef := range missing {
-				labels[k] = fmt.Sprintf("  ns secrets set %s --secret %s", missingServer[k], secretRef.Canonical())
+				labels[k] = fmt.Sprintf("  # %s\n  ns secrets set %s --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
 			}
 
 			return nil, fnerrors.UsageError(

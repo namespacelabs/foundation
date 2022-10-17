@@ -239,6 +239,7 @@ type GroundedSecrets struct {
 
 type GroundedSecret struct {
 	Ref   *schema.PackageRef
+	Spec  *schema.SecretSpec
 	Value *schema.FileContents
 }
 

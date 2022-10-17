@@ -159,6 +159,16 @@ func (pr *Package) LookupResourceInstance(name string) *ResourceInstance {
 	return nil
 }
 
+func (pr *Package) LookupSecret(name string) *schema.SecretSpec {
+	for _, secret := range pr.Secrets {
+		if secret.Name == name {
+			return secret
+		}
+	}
+
+	return nil
+}
+
 func (rp ResourceProvider) LookupExpected(name *schema.PackageRef) *ExpectedResourceInstance {
 	for _, x := range rp.ResourceInputs {
 		if x.Name.Equals(name) {
