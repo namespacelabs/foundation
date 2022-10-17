@@ -11,8 +11,8 @@ import (
 
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 var (

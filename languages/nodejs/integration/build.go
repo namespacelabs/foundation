@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
@@ -26,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 const appRootPath = "/app"

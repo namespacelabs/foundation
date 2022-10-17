@@ -7,8 +7,8 @@ package production
 import (
 	"fmt"
 
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 func NonRootRunAs(server string) *runtime.RunAs {

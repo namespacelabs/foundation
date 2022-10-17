@@ -17,12 +17,12 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 var (

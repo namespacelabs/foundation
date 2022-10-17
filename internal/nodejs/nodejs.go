@@ -13,11 +13,11 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/runtime/rtypes"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 const (

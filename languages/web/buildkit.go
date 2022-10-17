@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
@@ -27,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/workspace/devhost"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 const yarnLockFn = "yarn.lock"

@@ -11,9 +11,9 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 const (

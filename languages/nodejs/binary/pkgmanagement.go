@@ -8,10 +8,10 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 var (

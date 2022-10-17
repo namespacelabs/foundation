@@ -14,11 +14,11 @@ import (
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 func BuildAlpine(loc pkggraph.Location, plan *schema.ImageBuildPlan_AlpineBuild) build.Spec {

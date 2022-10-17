@@ -13,10 +13,10 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/pins"
 )
 
 const (
