@@ -15,11 +15,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewGenerateCmd() *cobra.Command {
@@ -48,7 +48,7 @@ func NewGenerateCmd() *cobra.Command {
 				return err
 			}
 
-			list, err := workspace.ListSchemas(ctx, env, root)
+			list, err := parsing.ListSchemas(ctx, env, root)
 			if err != nil {
 				return err
 			}
@@ -62,20 +62,20 @@ func NewGenerateCmd() *cobra.Command {
 		})
 }
 
-func generateProtos(ctx context.Context, env planning.Context, root *workspace.Root, handleGenErr func(fnerrors.CodegenError)) error {
-	list, err := workspace.ListSchemas(ctx, env, root)
+func generateProtos(ctx context.Context, env planning.Context, root *parsing.Root, handleGenErr func(fnerrors.CodegenError)) error {
+	list, err := parsing.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err
 	}
 
-	pl := workspace.NewPackageLoader(env)
+	pl := parsing.NewPackageLoader(env)
 	wl := cuefrontend.WorkspaceLoader{PackageLoader: pl}
 
 	cuePackages := map[string]*fncue.CuePackage{} // Cue packages by PackageName.
 
 	var nodeLocs []fnfs.Location
 	for k, loc := range list.Locations {
-		if !(list.Types[k] == workspace.PackageType_Extension || list.Types[k] == workspace.PackageType_Service) {
+		if !(list.Types[k] == parsing.PackageType_Extension || list.Types[k] == parsing.PackageType_Service) {
 			continue
 		}
 

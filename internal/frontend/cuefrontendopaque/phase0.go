@@ -12,19 +12,19 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
+	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
-	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 type Frontend struct {
-	loader workspace.EarlyPackageLoader
+	loader parsing.EarlyPackageLoader
 	env    *schema.Environment
 }
 
-func NewFrontend(env *schema.Environment, pl workspace.EarlyPackageLoader) *Frontend {
+func NewFrontend(env *schema.Environment, pl parsing.EarlyPackageLoader) *Frontend {
 	return &Frontend{pl, env}
 }
 

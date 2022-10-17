@@ -11,9 +11,9 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func BuildFilesystem(ctx context.Context, conf planning.Configuration, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {

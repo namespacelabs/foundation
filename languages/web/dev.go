@@ -10,16 +10,16 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func StartDevServer(ctx context.Context, env planning.Context, pkg schema.PackageName, mainPort, webPort int) (string, error) {
 	host := "127.0.0.1"
 	hostPort := fmt.Sprintf("%s:%d", host, webPort)
 
-	loc, err := workspace.NewPackageLoader(env).Resolve(ctx, pkg)
+	loc, err := parsing.NewPackageLoader(env).Resolve(ctx, pkg)
 	if err != nil {
 		return "", err
 	}

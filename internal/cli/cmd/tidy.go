@@ -15,13 +15,13 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 const (
@@ -50,7 +50,7 @@ func NewTidyCmd() *cobra.Command {
 				return err
 			}
 
-			root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
+			root, err := module.FindRootWithArgs(ctx, ".", parsing.ModuleAtArgs{SkipAPIRequirements: true})
 			if err != nil {
 				return err
 			}
@@ -61,9 +61,9 @@ func NewTidyCmd() *cobra.Command {
 				return err
 			}
 
-			pl := workspace.NewPackageLoader(env)
+			pl := parsing.NewPackageLoader(env)
 
-			list, err := workspace.ListSchemas(ctx, env, root)
+			list, err := parsing.ListSchemas(ctx, env, root)
 			if err != nil {
 				return err
 			}
@@ -123,7 +123,7 @@ func maybeUpdateWorkspace(ctx context.Context, env planning.Context) error {
 	res := &moduleResolver{
 		deps: root.Workspace().Proto().Dep,
 	}
-	pl := workspace.NewPackageLoader(env, workspace.WithMissingModuleResolver(res))
+	pl := parsing.NewPackageLoader(env, parsing.WithMissingModuleResolver(res))
 
 	locs, err := listLocations(ctx, root)
 	if err != nil {
@@ -146,14 +146,14 @@ func maybeUpdateWorkspace(ctx context.Context, env planning.Context) error {
 	return rewriteWorkspace(ctx, root, root.EditableWorkspace().WithReplacedDependencies(res.deps))
 }
 
-func rewriteWorkspace(ctx context.Context, root *workspace.Root, data pkggraph.WorkspaceData) error {
+func rewriteWorkspace(ctx context.Context, root *parsing.Root, data pkggraph.WorkspaceData) error {
 	// Write an updated workspace.ns.textpb before continuing.
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.ReadWriteFS(), data.DefinitionFile(), func(w io.Writer) error {
 		return data.FormatTo(w)
 	})
 }
 
-func listLocations(ctx context.Context, root *workspace.Root) ([]fnfs.Location, error) {
+func listLocations(ctx context.Context, root *parsing.Root) ([]fnfs.Location, error) {
 	var locs []fnfs.Location
 
 	visited := map[string]struct{}{} // Map of directory name to presence.
@@ -196,7 +196,7 @@ type moduleResolver struct {
 }
 
 func (r *moduleResolver) Resolve(ctx context.Context, pkg schema.PackageName) (*schema.Workspace_Dependency, error) {
-	mod, err := workspace.ResolveModule(ctx, pkg.String())
+	mod, err := parsing.ResolveModule(ctx, pkg.String())
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (r *moduleResolver) Resolve(ctx context.Context, pkg schema.PackageName) (*
 		}
 	}
 
-	dep, err := workspace.ModuleHead(ctx, mod)
+	dep, err := parsing.ModuleHead(ctx, mod)
 	if err != nil {
 		return nil, err
 	}

@@ -16,11 +16,11 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/simplelog"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const maxLogLevel = 0
@@ -40,9 +40,9 @@ func main() {
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
 
 	ecr.Register()
-	workspace.ModuleLoader = cuefrontend.ModuleLoader
+	parsing.ModuleLoader = cuefrontend.ModuleLoader
 
-	workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader, env *schema.Environment) workspace.Frontend {
+	parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
 		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
 	}
 

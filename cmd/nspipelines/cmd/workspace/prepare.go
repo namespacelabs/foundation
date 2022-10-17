@@ -12,12 +12,12 @@ import (
 	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	aws "namespacelabs.dev/foundation/universe/aws/configuration"
 	"namespacelabs.dev/foundation/universe/aws/eks"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 // TODO make this configurable per workspace

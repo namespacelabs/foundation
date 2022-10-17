@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func newInfoCmd() *cobra.Command {
@@ -27,7 +27,7 @@ func newInfoCmd() *cobra.Command {
 	depVersion := flag.String("dep_version", "", "Print the version of a given dependency only.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		data, err := workspace.ModuleAt(ctx, *workspaceDir, workspace.ModuleAtArgs{SkipAPIRequirements: true})
+		data, err := parsing.ModuleAt(ctx, *workspaceDir, parsing.ModuleAtArgs{SkipAPIRequirements: true})
 		if err != nil {
 			return err
 		}

@@ -9,8 +9,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type EntityParser interface {
@@ -21,5 +21,5 @@ type EntityParser interface {
 	Shortcut() string
 
 	// "v" is nil if the user used the shortest syntactic form. Example: `integration: "golang"`
-	Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error)
+	Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error)
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 )
 
 func NewModCmd() *cobra.Command {
@@ -36,13 +36,13 @@ func newModDownloadCmd() *cobra.Command {
 		Short: "Downloads all referenced modules.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
+			root, err := module.FindRootWithArgs(ctx, ".", parsing.ModuleAtArgs{SkipAPIRequirements: true})
 			if err != nil {
 				return err
 			}
 
 			for _, dep := range root.Workspace().Proto().Dep {
-				mod, err := workspace.DownloadModule(ctx, dep, force)
+				mod, err := parsing.DownloadModule(ctx, dep, force)
 				if err != nil {
 					return err
 				}
@@ -66,17 +66,17 @@ func newModGetCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRootWithArgs(ctx, ".", workspace.ModuleAtArgs{SkipAPIRequirements: true})
+			root, err := module.FindRootWithArgs(ctx, ".", parsing.ModuleAtArgs{SkipAPIRequirements: true})
 			if err != nil {
 				return err
 			}
 
-			dep, err := workspace.ResolveModuleVersion(ctx, args[0])
+			dep, err := parsing.ResolveModuleVersion(ctx, args[0])
 			if err != nil {
 				return err
 			}
 
-			if _, err := workspace.DownloadModule(ctx, dep, false); err != nil {
+			if _, err := parsing.DownloadModule(ctx, dep, false); err != nil {
 				return err
 			}
 

@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/runtime"
@@ -26,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/std/resources"
 	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *provision.Stack, rp resourceList) ([]*schema.SerializedInvocation, error) {
@@ -43,7 +43,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 	imageMap := map[int]int{} // Map resource index to image index.
 
 	for k, resource := range rlist {
-		if workspace.IsServerResource(resource.Class.Ref) {
+		if parsing.IsServerResource(resource.Class.Ref) {
 			serverIntent := &stdruntime.ServerIntent{}
 			if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
 				return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
@@ -112,7 +112,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			Order:       &schema.ScheduleOrder{},
 		}
 
-		if workspace.IsServerResource(resource.Class.Ref) {
+		if parsing.IsServerResource(resource.Class.Ref) {
 			si.Description = "Capture Runtime Config"
 		} else {
 			invocations[k].(*resources.OpInvokeResourceProvider).BinaryImageId = builtImages[imageMap[k]].Value.RepoAndDigest()

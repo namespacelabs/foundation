@@ -10,7 +10,7 @@ import (
 	"os"
 
 	"github.com/moby/buildkit/client/llb"
-	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 )
 
 func main() {

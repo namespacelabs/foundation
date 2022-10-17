@@ -12,13 +12,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type impl struct {
-	loader          workspace.EarlyPackageLoader
+	loader          parsing.EarlyPackageLoader
 	evalctx         *fncue.EvalCtx
 	newSyntaxParser NewSyntaxParser
 }
@@ -45,7 +45,7 @@ func InjectedScope(env *schema.Environment) interface{} {
 	}
 }
 
-func NewFrontend(pl workspace.EarlyPackageLoader, opaqueParser NewSyntaxParser, env *schema.Environment) workspace.Frontend {
+func NewFrontend(pl parsing.EarlyPackageLoader, opaqueParser NewSyntaxParser, env *schema.Environment) parsing.Frontend {
 	return impl{
 		loader:          pl,
 		evalctx:         fncue.NewEvalCtx(WorkspaceLoader{pl}, InjectedScope(env)),
@@ -144,18 +144,18 @@ func isNewSyntax(partial *fncue.Partial) bool {
 	return len(partial.CueImports) <= 1 && (server.Exists() || resources.Exists() || resourceClasses.Exists() || providers.Exists())
 }
 
-func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (workspace.PackageType, error) {
+func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (parsing.PackageType, error) {
 	firstPass, err := ft.evalctx.EvalPackage(ctx, pkg.String())
 	if err != nil {
-		return workspace.PackageType_None, err
+		return parsing.PackageType_None, err
 	}
 
-	topLevels := map[string]workspace.PackageType{
-		"service":   workspace.PackageType_Service,
-		"server":    workspace.PackageType_Server,
-		"extension": workspace.PackageType_Extension,
-		"test":      workspace.PackageType_Test,
-		"binary":    workspace.PackageType_Binary,
+	topLevels := map[string]parsing.PackageType{
+		"service":   parsing.PackageType_Service,
+		"server":    parsing.PackageType_Server,
+		"extension": parsing.PackageType_Extension,
+		"test":      parsing.PackageType_Test,
+		"binary":    parsing.PackageType_Binary,
 	}
 	for k, v := range topLevels {
 		if firstPass.LookupPath(k).Exists() {
@@ -163,7 +163,7 @@ func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (wo
 		}
 	}
 
-	return workspace.PackageType_None, nil
+	return parsing.PackageType_None, nil
 }
 
 func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool, error) {
@@ -183,7 +183,7 @@ func (ft impl) HasNodePackage(ctx context.Context, pkg schema.PackageName) (bool
 }
 
 type WorkspaceLoader struct {
-	PackageLoader workspace.EarlyPackageLoader
+	PackageLoader parsing.EarlyPackageLoader
 }
 
 func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {

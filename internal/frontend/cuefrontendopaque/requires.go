@@ -9,19 +9,19 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
-func parseRequires(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]schema.PackageName, error) {
+func parseRequires(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]schema.PackageName, error) {
 	var bits []schema.PackageName
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
 	}
 
 	for _, p := range bits {
-		err := workspace.Ensure(ctx, pl, p)
+		err := parsing.Ensure(ctx, pl, p)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "loading package %s", p)
 		}

@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/provision"
@@ -31,7 +32,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type StoredTestResults struct {
@@ -48,7 +48,7 @@ type TestOpts struct {
 	KeepRuntime    bool // If true, don't release test-specific runtime resources (e.g. Kubernetes namespace).
 }
 
-func PrepareTest(ctx context.Context, pl *workspace.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts) (compute.Computable[StoredTestResults], error) {
+func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env planning.Context, testRef *schema.PackageRef, opts TestOpts) (compute.Computable[StoredTestResults], error) {
 	testPkg, err := pl.LoadByName(ctx, testRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -255,7 +255,7 @@ func UploadResults(ctx context.Context, env planning.Context, testPkg schema.Pac
 	return oci.PublishImage(tag, oci.MakeImageFromScratch("test-results", oci.MakeLayer("test-results", toFS))).ImageID(), nil
 }
 
-func loadSUT(ctx context.Context, env planning.Context, pl *workspace.PackageLoader, test *schema.Test) (*provision.Stack, error) {
+func loadSUT(ctx context.Context, env planning.Context, pl *parsing.PackageLoader, test *schema.Test) (*provision.Stack, error) {
 	var suts []parsed.Server
 
 	for _, pkg := range test.ServersUnderTest {

@@ -22,13 +22,13 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const exitCode = 3
@@ -80,7 +80,7 @@ func NewTestCmd() *cobra.Command {
 			}
 
 			// This PackageLoader instance is only used to resolve package references from the command line arguments.
-			packageRefPl := workspace.NewPackageLoader(env)
+			packageRefPl := parsing.NewPackageLoader(env)
 
 			includeStartupTests := includeServers || locs.UserSpecified
 			testRefs := []*schema.PackageRef{}
@@ -91,7 +91,7 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for _, t := range pp.Tests {
-					if includeStartupTests || t.Driver.PackageName != workspace.StartupTestBinary {
+					if includeStartupTests || t.Driver.PackageName != parsing.StartupTestBinary {
 						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
 					}
 				}
@@ -117,7 +117,7 @@ func NewTestCmd() *cobra.Command {
 
 					eg.Go(func(ctx context.Context) error {
 						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
-						pl := workspace.NewPackageLoader(buildEnv)
+						pl := parsing.NewPackageLoader(buildEnv)
 
 						status := style.Header.Apply("BUILDING")
 						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)

@@ -11,10 +11,10 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
+	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
-	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 const builderPath = "builder"
@@ -31,7 +31,7 @@ type parsedCueContainer struct {
 }
 
 // TODO: make it common for the main "server" container and sidecars.
-func parseCueContainer(ctx context.Context, env *schema.Environment, pl workspace.EarlyPackageLoader, pkg *pkggraph.Package, name string, loc pkggraph.Location, v *fncue.CueV) (*parsedCueContainer, error) {
+func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, name string, loc pkggraph.Location, v *fncue.CueV) (*parsedCueContainer, error) {
 	var bits cueContainer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err

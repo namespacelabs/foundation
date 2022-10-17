@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type Servers struct {
@@ -49,7 +49,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	var servers []parsed.Server
-	pl := workspace.NewPackageLoader(*p.env)
+	pl := parsing.NewPackageLoader(*p.env)
 	for _, loc := range p.locs.Locs {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
 			pp, err := pl.LoadByName(ctx, loc.AsPackageName())

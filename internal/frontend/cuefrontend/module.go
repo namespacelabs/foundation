@@ -18,10 +18,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const (
@@ -34,7 +34,7 @@ var ModuleLoader moduleLoader
 type moduleLoader struct{}
 
 func (moduleLoader) FindModuleRoot(dir string) (string, error) {
-	return workspace.RawFindModuleRoot(dir, WorkspaceFile, LegacyWorkspaceFile)
+	return parsing.RawFindModuleRoot(dir, WorkspaceFile, LegacyWorkspaceFile)
 }
 
 func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.WorkspaceData, error) {
@@ -50,7 +50,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.Workspac
 
 		if err != nil {
 			if os.IsNotExist(err) {
-				wd, werr := workspace.RawModuleAt(ctx, dir)
+				wd, werr := parsing.RawModuleAt(ctx, dir)
 				if werr != nil {
 					if os.IsNotExist(werr) {
 						return nil, fnerrors.New("%s: failed to load workspace", dir)

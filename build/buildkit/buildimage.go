@@ -13,9 +13,9 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func BuildDefinitionToImage(env planning.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {

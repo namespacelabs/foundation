@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 var deprecatedConfigs = []string{
@@ -82,7 +82,7 @@ func prebuilts(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHos
 	return prepares
 }
 
-func collectPreparesAndUpdateDevhost(ctx context.Context, root *workspace.Root, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
+func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
 	prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
 	results, err := compute.GetValue(ctx, prepareAll)
 	if err != nil {
@@ -109,7 +109,7 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *workspace.Root, 
 	return devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, root.LoadedDevHost)
 }
 
-func devHostUpdates(ctx context.Context, root *workspace.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
+func devHostUpdates(ctx context.Context, root *parsing.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
 	var updateCount int
 	for _, conf := range confs {
 		if len(conf) == 0 {

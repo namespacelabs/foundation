@@ -7,10 +7,10 @@ package create
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/workspace"
+	"namespacelabs.dev/foundation/internal/parsing"
 )
 
-func runGoInitCmdIfNeeded(ctx context.Context, root *workspace.Root, runCommand func(ctx context.Context, args []string) error) error {
+func runGoInitCmdIfNeeded(ctx context.Context, root *parsing.Root, runCommand func(ctx context.Context, args []string) error) error {
 	f, err := root.ReadWriteFS().Open("go.mod")
 	if err == nil {
 		f.Close()

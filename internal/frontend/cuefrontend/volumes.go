@@ -19,13 +19,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime/constants"
-	"namespacelabs.dev/foundation/workspace"
 )
 
-func ParseVolumes(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Volume, error) {
+func ParseVolumes(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Volume, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ type cueConfigurableEntry struct {
 	FromKubernetesSecret string `json:"fromKubernetesSecret"`
 }
 
-func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, isInlined bool, value cue.Value) (*schema.Volume, error) {
+func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, name string, isInlined bool, value cue.Value) (*schema.Volume, error) {
 	var bits cueVolume
 	if err := value.Decode(&bits); err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func parseVolume(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggr
 	return out, nil
 }
 
-func parseConfigurableEntry(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, isVolumeInlined bool, v cue.Value) (*schema.ConfigurableVolume_Entry, error) {
+func parseConfigurableEntry(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, isVolumeInlined bool, v cue.Value) (*schema.ConfigurableVolume_Entry, error) {
 	if v.Kind() == cue.StringKind {
 		// Inlined content.
 		str, _ := v.String()

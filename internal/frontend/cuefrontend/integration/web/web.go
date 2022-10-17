@@ -11,9 +11,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type Parser struct{}
@@ -33,7 +33,7 @@ type cueIntegrationWebBuild struct {
 	OutDir string `json:"outDir"`
 }
 
-func (i *Parser) Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	nodejsParser := &nodejs.Parser{}
 
 	rawNodejsInt, err := nodejsParser.Parse(ctx, pl, loc, v)

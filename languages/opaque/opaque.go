@@ -10,12 +10,12 @@ import (
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func Register() {
@@ -69,11 +69,11 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server parsed.Server, r
 	return nil
 }
 
-func (OpaqueIntegration) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
+func (OpaqueIntegration) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
 	return nil
 }
 
-func (OpaqueIntegration) PostParseServer(ctx context.Context, _ *workspace.Sealed) error {
+func (OpaqueIntegration) PostParseServer(ctx context.Context, _ *parsing.Sealed) error {
 	return nil
 }
 

@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/languages"
 	nodejsintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
@@ -33,7 +34,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/web/http"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 var (
@@ -59,11 +59,11 @@ type impl struct {
 	languages.MaybeTidy
 }
 
-func (impl) PreParseServer(_ context.Context, _ pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
+func (impl) PreParseServer(_ context.Context, _ pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
 	return nil
 }
 
-func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
+func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 	sealed.Proto.Server.StaticPort = []*schema.Endpoint_Port{{Name: httpPortName, ContainerPort: httpPort}}
 	return nil
 }

@@ -11,11 +11,11 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func newGoCmd(goVersion string) *cobra.Command {
@@ -32,7 +32,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 		With(
 			fncobra.HardcodeEnv(&env, "dev")).
 		DoWithArgs(func(ctx context.Context, args []string) error {
-			pl := workspace.NewPackageLoader(env)
+			pl := parsing.NewPackageLoader(env)
 			loc, err := pl.Resolve(ctx, schema.MakePackageName(env.Workspace().ModuleName()))
 			if err != nil {
 				return err

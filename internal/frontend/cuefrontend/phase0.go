@@ -12,12 +12,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
-func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl workspace.EarlyPackageLoader, loc pkggraph.Location) (*fncue.Partial, error) {
+func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*fncue.Partial, error) {
 	return tasks.Return(ctx, tasks.Action("cue.package.parse").LogLevel(1).Scope(loc.PackageName), func(ctx context.Context) (*fncue.Partial, error) {
 		if st, err := fs.Stat(fnfs.Local(loc.Module.Abs()), loc.Rel()); err != nil {
 			if os.IsNotExist(err) {

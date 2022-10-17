@@ -7,8 +7,8 @@ package source
 import (
 	"testing"
 
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func TestGeneratesValidServerId(t *testing.T) {
@@ -16,7 +16,7 @@ func TestGeneratesValidServerId(t *testing.T) {
 		Id: newId(),
 	}
 
-	if err := workspace.ValidateServerID(&s); err != nil {
+	if err := parsing.ValidateServerID(&s); err != nil {
 		t.Errorf("%v", err)
 	}
 }

@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const (
@@ -23,7 +23,7 @@ type packageJson struct {
 	Scripts map[string]string `json:"scripts"`
 }
 
-func readPackageJson(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location) (*packageJson, error) {
+func readPackageJson(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*packageJson, error) {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return nil, err

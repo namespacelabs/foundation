@@ -10,12 +10,12 @@ import (
 
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type AvailableBuildAssets struct {
@@ -23,7 +23,7 @@ type AvailableBuildAssets struct {
 }
 
 type Integration interface {
-	workspace.FrameworkHandler
+	parsing.FrameworkHandler
 
 	// Called on `ns build`, `ns deploy`.
 	PrepareBuild(context.Context, AvailableBuildAssets, parsed.Server, bool /*isFocus*/) (build.Spec, error)
@@ -53,7 +53,7 @@ var (
 
 func Register(fmwk schema.Framework, i Integration) {
 	mapping[fmwk.String()] = i
-	workspace.RegisterFrameworkHandler(fmwk, i)
+	parsing.RegisterFrameworkHandler(fmwk, i)
 }
 
 func IntegrationFor(fmwk schema.Framework) Integration {

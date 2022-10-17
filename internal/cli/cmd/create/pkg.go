@@ -12,13 +12,13 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type targetPkg struct {
 	Location fnfs.Location
-	Root     *workspace.Root
+	Root     *parsing.Root
 }
 
 func parseTargetPkgWithDeps(targetPkgOut *targetPkg, typ string) []fncobra.ArgsParser {

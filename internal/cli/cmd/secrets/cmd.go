@@ -16,11 +16,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewSecretsCmd() *cobra.Command {
@@ -41,7 +41,7 @@ func NewSecretsCmd() *cobra.Command {
 type createFunc func(context.Context) (*secrets.Bundle, error)
 
 type location struct {
-	root *workspace.Root
+	root *parsing.Root
 	loc  pkggraph.Location
 }
 
@@ -51,7 +51,7 @@ func loadBundleFromArgs(ctx context.Context, env planning.Context, loc fnfs.Loca
 		return nil, nil, err
 	}
 
-	pkg, err := workspace.NewPackageLoader(env).LoadByName(ctx, loc.AsPackageName())
+	pkg, err := parsing.NewPackageLoader(env).LoadByName(ctx, loc.AsPackageName())
 	if err != nil {
 		return nil, nil, err
 	}

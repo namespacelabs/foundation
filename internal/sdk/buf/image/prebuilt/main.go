@@ -10,8 +10,8 @@ import (
 	"os"
 
 	"github.com/moby/buildkit/client/llb"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/sdk/buf/image"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func main() {

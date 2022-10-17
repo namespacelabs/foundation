@@ -11,9 +11,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type cueResourceProvider struct {
@@ -24,7 +24,7 @@ type cueResourceProvider struct {
 	// TODO: parse prepare hook.
 }
 
-func parseResourceProvider(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
+func parseResourceProvider(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
 	var bits cueResourceProvider
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err

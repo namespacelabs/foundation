@@ -8,12 +8,12 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
-func ParseMounts(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Mount, []*schema.Volume, error) {
+func ParseMounts(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Mount, []*schema.Volume, error) {
 	it, err := v.Val.Fields()
 	if err != nil {
 		return nil, nil, err

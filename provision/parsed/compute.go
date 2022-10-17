@@ -20,12 +20,12 @@ import (
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func RequireServers(env planning.Context, servers ...schema.PackageName) compute.Computable[*ServerSnapshot] {
@@ -66,7 +66,7 @@ func (rs *requiredServers) Compute(ctx context.Context, _ compute.Resolved) (*Se
 }
 
 func computeSnapshot(ctx context.Context, env planning.Context, packages []schema.PackageName) (*ServerSnapshot, error) {
-	pl := workspace.NewPackageLoader(env)
+	pl := parsing.NewPackageLoader(env)
 
 	var servers []Server
 	for _, pkg := range packages {

@@ -15,10 +15,10 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	grpcprotos "namespacelabs.dev/foundation/std/grpc/protos"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 // Prepare codegen data for a server.
@@ -143,7 +143,7 @@ func prepareDep(ctx context.Context, loader pkggraph.PackageLoader, fmwk schema.
 		return nil, fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
 	}
 
-	_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+	_, p := parsing.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
 	if p == nil {
 		return nil, fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
 	}

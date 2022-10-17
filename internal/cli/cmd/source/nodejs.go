@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func newNodejsCmd() *cobra.Command {
@@ -42,7 +42,7 @@ func newNodejsCmd() *cobra.Command {
 			}
 		}
 
-		loc, err := workspace.NewPackageLoader(env).Resolve(ctx, root.RelPackage(relPath).AsPackageName())
+		loc, err := parsing.NewPackageLoader(env).Resolve(ctx, root.RelPackage(relPath).AsPackageName())
 		if err != nil {
 			return err
 		}

@@ -14,11 +14,11 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/debugshell"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -47,7 +47,7 @@ func NewDebugShellCmd() *cobra.Command {
 			return err
 		}
 
-		pl := workspace.NewPackageLoader(env)
+		pl := parsing.NewPackageLoader(env)
 
 		switch {
 		case imageRef != "":

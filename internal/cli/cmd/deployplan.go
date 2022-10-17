@@ -18,11 +18,11 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewDeployPlanCmd() *cobra.Command {
@@ -70,7 +70,7 @@ func NewDeployPlanCmd() *cobra.Command {
 }
 
 type serializedContext struct {
-	root   *workspace.Root
+	root   *parsing.Root
 	config planning.Configuration
 	env    *schema.Environment
 }

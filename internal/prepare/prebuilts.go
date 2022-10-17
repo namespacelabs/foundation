@@ -11,11 +11,11 @@ import (
 	"namespacelabs.dev/foundation/build/binary"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName) compute.Computable[[]oci.ResolvableImage] {
@@ -29,7 +29,7 @@ func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName
 				return nil, err
 			}
 
-			pl := workspace.NewPackageLoader(env)
+			pl := parsing.NewPackageLoader(env)
 
 			var pkgs []*pkggraph.Package
 			var bins []*schema.Binary

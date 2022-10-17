@@ -15,10 +15,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func newSetCmd() *cobra.Command {
@@ -71,7 +71,7 @@ func newSetCmd() *cobra.Command {
 
 			key.EnvironmentName = specificEnv
 
-			if _, err := workspace.NewPackageLoader(env).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
+			if _, err := parsing.NewPackageLoader(env).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
 				return err
 			}
 

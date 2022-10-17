@@ -19,10 +19,10 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/languages/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type nodeLoc struct {
@@ -199,7 +199,7 @@ func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Ins
 		return nil
 	}
 
-	_, p := workspace.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
+	_, p := parsing.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
 	if p == nil {
 		return fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
 	}

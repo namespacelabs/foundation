@@ -10,9 +10,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 // Custom type as CUE -> Proto decoding does not accept camel-case syntax.
@@ -27,7 +27,7 @@ type parser struct {
 func (p *parser) Url() string      { return "namespace.so/from-shellscript" }
 func (p *parser) Shortcut() string { return "shellscript" }
 
-func (p *parser) Parse(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (p *parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	var msg cueShellScriptIntegration
 	if v != nil {
 		if err := v.Val.Decode(&msg); err != nil {

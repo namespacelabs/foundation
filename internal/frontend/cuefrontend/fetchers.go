@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/git"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type cueWorkspace struct {
@@ -94,7 +94,7 @@ func FetchProto(pl pkggraph.PackageLoader, fsys fs.FS, loc pkggraph.Location) Fe
 			return nil, err
 		}
 
-		opts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
+		opts, err := parsing.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +216,7 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 			return nil, fnerrors.UserError(nil, "expected a string when loading a package: %w", err)
 		}
 
-		return ConsumeNoValue, workspace.Ensure(ctx, pl, schema.PackageName(packageName))
+		return ConsumeNoValue, parsing.Ensure(ctx, pl, schema.PackageName(packageName))
 	}
 }
 

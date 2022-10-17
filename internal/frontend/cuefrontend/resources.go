@@ -19,9 +19,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type ResourceList struct {
@@ -45,7 +45,7 @@ type CueResourceInstance struct {
 	RawInput any    `json:"input"`
 }
 
-func ParseResourceInstanceFromCue(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
+func ParseResourceInstanceFromCue(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
 	var instance CueResourceInstance
 	if err := v.Val.Decode(&instance); err != nil {
 		return nil, err

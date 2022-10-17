@@ -8,11 +8,11 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/std/tasks"
 	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
-	"namespacelabs.dev/foundation/workspace/devhost"
 )
 
 func PrepareAWSProfile(env planning.Context, profileName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {

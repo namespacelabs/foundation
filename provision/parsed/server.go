@@ -8,11 +8,11 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/provision/compatibility"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 // Represents a server bound to an environment.
@@ -51,10 +51,10 @@ func (t Server) GetDep(pkg schema.PackageName) *pkggraph.Package {
 }
 
 func RequireServer(ctx context.Context, env planning.Context, pkgname schema.PackageName) (Server, error) {
-	return RequireServerWith(ctx, env, workspace.NewPackageLoader(env), pkgname)
+	return RequireServerWith(ctx, env, parsing.NewPackageLoader(env), pkgname)
 }
 
-func RequireServerWith(ctx context.Context, env planning.Context, pl *workspace.PackageLoader, pkgname schema.PackageName) (Server, error) {
+func RequireServerWith(ctx context.Context, env planning.Context, pl *parsing.PackageLoader, pkgname schema.PackageName) (Server, error) {
 	return makeServer(ctx, pl, env.Environment(), pkgname, func() pkggraph.SealedContext {
 		return pkggraph.MakeSealedContext(env, pl.Seal())
 	})
@@ -67,10 +67,10 @@ func RequireLoadedServer(ctx context.Context, e pkggraph.SealedContext, pkgname 
 }
 
 func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.Environment, pkgname schema.PackageName, bind func() pkggraph.SealedContext) (Server, error) {
-	sealed, err := workspace.Seal(ctx, loader, pkgname, &workspace.SealHelper{
+	sealed, err := parsing.Seal(ctx, loader, pkgname, &parsing.SealHelper{
 		AdditionalServerDeps: func(fmwk schema.Framework) ([]schema.PackageName, error) {
 			var pkgs schema.PackageList
-			if handler, ok := workspace.FrameworkHandlers[fmwk]; ok {
+			if handler, ok := parsing.FrameworkHandlers[fmwk]; ok {
 				pkgs.AddMultiple(handler.DevelopmentPackages()...)
 			}
 			return pkgs.PackageNames(), nil

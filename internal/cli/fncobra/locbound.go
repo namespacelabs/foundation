@@ -13,14 +13,14 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 type Locations struct {
 	Locs []fnfs.Location
-	Root *workspace.Root
+	Root *parsing.Root
 	// Whether the user explicitly specified a list of locations.
 	// If true, "All" can be not empty if "DefaultToAllWhenEmpty" is true
 	UserSpecified bool
@@ -89,7 +89,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	if p.opts.ReturnAllIfNoneSpecified && len(locs) == 0 {
-		schemaList, err := workspace.ListSchemas(ctx, *p.env, root)
+		schemaList, err := parsing.ListSchemas(ctx, *p.env, root)
 		if err != nil {
 			return err
 		}

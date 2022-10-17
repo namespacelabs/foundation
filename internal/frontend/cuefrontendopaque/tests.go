@@ -10,17 +10,17 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
+	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
-	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
 )
 
 type cueTest struct {
 	Servers []string `json:"serversUnderTest"`
 }
 
-func parseTests(ctx context.Context, env *schema.Environment, pl workspace.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Test, error) {
+func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Test, error) {
 	it, err := v.Val.Fields()
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func parseTests(ctx context.Context, env *schema.Environment, pl workspace.Early
 	return out, nil
 }
 
-func parseTest(ctx context.Context, env *schema.Environment, pl workspace.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.Test, error) {
+func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.Test, error) {
 	var bits cueTest
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err

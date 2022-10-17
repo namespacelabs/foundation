@@ -11,9 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewLsCmd() *cobra.Command {
@@ -35,7 +35,7 @@ func NewLsCmd() *cobra.Command {
 				return err
 			}
 
-			list, err := workspace.ListSchemas(ctx, env, root)
+			list, err := parsing.ListSchemas(ctx, env, root)
 			if err != nil {
 				return err
 			}

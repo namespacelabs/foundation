@@ -48,6 +48,14 @@ import (
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
+	dockerapplier "namespacelabs.dev/foundation/internal/parsing/integration/docker"
+	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
+	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
+	shellapplier "namespacelabs.dev/foundation/internal/parsing/integration/shellscript"
+	webapplier "namespacelabs.dev/foundation/internal/parsing/integration/web"
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
@@ -79,14 +87,6 @@ import (
 	"namespacelabs.dev/foundation/std/tasks/actiontracing"
 	"namespacelabs.dev/foundation/std/tasks/simplelog"
 	"namespacelabs.dev/foundation/universe/aws/iam"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/devhost"
-	integrationapplying "namespacelabs.dev/foundation/workspace/integration/api"
-	dockerapplier "namespacelabs.dev/foundation/workspace/integration/docker"
-	goapplier "namespacelabs.dev/foundation/workspace/integration/golang"
-	nodejsapplier "namespacelabs.dev/foundation/workspace/integration/nodejs"
-	shellapplier "namespacelabs.dev/foundation/workspace/integration/shellscript"
-	webapplier "namespacelabs.dev/foundation/workspace/integration/web"
 )
 
 var (
@@ -140,8 +140,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Used for devhost/environment validation.
 		devhost.HasRuntime = runtime.HasRuntime
 
-		workspace.ModuleLoader = cuefrontend.ModuleLoader
-		workspace.MakeFrontend = func(pl workspace.EarlyPackageLoader, env *schema.Environment) workspace.Frontend {
+		parsing.ModuleLoader = cuefrontend.ModuleLoader
+		parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
 			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
 		}
 
@@ -169,7 +169,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Setting up container registry logging, which is unfortunately global.
 		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
-		workspace.ExtendNodeHook = append(workspace.ExtendNodeHook, func(ctx context.Context, packages pkggraph.PackageLoader, l pkggraph.Location, n *schema.Node) (*workspace.ExtendNodeHookResult, error) {
+		parsing.ExtendNodeHook = append(parsing.ExtendNodeHook, func(ctx context.Context, packages pkggraph.PackageLoader, l pkggraph.Location, n *schema.Node) (*parsing.ExtendNodeHookResult, error) {
 			// Resolve doesn't require that the package actually exists. It just forces loading the module.
 			nodeloc, err := packages.Resolve(ctx, runtime.GrpcHttpTranscodeNode)
 			if err != nil {
@@ -180,7 +180,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			ws := nodeloc.Module.Workspace
 			if ws.GetFoundation().MinimumApi >= versions.IntroducedGrpcTranscodeNode {
 				if n.ExportServicesAsHttp {
-					return &workspace.ExtendNodeHookResult{
+					return &parsing.ExtendNodeHookResult{
 						Import: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
 					}, nil
 				}

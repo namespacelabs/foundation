@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/nodejs"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -37,7 +38,6 @@ import (
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const (
@@ -429,7 +429,7 @@ func (impl) GenerateServer(pkg *pkggraph.Package, nodes []*schema.Node) ([]*sche
 	return dl.Serialize()
 }
 
-func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
 	// Adding extra nodes here:
 	// - grpcNode sets up correct flags for the server startup.
 	// - runtimeNode allows to treat the Namespace Node.js runtime as a regular node that has a Location,
@@ -439,7 +439,7 @@ func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *work
 }
 
 // TODO: consolidate with the Go implementation.
-func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
+func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 	for _, dep := range sealed.Deps {
 		svc := dep.Service
 		if svc == nil {

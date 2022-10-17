@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/codegen/protos/resolver"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func newPrintComputedCmd() *cobra.Command {
@@ -40,9 +40,9 @@ func newPrintComputedCmd() *cobra.Command {
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			pl := workspace.NewPackageLoader(env)
+			pl := parsing.NewPackageLoader(env)
 
-			sealed, err := workspace.Seal(ctx, pl, locs.Locs[0].AsPackageName(), nil)
+			sealed, err := parsing.Seal(ctx, pl, locs.Locs[0].AsPackageName(), nil)
 			if err != nil {
 				return err
 			}

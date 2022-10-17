@@ -6,7 +6,7 @@ package golang
 
 import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/workspace/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 )
 
 func HostPlatform() specs.Platform {

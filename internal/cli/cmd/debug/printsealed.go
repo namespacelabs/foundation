@@ -11,11 +11,11 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/provision/deploy"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func newPrintSealedCmd() *cobra.Command {
@@ -39,7 +39,7 @@ func newPrintSealedCmd() *cobra.Command {
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
-			pl := workspace.NewPackageLoader(env)
+			pl := parsing.NewPackageLoader(env)
 			loc := locs.Locs[0]
 
 			cluster, err := runtime.PlannerFor(ctx, env)
@@ -48,7 +48,7 @@ func newPrintSealedCmd() *cobra.Command {
 			}
 
 			if !printDeploy {
-				sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
+				sealed, err := parsing.Seal(ctx, pl, loc.AsPackageName(), nil)
 				if err != nil {
 					return err
 				}

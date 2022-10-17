@@ -9,16 +9,16 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 // ForNodeLocations generates protos for Extensions and Services. Locations in `locs` are sorted in a topological order.
 func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
-	pl := workspace.NewPackageLoader(env)
+	pl := parsing.NewPackageLoader(env)
 	g := execution.NewEmptyPlan()
 	for _, loc := range locs {
 		pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
@@ -46,11 +46,11 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env p
 
 // ForLocationsGenCode generates code for all packages in `locs`. At this stage we assume protos are already generated.
 func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env planning.Context, locs []fnfs.Location, onError func(fnerrors.CodegenError)) error {
-	pl := workspace.NewPackageLoader(env)
+	pl := parsing.NewPackageLoader(env)
 
 	g := execution.NewEmptyPlan()
 	for _, loc := range locs {
-		sealed, err := workspace.Seal(ctx, pl, loc.AsPackageName(), nil)
+		sealed, err := parsing.Seal(ctx, pl, loc.AsPackageName(), nil)
 		if err != nil {
 			onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "loading schema", Err: err})
 			continue

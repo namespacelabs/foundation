@@ -12,9 +12,9 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func newKubernetesCmd() *cobra.Command {

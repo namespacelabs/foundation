@@ -18,9 +18,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
-	"namespacelabs.dev/foundation/workspace/module"
 )
 
 func NewFmtCmd() *cobra.Command {
@@ -92,8 +92,8 @@ func NewFmtCmd() *cobra.Command {
 		})
 }
 
-func walkSchemas(ctx context.Context, env planning.Context, root *workspace.Root, f func(fnfs.Location, string)) error {
-	list, err := workspace.ListSchemas(ctx, env, root)
+func walkSchemas(ctx context.Context, env planning.Context, root *parsing.Root, f func(fnfs.Location, string)) error {
+	list, err := parsing.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err
 	}

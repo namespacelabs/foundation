@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/versions"
@@ -28,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type Stack struct {
@@ -241,7 +241,7 @@ func computeServerContents(ctx context.Context, server parsed.Server, opts Provi
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
-		resources, err := workspace.LoadResources(ctx, server.SealedContext(), server.Package, server.Proto().GetResourcePack())
+		resources, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package, server.Proto().GetResourcePack())
 		if err != nil {
 			return err
 		}
@@ -267,7 +267,7 @@ func computeServerContents(ctx context.Context, server parsed.Server, opts Provi
 
 func discoverDeclaredServers(resources []pkggraph.ResourceInstance, serverList *schema.PackageList) error {
 	for _, res := range resources {
-		if workspace.IsServerResource(res.Spec.Class.Ref) {
+		if parsing.IsServerResource(res.Spec.Class.Ref) {
 			serverIntent := &stdruntime.ServerIntent{}
 			if err := proto.Unmarshal(res.Spec.Source.Intent.Value, serverIntent); err != nil {
 				return fnerrors.InternalError("failed to unwrap Server")

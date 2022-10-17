@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/languages"
@@ -28,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 const (
@@ -80,7 +80,7 @@ type impl struct {
 
 func (impl) PrepareBuild(ctx context.Context, _ languages.AvailableBuildAssets, server parsed.Server, isFocus bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
-	if err := workspace.MustExtension(server.Proto().Ext, ext); err != nil {
+	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.Wrap(server.Location, err)
 	}
 
@@ -106,7 +106,7 @@ func (impl) PrepareRun(ctx context.Context, t parsed.Server, run *runtime.Contai
 
 func (impl) TidyServer(ctx context.Context, env planning.Context, pkgs pkggraph.PackageLoader, loc pkggraph.Location, server *schema.Server) error {
 	ext := &FrameworkExt{}
-	if err := workspace.MustExtension(server.Ext, ext); err != nil {
+	if err := parsing.MustExtension(server.Ext, ext); err != nil {
 		return fnerrors.Wrap(loc, err)
 	}
 
@@ -202,7 +202,7 @@ func (impl) GenerateServer(pkg *pkggraph.Package, nodes []*schema.Node) ([]*sche
 	return dl.Serialize()
 }
 
-func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *workspace.ServerFrameworkExt) error {
+func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
 	f, gomodFile, err := gosupport.LookupGoModule(loc.Abs())
 	if err != nil {
 		return err
@@ -231,7 +231,7 @@ func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *work
 	return nil
 }
 
-func (impl) PostParseServer(ctx context.Context, sealed *workspace.Sealed) error {
+func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 	var needGatewayCount int
 	for _, dep := range sealed.Deps {
 		svc := dep.Service

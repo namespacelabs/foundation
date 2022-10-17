@@ -12,9 +12,9 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type cueBinary struct {
@@ -211,7 +211,7 @@ func parseCueFunction(ctx context.Context, loc pkggraph.Location, parent, v *fnc
 		return nil, err
 	}
 
-	if err := workspace.TransformFunction(loc, function); err != nil {
+	if err := parsing.TransformFunction(loc, function); err != nil {
 		return nil, err
 	}
 

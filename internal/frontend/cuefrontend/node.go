@@ -24,12 +24,12 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/types"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 type cueProto struct {
@@ -84,7 +84,7 @@ type cueEnvironmentRequirements struct {
 	RequiredLabels map[string]string `json:"required"`
 }
 
-func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package) error {
+func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package) error {
 	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
 		ModuleName:  loc.Module.ModuleName(),
@@ -440,16 +440,16 @@ func parseCueNode(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkgg
 		return err
 	}
 
-	return workspace.TransformNode(ctx, pl, loc, node, kind)
+	return parsing.TransformNode(ctx, pl, loc, node, kind)
 }
 
-func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {
+func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return err
 	}
 
-	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
+	parseOpts, err := parsing.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 	if err != nil {
 		return err
 	}
@@ -505,13 +505,13 @@ func handleService(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkg
 	return nil
 }
 
-func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc pkggraph.Location, provides *fncue.CueV, pkg *pkggraph.Package, out *schema.Node) error {
+func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, provides *fncue.CueV, pkg *pkggraph.Package, out *schema.Node) error {
 	it, err := provides.Val.Fields()
 	if err != nil {
 		return err
 	}
 
-	parseOpts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
+	parseOpts, err := parsing.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 	if err != nil {
 		return err
 	}
@@ -651,7 +651,7 @@ func handleProvides(ctx context.Context, pl workspace.EarlyPackageLoader, loc pk
 	return nil
 }
 
-func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl workspace.EarlyPackageLoader, loc pkggraph.Location) (*anypb.Any, error) {
+func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*anypb.Any, error) {
 	if inst.PackageName == "" {
 		if len(inst.TypeDef.Sources) > 0 {
 			return nil, fnerrors.UserError(loc, "source can't be provided when package is unspecified")
@@ -690,7 +690,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 		return nil, err
 	}
 
-	opts, err := workspace.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
+	opts, err := parsing.MakeProtoParseOpts(ctx, pl, loc.Module.Workspace)
 	if err != nil {
 		return nil, err
 	}

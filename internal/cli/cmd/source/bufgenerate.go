@@ -13,9 +13,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	source "namespacelabs.dev/foundation/internal/codegen"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
-	"namespacelabs.dev/foundation/workspace"
 )
 
 func newBufGenerateCmd() *cobra.Command {
@@ -48,7 +48,7 @@ func newBufGenerateCmd() *cobra.Command {
 				paths = append(paths, loc.RelPath)
 			}
 
-			loc, err := workspace.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName()))
+			loc, err := parsing.NewPackageLoader(env).Resolve(ctx, schema.PackageName(env.Workspace().ModuleName()))
 			if err != nil {
 				return err
 			}
