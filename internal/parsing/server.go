@@ -182,8 +182,15 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 
 func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server) error {
 	for _, m := range srv.MainContainer.Mount {
-		if findVolume(srv.Volume, m.VolumeName) == nil {
-			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeName)
+		if findVolume(srv.Volume, m.VolumeRef) == nil {
+			msg := fmt.Sprintf("volume %q does not exist", m.VolumeRef.Canonical())
+			if m.VolumeRef.Name == "" {
+				// Check for invalid package names to provide better errors.
+				if _, err := pl.Resolve(ctx, m.VolumeRef.AsPackageName()); err != nil {
+					msg = fmt.Sprintf("%s\n  Could not resolve package %q - did you mean \":%s\"?", msg, m.VolumeRef.AsPackageName(), m.VolumeRef.PackageName)
+				}
+			}
+			return fnerrors.UserError(loc, msg)
 		}
 	}
 
@@ -198,9 +205,9 @@ func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph
 	return nil
 }
 
-func findVolume(volumes []*schema.Volume, name string) *schema.Volume {
+func findVolume(volumes []*schema.Volume, ref *schema.PackageRef) *schema.Volume {
 	for _, v := range volumes {
-		if v.Name == name {
+		if v.Owner == ref.PackageName && v.Name == ref.Name {
 			return v
 		}
 	}

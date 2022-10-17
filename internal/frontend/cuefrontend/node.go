@@ -339,9 +339,9 @@ func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 		})
 
 		node.Mount = append(node.Mount, &schema.Mount{
-			Owner:      node.PackageName,
-			Path:       d.MountPath,
-			VolumeName: d.PersistentID,
+			Owner:     node.PackageName,
+			Path:      d.MountPath,
+			VolumeRef: schema.MakePackageRef(loc.PackageName, d.PersistentID),
 		})
 	}
 

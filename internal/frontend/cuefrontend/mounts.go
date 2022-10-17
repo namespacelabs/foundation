@@ -23,24 +23,29 @@ func ParseMounts(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 	out := []*schema.Mount{}
 
 	for it.Next() {
-		volumeName, err := it.Value().String()
-		if err != nil {
+		mount := &schema.Mount{
+			Owner: loc.PackageName.String(),
+			Path:  it.Label(),
+		}
+		if volumeRef, err := it.Value().String(); err == nil {
+			mount.VolumeRef, err = schema.ParsePackageRef(loc.PackageName, volumeRef)
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
 			// Inline volume definition.
-			volumeName = it.Label()
+			volumeName := it.Label()
 
 			parsedVolume, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
 			if err != nil {
 				return nil, nil, err
 			}
 
+			mount.VolumeRef = schema.MakePackageRef(loc.PackageName, volumeName)
 			inlinedVolumes = append(inlinedVolumes, parsedVolume)
 		}
 
-		out = append(out, &schema.Mount{
-			Owner:      loc.PackageName.String(),
-			Path:       it.Label(),
-			VolumeName: volumeName,
-		})
+		out = append(out, mount)
 	}
 
 	return out, inlinedVolumes, nil

@@ -497,13 +497,13 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.InternalError("mount #%d is missing a path", k)
 		}
 
-		if mount.VolumeName == "" {
+		if mount.VolumeRef == nil {
 			return fnerrors.InternalError("mount %q is missing a target volume", mount.Path)
 		}
 
-		volumeName, ok := volumeNames[mount.VolumeName]
+		volumeName, ok := volumeNames[mount.VolumeRef.Name]
 		if !ok {
-			return fnerrors.InternalError("unknown target volume %q for mount %q", mount.VolumeName, mount.Path)
+			return fnerrors.InternalError("unknown target volume %q for mount %q", mount.VolumeRef.Name, mount.Path)
 		}
 
 		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
