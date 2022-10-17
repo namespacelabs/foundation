@@ -8,7 +8,7 @@ import (
 	"flag"
 	"log"
 
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -19,7 +19,7 @@ var (
 func main() {
 	flag.Parse()
 
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	switch *mode {
 	case "client":
@@ -29,5 +29,5 @@ func main() {
 	default:
 		log.Fatalf("unknown mode: %s", *mode)
 	}
-	configure.Handle(h)
+	provisioning.Handle(h)
 }

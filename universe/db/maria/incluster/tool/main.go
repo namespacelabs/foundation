@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
@@ -22,10 +22,10 @@ import (
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
 func collectDatabases(server *schema.Server, owner string, internalEndpoint *schema.Endpoint) (map[schema.PackageName][]*maria.Database, error) {
@@ -65,7 +65,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 	return nil
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	initArgs := []string{}
 
 	col, err := secrets.Collect(r.Focus.Server)
@@ -106,6 +106,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	return toolcommon.Apply(ctx, r, dbs, "incluster", initArgs, out)
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	return toolcommon.Delete(r, "incluster", out)
 }

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
@@ -25,10 +25,10 @@ const postgresType = "opaque"
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
 func collectDatabases(server *schema.Server, owner string) (map[string]*opaque.Database, error) {
@@ -56,7 +56,7 @@ func collectDatabases(server *schema.Server, owner string) (map[string]*opaque.D
 	return dbs, nil
 }
 
-func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(_ context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
@@ -98,6 +98,6 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 	return toolcommon.Apply(r, dbs, postgresType, out)
 }
 
-func (tool) Delete(_ context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(_ context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	return toolcommon.Delete(r, postgresType, out)
 }

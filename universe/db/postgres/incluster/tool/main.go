@@ -12,8 +12,8 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/secrets"
@@ -27,10 +27,10 @@ const postgresType = "incluster"
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
 func internalEndpoint(s *schema.Stack) *schema.Endpoint {
@@ -43,7 +43,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 	return nil
 }
 
-func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(_ context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	dbs := map[string]*incluster.Database{}
 	owners := map[string][]string{}
 	if err := allocations.Visit(r.Focus.Server.Allocation, schema.PackageName(r.PackageOwner()), &incluster.Database{},
@@ -141,6 +141,6 @@ func (tool) Apply(_ context.Context, r configure.StackRequest, out *configure.Ap
 	return toolcommon.Apply(r, endpointedDbs, postgresType, out)
 }
 
-func (tool) Delete(_ context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(_ context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	return toolcommon.Delete(r, postgresType, out)
 }

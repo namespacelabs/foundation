@@ -20,11 +20,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	fnsecrets "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -37,13 +37,13 @@ import (
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	kr, err := kubetool.FromRequest(r)
 	if err != nil {
 		return err
@@ -274,7 +274,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	kr, err := kubetool.FromRequest(r)
 	if err != nil {
 		return err
@@ -291,7 +291,7 @@ func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure
 	return nil
 }
 
-func fillData(ctx context.Context, server *schema.Server, env *schema.Environment, col *secrets.Collection, r configure.StackRequest) (map[string][]byte, error) {
+func fillData(ctx context.Context, server *schema.Server, env *schema.Environment, col *secrets.Collection, r provisioning.StackRequest) (map[string][]byte, error) {
 	var count int
 	for _, userManaged := range col.UserManaged {
 		count += len(userManaged)

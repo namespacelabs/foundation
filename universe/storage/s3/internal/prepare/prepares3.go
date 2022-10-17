@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -47,8 +47,8 @@ const (
 )
 
 func main() {
-	if err := configure.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
-		h := configure.NewHandlers()
+	if err := provisioning.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+		h := provisioning.NewHandlers()
 		h.Any().HandleStack(provisionHook{})
 
 		protocol.RegisterPrepareServiceServer(sr, prepareHook{})
@@ -84,7 +84,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 type provisionHook struct{}
 
-func (provisionHook) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	systemInfo := &kubedef.SystemInfo{}
 	if err := req.UnpackInput(systemInfo); err != nil {
 		return err
@@ -259,7 +259,7 @@ func useMinio(env *schema.Environment) bool {
 	return env.GetPurpose() == schema.Environment_DEVELOPMENT || env.GetPurpose() == schema.Environment_TESTING
 }
 
-func (provisionHook) Delete(ctx context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
+func (provisionHook) Delete(ctx context.Context, req provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	// Nothing to do.
 	return nil
 }

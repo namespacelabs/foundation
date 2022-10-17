@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -26,7 +26,7 @@ const (
 	basePath = "/mariadb/init"
 )
 
-func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, kr *kubetool.ContextualEnv, name string, focus string, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, kr *kubetool.ContextualEnv, name string, focus string, out *provisioning.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -109,7 +109,7 @@ func mountConfigs(dbMap map[schema.PackageName][]*maria.Database, kr *kubetool.C
 	return args, nil
 }
 
-func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.PackageName][]*maria.Database, name string, initArgs []string, out *configure.ApplyOutput) error {
+func Apply(ctx context.Context, r provisioning.StackRequest, dbs map[schema.PackageName][]*maria.Database, name string, initArgs []string, out *provisioning.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -136,7 +136,7 @@ func Apply(ctx context.Context, r configure.StackRequest, dbs map[schema.Package
 
 }
 
-func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) error {
+func Delete(r provisioning.StackRequest, name string, out *provisioning.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

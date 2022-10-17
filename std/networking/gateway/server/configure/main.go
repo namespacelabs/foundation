@@ -15,8 +15,8 @@ import (
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -53,15 +53,15 @@ type tmplData struct {
 }
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(configuration{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
 type configuration struct{}
 
-func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	const (
 		configVolume = "fn--gateway-bootstrap"
 		filename     = "boostrap-xds.yaml"
@@ -197,7 +197,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	return nil
 }
 
-func (configuration) Delete(context.Context, configure.StackRequest, *configure.DeleteOutput) error {
+func (configuration) Delete(context.Context, provisioning.StackRequest, *provisioning.DeleteOutput) error {
 	// XXX unimplemented
 	return nil
 }

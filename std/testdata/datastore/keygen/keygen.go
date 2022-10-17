@@ -7,14 +7,14 @@ package main
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/std/types"
 	"namespacelabs.dev/go-ids"
 )
 
 func main() {
-	configure.HandleInvoke(func(ctx context.Context, r configure.Request) (*protocol.InvokeResponse, error) {
+	provisioning.HandleInvoke(func(ctx context.Context, r provisioning.Request) (*protocol.InvokeResponse, error) {
 		return &protocol.InvokeResponse{
 			Resource: &types.Resource{
 				Contents: []byte(ids.NewRandomBase32ID(128)),

@@ -9,8 +9,8 @@ import (
 	"log"
 
 	"google.golang.org/grpc"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -18,8 +18,8 @@ import (
 )
 
 func main() {
-	if err := configure.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
-		h := configure.NewHandlers()
+	if err := provisioning.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+		h := provisioning.NewHandlers()
 		h.Any().HandleStack(provisionHook{})
 
 		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
@@ -30,7 +30,7 @@ func main() {
 
 type provisionHook struct{}
 
-func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (provisionHook) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return fnerrors.BadInputError("universe/aws/irsa only supports kubernetes")
 	}
@@ -68,7 +68,7 @@ func (provisionHook) Apply(ctx context.Context, r configure.StackRequest, out *c
 	return nil
 }
 
-func (provisionHook) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (provisionHook) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return fnerrors.BadInputError("universe/aws/irsa only supports kubernetes")
 	}

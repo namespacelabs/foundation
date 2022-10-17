@@ -8,8 +8,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/universe/aws/eks"
@@ -17,15 +17,15 @@ import (
 )
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(configuration{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
 type configuration struct{}
 
-func (configuration) Apply(ctx context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	eksDetails := &eks.EKSServerDetails{}
 	if ok, err := req.CheckUnpackInput(eksDetails); err != nil {
 		return err
@@ -61,7 +61,7 @@ func (configuration) Apply(ctx context.Context, req configure.StackRequest, out 
 	return nil
 }
 
-func (configuration) Delete(context.Context, configure.StackRequest, *configure.DeleteOutput) error {
+func (configuration) Delete(context.Context, provisioning.StackRequest, *provisioning.DeleteOutput) error {
 	// XXX unimplemented
 	return nil
 }

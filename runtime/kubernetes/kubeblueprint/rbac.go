@@ -10,9 +10,9 @@ import (
 	"google.golang.org/grpc/codes"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 )
@@ -30,7 +30,7 @@ type GrantKubeACLs struct {
 	Rules           []*rbacv1.PolicyRuleApplyConfiguration
 }
 
-func (g GrantKubeACLs) Compile(req configure.StackRequest, scope Scope, out *configure.ApplyOutput) error {
+func (g GrantKubeACLs) Compile(req provisioning.StackRequest, scope Scope, out *provisioning.ApplyOutput) error {
 	if g.Rules == nil {
 		return fnerrors.BadInputError("Rules is required")
 	}
@@ -148,14 +148,14 @@ func MakeInvocations(descriptionBase string, scope Scope, kr *kubetool.Contextua
 	return invocations
 }
 
-func makeRoles(req configure.StackRequest) (string, string) {
+func makeRoles(req provisioning.StackRequest) (string, string) {
 	roleName := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
 	roleBinding := fmt.Sprintf("foundation:managed:%s", kubedef.MakeDeploymentId(req.Focus.Server))
 
 	return roleName, roleBinding
 }
 
-func (g GrantKubeACLs) serviceAccount(req configure.StackRequest) string {
+func (g GrantKubeACLs) serviceAccount(req provisioning.StackRequest) string {
 	serviceAccount := g.ServiceAccount
 	if serviceAccount == "" {
 		serviceAccount = kubedef.MakeDeploymentId(req.Focus.Server)

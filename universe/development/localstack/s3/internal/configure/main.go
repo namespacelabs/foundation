@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/development/localstack/s3"
@@ -27,10 +27,10 @@ const (
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
 func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, error) {
@@ -61,7 +61,7 @@ func getLocalstackEndpoint(s *schema.Stack) string {
 	return ""
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	localstackEndpoint := getLocalstackEndpoint(r.Stack)
 	if localstackEndpoint == "" {
 		return fmt.Errorf("localstack endpoint is required")
@@ -91,6 +91,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	return nil
 }

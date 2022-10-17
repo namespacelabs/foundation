@@ -7,7 +7,7 @@ package main
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
 )
@@ -15,13 +15,13 @@ import (
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	col, err := secrets.Collect(r.Focus.Server)
 	if err != nil {
 		return err
@@ -46,6 +46,6 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	return nil
 }

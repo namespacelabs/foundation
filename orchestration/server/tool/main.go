@@ -10,7 +10,7 @@ import (
 
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -19,13 +19,13 @@ import (
 type tool struct{}
 
 func main() {
-	h := configure.NewHandlers()
+	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleStack(tool{})
-	configure.Handle(h)
+	provisioning.Handle(h)
 }
 
-func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	serviceAccount := makeServiceAccount(r.Focus.Server)
 
 	out.Invocations = append(out.Invocations, kubedef.Apply{
@@ -79,7 +79,7 @@ func (tool) Apply(ctx context.Context, r configure.StackRequest, out *configure.
 	return nil
 }
 
-func (tool) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (tool) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	return nil
 }
 

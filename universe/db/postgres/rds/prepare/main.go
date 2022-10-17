@@ -14,8 +14,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/configure"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -47,8 +47,8 @@ const (
 )
 
 func main() {
-	if err := configure.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
-		h := configure.NewHandlers()
+	if err := provisioning.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+		h := provisioning.NewHandlers()
 		h.Any().HandleStack(provisionHook{})
 
 		protocol.RegisterPrepareServiceServer(sr, prepareHook{})
@@ -93,7 +93,7 @@ func (prepareHook) Prepare(ctx context.Context, req *protocol.PrepareRequest) (*
 
 type provisionHook struct{}
 
-func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *configure.ApplyOutput) error {
+func (provisionHook) Apply(_ context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	dbs := map[string]*rds.Database{}
 	owners := map[string][]string{}
 	if err := allocations.Visit(req.Focus.Server.Allocation, rdsNode, &rds.Database{},
@@ -119,7 +119,7 @@ func (provisionHook) Apply(_ context.Context, req configure.StackRequest, out *c
 	return applyRds(req, dbs, out)
 }
 
-func (provisionHook) Delete(_ context.Context, req configure.StackRequest, out *configure.DeleteOutput) error {
+func (provisionHook) Delete(_ context.Context, req provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	if useIncluster(req.Env) {
 		return toolcommon.Delete(req, postgresType, out)
 	}
@@ -138,7 +138,7 @@ func internalEndpoint(s *schema.Stack) *schema.Endpoint {
 	return nil
 }
 
-func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *configure.ApplyOutput) error {
+func applyIncluster(req provisioning.StackRequest, dbs map[string]*rds.Database, owners map[string][]string, out *provisioning.ApplyOutput) error {
 	endpoint := internalEndpoint(req.Stack)
 
 	value, err := json.Marshal(endpoint)
@@ -189,7 +189,7 @@ func applyIncluster(req configure.StackRequest, dbs map[string]*rds.Database, ow
 	return toolcommon.Apply(req, endpointedDbs, postgresType, out)
 }
 
-func applyRds(req configure.StackRequest, dbs map[string]*rds.Database, out *configure.ApplyOutput) error {
+func applyRds(req provisioning.StackRequest, dbs map[string]*rds.Database, out *provisioning.ApplyOutput) error {
 	var orderedDbs []*rds.Database
 	for _, db := range dbs {
 		orderedDbs = append(orderedDbs, db)

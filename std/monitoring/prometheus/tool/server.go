@@ -11,7 +11,7 @@ import (
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -32,7 +32,7 @@ var (
 
 type configureServer struct{}
 
-func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (configureServer) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	kr, err := kubetool.MustNamespace(r)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func (configureServer) Apply(ctx context.Context, r configure.StackRequest, out 
 	return nil
 }
 
-func (configureServer) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (configureServer) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	kr, err := kubetool.MustNamespace(r)
 	if err != nil {
 		return err

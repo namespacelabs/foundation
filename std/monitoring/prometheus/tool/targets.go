@@ -8,14 +8,14 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
 
 type configureTargets struct{}
 
-func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out *configure.ApplyOutput) error {
+func (configureTargets) Apply(ctx context.Context, r provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	for _, endpoint := range r.Stack.GetInternalEndpoint() {
 		for _, md := range endpoint.GetServiceMetadata() {
 			if md.Kind != "prometheus.io/metrics" || md.Protocol != schema.HttpProtocol {
@@ -59,7 +59,7 @@ func (configureTargets) Apply(ctx context.Context, r configure.StackRequest, out
 	return nil
 }
 
-func (configureTargets) Delete(ctx context.Context, r configure.StackRequest, out *configure.DeleteOutput) error {
+func (configureTargets) Delete(ctx context.Context, r provisioning.StackRequest, out *provisioning.DeleteOutput) error {
 	// Nothing to do, the annotations live with their corresponding servers.
 	return nil
 }

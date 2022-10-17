@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
@@ -30,7 +30,7 @@ func configMapName(focus *schema.Server, name string) string {
 	return fmt.Sprintf("%s.%s.%s", focus.Id, name, id)
 }
 
-func mountConfigs(dbs map[string]*postgres.Database, kr *kubetool.ContextualEnv, name string, focus *schema.Server, out *configure.ApplyOutput) ([]string, error) {
+func mountConfigs(dbs map[string]*postgres.Database, kr *kubetool.ContextualEnv, name string, focus *schema.Server, out *provisioning.ApplyOutput) ([]string, error) {
 	args := []string{}
 
 	data := map[string]string{}
@@ -107,11 +107,11 @@ func mountConfigs(dbs map[string]*postgres.Database, kr *kubetool.ContextualEnv,
 	return args, nil
 }
 
-func Apply(r configure.StackRequest, dbs map[string]*postgres.Database, name string, out *configure.ApplyOutput) error {
+func Apply(r provisioning.StackRequest, dbs map[string]*postgres.Database, name string, out *provisioning.ApplyOutput) error {
 	return ApplyForInit(r, dbs, name, initPkg, out)
 }
 
-func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, out *configure.ApplyOutput) error {
+func ApplyForInit(r provisioning.StackRequest, dbs map[string]*postgres.Database, name string, initPkg string, out *provisioning.ApplyOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}
@@ -137,7 +137,7 @@ func ApplyForInit(r configure.StackRequest, dbs map[string]*postgres.Database, n
 	return nil
 }
 
-func Delete(r configure.StackRequest, name string, out *configure.DeleteOutput) error {
+func Delete(r provisioning.StackRequest, name string, out *provisioning.DeleteOutput) error {
 	if r.Env.Runtime != "kubernetes" {
 		return nil
 	}

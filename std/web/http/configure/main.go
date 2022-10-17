@@ -9,7 +9,7 @@ import (
 	"log"
 
 	"google.golang.org/grpc"
-	"namespacelabs.dev/foundation/internal/planning/configure"
+	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	if err := configure.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+	if err := provisioning.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
 		protocol.RegisterPrepareServiceServer(sr, prepareHook{})
 	}); err != nil {
 		log.Fatal(err)
