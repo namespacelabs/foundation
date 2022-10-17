@@ -25,12 +25,10 @@ import (
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
-	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/schema"
 )
 
 type KeyAndPath struct {
@@ -46,106 +44,6 @@ func (v *CueV) Exists() bool { return v.Val.Exists() }
 
 func (v *CueV) FillPath(path cue.Path, rightSide interface{}) *CueV {
 	return &CueV{Val: v.Val.FillPath(path, rightSide)}
-}
-
-type WorkspaceLoader interface {
-	SnapshotDir(context.Context, schema.PackageName, memfs.SnapshotOpts) (loc fnfs.Location, absPath string, err error)
-}
-
-// Represents an unparsed Cue package.
-type CuePackage struct {
-	ModuleName string
-	AbsPath    string
-	RelPath    string   // Relative to module root.
-	Files      []string // Relative to RelPath
-	Sources    fs.FS
-	Imports    []string // Top level import statements.
-}
-
-func (pkg CuePackage) RelFiles() []string {
-	var files []string
-	for _, f := range pkg.Files {
-		files = append(files, filepath.Join(pkg.RelPath, f))
-	}
-	return files
-}
-
-// Fills [m] with the transitive closure of packages and files imported by package [pkgname].
-// TODO: Use [snapshotCache] instead of re-parsing all packages directly.
-func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname string, m map[string]*CuePackage) error {
-	if _, ok := m[pkgname]; ok {
-		return nil
-	}
-
-	// Leave a marker that this package is already handled, to avoid processing through cycles.
-	m[pkgname] = &CuePackage{}
-
-	pkg, err := loadPackageContents(ctx, resolver, pkgname)
-	if err != nil {
-		return err
-	}
-
-	m[pkgname] = pkg
-
-	if len(pkg.Files) == 0 {
-		return nil
-	}
-
-	for _, fp := range pkg.RelFiles() {
-		contents, err := fs.ReadFile(pkg.Sources, fp)
-		if err != nil {
-			return err
-		}
-
-		f, err := parser.ParseFile(fp, contents, parser.ImportsOnly)
-		if err != nil {
-			return err
-		}
-
-		for _, imp := range f.Imports {
-			importInfo, _ := astutil.ParseImportSpec(imp)
-			pkg.Imports = append(pkg.Imports, importInfo.Dir)
-			if IsStandardImportPath(importInfo.ID) {
-				continue
-			}
-
-			if err := CollectImports(ctx, resolver, importInfo.Dir, m); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName string) (*CuePackage, error) {
-	loc, absPath, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{IncludeFilesGlobs: []string{"*.cue"}})
-	if err != nil {
-		return nil, err
-	}
-
-	fifs, err := fs.ReadDir(loc.FS, loc.RelPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// We go wide here and don't take packages into account. Packages are then filtered while building.
-	var files []string
-	for _, f := range fifs {
-		if f.IsDir() || filepath.Ext(f.Name()) != ".cue" {
-			continue
-		}
-
-		files = append(files, f.Name())
-	}
-
-	return &CuePackage{
-		ModuleName: loc.ModuleName,
-		RelPath:    loc.RelPath,
-		AbsPath:    absPath,
-		Files:      files,
-		Sources:    loc.FS,
-	}, nil
 }
 
 // Entry point to load Cue packages from a Namespace workspace.
@@ -199,33 +97,6 @@ func (ev *EvalCtx) EvalPackage(ctx context.Context, pkgname string) (*Partial, e
 	// A foundation package definition has no package statement, which we refer to as the "_"
 	// import here.
 	return ev.cache.Eval(ctx, *pkg, pkgname+":_", collectedImports, ev.scope)
-}
-
-func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) (*Partial, error) {
-	bldctx := build.NewContext()
-
-	p := bldctx.NewInstance(dir, func(pos token.Pos, path string) *build.Instance {
-		if IsStandardImportPath(path) {
-			return nil // Builtin.
-		}
-
-		berr := bldctx.NewInstance(dir, nil)
-		berr.Err = errors.Promote(fnerrors.New("imports not allowed"), "")
-		return berr
-	})
-
-	pkg := CuePackage{
-		RelPath: ".",
-		Files:   files,
-		Sources: fsys,
-	}
-
-	if err := parseSources(ctx, p, "_", pkg); err != nil {
-		return nil, err
-	}
-
-	// The user shouldn't be able to reference the injected scope in the workspace file, e.g. $env.
-	return finishInstance(nil, cuecontext.New(), p, pkg, nil /* collectedImports */, nil /* scope */)
 }
 
 func (sc *snapshotCache) Eval(ctx context.Context, pkg CuePackage, pkgname string, collectedImports map[string]*CuePackage, scope any) (*Partial, error) {
@@ -384,42 +255,20 @@ func IsStandardImportPath(path string) bool {
 	return !strings.Contains(elem, ".")
 }
 
-func WalkAttrs(parent cue.Value, visit func(v cue.Value, key, value string) error) error {
-	var errs []error
-
-	parent.Walk(nil, func(v cue.Value) {
-		attrs := v.Attributes(cue.ValueAttr)
-		for _, attr := range attrs {
-			if attr.Name() != "fn" {
-				continue
-			}
-
-			for k := 0; k < attr.NumArgs(); k++ {
-				key, value := attr.Arg(k)
-				if err := visit(v, key, value); err != nil {
-					errs = append(errs, err)
-				}
-			}
-		}
-	})
-
-	return multierr.New(errs...)
-}
-
 func parseTags(vv *CueV) ([]KeyAndPath, error) {
 	var recorded []KeyAndPath
 
 	if err := WalkAttrs(vv.Val, func(v cue.Value, key, value string) error {
 		switch key {
 		case InputKeyword:
-			if !stringsContain(knownInputs, value) {
+			if !slices.Contains(knownInputs, value) {
 				return fnerrors.InternalError("%s is a not a supported value of @fn(%s)", value, InputKeyword)
 			}
 
 			recorded = append(recorded, KeyAndPath{Key: value, Target: v.Path()})
 
 		case AllocKeyword:
-			if !stringsContain(knownAllocs, value) {
+			if !slices.Contains(knownAllocs, value) {
 				return fnerrors.InternalError("%s is a not a supported value of @fn(%s)", value, AllocKeyword)
 			}
 
@@ -432,13 +281,4 @@ func parseTags(vv *CueV) ([]KeyAndPath, error) {
 	}
 
 	return recorded, nil
-}
-
-func stringsContain(strs []string, s string) bool {
-	for _, str := range strs {
-		if str == s {
-			return true
-		}
-	}
-	return false
 }

@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
+	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/providers/aws/auth"
 	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -36,7 +36,7 @@ const minimumTokenExpiry = 5 * time.Minute
 var clusterConfigType = planning.DefineConfigType[*fneks.EKSCluster]("foundation.providers.aws.eks.EKSCluster")
 
 func Register() {
-	frontend.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
+	planninghooks.RegisterPrepareHook("namespacelabs.dev/foundation/universe/aws/eks.DescribeCluster", prepareDescribeCluster)
 
 	client.RegisterConfigurationProvider("eks", provideEKS)
 	client.RegisterConfigurationProvider("aws/eks", provideEKS)
@@ -100,7 +100,7 @@ func provideEKS(ctx context.Context, config planning.Configuration) (client.Clus
 	}, nil
 }
 
-func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*frontend.InternalPrepareProps, error) {
+func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schema.Stack_Entry) (*planninghooks.InternalPrepareProps, error) {
 	// XXX this breaks test/production similarity, but for the moment hide EKS
 	// from tests. This removes the ability for tests to allocate IAM resources.
 	if env.Environment().Ephemeral {
@@ -135,7 +135,7 @@ func prepareDescribeCluster(ctx context.Context, env planning.Context, se *schem
 			len(eksServerDetails.ComputedIamRoleName), eksServerDetails.ComputedIamRoleName)
 	}
 
-	props := &frontend.InternalPrepareProps{}
+	props := &planninghooks.InternalPrepareProps{}
 	props.ProvisionInput = append(props.ProvisionInput, rtypes.ProvisionInput{
 		Message: eksCluster, Aliases: []string{"foundation.providers.aws.eks.EKSCluster"}})
 	props.ProvisionInput = append(props.ProvisionInput, rtypes.ProvisionInput{

@@ -14,8 +14,8 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend"
-	"namespacelabs.dev/foundation/internal/frontend/invocation"
+	"namespacelabs.dev/foundation/internal/planning/invocation"
+	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/provision/eval"
@@ -75,7 +75,7 @@ type ParsedNode struct {
 	Package       *pkggraph.Package
 	ProvisionPlan pkggraph.ProvisionPlan
 	Allocations   []pkggraph.ValueWithPath
-	PrepareProps  frontend.ProvisionResult
+	PrepareProps  planninghooks.ProvisionResult
 }
 
 func (stack *Stack) AllPackageList() schema.PackageList {
@@ -300,10 +300,10 @@ func EvalProvision(ctx context.Context, server parsed.Server, n *pkggraph.Packag
 }
 
 func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Package) (*ParsedNode, error) {
-	var combinedProps frontend.InternalPrepareProps
+	var combinedProps planninghooks.InternalPrepareProps
 	for _, hook := range node.PrepareHooks {
 		if hook.InvokeInternal != "" {
-			props, err := frontend.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.SealedContext(), server.StackEntry())
+			props, err := planninghooks.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.SealedContext(), server.StackEntry())
 			if err != nil {
 				return nil, fnerrors.Wrap(node.Location, err)
 			}
@@ -386,14 +386,14 @@ func evalProvision(ctx context.Context, server parsed.Server, node *pkggraph.Pac
 				return nil, fnerrors.BadInputError("setting provision inputs is deprecated, use serialized message")
 			}
 
-			props := frontend.InternalPrepareProps{
+			props := planninghooks.InternalPrepareProps{
 				PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
 					DeclaredStack:   pl.PackageNames(),
 					ComputePlanWith: resp.GetPreparedProvisionPlan().GetProvisioning(),
 					Sidecars:        resp.GetPreparedProvisionPlan().GetSidecar(),
 					Inits:           resp.GetPreparedProvisionPlan().GetInit(),
 				},
-				ProvisionResult: frontend.ProvisionResult{
+				ProvisionResult: planninghooks.ProvisionResult{
 					SerializedProvisionInput: resp.ProvisionInput,
 					Extension:                resp.Extension,
 					ServerExtension:          resp.ServerExtension,

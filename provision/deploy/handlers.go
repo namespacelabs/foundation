@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"namespacelabs.dev/foundation/internal/frontend/invocation"
+	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/provision"
 	"namespacelabs.dev/foundation/provision/parsed"
 	"namespacelabs.dev/foundation/provision/tool"

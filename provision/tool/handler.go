@@ -5,7 +5,7 @@
 package tool
 
 import (
-	"namespacelabs.dev/foundation/internal/frontend/invocation"
+	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/schema"
 )
 
