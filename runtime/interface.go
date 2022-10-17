@@ -363,10 +363,10 @@ func (e ErrContainerFailed) Error() string {
 	return fmt.Sprintf("%s: multiple failures:\n%s", e.Name, strings.Join(labels, "\n"))
 }
 
-func (g GroundedSecrets) Get(ref *schema.PackageRef) *schema.FileContents {
+func (g GroundedSecrets) Get(ref *schema.PackageRef) *GroundedSecret {
 	for _, secret := range g.Secrets {
 		if secret.Ref.Equals(ref) {
-			return secret.Value
+			return &secret
 		}
 	}
 

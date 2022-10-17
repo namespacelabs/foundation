@@ -238,6 +238,10 @@ func (c Create) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInv
 	}, nil
 }
 
+func (c Create) AppliedResource() any {
+	return c.Resource
+}
+
 func (ar ApplyRoleBinding) ToDefinition(scope ...schema.PackageName) (*schema.SerializedInvocation, error) {
 	body, err := json.Marshal(ar.Rules)
 	if err != nil {

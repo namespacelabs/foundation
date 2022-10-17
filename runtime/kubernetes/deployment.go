@@ -372,9 +372,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	// XXX Think through this, should it also be hashed + immutable?
 	secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
-	secrets := newDataItemCollector()
+	secrets := newSecretCollector(secretId)
 
-	if _, err := fillEnv(mainContainer, mainEnv, secretId, opts.secrets, secrets); err != nil {
+	if _, err := fillEnv(mainContainer, mainEnv, opts.secrets, secrets); err != nil {
 		return err
 	}
 
@@ -442,7 +442,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 						return fnerrors.BadInputError("%q: missing secret value", entry.SecretRef.Canonical())
 					}
 
-					secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource, secrets).WithPath(entry.Path))
+					if resource.Value != nil {
+						secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource.Value, secrets.items).WithPath(entry.Path))
+					} else if resource.Spec.Generate != nil {
+						name, key := secrets.allocateGenerated(resource)
+						projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
+							applycorev1.SecretProjection().WithName(name).WithItems(applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path)),
+						))
+					}
 
 				case entry.KubernetesSecretRef != nil:
 					projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
@@ -570,7 +577,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(scntr, sidecar.Env, secretId, opts.secrets, secrets); err != nil {
+		if _, err := fillEnv(scntr, sidecar.Env, opts.secrets, secrets); err != nil {
 			return err
 		}
 
@@ -602,26 +609,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithCommand(init.Command...).
 			WithVolumeMounts(initVolumeMounts...)
 
-		if _, err := fillEnv(scntr, init.Env, secretId, opts.secrets, secrets); err != nil {
+		if _, err := fillEnv(scntr, init.Env, opts.secrets, secrets); err != nil {
 			return err
 		}
 
 		spec.WithInitContainers(scntr)
 	}
 
-	if (len(secrets.data) + len(secrets.binaryData)) > 0 {
-		s.operations = append(s.operations, kubedef.Apply{
-			Description: "Server secrets",
-			Resource: applycorev1.Secret(secretId, target.namespace).
-				WithAnnotations(annotations).
-				WithLabels(labels).
-				WithLabels(map[string]string{
-					kubedef.K8sKind: kubedef.K8sStaticConfigKind,
-				}).
-				WithStringData(secrets.data).
-				WithData(secrets.binaryData),
-		})
-	}
+	s.operations = append(s.operations, secrets.planDeployment(target.namespace, annotations, labels)...)
 
 	podSecCtx := applycorev1.PodSecurityContext()
 	if specifiedSec == nil {
@@ -861,7 +856,7 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	return nil, nil
 }
 
-func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secretId string, secrets runtime.GroundedSecrets, out *collector) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets runtime.GroundedSecrets, out *secretCollector) (*applycorev1.ContainerApplyConfiguration, error) {
 	sort.SliceStable(env, func(i, j int) bool {
 		return env[i].Name < env[j].Name
 	})
@@ -883,16 +878,13 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
 			}
 
-			contents := secrets.Get(kv.FromSecretRef)
-			if contents == nil {
-				return nil, fnerrors.BadInputError("%q: missing secret value", kv.FromSecretRef.Canonical())
+			name, key, err := out.allocate(secrets, kv.FromSecretRef)
+			if err != nil {
+				return nil, err
 			}
 
-			key := kv.FromSecretRef.Canonical()
-			out.set(key, contents)
-
 			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
-				applycorev1.SecretKeySelector().WithName(secretId).WithKey(key),
+				applycorev1.SecretKeySelector().WithName(name).WithKey(key),
 			))
 
 		default:
@@ -945,4 +937,8 @@ func toK8sVol(vol *kubedef.SpecExtension_Volume) (*applycorev1.VolumeApplyConfig
 	default:
 		return nil, fnerrors.InternalError("don't know how to instantiate a k8s volume from %v", vol)
 	}
+}
+
+func generatedSecretName(spec *schema.SecretSpec_GenerateSpec) (string, string) {
+	return fmt.Sprintf("gen-%s", spec.UniqueId), "generated"
 }

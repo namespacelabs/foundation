@@ -106,7 +106,7 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 			return startComputing(ctx, On(ctx), computeInputs.named), nil
 		})
 		if err != nil {
-			panic("compute: expected failure: " + err.Error())
+			return ErrPromise[any](err)
 		}
 		return promise
 	}

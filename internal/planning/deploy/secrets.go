@@ -64,6 +64,14 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 					if spec := secretPackage.LookupSecret(ref.Name); spec == nil {
 						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "no such secret %q", ref.Name))
 					} else {
+						if spec.Generate != nil {
+							if spec.Generate.UniqueId == "" {
+								errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: missing unique id", ref.Name))
+							} else if spec.Generate.RandomByteCount <= 0 {
+								errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: randomByteCount must be > 0", ref.Name))
+							}
+						}
+
 						specs = append(specs, spec)
 					}
 				}
@@ -91,23 +99,28 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 			}
 
 			for k, secretRef := range ps.Secrets {
-				value, err := lookupSecret(ctx, env, secretRef, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
-				if err != nil {
-					return nil, err
+				gsec := runtime.GroundedSecret{
+					Ref:  secretRef,
+					Spec: specs[k],
 				}
 
-				if value == nil {
-					missing = append(missing, secretRef)
-					missingSpecs = append(missingSpecs, specs[k])
-					missingServer = append(missingServer, srv.PackageName())
-					continue
+				if gsec.Spec.Generate == nil {
+					value, err := lookupSecret(ctx, env, secretRef, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
+					if err != nil {
+						return nil, err
+					}
+
+					if value == nil {
+						missing = append(missing, secretRef)
+						missingSpecs = append(missingSpecs, gsec.Spec)
+						missingServer = append(missingServer, srv.PackageName())
+						continue
+					}
+
+					gsec.Value = value
 				}
 
-				g.Secrets = append(g.Secrets, runtime.GroundedSecret{
-					Ref:   secretRef,
-					Spec:  specs[k],
-					Value: value,
-				})
+				g.Secrets = append(g.Secrets, gsec)
 			}
 		}
 
@@ -115,12 +128,12 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 			labels := make([]string, len(missing))
 
 			for k, secretRef := range missing {
-				labels[k] = fmt.Sprintf("  # %s\n  ns secrets set %s --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
+				labels[k] = fmt.Sprintf("  # Description: %s\n  ns secrets set %s --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
 			}
 
 			return nil, fnerrors.UsageError(
 				fmt.Sprintf("Please run:\n\n%s", strings.Join(labels, "\n")),
-				"there are secrets required which have not been specified")
+				"There are secrets required which have not been specified")
 
 		}
 
