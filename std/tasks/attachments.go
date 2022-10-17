@@ -54,9 +54,11 @@ func (ev *EventAttachments) seal() {
 
 	for name, b := range ev.buffers {
 		if cb, ok := b.buffer.(*syncbuffer.ByteBuffer); ok {
+			sealed := cb.Seal()
 			ev.buffers[name] = attachedBuffer{
 				id:          ids.NewRandomBase62ID(8),
-				buffer:      cb.Seal(),
+				buffer:      sealed,
+				writer:      sealed.Writer(),
 				name:        b.name,
 				contentType: b.contentType,
 			}
@@ -77,6 +79,7 @@ func (ev *EventAttachments) attach(name OutputName, body []byte) {
 	ev.buffers[name.computed] = attachedBuffer{
 		id:          ids.NewRandomBase62ID(8),
 		buffer:      syncbuffer.Seal(body),
+		writer:      io.Discard,
 		name:        name.name,
 		contentType: name.contentType,
 	}
