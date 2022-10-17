@@ -47,7 +47,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 			// we put the package content directly under the root "/app" directory.
 			r.For(&wsremote.Signature{ModuleName: "", Rel: ""}),
 			func(filepath string) bool {
-				for _, p := range pathsForBuild {
+				for _, p := range packageManagerSources {
 					if strings.HasPrefix(filepath, p) {
 						return true
 					}

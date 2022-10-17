@@ -40,15 +40,15 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		Exclude: NodejsExclude,
 	})
 
-	pkgMgrRuntime, err := pkgMgrToRuntime(local, *conf.TargetPlatform(), bnj.config.NodePkgMgr)
+	packageManagerState, err := handlePackageManager(src, *conf.TargetPlatform(), bnj.config.NodePkgMgr)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
 	srcWithPkgMgr := llbutil.Image(nodeImage, *conf.TargetPlatform()).
 		File(llb.Mkdir(AppRootPath, 0644)).
-		With(llb.Dir(AppRootPath), pkgMgrRuntime.installCliWithConfigFiles).
-		Run(llb.Shlexf("%s install", pkgMgrRuntime.cliName)).Root().
+		With(llb.Dir(AppRootPath), packageManagerState.makeState).
+		Run(llb.Shlexf("%s install", packageManagerState.cli)).Root().
 		With(llbutil.CopyFrom(src, ".", "."))
 
 	var out llb.State
@@ -60,7 +60,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		out = srcWithPkgMgr
 	} else {
 		if bnj.config.BuildScript != "" {
-			srcWithPkgMgr = srcWithPkgMgr.Run(llb.Shlexf("%s run %s", pkgMgrRuntime.cliName, bnj.config.BuildScript)).Root()
+			srcWithPkgMgr = srcWithPkgMgr.Run(llb.Shlexf("%s run %s", packageManagerState.cli, bnj.config.BuildScript)).Root()
 		}
 
 		if bnj.config.BuildOutDir != "" {
@@ -73,7 +73,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			// For non-dev builds creating an optimized, small image.
 			// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
 			out = llbutil.Image(nodeImage, *conf.TargetPlatform()).
-				With(pkgMgrRuntime.installCliWithConfigFiles,
+				With(packageManagerState.makeState,
 					production.NonRootUser(),
 					llbutil.CopyFrom(srcWithPkgMgr, AppRootPath, AppRootPath),
 				)

@@ -7,7 +7,6 @@ package binary
 import (
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/build/buildkit"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
@@ -15,26 +14,19 @@ import (
 )
 
 var (
-	// Paths of files required for installing dependencies. Also changes to them trigger a full rebuild.
-	pathsForBuild = []string{
-		// Common
-		"package.json",
-		// Npm
-		".npmrc", "package-lock.json",
-		// Yarn
-		".yarnrc.yml", ".yarn/releases", ".yarn/plugins", ".yarn/patches", ".yarn/versions", "yarn.lock",
-		// Pnpm
-		"pnpm-lock.yaml",
-	}
-	patternsForBuild = pathsToPatterns(pathsForBuild)
+	npmFiles  = []string{".npmrc", "package-lock.json"}
+	yarnFiles = []string{"yarn.lock", ".yarnrc.yml", ".yarn/releases", ".yarn/plugins", ".yarn/patches", ".yarn/versions"}
+	pnpmFiles = []string{"pnpm-lock.yaml"}
+
+	packageManagerSources = makeAllFiles(npmFiles, yarnFiles, pnpmFiles)
 )
 
-type pkgMgrRuntime struct {
-	cliName                   string
-	installCliWithConfigFiles func(llb.State) llb.State
+type packageManager struct {
+	cli       string
+	makeState llb.StateOption
 }
 
-func PkgMgrCliName(pkgMgr schema.NodejsIntegration_NodePkgMgr) (string, error) {
+func PackageManagerCLI(pkgMgr schema.NodejsIntegration_NodePkgMgr) (string, error) {
 	switch pkgMgr {
 	case schema.NodejsIntegration_NPM:
 		return "npm", nil
@@ -47,34 +39,26 @@ func PkgMgrCliName(pkgMgr schema.NodejsIntegration_NodePkgMgr) (string, error) {
 	}
 }
 
-func pkgMgrToRuntime(local buildkit.LocalContents, platform specs.Platform, pkgMgr schema.NodejsIntegration_NodePkgMgr) (pkgMgrRuntime, error) {
-	configsSrc := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-		Include: patternsForBuild,
-	})
-	cliName, err := PkgMgrCliName(pkgMgr)
-	if err != nil {
-		return pkgMgrRuntime{}, err
-	}
-
-	runtime := pkgMgrRuntime{
-		cliName: cliName,
-	}
-
+func handlePackageManager(workspace llb.State, platform specs.Platform, pkgMgr schema.NodejsIntegration_NodePkgMgr) (*packageManager, error) {
 	switch pkgMgr {
 	case schema.NodejsIntegration_NPM:
-		runtime.installCliWithConfigFiles = func(base llb.State) llb.State {
+		return &packageManager{
+			cli: "npm",
 			// Not installing the "npm" binary itself: relying on the base version built into the "node:alpine" image.
-			return base.With(llbutil.CopyFrom(configsSrc, ".", "."))
-		}
+			makeState: llbutil.CopyPatterns(workspace, append([]string{"package.json"}, npmFiles...), "."),
+		}, nil
+
 	case schema.NodejsIntegration_YARN:
-		runtime.installCliWithConfigFiles = func(base llb.State) llb.State {
+		return &packageManager{
+			cli: "yarn",
 			// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
-			return base.With(llbutil.CopyFrom(configsSrc, ".", "."))
-		}
+			makeState: llbutil.CopyPatterns(workspace, append([]string{"package.json"}, yarnFiles...), "."),
+		}, nil
+
 	case schema.NodejsIntegration_PNPM:
 		alpineName, err := pins.CheckDefault("alpine")
 		if err != nil {
-			return pkgMgrRuntime{}, err
+			return nil, err
 		}
 
 		pnpmPath := "/bin/pnpm"
@@ -84,21 +68,24 @@ func pkgMgrToRuntime(local buildkit.LocalContents, platform specs.Platform, pkgM
 				versions().Pnpm, pnpmPath)).Root().
 			Run(llb.Shlexf("chmod +x %s", pnpmPath)).Root()
 
-		runtime.installCliWithConfigFiles = func(base llb.State) llb.State {
-			return base.With(llbutil.CopyFrom(pnpmBase, pnpmPath, pnpmPath)).
-				With(llbutil.CopyFrom(configsSrc, ".", "."))
-		}
-	default:
-		return pkgMgrRuntime{}, fnerrors.InternalError("unknown nodejs package manager: %v", pkgMgr)
+		return &packageManager{
+			cli: "pnpm",
+			makeState: func(base llb.State) llb.State {
+				return base.With(
+					llbutil.CopyFrom(pnpmBase, pnpmPath, pnpmPath),
+					llbutil.CopyPatterns(workspace, append([]string{"package.json"}, pnpmFiles...), "."),
+				)
+			},
+		}, nil
 	}
 
-	return runtime, nil
+	return nil, fnerrors.InternalError("unknown nodejs package manager: %v", pkgMgr)
 }
 
-func pathsToPatterns(paths []string) []string {
-	patterns := make([]string, len(paths))
-	for i, path := range paths {
-		patterns[i] = "**/" + path
+func makeAllFiles(s ...[]string) []string {
+	x := []string{"package.json"}
+	for _, s := range s {
+		x = append(x, s...)
 	}
-	return patterns
+	return x
 }

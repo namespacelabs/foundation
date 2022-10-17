@@ -46,7 +46,7 @@ func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pack
 		nodePkg = "."
 	}
 
-	cliName, err := binary.PkgMgrCliName(data.NodePkgMgr)
+	cliName, err := binary.PackageManagerCLI(data.NodePkgMgr)
 	if err != nil {
 		return nil, err
 	}

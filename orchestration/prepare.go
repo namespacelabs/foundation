@@ -22,7 +22,7 @@ import (
 const orchestratorStateKey = "foundation.orchestration"
 
 var (
-	UseOrchestrator              = true
+	UseOrchestrator              = false
 	RenderOrchestratorDeployment = false
 )
 

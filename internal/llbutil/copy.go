@@ -4,7 +4,9 @@
 
 package llbutil
 
-import "github.com/moby/buildkit/client/llb"
+import (
+	"github.com/moby/buildkit/client/llb"
+)
 
 type copyOpt func(*llb.CopyInfo)
 
@@ -17,6 +19,19 @@ func FollowSymlink() func(ci *llb.CopyInfo) {
 func CopyFrom(src llb.State, srcPath, destPath string, copyInfo ...copyOpt) llb.StateOption {
 	return func(s llb.State) llb.State {
 		return copy(src, srcPath, s, destPath, copyInfo...)
+	}
+}
+
+func CopyPatterns(src llb.State, include []string, destPath string, copyInfo ...copyOpt) llb.StateOption {
+	return func(s llb.State) llb.State {
+		copyInfo := &llb.CopyInfo{
+			AllowWildcard:   true,
+			AttemptUnpack:   true,
+			CreateDestPath:  true,
+			IncludePatterns: include,
+		}
+
+		return s.File(llb.Copy(src, "./*", destPath, copyInfo), llb.WithCustomNamef("COPY %s to %s", include, destPath))
 	}
 }
 
