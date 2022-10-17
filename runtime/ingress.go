@@ -12,7 +12,7 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
@@ -151,7 +151,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 	if needsHTTP := len(sch.Server.UrlMap) > 0; needsHTTP {
 		var httpEndpoints []*schema.Endpoint
 		for _, endpoint := range serverEndpoints {
-			if endpoint.ServiceName == planning.HttpServiceName {
+			if endpoint.ServiceName == constants.HttpServiceName {
 				httpEndpoints = append(httpEndpoints, endpoint)
 				break
 			}

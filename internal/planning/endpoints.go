@@ -11,25 +11,10 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
-
-const (
-	HttpServiceName    = "http"
-	IngressServiceName = "ingress"
-	IngressServiceKind = "ingress"
-
-	ManualInternalService = "internal-service"
-
-	GrpcGatewayServiceName = "grpc-gateway"
-
-	// XXX this is not quite right; it's just a simple mechanism for language and runtime
-	// to communicate. Ideally the schema would incorporate a gRPC map.
-	kindNeedsGrpcGateway = "needs-grpc-gateway"
-)
-
-var reservedServiceNames = []string{HttpServiceName, GrpcGatewayServiceName, IngressServiceName}
 
 type EndpointProvider interface {
 	InternalEndpoints(*schema.Environment, *schema.Server, []*schema.Endpoint_Port) ([]*schema.InternalEndpoint, error)
@@ -108,7 +93,7 @@ func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*sc
 		// We need a http service to hit.
 		endpoints = append(endpoints, &schema.Endpoint{
 			Type:          schema.Endpoint_PRIVATE,
-			ServiceName:   HttpServiceName,
+			ServiceName:   constants.HttpServiceName,
 			Port:          httpPort,
 			AllocatedName: server.Name,
 			EndpointOwner: server.GetPackageName(),
@@ -149,7 +134,7 @@ func computeServiceEndpoint(server *schema.Server, pkg *pkggraph.Package, n *sch
 		Port:          serverPort,
 	}
 
-	if slices.Contains(reservedServiceNames, endpoint.ServiceName) {
+	if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
 		return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
 	}
 
@@ -172,7 +157,7 @@ func computeServiceEndpoint(server *schema.Server, pkg *pkggraph.Package, n *sch
 			}
 
 			endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
-				Kind:    kindNeedsGrpcGateway,
+				Kind:    constants.KindNeedsGrpcGateway,
 				Details: details,
 			})
 
@@ -213,7 +198,7 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 	// XXX Rethink this -- i.e. consolidate with InternalEndpoint.
 	if spec.Internal {
 		endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
-			Kind: ManualInternalService,
+			Kind: constants.ManualInternalService,
 		})
 	}
 

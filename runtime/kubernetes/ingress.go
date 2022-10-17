@@ -11,7 +11,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
@@ -116,10 +116,10 @@ func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 						ContainerPort: p.ContainerPort,
 					}},
 					Endpoint: &fnschema.Endpoint{
-						ServiceName: planning.IngressServiceName,
+						ServiceName: constants.IngressServiceName,
 						ServiceMetadata: []*fnschema.ServiceMetadata{{
 							Protocol: "http",
-							Kind:     planning.IngressServiceKind,
+							Kind:     constants.IngressServiceKind,
 						}},
 					},
 				})
