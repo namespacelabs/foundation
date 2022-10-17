@@ -7,6 +7,7 @@ package cuefrontend
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -19,7 +20,7 @@ func ParseMounts(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 		return nil, nil, err
 	}
 
-	inlinedVolumes := []*schema.Volume{}
+	volumes := []*schema.Volume{}
 	out := []*schema.Mount{}
 
 	for it.Next() {
@@ -32,21 +33,49 @@ func ParseMounts(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			if err != nil {
 				return nil, nil, err
 			}
+
+			vol, err := loadVolume(ctx, pl, loc, mount.VolumeRef)
+			if err != nil {
+				return nil, nil, err
+			}
+			if vol != nil {
+				volumes = append(volumes, vol)
+			}
 		} else {
 			// Inline volume definition.
 			volumeName := it.Label()
 
-			parsedVolume, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
+			vol, err := parseVolume(ctx, pl, loc, volumeName, true /* isInlined */, it.Value())
 			if err != nil {
 				return nil, nil, err
 			}
 
 			mount.VolumeRef = schema.MakePackageRef(loc.PackageName, volumeName)
-			inlinedVolumes = append(inlinedVolumes, parsedVolume)
+			volumes = append(volumes, vol)
 		}
 
 		out = append(out, mount)
 	}
 
-	return out, inlinedVolumes, nil
+	return out, volumes, nil
+}
+
+func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, ref *schema.PackageRef) (*schema.Volume, error) {
+	pkg := ref.AsPackageName()
+	if loc.PackageName == pkg {
+		// All volumes from the same package are already added by default.
+		return nil, nil
+	}
+
+	loaded, err := pl.LoadByName(ctx, pkg)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range loaded.Volumes {
+		if v.Name == ref.Name {
+			return v, nil
+		}
+	}
+
+	return nil, fnerrors.UserError(loc, "No volume %q found in package %s", ref.Name, ref.PackageName)
 }

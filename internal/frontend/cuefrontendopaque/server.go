@@ -78,12 +78,12 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
-		parsedMounts, inlinedVolumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
+		parsedMounts, volumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
 
-		out.Volume = append(out.Volume, inlinedVolumes...)
+		out.Volume = append(out.Volume, volumes...)
 		out.MainContainer.Mount = parsedMounts
 	}
 
