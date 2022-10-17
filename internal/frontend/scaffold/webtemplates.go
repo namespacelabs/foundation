@@ -2,19 +2,19 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package web
+package scaffold
 
 import "text/template"
 
-type serviceTmplOptions struct {
+type webServiceTmplOptions struct {
 }
 
-type templateFile struct {
+type webTemplateFile struct {
 	filename string
 	tmpl     *template.Template
 }
 
-var templates = []templateFile{
+var webTemplates = []webTemplateFile{
 	{
 		filename: "src/index.tsx",
 		tmpl: template.Must(template.New("index.tsx").Parse(`

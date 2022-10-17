@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/frontend/cue"
+	"namespacelabs.dev/foundation/internal/frontend/scaffold"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 	"namespacelabs.dev/foundation/workspace/source/codegen"
@@ -49,13 +49,13 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			fncobra.HardcodeEnv(&env, "dev"),
 			withFramework(&fmwkFlag)).
 		Do(func(ctx context.Context) error {
-			parsedHttpServices := []cue.HttpService{}
+			parsedHttpServices := []scaffold.HttpService{}
 			for _, httpService := range httpServices {
 				parts := strings.Split(httpService, ":")
 				if len(parts) != 2 {
 					return fnerrors.UserError(nil, "invalid http_services format: %s", httpService)
 				}
-				parsedHttpServices = append(parsedHttpServices, cue.HttpService{
+				parsedHttpServices = append(parsedHttpServices, scaffold.HttpService{
 					Path: parts[0],
 					Pkg:  parts[1],
 				})
@@ -95,8 +95,8 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 				return context.Canceled
 			}
 
-			opts := cue.GenServerOpts{Name: name, Framework: *fmwk, GrpcServices: grpcServices, Dependencies: dependencies, HttpServices: parsedHttpServices}
-			if err := cue.CreateServerScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, opts); err != nil {
+			opts := scaffold.GenServerOpts{Name: name, Framework: *fmwk, GrpcServices: grpcServices, Dependencies: dependencies, HttpServices: parsedHttpServices}
+			if err := scaffold.CreateServerScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, opts); err != nil {
 				return err
 			}
 

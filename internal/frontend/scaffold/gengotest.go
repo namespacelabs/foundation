@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package golang
+package scaffold
 
 import (
 	"context"
@@ -15,31 +15,31 @@ import (
 )
 
 const (
-	testFileName = "e2etest.go"
+	goTestFileName = "e2etest.go"
 )
 
-type GenTestOpts struct {
+type GenGoTestOpts struct {
 	ServicePkg string
 }
 
-func CreateTestScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenTestOpts) error {
+func CreateGoTestScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenGoTestOpts) error {
 	serverPackageParts := strings.Split(opts.ServicePkg, string(os.PathSeparator))
 	if len(serverPackageParts) < 1 {
 		return fmt.Errorf("unable to determine server package name")
 	}
 
-	return generateGoSource(ctx, fsfs, loc.Rel(testFileName), testTmpl, testTmplOptions{
+	return generateGoSource(ctx, fsfs, loc.Rel(goTestFileName), goTestTmpl, goTestTmplOptions{
 		ServicePkg:         opts.ServicePkg,
 		ServiceImportAlias: serverPackageParts[len(serverPackageParts)-1],
 	})
 }
 
-type testTmplOptions struct {
+type goTestTmplOptions struct {
 	ServicePkg         string
 	ServiceImportAlias string
 }
 
-var testTmpl = template.Must(template.New(implFileName).Parse(`
+var goTestTmpl = template.Must(template.New(goImplFileName).Parse(`
 package main
 
 import (

@@ -15,10 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/frontend/cue"
-	"namespacelabs.dev/foundation/internal/frontend/golang"
-	"namespacelabs.dev/foundation/internal/frontend/proto"
-	"namespacelabs.dev/foundation/internal/frontend/web"
+	"namespacelabs.dev/foundation/internal/frontend/scaffold"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/planning"
 )
@@ -84,30 +81,30 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 			}
 
 			if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
-				protoOpts := proto.GenServiceOpts{Name: name, Framework: *fmwk}
-				if err := proto.CreateProtoScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, protoOpts); err != nil {
+				protoOpts := scaffold.GenProtoServiceOpts{Name: name, Framework: *fmwk}
+				if err := scaffold.CreateProtoScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, protoOpts); err != nil {
 					return err
 				}
 			}
 
-			cueOpts := cue.GenServiceOpts{
+			cueOpts := scaffold.GenServiceOpts{
 				ExportedServiceName: name,
 				Framework:           *fmwk,
 				HttpBackendPkg:      httpBackendPkg,
 			}
-			if err := cue.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, cueOpts); err != nil {
+			if err := scaffold.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, cueOpts); err != nil {
 				return err
 			}
 
 			switch *fmwk {
 			case schema.Framework_GO:
-				goOpts := golang.GenServiceOpts{Name: name}
-				if err := golang.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
+				goOpts := scaffold.GenGoServiceOpts{Name: name}
+				if err := scaffold.CreateGoServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
 					return err
 				}
 			case schema.Framework_WEB:
-				webOpts := web.GenServiceOpts{}
-				if err := web.CreateServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, webOpts); err != nil {
+				webOpts := scaffold.GenWebServiceOpts{}
+				if err := scaffold.CreateWebServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, webOpts); err != nil {
 					return err
 				}
 			}

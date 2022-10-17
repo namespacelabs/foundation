@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package proto
+package scaffold
 
 import (
 	"context"
@@ -16,18 +16,18 @@ import (
 )
 
 const (
-	serviceFileName = "service.proto"
+	protoServiceFileName = "service.proto"
 )
 
-type GenServiceOpts struct {
+type GenProtoServiceOpts struct {
 	Name      string
 	Framework schema.Framework
 }
 
-func CreateProtoScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+func CreateProtoScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenProtoServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
-	return createProtoScaffold(ctx, fsfs, loc.Rel(serviceFileName), serviceTmpl, serviceTmplOptions{
+	return createProtoScaffold(ctx, fsfs, loc.Rel(protoServiceFileName), protoServiceTmpl, protoServiceTmplOptions{
 		Name:      opts.Name,
 		Package:   strings.Join(parts, "."),
 		GoPackage: filepath.Join(append([]string{loc.ModuleName}, parts...)...),
@@ -35,7 +35,7 @@ func CreateProtoScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Lo
 	})
 }
 
-type serviceTmplOptions struct {
+type protoServiceTmplOptions struct {
 	Name      string
 	Package   string
 	GoPackage string
@@ -43,7 +43,7 @@ type serviceTmplOptions struct {
 }
 
 // TODO clean up template once we run a proto formatter.
-var serviceTmpl = template.Must(template.New(serviceFileName).Parse(`syntax = "proto3";
+var protoServiceTmpl = template.Must(template.New(protoServiceFileName).Parse(`syntax = "proto3";
 
 package {{.Package}};{{if eq .Framework "GO"}}
 

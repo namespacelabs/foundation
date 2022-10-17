@@ -10,8 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/frontend/cue"
-	"namespacelabs.dev/foundation/internal/frontend/golang"
+	"namespacelabs.dev/foundation/internal/frontend/scaffold"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -38,17 +37,17 @@ func newTestCmd() *cobra.Command {
 
 			fmwk := schema.Framework_GO
 
-			cueOpts := cue.GenTestOpts{
+			cueOpts := scaffold.GenTestOpts{
 				ServerPkg: serverPkg,
 			}
-			if err := cue.CreateTestScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, cueOpts); err != nil {
+			if err := scaffold.CreateTestScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, cueOpts); err != nil {
 				return err
 			}
 
 			switch fmwk {
 			case schema.Framework_GO:
-				goOpts := golang.GenTestOpts{ServicePkg: servicePkg}
-				if err := golang.CreateTestScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
+				goOpts := scaffold.GenGoTestOpts{ServicePkg: servicePkg}
+				if err := scaffold.CreateGoTestScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
 					return err
 				}
 			}

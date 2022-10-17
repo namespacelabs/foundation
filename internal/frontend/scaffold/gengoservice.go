@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package golang
+package scaffold
 
 import (
 	"context"
@@ -15,32 +15,32 @@ import (
 )
 
 const (
-	implFileName = "impl.go"
+	goImplFileName = "impl.go"
 )
 
-type GenServiceOpts struct {
+type GenGoServiceOpts struct {
 	Name string
 }
 
-func CreateServiceScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenServiceOpts) error {
+func CreateGoServiceScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Location, opts GenGoServiceOpts) error {
 	parts := strings.Split(loc.RelPath, string(os.PathSeparator))
 
 	if len(parts) < 1 {
 		return fmt.Errorf("unable to determine package name")
 	}
 
-	return generateGoSource(ctx, fsfs, loc.Rel(implFileName), serviceTmpl, serviceTmplOptions{
+	return generateGoSource(ctx, fsfs, loc.Rel(goImplFileName), goServiceTmpl, goServiceTmplOptions{
 		Name:    opts.Name,
 		Package: parts[len(parts)-1],
 	})
 }
 
-type serviceTmplOptions struct {
+type goServiceTmplOptions struct {
 	Name    string
 	Package string
 }
 
-var serviceTmpl = template.Must(template.New(implFileName).Parse(`
+var goServiceTmpl = template.Must(template.New(goImplFileName).Parse(`
 package {{.Package}}
 
 import (
