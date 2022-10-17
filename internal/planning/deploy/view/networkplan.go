@@ -11,8 +11,8 @@ import (
 
 	"github.com/kr/text"
 	"github.com/muesli/reflow/padding"
+	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/planning/deploy/render"
 )
 
 type NetworkPlanToTextOpts struct {

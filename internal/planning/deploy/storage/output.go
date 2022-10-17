@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
+	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning/deploy/render"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	fnschema "namespacelabs.dev/foundation/schema"

@@ -8,10 +8,10 @@ import (
 	"bytes"
 	"context"
 
+	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/planning/deploy/render"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 

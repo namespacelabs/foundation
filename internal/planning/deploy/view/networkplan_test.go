@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/bradleyjkemp/cupaloy"
+	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/planning/deploy/render"
 )
 
 func TestNetworkPlanToText(t *testing.T) {

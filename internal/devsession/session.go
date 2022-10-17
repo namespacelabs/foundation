@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -20,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/internal/planning/deploy/render"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
