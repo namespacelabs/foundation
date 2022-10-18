@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
 	"namespacelabs.dev/foundation/runtime"
@@ -25,14 +26,14 @@ import (
 var RunCodegen = true
 
 func MakePlan(ctx context.Context, rc runtime.Planner, server planning.Server, spec build.Spec) (build.Plan, error) {
-	return tasks.Return(ctx, tasks.Action("fn.deploy.prepare-server-image").Scope(server.PackageName()),
+	return tasks.Return(ctx, tasks.Action("planning.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
 			platforms, err := rc.TargetPlatforms(ctx)
 			if err != nil {
 				return build.Plan{}, err
 			}
 
-			tasks.Attachments(ctx).AddResult("platforms", platforms)
+			tasks.Attachments(ctx).AddResult("platforms", devhost.FormatPlatforms(platforms))
 
 			var ws build.Workspace
 			if RunCodegen {

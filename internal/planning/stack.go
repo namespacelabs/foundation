@@ -103,7 +103,7 @@ func (stack *Stack) Get(srv schema.PackageName) (PlannedServer, bool) {
 }
 
 func ComputeStack(ctx context.Context, servers Servers, opts ProvisionOpts) (*Stack, error) {
-	return tasks.Return(ctx, tasks.Action("planning.Compute").Scope(servers.Packages().PackageNames()...),
+	return tasks.Return(ctx, tasks.Action("planning.compute").Scope(servers.Packages().PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {
 			return computeStack(ctx, opts, servers...)
 		})
@@ -124,7 +124,7 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...Server) (*
 		focus[k] = server.PackageName()
 	}
 
-	cs := computeState{exec: executor.New(ctx, "planning.Compute"), out: &builder}
+	cs := computeState{exec: executor.New(ctx, "planning.compute"), out: &builder}
 
 	for _, srv := range servers {
 		srv := srv // Close srv.

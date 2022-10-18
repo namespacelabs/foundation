@@ -30,6 +30,14 @@ func FormatPlatform(platform specs.Platform) string {
 	return platforms.Format(platform)
 }
 
+func FormatPlatforms(platforms []specs.Platform) []string {
+	strs := make([]string, len(platforms))
+	for k, plat := range platforms {
+		strs[k] = FormatPlatform(plat)
+	}
+	return strs
+}
+
 func ProtoToPlatform(p *schema.Platform) specs.Platform {
 	return specs.Platform{
 		Architecture: p.Architecture,
