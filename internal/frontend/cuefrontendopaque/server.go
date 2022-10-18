@@ -67,18 +67,39 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		}
 	}
 
+	env, err := bits.Env.Parsed(loc.PackageName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Ensure each ref is loaded.
+	for _, e := range env {
+		if e.FromSecretRef == nil {
+			continue
+		}
+
+		pkg := e.FromSecretRef.AsPackageName()
+		if pkg == loc.PackageName {
+			continue
+		}
+
+		if _, err := pl.LoadByName(ctx, pkg); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
-		Env:  bits.Env.Parsed(),
+		Env:  env,
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
-		parsedMounts, inlinedVolumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
+		parsedMounts, volumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
 
-		out.Volume = append(out.Volume, inlinedVolumes...)
+		out.Volume = append(out.Volume, volumes...)
 		out.MainContainer.Mount = parsedMounts
 	}
 

@@ -74,7 +74,7 @@ func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc p
 		return nil, err
 	}
 
-	classRef, err := schema.ParsePackageRef(class)
+	classRef, err := schema.ParsePackageRef(loc.PackageName, class)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc p
 		return nil, err
 	}
 
-	intentFrom, err := src.IntentFrom.ToInvocation()
+	intentFrom, err := src.IntentFrom.ToInvocation(loc.PackageName)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc p
 
 	var parseErrs []error
 	for key, value := range src.Resources {
-		ref, err := schema.ParsePackageRef(value)
+		ref, err := schema.ParsePackageRef(loc.PackageName, value)
 		if err != nil {
 			parseErrs = append(parseErrs, err)
 		} else {
@@ -224,8 +224,8 @@ func (rl *ResourceList) ToPack(ctx context.Context, pl pkggraph.PackageLoader, l
 	return pack, nil
 }
 
-func parseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, packageRef string) (*schema.PackageRef, error) {
-	pkgRef, err := schema.ParsePackageRef(packageRef)
+func parseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, ref string) (*schema.PackageRef, error) {
+	pkgRef, err := schema.ParsePackageRef(loc.PackageName, ref)
 	if err != nil {
 		return nil, err
 	}

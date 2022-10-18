@@ -139,9 +139,11 @@ func isNewSyntax(partial *fncue.Partial) bool {
 	resources := partial.CueV.LookupPath("resources")
 	resourceClasses := partial.CueV.LookupPath("resourceClasses")
 	providers := partial.CueV.LookupPath("providers")
+	volumes := partial.CueV.LookupPath("volumes")
+	secrets := partial.CueV.LookupPath("secrets")
 
 	// There is at least one import: the file itself.
-	return len(partial.CueImports) <= 1 && (server.Exists() || resources.Exists() || resourceClasses.Exists() || providers.Exists())
+	return len(partial.CueImports) <= 1 && (server.Exists() || resources.Exists() || resourceClasses.Exists() || providers.Exists() || volumes.Exists() || secrets.Exists())
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (parsing.PackageType, error) {

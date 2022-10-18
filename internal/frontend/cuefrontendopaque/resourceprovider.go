@@ -30,12 +30,12 @@ func parseResourceProvider(ctx context.Context, pl parsing.EarlyPackageLoader, l
 		return nil, err
 	}
 
-	classRef, err := schema.ParsePackageRef(key)
+	classRef, err := schema.ParsePackageRef(loc.PackageName, key)
 	if err != nil {
 		return nil, err
 	}
 
-	initializedWith, err := bits.InitializedWith.ToInvocation()
+	initializedWith, err := bits.InitializedWith.ToInvocation(loc.PackageName)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func parseResourceProvider(ctx context.Context, pl parsing.EarlyPackageLoader, l
 
 	var errs []error
 	for key, value := range bits.ResourceInputs {
-		class, err := schema.ParsePackageRef(value)
+		class, err := schema.ParsePackageRef(loc.PackageName, value)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
@@ -79,7 +79,7 @@ func parseResourceProvider(ctx context.Context, pl parsing.EarlyPackageLoader, l
 	})
 
 	if bits.PrepareWith != nil {
-		prepareWith, err := bits.PrepareWith.ToInvocation()
+		prepareWith, err := bits.PrepareWith.ToInvocation(loc.PackageName)
 		if err != nil {
 			return nil, err
 		}

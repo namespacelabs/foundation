@@ -22,12 +22,12 @@ type CueInvokeBinary struct {
 	Inject       []string                         `json:"inject"`
 }
 
-func (cib *CueInvokeBinary) ToInvocation() (*schema.Invocation, error) {
+func (cib *CueInvokeBinary) ToInvocation(owner schema.PackageName) (*schema.Invocation, error) {
 	if cib == nil {
 		return nil, nil
 	}
 
-	binRef, err := schema.ParsePackageRef(cib.Binary)
+	binRef, err := schema.ParsePackageRef(owner, cib.Binary)
 	if err != nil {
 		return nil, err
 	}

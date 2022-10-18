@@ -26,7 +26,7 @@ type cueContainer struct {
 
 type parsedCueContainer struct {
 	container      *schema.SidecarContainer
-	inlineVolumes  []*schema.Volume
+	volumes        []*schema.Volume
 	inlineBinaries []*schema.Binary
 }
 
@@ -52,7 +52,7 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		var err error
-		out.container.Mount, out.inlineVolumes, err = cuefrontend.ParseMounts(ctx, pl, loc, mounts)
+		out.container.Mount, out.volumes, err = cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}

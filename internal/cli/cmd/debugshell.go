@@ -6,6 +6,8 @@ package cmd
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/build/assets"
@@ -15,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/debugshell"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -50,6 +53,11 @@ func NewDebugShellCmd() *cobra.Command {
 
 		pl := parsing.NewPackageLoader(env)
 
+		loc, err := cwdLoc(env)
+		if err != nil {
+			return err
+		}
+
 		switch {
 		case imageRef != "":
 			var err error
@@ -59,7 +67,8 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 		case binaryPackage != "":
-			binaryRef, err := schema.ParsePackageRef(binaryPackage)
+
+			binaryRef, err := schema.ParsePackageRef(loc.AsPackageName(), binaryPackage)
 			if err != nil {
 				return err
 			}
@@ -101,7 +110,7 @@ func NewDebugShellCmd() *cobra.Command {
 		}
 
 		return runtime.RunAttachedStdio(ctx, env, cluster, runtime.DeployableSpec{
-			PackageName: schema.PackageName(env.Workspace().ModuleName()),
+			PackageName: loc.AsPackageName(),
 			Class:       schema.DeployableClass_ONESHOT,
 			Name:        "debug",
 			Id:          ids.NewRandomBase32ID(8),
@@ -112,4 +121,20 @@ func NewDebugShellCmd() *cobra.Command {
 			},
 		})
 	})
+}
+
+func cwdLoc(env cfg.Context) (*fnfs.Location, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	relCwd, err := filepath.Rel(env.Workspace().LoadedFrom().AbsPath, cwd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fnfs.Location{
+		ModuleName: env.Workspace().ModuleName(),
+		RelPath:    relCwd,
+	}, nil
 }

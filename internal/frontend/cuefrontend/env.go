@@ -12,7 +12,6 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -21,7 +20,8 @@ type EnvMap struct {
 }
 
 type envValue struct {
-	v *schema.BinaryConfig_EnvEntry
+	value      string
+	fromSecret string
 }
 
 var _ json.Unmarshaler = &EnvMap{}
@@ -36,23 +36,33 @@ func (cem *EnvMap) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (cem *EnvMap) Parsed() []*schema.BinaryConfig_EnvEntry {
+func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvEntry, error) {
 	if cem == nil {
-		return nil
+		return nil, nil
 	}
 
 	var env []*schema.BinaryConfig_EnvEntry
 	for key, value := range cem.Values {
-		v := protos.Clone(value.v)
-		v.Name = key
-		env = append(env, v)
+		out := &schema.BinaryConfig_EnvEntry{
+			Name: key,
+		}
+		if value.value != "" {
+			out.Value = value.value
+		} else if value.fromSecret != "" {
+			secretRef, err := schema.ParsePackageRef(owner, value.fromSecret)
+			if err != nil {
+				return nil, err
+			}
+			out.FromSecretRef = secretRef
+		}
+		env = append(env, out)
 	}
 
 	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) bool {
 		return strings.Compare(a.Name, b.Name) < 0
 	})
 
-	return env
+	return env, nil
 }
 
 func (ev *envValue) UnmarshalJSON(data []byte) error {
@@ -73,18 +83,12 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 			return fnerrors.BadInputError("when setting an object to a env var map, expected a single key `fromSecret`")
 		}
 
-		// XXX support setting only the secret name.
-		ref, err := schema.ParsePackageRef(m[keys[0]])
-		if err != nil {
-			return err
-		}
-
-		ev.v = &schema.BinaryConfig_EnvEntry{FromSecretRef: ref}
+		ev.fromSecret = m[keys[0]]
 		return nil
 	}
 
 	if str, ok := tok.(string); ok {
-		ev.v = &schema.BinaryConfig_EnvEntry{Value: str}
+		ev.value = str
 		return nil
 	}
 

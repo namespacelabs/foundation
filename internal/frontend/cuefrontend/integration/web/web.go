@@ -58,7 +58,7 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 	}
 
 	for k, v := range bits.Backends {
-		serviceRef, err := schema.ParsePackageRef(v)
+		serviceRef, err := schema.ParsePackageRef(loc.PackageName, v)
 		if err != nil {
 			return nil, err
 		}

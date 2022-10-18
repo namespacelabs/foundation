@@ -76,8 +76,8 @@ type cueInstantiate struct {
 }
 
 type cueCallback struct {
-	InvokeInternal string          `json:"invokeInternal"`
-	InvokeBinary   CueInvokeBinary `json:"invokeBinary"`
+	InvokeInternal string           `json:"invokeInternal"`
+	InvokeBinary   *CueInvokeBinary `json:"invokeBinary,omitempty"`
 }
 
 type cueEnvironmentRequirements struct {
@@ -339,9 +339,9 @@ func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 		})
 
 		node.Mount = append(node.Mount, &schema.Mount{
-			Owner:      node.PackageName,
-			Path:       d.MountPath,
-			VolumeName: d.PersistentID,
+			Owner:     node.PackageName,
+			Path:      d.MountPath,
+			VolumeRef: schema.MakePackageRef(loc.PackageName, d.PersistentID),
 		})
 	}
 
@@ -384,16 +384,16 @@ func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 		}
 
 		if callback.InvokeInternal == "" {
-			if callback.InvokeBinary.Binary == "" {
+			if callback.InvokeBinary == nil {
 				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
 			}
 		} else {
-			if callback.InvokeBinary.Binary != "" {
+			if callback.InvokeBinary != nil {
 				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
 			}
 		}
 
-		invBinary, err := callback.InvokeBinary.ToInvocation()
+		invBinary, err := callback.InvokeBinary.ToInvocation(loc.PackageName)
 		if err != nil {
 			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision.invokeBinary`")
 		}

@@ -39,6 +39,9 @@ type Package struct {
 	// Parsed secret definitions within the package.
 	Secrets []*schema.SecretSpec
 
+	// Parsed volume definitions within the package.
+	Volumes []*schema.Volume
+
 	// Resources associated with node types.
 	Provides    map[string]*protos.FileDescriptorSetAndDeps // key: `Provides.Name`
 	Services    map[string]*protos.FileDescriptorSetAndDeps // key: fully qualified service name

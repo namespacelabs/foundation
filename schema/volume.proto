@@ -12,10 +12,12 @@ import "google/protobuf/any.proto";
 import "schema/package.proto";
 
 message Mount {
-    string owner       = 1;  // Package that declared the mount.
-    string path        = 2;
-    string volume_name = 3;
-    bool   readonly    = 4;
+    string     owner      = 1;  // Package that declared the mount.
+    string     path       = 2;
+    bool       readonly   = 4;
+    PackageRef volume_ref = 5;
+
+    reserved 3;
 }
 
 message Volume {

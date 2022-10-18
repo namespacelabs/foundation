@@ -101,20 +101,30 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 	}
 
-	server := v.LookupPath("server")
-	if server.Exists() {
+	if volumes := v.LookupPath("volumes"); volumes.Exists() {
+		parsedVolumes, err := cuefrontend.ParseVolumes(ctx, ft.loader, loc, volumes)
+		if err != nil {
+			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+		}
+		parsedPkg.Volumes = append(parsedPkg.Volumes, parsedVolumes...)
+	}
+
+	if secrets := v.LookupPath("secrets"); secrets.Exists() {
+		secretSpecs, err := parseSecrets(ctx, secrets)
+		if err != nil {
+			return nil, err
+		}
+
+		parsedPkg.Secrets = append(parsedPkg.Secrets, secretSpecs...)
+	}
+
+	if server := v.LookupPath("server"); server.Exists() {
 		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, server)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}
 
-		if volumes := v.LookupPath("volumes"); volumes.Exists() {
-			parsedVolumes, err := cuefrontend.ParseVolumes(ctx, ft.loader, loc, volumes)
-			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
-			}
-			parsedSrv.Volume = append(parsedSrv.Volume, parsedVolumes...)
-		}
+		parsedSrv.Volume = append(parsedSrv.Volume, parsedPkg.Volumes...)
 
 		var parsedSidecars []*schema.SidecarContainer
 		var parsedInitContainers []*schema.SidecarContainer
@@ -131,7 +141,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 					return nil, err
 				}
 
-				parsedSrv.Volume = append(parsedSrv.Volume, parsedContainer.inlineVolumes...)
+				parsedSrv.Volume = append(parsedSrv.Volume, parsedContainer.volumes...)
 				parsedPkg.Binaries = append(parsedPkg.Binaries, parsedContainer.inlineBinaries...)
 
 				if v, _ := val.LookupPath("init").Val.Bool(); v {
@@ -140,15 +150,6 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 					parsedSidecars = append(parsedSidecars, parsedContainer.container)
 				}
 			}
-		}
-
-		if secrets := v.LookupPath("secrets"); secrets.Exists() {
-			secretSpecs, err := parseSecrets(ctx, secrets)
-			if err != nil {
-				return nil, err
-			}
-
-			parsedPkg.Secrets = append(parsedPkg.Secrets, secretSpecs...)
 		}
 
 		parsedPkg.Server = parsedSrv

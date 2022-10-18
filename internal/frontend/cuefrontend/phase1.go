@@ -59,7 +59,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 
 	var pdata pkggraph.ProvisionPlan
 
-	pdata.Startup = phase2plan{partial: p1.partial, Value: vv, Left: left}
+	pdata.Startup = phase2plan{owner: p1.owner, partial: p1.partial, Value: vv, Left: left}
 
 	if stackVal := lookupTransition(vv, "stack"); stackVal.Exists() {
 		var stack cueStack
@@ -78,7 +78,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 			return pdata, err
 		}
 
-		inv, err := dec.ToInvocation()
+		inv, err := dec.ToInvocation(p1.owner)
 		if err != nil {
 			return pdata, err
 		}
@@ -146,7 +146,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 
 		var parsed []*schema.SidecarContainer
 		for k, data := range containers {
-			binRef, err := schema.ParsePackageRef(data.Binary)
+			binRef, err := schema.ParsePackageRef(owner, data.Binary)
 			if err != nil {
 				return nil, err
 			}
@@ -177,7 +177,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			return nil, fnerrors.UserError(nil, "%s: inconsistent container name %q", name, data.Name)
 		}
 
-		binRef, err := schema.ParsePackageRef(data.Binary)
+		binRef, err := schema.ParsePackageRef(owner, data.Binary)
 		if err != nil {
 			return nil, err
 		}

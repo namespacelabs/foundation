@@ -13,7 +13,7 @@ server: {
 	args: ["--save", "60", "1"]
 
 	mounts: {
-		"/data": "data"
+		"/data": ":data"
 	}
 }
 
