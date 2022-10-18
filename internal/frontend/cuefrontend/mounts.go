@@ -6,7 +6,6 @@ package cuefrontend
 
 import (
 	"context"
-	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -62,6 +61,10 @@ func ParseMounts(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 }
 
 func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, ref *schema.PackageRef) (*schema.Volume, error) {
+	if ref.Name == "" {
+		return nil, fnerrors.UserError(loc, "volumes refs require a name: got %q, expected \"pkg:foo\" or \":foo\"", ref.Canonical())
+	}
+
 	pkg := ref.AsPackageName()
 	if loc.PackageName == pkg {
 		// All volumes from the same package are already added by default.
@@ -70,10 +73,6 @@ func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph
 
 	loaded, err := pl.LoadByName(ctx, pkg)
 	if err != nil {
-		if ref.Name == "" && !strings.Contains(ref.PackageName, "/") {
-			// Likely, the user tried to reference "foo" instead of ":foo" - let's wrap a hint.
-			return nil, fnerrors.Wrapf(loc, err, "could not load package %q - did you mean to mount \":%s\"?", pkg, pkg)
-		}
 		return nil, err
 	}
 	for _, v := range loaded.Volumes {
