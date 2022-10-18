@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -13,7 +14,10 @@ import (
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	workspaceCmd "namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
-	"namespacelabs.dev/foundation/internal/cli/cmd"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -35,7 +39,7 @@ func main() {
 	root.AddCommand(github.NewGithubCmd())
 	root.AddCommand(workspaceCmd.NewWorkspaceCmd())
 	root.AddCommand(runs.NewRunsCmd())
-	root.AddCommand(cmd.NewRobotLogin("robot-login"))
+	root.AddCommand(newRobotLogin("robot-login"))
 
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
 
@@ -51,4 +55,30 @@ func main() {
 	if err := root.ExecuteContext(ctx); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func newRobotLogin(use string) *cobra.Command {
+	robotLogin := &cobra.Command{
+		Use:    use,
+		Short:  "Login as a robot.",
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			accessToken, err := tui.AskSecret(ctx, "Which Access Token would you like to use today?", "That would be a Github access token.", "access token")
+			if err != nil {
+				return err
+			}
+
+			username, err := fnapi.LoginAsRobotAndStore(ctx, args[0], string(accessToken))
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "\nHi %s, you are now logged in, have a nice day.\n", username)
+			return nil
+		}),
+	}
+
+	return robotLogin
 }
