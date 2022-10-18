@@ -201,7 +201,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keych
 					continue
 				}
 
-				matcher, err := fnfs.NewMatcher(fnfs.MatcherOpts{IncludeFilesGlobs: local.IncludePatterns, ExcludeFilesGlobs: local.ExcludePatterns})
+				matcher, err := fnfs.NewMatcher(fnfs.MatcherOpts{IncludeFilesGlobs: local.IncludePatterns, ExcludeFilesGlobs: MakeLocalExcludes(local)})
 				if err != nil {
 					return res, err
 				}

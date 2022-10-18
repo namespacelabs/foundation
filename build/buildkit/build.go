@@ -100,7 +100,7 @@ type frontendReq struct {
 	FrontendInputs map[string]llb.State
 }
 
-func MakeLocalState(src LocalContents) llb.State {
+func MakeLocalExcludes(src LocalContents) []string {
 	excludePatterns := []string{}
 	excludePatterns = append(excludePatterns, dirs.BasePatternsToExclude...)
 	excludePatterns = append(excludePatterns, devhost.HostOnlyFiles()...)
@@ -110,11 +110,15 @@ func MakeLocalState(src LocalContents) llb.State {
 		excludePatterns = append(excludePatterns, "tsconfig.json")
 	}
 
+	return excludePatterns
+}
+
+func MakeLocalState(src LocalContents) llb.State {
 	return llb.Local(src.Abs(),
 		llb.WithCustomName(fmt.Sprintf("Workspace %s (from %s)", src.Path, src.Module.ModuleName())),
 		llb.SharedKeyHint(src.Abs()),
 		llb.LocalUniqueID(src.Abs()),
-		llb.ExcludePatterns(excludePatterns),
+		llb.ExcludePatterns(MakeLocalExcludes(src)),
 		llb.IncludePatterns(src.IncludePatterns))
 }
 
