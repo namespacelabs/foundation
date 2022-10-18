@@ -8,22 +8,17 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
-	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/prepare"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
-	"namespacelabs.dev/foundation/internal/cli/cmd/source"
 	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
 )
 
 func RegisterCommands(root *cobra.Command) {
-	root.AddCommand(NewLintCmd())
 	root.AddCommand(NewBuildCmd())
 	root.AddCommand(NewLsCmd())
-	root.AddCommand(NewGenerateCmd())
 	root.AddCommand(NewDeployCmd())
 	root.AddCommand(NewFmtCmd())
 	root.AddCommand(NewUnprepareCmd())
@@ -41,17 +36,12 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewVersionCmd())
 	root.AddCommand(NewAttachCmd())
 	root.AddCommand(NewDeploymentCmd())
-	root.AddCommand(NewUseCmd())
 	root.AddCommand(NewDeployPlanCmd())
-	root.AddCommand(NewImagesCmd())
-	root.AddCommand(eks.NewEksCmd())
 	root.AddCommand(lsp.NewLSPCmd())
 	root.AddCommand(prepare.NewPrepareCmd())
 	root.AddCommand(secrets.NewSecretsCmd())
-	root.AddCommand(source.NewSourceCmd())
 	root.AddCommand(tools.NewToolsCmd())
 	root.AddCommand(create.NewCreateCmd(RunCommand))
-	root.AddCommand(cluster.NewClusterCmd())
 }
 
 // Programmatically trigger an `ns` command.

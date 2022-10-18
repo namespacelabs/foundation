@@ -376,6 +376,9 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"also_report_start_events",
 		"buildkit_forward_keychain",
 		"use_pinned_orchestrator",
+		// Hidden for M0
+		"testing_use_namespace_cloud",
+		"use_prebuilts",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}

@@ -15,6 +15,7 @@ func NewCreateCmd(runCommand func(ctx context.Context, args []string) error) *co
 		Use:     "create",
 		Short:   "Creates a new extension, service, server or workspace (also from a starter template).",
 		Aliases: []string{"c"},
+		Hidden:  true,
 	}
 
 	cmd.AddCommand(newExtensionCmd())

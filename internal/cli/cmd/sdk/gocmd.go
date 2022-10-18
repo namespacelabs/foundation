@@ -27,6 +27,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 		&cobra.Command{
 			Use:                "go -- ...",
 			Short:              "Run Go.",
+			Hidden:             true,
 			DisableFlagParsing: true,
 		}).
 		With(
