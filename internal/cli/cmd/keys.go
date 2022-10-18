@@ -8,24 +8,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/fs"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"filippo.io/age"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func NewKeysCmd() *cobra.Command {
@@ -86,17 +78,6 @@ func NewKeysCmd() *cobra.Command {
 		}),
 	}
 
-	reencrypt := false
-
-	encrypt := &cobra.Command{
-		Use:   "encrypt <path/to/dir>",
-		Short: "Encrypt a directory (e.g. secrets).",
-		Args:  cobra.ExactArgs(1),
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			return enc(ctx, args[0], fnfs.ReadWriteLocalFS(args[0]), reencrypt)
-		}),
-	}
-
 	importCmd := &cobra.Command{
 		Use:   "import <public-key>",
 		Short: "Import an existing public/private key pair.",
@@ -107,110 +88,11 @@ func NewKeysCmd() *cobra.Command {
 		}),
 	}
 
-	shell := &cobra.Command{
-		Use:   "shell <path/to/dir>",
-		Short: "Spawns a shell with the decrypted contents, allowing changes, which are then encrypted.",
-		Args:  cobra.ExactArgs(1),
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			keyDir, err := keys.KeysDir()
-			if err != nil {
-				return fnerrors.InternalError("failed to fetch keydir: %w", err)
-			}
-
-			origSecretsDir := args[0]
-			archive, err := os.Open(filepath.Join(origSecretsDir, keys.EncryptedFile))
-			if err != nil {
-				return fnerrors.InternalError("failed to open encrypted file: %w", err)
-			}
-			defer archive.Close()
-
-			fsys, err := keys.DecryptAsFS(ctx, keyDir, archive)
-			if err != nil {
-				return fnerrors.InternalError("failed to decrypt: %w", err)
-			}
-
-			originalDigest, err := digestfs.Digest(ctx, fsys)
-			if err != nil {
-				return fnerrors.InternalError("failed to compute a digest of the input: %w", err)
-			}
-
-			// XXX guarantee in-memory?
-			tmpDirPath, err := dirs.CreateUserTempDir(origSecretsDir, "keys-shell")
-			if err != nil {
-				return fnerrors.InternalError("failed to create tempdir: %w", err)
-			}
-
-			defer os.RemoveAll(tmpDirPath)
-
-			tmpDir := fnfs.ReadWriteLocalFS(tmpDirPath)
-
-			if err := fnfs.VisitFiles(ctx, fsys, func(path string, contents bytestream.ByteStream, dirent fs.DirEntry) error {
-				d := filepath.Dir(path)
-				if d != "." {
-					if err := os.Mkdir(filepath.Join(tmpDirPath, d), 0700); err != nil {
-						return fnerrors.InternalError("%s: failed to mkdir: %w", path, err)
-					}
-				}
-
-				return fnfs.WriteByteStream(ctx, tmpDir, path, contents, 0600)
-			}); err != nil {
-				return fnerrors.InternalError("visitfiles failed: %w", err)
-			}
-
-			if err := func() error {
-				bash := exec.CommandContext(ctx, "bash")
-				bash.Dir = tmpDirPath
-				return localexec.RunInteractive(ctx, bash)
-			}(); err != nil {
-				return err
-			}
-
-			changedDigest, err := digestfs.Digest(ctx, tmpDir)
-			if err == nil {
-				// If we fail to compute the digest, it's ok, just go ahead and rewrite the contents.
-				if changedDigest == originalDigest {
-					fmt.Fprintf(console.Stdout(ctx), "No changes were made to %s.\n", archive.Name())
-					return nil
-				}
-			}
-
-			if err := keys.EncryptLocal(ctx, fnfs.ReadWriteLocalFS(origSecretsDir), tmpDir); err != nil {
-				return err
-			}
-
-			fmt.Fprintf(console.Stdout(ctx), "Updated %q.\n", archive.Name())
-
-			return nil
-		}),
-	}
-
-	encrypt.Flags().BoolVar(&reencrypt, "reencrypt", reencrypt, "Use re-encryption instead.")
-
 	cmd.AddCommand(list)
 	cmd.AddCommand(generate)
-	cmd.AddCommand(encrypt)
 	cmd.AddCommand(importCmd)
-	cmd.AddCommand(shell)
 
 	return cmd
-}
-
-func enc(ctx context.Context, dir string, src fs.FS, reencrypt bool) error {
-	fsys := fnfs.ReadWriteLocalFS(dir)
-
-	if reencrypt {
-		if err := keys.Reencrypt(ctx, fsys); err != nil {
-			return err
-		}
-	} else {
-		if err := keys.EncryptLocal(ctx, fsys, src); err != nil {
-			return err
-		}
-	}
-
-	fmt.Fprintf(console.Stdout(ctx), "Updated %s\n", filepath.Join(dir, keys.EncryptedFile))
-	return nil
 }
 
 func importImpl(ctx context.Context, publicKey string) error {
