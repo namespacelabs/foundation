@@ -11,7 +11,9 @@ import (
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
-func TestParsePackageRef(t *testing.T) {
+const owner = PackageName("owner/pkg")
+
+func TestValidParsePackageRef(t *testing.T) {
 	for _, test := range []struct {
 		Source   string
 		Expected *PackageRef
@@ -20,13 +22,22 @@ func TestParsePackageRef(t *testing.T) {
 		{"foobar/quux:bar", &PackageRef{PackageName: "foobar/quux", Name: "bar"}},
 		{":baz", &PackageRef{PackageName: "owner/pkg", Name: "baz"}},
 	} {
-		got, err := ParsePackageRef("owner/pkg", test.Source)
+		got, err := ParsePackageRef(owner, test.Source)
 		if err != nil {
 			t.Error(err)
 		} else {
 			if d := cmp.Diff(test.Expected, got, protocmp.Transform()); d != "" {
 				t.Errorf("mismatch (-want +got):\n%s", d)
 			}
+		}
+	}
+}
+
+func TestInvalidParsePackageRef(t *testing.T) {
+	// Invalid refs
+	for _, ref := range []string{"", "::", "example.com/path:name:another"} {
+		if _, err := ParsePackageRef(owner, ref); err == nil {
+			t.Errorf("package ref %q should not be valid", ref)
 		}
 	}
 }

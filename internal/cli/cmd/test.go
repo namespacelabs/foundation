@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	enverr "namespacelabs.dev/foundation/internal/fnerrors/env"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -106,7 +107,7 @@ func NewTestCmd() *cobra.Command {
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testRefs))
 			testResults := make([]compute.Computable[oci.ImageID], len(testRefs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testRefs))}
-			incompatible := make([]*fnerrors.IncompatibleEnvironmentErr, len(testRefs))
+			incompatible := make([]*enverr.IncompatibleEnvironmentErr, len(testRefs))
 
 			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
 				eg := executor.New(ctx, "test")
@@ -124,7 +125,7 @@ func NewTestCmd() *cobra.Command {
 
 						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts)
 						if err != nil {
-							var inc fnerrors.IncompatibleEnvironmentErr
+							var inc enverr.IncompatibleEnvironmentErr
 							if errors.As(err, &inc) {
 								incompatible[k] = &inc
 								if !parallel && !parallelWork {

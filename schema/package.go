@@ -4,7 +4,11 @@
 
 package schema
 
-import "strings"
+import (
+	"strings"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
+)
 
 func MakePackageSingleRef(pkg PackageName) *PackageRef {
 	return &PackageRef{
@@ -21,7 +25,15 @@ func MakePackageRef(pkg PackageName, name string) *PackageRef {
 
 // Parses from a canonical string representation.
 func ParsePackageRef(owner PackageName, ref string) (*PackageRef, error) {
-	parts := strings.SplitN(ref, ":", 2)
+	if ref == "" {
+		return nil, fnerrors.UserError(owner, "empty package refs are not permitted")
+	}
+
+	parts := strings.Split(ref, ":")
+
+	if len(parts) > 2 {
+		return nil, fnerrors.UserError(owner, "invalid package ref %q", ref)
+	}
 
 	pr := &PackageRef{}
 

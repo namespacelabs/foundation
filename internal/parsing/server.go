@@ -183,14 +183,7 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server) error {
 	for _, m := range srv.MainContainer.Mount {
 		if findVolume(srv.Volume, m.VolumeRef) == nil {
-			msg := fmt.Sprintf("volume %q does not exist", m.VolumeRef.Canonical())
-			if m.VolumeRef.Name == "" {
-				// Check for invalid package names to provide better errors.
-				if _, err := pl.Resolve(ctx, m.VolumeRef.AsPackageName()); err != nil {
-					msg = fmt.Sprintf("%s\n  Could not resolve package %q - did you mean \":%s\"?", msg, m.VolumeRef.AsPackageName(), m.VolumeRef.PackageName)
-				}
-			}
-			return fnerrors.UserError(loc, msg)
+			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeRef.Canonical())
 		}
 	}
 

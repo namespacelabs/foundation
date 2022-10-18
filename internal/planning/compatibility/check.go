@@ -5,7 +5,7 @@
 package compatibility
 
 import (
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	enverr "namespacelabs.dev/foundation/internal/fnerrors/env"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -13,7 +13,7 @@ func CheckCompatible(env *schema.Environment, srv *schema.Server) error {
 	for _, req := range srv.GetEnvironmentRequirement() {
 		for _, r := range req.GetEnvironmentHasLabel() {
 			if !env.HasLabel(r) {
-				return fnerrors.IncompatibleEnvironmentErr{
+				return enverr.IncompatibleEnvironmentErr{
 					Env:               env,
 					ServerPackageName: schema.PackageName(srv.PackageName),
 					RequirementOwner:  schema.PackageName(req.Package),
@@ -24,7 +24,7 @@ func CheckCompatible(env *schema.Environment, srv *schema.Server) error {
 
 		for _, r := range req.GetEnvironmentDoesNotHaveLabel() {
 			if env.HasLabel(r) {
-				return fnerrors.IncompatibleEnvironmentErr{
+				return enverr.IncompatibleEnvironmentErr{
 					Env:               env,
 					ServerPackageName: schema.PackageName(srv.PackageName),
 					RequirementOwner:  schema.PackageName(req.Package),

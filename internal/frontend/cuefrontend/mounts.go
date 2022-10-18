@@ -6,6 +6,7 @@ package cuefrontend
 
 import (
 	"context"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -69,6 +70,10 @@ func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph
 
 	loaded, err := pl.LoadByName(ctx, pkg)
 	if err != nil {
+		if ref.Name == "" && !strings.Contains(ref.PackageName, "/") {
+			// Likely, the user tried to reference "foo" instead of ":foo" - let's wrap a hint.
+			return nil, fnerrors.Wrapf(loc, err, "could not load package %q - did you mean to mount \":%s\"?", pkg, pkg)
+		}
 		return nil, err
 	}
 	for _, v := range loaded.Volumes {
@@ -77,5 +82,6 @@ func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph
 		}
 	}
 
+	// TODO consolidate error UX.
 	return nil, fnerrors.UserError(loc, "No volume %q found in package %s", ref.Name, ref.PackageName)
 }
