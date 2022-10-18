@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 func TestReadDir(t *testing.T) {
@@ -134,10 +135,7 @@ func TestWalk(t *testing.T) {
 
 func visitAll(fsys fs.ReadDirFS) ([]simpleEntry, error) {
 	var visited []simpleEntry
-	if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	if err := fnfs.WalkDir(fsys, ".", func(path string, d fs.DirEntry) error {
 		if path == "." {
 			return nil
 		}

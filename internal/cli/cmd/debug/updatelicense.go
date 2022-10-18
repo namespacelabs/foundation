@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 var checkExtensions = []string{".go", ".js", ".ts", ".jsx", ".tsx", ".proto", ".hcl", ".yaml", ".yml", ".css"}
@@ -42,11 +43,7 @@ func newUpdateLicenseCmd() *cobra.Command {
 
 			fsys := os.DirFS(".")
 
-			if err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-
+			if err := fnfs.WalkDir(fsys, ".", func(path string, d fs.DirEntry) error {
 				if d.Name() == "." {
 					return nil
 				}

@@ -283,11 +283,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 		return nil, err
 	}
 
-	if err := fs.WalkDir(vp.fs, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
+	if err := fnfs.WalkDir(vp.fs, ".", func(path string, d fs.DirEntry) error {
 		// TODO: use the exclude/include patterns passed as a config instead.
 		if dirs.IsExcludedAsSource(d.Name()) {
 			if d.IsDir() {

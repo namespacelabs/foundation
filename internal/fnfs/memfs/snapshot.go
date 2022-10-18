@@ -11,6 +11,7 @@ import (
 	"github.com/mattn/go-zglob"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 type SnapshotOpts struct {
@@ -150,11 +151,7 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 	}
 
 	var snapshot FS
-	if err := fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
+	if err := fnfs.WalkDir(fsys, dir, func(path string, d fs.DirEntry) error {
 		if m.excludes(d.Name()) {
 			if d.IsDir() {
 				return fs.SkipDir

@@ -29,18 +29,7 @@ type workspaceSizeReport struct {
 func reportWorkspaceSize(ctx context.Context, fsys fs.FS, matcher *fnfs.PatternMatcher) (workspaceSizeReport, error) {
 	var w workspaceSizeReport
 
-	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if matcher.Excludes(path) || !matcher.Includes(path) {
-			if d.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
-
+	err := fnfs.WalkDirWithMatcher(fsys, ".", matcher, func(path string, d fs.DirEntry) error {
 		if !d.IsDir() {
 			fi, err := d.Info()
 			if err == nil {

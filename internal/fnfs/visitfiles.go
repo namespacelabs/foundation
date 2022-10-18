@@ -27,11 +27,7 @@ func VisitFiles(ctx context.Context, fsys fs.FS, visitor func(string, bytestream
 		return vfs.VisitFiles(ctx, visitor)
 	}
 
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
+	return WalkDir(fsys, ".", func(path string, d fs.DirEntry) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
