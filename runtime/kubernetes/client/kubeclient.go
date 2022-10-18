@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
@@ -14,7 +13,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	fnschema "namespacelabs.dev/foundation/schema"
@@ -126,8 +124,6 @@ func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configRes
 }
 
 func NewClient(ctx context.Context, cfg cfg.Configuration) (*Prepared, error) {
-	fmt.Fprintf(console.Debug(ctx), "kubernetes.NewClient\n")
-
 	hostEnv, err := CheckGetHostEnv(cfg)
 	if err != nil {
 		return nil, err
