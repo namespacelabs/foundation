@@ -11,7 +11,7 @@ import (
 var (
 	// Directories to exlude from source scanning.
 	// Any sub-directory.
-	dirsToExclude = []string{"node_modules"}
+	dirsToExclude = []string{"node_modules", ".history"}
 
 	// Patterns to exclude by default when building images. Integrations
 	// (e.g. nodejs) may add additional patterns.
