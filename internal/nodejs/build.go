@@ -149,11 +149,14 @@ func AddExternalModules(ctx context.Context, workspace *schema.Workspace, rel st
 			return nil, llb.State{}, fnerrors.InternalError("module %s not found in the Namespace lock file", workspace.ModuleName)
 		}
 
-		moduleLocal := buildkit.LocalContents{Module: m, Path: ".", ObserveChanges: false}
+		moduleLocal := buildkit.LocalContents{
+			Module:          m,
+			Path:            ".",
+			ObserveChanges:  false,
+			ExcludePatterns: binary.NodejsExclude,
+		}
 		locals = append(locals, moduleLocal)
-		localState := buildkit.MakeCustomLocalState(moduleLocal, buildkit.MakeLocalStateOpts{
-			Exclude: binary.NodejsExclude,
-		})
+		localState := buildkit.MakeLocalState(moduleLocal)
 		buildBase = buildBase.With(llbutil.CopyFrom(localState, ".", lfModule.Path))
 	}
 

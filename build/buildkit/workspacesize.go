@@ -12,33 +12,57 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
-func reportWorkspaceSizeErr(ctx context.Context, fsys fs.FS, totalSize uint64) error {
-	type fileAndSize struct {
-		Name string
-		Size uint64
-	}
+type fileAndSize struct {
+	Name string
+	Size uint64
+}
 
-	var fileList []fileAndSize
+type workspaceSizeReport struct {
+	Files     []fileAndSize
+	TotalSize uint64
+}
 
-	var description string
-	if err := fnfs.VisitFiles(ctx, fsys, func(path string, _ bytestream.ByteStream, de fs.DirEntry) error {
-		if !de.IsDir() {
-			fi, err := de.Info()
+func reportWorkspaceSize(ctx context.Context, fsys fs.FS, matcher *fnfs.PatternMatcher) (workspaceSizeReport, error) {
+	var w workspaceSizeReport
+
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if matcher.Excludes(path) || !matcher.Includes(path) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		if !d.IsDir() {
+			fi, err := d.Info()
 			if err == nil {
-				fileList = append(fileList, fileAndSize{path, uint64(fi.Size())})
+				w.Files = append(w.Files, fileAndSize{path, uint64(fi.Size())})
+				w.TotalSize += uint64(fi.Size())
 			}
 		}
 		return nil
-	}); err == nil {
-		slices.SortFunc(fileList, func(a, b fileAndSize) bool {
-			return a.Size > b.Size
-		})
+	})
 
+	slices.SortFunc(w.Files, func(a, b fileAndSize) bool {
+		return a.Size > b.Size
+	})
+
+	return w, err
+}
+
+func makeSizeError(w workspaceSizeReport) error {
+	fileList := w.Files
+
+	var description string
+	if len(fileList) > 0 {
 		if len(fileList) > 10 {
 			fileList = fileList[:10]
 		}
@@ -59,5 +83,5 @@ this is likely a problem with the way that foundation is filtering workspace con
 %s
 
 If you don't think this is an actual issue, please re-run with --skip_buildkit_workspace_size_check=true.`,
-		humanize.Bytes(totalSize), humanize.Bytes(maxExpectedWorkspaceSize), description)
+		humanize.Bytes(w.TotalSize), humanize.Bytes(maxExpectedWorkspaceSize), description)
 }

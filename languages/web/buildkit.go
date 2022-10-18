@@ -98,7 +98,13 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 		return nil, llb.State{}, err
 	}
 
-	local := buildkit.LocalContents{Module: module, Path: ".", ObserveChanges: rebuildOnChanges, TemporaryIsWeb: true}
+	local := buildkit.LocalContents{
+		Module:          module,
+		Path:            ".",
+		ObserveChanges:  rebuildOnChanges,
+		TemporaryIsWeb:  true,
+		ExcludePatterns: binary.NodejsExclude,
+	}
 
 	locals, buildBase, err := nodejs.AddExternalModules(ctx, workspace, rel, buildBase, externalModules)
 	if err != nil {
@@ -106,13 +112,9 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 	}
 	locals = append(locals, local)
 
-	// Use separate layers for node_modules/package.json/yarn.lock, and sources, as the latter change more often.
-	// Copy all package.json files, not only from the given package, to support resolving ns-managed dependencies within the same module.
-	srcForYarn := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-		Include: []string{"**/package.json", "**/yarn.lock"},
-	})
+	src := buildkit.MakeLocalState(local)
 
-	buildBase, err = runYarn(ctx, rel, target, buildBase, srcForYarn, *conf.TargetPlatform())
+	buildBase, err = runYarn(ctx, rel, target, buildBase, src, *conf.TargetPlatform())
 	if err != nil {
 		return nil, llb.State{}, err
 	}
@@ -124,9 +126,6 @@ func viteBuildBase(ctx context.Context, conf build.BuildTarget, target string, m
 		base = base.With(llbutil.CopyFrom(buildBase, nodejs.DepsRootPath, nodejs.DepsRootPath))
 	}
 
-	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-		Exclude: binary.NodejsExclude,
-	})
 	// Use separate layers for node_modules, and sources, as the latter change more often.
 	base = base.With(llbutil.CopyFrom(src, ".", target))
 

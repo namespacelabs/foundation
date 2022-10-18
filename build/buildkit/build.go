@@ -101,21 +101,10 @@ type frontendReq struct {
 }
 
 func MakeLocalState(src LocalContents) llb.State {
-	return MakeCustomLocalState(src, MakeLocalStateOpts{})
-}
-
-type MakeLocalStateOpts struct {
-	// If set, only files matching these patterns will be included in the state.
-	Include []string
-	// Added to the base exclude patterns. Override include patterns: if a file matches both, it is not included.
-	Exclude []string
-}
-
-func MakeCustomLocalState(src LocalContents, opts MakeLocalStateOpts) llb.State {
 	excludePatterns := []string{}
 	excludePatterns = append(excludePatterns, dirs.BasePatternsToExclude...)
 	excludePatterns = append(excludePatterns, devhost.HostOnlyFiles()...)
-	excludePatterns = append(excludePatterns, opts.Exclude...)
+	excludePatterns = append(excludePatterns, src.ExcludePatterns...)
 	if src.TemporaryIsWeb {
 		// Not including the root tsconfig.json as it belongs to Node.js
 		excludePatterns = append(excludePatterns, "tsconfig.json")
@@ -126,7 +115,7 @@ func MakeCustomLocalState(src LocalContents, opts MakeLocalStateOpts) llb.State 
 		llb.SharedKeyHint(src.Abs()),
 		llb.LocalUniqueID(src.Abs()),
 		llb.ExcludePatterns(excludePatterns),
-		llb.IncludePatterns(opts.Include))
+		llb.IncludePatterns(src.IncludePatterns))
 }
 
 func makeDockerOpts(platforms []specs.Platform) map[string]string {

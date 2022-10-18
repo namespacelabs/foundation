@@ -144,7 +144,12 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	local := buildkit.LocalContents{Module: bnj.module, Path: ".", ObserveChanges: bnj.isFocus}
+	local := buildkit.LocalContents{
+		Module:          bnj.module,
+		Path:            ".",
+		ObserveChanges:  bnj.isFocus,
+		ExcludePatterns: nodejsbinary.NodejsExclude,
+	}
 
 	locals, buildBase, err := nodejs.AddExternalModules(ctx, bnj.workspace, ".", buildBase, bnj.externalModules)
 	if err != nil {
@@ -164,9 +169,7 @@ func (n NodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-		Exclude: nodejsbinary.NodejsExclude,
-	})
+	src := buildkit.MakeLocalState(local)
 	buildBase = buildBase.With(
 		llbutil.CopyFrom(src, bnj.yarnRoot.Rel(), yarnRoot),
 		yarnInstallAndBuild(*conf.TargetPlatform(), yarnRoot, bnj.isDevBuild))

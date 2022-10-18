@@ -66,14 +66,14 @@ type MatcherOpts struct {
 	ExcludeFilesGlobs []string
 }
 
-type matcher struct {
+type PatternMatcher struct {
 	requiredFileMap map[string]struct{}
 	includeGlobs    []HasMatch
 	excludeGlobs    []HasMatch
 }
 
-func NewMatcher(opts MatcherOpts) (*matcher, error) {
-	m := &matcher{}
+func NewMatcher(opts MatcherOpts) (*PatternMatcher, error) {
+	m := &PatternMatcher{}
 
 	if len(opts.IncludeFiles) > 0 {
 		m.requiredFileMap = map[string]struct{}{}
@@ -101,7 +101,7 @@ func NewMatcher(opts MatcherOpts) (*matcher, error) {
 	return m, nil
 }
 
-func (m *matcher) Excludes(name string) bool {
+func (m *PatternMatcher) Excludes(name string) bool {
 	for _, m := range m.excludeGlobs {
 		if m.Match(name) {
 			return true
@@ -111,7 +111,7 @@ func (m *matcher) Excludes(name string) bool {
 	return false
 }
 
-func (m *matcher) Includes(name string) bool {
+func (m *PatternMatcher) Includes(name string) bool {
 	if _, ok := m.requiredFileMap[name]; ok {
 		return true
 	}

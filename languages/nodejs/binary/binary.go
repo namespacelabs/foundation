@@ -57,10 +57,13 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 	baseWithPackageSources := base.File(llb.Mkdir(AppRootPath, 0644))
 
-	local := buildkit.LocalContents{Module: n.module, Path: bnj.loc.Rel(), ObserveChanges: bnj.isFocus}
-	src := buildkit.MakeCustomLocalState(local, buildkit.MakeLocalStateOpts{
-		Exclude: NodejsExclude,
-	})
+	local := buildkit.LocalContents{
+		Module:          n.module,
+		Path:            bnj.loc.Rel(),
+		ObserveChanges:  bnj.isFocus,
+		ExcludePatterns: NodejsExclude,
+	}
+	src := buildkit.MakeLocalState(local)
 
 	opts := fnfs.MatcherOpts{
 		IncludeFiles:      append([]string{"package.json"}, packageManagerState.Files...),

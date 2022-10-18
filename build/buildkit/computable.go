@@ -37,6 +37,11 @@ type LocalContents struct {
 	ObserveChanges bool
 	// For Web we apply special handling temporarily: not including the root tsconfig.json as it belongs to Node.js
 	TemporaryIsWeb bool
+
+	// If set, only files matching these patterns will be included in the state.
+	IncludePatterns []string
+	// Added to the base exclude patterns. Override include patterns: if a file matches both, it is not included.
+	ExcludePatterns []string
 }
 
 func (l LocalContents) Abs() string {

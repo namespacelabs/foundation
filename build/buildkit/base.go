@@ -11,6 +11,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/dustin/go-humanize"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/solver/pb"
@@ -189,22 +190,35 @@ func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keych
 
 	if len(l.localDirs) > 0 {
 		solveOpt.LocalDirs = map[string]string{}
-		for k, p := range l.localDirs {
+		for k, local := range l.localDirs {
 			if !PreDigestLocalInputs {
 				ws, ok := compute.GetDepWithType[wscontents.Versioned](deps, fmt.Sprintf("local%d:contents", k))
 				if !ok {
 					return res, fnerrors.InternalError("expected local contents to have been computed")
 				}
 
-				totalSize, err := fnfs.TotalSize(ctx, ws.Value.FS())
+				if SkipExpectedMaxWorkspaceSizeCheck {
+					continue
+				}
+
+				matcher, err := fnfs.NewMatcher(fnfs.MatcherOpts{IncludeFilesGlobs: local.IncludePatterns, ExcludeFilesGlobs: local.ExcludePatterns})
 				if err != nil {
-					fmt.Fprintln(console.Warnings(ctx), "Failed to estimate workspace size:", err)
-				} else if totalSize > maxExpectedWorkspaceSize && !SkipExpectedMaxWorkspaceSizeCheck {
-					return res, reportWorkspaceSizeErr(ctx, ws.Value.FS(), totalSize)
+					return res, err
+				}
+
+				w, err := reportWorkspaceSize(ctx, ws.Value.FS(), matcher)
+				if err != nil {
+					return res, err
+				}
+
+				fmt.Fprintf(console.Debug(ctx), "buildkit.local: %s: total size: %v (%d files)\n", local.Abs(), humanize.Bytes(w.TotalSize), len(w.Files))
+
+				if w.TotalSize > maxExpectedWorkspaceSize {
+					return res, makeSizeError(w)
 				}
 			}
 
-			solveOpt.LocalDirs[p.Abs()] = filepath.Join(p.Module.Abs(), p.Path)
+			solveOpt.LocalDirs[local.Abs()] = filepath.Join(local.Module.Abs(), local.Path)
 		}
 	}
 
