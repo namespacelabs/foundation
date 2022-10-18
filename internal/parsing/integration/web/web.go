@@ -6,8 +6,10 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
@@ -16,6 +18,11 @@ import (
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime"
+)
+
+const (
+	runtimePkg = "namespacelabs.dev/foundation/std/runtime"
 )
 
 func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.WebIntegration, pkg *pkggraph.Package) error {
@@ -25,6 +32,13 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 	}
 
 	pkg.Server.Framework = schema.Framework_OPAQUE_NODEJS
+
+	// Adding a dependency to the backends via resources.
+	if len(data.Nodejs.Backend) > 0 {
+		if err := injectBackendsAsResourceDeps(ctx, pl, pkg, data.Nodejs.Backend); err != nil {
+			return err
+		}
+	}
 
 	var port int32
 	for _, s := range append(pkg.Server.Service, pkg.Server.Ingress...) {
@@ -48,6 +62,38 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 	}
 
 	return api.SetServerBinaryRef(pkg, binaryRef)
+}
+
+func injectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, backends []*schema.NodejsIntegration_Backend) error {
+	if pkg.Server.ResourcePack == nil {
+		pkg.Server.ResourcePack = &schema.ResourcePack{}
+	}
+
+	// Must ensure that the server runtime class (ServerIntent) is loaded.
+	if _, err := pl.LoadByName(ctx, runtimePkg); err != nil {
+		return err
+	}
+
+	for _, b := range backends {
+		// Making sure that the backend package is loaded.
+		if _, err := pl.LoadByName(ctx, b.Service.AsPackageName()); err != nil {
+			return err
+		}
+
+		intent, err := anypb.New(&runtime.ServerIntent{PackageName: b.Service.PackageName})
+		if err != nil {
+			return err
+		}
+
+		pkg.Server.ResourcePack.ResourceInstance = append(pkg.Server.ResourcePack.ResourceInstance, &schema.ResourceInstance{
+			PackageName: string(pkg.PackageName()),
+			Name:        fmt.Sprintf("gen-backend-resource-%s", b.Service.Name),
+			Class:       schema.MakePackageRef(runtimePkg, "Server"),
+			Intent:      intent,
+		})
+	}
+
+	return nil
 }
 
 func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.WebIntegration_Build) (*schema.Binary, error) {

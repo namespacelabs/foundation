@@ -115,7 +115,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 				return nil, fnerrors.InternalError("failed to build web app while waiting on ingress computation: %w", err)
 			}
 
-			resolveFunc := resolveBackend(srv.SealedContext(), fragments)
+			resolveFunc := resolveBackend(fragments)
 			backend := &OpGenHttpBackend{Backend: backends}
 			fsys, err := generateBackendConf(ctx, dep.Location, backend, resolveFunc, false)
 			if err != nil {
