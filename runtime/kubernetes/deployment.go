@@ -768,8 +768,7 @@ func (cm *collector) set(key string, rsc *schema.FileContents) {
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
-	key := fmt.Sprintf("%s.%s", ids.EncodeToBase62String([]byte(entry.Path)), ids.EncodeToBase62String([]byte(rsc.Path)))
-
+	key := cleanName(entry.Path, rsc.Path)
 	fmt.Fprintf(hash, "%s:", key)
 	_, _ = hash.Write(rsc.Contents)
 	fmt.Fprintln(hash)
