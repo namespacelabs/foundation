@@ -35,3 +35,7 @@ func init() {
 func IsExcludedAsSource(path string) bool {
 	return ExcludeMatcher.Excludes(path)
 }
+
+func IsHidden(name string) bool {
+	return len(name) > 1 && name[0] == '.'
+}
