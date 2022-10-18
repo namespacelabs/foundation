@@ -76,8 +76,8 @@ type cueInstantiate struct {
 }
 
 type cueCallback struct {
-	InvokeInternal string          `json:"invokeInternal"`
-	InvokeBinary   CueInvokeBinary `json:"invokeBinary"`
+	InvokeInternal string           `json:"invokeInternal"`
+	InvokeBinary   *CueInvokeBinary `json:"invokeBinary,omitempty"`
 }
 
 type cueEnvironmentRequirements struct {
@@ -384,11 +384,11 @@ func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 		}
 
 		if callback.InvokeInternal == "" {
-			if callback.InvokeBinary.Binary == "" {
+			if callback.InvokeBinary == nil {
 				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
 			}
 		} else {
-			if callback.InvokeBinary.Binary != "" {
+			if callback.InvokeBinary != nil {
 				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
 			}
 		}
