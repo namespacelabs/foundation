@@ -11,7 +11,6 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/client"
@@ -21,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var (
@@ -47,8 +47,7 @@ func Register() {
 		}
 
 		fmt.Fprintf(console.Debug(ctx), "kubernetes: selected %+v for %q\n", hostEnv, cfg.EnvKey())
-
-		fmt.Fprintf(console.Debug(ctx), "%v\n", stacktrace.New())
+		tasks.TraceCaller(ctx, console.Debug, "kubernetes.New")
 
 		if hostEnv.Provider != "" {
 			if provider := classOverrides[hostEnv.Provider]; provider != nil {

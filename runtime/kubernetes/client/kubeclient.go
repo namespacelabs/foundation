@@ -13,10 +13,12 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var hostEnvConfigType = cfg.DefineConfigType[*HostEnv]()
@@ -124,6 +126,8 @@ func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configRes
 }
 
 func NewClient(ctx context.Context, cfg cfg.Configuration) (*Prepared, error) {
+	tasks.TraceCaller(ctx, console.Debug, "kubernetes.NewClient")
+
 	hostEnv, err := CheckGetHostEnv(cfg)
 	if err != nil {
 		return nil, err
