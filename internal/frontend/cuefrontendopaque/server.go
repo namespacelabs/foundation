@@ -72,6 +72,22 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		return nil, nil, err
 	}
 
+	// Ensure each ref is loaded.
+	for _, e := range env {
+		if e.FromSecretRef == nil {
+			continue
+		}
+
+		pkg := e.FromSecretRef.AsPackageName()
+		if pkg == loc.PackageName {
+			continue
+		}
+
+		if _, err := pl.LoadByName(ctx, pkg); err != nil {
+			return nil, nil, err
+		}
+	}
+
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
 		Env:  env,
