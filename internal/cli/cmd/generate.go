@@ -34,6 +34,7 @@ func NewGenerateCmd() *cobra.Command {
 			Long:    "Generate service and server glue code, for each of the known schemas.\nAutomatically invoked with `build` and `deploy`.",
 			Aliases: []string{"gen"},
 			Args:    cobra.NoArgs,
+			Hidden:  true,
 		}).
 		With(fncobra.HardcodeEnv(&env, "dev")).
 		Do(func(ctx context.Context) error {

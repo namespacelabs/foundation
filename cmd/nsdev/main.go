@@ -22,7 +22,6 @@ func main() {
 		root.AddCommand(eks.NewEksCmd())
 		root.AddCommand(cmd.NewImagesCmd())
 		root.AddCommand(cluster.NewClusterCmd())
-		root.AddCommand(cmd.NewGenerateCmd())
 		root.AddCommand(cmd.NewLintCmd())
 		root.AddCommand(source.NewSourceCmd())
 		root.AddCommand(cmd.NewUseCmd())
