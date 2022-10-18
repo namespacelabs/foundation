@@ -7,7 +7,7 @@ package fnfs
 import "io/fs"
 
 func WalkDir(fsys fs.FS, dir string, callback func(string, fs.DirEntry) error) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -16,7 +16,7 @@ func WalkDir(fsys fs.FS, dir string, callback func(string, fs.DirEntry) error) e
 }
 
 func WalkDirWithMatcher(fsys fs.FS, dir string, matcher *PatternMatcher, callback func(string, fs.DirEntry) error) error {
-	return fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(fsys, dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
