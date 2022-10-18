@@ -200,7 +200,7 @@ func expandProtoList(fsys fs.FS, paths []string) ([]string, error) {
 
 			var children []string
 			for _, dirent := range dirents {
-				if !dirs.IsExcludedAsSource(dirent.Name()) && (dirent.IsDir() || filepath.Ext(dirent.Name()) == ".proto") {
+				if !dirs.IsExcludedAsSource(path) && (dirent.IsDir() || filepath.Ext(dirent.Name()) == ".proto") {
 					children = append(children, filepath.Join(path, dirent.Name()))
 				}
 			}

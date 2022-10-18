@@ -33,7 +33,7 @@ func ListSchemas(ctx context.Context, env cfg.Context, root *Root) (SchemaList, 
 
 	if err := fnfs.WalkDir(root.ReadOnlyFS(), ".", func(path string, d fs.DirEntry) error {
 		if d.IsDir() {
-			if dirs.IsExcludedAsSource(d.Name()) {
+			if dirs.IsExcludedAsSource(path) {
 				return fs.SkipDir
 			}
 			return nil

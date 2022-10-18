@@ -160,7 +160,7 @@ func listLocations(ctx context.Context, root *parsing.Root) ([]fnfs.Location, er
 
 	if err := fnfs.WalkDir(root.ReadOnlyFS(), ".", func(path string, d fs.DirEntry) error {
 		if d.IsDir() {
-			if dirs.IsExcludedAsSource(d.Name()) {
+			if dirs.IsExcludedAsSource(path) {
 				return fs.SkipDir
 			}
 			return nil

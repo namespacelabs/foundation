@@ -70,7 +70,7 @@ func SnapshotContents(ctx context.Context, modulePath, rel string) (fsys *memfs.
 		}
 
 		var err error
-		fsys, err = SnapshotDirectory(filepath.Join(modulePath, rel))
+		fsys, err = SnapshotDirectory(ctx, filepath.Join(modulePath, rel))
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,7 @@ func verifyDir(path string) error {
 	return nil
 }
 
-func SnapshotDirectory(absPath string) (*memfs.FS, error) {
+func SnapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
 	if err := verifyDir(absPath); err != nil {
 		return nil, err
 	}
@@ -110,11 +110,16 @@ func SnapshotDirectory(absPath string) (*memfs.FS, error) {
 			return err
 		}
 
-		if de.IsDir() {
-			// TODO: use the exclude/include patterns passed as a config instead.
-			if dirs.IsExcludedAsSource(de.Name()) {
+		// TODO: use the exclude/include patterns passed as a config instead.
+		if dirs.IsExcludedAsSource(osPathname) {
+			if de.IsDir() {
 				return filepath.SkipDir
 			}
+
+			return nil
+		}
+
+		if de.IsDir() {
 			return nil
 		} else if !de.Type().IsRegular() {
 			return nil
@@ -285,7 +290,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 
 	if err := fnfs.WalkDir(vp.fs, ".", func(path string, d fs.DirEntry) error {
 		// TODO: use the exclude/include patterns passed as a config instead.
-		if dirs.IsExcludedAsSource(d.Name()) {
+		if dirs.IsExcludedAsSource(path) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}

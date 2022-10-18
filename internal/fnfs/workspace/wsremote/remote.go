@@ -54,7 +54,7 @@ func (op *observePath) Output() compute.Output {
 func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (wscontents.Versioned, error) {
 	absPath := filepath.Join(op.absPath, op.rel)
 
-	snapshot, err := wscontents.SnapshotDirectory(absPath)
+	snapshot, err := wscontents.SnapshotDirectory(ctx, absPath)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 }
 
 func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink Sink) (*memfs.FS, bool, error) {
-	newSnapshot, err := wscontents.SnapshotDirectory(absPath)
+	newSnapshot, err := wscontents.SnapshotDirectory(ctx, absPath)
 	if err != nil {
 		return nil, false, err
 	}

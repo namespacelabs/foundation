@@ -5,25 +5,33 @@
 package dirs
 
 import (
-	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
 var (
-	// Directories to exlude from source scanning.
-	// Any sub-directory.
-	dirsToExclude = []string{"node_modules", ".history"}
-
 	// Patterns to exclude by default when building images. Integrations
 	// (e.g. nodejs) may add additional patterns.
 	BasePatternsToExclude = []string{
 		"**/node_modules/*",
 		"**/.git/*",
 		"**/.parcel-cache/*",
+		"**/.yarn/cache/*",
+		"**/.history/*",
 	}
+
+	ExcludeMatcher *fnfs.PatternMatcher
 )
+
+func init() {
+	m, err := fnfs.NewMatcher(fnfs.MatcherOpts{ExcludeFilesGlobs: BasePatternsToExclude})
+	if err != nil {
+		panic(err)
+	}
+	ExcludeMatcher = m
+}
 
 // Returns false if the directory shouldn't be scanned for Namespace source files (.cue, .proto).
 // This doesn't affect the content that is copied to the build image.
-func IsExcludedAsSource(name string) bool {
-	return slices.Contains(dirsToExclude, name)
+func IsExcludedAsSource(path string) bool {
+	return ExcludeMatcher.Excludes(path)
 }
