@@ -495,8 +495,7 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 			return fmt.Errorf("%s: '%s' is not a %s command.\nSee '%s --help'", name, args[0], name, name)
 		},
 
-		Example: `  ns create starter Creates a new workspace from a template.
-  ns prepare local  Prepares the local workspace for development or production.
+		Example: `  ns prepare local  Prepares the local workspace for development or production.
   ns test           Run all functional end-to-end tests in the current workspace.
   ns dev            Starts a development session, continuously building and deploying servers.`,
 	}
