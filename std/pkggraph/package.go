@@ -6,6 +6,7 @@ package pkggraph
 
 import (
 	"context"
+	"io/fs"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -17,6 +18,8 @@ import (
 
 type Package struct {
 	Location Location
+
+	PackageSources fs.FS // Filenames included will be relative to the module root, not the package.
 
 	Parsed PreProvision
 

@@ -425,6 +425,14 @@ func (sealed sealedPackages) Modules() []*pkggraph.Module {
 	return mods
 }
 
+func (sealed sealedPackages) Packages() []*pkggraph.Package {
+	packages := maps.Values(sealed.packages)
+	slices.SortFunc(packages, func(a, b *pkggraph.Package) bool {
+		return strings.Compare(a.PackageName().String(), b.PackageName().String()) < 0
+	})
+	return packages
+}
+
 func Ensure(ctx context.Context, packages pkggraph.PackageLoader, packageName schema.PackageName) error {
 	_, err := packages.LoadByName(ctx, packageName)
 	return err

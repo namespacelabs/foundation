@@ -19,4 +19,5 @@ type SealedPackageLoader interface {
 	PackageLoader
 
 	Modules() []*Module
+	Packages() []*Package
 }

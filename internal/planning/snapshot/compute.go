@@ -11,6 +11,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -19,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -157,51 +159,65 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 		return nil, err
 	}
 
-	expected := map[string][]byte{}
+	merged := map[string]*pkggraph.Package{}
 
-	for _, mod := range snap.sealed.Modules() {
+	var fileCount, packageCount int
+	for _, pkg := range snap.sealed.Packages() {
 		// Don't monitor changes to external modules, assume they're immutable.
-		if mod.IsExternal() {
+		if pkg.Location.Module.IsExternal() {
 			continue
 		}
 
-		// XXX we don't watch directories, which may end up being a miss.
-		if err := fnfs.VisitFiles(ctx, mod.ReadOnlyFS(), func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
-			if de.IsDir() {
-				return nil
-			}
-			contents, err := bytestream.ReadAll(blob)
-			if err != nil {
-				return err
-			}
-			p := filepath.Join(mod.Abs(), path)
-			expected[p] = contents // Don't really care about permissions etc, only contents.
-			return watcher.AddFile(p)
+		packageCount++
+
+		var count int
+		if err := fnfs.VisitFiles(ctx, pkg.PackageSources, func(path string, _ bytestream.ByteStream, _ fs.DirEntry) error {
+			count++
+			abs := filepath.Join(pkg.Location.Module.Abs(), path)
+			merged[abs] = pkg
+			return watcher.AddFile(abs) // Path is relative to module root.
 		}); err != nil {
 			watcher.Close()
-			return nil, err
+			return nil, fnerrors.InternalError("%s: failed to visit sources: %w", pkg.Location.PackageName, err)
 		}
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "observing pkggraph: merged view has %d files over %d packages\n", fileCount, packageCount)
 
 	bufferCh := make(chan []fsnotify.Event)
 	go func() {
 		for buffer := range bufferCh {
-			dirty := false
+			var dirty schema.PackageList
+			var errs []error
 			for _, ev := range buffer {
-				contents, err := os.ReadFile(ev.Name)
-				if err == nil {
-					if !bytes.Equal(contents, expected[ev.Name]) {
-						err = fmt.Errorf("%s: contents differ", ev.Name)
-					}
+				pkg := merged[ev.Name]
+				if pkg == nil {
+					continue
 				}
+
+				relPath, err := filepath.Rel(pkg.Location.Module.Abs(), ev.Name)
 				if err != nil {
-					dirty = true
-					break
+					fmt.Fprintf(console.Debug(ctx), "failed to calculate relative path of %s: %v\n", ev.Name, err)
+					continue
 				}
+
+				contents, contentsErr := os.ReadFile(ev.Name)
+				expected, expectedErr := fs.ReadFile(pkg.PackageSources, relPath)
+				if contentsErr == nil && expectedErr == nil && bytes.Equal(contents, expected) {
+					continue
+				}
+
+				dirty.Add(pkg.PackageName())
+				errs = append(errs, contentsErr)
+				errs = append(errs, expectedErr)
 			}
 
-			if !dirty {
+			if dirty.Len() == 0 {
 				continue
+			}
+
+			if err := multierr.New(errs...); err != nil {
+				fmt.Fprintf(console.Warnings(ctx), "Got errors while watching for changes:\n  %v\n", err)
 			}
 
 			newSnapshot, err := computeSnapshot(ctx, snap.env, snap.packages)
@@ -218,7 +234,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 				continue
 			}
 
-			fmt.Fprintln(logger, "Recomputed graph.")
+			fmt.Fprintf(logger, "Recomputed graph, due to changes to %s.\n", strings.Join(dirty.PackageNamesAsString(), ", "))
 
 			onChange(newSnapshot)
 			break // Don't send any more events.

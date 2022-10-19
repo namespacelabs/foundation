@@ -198,7 +198,7 @@ func (sc *snapshotCache) parseInstance(ctx context.Context, collectedImports map
 
 func parseSources(ctx context.Context, p *build.Instance, expectedPkg string, pkg CuePackage) error {
 	for _, f := range pkg.Files {
-		contents, err := fs.ReadFile(pkg.Sources, filepath.Join(pkg.RelPath, f))
+		contents, err := fs.ReadFile(pkg.Snapshot, filepath.Join(pkg.RelPath, f))
 		if err != nil {
 			p.Err = errors.Append(p.Err, errors.Promote(err, "ReadFile"))
 			continue

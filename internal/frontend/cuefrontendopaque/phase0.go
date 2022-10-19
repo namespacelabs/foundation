@@ -190,6 +190,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			}
 		}
 
+		parsedPkg.PackageSources = partial.Package.Snapshot
 		parsedPkg.Parsed = phase1plan
 	}
 

@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/console"
@@ -411,7 +412,8 @@ func (o *observable) newValue(ctx context.Context, latest ResultWithTimestamp[an
 			// XXX report errors back
 			o.listenerCancel = newListener
 		} else {
-			fmt.Fprintln(console.Stderr(ctx), "failed to observe changes to value", latest.Digest.String(), err)
+			fmt.Fprintln(console.Stderr(ctx), "failed to observe changes to value",
+				reflect.TypeOf(versioned).String(), latest.Digest.String(), err)
 		}
 	}
 

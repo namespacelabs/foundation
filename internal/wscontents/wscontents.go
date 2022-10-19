@@ -100,6 +100,14 @@ func verifyDir(path string) error {
 }
 
 func SnapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
+	fsys, err := snapshotDirectory(ctx, absPath)
+	if err != nil {
+		return nil, fnerrors.InternalError("snapshot failed: %v", err)
+	}
+	return fsys, nil
+}
+
+func snapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
 	if err := verifyDir(absPath); err != nil {
 		return nil, err
 	}
@@ -308,7 +316,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 	}); err != nil {
 		fmt.Fprintln(vp.errLogger, "watching failed: ", err)
 		watcher.Close()
-		return nil, err
+		return nil, fnerrors.InternalError("failed to walkdir: %v", err)
 	}
 
 	// We keep a buffer of N events over a time window, to avoid too much churn.
@@ -351,7 +359,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 
 	w, err := watcher.StartWatching(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.InternalError("failed to start watcher: %v", err)
 	}
 
 	go AggregateFSEvents(w, console.Debug(ctx), vp.errLogger, bufferCh)

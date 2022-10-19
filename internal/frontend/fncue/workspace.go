@@ -29,9 +29,11 @@ func EvalWorkspace(ctx context.Context, fsys fs.FS, dir string, files []string) 
 	})
 
 	pkg := CuePackage{
-		RelPath: ".",
-		Files:   files,
-		Sources: fsys,
+		PackageContents: &PackageContents{
+			Snapshot: fsys,
+			RelPath:  ".",
+		},
+		Files: files,
 	}
 
 	if err := parseSources(ctx, p, "_", pkg); err != nil {

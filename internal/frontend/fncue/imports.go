@@ -11,19 +11,15 @@ import (
 
 	"cuelang.org/go/cue/ast/astutil"
 	"cuelang.org/go/cue/parser"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/schema"
 )
 
 // Represents an unparsed Cue package.
 type CuePackage struct {
-	ModuleName string
-	AbsPath    string
-	RelPath    string   // Relative to module root.
-	Files      []string // Relative to RelPath
-	Sources    fs.FS
-	Imports    []string // Top level import statements.
+	*PackageContents
+	Files   []string // Relative to RelPath
+	Imports []string // Top level import statements.
 }
 
 func (pkg CuePackage) RelFiles() []string {
@@ -34,8 +30,18 @@ func (pkg CuePackage) RelFiles() []string {
 	return files
 }
 
+type PackageContents struct {
+	ModuleName string
+	// Snapshot rooted at the module [ModuleName] root.
+	Snapshot fs.FS
+	// Path within the module (within [FS]).
+	RelPath string
+	// Absolute path.
+	AbsPath string
+}
+
 type WorkspaceLoader interface {
-	SnapshotDir(context.Context, schema.PackageName, memfs.SnapshotOpts) (loc fnfs.Location, absPath string, err error)
+	SnapshotDir(context.Context, schema.PackageName, memfs.SnapshotOpts) (*PackageContents, error)
 }
 
 // Fills [m] with the transitive closure of packages and files imported by package [pkgname].
@@ -60,7 +66,7 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 	}
 
 	for _, fp := range pkg.RelFiles() {
-		contents, err := fs.ReadFile(pkg.Sources, fp)
+		contents, err := fs.ReadFile(pkg.Snapshot, fp)
 		if err != nil {
 			return err
 		}
@@ -87,12 +93,12 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 }
 
 func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName string) (*CuePackage, error) {
-	loc, absPath, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{IncludeFilesGlobs: []string{"*.cue"}})
+	pkg, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{IncludeFilesGlobs: []string{"*.cue"}})
 	if err != nil {
 		return nil, err
 	}
 
-	fifs, err := fs.ReadDir(loc.FS, loc.RelPath)
+	fifs, err := fs.ReadDir(pkg.Snapshot, pkg.RelPath)
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +114,7 @@ func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName st
 	}
 
 	return &CuePackage{
-		ModuleName: loc.ModuleName,
-		RelPath:    loc.RelPath,
-		AbsPath:    absPath,
-		Files:      files,
-		Sources:    loc.FS,
+		PackageContents: pkg,
+		Files:           files,
 	}, nil
 }

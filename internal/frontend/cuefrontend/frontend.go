@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -68,8 +67,9 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	v := &partial.CueV
 
 	parsed := &pkggraph.Package{
-		Location: loc,
-		Parsed:   phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left},
+		Location:       loc,
+		PackageSources: partial.Package.Snapshot,
+		Parsed:         phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left},
 	}
 
 	var count int
@@ -188,25 +188,26 @@ type WorkspaceLoader struct {
 	PackageLoader parsing.EarlyPackageLoader
 }
 
-func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (fnfs.Location, string, error) {
+func (wl WorkspaceLoader) SnapshotDir(ctx context.Context, pkgname schema.PackageName, opts memfs.SnapshotOpts) (*fncue.PackageContents, error) {
 	loc, err := wl.PackageLoader.Resolve(ctx, pkgname)
 	if err != nil {
-		return fnfs.Location{}, "", err
+		return nil, err
 	}
 
 	w, err := wl.PackageLoader.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
-		return fnfs.Location{}, "", err
+		return nil, err
 	}
 
 	fsys, err := memfs.SnapshotDir(w, loc.Rel(), opts)
 	if err != nil {
-		return fnfs.Location{}, "", err
+		return nil, err
 	}
 
-	return fnfs.Location{
+	return &fncue.PackageContents{
 		ModuleName: loc.Module.ModuleName(),
 		RelPath:    loc.Rel(),
-		FS:         fsys,
-	}, loc.Abs(), nil
+		Snapshot:   fsys,
+		AbsPath:    loc.Abs(),
+	}, nil
 }
