@@ -17,6 +17,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/prototext"
+	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/runtime"
@@ -53,6 +54,15 @@ func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
 	}
 
 	return rt, nil
+}
+
+func LoadResources() (*resources.Parser, error) {
+	configBytes, err := os.ReadFile("/namespace/config/resources.json")
+	if err != nil {
+		return nil, rpcerrors.Errorf(codes.Internal, "failed to unwrap resource configuration: %w", err)
+	}
+
+	return resources.NewParser(configBytes), nil
 }
 
 func PrepareEnv(specifiedServerName string) *ServerResources {

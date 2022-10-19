@@ -10,9 +10,17 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func Decode(data []byte, resource string, out any) error {
+type Parser struct {
+	data []byte
+}
+
+func NewParser(data []byte) *Parser {
+	return &Parser{data: data}
+}
+
+func (p *Parser) Decode(resource string, out any) error {
 	resources := make(map[string]any)
-	if err := json.Unmarshal(data, &resources); err != nil {
+	if err := json.Unmarshal(p.data, &resources); err != nil {
 		return err
 	}
 
