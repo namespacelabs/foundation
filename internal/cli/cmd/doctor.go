@@ -150,8 +150,7 @@ func NewDoctorCmd() *cobra.Command {
 					return buildkitResults{}, err
 				}
 				hostPlatform := buildkit.HostPlatform()
-				state := llb.Scratch().
-					File(llb.Mkfile("/hello", 0644, []byte(ids.NewRandomBase62ID(64)))) // Use a random value to avoid the cache.
+				state := llb.Scratch().File(llb.Mkfile("/hello", 0644, []byte("cachehit")))
 				conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel("doctor.hello-world")
 				var r buildkitResults
 				t := time.Now()
