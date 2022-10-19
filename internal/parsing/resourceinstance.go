@@ -135,10 +135,15 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *s
 	case IsSecretResource(r.Class):
 		intent := &runtime.SecretIntent{}
 		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
-			return false, fnerrors.InternalError("failed to unwrap Server intent")
+			return false, fnerrors.InternalError("failed to unwrap Secret intent")
 		}
 
-		pkg = intent.Ref.AsPackageName()
+		owner := schema.PackageName(r.PackageName)
+		ref, err := schema.ParsePackageRef(owner, intent.Ref)
+		if err != nil {
+			return false, err
+		}
+		pkg = ref.AsPackageName()
 	}
 
 	if pkg == "" {
