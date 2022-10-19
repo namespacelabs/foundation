@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/framework/helper/dns"
+	"namespacelabs.dev/foundation/framework/networking/dns"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 )
