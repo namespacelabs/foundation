@@ -172,6 +172,10 @@ func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink
 
 	if len(events) > 0 {
 		deposited, depositErr = sink.Deposit(ctx, events)
+	} else {
+		// If there are no changes consider everything done
+		// and avoid generating a new version in Observe() for nothing.
+		deposited = true
 	}
 
 	return newSnapshot, deposited, depositErr

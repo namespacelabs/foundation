@@ -407,7 +407,9 @@ func (o *observable) newValue(ctx context.Context, latest ResultWithTimestamp[an
 			o.listenerCancel()
 			o.listenerCancel = nil
 		}
-		newListener, err := versioned.Observe(ctx, o.newVersion)
+		newListener, err := versioned.Observe(ctx, func(newV ResultWithTimestamp[any], last bool) {
+			o.newValue(ctx, newV)
+		})
 		if err == nil {
 			// XXX report errors back
 			o.listenerCancel = newListener
