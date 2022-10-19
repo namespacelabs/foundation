@@ -137,31 +137,40 @@ func NewDoctorCmd() *cobra.Command {
 
 		//
 
-		buildkitI := errorOr[oci.Image]{err: fnerrors.New("no workspace")}
+		type buildkitResults struct {
+			BuildLatency time.Duration
+			Image        oci.Image
+		}
+
+		buildkitI := errorOr[buildkitResults]{err: fnerrors.New("no workspace")}
 		if workspaceI.err == nil {
-			buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (oci.Image, error) {
+			buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (buildkitResults, error) {
 				env, err := cfg.LoadContext(workspaceI.v, "dev")
 				if err != nil {
-					return nil, err
+					return buildkitResults{}, err
 				}
 				hostPlatform := buildkit.HostPlatform()
 				state := llb.Scratch().
-					File(llb.Mkfile("/hello", 0644, []byte("World")))
+					File(llb.Mkfile("/hello", 0644, []byte(ids.NewRandomBase62ID(64)))) // Use a random value to avoid the cache.
 				conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel("doctor.hello-world")
+				var r buildkitResults
+				t := time.Now()
 				imageC, err := buildkit.BuildImage(ctx, env, conf, state)
 				if err != nil {
-					return nil, err
+					return buildkitResults{}, err
 				}
 				image, err := compute.Get(ctx, imageC)
 				if err != nil {
-					return nil, err
+					return buildkitResults{}, err
 				}
-				return image.Value, nil
+				r.BuildLatency = time.Since(t)
+				r.Image = image.Value
+				return r, nil
 			})
 		}
-		printDiagnostic(ctx, "Buildkit", buildkitI, func(w io.Writer, image oci.Image) {
-			digest, _ := image.Digest()
-			fmt.Fprintf(w, "success hash=%v\n", digest)
+		printDiagnostic(ctx, "Buildkit", buildkitI, func(w io.Writer, r buildkitResults) {
+			digest, _ := r.Image.Digest()
+			fmt.Fprintf(w, "success build_latency=%v image_digest=%v\n", r.BuildLatency, digest)
 		})
 
 		//
