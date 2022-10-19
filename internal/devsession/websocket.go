@@ -6,6 +6,7 @@ package devsession
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -88,8 +89,10 @@ func serveStream(kind string, w http.ResponseWriter, r *http.Request, handler fu
 	defer ws.Close()
 
 	if err := handler(ctxWithCancel, ws, writer); err != nil {
-		fmt.Fprintf(writer, "failed: %v\n", err)
-		fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed: %v\n", r.RemoteAddr, err)
+		if !errors.Is(err, context.Canceled) {
+			fmt.Fprintf(writer, "failed: %v\n", err)
+			fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed: %v\n", r.RemoteAddr, err)
+		}
 	}
 }
 

@@ -76,7 +76,11 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 		return opts.Handler(ctx)
 	}
 
-	obs := opts.Provider.NewStackClient()
+	obs, err := opts.Provider.NewStackClient()
+	if err != nil {
+		return err
+	}
+
 	defer obs.Close()
 
 	keych := make(chan tea.KeyMsg)

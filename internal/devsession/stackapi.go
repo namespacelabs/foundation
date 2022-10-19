@@ -22,14 +22,24 @@ func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
 		if _, ok := err.(websocket.HandshakeError); !ok {
 			fmt.Fprintf(console.Errors(r.Context()), "(%s) websocket: failed to handshake: %v\n", r.RemoteAddr, err)
 		}
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "%v", err)
 		return
 	}
 
+	defer ws.Close()
+
 	_ = ws.SetCompressionLevel(6)
 
-	fmt.Fprintf(console.Debug(r.Context()), "(%s) websocket2: connected\n", r.RemoteAddr)
+	fmt.Fprintf(console.Debug(r.Context()), "(%s) websocket: connected\n", r.RemoteAddr)
 
-	ch := s.NewClient(true)
+	ch, err := s.NewClient(true)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "%v", err)
+		return
+	}
+
 	defer ch.Close()
 
 	ctx, cancel := context.WithCancel(r.Context())

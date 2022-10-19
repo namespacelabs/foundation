@@ -100,17 +100,15 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 		}
 	}
 
-	pdata.Naming = &schema.Naming{
-		EnableNamespaceManaged: true,
-	}
-
 	if naming := lookupTransition(vv, "naming"); naming.Exists() {
 		var data cueNaming
 		if err := naming.Val.Decode(&data); err != nil {
 			return pdata, err
 		}
 
-		pdata.Naming.WithOrg = data.WithOrg
+		pdata.Naming = &schema.Naming{
+			WithOrg: data.WithOrg,
+		}
 
 		for k, v := range data.DomainName {
 			for _, fqdn := range v {

@@ -71,7 +71,7 @@ func (s *Session) DeferRequest(req *DevWorkflowRequest) {
 	s.requestCh <- req
 }
 
-func (s *Session) NewClient(needsHistory bool) *Observer {
+func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
 	const maxTaskUpload = 1000
 	var taskHistory []*protocol.Task
 
@@ -91,7 +91,7 @@ func (s *Session) NewClient(needsHistory bool) *Observer {
 }
 
 // Implements observers.SessionProvider.
-func (s *Session) NewStackClient() observers.StackSession {
+func (s *Session) NewStackClient() (observers.StackSession, error) {
 	s.mu.Lock()
 	tu := &Update{StackUpdate: protos.Clone(s.currentStack)}
 	s.mu.Unlock()
