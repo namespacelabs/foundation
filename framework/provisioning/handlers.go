@@ -9,7 +9,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
 )

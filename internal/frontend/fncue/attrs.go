@@ -6,7 +6,7 @@ package fncue
 
 import (
 	"cuelang.org/go/cue"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 )
 
 func WalkAttrs(parent cue.Value, visit func(v cue.Value, key, value string) error) error {

@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/planning"

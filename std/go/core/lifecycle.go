@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 )
 
 type CtxCloseable interface {

@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"

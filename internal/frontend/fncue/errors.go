@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"cuelang.org/go/cue/errors"
-	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 )
 
 // Wraps a Cue error to include error location information in the error message.
