@@ -122,6 +122,8 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *s
 	// XXX Add generic package loading annotation to avoid special-casing this
 	// resource class. Other type of resources could also have references to
 	// packages.
+
+	var pkg schema.PackageName
 	switch {
 	case IsServerResource(r.Class):
 		intent := &runtime.ServerIntent{}
@@ -129,25 +131,25 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *s
 			return false, fnerrors.InternalError("failed to unwrap Server intent")
 		}
 
-		// Make sure that servers we refer to are package loaded.
-		if _, err := pl.LoadByName(ctx, schema.PackageName(intent.PackageName)); err != nil {
-			return false, err
-		}
-		return true, nil
+		pkg = schema.PackageName(intent.PackageName)
 	case IsSecretResource(r.Class):
 		intent := &runtime.SecretIntent{}
 		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
 			return false, fnerrors.InternalError("failed to unwrap Server intent")
 		}
 
-		// Make sure that secrets we refer to are package loaded.
-		if _, err := pl.LoadByName(ctx, intent.Ref.AsPackageName()); err != nil {
-			return false, err
-		}
-		return true, nil
+		pkg = intent.Ref.AsPackageName()
 	}
 
-	return false, nil
+	if pkg == "" {
+		return false, nil
+	}
+
+	if _, err := pl.LoadByName(ctx, pkg); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
