@@ -271,7 +271,7 @@ func errorReportRequest(w io.Writer) {
 	fmt.Fprintf(w, "Please include,\n")
 	fmt.Fprintf(w, "- the full command line you've used.\n")
 	fmt.Fprintf(w, "- the full output that ns produced\n")
-	fmt.Fprintf(w, "- the output of `ns version`\n")
+	fmt.Fprintf(w, "- the output of `ns doctor`\n")
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }
