@@ -32,6 +32,10 @@ func (i *Parser) Shortcut() string { return "nodejs" }
 
 type cueIntegrationNodejs struct {
 	Pkg string `json:"pkg"`
+
+	// Name -> package name.
+	// The ingress urls for backends are injected into the built image as a JS file.
+	Backends map[string]string `json:"backends"`
 }
 
 func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
@@ -59,10 +63,16 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		scripts = append(scripts, s)
 	}
 
+	backends, err := ParseBackends(loc, bits.Backends)
+	if err != nil {
+		return nil, err
+	}
+
 	return &schema.NodejsIntegration{
 		Pkg:                bits.Pkg,
 		NodePkgMgr:         pkgMgr,
 		PackageJsonScripts: scripts,
+		Backend:            backends,
 	}, nil
 }
 
@@ -86,4 +96,21 @@ func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 	}
 
 	return schema.NodejsIntegration_PKG_MGR_UNKNOWN, fnerrors.UserError(loc, "no package manager detected")
+}
+
+func ParseBackends(loc pkggraph.Location, src map[string]string) ([]*schema.NodejsIntegration_Backend, error) {
+	backends := []*schema.NodejsIntegration_Backend{}
+	for k, v := range src {
+		serviceRef, err := schema.ParsePackageRef(loc.PackageName, v)
+		if err != nil {
+			return nil, err
+		}
+
+		backends = append(backends, &schema.NodejsIntegration_Backend{
+			Name:    k,
+			Service: serviceRef,
+		})
+	}
+
+	return backends, nil
 }

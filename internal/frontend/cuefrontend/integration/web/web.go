@@ -57,16 +57,9 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		}
 	}
 
-	for k, v := range bits.Backends {
-		serviceRef, err := schema.ParsePackageRef(loc.PackageName, v)
-		if err != nil {
-			return nil, err
-		}
-
-		nodejsInt.Backend = append(nodejsInt.Backend, &schema.NodejsIntegration_Backend{
-			Name:    k,
-			Service: serviceRef,
-		})
+	nodejsInt.Backend, err = nodejs.ParseBackends(loc, bits.Backends)
+	if err != nil {
+		return nil, err
 	}
 
 	if bits.Service == "" {
