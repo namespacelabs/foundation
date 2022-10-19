@@ -103,7 +103,7 @@ func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisi
 			WithData(data),
 	})
 
-	volId := fmt.Sprintf("fn-secrets-%s", r.Focus.Server.Id)
+	volId := fmt.Sprintf("ns-secrets-%s", r.Focus.Server.Id)
 
 	out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 		With: &kubedef.SpecExtension{
@@ -151,7 +151,7 @@ func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisi
 
 	for _, gen := range collection.Generated {
 		generatedName := gen.ResourceName
-		volId := "fn-secret-" + gen.ID
+		volId := "ns-secret-" + gen.ID
 
 		out.Extensions = append(out.Extensions, kubedef.ExtendSpec{
 			With: &kubedef.SpecExtension{

@@ -63,7 +63,7 @@ type configuration struct{}
 
 func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	const (
-		configVolume = "fn--gateway-bootstrap"
+		configVolume = "ns-gateway-bootstrap"
 		filename     = "boostrap-xds.yaml"
 	)
 
