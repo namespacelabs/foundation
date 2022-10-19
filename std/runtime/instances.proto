@@ -8,12 +8,6 @@ package foundation.std.runtime;
 
 option go_package = "namespacelabs.dev/foundation/std/runtime";
 
-import "schema/package.proto";
-
-message ServerIntent {
-    string package_name = 1;
-}
-
-message SecretIntent {
-    schema.PackageRef ref = 1;
+message SecretInstance {
+    string file_path = 1;
 }

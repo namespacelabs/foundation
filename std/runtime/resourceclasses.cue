@@ -9,4 +9,14 @@ resourceClasses: {
 			source: "../../schema/runtime/config.proto"
 		}
 	}
+	"Secret": {
+		intent: {
+			type:   "foundation.std.runtime.SecretIntent"
+			source: "./intents.proto"
+		}
+		produces: {
+			type:   "foundation.std.runtime.SecretInstance"
+			source: "./instances.proto"
+		}
+	}
 }
