@@ -122,7 +122,8 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *s
 	// XXX Add generic package loading annotation to avoid special-casing this
 	// resource class. Other type of resources could also have references to
 	// packages.
-	if IsServerResource(r.Class) {
+	switch {
+	case IsServerResource(r.Class):
 		intent := &runtime.ServerIntent{}
 		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
 			return false, fnerrors.InternalError("failed to unwrap Server intent")
@@ -133,9 +134,7 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *s
 			return false, err
 		}
 		return true, nil
-	}
-
-	if IsSecretResource(r.Class) {
+	case IsSecretResource(r.Class):
 		intent := &runtime.SecretIntent{}
 		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
 			return false, fnerrors.InternalError("failed to unwrap Server intent")
