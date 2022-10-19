@@ -121,7 +121,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			// TODO: do it outside of the Node.js implementation.
 			pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
 
-			out = llb.Scratch().With(llbutil.CopyFrom(srcWithBackendsConfig, pathToCopy, "/"))
+			out = llb.Scratch().With(llbutil.CopyFrom(srcWithBackendsConfig, pathToCopy, pathToCopy))
 		} else {
 			// For non-dev builds creating an optimized, small image.
 			// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.

@@ -11,3 +11,12 @@ server: {
 		ingress: internetFacing: true
 	}
 }
+
+tests: {
+	health: {
+		builder: shellscript: {
+			entrypoint: "test/test.sh"
+			requiredPackages: ["jq"]
+		}
+	}
+}
