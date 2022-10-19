@@ -74,10 +74,15 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 				if ingress.Owner == p.EndpointOwner &&
 					httpPath.Port.ContainerPort == p.Port.ContainerPort {
 					// http service
-					httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
-						Cmd:       url,
-						IsManaged: isManaged,
-					})
+					if localIngressPort != 0 || ingress.Domain.TlsFrontend {
+						httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
+							Cmd:       url,
+							IsManaged: isManaged,
+						})
+					} else {
+						httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
+							Cmd: fmt.Sprintf("private: container port %d http", p.Port.ContainerPort), IsManaged: true})
+					}
 				} else if ingress.Endpoint != nil &&
 					ingress.Endpoint.ServiceName == p.ServiceName &&
 					httpPath.Owner == p.EndpointOwner {
