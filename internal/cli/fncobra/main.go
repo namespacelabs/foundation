@@ -147,12 +147,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
 		}
 
-		if useKubernetesRuntime {
-			tools.MakeAlternativeRuntime = func(cfg cfg.Configuration) tools.Runtime {
-				return toolsonk8s.Runtime{Config: cfg}
-			}
-		}
-
 		filewatcher.SetupFileWatcher()
 
 		// Checking a version could be used for fingerprinting purposes,
@@ -261,6 +255,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		orchestration.RegisterPrepare()
 
 		cfg.ValidateNoConfigTypeCollisions()
+
+		if useKubernetesRuntime {
+			rt, err := toolsonk8s.MakeRuntime(ctxWithSink)
+			if err != nil {
+				return err
+			}
+
+			tools.MakeAlternativeRuntime = func(cfg cfg.Configuration) tools.Runtime { return rt }
+		}
 
 		// Telemetry.
 		tel.RecordInvocation(ctxWithSink, cmd, args)

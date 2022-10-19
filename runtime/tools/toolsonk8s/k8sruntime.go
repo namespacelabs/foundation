@@ -22,7 +22,8 @@ import (
 )
 
 type Runtime struct {
-	Config cfg.Configuration
+	cluster       *kubernetes.Cluster
+	configuration cfg.Configuration
 }
 
 const toolNamespace = "fn-pipeline-tools"
@@ -30,11 +31,6 @@ const toolNamespace = "fn-pipeline-tools"
 func (k Runtime) CanConsumePublicImages() bool { return true }
 
 func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error {
-	k8s, ck, err := k.makeRuntime(ctx)
-	if err != nil {
-		return err
-	}
-
 	if len(opts.Mounts) > 0 {
 		return fnerrors.New("not supported: Mounts")
 	}
@@ -50,8 +46,9 @@ func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSta
 		}
 
 		// XXX handle opts.NoNetworking
+		var err error
 		imgid, err = tasks.Return(ctx, tasks.Action("kubernetes.invocation.push-image"), func(ctx context.Context) (oci.ImageID, error) {
-			name, err := registry.RawAllocateName(ctx, ck, opts.ImageName)
+			name, err := registry.RawAllocateName(ctx, k.configuration, opts.ImageName)
 			if err != nil {
 				return oci.ImageID{}, err
 			}
@@ -75,7 +72,7 @@ func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSta
 	}
 
 	// XXX use more meaningful names.
-	return k8s.RunAttachedOpts(ctx, toolNamespace, "tool-"+ids.NewRandomBase32ID(8), runtime.ContainerRunOpts{
+	return k.cluster.RunAttachedOpts(ctx, toolNamespace, "tool-"+ids.NewRandomBase32ID(8), runtime.ContainerRunOpts{
 		Image:      imgid,
 		WorkingDir: opts.WorkingDir,
 		Command:    opts.Command,
@@ -90,12 +87,7 @@ func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSta
 }
 
 func (k Runtime) HostPlatform(ctx context.Context) (specs.Platform, error) {
-	k8s, _, err := k.makeRuntime(ctx)
-	if err != nil {
-		return specs.Platform{}, err
-	}
-
-	platforms, err := k8s.UnmatchedTargetPlatforms(ctx)
+	platforms, err := k.cluster.UnmatchedTargetPlatforms(ctx)
 	if err != nil {
 		return specs.Platform{}, err
 	}
@@ -107,21 +99,18 @@ func (k Runtime) HostPlatform(ctx context.Context) (specs.Platform, error) {
 	return platforms[0], nil
 }
 
-func (kt Runtime) makeRuntime(ctx context.Context) (*kubernetes.Cluster, cfg.Configuration, error) {
+func MakeRuntime(ctx context.Context) (Runtime, error) {
 	root, err := module.FindRoot(ctx, ".")
 	if err != nil {
-		return nil, nil, err
+		return Runtime{}, err
 	}
 
-	ck := cfg.MakeConfigurationWith("tools", kt.Config.Workspace(), cfg.ConfigurationSlice{
+	ck := cfg.MakeConfigurationWith("tools", root.Workspace(), cfg.ConfigurationSlice{
 		Configuration:         root.DevHost().ConfigureTools,
 		PlatformConfiguration: root.DevHost().ConfigurePlatform,
 	})
 
 	k, err := kubernetes.ConnectToCluster(ctx, ck)
-	if err != nil {
-		return nil, nil, err
-	}
 
-	return k, ck, nil
+	return Runtime{k, ck}, err
 }
