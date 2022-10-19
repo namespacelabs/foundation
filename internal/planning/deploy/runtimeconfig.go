@@ -60,8 +60,8 @@ func TestStackToRuntimeConfig(stack *planning.Stack, sutServers []string) (*runt
 	return config, nil
 }
 
-func makeEnv(env *schema.Environment) *runtime.ServerEnvironment {
-	res := &runtime.ServerEnvironment{
+func makeEnv(env *schema.Environment) *runtime.RuntimeConfig_Environment {
+	res := &runtime.RuntimeConfig_Environment{
 		Ephemeral: env.Ephemeral,
 		Purpose:   env.Purpose.String(),
 	}
@@ -103,7 +103,7 @@ func makeServerConfig(stack *planning.Stack, server planning.Server) *runtime.Se
 			continue
 		}
 
-		current.Service = append(current.Service, &runtime.Service{
+		current.Service = append(current.Service, &runtime.Server_Service{
 			Owner:    endpoint.EndpointOwner,
 			Name:     endpoint.ServiceName,
 			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),

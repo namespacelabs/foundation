@@ -36,7 +36,7 @@ type InvokeResourceProvider struct {
 	ResourceProvider     *schema.ResourceProvider
 	InstanceTypeSource   *protos2.FileDescriptorSetAndDeps
 	ResourceDependencies []*resources.ResourceDependency
-	SecretResources      []runtime.SecretResource
+	SecretResources      []runtime.SecretResourceDependency
 }
 
 func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {

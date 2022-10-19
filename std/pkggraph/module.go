@@ -5,13 +5,19 @@
 package pkggraph
 
 import (
+	"fmt"
 	"io/fs"
 	"path/filepath"
+	"time"
 
+	"golang.org/x/net/context"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/runtime"
 )
 
 type Module struct {
@@ -82,4 +88,27 @@ func (mod *Module) MakeLocation(relPath string) Location {
 
 func (mod *Module) RootLocation() Location {
 	return mod.MakeLocation(".")
+}
+
+func (mod *Module) VCS(ctx context.Context) (*runtime.BuildVCS, error) {
+	t := time.Now()
+
+	status, err := git.FetchStatus(ctx, mod.absPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if status.Revision == "" {
+		fmt.Fprintf(console.Debug(ctx), "module.vcs: %s: none detected\n", mod.ModuleName())
+		return nil, nil
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "module.vcs: %s: revision %s (uncommited: %v) commit_time %v (took %v)\n",
+		mod.ModuleName(), status.Revision, status.Uncommitted, status.CommitTime, time.Since(t))
+
+	return &runtime.BuildVCS{
+		Revision:    status.Revision,
+		CommitTime:  status.CommitTime.Format(time.RFC3339Nano),
+		Uncommitted: status.Uncommitted,
+	}, nil
 }

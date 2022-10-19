@@ -581,6 +581,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			Deployable:           deployable,
 			ResourceDependencies: regularResources,
 			InjectedResources:    injected,
+			BuildVCS:             deployable.BuildVCS,
 			PersistConfiguration: !deployable.InhibitPersistentRuntimeConfig,
 		}
 

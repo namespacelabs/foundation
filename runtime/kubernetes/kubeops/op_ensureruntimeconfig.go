@@ -42,6 +42,14 @@ func registerEnsureRuntimeConfig() {
 					output.SerializedRuntimeJson = string(serializedConfig)
 				}
 
+				if ensure.BuildVcs != nil {
+					serializedConfig, err := json.Marshal(ensure.BuildVcs)
+					if err != nil {
+						return nil, fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
+					}
+					data["buildvcs.json"] = string(serializedConfig)
+				}
+
 				resourceData, err := deploy.BuildResourceMap(ctx, ensure.Dependency)
 				if err != nil {
 					return nil, err

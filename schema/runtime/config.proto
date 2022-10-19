@@ -13,12 +13,20 @@ option go_package = "namespacelabs.dev/foundation/schema/runtime";
 // as JSON, the field names have great significance and should be changed
 // with care.
 message RuntimeConfig {
-    ServerEnvironment environment = 1;
+    Environment environment = 1;
 
     Server current = 2;
 
     // References to other servers that this server depends on.
     repeated Server stack_entry = 3;
+
+    message Environment {
+        string name    = 1;  // Empty if ephemeral is true.
+        string purpose = 2;
+
+        // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
+        bool ephemeral = 3;
+    }
 }
 
 message Server {
@@ -34,18 +42,16 @@ message Server {
         string name = 1;
         int32  port = 2;
     }
+
+    message Service {
+        string owner    = 1;  // Package name.
+        string name     = 2;  // Scoped to package name.
+        string endpoint = 3;  // E.g. hostname:port.
+    }
 }
 
-message ServerEnvironment {
-    string name    = 1;  // Empty if ephemeral is true.
-    string purpose = 2;
-
-    // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
-    bool ephemeral = 3;
-}
-
-message Service {
-    string owner    = 1;  // Package name.
-    string name     = 2;  // Scoped to package name.
-    string endpoint = 3;  // E.g. hostname:port.
+message BuildVCS {
+    string revision    = 1;
+    string commit_time = 2;
+    bool   uncommitted = 3;
 }

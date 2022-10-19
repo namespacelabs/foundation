@@ -47,6 +47,7 @@ message OpEnsureRuntimeConfig {
     repeated std.resources.ResourceDependency dependency            = 4;
     bool                                      persist_configuration = 5;
     repeated InjectedResource                 inject_resource       = 6;
+    foundation.schema.runtime.BuildVCS        build_vcs             = 7;
 
     message InjectedResource {
         foundation.schema.PackageRef resource_ref    = 1;

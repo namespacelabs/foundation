@@ -35,7 +35,7 @@ type resourcePlan struct {
 	ResourceList resourceList
 
 	Invocations []*schema.SerializedInvocation
-	Secrets     []runtime.SecretResource
+	Secrets     []runtime.SecretResourceDependency
 }
 
 func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, rp resourceList) (*resourcePlan, error) {
@@ -49,7 +49,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 	var invocations []*InvokeResourceProvider
 	var imageIDs []compute.Computable[oci.ImageID]
 	var ops []*schema.SerializedInvocation
-	var secrets []runtime.SecretResource
+	var secrets []runtime.SecretResourceDependency
 
 	for _, resource := range rlist {
 		if resource.Provider == nil {
@@ -166,12 +166,12 @@ type resourceInstance struct {
 	Intent               *anypb.Any
 	JSONSerializedIntent []byte
 	Dependencies         []*resources.ResourceDependency
-	Secrets              []runtime.SecretResource
+	Secrets              []runtime.SecretResourceDependency
 }
 
 type serverResourceInstances struct {
 	Dependencies []*resources.ResourceDependency
-	Secrets      []runtime.SecretResource
+	Secrets      []runtime.SecretResourceDependency
 }
 
 func (rp *resourceList) Resources() []*resourceInstance {
@@ -280,9 +280,9 @@ func (rp *resourceList) checkAddTo(ctx context.Context, sealedCtx pkggraph.Seale
 	return multierr.New(errs...)
 }
 
-func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoader, inputs []pkggraph.ResourceInstance) ([]pkggraph.ResourceInstance, []runtime.SecretResource, error) {
+func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoader, inputs []pkggraph.ResourceInstance) ([]pkggraph.ResourceInstance, []runtime.SecretResourceDependency, error) {
 	var regularDependencies []pkggraph.ResourceInstance
-	var secrets []runtime.SecretResource
+	var secrets []runtime.SecretResourceDependency
 	for _, dep := range inputs {
 		if parsing.IsSecretResource(dep.Spec.Class.Ref) {
 			secretIntent := &stdruntime.SecretIntent{}
@@ -300,7 +300,7 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 				return nil, nil, err
 			}
 
-			secrets = append(secrets, runtime.SecretResource{
+			secrets = append(secrets, runtime.SecretResourceDependency{
 				SecretRef:   ref,
 				ResourceRef: dep.ResourceRef,
 				Spec:        specs[0],

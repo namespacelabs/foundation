@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/planning/startup"
@@ -24,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -304,6 +306,25 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 	var serverRuns []runtime.DeployableSpec
 	var secretSources []secretSource
 
+	moduleVCS := map[string]*runtimepb.BuildVCS{}
+	var errs []error
+	for _, srv := range stack.Servers {
+		if _, has := moduleVCS[srv.Location.Module.ModuleName()]; has {
+			continue
+		}
+
+		vcs, err := srv.Location.Module.VCS(ctx)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			moduleVCS[srv.Location.Module.ModuleName()] = vcs
+		}
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
 	for k, srv := range stack.Servers {
 		resolved, ok := imageIDs[srv.PackageName()]
 		if !ok {
@@ -312,12 +333,13 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 
 		var run runtime.DeployableSpec
 
-		var err error
-		run.RuntimeConfig, err = serverToRuntimeConfig(stack, srv, resolved.Binary)
+		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary)
 		if err != nil {
 			return nil, err
 		}
 
+		run.RuntimeConfig = rt
+		run.BuildVCS = moduleVCS[srv.Location.Module.ModuleName()]
 		run.Resources = resources[srv.PackageName()].Dependencies
 		run.SecretResources = resources[srv.PackageName()].Secrets
 
