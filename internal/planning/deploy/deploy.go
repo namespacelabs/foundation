@@ -372,6 +372,7 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 
 		// Collect all secret references.
 		var secretRefs []*schema.PackageRef
+		// TODO collect secret refs from resources, too.
 		for _, v := range run.Volumes {
 			if v.Kind == constants.VolumeKindConfigurable {
 				cv := &schema.ConfigurableVolume{}

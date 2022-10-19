@@ -24,6 +24,10 @@ func IsServerResource(ref packageRefLike) bool {
 	return ref.GetPackageName() == "namespacelabs.dev/foundation/std/runtime" && ref.GetName() == "Server"
 }
 
+func IsSecretResource(ref packageRefLike) bool {
+	return ref.GetPackageName() == "namespacelabs.dev/foundation/std/runtime" && ref.GetName() == "Secret"
+}
+
 func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, r *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
 	r.PackageName = string(pp.PackageName())
 
@@ -53,19 +57,9 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		Class:  *class,
 	}
 
-	// XXX Add generic package loading annotation to avoid special-casing this
-	// resource class. Other type of resources could also have references to
-	// packages.
-	if IsServerResource(r.Class) {
-		serverIntent := &runtime.ServerIntent{}
-		if err := proto.Unmarshal(r.Intent.Value, serverIntent); err != nil {
-			return nil, fnerrors.InternalError("failed to unwrap Server intent")
-		}
-
-		// Make sure that servers we refer to are package loaded.
-		if _, err := pl.LoadByName(ctx, schema.PackageName(serverIntent.PackageName)); err != nil {
-			return nil, err
-		}
+	loadedPrimitive, err := loadPrimitiveResources(ctx, pl, r)
+	if err != nil {
+		return nil, err
 	}
 
 	if r.Provider != "" {
@@ -80,7 +74,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		}
 
 		ri.Provider = *provider
-	} else if !IsServerResource(r.Class) {
+	} else if !loadedPrimitive {
 		return nil, fnerrors.UserError(pp.Location, "missing provider for resource instance %q", r.Name)
 	}
 
@@ -122,6 +116,39 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 	}
 
 	return &pkggraph.ResourceInstance{Name: name, Spec: ri}, nil
+}
+
+func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *schema.ResourceInstance) (bool, error) {
+	// XXX Add generic package loading annotation to avoid special-casing this
+	// resource class. Other type of resources could also have references to
+	// packages.
+	if IsServerResource(r.Class) {
+		intent := &runtime.ServerIntent{}
+		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
+			return false, fnerrors.InternalError("failed to unwrap Server intent")
+		}
+
+		// Make sure that servers we refer to are package loaded.
+		if _, err := pl.LoadByName(ctx, schema.PackageName(intent.PackageName)); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	if IsSecretResource(r.Class) {
+		intent := &runtime.SecretIntent{}
+		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
+			return false, fnerrors.InternalError("failed to unwrap Server intent")
+		}
+
+		// Make sure that secrets we refer to are package loaded.
+		if _, err := pl.LoadByName(ctx, intent.Ref.AsPackageName()); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
