@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -45,14 +46,12 @@ func NewDoctorCmd() *cobra.Command {
 		Short: "Collect diagnostic information about the system.",
 		Args:  cobra.NoArgs,
 	}).Do(func(ctx context.Context) error {
-		out := console.Stdout(ctx)
-
 		//
 
 		versionI := runDiagnostic(ctx, "doctor.version-info", func(ctx context.Context) (*VersionInfo, error) {
 			return CollectVersionInfo()
 		})
-		printDiagnostic(ctx, out, "NS Version", versionI, FormatVersionInfo)
+		printDiagnostic(ctx, "Namespace version", versionI, FormatVersionInfo)
 
 		//
 
@@ -71,7 +70,7 @@ func NewDoctorCmd() *cobra.Command {
 			}
 			return dockerInfo{version, info}, nil
 		})
-		printDiagnostic(ctx, out, "Docker", dockerI, func(w io.Writer, info dockerInfo) {
+		printDiagnostic(ctx, "Docker", dockerI, func(w io.Writer, info dockerInfo) {
 			fmt.Fprintf(w, "version=%s (commit=%s) for %s-%s\n", info.Version.Version, info.Version.GitCommit, info.Version.Os, info.Version.Arch)
 			fmt.Fprintf(w, "api version=%s (min=%s)\n", info.Version.APIVersion, info.Version.MinAPIVersion)
 			fmt.Fprintf(w, "kernel version=%s\n", info.Version.KernelVersion)
@@ -96,26 +95,35 @@ func NewDoctorCmd() *cobra.Command {
 		loginI := runDiagnostic(ctx, "doctor.userauth", func(ctx context.Context) (*fnapi.UserAuth, error) {
 			return fnapi.LoadUser()
 		})
-		printDiagnostic(ctx, out, "Authenticated User", loginI, func(w io.Writer, info *fnapi.UserAuth) {
-			fmt.Fprintf(w, "user=%s org=%s\n", info.Username, info.Org)
+		printDiagnostic(ctx, "Authenticated User", loginI, func(w io.Writer, info *fnapi.UserAuth) {
+			fmt.Fprintf(w, "user=%s\n", info.Username)
 		})
 
 		//
+		type dockerResults struct {
+			ImageLatency time.Duration
+			RunLatency   time.Duration
+		}
 
-		dockerRunI := runDiagnostic(ctx, "doctor.docker-run", func(ctx context.Context) (struct{}, error) {
+		dockerRunI := runDiagnostic(ctx, "doctor.docker-run", func(ctx context.Context) (dockerResults, error) {
+			t := time.Now()
 			image, err := compute.GetValue(ctx, oci.ResolveImage(pins.Image("hello-world"), docker.HostPlatform()).Image())
 			if err != nil {
-				return struct{}{}, err
+				return dockerResults{}, err
 			}
+			var r dockerResults
+			r.ImageLatency = time.Since(t)
+			t = time.Now()
 			err = docker.Impl().Run(ctx, rtypes.RunToolOpts{
 				RunBinaryOpts: rtypes.RunBinaryOpts{
 					Image: image,
 				},
 			})
-			return struct{}{}, err
+			r.RunLatency = time.Since(t)
+			return r, err
 		})
-		printDiagnostic(ctx, out, "Docker Run Check", dockerRunI, func(w io.Writer, info struct{}) {
-			fmt.Fprintf(w, "success\n")
+		printDiagnostic(ctx, "Docker Run Check", dockerRunI, func(w io.Writer, info dockerResults) {
+			fmt.Fprintf(w, "image_pull_latency=%v docker_run_latency=%v\n", info.ImageLatency, info.RunLatency)
 		})
 
 		//
@@ -123,7 +131,7 @@ func NewDoctorCmd() *cobra.Command {
 		workspaceI := runDiagnostic(ctx, "doctor.workspace", func(ctx context.Context) (*parsing.Root, error) {
 			return module.FindRoot(ctx, ".")
 		})
-		printDiagnostic(ctx, out, "Workspace", workspaceI, func(w io.Writer, ws *parsing.Root) {
+		printDiagnostic(ctx, "Workspace", workspaceI, func(w io.Writer, ws *parsing.Root) {
 			fmt.Fprintf(w, "module=%s\n", ws.ModuleName())
 		})
 
@@ -151,36 +159,45 @@ func NewDoctorCmd() *cobra.Command {
 				return image.Value, nil
 			})
 		}
-		printDiagnostic(ctx, out, "Buildkit", buildkitI, func(w io.Writer, image oci.Image) {
+		printDiagnostic(ctx, "Buildkit", buildkitI, func(w io.Writer, image oci.Image) {
 			digest, _ := image.Digest()
 			fmt.Fprintf(w, "success hash=%v\n", digest)
 		})
 
 		//
 
-		kubernetesI := errorOr[struct{}]{err: fnerrors.New("no workspace")}
+		type kubeResults struct {
+			ConnectLatency time.Duration
+			RunLatency     time.Duration
+		}
+		kubernetesI := errorOr[kubeResults]{err: fnerrors.New("no workspace")}
 		if workspaceI.err == nil {
-			kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (struct{}, error) {
+			kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (kubeResults, error) {
+				var r kubeResults
 				env, err := cfg.LoadContext(workspaceI.v, "dev")
 				if err != nil {
-					return struct{}{}, err
+					return r, err
 				}
+				t := time.Now()
 				k, err := kubernetes.ConnectToCluster(ctx, env.Configuration())
 				if err != nil {
-					return struct{}{}, err
+					return r, err
 				}
+				r.ConnectLatency = time.Since(t)
 				helloID, err := oci.ParseImageID(pins.Image("hello-world"))
 				if err != nil {
-					return struct{}{}, err
+					return r, err
 				}
+				t = time.Now()
 				err = k.RunAttachedOpts(ctx, "default", "doctor-"+ids.NewRandomBase32ID(8),
 					runtime.ContainerRunOpts{Image: helloID}, runtime.TerminalIO{}, func() {})
-				return struct{}{}, err
+				r.RunLatency = time.Since(t)
+				return r, err
 			})
 		}
 
-		printDiagnostic(ctx, out, "Kubernetes Run Check", kubernetesI, func(w io.Writer, info struct{}) {
-			fmt.Fprintf(w, "success\n")
+		printDiagnostic(ctx, "Kubernetes Run Check", kubernetesI, func(w io.Writer, info kubeResults) {
+			fmt.Fprintf(w, "connect_latency=%v run_latency=%v\n", info.ConnectLatency, info.RunLatency)
 		})
 		return nil
 	})
@@ -202,8 +219,11 @@ func runDiagnostic[V any](ctx context.Context, title string, f func(ctx context.
 	return res
 }
 
-func printDiagnostic[V any](ctx context.Context, w io.Writer, title string, res errorOr[V], print func(io.Writer, V)) {
+func printDiagnostic[V any](ctx context.Context, title string, res errorOr[V], print func(io.Writer, V)) {
 	style := colors.Ctx(ctx)
+
+	w := console.TypedOutput(ctx, title, common.CatOutputUs)
+
 	fmt.Fprintln(w, style.Header.Apply(fmt.Sprintf("* %s", title)))
 	x := text.NewIndentWriter(w, []byte("  "))
 	if res.err != nil {
