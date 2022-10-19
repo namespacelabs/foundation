@@ -108,7 +108,7 @@ func (mod *Module) VCS(ctx context.Context) (*runtime.BuildVCS, error) {
 
 	return &runtime.BuildVCS{
 		Revision:    status.Revision,
-		CommitTime:  status.CommitTime.Format(time.RFC3339Nano),
+		CommitTime:  status.CommitTime.Format(time.RFC3339),
 		Uncommitted: status.Uncommitted,
 	}, nil
 }

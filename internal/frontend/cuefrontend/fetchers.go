@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"io/fs"
 	"strings"
-	"time"
 
 	"cuelang.org/go/cue"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -220,12 +218,6 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 	}
 }
 
-func FetchEnv(env *schema.Environment) FetcherFunc {
-	return func(context.Context, cue.Value) (interface{}, error) {
-		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
-	}
-}
-
 type cueEnv struct {
 	Name      string `json:"name"`
 	Runtime   string `json:"runtime"`
@@ -233,19 +225,8 @@ type cueEnv struct {
 	Ephemeral bool   `json:"ephemeral"`
 }
 
-func FetchVCS(rootDir string) FetcherFunc {
-	return func(ctx context.Context, v cue.Value) (interface{}, error) {
-		status, err := git.FetchStatus(ctx, rootDir)
-		if err != nil {
-			return nil, err
-		}
-
-		return cueVCS{Revision: status.Revision, CommitTime: status.CommitTime, Uncommitted: status.Uncommitted}, nil
+func FetchEnv(env *schema.Environment) FetcherFunc {
+	return func(context.Context, cue.Value) (interface{}, error) {
+		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
 	}
-}
-
-type cueVCS struct {
-	Revision    string    `json:"revision"`
-	CommitTime  time.Time `json:"commitTime"`
-	Uncommitted bool      `json:"uncommitted"`
 }

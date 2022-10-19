@@ -72,9 +72,7 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	fntypes.#Resource
 }
 
+// XXX To be removed.
 #VCS: {
 	@fn(input=vcs)
-	revision:    string
-	commitTime:  string
-	uncommitted: bool
 }

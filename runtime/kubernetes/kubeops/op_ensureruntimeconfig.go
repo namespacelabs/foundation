@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
@@ -86,7 +88,14 @@ func registerEnsureRuntimeConfig() {
 				}
 
 				if len(data) > 0 && ensure.PersistConfiguration {
-					configDigest, err := schema.DigestOf(runtimeConfigVersion, data["runtime.json"], data["resources.json"])
+					keys := maps.Keys(data)
+					slices.Sort(keys)
+					hashInput := []any{runtimeConfigVersion}
+					for _, key := range keys {
+						hashInput = append(hashInput, data[key])
+					}
+
+					configDigest, err := schema.DigestOf(hashInput...)
 					if err != nil {
 						return nil, fnerrors.InternalError("failed to digest runtime configuration: %w", err)
 					}

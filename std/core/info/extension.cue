@@ -22,15 +22,3 @@ extension: fn.#Extension & {
 		}
 	}
 }
-
-$inputs: {
-	vcs: inputs.#VCS
-}
-
-configure: fn.#Configure & {
-	startup: {
-		args: {
-			vcs_json: json.Marshal($inputs.vcs)
-		}
-	}
-}

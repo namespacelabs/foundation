@@ -25,22 +25,15 @@ import (
 )
 
 var (
-	serializedVCS = flag.String("vcs_json", "", "VCS information, serialized as JSON.")
-	debug         = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
+	debug = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
 
 	rt          *runtime.RuntimeConfig
-	rtVcs       vcsInfo
+	rtVcs       *runtime.BuildVCS
 	serverName  string
 	initialized uint32
 )
 
 var Log = log.New(os.Stderr, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-
-type vcsInfo struct {
-	Revision    string    `json:"revision"`
-	CommitTime  time.Time `json:"commitTime"`
-	Uncommitted bool      `json:"uncommitted"`
-}
 
 func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
 	configBytes, err := os.ReadFile("/namespace/config/runtime.json")
@@ -78,11 +71,17 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 		Log.Fatal(err)
 	}
 
-	if *serializedVCS != "" {
-		// We treat VcsInfo as optional for now, as it is propagated via container args (and causes redeploy).
-		if err := json.Unmarshal([]byte(*serializedVCS), &rtVcs); err != nil {
+	serializedVCS, err := os.ReadFile("/namespace/config/buildvcs.json")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			Log.Fatal("failed to load VCS information", err)
+		}
+	} else {
+		vcs := &runtime.BuildVCS{}
+		if err := json.Unmarshal(serializedVCS, vcs); err != nil {
 			Log.Fatal("failed to parse VCS information", err)
 		}
+		rtVcs = vcs
 	}
 
 	serverName = specifiedServerName
@@ -95,11 +94,7 @@ func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.Ser
 		ServerName: serverName,
 		EnvName:    rt.Environment.Name,
 		EnvPurpose: rt.Environment.Purpose,
-		Vcs: &types.ServerInfo_VCS{
-			Revision:    rtVcs.Revision,
-			CommitTime:  rtVcs.CommitTime.String(),
-			Uncommitted: rtVcs.Uncommitted,
-		},
+		Vcs:        rtVcs,
 	}, nil
 }
 

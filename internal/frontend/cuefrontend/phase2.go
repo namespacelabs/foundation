@@ -75,7 +75,9 @@ func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info 
 func (s phase2plan) evalStartupStage(ctx context.Context, wenv pkggraph.Context, info pkggraph.StartupInputs) (*fncue.CueV, []fncue.KeyAndPath, error) {
 	inputs := newFuncs().
 		WithFetcher(fncue.ServerDepIKw, FetchServer(wenv, info.Stack)).
-		WithFetcher(fncue.VCSIKw, FetchVCS(info.ServerRootAbs))
+		WithFetcher(fncue.VCSIKw, func(ctx context.Context, v cue.Value) (interface{}, error) {
+			return nil, fnerrors.BadInputError("inputs.#VCS is no longer supported, please update your foundation dependency")
+		})
 
 	vv, left, err := applyInputs(ctx, inputs, s.Value, s.Left)
 	if err != nil {
