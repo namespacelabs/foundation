@@ -67,7 +67,7 @@ type Package struct {
 type ResourceSpec struct {
 	Source         *schema.ResourceInstance
 	Class          ResourceClass
-	Provider       ResourceProvider
+	Provider       *ResourceProvider
 	ResourceInputs []ResourceInstance // Resources passed to the provider.
 }
 

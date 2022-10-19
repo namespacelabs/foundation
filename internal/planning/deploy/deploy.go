@@ -227,6 +227,26 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		return nil, err
 	}
 
+	resourcePlan := compute.Map(
+		tasks.Action("resource.plan-deployment").
+			Scope(stack.AllPackageList().PackageNames()...),
+		compute.Inputs().
+			Computable("stackAndDefs", stackDef),
+		compute.Output{},
+		func(ctx context.Context, deps compute.Resolved) (*resourcePlan, error) {
+			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+
+			var rp resourceList
+			for _, ps := range stackAndDefs.Stack.Servers {
+				if err := rp.checkAddMultiple(ctx, ps.Resources...); err != nil {
+					return nil, err
+				}
+			}
+
+			sealedCtx := stack.Servers[0].SealedContext()
+			return planResources(ctx, sealedCtx, planner, registry, stackAndDefs.Stack, rp)
+		})
+
 	finalInputs := compute.Inputs()
 
 	imageInputs := compute.Inputs().Indigestible("packages", packages)
@@ -245,41 +265,23 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			return m, nil
 		})
 
-	resourcePlan := compute.Map(
-		tasks.Action("resource.plan-deployment").
-			Scope(stack.AllPackageList().PackageNames()...),
-		finalInputs.
-			Computable("stackAndDefs", stackDef),
-		compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) ([]*schema.SerializedInvocation, error) {
-			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
-
-			var rp resourceList
-			for _, ps := range stackAndDefs.Stack.Servers {
-				if err := rp.checkAddMultiple(ctx, ps.Resources...); err != nil {
-					return nil, err
-				}
-			}
-
-			sealedCtx := stack.Servers[0].SealedContext()
-			return planResources(ctx, sealedCtx, planner, registry, stackAndDefs.Stack, rp)
-		})
-
 	deploymentPlan := compute.Map(
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		finalInputs.
 			Proto("env", env.Environment()).
+			Computable("resourcePlan", resourcePlan).
 			Computable("images", imageIDs).
 			Computable("stackAndDefs", stackDef),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (*runtime.DeploymentPlan, error) {
+			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs)
+			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.Secrets)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -291,13 +293,13 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			deploymentPlan := compute.MustGetDepValue(deps, deploymentPlan, "deploymentPlan")
 			return prepareAndBuildResult{
 				HandlerResult: compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
-				Ops:           append(resourcePlan, deploymentPlan.Definitions...),
+				Ops:           append(resourcePlan.Invocations, deploymentPlan.Definitions...),
 				Hints:         deploymentPlan.Hints,
 			}, nil
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, secrets []runtime.SecretResource) (*runtime.DeploymentPlan, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec

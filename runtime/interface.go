@@ -200,9 +200,10 @@ type DeployableSpec struct {
 	Sidecars      []SidecarRunOpts
 	Inits         []SidecarRunOpts
 
-	ConfigImage   *oci.ImageID
-	RuntimeConfig *runtimepb.RuntimeConfig
-	Resources     []*resources.ResourceDependency
+	ConfigImage     *oci.ImageID
+	RuntimeConfig   *runtimepb.RuntimeConfig
+	Resources       []*resources.ResourceDependency
+	SecretResources []SecretResource
 
 	// If set to true, don't generate a /namespace/config mount, and the
 	// corresponding persistent configuration.
@@ -216,7 +217,9 @@ type DeployableSpec struct {
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
 }
 
-type X struct {
+type SecretResource struct {
+	ResourceID string
+	Spec       *schema.SecretSpec
 }
 
 type AttachableKind string

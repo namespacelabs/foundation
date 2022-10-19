@@ -10,6 +10,7 @@ import (
 
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
@@ -41,12 +42,32 @@ func registerEnsureRuntimeConfig() {
 					output.SerializedRuntimeJson = string(serializedConfig)
 				}
 
-				if len(ensure.Dependency) > 0 {
-					resourceData, err := deploy.BuildResourceMap(ctx, ensure.Dependency)
-					if err != nil {
-						return nil, err
+				resourceData, err := deploy.BuildResourceMap(ctx, ensure.Dependency)
+				if err != nil {
+					return nil, err
+				}
+
+				if len(ensure.InjectResource) > 0 {
+					if resourceData == nil {
+						resourceData = map[string]deploy.RawJSONObject{}
 					}
 
+					var errs []error
+					for _, injected := range ensure.InjectResource {
+						var m deploy.RawJSONObject
+						if err := json.Unmarshal(injected.SerializedJson, &m); err != nil {
+							errs = append(errs, err)
+						} else {
+							resourceData[injected.GetResourceRef().Canonical()] = m
+						}
+					}
+
+					if err := multierr.New(errs...); err != nil {
+						return nil, fnerrors.InternalError("failed to handle injected resources: %w", err)
+					}
+				}
+
+				if len(resourceData) > 0 {
 					serializedConfig, err := json.Marshal(resourceData)
 					if err != nil {
 						return nil, fnerrors.InternalError("failed to serialize resource configuration: %w", err)

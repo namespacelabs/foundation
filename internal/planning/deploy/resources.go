@@ -30,7 +30,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, rp resourceList) ([]*schema.SerializedInvocation, error) {
+type resourcePlan struct {
+	Invocations []*schema.SerializedInvocation
+	Secrets     []runtime.SecretResource
+}
+
+func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -38,23 +43,68 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 
 	rlist := rp.Resources()
 
+	var invocations []*InvokeResourceProvider
 	var imageIDs []compute.Computable[oci.ImageID]
-	var invocations []proto.Message
+	var ops []*schema.SerializedInvocation
+	var secrets []runtime.SecretResource
 
-	imageMap := map[int]int{} // Map resource index to image index.
-
-	for k, resource := range rlist {
-		if parsing.IsServerResource(resource.Class.Ref) {
-			serverIntent := &stdruntime.ServerIntent{}
-			if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
-				return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
+	for _, resource := range rlist {
+		if resource.Provider == nil {
+			if len(resource.Dependencies) != 0 {
+				return nil, fnerrors.InternalError("can't set dependencies on providerless-resources")
 			}
 
-			invocations = append(invocations, &resources.OpCaptureServerConfig{
-				ResourceInstanceId: resource.ID,
-				Server:             MakeServerConfig(stack, schema.PackageName(serverIntent.PackageName)),
-			})
-			continue
+			switch {
+			case parsing.IsServerResource(resource.Class.Ref):
+				serverIntent := &stdruntime.ServerIntent{}
+				if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
+					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
+				}
+
+				si := &schema.SerializedInvocation{
+					Description: "Capture Runtime Config",
+					Order: &schema.ScheduleOrder{
+						SchedCategory: []string{
+							resources.ResourceInstanceCategory(resource.ID),
+						},
+					},
+				}
+
+				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
+					ResourceInstanceId: resource.ID,
+					Server:             MakeServerConfig(stack, schema.PackageName(serverIntent.PackageName)),
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				si.Impl = wrapped
+
+				ops = append(ops, si)
+
+			case parsing.IsSecretResource(resource.Class.Ref):
+				secretIntent := &stdruntime.SecretIntent{}
+				if err := proto.Unmarshal(resource.Intent.Value, secretIntent); err != nil {
+					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
+				}
+
+				ref, err := schema.ParsePackageRef(schema.PackageName(resource.Source.PackageName), secretIntent.Ref)
+				if err != nil {
+					return nil, fnerrors.BadInputError("failed to resolve reference: %w", err)
+				}
+
+				specs, err := loadSecretSpecs(ctx, sealedCtx, ref)
+				if err != nil {
+					return nil, err
+				}
+
+				secrets = append(secrets, runtime.SecretResource{
+					ResourceID: resource.ID,
+					Spec:       specs[0],
+				})
+			}
+
+			continue // Nothing to do re: provider.
 		}
 
 		provider := resource.Provider.Spec
@@ -86,10 +136,8 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			return nil, err
 		}
 
-		imageMap[k] = len(imageIDs)
 		imageIDs = append(imageIDs, imageID)
-
-		invocations = append(invocations, &resources.OpInvokeResourceProvider{
+		invocations = append(invocations, &InvokeResourceProvider{
 			ResourceInstanceId:   resource.ID,
 			BinaryRef:            initializer.BinaryRef,
 			BinaryConfig:         bin.Config,
@@ -106,37 +154,18 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 		return nil, err
 	}
 
-	var ops []*schema.SerializedInvocation
-	for k, resource := range rlist {
-		si := &schema.SerializedInvocation{
-			Description: "Invoke Resource Provider",
-			Order:       &schema.ScheduleOrder{},
-		}
+	for k, invocation := range invocations {
+		invocation.BinaryImageId = builtImages[k].Value
 
-		if parsing.IsServerResource(resource.Class.Ref) {
-			si.Description = "Capture Runtime Config"
-		} else {
-			invocations[k].(*resources.OpInvokeResourceProvider).BinaryImageId = builtImages[imageMap[k]].Value.RepoAndDigest()
-			si.Description = "Invoke Resource Provider"
-		}
-
-		wrapped, err := anypb.New(invocations[k])
+		theseOps, err := PlanResourceProviderInvocation(ctx, planner, invocation)
 		if err != nil {
 			return nil, err
 		}
 
-		si.Impl = wrapped
-
-		// Make sure this provider is invoked after its dependencies are done.
-		for _, dep := range rlist[k].Dependencies {
-			si.RequiredOutput = append(si.RequiredOutput, dep.ResourceInstanceId)
-			si.Order.SchedAfterCategory = append(si.Order.SchedAfterCategory, resources.ResourceInstanceCategory(dep.ResourceInstanceId))
-		}
-
-		ops = append(ops, si)
+		ops = append(ops, theseOps...)
 	}
 
-	return ops, nil
+	return &resourcePlan{Invocations: ops, Secrets: secrets}, nil
 }
 
 type resourceList struct {
@@ -147,8 +176,9 @@ type resourceList struct {
 
 type resourceInstance struct {
 	ID                   string
+	Source               *schema.ResourceInstance
 	Class                pkggraph.ResourceClass
-	Provider             pkggraph.ResourceProvider
+	Provider             *pkggraph.ResourceProvider
 	Intent               *anypb.Any
 	JSONSerializedIntent []byte
 	Dependencies         []*resources.ResourceDependency
@@ -188,6 +218,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 	// XXX add resources recursively.
 	instance := resourceInstance{
 		ID:       resourceID,
+		Source:   resource.Source,
 		Class:    resource.Class,
 		Provider: resource.Provider,
 		Intent:   resource.Source.Intent,
@@ -210,7 +241,10 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 	}
 
 	var inputs []pkggraph.ResourceInstance
-	inputs = append(inputs, resource.Provider.Resources...)
+	if resource.Provider != nil {
+		inputs = append(inputs, resource.Provider.Resources...)
+	}
+
 	inputs = append(inputs, resource.ResourceInputs...)
 
 	// Add static resources required by providers.

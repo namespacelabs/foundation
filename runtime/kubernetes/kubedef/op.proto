@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/runtime/kubernetes/kubedef";
 import "schema/runtime/types.proto";
 import "schema/runtime/config.proto";
 import "schema/runtime/deployable.proto";
+import "schema/package.proto";
 import "std/resources/op.proto";
 import "std/types/certificates.proto";
 
@@ -45,6 +46,12 @@ message OpEnsureRuntimeConfig {
     repeated string                         resource_instance_id    = 3;  // XXX deprecated, use dependency.
     repeated std.resources.ResourceDependency dependency            = 4;
     bool                                      persist_configuration = 5;
+    repeated InjectedResource                 inject_resource       = 6;
+
+    message InjectedResource {
+        foundation.schema.PackageRef resource_ref    = 1;
+        bytes                        serialized_json = 2;
+    }
 }
 
 message EnsureRuntimeConfigOutput {

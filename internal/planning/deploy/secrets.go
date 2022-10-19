@@ -54,30 +54,8 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 				continue
 			}
 
-			var errs []error
-			var specs []*schema.SecretSpec // Same indexing as secrets.
-			for _, ref := range ps.Secrets {
-				secretPackage, err := srv.SealedContext().LoadByName(ctx, ref.AsPackageName())
-				if err != nil {
-					errs = append(errs, err)
-				} else {
-					if spec := secretPackage.LookupSecret(ref.Name); spec == nil {
-						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "no such secret %q", ref.Name))
-					} else {
-						if spec.Generate != nil {
-							if spec.Generate.UniqueId == "" {
-								errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: missing unique id", ref.Name))
-							} else if spec.Generate.RandomByteCount <= 0 {
-								errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: randomByteCount must be > 0", ref.Name))
-							}
-						}
-
-						specs = append(specs, spec)
-					}
-				}
-			}
-
-			if err := multierr.New(errs...); err != nil {
+			specs, err := loadSecretSpecs(ctx, srv.SealedContext(), ps.Secrets...)
+			if err != nil {
 				return nil, err
 			}
 
@@ -197,4 +175,35 @@ func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schem
 	}
 
 	return nil, nil
+}
+
+func loadSecretSpecs(ctx context.Context, pl pkggraph.PackageLoader, secrets ...*schema.PackageRef) ([]*schema.SecretSpec, error) {
+	var errs []error
+	var specs []*schema.SecretSpec // Same indexing as secrets.
+	for _, ref := range secrets {
+		secretPackage, err := pl.LoadByName(ctx, ref.AsPackageName())
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			if spec := secretPackage.LookupSecret(ref.Name); spec == nil {
+				errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "no such secret %q", ref.Name))
+			} else {
+				if spec.Generate != nil {
+					if spec.Generate.UniqueId == "" {
+						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: missing unique id", ref.Name))
+					} else if spec.Generate.RandomByteCount <= 0 {
+						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: randomByteCount must be > 0", ref.Name))
+					}
+				}
+
+				specs = append(specs, spec)
+			}
+		}
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
+	return specs, nil
 }

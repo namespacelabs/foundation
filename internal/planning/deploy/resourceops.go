@@ -5,7 +5,6 @@
 package deploy
 
 func RegisterDeployOps() {
-	register_OpInvokeResourceProvider()
 	register_OpWaitForProviderResults()
 	register_OpCaptureServerConfig()
 }

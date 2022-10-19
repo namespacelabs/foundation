@@ -26,6 +26,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
@@ -519,10 +520,21 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		SetContainerFields: deployable.SetContainerField,
 	}
 
+	// Secrets are special, as we compute their targets here, as part of
+	// planning. So we consume them, and generate the resource map that
+	// EnsureRuntimeConfig should merge with the final resource list.
+	var regularResources, secretResources []*resources.ResourceDependency
+	for _, res := range deployable.Resources {
+		if parsing.IsSecretResource(res.ResourceClass) {
+			secretResources = append(secretResources, res)
+		} else {
+			regularResources = append(regularResources, res)
+		}
+	}
+
 	// Before sidecars so they have access to the "runtime config" volume.
-	if deployable.RuntimeConfig != nil || len(deployable.Resources) > 0 {
-		resourceDeps := slices.Clone(deployable.Resources)
-		slices.SortFunc(resourceDeps, func(a, b *resources.ResourceDependency) bool {
+	if deployable.RuntimeConfig != nil || len(regularResources) > 0 {
+		slices.SortFunc(regularResources, func(a, b *resources.ResourceDependency) bool {
 			return strings.Compare(a.ResourceInstanceId, b.ResourceInstanceId) < 0
 		})
 
@@ -530,7 +542,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			Description:          "Runtime configuration",
 			RuntimeConfig:        deployable.RuntimeConfig,
 			Deployable:           deployable,
-			ResourceDependencies: resourceDeps,
+			ResourceDependencies: regularResources,
 			PersistConfiguration: !deployable.InhibitPersistentRuntimeConfig,
 		}
 
