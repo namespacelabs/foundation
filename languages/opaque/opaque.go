@@ -25,7 +25,7 @@ func Register() {
 
 type OpaqueIntegration struct {
 	languages.MaybeGenerate
-	languages.MaybeTidy
+	languages.MaybeTidy // TODO implement tidy per parser.
 	languages.NoDev
 }
 

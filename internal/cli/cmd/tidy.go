@@ -75,10 +75,6 @@ func NewTidyCmd() *cobra.Command {
 					return err
 				}
 
-				if len(pkg.Binaries) > 0 {
-					continue
-				}
-
 				packages = append(packages, pkg)
 			}
 
