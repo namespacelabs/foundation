@@ -193,7 +193,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Runtime
 		tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env cfg.Context, planner runtime.Planner, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {
-			return runtime.ComputeNaming(ctx, env.Workspace().ModuleName(), env, planner, s.ServerNaming)
+			n, err := runtime.ComputeNaming(ctx, env.Workspace().ModuleName(), env, planner, s.ServerNaming)
+			if n == nil && err == nil {
+				return &schema.ComputedNaming{}, nil // these type of injections can't return nil.
+			}
+			return n, err
 		})
 
 		deploy.RegisterDeployOps()

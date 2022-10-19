@@ -258,8 +258,8 @@ func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment
 	return nil, nil
 }
 
-func computeDomains(ctx context.Context, ws string, env cfg.Context, cluster Planner, naming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
-	computed, err := ComputeNaming(ctx, ws, env, cluster, naming)
+func computeDomains(ctx context.Context, ws string, env cfg.Context, cluster Planner, serverNaming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+	computed, err := ComputeNaming(ctx, ws, env, cluster, serverNaming)
 	if err != nil {
 		return nil, err
 	}
@@ -280,6 +280,10 @@ type DomainsRequest struct {
 }
 
 func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
+	if computed.GetManaged() == schema.Domain_MANAGED_UNKNOWN {
+		return nil, nil
+	}
+
 	inclusterTls := allocatedName.TlsInclusterTermination || env.Purpose == schema.Environment_PRODUCTION
 
 	computedDomain := &schema.Domain{

@@ -14,6 +14,7 @@ message Naming {
     string                        with_org                  = 1;  // Allocate with the following organization.
     repeated AdditionalDomainName additional_user_specified = 2;  // If set, also configures the ingress with these domains.
     repeated AdditionalDomainName additional_tls_managed    = 3;  // If set, both configures an ingress with these domains, and requests TLS certificate from Foundation.
+    bool                          enable_namespace_managed  = 4;  // If set, enables namespace managed domain names.
 
     message AdditionalDomainName {
         string allocated_name = 1;

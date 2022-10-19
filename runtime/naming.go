@@ -54,7 +54,7 @@ func computeNaming(ctx context.Context, workspace string, env cfg.Context, clust
 	}
 
 	naming.MainModuleName = workspace
-	naming.UseShortAlias = naming.UseShortAlias || WorkInProgressUseShortAlias
+	naming.UseShortAlias = naming.GetUseShortAlias() || WorkInProgressUseShortAlias
 
 	return naming, nil
 }
@@ -77,6 +77,10 @@ func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planne
 			BaseDomain: LocalBaseDomain,
 			Managed:    schema.Domain_LOCAL_MANAGED,
 		}, nil
+	}
+
+	if !source.GetEnableNamespaceManaged() {
+		return nil, nil
 	}
 
 	userAuth, err := fnapi.LoadUser()
