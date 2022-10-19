@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	//go:embed versions.json fn-postgres-entrypoint.sh
+	//go:embed versions.json ns-postgres-entrypoint.sh
 	lib embed.FS
 
 	postgresImage string
@@ -43,7 +43,7 @@ func init() {
 
 	postgresImage = pins.Image(versions.Postgres)
 
-	entrypoint, err = fs.ReadFile(lib, "fn-postgres-entrypoint.sh")
+	entrypoint, err = fs.ReadFile(lib, "ns-postgres-entrypoint.sh")
 	if err != nil {
 		panic(err)
 	}
@@ -51,6 +51,6 @@ func init() {
 
 func makePostgresImageState(platform specs.Platform) llb.State {
 	return llbutil.Image(postgresImage, platform).
-		File(llb.Mkfile("fn-postgres-entrypoint.sh", 0777, entrypoint)).
+		File(llb.Mkfile("ns-postgres-entrypoint.sh", 0777, entrypoint)).
 		File(llb.Rm("/usr/local/bin/docker-entrypoint.sh"))
 }

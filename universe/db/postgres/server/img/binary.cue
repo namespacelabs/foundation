@@ -1,7 +1,7 @@
 binary: {
-	name: "fn-postgres-image"
+	name: "ns-postgres-image"
 	config: {
-		command: ["/fn-postgres-entrypoint.sh"]
+		command: ["/ns-postgres-entrypoint.sh"]
 	}
 
 	from: llb_plan: {
