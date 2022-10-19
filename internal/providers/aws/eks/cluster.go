@@ -127,7 +127,7 @@ func prepareDescribeCluster(ctx context.Context, env cfg.Context, se *schema.Sta
 
 	srv := se.Server
 	eksServerDetails := &fneks.EKSServerDetails{
-		ComputedIamRoleName: fmt.Sprintf("fn-%s-%s-%s", eksCluster.Name, env.Environment().Name, srv.Id),
+		ComputedIamRoleName: fmt.Sprintf("ns-%s-%s-%s", eksCluster.Name, env.Environment().Name, srv.Id),
 	}
 
 	if len(eksServerDetails.ComputedIamRoleName) > 64 {

@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const DefaultContainerName = "fn-buildkitd"
+const DefaultContainerName = "ns-buildkitd"
 
 func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, error) {
 	vendoredVersion, err := Version()

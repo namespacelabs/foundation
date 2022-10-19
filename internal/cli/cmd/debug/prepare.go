@@ -26,7 +26,7 @@ func newPrepareCmd() *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			spec := install.PersistentSpec{
 				Name:          "jaeger",
-				ContainerName: "fn-jaeger",
+				ContainerName: "ns-jaeger",
 				Image:         "jaegertracing/all-in-one",
 				Version:       "1.27",
 				Ports: map[int]int{

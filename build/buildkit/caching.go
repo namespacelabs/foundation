@@ -86,7 +86,7 @@ func checkUseGithubCache(entry client.CacheOptionsEntry) client.CacheOptionsEntr
 		}
 
 		if newEntry.Attrs["scope"] == "" {
-			newEntry.Attrs["scope"] = "fn-buildkit"
+			newEntry.Attrs["scope"] = "ns-buildkit"
 		}
 
 		return newEntry

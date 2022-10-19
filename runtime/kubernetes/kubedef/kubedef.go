@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	AdminNamespace = "fn-admin"
+	AdminNamespace = "ns-admin"
 )
 
 type Apply struct {
