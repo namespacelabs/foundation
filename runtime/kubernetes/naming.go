@@ -5,7 +5,6 @@
 package kubernetes
 
 import (
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -33,12 +32,8 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 
 func VolumeName(v *schema.Volume) string {
 	if v.Inline {
-		// generate a k8s-compliant name.
-		parts := validChars.FindAllString(filepath.Base(v.Name), -1)
-		parts = append(parts, naming.StableIDN(v.Name, 5))
-		return fmt.Sprintf("v-inline-%s", strings.Join(parts, "-"))
+		return labelLike("vi", v.Name)
 	}
 
-	// TODO should we really change the user-provided name?
-	return fmt.Sprintf("v-%s", v.Name)
+	return labelLike("v", v.Name)
 }

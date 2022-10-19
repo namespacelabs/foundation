@@ -85,6 +85,7 @@ type EnsureRuntimeConfig struct {
 	RuntimeConfig        *runtimepb.RuntimeConfig
 	Deployable           runtime.Deployable
 	ResourceDependencies []*resources.ResourceDependency
+	InjectedResources    []*OpEnsureRuntimeConfig_InjectedResource
 	PersistConfiguration bool
 }
 
@@ -291,6 +292,7 @@ func (a EnsureRuntimeConfig) ToDefinition(scope ...schema.PackageName) (*schema.
 		RuntimeConfig:        a.RuntimeConfig,
 		Deployable:           runtime.DeployableToProto(a.Deployable),
 		PersistConfiguration: a.PersistConfiguration,
+		InjectResource:       a.InjectedResources,
 	}
 
 	order := &schema.ScheduleOrder{

@@ -81,27 +81,6 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 				si.Impl = wrapped
 
 				ops = append(ops, si)
-
-			case parsing.IsSecretResource(resource.Class.Ref):
-				secretIntent := &stdruntime.SecretIntent{}
-				if err := proto.Unmarshal(resource.Intent.Value, secretIntent); err != nil {
-					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
-				}
-
-				ref, err := schema.ParsePackageRef(schema.PackageName(resource.Source.PackageName), secretIntent.Ref)
-				if err != nil {
-					return nil, fnerrors.BadInputError("failed to resolve reference: %w", err)
-				}
-
-				specs, err := loadSecretSpecs(ctx, sealedCtx, ref)
-				if err != nil {
-					return nil, err
-				}
-
-				secrets = append(secrets, runtime.SecretResource{
-					ResourceID: resource.ID,
-					Spec:       specs[0],
-				})
 			}
 
 			continue // Nothing to do re: provider.
@@ -136,6 +115,40 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			return nil, err
 		}
 
+		var regularDependencies []*resources.ResourceDependency
+		var secrets []runtime.SecretResource
+		for _, dep := range resource.Dependencies {
+			instance := rp.get(dep.ResourceInstanceId)
+			if instance == nil {
+				return nil, fnerrors.InternalError("missing resource dependency %q", dep.ResourceInstanceId)
+			}
+
+			if parsing.IsSecretResource(dep.ResourceClass) {
+				secretIntent := &stdruntime.SecretIntent{}
+				if err := proto.Unmarshal(instance.Intent.Value, secretIntent); err != nil {
+					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
+				}
+
+				ref, err := schema.StrictParsePackageRef(secretIntent.Ref)
+				if err != nil {
+					return nil, fnerrors.BadInputError("failed to resolve reference: %w", err)
+				}
+
+				specs, err := loadSecretSpecs(ctx, sealedCtx, ref)
+				if err != nil {
+					return nil, err
+				}
+
+				secrets = append(secrets, runtime.SecretResource{
+					SecretRef:   ref,
+					ResourceRef: dep.ResourceRef,
+					Spec:        specs[0],
+				})
+			} else {
+				regularDependencies = append(regularDependencies, dep)
+			}
+		}
+
 		imageIDs = append(imageIDs, imageID)
 		invocations = append(invocations, &InvokeResourceProvider{
 			ResourceInstanceId:   resource.ID,
@@ -145,7 +158,8 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 			ResourceProvider:     provider,
 			InstanceTypeSource:   resource.Class.InstanceType.Sources,
 			SerializedIntentJson: resource.JSONSerializedIntent,
-			Dependency:           resource.Dependencies,
+			ResourceDependencies: regularDependencies,
+			SecretResources:      secrets,
 		})
 	}
 
@@ -171,10 +185,12 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 type resourceList struct {
 	resourceIDs uniquestrings.List
 
-	resources map[string]resourceInstance
+	resources map[string]*resourceInstance
 }
 
 type resourceInstance struct {
+	Parents []planning.Server
+
 	ID                   string
 	Source               *schema.ResourceInstance
 	Class                pkggraph.ResourceClass
@@ -184,8 +200,16 @@ type resourceInstance struct {
 	Dependencies         []*resources.ResourceDependency
 }
 
-func (rp *resourceList) Resources() []resourceInstance {
-	var resources []resourceInstance
+func (rp *resourceList) get(resourceID string) *resourceInstance {
+	instance, ok := rp.resources[resourceID]
+	if ok {
+		return instance
+	}
+	return nil
+}
+
+func (rp *resourceList) Resources() []*resourceInstance {
+	var resources []*resourceInstance
 	for _, resourceID := range rp.resourceIDs.Strings() {
 		resource := rp.resources[resourceID]
 		resources = append(resources, resource)
@@ -193,12 +217,12 @@ func (rp *resourceList) Resources() []resourceInstance {
 	return resources
 }
 
-func (rp *resourceList) checkAddMultiple(ctx context.Context, instances ...pkggraph.ResourceInstance) error {
+func (rp *resourceList) checkAddMultiple(ctx context.Context, owner planning.Server, instances ...pkggraph.ResourceInstance) error {
 	var errs []error
 	for _, instance := range instances {
 		resourceID := resources.ResourceID(instance.Name)
 
-		if err := rp.checkAddResource(ctx, resourceID, instance.Spec); err != nil {
+		if err := rp.checkAddResource(ctx, owner, resourceID, instance.Spec); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -206,17 +230,23 @@ func (rp *resourceList) checkAddMultiple(ctx context.Context, instances ...pkggr
 	return multierr.New(errs...)
 }
 
-func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string, resource pkggraph.ResourceSpec) error {
+func (rp *resourceList) checkAddResource(ctx context.Context, owner planning.Server, resourceID string, resource pkggraph.ResourceSpec) error {
 	if !rp.resourceIDs.Add(resourceID) {
 		return nil
 	}
 
+	if existing, has := rp.resources[resourceID]; has {
+		existing.Parents = append(existing.Parents, owner)
+		return nil
+	}
+
 	if rp.resources == nil {
-		rp.resources = map[string]resourceInstance{}
+		rp.resources = map[string]*resourceInstance{}
 	}
 
 	// XXX add resources recursively.
 	instance := resourceInstance{
+		Parents:  []planning.Server{owner},
 		ID:       resourceID,
 		Source:   resource.Source,
 		Class:    resource.Class,
@@ -251,7 +281,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 	for _, res := range inputs {
 		scopedID := fmt.Sprintf("%s;%s:%s", resourceID, res.Name.PackageName, res.Name.Name)
 
-		if err := rp.checkAddResource(ctx, scopedID, res.Spec); err != nil {
+		if err := rp.checkAddResource(ctx, owner, scopedID, res.Spec); err != nil {
 			return err
 		}
 
@@ -262,7 +292,6 @@ func (rp *resourceList) checkAddResource(ctx context.Context, resourceID string,
 		})
 	}
 
-	rp.resources[instance.ID] = instance
-
+	rp.resources[resourceID] = &instance
 	return nil
 }

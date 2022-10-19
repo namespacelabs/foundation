@@ -19,6 +19,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/encoding/protojson"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -26,13 +27,13 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/resources"
+	runtimepb "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/go-ids"
 	"sigs.k8s.io/yaml"
@@ -446,7 +447,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					if resource.Value != nil {
 						secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource.Value, secrets.items).WithPath(entry.Path))
 					} else if resource.Spec.Generate != nil {
-						name, key := secrets.allocateGenerated(resource)
+						name, key := secrets.allocateGenerated(resource.Ref, resource.Spec)
 						projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
 							applycorev1.SecretProjection().WithName(name).WithItems(applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path)),
 						))
@@ -520,20 +521,56 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		SetContainerFields: deployable.SetContainerField,
 	}
 
-	// Secrets are special, as we compute their targets here, as part of
-	// planning. So we consume them, and generate the resource map that
-	// EnsureRuntimeConfig should merge with the final resource list.
-	var regularResources, secretResources []*resources.ResourceDependency
-	for _, res := range deployable.Resources {
-		if parsing.IsSecretResource(res.ResourceClass) {
-			secretResources = append(secretResources, res)
-		} else {
-			regularResources = append(regularResources, res)
+	regularResources := slices.Clone(deployable.Resources)
+
+	const projectedSecretsVolName = "ns-projected-secrets"
+	const secretBaseMountPath = "/namespace/secrets"
+
+	var secretProjections []*applycorev1.SecretProjectionApplyConfiguration
+	var injected []*kubedef.OpEnsureRuntimeConfig_InjectedResource
+	for _, res := range deployable.SecretResources {
+		if res.Spec.Generate == nil {
+			return fnerrors.BadInputError("don't yet support secrets used in resources, which don't use a generate block")
 		}
+
+		name, key := secrets.allocateGenerated(res.SecretRef, res.Spec)
+
+		targetPathSegment := domainFragLike(res.ResourceRef.PackageName, res.ResourceRef.Name)
+
+		secretProjections = append(secretProjections,
+			applycorev1.SecretProjection().WithName(name).WithItems(
+				applycorev1.KeyToPath().WithKey(key).WithPath(targetPathSegment)))
+
+		instance := &runtimepb.SecretInstance{
+			Path: filepath.Join(secretBaseMountPath, targetPathSegment),
+		}
+
+		serializedInstance, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(instance)
+		if err != nil {
+			return err
+		}
+
+		injected = append(injected, &kubedef.OpEnsureRuntimeConfig_InjectedResource{
+			ResourceRef:    res.ResourceRef,
+			SerializedJson: serializedInstance,
+		})
+	}
+
+	if len(secretProjections) > 0 {
+		src := applycorev1.ProjectedVolumeSource()
+		for _, p := range secretProjections {
+			src = src.WithSources(applycorev1.VolumeProjection().WithSecret(p))
+		}
+
+		spec = spec.WithVolumes(applycorev1.Volume().WithName(projectedSecretsVolName).WithProjected(src))
+		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
+			WithName(projectedSecretsVolName).
+			WithMountPath(secretBaseMountPath).
+			WithReadOnly(true))
 	}
 
 	// Before sidecars so they have access to the "runtime config" volume.
-	if deployable.RuntimeConfig != nil || len(regularResources) > 0 {
+	if deployable.RuntimeConfig != nil || len(regularResources) > 0 || len(injected) > 0 {
 		slices.SortFunc(regularResources, func(a, b *resources.ResourceDependency) bool {
 			return strings.Compare(a.ResourceInstanceId, b.ResourceInstanceId) < 0
 		})
@@ -543,6 +580,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			RuntimeConfig:        deployable.RuntimeConfig,
 			Deployable:           deployable,
 			ResourceDependencies: regularResources,
+			InjectedResources:    injected,
 			PersistConfiguration: !deployable.InhibitPersistentRuntimeConfig,
 		}
 
@@ -780,7 +818,7 @@ func (cm *collector) set(key string, rsc *schema.FileContents) {
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
-	key := cleanName(entry.Path, rsc.Path)
+	key := domainFragLike(entry.Path, rsc.Path)
 	fmt.Fprintf(hash, "%s:", key)
 	_, _ = hash.Write(rsc.Contents)
 	fmt.Fprintln(hash)

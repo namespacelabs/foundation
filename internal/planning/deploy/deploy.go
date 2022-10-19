@@ -238,7 +238,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
-				if err := rp.checkAddMultiple(ctx, ps.Resources...); err != nil {
+				if err := rp.checkAddMultiple(ctx, ps.Server, ps.Resources...); err != nil {
 					return nil, err
 				}
 			}

@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var GarbageCollectProviders = true
+var GarbageCollectProviders = false
 
 var resultHeader = []byte("namespace.provision.result:")
 

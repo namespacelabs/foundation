@@ -260,20 +260,27 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 
 func discoverDeclaredServers(resources []pkggraph.ResourceInstance, serverList *schema.PackageList) error {
 	for _, res := range resources {
-		if parsing.IsServerResource(res.Spec.Class.Ref) {
+		switch {
+		case parsing.IsServerResource(res.Spec.Class.Ref):
 			serverIntent := &stdruntime.ServerIntent{}
 			if err := proto.Unmarshal(res.Spec.Source.Intent.Value, serverIntent); err != nil {
 				return fnerrors.InternalError("failed to unwrap Server")
 			}
 
 			serverList.Add(schema.PackageName(serverIntent.PackageName))
-		} else {
+
+		case parsing.IsSecretResource(res.Spec.Class.Ref):
+			// Nothing to do.
+
+		default:
 			if err := discoverDeclaredServers(res.Spec.ResourceInputs, serverList); err != nil {
 				return err
 			}
 
-			if err := discoverDeclaredServers(res.Spec.Provider.Resources, serverList); err != nil {
-				return err
+			if res.Spec.Provider != nil {
+				if err := discoverDeclaredServers(res.Spec.Provider.Resources, serverList); err != nil {
+					return err
+				}
 			}
 		}
 	}

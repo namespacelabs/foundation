@@ -22,7 +22,12 @@ import (
 type secretCollector struct {
 	secretId                 string
 	items                    *collector
-	requiredGeneratedSecrets []*runtime.GroundedSecret
+	requiredGeneratedSecrets []secretRefAndSpec
+}
+
+type secretRefAndSpec struct {
+	Ref  *schema.PackageRef
+	Spec *schema.SecretSpec
 }
 
 func newSecretCollector(secretId string) *secretCollector {
@@ -36,23 +41,23 @@ func (s *secretCollector) allocate(secrets runtime.GroundedSecrets, ref *schema.
 	}
 
 	if contents.Value != nil {
-		key := cleanName(ref.PackageName, ref.Name)
+		key := domainFragLike(ref.PackageName, ref.Name)
 		s.items.set(key, contents.Value)
 
 		return s.secretId, key, nil
 	}
 
 	if contents.Spec.Generate != nil {
-		name, key := s.allocateGenerated(contents)
+		name, key := s.allocateGenerated(contents.Ref, contents.Spec)
 		return name, key, nil
 	}
 
 	return "", "", fnerrors.InternalError("don't know how to handle secret %q", ref.Canonical())
 }
 
-func (s *secretCollector) allocateGenerated(grounded *runtime.GroundedSecret) (string, string) {
-	s.requiredGeneratedSecrets = append(s.requiredGeneratedSecrets, grounded)
-	name, key := generatedSecretName(grounded.Spec.Generate)
+func (s *secretCollector) allocateGenerated(ref *schema.PackageRef, spec *schema.SecretSpec) (string, string) {
+	s.requiredGeneratedSecrets = append(s.requiredGeneratedSecrets, secretRefAndSpec{ref, spec})
+	name, key := generatedSecretName(spec.Generate)
 	return name, key
 }
 

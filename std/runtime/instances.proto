@@ -9,5 +9,5 @@ package foundation.std.runtime;
 option go_package = "namespacelabs.dev/foundation/std/runtime";
 
 message SecretInstance {
-    string file_path = 1;
+    string path = 1;
 }

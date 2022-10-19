@@ -218,8 +218,9 @@ type DeployableSpec struct {
 }
 
 type SecretResource struct {
-	ResourceID string
-	Spec       *schema.SecretSpec
+	SecretRef   *schema.PackageRef
+	ResourceRef *schema.PackageRef
+	Spec        *schema.SecretSpec
 }
 
 type AttachableKind string

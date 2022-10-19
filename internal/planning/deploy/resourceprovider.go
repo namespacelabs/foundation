@@ -35,7 +35,8 @@ type InvokeResourceProvider struct {
 	ResourceClass        *schema.ResourceClass
 	ResourceProvider     *schema.ResourceProvider
 	InstanceTypeSource   *protos2.FileDescriptorSetAndDeps
-	Dependency           []*resources.ResourceDependency
+	ResourceDependencies []*resources.ResourceDependency
+	SecretResources      []runtime.SecretResource
 }
 
 func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
@@ -53,7 +54,8 @@ func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner
 		Description: fmt.Sprintf("Ensure resource: %s", invoke.ResourceInstanceId),
 
 		InhibitPersistentRuntimeConfig: true,
-		Resources:                      invoke.Dependency,
+		Resources:                      invoke.ResourceDependencies,
+		SecretResources:                invoke.SecretResources,
 		SetContainerField: []*runtimepb.SetContainerField{
 			// Resources are passed in as flags to minimize the number of k8s resources that are created.
 			// XXX security validate this.

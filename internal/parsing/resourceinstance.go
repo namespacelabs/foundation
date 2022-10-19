@@ -8,8 +8,10 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/multierr"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime"
@@ -28,63 +30,69 @@ func IsSecretResource(ref packageRefLike) bool {
 	return ref.GetPackageName() == "namespacelabs.dev/foundation/std/runtime" && ref.GetName() == "Secret"
 }
 
-func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, r *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
-	r.PackageName = string(pp.PackageName())
+func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
+	instance.PackageName = string(pp.PackageName())
 
-	if r.Intent != nil && r.IntentFrom != nil {
-		return nil, fnerrors.UserError(pp.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", r.Name)
+	if instance.Intent != nil && instance.IntentFrom != nil {
+		return nil, fnerrors.UserError(pp.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", instance.Name)
 	}
 
-	if r.IntentFrom != nil {
-		if _, _, err := pkggraph.LoadBinary(ctx, pl, r.IntentFrom.BinaryRef); err != nil {
+	if instance.IntentFrom != nil {
+		if _, _, err := pkggraph.LoadBinary(ctx, pl, instance.IntentFrom.BinaryRef); err != nil {
 			return nil, err
 		}
 	}
 
-	classPkg, err := pl.LoadByName(ctx, r.Class.AsPackageName())
+	classPkg, err := pl.LoadByName(ctx, instance.Class.AsPackageName())
 	if err != nil {
 		return nil, err
 	}
 
-	class := classPkg.LookupResourceClass(r.Class.Name)
+	class := classPkg.LookupResourceClass(instance.Class.Name)
 	if class == nil {
-		return nil, fnerrors.UserError(pp.Location, "no such resource class %q", r.Class.Canonical())
+		return nil, fnerrors.UserError(pp.Location, "no such resource class %q", instance.Class.Canonical())
 	}
 
-	name := &schema.PackageRef{PackageName: r.PackageName, Name: r.Name}
+	name := &schema.PackageRef{PackageName: instance.PackageName, Name: instance.Name}
 	ri := pkggraph.ResourceSpec{
-		Source: r,
+		Source: protos.Clone(instance),
 		Class:  *class,
 	}
 
-	loadedPrimitive, err := loadPrimitiveResources(ctx, pl, r)
+	loadedPrimitive, err := loadPrimitiveResources(ctx, pl, pp.Location.PackageName, instance)
 	if err != nil {
 		return nil, err
 	}
 
-	if r.Provider != "" {
-		providerPkg, err := pl.LoadByName(ctx, schema.PackageName(r.Provider))
+	if instance.Provider != "" {
+		providerPkg, err := pl.LoadByName(ctx, schema.PackageName(instance.Provider))
 		if err != nil {
 			return nil, err
 		}
 
-		provider := providerPkg.LookupResourceProvider(r.Class)
+		provider := providerPkg.LookupResourceProvider(instance.Class)
 		if provider == nil {
-			return nil, fnerrors.UserError(pp.Location, "package %q does not a provider for resource class %q", r.Provider, r.Class.Canonical())
+			return nil, fnerrors.UserError(pp.Location, "package %q does not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
 		}
 
 		ri.Provider = provider
-	} else if !loadedPrimitive {
-		return nil, fnerrors.UserError(pp.Location, "missing provider for resource instance %q", r.Name)
+	} else if loadedPrimitive == nil {
+		return nil, fnerrors.UserError(pp.Location, "missing provider for resource instance %q", instance.Name)
+	} else {
+		serialized, err := anypb.New(loadedPrimitive)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to re-serialize intent: %w", err)
+		}
+		ri.Source.Intent = serialized
 	}
 
-	if len(r.InputResource) > 0 {
-		if r.Provider == "" {
+	if len(instance.InputResource) > 0 {
+		if instance.Provider == "" {
 			return nil, fnerrors.UserError(pp.Location, "input resources have been set, without a provider")
 		}
 
 		var resErrs []error
-		for _, input := range r.InputResource {
+		for _, input := range instance.InputResource {
 			expected := ri.Provider.LookupExpected(input.Name)
 
 			if expected == nil {
@@ -118,43 +126,53 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 	return &pkggraph.ResourceInstance{Name: name, Spec: ri}, nil
 }
 
-func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, r *schema.ResourceInstance) (bool, error) {
+func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, instance *schema.ResourceInstance) (proto.Message, error) {
 	// XXX Add generic package loading annotation to avoid special-casing this
 	// resource class. Other type of resources could also have references to
 	// packages.
 
 	var pkg schema.PackageName
+	var msg proto.Message
+
 	switch {
-	case IsServerResource(r.Class):
+	case IsServerResource(instance.Class):
 		intent := &runtime.ServerIntent{}
-		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
-			return false, fnerrors.InternalError("failed to unwrap Server intent")
+		if err := proto.Unmarshal(instance.Intent.Value, intent); err != nil {
+			return nil, fnerrors.InternalError("failed to unwrap Server intent")
 		}
 
 		pkg = schema.PackageName(intent.PackageName)
-	case IsSecretResource(r.Class):
+		msg = intent
+
+	case IsSecretResource(instance.Class):
 		intent := &runtime.SecretIntent{}
-		if err := proto.Unmarshal(r.Intent.Value, intent); err != nil {
-			return false, fnerrors.InternalError("failed to unwrap Secret intent")
+		if err := proto.Unmarshal(instance.Intent.Value, intent); err != nil {
+			return nil, fnerrors.InternalError("failed to unwrap Secret intent")
 		}
 
-		owner := schema.PackageName(r.PackageName)
+		owner := schema.PackageName(instance.PackageName)
 		ref, err := schema.ParsePackageRef(owner, intent.Ref)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
+
 		pkg = ref.AsPackageName()
+		msg = &runtime.SecretIntent{
+			Ref: ref.Canonical(),
+		}
 	}
 
 	if pkg == "" {
-		return false, nil
+		return nil, nil
 	}
 
-	if _, err := pl.LoadByName(ctx, pkg); err != nil {
-		return false, err
+	if pkg != owner {
+		if _, err := pl.LoadByName(ctx, pkg); err != nil {
+			return nil, err
+		}
 	}
 
-	return true, nil
+	return msg, nil
 }
 
 func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
