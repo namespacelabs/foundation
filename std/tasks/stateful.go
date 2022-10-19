@@ -92,10 +92,9 @@ func (s *StatefulSink) Trace(id ActionID) (trace []*protocol.Task) {
 		trace = append(trace, next.Data.Proto())
 		if next.Data.ParentID != "" {
 			next = s.state.runningAction(next.Data.ParentID)
-		} else if next.Data.AnchorID != "" {
-			next = s.state.waitingAction(next.Data.AnchorID)
 		} else {
-			next = nil
+			next = s.state.waitingAction(next.Data.ActionID)
+			// next=nil when there is no waiting action.
 		}
 	}
 	return

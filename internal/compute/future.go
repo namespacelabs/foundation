@@ -65,7 +65,9 @@ func makePromise[V any](c hasAction, id string) *Promise[V] {
 }
 
 func NewPromise[V any](g *Orch, action *tasks.ActionEvent, callback func(context.Context) (ResultWithTimestamp[V], error)) *Promise[V] {
-	p := makePromise[V](wrapHasAction{action}, tasks.NewActionID().String())
+	id := tasks.NewActionID()
+	action = action.ID(id)
+	p := makePromise[V](wrapHasAction{action}, id.String())
 
 	g.Detach(action, func(ctx context.Context) error {
 		result, err := callback(ctx)
