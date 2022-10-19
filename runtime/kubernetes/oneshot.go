@@ -49,7 +49,10 @@ func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts 
 		onStart()
 	}
 
-	return r.attachTerminal(ctx, r.cli, &kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
+	if io.Stdin != nil || io.Stdout != nil || io.Stderr != nil {
+		return r.attachTerminal(ctx, r.cli, &kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
+	}
+	return nil
 }
 
 func makePodSpec(name string, runOpts runtime.ContainerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
