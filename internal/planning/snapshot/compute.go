@@ -54,7 +54,7 @@ type ServerSnapshot struct {
 var _ compute.Versioned = &ServerSnapshot{}
 
 func (rs *requiredServers) Action() *tasks.ActionEvent {
-	return tasks.Action("planning.Require-servers")
+	return tasks.Action("planning.require-servers")
 }
 
 func (rs *requiredServers) Inputs() *compute.In {
