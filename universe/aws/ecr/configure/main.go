@@ -52,7 +52,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 
 	associate := &fniam.OpAssociatePolicy{
 		RoleName:   eksDetails.ComputedIamRoleName,
-		PolicyName: "fn-aws-ecr-access",
+		PolicyName: "ns-aws-ecr-access",
 		PolicyJson: string(policyBytes),
 	}
 

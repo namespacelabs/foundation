@@ -271,7 +271,7 @@ func applyRds(req provisioning.StackRequest, dbs map[string]*rds.Database, out *
 
 	associate := &fniam.OpAssociatePolicy{
 		RoleName:   eksDetails.ComputedIamRoleName,
-		PolicyName: "fn-universe-db-postgres-rds-access",
+		PolicyName: "ns-universe-db-postgres-rds-access",
 		PolicyJson: string(policyBytes),
 	}
 

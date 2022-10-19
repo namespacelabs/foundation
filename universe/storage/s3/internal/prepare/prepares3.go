@@ -175,7 +175,7 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 
 		associate := &fniam.OpAssociatePolicy{
 			RoleName:   eksDetails.ComputedIamRoleName,
-			PolicyName: "fn-universe-storage-s3-bucket-access",
+			PolicyName: "ns-universe-storage-s3-bucket-access",
 			PolicyJson: string(policyBytes),
 		}
 
