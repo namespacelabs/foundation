@@ -72,8 +72,8 @@ type ResourceSpec struct {
 }
 
 type ResourceInstance struct {
-	Name *schema.PackageRef
-	Spec ResourceSpec
+	ResourceRef *schema.PackageRef
+	Spec        ResourceSpec
 }
 
 type ResourceClass struct {
@@ -157,7 +157,7 @@ func (pr *Package) LookupResourceProvider(classRef *schema.PackageRef) *Resource
 
 func (pr *Package) LookupResourceInstance(name string) *ResourceInstance {
 	for _, r := range pr.Resources {
-		if r.Name.Name == name {
+		if r.ResourceRef.Name == name {
 			return &r
 		}
 	}

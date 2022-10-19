@@ -57,8 +57,8 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 		errs = append(errs, err)
 	} else {
 		for _, instance := range instances {
-			if rp.LookupExpected(instance.Name) != nil {
-				errs = append(errs, fnerrors.BadInputError("%q is both a resource input and a static input", instance.Name.Name))
+			if rp.LookupExpected(instance.ResourceRef) != nil {
+				errs = append(errs, fnerrors.BadInputError("%q is both a resource input and a static input", instance.ResourceRef.Name))
 			} else {
 				rp.Resources = append(rp.Resources, instance)
 			}

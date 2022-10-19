@@ -110,8 +110,8 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 						resErrs = append(resErrs, fnerrors.BadInputError("resource %q is of class %q, expected %q", input.Name, instance.Spec.Class.Ref.Canonical(), class.Ref.Canonical()))
 					} else {
 						ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
-							Name: input.Name,
-							Spec: instance.Spec,
+							ResourceRef: input.Name,
+							Spec:        instance.Spec,
 						})
 					}
 				}
@@ -123,7 +123,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		}
 	}
 
-	return &pkggraph.ResourceInstance{Name: name, Spec: ri}, nil
+	return &pkggraph.ResourceInstance{ResourceRef: name, Spec: ri}, nil
 }
 
 func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, instance *schema.ResourceInstance) (proto.Message, error) {

@@ -27,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -238,7 +237,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
-				if err := rp.checkAddMultiple(ctx, ps.Server, ps.Resources...); err != nil {
+				if err := rp.checkAddServerResources(ctx, ps.Server, ps.Resources); err != nil {
 					return nil, err
 				}
 			}
@@ -281,7 +280,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.Secrets)
+			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.ResourceList.perServerResources)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -299,7 +298,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, secrets []runtime.SecretResource) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources map[schema.PackageName]serverResourceInstances) (*runtime.DeploymentPlan, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
@@ -319,13 +318,8 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 			return nil, err
 		}
 
-		for _, resource := range srv.Resources {
-			run.Resources = append(run.Resources, &resources.ResourceDependency{
-				ResourceRef:        resource.Name,
-				ResourceClass:      resource.Spec.Class.Ref,
-				ResourceInstanceId: resources.ResourceID(resource.Name),
-			})
-		}
+		run.Resources = resources[srv.PackageName()].Dependencies
+		run.SecretResources = resources[srv.PackageName()].Secrets
 
 		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
 			return nil, err
