@@ -79,30 +79,47 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		tasks.Attachments(ctx).AddResult("index", true)
 
 		return imageForPlatform(idx, r.platform, func(h v1.Hash) (Image, error) {
+			img, err := loadFromCache(ctx, compute.Cache(ctx), h)
+			if err != nil {
+				return nil, err
+			}
+
+			if img != nil {
+				return img, nil
+			}
+
 			d := ImageID{Repository: descriptor.Repository, Digest: h.String()}
-			// When we do a recursive lookup we don't constrain platform anymore, as more
-			// often than not images that are referred to from an index don't carry a platform
-			// specification.
-			return compute.GetValue(ctx, ImageP(d.ImageRef(), nil, r.opts))
+			fetched, err := fetchRemoteImage(ctx, d, r.opts)
+			if err != nil {
+				return nil, err
+			}
+
+			// Best effort caching.
+			_ = writeImage(ctx, compute.Cache(ctx), fetched)
+			return fetched, nil
 		})
 
 	case isImageMediaType(types.MediaType(descriptor.MediaType)):
 		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
 
-		ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), r.opts)
-		if err != nil {
-			return nil, fnerrors.InternalError("%s: failed to parse: %w", imageid.RepoAndDigest(), err)
-		}
-
-		img, err := remote.Image(ref, remoteOpts...)
-		if err != nil {
-			return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
-		}
-
-		return img, nil
+		return fetchRemoteImage(ctx, imageid, r.opts)
 	}
 
 	return nil, fnerrors.BadInputError("unexpected media type: %s (expected image or image index)", descriptor.MediaType)
+}
+
+func fetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (Image, error) {
+	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), opts)
+	if err != nil {
+		return nil, fnerrors.InternalError("%s: failed to parse: %w", imageid.RepoAndDigest(), err)
+	}
+
+	img, err := remote.Image(ref, remoteOpts...)
+	if err != nil {
+		return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
+	}
+
+	return img, nil
 }
 
 func fetchRemoteDescriptor(ctx context.Context, imageRef string, opts ResolveOpts) (*remote.Descriptor, error) {
