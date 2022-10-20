@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"

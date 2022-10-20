@@ -9,8 +9,8 @@ import (
 	"fmt"
 
 	applyrbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	fneks "namespacelabs.dev/foundation/universe/aws/eks"
 	fniam "namespacelabs.dev/foundation/universe/aws/iam"

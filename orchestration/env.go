@@ -8,12 +8,12 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/build/binary"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )

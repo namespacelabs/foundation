@@ -14,7 +14,7 @@ import (
 	"github.com/kr/text"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/renderwait"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"

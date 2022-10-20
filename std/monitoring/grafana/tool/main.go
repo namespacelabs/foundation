@@ -13,9 +13,9 @@ import (
 	"text/template"
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/framework/provisioning"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/schema"
 )
 

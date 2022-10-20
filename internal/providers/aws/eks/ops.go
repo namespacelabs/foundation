@@ -8,8 +8,8 @@ import (
 	"context"
 
 	awsauth "github.com/keikoproj/aws-auth/pkg/mapper"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
 )

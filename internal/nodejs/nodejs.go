@@ -9,13 +9,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
-	"namespacelabs.dev/foundation/runtime/rtypes"
-	"namespacelabs.dev/foundation/runtime/tools"
+	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )

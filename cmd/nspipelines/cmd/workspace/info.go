@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"

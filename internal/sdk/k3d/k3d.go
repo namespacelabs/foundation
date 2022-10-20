@@ -26,7 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	"namespacelabs.dev/foundation/runtime/docker"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )

@@ -11,7 +11,7 @@ import (
 	"log"
 
 	corev1 "k8s.io/api/core/v1"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/std/go/server"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -65,7 +65,7 @@ func setupControllers() error {
 		Owns(&corev1.ConfigMap{}).
 		WithEventFilter(predicate.NewPredicateFuncs(managedByUs)).
 		Complete(&RuntimeConfigReconciler{
-			client:   mgr.GetClient(),
+			client: mgr.GetClient(),
 		}); err != nil {
 		return err
 	}

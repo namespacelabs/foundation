@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
-	"namespacelabs.dev/foundation/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"

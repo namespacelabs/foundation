@@ -18,7 +18,7 @@ import (
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/internal/providers/aws/auth"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 )

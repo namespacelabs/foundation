@@ -16,9 +16,9 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
-	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	reg "namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"

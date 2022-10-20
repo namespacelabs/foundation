@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/languages/web"
+	"namespacelabs.dev/foundation/internal/languages/web"
 	"namespacelabs.dev/foundation/schema"
 )
 

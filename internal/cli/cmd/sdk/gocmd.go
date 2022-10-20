@@ -11,9 +11,9 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/languages/golang"
 	"namespacelabs.dev/foundation/internal/parsing"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
-	"namespacelabs.dev/foundation/languages/golang"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )

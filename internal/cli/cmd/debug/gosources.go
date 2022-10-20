@@ -11,11 +11,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"namespacelabs.dev/foundation/build"
+	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/languages/golang"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/languages/golang"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

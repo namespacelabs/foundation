@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/languages/nodejs/binary"
+	"namespacelabs.dev/foundation/internal/languages/opaque"
 	"namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/languages/nodejs/binary"
-	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )

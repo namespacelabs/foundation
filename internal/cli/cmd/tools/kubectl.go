@@ -17,9 +17,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

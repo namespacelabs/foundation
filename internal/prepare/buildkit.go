@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/schema"

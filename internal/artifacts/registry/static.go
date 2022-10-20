@@ -7,8 +7,8 @@ package registry
 import (
 	"strings"
 
-	"namespacelabs.dev/foundation/build/registry"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/compute"
 )
 

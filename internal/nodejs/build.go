@@ -12,15 +12,15 @@ import (
 
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/build"
-	"namespacelabs.dev/foundation/build/buildkit"
+	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/languages/nodejs/binary"
+	"namespacelabs.dev/foundation/internal/languages/nodejs/yarnplugin"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/sdk/yarn"
-	"namespacelabs.dev/foundation/languages/nodejs/binary"
-	"namespacelabs.dev/foundation/languages/nodejs/yarnplugin"
 	"namespacelabs.dev/foundation/schema"
 )
 

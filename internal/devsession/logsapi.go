@@ -12,7 +12,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 

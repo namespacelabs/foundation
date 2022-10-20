@@ -5,8 +5,8 @@
 package genpackage
 
 import (
+	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/planning"
-	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )

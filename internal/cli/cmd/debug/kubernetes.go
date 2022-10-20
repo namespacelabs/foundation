@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

@@ -9,8 +9,8 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/languages"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"

@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

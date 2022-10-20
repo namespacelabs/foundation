@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"

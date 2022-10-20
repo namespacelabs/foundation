@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/runtime/docker"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 )
 
 func NewImagesCmd() *cobra.Command {

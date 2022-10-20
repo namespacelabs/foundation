@@ -8,7 +8,7 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 )
 
 func NonRootRunAs(server string) *runtime.RunAs {

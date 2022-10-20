@@ -12,22 +12,22 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/planning/snapshot"
+	"namespacelabs.dev/foundation/internal/portforward"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *endpointfwd.PortForward) error {
+func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *portforward.PortForward) error {
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
 		focusServers := snapshot.RequireServers(env, serverPackages...)
@@ -57,7 +57,7 @@ func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamesp
 
 type buildAndDeploy struct {
 	session        *Session
-	portForward    *endpointfwd.PortForward
+	portForward    *portforward.PortForward
 	env            cfg.Context
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*snapshot.ServerSnapshot]

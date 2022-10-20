@@ -20,11 +20,11 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/languages"
-	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 

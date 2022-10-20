@@ -22,9 +22,9 @@ import (
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
+	"namespacelabs.dev/foundation/internal/portforward"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 
 	"namespacelabs.dev/foundation/std/cfg"
@@ -52,7 +52,7 @@ type Session struct {
 	currentStack    *Stack
 	currentEnv      cfg.Context
 	cluster         runtime.ClusterNamespace
-	pfw             *endpointfwd.PortForward
+	pfw             *portforward.PortForward
 }
 
 func NewSession(errorLog io.Writer, sink *tasks.StatefulSink, localHostname string, envs []*schema.Environment) (*Session, error) {
@@ -243,7 +243,7 @@ func (s *Session) TaskLogByName(taskID, name string) io.ReadCloser {
 	return s.sink.HistoricReaderByName(tasks.ActionID(taskID), name)
 }
 
-func (s *Session) setEnvironment(parentCtx context.Context, env cfg.Context) (runtime.ClusterNamespace, *endpointfwd.PortForward, error) {
+func (s *Session) setEnvironment(parentCtx context.Context, env cfg.Context) (runtime.ClusterNamespace, *portforward.PortForward, error) {
 	if s.pfw != nil && proto.Equal(s.currentEnv.Environment(), env.Environment()) {
 		// Nothing to do.
 		return s.cluster, s.pfw, nil

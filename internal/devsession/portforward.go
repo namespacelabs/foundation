@@ -10,15 +10,15 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/runtime/endpointfwd"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/portforward"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-func NewPortFwd(ctx context.Context, obs *Session, env cfg.Context, rt runtime.ClusterNamespace, localaddr string) *endpointfwd.PortForward {
-	pfw := &endpointfwd.PortForward{
+func NewPortFwd(ctx context.Context, obs *Session, env cfg.Context, rt runtime.ClusterNamespace, localaddr string) *portforward.PortForward {
+	pfw := &portforward.PortForward{
 		Env:       env.Environment(),
 		LocalAddr: localaddr,
 		Debug:     console.Debug(ctx),

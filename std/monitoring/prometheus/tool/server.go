@@ -11,11 +11,11 @@ import (
 
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeblueprint"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/framework/provisioning"
-	"namespacelabs.dev/foundation/runtime"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubetool"
+	"namespacelabs.dev/foundation/internal/runtime"
 )
 
 const (

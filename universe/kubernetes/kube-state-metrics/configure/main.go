@@ -11,10 +11,10 @@ import (
 	"strings"
 
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeblueprint"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubeblueprint"
-	"namespacelabs.dev/foundation/runtime/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/schema"
 )
 
