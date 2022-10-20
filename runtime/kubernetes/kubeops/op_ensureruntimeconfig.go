@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -35,12 +33,27 @@ func registerEnsureRuntimeConfig() {
 
 				output := &kubedef.EnsureRuntimeConfigOutput{}
 
+				// We here generate the runtime and resource configuration which
+				// is injected to servers. Ideally this configmap would be
+				// immutable, but in order to minimize churn we update buildvcs
+				// in place, if one is available.
+				//
+				// The name of the configmap is derived from the contents of the
+				// runtime and resource configurations. If these don't change,
+				// then the resulting configmap will be the same (albeit with an
+				// updated buildvcs).
+
+				hashInputs := map[string]any{
+					"version": runtimeConfigVersion,
+				}
+
 				if ensure.RuntimeConfig != nil {
 					serializedConfig, err := json.Marshal(ensure.RuntimeConfig)
 					if err != nil {
 						return nil, fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
 					}
 					data["runtime.json"] = string(serializedConfig)
+					hashInputs["runtime.json"] = string(serializedConfig)
 					output.SerializedRuntimeJson = string(serializedConfig)
 				}
 
@@ -49,6 +62,7 @@ func registerEnsureRuntimeConfig() {
 					if err != nil {
 						return nil, fnerrors.InternalError("failed to serialize runtime configuration: %w", err)
 					}
+					// Deliberately not an hash input.
 					data["buildvcs.json"] = string(serializedConfig)
 				}
 
@@ -83,19 +97,12 @@ func registerEnsureRuntimeConfig() {
 						return nil, fnerrors.InternalError("failed to serialize resource configuration: %w", err)
 					}
 					data["resources.json"] = string(serializedConfig)
-
+					hashInputs["resources.json"] = string(serializedConfig)
 					output.SerializedResourceJson = string(serializedConfig)
 				}
 
 				if len(data) > 0 && ensure.PersistConfiguration {
-					keys := maps.Keys(data)
-					slices.Sort(keys)
-					hashInput := []any{runtimeConfigVersion}
-					for _, key := range keys {
-						hashInput = append(hashInput, data[key])
-					}
-
-					configDigest, err := schema.DigestOf(hashInput...)
+					configDigest, err := schema.DigestOf(hashInputs)
 					if err != nil {
 						return nil, fnerrors.InternalError("failed to digest runtime configuration: %w", err)
 					}
@@ -120,7 +127,6 @@ func registerEnsureRuntimeConfig() {
 								WithLabels(map[string]string{
 									kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
 								}).
-								WithImmutable(true).
 								WithData(data), kubedef.Ego()); err != nil {
 						return nil, err
 					}
