@@ -189,10 +189,16 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
-      - name: Run all tests
+      - name: Run tests
         run: |
           cd ${{ matrix.root_path }}; \
           /tmp/ns test \
+            nextjs/01-simple/server \
+            multitier/01-simple/frontend \
+            multitier/01-simple/apibackend \
+            multitier/02-withsecrets/apibackend \
+            golang/01-simple/server \
+            golang/02-withsecrets/server \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
