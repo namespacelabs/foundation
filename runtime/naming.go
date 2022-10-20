@@ -80,7 +80,7 @@ func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planne
 	}
 
 	if !source.GetEnableNamespaceManaged() {
-		return nil, nil
+		return &schema.ComputedNaming{}, nil
 	}
 
 	userAuth, err := fnapi.LoadUser()
