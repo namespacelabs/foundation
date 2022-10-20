@@ -70,7 +70,6 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/languages/golang"
 	nodebinary "namespacelabs.dev/foundation/languages/nodejs/binary"
-	nodeintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	nodeopaqueintegration "namespacelabs.dev/foundation/languages/nodejs/opaqueintegration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/languages/web"
@@ -211,7 +210,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Languages.
 		golang.Register()
 		web.Register()
-		nodeintegration.Register()
 		opaque.Register()
 		nodeopaqueintegration.Register()
 

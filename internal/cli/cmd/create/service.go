@@ -80,7 +80,7 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 				name = ""
 			}
 
-			if *fmwk == schema.Framework_GO || *fmwk == schema.Framework_NODEJS {
+			if *fmwk == schema.Framework_GO {
 				protoOpts := scaffold.GenProtoServiceOpts{Name: name, Framework: *fmwk}
 				if err := scaffold.CreateProtoScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, protoOpts); err != nil {
 					return err

@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/build"
 	"namespacelabs.dev/foundation/build/assets"
@@ -25,7 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/languages"
-	nodejsintegration "namespacelabs.dev/foundation/languages/nodejs/integration"
 	"namespacelabs.dev/foundation/languages/opaque"
 	"namespacelabs.dev/foundation/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -131,7 +131,7 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 		targetConf := build.NewBuildTarget(conf.TargetPlatform()).WithTargetName(conf.PublishName()).WithSourcePackage(srv.PackageName())
 
-		externalModules := nodejsintegration.GetExternalModuleForDeps(srv)
+		externalModules := GetExternalModuleForDeps(srv)
 
 		b, err := prepareBuild(ctx, loc, srv.SealedContext(), targetConf, entry, isFocus, externalModules, extra)
 		if err != nil {
@@ -399,3 +399,19 @@ func (bws buildProdWebServer) BuildImage(ctx context.Context, env pkggraph.Seale
 
 // This is unfortunate, but because of our layering we do indeed end up building images twice.
 func (bws buildProdWebServer) PlatformIndependent() bool { return false }
+
+func GetExternalModuleForDeps(server planning.Server) []build.Workspace {
+	moduleMap := map[string]*pkggraph.Module{}
+	for _, dep := range server.Deps() {
+		if dep.Location.Module.ModuleName() != server.Module().ModuleName() &&
+			(dep.Node() != nil && (slices.Contains(dep.Node().CodegeneratedFrameworks(), schema.Framework_WEB))) {
+			moduleMap[dep.Location.Module.ModuleName()] = dep.Location.Module
+		}
+	}
+	modules := []build.Workspace{}
+	for _, module := range moduleMap {
+		modules = append(modules, module)
+	}
+
+	return modules
+}

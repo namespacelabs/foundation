@@ -14,16 +14,9 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-var ExperimentalEnableTypescript = false
-
 func selectFramework(ctx context.Context, title string, fmwkFlag string) (*schema.Framework, error) {
 	frameworks := []frameworkItem{
 		{schema.Framework_GO, "Go gRPC and HTTP handlers (beta)."},
-		{schema.Framework_WEB, "Typescript-based web application, built with Vite (alpha)."},
-	}
-
-	if ExperimentalEnableTypescript {
-		frameworks = append(frameworks, frameworkItem{schema.Framework_NODEJS, "Typescript on Node.JS, gRPC and HTTP handlers (work in progress)."})
 	}
 
 	var item frameworkItem
@@ -71,7 +64,7 @@ type fmwkParser struct {
 }
 
 func (p *fmwkParser) AddFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(p.fmwkOut, "framework", "", "The framework to use (go, web or nodejs).")
+	cmd.Flags().StringVar(p.fmwkOut, "framework", "", "The framework to use (go or web).")
 }
 
 func (p *fmwkParser) Parse(ctx context.Context, args []string) error { return nil }

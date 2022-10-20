@@ -56,15 +56,6 @@ func MakeProtoSrcs(ctx context.Context, conf cfg.Configuration, request map[sche
 				PluginTmpl{Name: "go", Out: outDir, Opt: []string{"paths=source_relative"}},
 				PluginTmpl{Name: "go-grpc", Out: outDir, Opt: []string{"paths=source_relative", "require_unimplemented_servers=false"}})
 
-		case schema.Framework_NODEJS:
-			t.Plugins = append(t.Plugins,
-				PluginTmpl{Name: "ts", Path: "protobuf-ts/packages/plugin/bin/protoc-gen-ts", Out: outDir, Opt: []string{
-					// We generate gRPC wiring ourselves
-					"force_disable_services",
-					// Adding "_pb" suffix to differentiate from regular TS sources.
-					"add_pb_suffix",
-				}})
-
 		default:
 			return nil, fnerrors.BadInputError("%s: framework not supported", fmwk)
 		}

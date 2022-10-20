@@ -176,9 +176,6 @@ func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {
 	if p.Web != nil {
 		fmwksSet[Framework_WEB] = true
 	}
-	if p.Nodejs != nil {
-		fmwksSet[Framework_NODEJS] = true
-	}
 	return fmwksSet
 }
 

@@ -57,8 +57,6 @@ func newBufGenerateCmd() *cobra.Command {
 			switch lang {
 			case "go":
 				fmwk = schema.Framework_GO
-			case "typescript":
-				fmwk = schema.Framework_NODEJS
 			default:
 				return fmt.Errorf("unsupported language: %s", lang)
 			}
