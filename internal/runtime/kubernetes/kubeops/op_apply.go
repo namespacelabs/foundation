@@ -48,8 +48,8 @@ func registerApply() {
 			return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, parsed.spec, nil)
 		},
 
-		PlanOrder: func(apply *parsedApply) (*fnschema.ScheduleOrder, error) {
-			return kubedef.PlanOrder(apply.obj.GroupVersionKind()), nil
+		PlanOrder: func(ctx context.Context, apply *parsedApply) (*fnschema.ScheduleOrder, error) {
+			return kubedef.PlanOrder(apply.obj.GroupVersionKind(), apply.obj.GetNamespace(), apply.obj.GetName()), nil
 		},
 	})
 }

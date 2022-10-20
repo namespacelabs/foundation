@@ -100,7 +100,7 @@ func RegisterGraphHandlers() {
 			return nil, nil
 		},
 
-		PlanOrder: func(_ *OpGenerateWebhookCert) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *OpGenerateWebhookCert) (*schema.ScheduleOrder, error) {
 			return &schema.ScheduleOrder{
 				SchedAfterCategory: []string{
 					kubedef.MakeSchedCat(kubeschema.GroupKind{Kind: "Namespace"}),

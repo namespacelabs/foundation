@@ -19,7 +19,7 @@ func registerDelete() {
 			return nil, fnerrors.InternalError("unimplemented")
 		},
 
-		PlanOrder: func(_ *kubedef.OpDelete) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *kubedef.OpDelete) (*schema.ScheduleOrder, error) {
 			// XXX TODO
 			return nil, nil
 		},

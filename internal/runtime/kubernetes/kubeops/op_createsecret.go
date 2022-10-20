@@ -97,9 +97,9 @@ func RegisterCreateSecret() {
 			return nil, nil
 		},
 
-		PlanOrder: func(create *kubedef.OpCreateSecretConditionally) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, create *kubedef.OpCreateSecretConditionally) (*fnschema.ScheduleOrder, error) {
 			// Same as secrets.
-			return kubedef.PlanOrder(schema.GroupVersionKind{Version: "v1", Kind: "Secret"}), nil
+			return kubedef.PlanOrder(schema.GroupVersionKind{Version: "v1", Kind: "Secret"}, create.Namespace, create.Name), nil
 		},
 	})
 }

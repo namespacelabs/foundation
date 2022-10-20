@@ -57,7 +57,7 @@ func planIngress(ctx context.Context, r clusterTarget, stack *fnschema.Stack, al
 			continue
 		}
 
-		defs, managed, err := ingress.Ensure(ctx, r.namespace, r.env, srv.Server, frags, certSecretMap)
+		defs, managed, err := ingress.PlanIngress(ctx, r.namespace, r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}

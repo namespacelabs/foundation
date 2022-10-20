@@ -68,7 +68,7 @@ func RegisterGraphHandlers() {
 			return nil, nil
 		},
 
-		PlanOrder: func(*OpEnsureRole) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(context.Context, *OpEnsureRole) (*schema.ScheduleOrder, error) {
 			return &schema.ScheduleOrder{
 				SchedCategory: []string{"aws:iam:ensure-role"},
 			}, nil
@@ -110,7 +110,7 @@ func RegisterGraphHandlers() {
 			return nil, nil
 		},
 
-		PlanOrder: func(*OpAssociatePolicy) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(context.Context, *OpAssociatePolicy) (*schema.ScheduleOrder, error) {
 			// Run policy associations after we create roles.
 			return &schema.ScheduleOrder{
 				SchedAfterCategory: []string{"aws:iam:ensure-role"},

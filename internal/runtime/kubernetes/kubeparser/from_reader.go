@@ -167,3 +167,11 @@ type ObjHeader struct {
 func (obj ObjHeader) GetObjectKind() schema.ObjectKind {
 	return &obj.TypeMeta
 }
+
+func (obj ObjHeader) GetName() string {
+	return obj.Name
+}
+
+func (obj ObjHeader) GetNamespace() string {
+	return obj.Namespace
+}

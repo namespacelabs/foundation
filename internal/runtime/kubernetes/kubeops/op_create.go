@@ -151,8 +151,8 @@ func registerCreate() {
 			return nil, nil
 		},
 
-		PlanOrder: func(create *parsedCreate) (*fnschema.ScheduleOrder, error) {
-			return kubedef.PlanOrder(create.obj.GetObjectKind().GroupVersionKind()), nil
+		PlanOrder: func(ctx context.Context, create *parsedCreate) (*fnschema.ScheduleOrder, error) {
+			return kubedef.PlanOrder(create.obj.GetObjectKind().GroupVersionKind(), create.obj.GetNamespace(), create.obj.GetName()), nil
 		},
 	})
 }
@@ -179,6 +179,8 @@ func resetCRDCache(ctx context.Context, cluster runtime.Cluster) error {
 type parsedCreate struct {
 	obj interface {
 		GetObjectKind() schema.ObjectKind
+		GetName() string
+		GetNamespace() string
 	}
 	spec *kubedef.OpCreate
 

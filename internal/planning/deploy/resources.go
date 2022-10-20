@@ -64,18 +64,26 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 				}
 
+				target, has := stack.Get(schema.PackageName(serverIntent.PackageName))
+				if !has {
+					return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
+				}
+
 				si := &schema.SerializedInvocation{
 					Description: "Capture Runtime Config",
 					Order: &schema.ScheduleOrder{
 						SchedCategory: []string{
 							resources.ResourceInstanceCategory(resource.ID),
 						},
+						SchedAfterCategory: []string{
+							runtime.OwnedByDeployable(target.Proto()),
+						},
 					},
 				}
 
 				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 					ResourceInstanceId: resource.ID,
-					Server:             MakeServerConfig(stack, schema.PackageName(serverIntent.PackageName)),
+					Server:             makeServerConfig(stack, target.Server),
 				})
 				if err != nil {
 					return nil, err

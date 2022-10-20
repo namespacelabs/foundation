@@ -142,8 +142,15 @@ func registerEnsureRuntimeConfig() {
 			})
 		},
 
-		PlanOrder: func(ensure *kubedef.OpEnsureRuntimeConfig) (*schema.ScheduleOrder, error) {
-			return nil, nil
+		PlanOrder: func(ctx context.Context, ensure *kubedef.OpEnsureRuntimeConfig) (*schema.ScheduleOrder, error) {
+			cluster, err := kubedef.InjectedKubeClusterNamespace(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			return &schema.ScheduleOrder{
+				SchedAfterCategory: []string{kubedef.MakeNamespaceCat(cluster.KubeConfig().Namespace)},
+			}, nil
 		},
 	})
 }

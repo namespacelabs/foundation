@@ -392,6 +392,10 @@ func DeployableToProto(spec Deployable) *runtimepb.Deployable {
 	}
 }
 
-func DeployableCategoryID(id string) string {
-	return fmt.Sprintf("deployable:%s", id)
+func DeployableCategory(spec Deployable) string {
+	return fmt.Sprintf("deployable:%s", spec.GetId())
+}
+
+func OwnedByDeployable(spec Deployable) string {
+	return fmt.Sprintf("ownedby:%s", spec.GetId())
 }

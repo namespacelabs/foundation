@@ -120,7 +120,7 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*compile
 			}
 		}
 
-		computedOrder, err := reg.funcs.PlanOrder(msg, node.parsed)
+		computedOrder, err := reg.funcs.PlanOrder(ctx, msg, node.parsed)
 		if err != nil {
 			return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
 		}
@@ -291,8 +291,6 @@ func topoSortNodes(ctx context.Context, nodes []*executionNode) ([]*executionNod
 
 	sorted, solved := graph.Toposort()
 	if !solved {
-		fmt.Fprintf(console.Errors(ctx), "execution sort failed:\n")
-
 		for k, n := range nodes {
 			fmt.Fprintf(console.Errors(ctx), " #%d %q --> cats:%v after:%v\n", k, n.invocation.Description,
 				n.computedOrder.GetSchedCategory(),

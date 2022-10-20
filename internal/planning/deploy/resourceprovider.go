@@ -40,8 +40,6 @@ type InvokeResourceProvider struct {
 }
 
 func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
-	id := ids.NewRandomBase32ID(8)
-
 	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
 
 	spec := runtime.DeployableSpec{
@@ -49,7 +47,7 @@ func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner
 
 		PackageName: invoke.BinaryRef.AsPackageName(),
 		Class:       schema.DeployableClass_MANUAL, // Don't emit deployment events.
-		Id:          id,
+		Id:          ids.NewRandomBase32ID(8),
 		Name:        "provider",
 		Description: fmt.Sprintf("Ensure resource: %s", invoke.ResourceInstanceId),
 
@@ -90,7 +88,7 @@ func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner
 		}),
 		Order: &schema.ScheduleOrder{
 			SchedCategory:      []string{resources.ResourceInstanceCategory(invoke.ResourceInstanceId)},
-			SchedAfterCategory: []string{runtime.DeployableCategoryID(id)},
+			SchedAfterCategory: []string{runtime.DeployableCategory(spec)},
 		},
 	})
 

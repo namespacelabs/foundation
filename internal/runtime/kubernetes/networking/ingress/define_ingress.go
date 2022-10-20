@@ -42,14 +42,14 @@ type IngressRef struct {
 	Namespace, Name string
 }
 
-func Ensure(ctx context.Context, ns string, env *schema.Environment, srv runtime.Deployable, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
+func PlanIngress(ctx context.Context, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
 	var applies []kubedef.Apply
 
 	groups := groupByName(fragments)
 
 	var allManaged MapAddressList
 	for _, g := range groups {
-		apply, managed, err := generateForSrv(ctx, ns, env, srv, g.Name, g.Fragments, certSecrets)
+		apply, managed, err := generateForSrv(ctx, ns, env, deployable, g.Name, g.Fragments, certSecrets)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -57,6 +57,9 @@ func Ensure(ctx context.Context, ns string, env *schema.Environment, srv runtime
 		applies = append(applies, kubedef.Apply{
 			Description: fmt.Sprintf("Ingress %s", g.Name),
 			Resource:    apply,
+			SchedAfterCategory: []string{
+				kubedef.MakeServicesCat(deployable),
+			},
 		})
 
 		if err := allManaged.Merge(managed); err != nil {

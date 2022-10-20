@@ -92,8 +92,8 @@ func registerEnsureDeployment() {
 				})
 		},
 
-		PlanOrder: func(ensure *parsedEnsureDeployment) (*fnschema.ScheduleOrder, error) {
-			return kubedef.PlanOrder(ensure.obj.GroupVersionKind()), nil
+		PlanOrder: func(ctx context.Context, ensure *parsedEnsureDeployment) (*fnschema.ScheduleOrder, error) {
+			return kubedef.PlanOrder(ensure.obj.GroupVersionKind(), ensure.obj.GetNamespace(), ensure.obj.GetName()), nil
 		},
 	})
 }

@@ -101,7 +101,7 @@ func registerCleanup() {
 			})
 		},
 
-		PlanOrder: func(_ *kubedef.OpCleanupRuntimeConfig) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *kubedef.OpCleanupRuntimeConfig) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
 				SchedAfterCategory: kubedef.Sched_JobLike,
 			}, nil

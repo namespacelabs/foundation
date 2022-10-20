@@ -74,16 +74,6 @@ func makeEnv(env *schema.Environment) *runtime.RuntimeConfig_Environment {
 	return res
 }
 
-func MakeServerConfig(stack *planning.Stack, pkg schema.PackageName) *runtime.Server {
-	for _, srv := range stack.Servers {
-		if srv.PackageName() == pkg {
-			return makeServerConfig(stack, srv.Server)
-		}
-	}
-
-	return nil
-}
-
 func makeServerConfig(stack *planning.Stack, server planning.Server) *runtime.Server {
 	current := &runtime.Server{
 		PackageName: server.Proto().PackageName,

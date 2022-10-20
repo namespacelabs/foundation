@@ -18,7 +18,7 @@ type Funcs[M proto.Message] struct {
 	EmitStart        func(context.Context, *schema.SerializedInvocation, M, chan *orchestration.Event)
 	Handle           func(context.Context, *schema.SerializedInvocation, M) (*HandleResult, error)
 	HandleWithEvents func(context.Context, *schema.SerializedInvocation, M, chan *orchestration.Event) (*HandleResult, error)
-	PlanOrder        func(M) (*schema.ScheduleOrder, error)
+	PlanOrder        func(context.Context, M) (*schema.ScheduleOrder, error)
 }
 
 type VFuncs[M proto.Message, V any] struct {
@@ -26,7 +26,7 @@ type VFuncs[M proto.Message, V any] struct {
 	EmitStart        func(context.Context, *schema.SerializedInvocation, V, chan *orchestration.Event)
 	Handle           func(context.Context, *schema.SerializedInvocation, V) (*HandleResult, error)
 	HandleWithEvents func(context.Context, *schema.SerializedInvocation, V, chan *orchestration.Event) (*HandleResult, error)
-	PlanOrder        func(V) (*schema.ScheduleOrder, error)
+	PlanOrder        func(context.Context, V) (*schema.ScheduleOrder, error)
 }
 
 type internalFuncs struct {
@@ -34,7 +34,7 @@ type internalFuncs struct {
 	Parse     func(context.Context, *schema.SerializedInvocation, proto.Message) (any, error)
 	EmitStart func(context.Context, *schema.SerializedInvocation, proto.Message, any, chan *orchestration.Event)
 	Handle    func(context.Context, *schema.SerializedInvocation, proto.Message, any, chan *orchestration.Event) (*HandleResult, error)
-	PlanOrder func(proto.Message, any) (*schema.ScheduleOrder, error)
+	PlanOrder func(context.Context, proto.Message, any) (*schema.ScheduleOrder, error)
 }
 
 type compilerFunc func(context.Context, []*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error)
@@ -55,7 +55,7 @@ func RegisterHandlerFunc[M proto.Message](handle func(context.Context, *schema.S
 		Handle: func(ctx context.Context, def *schema.SerializedInvocation, msg proto.Message, _ any, _ chan *orchestration.Event) (*HandleResult, error) {
 			return handle(ctx, def, msg.(M))
 		},
-		PlanOrder: func(proto.Message, any) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(context.Context, proto.Message, any) (*schema.ScheduleOrder, error) {
 			return nil, nil
 		},
 	})
@@ -75,12 +75,12 @@ func RegisterFuncs[M proto.Message](funcs Funcs[M]) {
 			}
 			return funcs.Handle(ctx, inv, msg.(M))
 		},
-		PlanOrder: func(msg proto.Message, _ any) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, msg proto.Message, _ any) (*schema.ScheduleOrder, error) {
 			if funcs.PlanOrder == nil {
 				return nil, nil
 			}
 
-			return funcs.PlanOrder(msg.(M))
+			return funcs.PlanOrder(ctx, msg.(M))
 		},
 	})
 }
@@ -101,12 +101,12 @@ func RegisterVFuncs[M proto.Message, V any](funcs VFuncs[M, V]) {
 			}
 			return funcs.Handle(ctx, def, value.(V))
 		},
-		PlanOrder: func(_ proto.Message, value any) (*schema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ proto.Message, value any) (*schema.ScheduleOrder, error) {
 			if funcs.PlanOrder == nil {
 				return nil, nil
 			}
 
-			return funcs.PlanOrder(value.(V))
+			return funcs.PlanOrder(ctx, value.(V))
 		},
 	})
 }

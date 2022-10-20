@@ -41,7 +41,7 @@ func Register() {
 			})
 		},
 
-		PlanOrder: func(_ *OpMapAddress) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *OpMapAddress) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
 				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
 			}, nil
@@ -76,7 +76,7 @@ func Register() {
 			})
 		},
 
-		PlanOrder: func(_ *OpCleanupMigration) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *OpCleanupMigration) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
 				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
 			}, nil

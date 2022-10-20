@@ -515,9 +515,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	ensure := kubedef.EnsureDeployment{
-		Deployable:         deployable,
-		InhibitEvents:      deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
-		SchedCategory:      []string{runtime.DeployableCategoryID(deployable.Id)},
+		Deployable:    deployable,
+		InhibitEvents: deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
+		SchedCategory: []string{
+			runtime.DeployableCategory(deployable),
+			runtime.OwnedByDeployable(deployable),
+		},
 		SetContainerFields: deployable.SetContainerField,
 	}
 
@@ -967,7 +970,13 @@ func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.Dep
 				WithLabels(kubedef.MakeServiceLabels(r.env, deployable, endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),
-			SchedCategory: []string{runtime.DeployableCategoryID(deployable.Id)},
+			SchedCategory: []string{
+				runtime.OwnedByDeployable(deployable),
+				kubedef.MakeServicesCat(deployable),
+			},
+			SchedAfterCategory: []string{
+				runtime.DeployableCategory(deployable),
+			},
 		})
 	}
 
