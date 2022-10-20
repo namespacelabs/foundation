@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.build.buildkit;
+
+option go_package = "namespacelabs.dev/foundation/internal/build/buildkit";
+
+// Used by the runtime.
+message Instance {
+    string addr = 1;
+}
+
+// Used for configuration purposes.
+message Overrides {
+    string container_name = 1;
+    string buildkit_addr  = 2;
+}

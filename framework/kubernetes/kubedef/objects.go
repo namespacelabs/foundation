@@ -1,0 +1,48 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+package kubedef
+
+import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+type Object interface {
+	GroupVersionKind() schema.GroupVersionKind
+	GetName() string
+	GetNamespace() string
+	GetLabels() map[string]string
+}
+
+func IsDeployment(obj Object) bool {
+	return IsGVKDeployment(obj.GroupVersionKind())
+}
+
+func IsStatefulSet(obj Object) bool {
+	return IsGVKStatefulSet(obj.GroupVersionKind())
+}
+
+func IsPod(obj Object) bool {
+	return IsGVKPod(obj.GroupVersionKind())
+}
+
+func IsGVKDeployment(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "apps/v1" && gvk.Kind == "Deployment"
+}
+
+func IsGVKStatefulSet(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "apps/v1" && gvk.Kind == "StatefulSet"
+}
+
+func IsGVKPod(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "v1" && gvk.Kind == "Pod"
+}
+
+func IsCRD(obj Object) bool {
+	return IsGVKCRD(obj.GroupVersionKind())
+}
+
+func IsGVKCRD(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "apiextensions.k8s.io/v1" && gvk.Kind == "CustomResourceDefinition"
+}

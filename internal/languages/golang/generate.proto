@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.languages.golang;
+
+option go_package = "namespacelabs.dev/foundation/internal/languages/golang";
+
+message FrameworkExt {
+    // Which Go version this server is compiled against (computed).
+    string go_version = 1;
+
+    // The go module of the server.
+    string go_module = 2;
+
+    // Relative path to go.mod.
+    string go_module_path = 3;
+}

@@ -2,7 +2,7 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package endpointfwd
+package portforward
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	deploystorage "namespacelabs.dev/foundation/internal/planning/deploy/storage"
-	"namespacelabs.dev/foundation/runtime"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )

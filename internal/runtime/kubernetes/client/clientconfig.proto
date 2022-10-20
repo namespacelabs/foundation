@@ -1,0 +1,26 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+// XXX retaining package to avoid breaking existing configurations.
+package foundation.runtime.kubernetes;
+
+option go_package = "namespacelabs.dev/foundation/internal/runtime/kubernetes/client";
+
+message HostEnv {
+    string       kubeconfig            = 1;
+    string       context               = 2;  // If empty, uses default context.
+    bool         incluster             = 3;
+    string       bearer_token_provider = 4;
+    string       provider              = 5;  // If set, relies on the specified provider to produce a kube config.
+    StaticConfig static_config         = 6;
+}
+
+message StaticConfig {
+    string endpoint_address           = 1;
+    bytes  certificate_authority_data = 2;
+    bytes  client_certificate_data    = 3;
+    bytes  client_key_data            = 4;
+}

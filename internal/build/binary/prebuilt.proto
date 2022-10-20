@@ -1,0 +1,15 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.build.binary;
+
+import "schema/workspace.proto";
+
+option go_package = "namespacelabs.dev/foundation/internal/build/binary";
+
+message Prebuilts {
+    repeated foundation.schema.Workspace.BinaryDigest prebuilt_binary = 1;
+}
