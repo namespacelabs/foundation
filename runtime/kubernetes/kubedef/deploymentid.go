@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/runtime"
+	schema "namespacelabs.dev/foundation/schema"
 )
 
 func MakeDeploymentId(srv runtime.Deployable) string {
@@ -21,11 +21,14 @@ func MakeDeploymentId(srv runtime.Deployable) string {
 	return fmt.Sprintf("%s-%s", strings.ToLower(srv.GetName()), srv.GetId())
 }
 
-func MakeVolumeName(deploymentId, name string) string {
-	if (len(deploymentId) + len(name) + 1) > 63 {
-		// Deployment id is too long, use an hash instead.
-		deploymentId = naming.StableIDN(deploymentId, 8)
+func MakeVolumeName(v *schema.Volume) string {
+	if v.Inline {
+		return LabelLike("vi", v.Name)
 	}
 
-	return fmt.Sprintf("%s-%s", deploymentId, name)
+	return LabelLike("v", v.Name)
+}
+
+func MakeResourceName(deploymentId string, suffix ...string) string {
+	return DomainFragLike(append([]string{deploymentId}, suffix...)...)
 }

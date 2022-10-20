@@ -2,15 +2,14 @@
 // Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 // available at http://github.com/namespacelabs/foundation
 
-package kubernetes
+package kubedef
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"namespacelabs.dev/go-ids"
+	"namespacelabs.dev/foundation/internal/support/naming"
 )
 
 var (
@@ -18,11 +17,11 @@ var (
 	domainPartRe  = regexp.MustCompile("[^_0-9a-zA-Z]")
 )
 
-func domainFragLike(parts ...string) string {
+func DomainFragLike(parts ...string) string {
 	return cleanName(250, domainPartRe, ".", parts...)
 }
 
-func labelLike(parts ...string) string {
+func LabelLike(parts ...string) string {
 	return cleanName(63, simpleLabelRe, "--", parts...)
 }
 
@@ -46,11 +45,9 @@ func cleanOnePart(re *regexp.Regexp, max int, str string) string {
 			return cleanOnePart(re, max, parts[len(parts)-1])
 		}
 
-		h := sha256.New()
-		fmt.Fprint(h, str)
-		hash := ids.EncodeToBase32String(h.Sum(nil))
+		hash := naming.StableIDN(str, 4)
 
-		return fmt.Sprintf("%s-%s", re.ReplaceAllLiteralString(str[:max-5], "-"), hash[:4])
+		return fmt.Sprintf("%s-%s", re.ReplaceAllLiteralString(str[:max-5], "-"), hash)
 	}
 
 	return re.ReplaceAllLiteralString(str, "-")

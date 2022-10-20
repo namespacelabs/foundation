@@ -108,7 +108,7 @@ func registerEnsureRuntimeConfig() {
 					}
 
 					deploymentId := kubedef.MakeDeploymentId(ensure.Deployable)
-					configId := kubedef.MakeVolumeName(deploymentId, "rtconfig-"+configDigest.Hex[:8])
+					configId := kubedef.MakeResourceName(deploymentId, configDigest.Hex[:8], "runtimecfg", "namespace", "so")
 
 					cluster, err := kubedef.InjectedKubeClusterNamespace(ctx)
 					if err != nil {

@@ -41,7 +41,7 @@ func (s *secretCollector) allocate(secrets runtime.GroundedSecrets, ref *schema.
 	}
 
 	if contents.Value != nil {
-		key := domainFragLike(ref.PackageName, ref.Name)
+		key := kubedef.DomainFragLike(ref.PackageName, ref.Name)
 		s.items.set(key, contents.Value)
 
 		return s.secretId, key, nil

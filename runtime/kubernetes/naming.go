@@ -29,11 +29,3 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 	parts = append(parts, id)
 	return strings.Join(parts, "-")
 }
-
-func VolumeName(v *schema.Volume) string {
-	if v.Inline {
-		return labelLike("vi", v.Name)
-	}
-
-	return labelLike("v", v.Name)
-}

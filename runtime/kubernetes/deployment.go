@@ -389,7 +389,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.InternalError("volume #%d is missing a name", k)
 		}
 
-		name := VolumeName(volume)
+		name := kubedef.MakeVolumeName(volume)
 		volumeNames[volume.Name] = name
 
 		switch volume.Kind {
@@ -535,7 +535,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 		name, key := secrets.allocateGenerated(res.SecretRef, res.Spec)
 
-		targetPathSegment := domainFragLike(res.ResourceRef.PackageName, res.ResourceRef.Name)
+		targetPathSegment := kubedef.DomainFragLike(res.ResourceRef.PackageName, res.ResourceRef.Name)
 
 		secretProjections = append(secretProjections,
 			applycorev1.SecretProjection().WithName(name).WithItems(
@@ -819,7 +819,7 @@ func (cm *collector) set(key string, rsc *schema.FileContents) {
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
-	key := domainFragLike(entry.Path, rsc.Path)
+	key := kubedef.DomainFragLike(entry.Path, rsc.Path)
 	fmt.Fprintf(hash, "%s:", key)
 	_, _ = hash.Write(rsc.Contents)
 	fmt.Fprintln(hash)
