@@ -44,11 +44,10 @@ func Prebuilt(target specs.Platform) llb.State {
 	return llbutil.Image(versions.Buf.Prebuilt, target)
 }
 
-func ImageSource(platform specs.Platform) llb.State {
+func baseCopies(platform specs.Platform) []llb.StateOption {
 	versions := loadVersions()
 
 	golangImage := pins.Image(versions.Buf.Go)
-	nodeImage := pins.Default("node")
 
 	gobase := llbutil.Image(golangImage, platform).
 		AddEnv("CGO_ENABLED", "0").
@@ -80,6 +79,19 @@ func ImageSource(platform specs.Platform) llb.State {
 		copies = append(copies, llbutil.CopyFrom(out, "/go/bin/"+bin, "/bin/"+bin))
 	}
 
+	return copies
+}
+
+func ImagePlan(platform specs.Platform) llb.State {
+	copies := baseCopies(platform)
+
+	target := llbutil.Image(pins.Image("gcr.io/distroless/static:nonroot"), platform)
+	return target.With(copies...)
+}
+
+func ImagePlanWithNodeJS(platform specs.Platform) llb.State {
+	copies := baseCopies(platform)
+
 	baseProtobufTsImage := buildProtobufTsImage(platform)
 	protobufTsPaths := [][]string{
 		{"protobuf-ts/packages/plugin/bin", "protobuf-ts/packages/plugin/bin"},
@@ -94,7 +106,7 @@ func ImageSource(platform specs.Platform) llb.State {
 		copies = append(copies, llbutil.CopyFrom(baseProtobufTsImage, pair[0], pair[1]))
 	}
 
-	target := llbutil.Image(nodeImage, platform)
+	target := llbutil.Image(pins.Default("node"), platform)
 	return target.With(copies...)
 }
 

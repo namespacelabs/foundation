@@ -16,5 +16,5 @@ func State(target specs.Platform) llb.State {
 		return image.Prebuilt(target)
 	}
 
-	return image.ImageSource(target)
+	return image.ImagePlanWithNodeJS(target)
 }
