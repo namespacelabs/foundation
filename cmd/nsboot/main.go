@@ -16,10 +16,12 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
+	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -81,6 +83,7 @@ func main() {
 	proc.Stdin = os.Stdin
 	proc.Stdout = os.Stdout
 	proc.Stderr = os.Stderr
+	proc.Env = append(os.Environ(), fmt.Sprintf("NSBOOT_VERSION=%s", formatNSBootVersion()))
 	err = proc.Run()
 	if err != nil {
 		format.Format(os.Stderr, err, format.WithStyle(style))
@@ -240,4 +243,16 @@ func findHostTarball(tarballs []*fnapi.Artifact) *fnapi.Artifact {
 		}
 	}
 	return nil
+}
+
+func formatNSBootVersion() string {
+	ver, err := version.Current()
+	if err != nil {
+		return fmt.Sprintf(`{"error": %q}`, err)
+	}
+	bs, err := protojson.Marshal(ver)
+	if err != nil {
+		return fmt.Sprintf(`{"error": %q}`, err)
+	}
+	return string(bs)
 }

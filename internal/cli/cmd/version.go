@@ -86,17 +86,21 @@ func CollectVersionInfo() (*VersionInfo, error) {
 }
 
 func FormatVersionInfo(out io.Writer, v *VersionInfo) {
-	fmt.Fprintf(out, "ns version %s (commit %s)\n", v.Binary.Version, v.Binary.GitCommit)
+	FormatBinaryVersion(out, v.Binary)
+	x := text.NewIndentWriter(out, []byte("  ")) // align with FormatBinaryVersion
+	fmt.Fprintf(x, "architecture %s/%s\n", v.GOOS, v.GOARCH)
+	fmt.Fprintf(x, "internal api %d (cache=%d tools=%d)\n", v.APIVersion, v.CacheVersion, v.ToolAPIVersion)
+}
+
+func FormatBinaryVersion(out io.Writer, v *storage.NamespaceBinaryVersion) {
+	fmt.Fprintf(out, "version %s (commit %s)\n", v.Version, v.GitCommit)
 
 	x := text.NewIndentWriter(out, []byte("  "))
 
-	if v.Binary.BuildTimeStr != "" {
-		fmt.Fprintf(x, "commit date %s\n", v.Binary.BuildTimeStr)
+	if v.BuildTimeStr != "" {
+		fmt.Fprintf(x, "commit date %s\n", v.BuildTimeStr)
 	}
-	if v.Binary.Modified {
+	if v.Modified {
 		fmt.Fprintf(x, "built from modified repo\n")
 	}
-
-	fmt.Fprintf(x, "architecture %s/%s\n", v.GOOS, v.GOARCH)
-	fmt.Fprintf(x, "internal api %d (cache=%d tools=%d)\n", v.APIVersion, v.CacheVersion, v.ToolAPIVersion)
 }

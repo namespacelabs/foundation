@@ -6,14 +6,17 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/kr/text"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
@@ -31,6 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
@@ -52,6 +56,26 @@ func NewDoctorCmd() *cobra.Command {
 			return CollectVersionInfo()
 		})
 		printDiagnostic(ctx, "Namespace version", versionI, FormatVersionInfo)
+
+		nsbootI := runDiagnostic(ctx, "doctor.nsboot-version", func(ctx context.Context) (*storage.NamespaceBinaryVersion, error) {
+			versionJSON, have := os.LookupEnv("NSBOOT_VERSION")
+			if !have {
+				return nil, fnerrors.ExpectedError("not running nsboot")
+			}
+			var errorStruct struct {
+				Err string `json:"error"`
+			}
+			json.Unmarshal([]byte(versionJSON), &errorStruct)
+			if errorStruct.Err != "" {
+				return nil, fnerrors.ExpectedError(errorStruct.Err)
+			}
+			r := &storage.NamespaceBinaryVersion{}
+			if err := protojson.Unmarshal([]byte(versionJSON), r); err != nil {
+				return nil, fnerrors.InternalError("malformed NSBOOT_VERSION in environment: %w", err)
+			}
+			return r, nil
+		})
+		printDiagnostic(ctx, "NSBoot version", nsbootI, FormatBinaryVersion)
 
 		//
 
