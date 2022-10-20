@@ -51,9 +51,8 @@ func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner
 		Name:        "provider",
 		Description: fmt.Sprintf("Ensure resource: %s", invoke.ResourceInstanceId),
 
-		InhibitPersistentRuntimeConfig: true,
-		Resources:                      invoke.ResourceDependencies,
-		SecretResources:                invoke.SecretResources,
+		Resources:       invoke.ResourceDependencies,
+		SecretResources: invoke.SecretResources,
 		SetContainerField: []*runtimepb.SetContainerField{
 			// Resources are passed in as flags to minimize the number of k8s resources that are created.
 			// XXX security validate this.

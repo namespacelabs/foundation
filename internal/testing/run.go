@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -148,13 +149,14 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			pkgId := naming.StableIDN(test.TestRef.PackageName, 8)
 
 			testDriver := runtime.DeployableSpec{
-				ErrorLocation: test.TestRef.AsPackageName(),
-				PackageName:   test.TestRef.AsPackageName(),
-				Class:         schema.DeployableClass_ONESHOT,
-				Id:            ids.NewRandomBase32ID(8),
-				Name:          fmt.Sprintf("%s-%s", test.TestRef.Name, pkgId),
-				MainContainer: testRun,
-				RuntimeConfig: test.RuntimeConfig,
+				ErrorLocation:          test.TestRef.AsPackageName(),
+				PackageName:            test.TestRef.AsPackageName(),
+				Class:                  schema.DeployableClass_ONESHOT,
+				Id:                     ids.NewRandomBase32ID(8),
+				Name:                   fmt.Sprintf("%s-%s", test.TestRef.Name, pkgId),
+				MainContainer:          testRun,
+				RuntimeConfig:          test.RuntimeConfig,
+				MountRuntimeConfigPath: constants.NamespaceConfigMount,
 			}
 
 			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Specs: []runtime.DeployableSpec{testDriver}})

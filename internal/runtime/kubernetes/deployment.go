@@ -585,7 +585,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			ResourceDependencies: regularResources,
 			InjectedResources:    injected,
 			BuildVCS:             deployable.BuildVCS,
-			PersistConfiguration: !deployable.InhibitPersistentRuntimeConfig,
+			PersistConfiguration: deployable.MountRuntimeConfigPath != "",
 		}
 
 		s.operations = append(s.operations, ensureConfig)
@@ -594,11 +594,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		// deploying a new deployment or statefulset.
 		ensure.RuntimeConfigDependency = kubedef.RuntimeConfigOutput(deployable)
 
-		if !deployable.InhibitPersistentRuntimeConfig {
+		if deployable.MountRuntimeConfigPath != "" {
 			ensure.ConfigurationVolumeName = "namespace-rtconfig"
 			mainContainer = mainContainer.WithVolumeMounts(
 				applycorev1.VolumeMount().
-					WithMountPath("/namespace/config").
+					WithMountPath(deployable.MountRuntimeConfigPath).
 					WithName(ensure.ConfigurationVolumeName).
 					WithReadOnly(true))
 		}

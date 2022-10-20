@@ -338,6 +338,7 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 			return nil, err
 		}
 
+		run.MountRuntimeConfigPath = constants.NamespaceConfigMount
 		run.RuntimeConfig = rt
 		run.BuildVCS = moduleVCS[srv.Location.Module.ModuleName()]
 		run.Resources = resources[srv.PackageName()].Dependencies
