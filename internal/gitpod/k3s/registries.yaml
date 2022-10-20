@@ -1,5 +1,0 @@
-
-mirrors:
-  registry.nslocal.dev:5000:
-    endpoint:
-      - http://10.0.2.4:5000
