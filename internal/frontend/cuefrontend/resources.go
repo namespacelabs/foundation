@@ -74,6 +74,12 @@ func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc p
 		return nil, err
 	}
 
+	if provider != "" && loc.PackageName != schema.PackageName(provider) {
+		if _, err := pl.LoadByName(ctx, schema.PackageName(provider)); err != nil {
+			return nil, err
+		}
+	}
+
 	classRef, err := schema.ParsePackageRef(loc.PackageName, class)
 	if err != nil {
 		return nil, err
@@ -230,14 +236,10 @@ func parseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggra
 		return nil, err
 	}
 
-	pkg, err := pl.LoadByName(ctx, pkgRef.AsPackageName())
-	if err != nil {
-		return nil, err
-	}
-
-	r := pkg.LookupResourceInstance(pkgRef.Name)
-	if r == nil {
-		return nil, fnerrors.UserError(loc, "no such resource %q", pkgRef.Name)
+	if loc.PackageName != pkgRef.AsPackageName() {
+		if _, err := pl.LoadByName(ctx, pkgRef.AsPackageName()); err != nil {
+			return nil, err
+		}
 	}
 
 	return pkgRef, nil
