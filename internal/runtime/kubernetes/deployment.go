@@ -947,8 +947,8 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	return container, nil
 }
 
-func deployEndpoint(ctx context.Context, r clusterTarget, srv runtime.Deployable, endpoint *schema.Endpoint, s *serverRunState) error {
-	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(srv))
+func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.DeployableSpec, endpoint *schema.Endpoint, s *serverRunState) error {
+	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(deployable))
 
 	port := endpoint.Port
 	if port != nil {
@@ -964,9 +964,10 @@ func deployEndpoint(ctx context.Context, r clusterTarget, srv runtime.Deployable
 			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
 			Resource: applycorev1.
 				Service(endpoint.AllocatedName, r.namespace).
-				WithLabels(kubedef.MakeServiceLabels(r.env, srv, endpoint)).
+				WithLabels(kubedef.MakeServiceLabels(r.env, deployable, endpoint)).
 				WithAnnotations(serviceAnnotations).
 				WithSpec(serviceSpec),
+			SchedCategory: []string{runtime.DeployableCategoryID(deployable.Id)},
 		})
 	}
 
