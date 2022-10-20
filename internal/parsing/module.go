@@ -107,7 +107,9 @@ func resolvePackageTo(ctx context.Context, packageName string, resolved *Resolve
 
 		if v := recurse(doc); v != "" {
 			parts := strings.Split(v, " ")
-			if len(parts) == 3 {
+
+			switch len(parts) {
+			case 3:
 				moduleName := parts[0]
 				var rel string
 				if moduleName != packageName {
@@ -117,8 +119,25 @@ func resolvePackageTo(ctx context.Context, packageName string, resolved *Resolve
 					}
 				}
 
-				*resolved = ResolvedPackage{moduleName, parts[1], parts[2], rel}
+				*resolved = ResolvedPackage{
+					ModuleName: moduleName,
+					Type:       parts[1],
+					Repository: parts[2],
+					RelPath:    rel,
+				}
 				return nil
+
+			case 4:
+				*resolved = ResolvedPackage{
+					ModuleName: parts[0],
+					Type:       parts[1],
+					Repository: parts[2],
+					RelPath:    parts[3],
+				}
+				return nil
+
+			default:
+				fmt.Fprintf(console.Warnings(ctx), "Ignored foundation-import definition, wrong number of parts: %d (got %q)\n", len(parts), v)
 			}
 		}
 
