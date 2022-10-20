@@ -82,7 +82,7 @@ _#Node: {
 	kind?: string
 }
 
-#Framework: "GO" | "GO_GRPC" | "WEB" | "NODEJS_GRPC" | "NODEJS"
+#Framework: "GO" | "GO_GRPC" | "WEB"
 
 #Server: {
 	_#Imports
@@ -95,7 +95,7 @@ _#Node: {
 	isStateful?: bool
 	testonly?:   bool
 
-	if framework == "OPAQUE" || framework == "NODEJS" {
+	if framework == "OPAQUE" {
 		service: [string]: #ServiceSpec
 		ingress: [string]: #ServiceSpec
 	}

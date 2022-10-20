@@ -10,7 +10,6 @@ test: fn.#Test & {
 	fixture: {
 		serversUnderTest: [
 			"namespacelabs.dev/foundation/std/testdata/server/gogrpc",
-			"namespacelabs.dev/foundation/languages/nodejs/testdata/server",
 		]
 	}
 }
