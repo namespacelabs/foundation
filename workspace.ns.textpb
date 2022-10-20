@@ -1,8 +1,0 @@
-# Starting with fn.api=33, this file is no longer used. It's kept it to instruct
-# old fn versions that they need to be updated.
-
-module_name: "namespacelabs.dev/foundation"
-
-foundation: {
-  minimum_api: 33
-}
