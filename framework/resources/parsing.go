@@ -6,8 +6,11 @@ package resources
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/library/runtime"
 )
 
 type Parser struct {
@@ -36,4 +39,22 @@ func (p *Parser) Decode(resource string, out any) error {
 	}
 
 	return json.Unmarshal(data, out)
+}
+
+func (p *Parser) ReadSecret(resource string) (string, error) {
+	secret := &runtime.SecretInstance{}
+	if err := p.Decode(resource, &secret); err != nil {
+		return "", err
+	}
+
+	if secret.Path == "" {
+		return "", fmt.Errorf("secret %s is missing a path to read from", resource)
+	}
+
+	data, err := os.ReadFile(secret.Path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read secret %s from path %s: %w", resource, secret.Path, err)
+	}
+
+	return string(data), nil
 }

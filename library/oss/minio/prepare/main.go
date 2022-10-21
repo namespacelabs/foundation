@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -21,9 +20,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/cenkalti/backoff/v4"
 	fnresources "namespacelabs.dev/foundation/framework/resources"
-	runtimepb "namespacelabs.dev/foundation/library/runtime"
+	"namespacelabs.dev/foundation/framework/runtime"
 	"namespacelabs.dev/foundation/library/storage/s3"
-	"namespacelabs.dev/foundation/schema/runtime"
+	fnruntime "namespacelabs.dev/foundation/schema/runtime"
 )
 
 const (
@@ -77,33 +76,12 @@ func main() {
 
 func getEndpoint(resources *fnresources.Parser) (string, error) {
 	key := fmt.Sprintf("%s:minioServer", providerPkg)
-	cfg := &runtime.Server{}
-	if err := resources.Decode(key, &cfg); err != nil {
+	srv := &fnruntime.Server{}
+	if err := resources.Decode(key, &srv); err != nil {
 		return "", err
 	}
 
-	for _, s := range cfg.Service {
-		if s.Name == "api" {
-			return s.Endpoint, nil
-		}
-	}
-
-	return "", fmt.Errorf("api endpoint not found")
-}
-
-func readSecret(resources *fnresources.Parser, name string) (string, error) {
-	key := fmt.Sprintf("%s:%s", providerPkg, name)
-	secret := &runtimepb.SecretInstance{}
-	if err := resources.Decode(key, &secret); err != nil {
-		return "", err
-	}
-
-	data, err := os.ReadFile(secret.Path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read %s: %w", secret.Path, err)
-	}
-
-	return string(data), nil
+	return runtime.Endpoint(srv, "api")
 }
 
 func createInstance() (*s3.BucketInstance, error) {
@@ -126,11 +104,11 @@ func createInstance() (*s3.BucketInstance, error) {
 		return nil, err
 	}
 
-	accessKeyID, err := readSecret(r, "minioUser")
+	accessKeyID, err := r.ReadSecret(fmt.Sprintf("%s:minioUser", providerPkg))
 	if err != nil {
 		return nil, err
 	}
-	secretAccessKey, err := readSecret(r, "minioPassword")
+	secretAccessKey, err := r.ReadSecret(fmt.Sprintf("%s:minioPassword", providerPkg))
 	if err != nil {
 		return nil, err
 	}
