@@ -2,9 +2,12 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package cuefrontend
+package binary
 
-import "namespacelabs.dev/foundation/schema"
+import (
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
+	"namespacelabs.dev/foundation/schema"
+)
 
 type cueInvocationSnapshot struct {
 	FromWorkspace string `json:"fromWorkspace"`
@@ -14,7 +17,7 @@ type cueInvocationSnapshot struct {
 
 type CueInvokeBinary struct {
 	Binary       string                           `json:"binary"`
-	Args         *ArgsListOrMap                   `json:"args"`
+	Args         *args.ArgsListOrMap              `json:"args"`
 	WorkingDir   string                           `json:"workingDir"`
 	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
 	NoCache      bool                             `json:"noCache"`

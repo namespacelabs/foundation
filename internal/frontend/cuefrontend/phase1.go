@@ -11,6 +11,8 @@ import (
 	"cuelang.org/go/cue"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -40,9 +42,9 @@ type cueNaming struct {
 }
 
 type cueContainer struct {
-	Name   string         `json:"name"`
-	Binary string         `json:"binary"`
-	Args   *ArgsListOrMap `json:"args"`
+	Name   string              `json:"name"`
+	Binary string              `json:"binary"`
+	Args   *args.ArgsListOrMap `json:"args"`
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
@@ -73,7 +75,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 	}
 
 	if with := vv.LookupPath("configure.with"); with.Exists() {
-		var dec CueInvokeBinary
+		var dec binary.CueInvokeBinary
 		if err := with.Val.Decode(&dec); err != nil {
 			return pdata, err
 		}

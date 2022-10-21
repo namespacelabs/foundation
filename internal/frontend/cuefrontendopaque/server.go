@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -19,8 +20,8 @@ type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
 
-	Args *cuefrontend.ArgsListOrMap `json:"args"`
-	Env  *cuefrontend.EnvMap        `json:"env"`
+	Args *args.ArgsListOrMap `json:"args"`
+	Env  *args.EnvMap        `json:"env"`
 
 	Services  map[string]cueService     `json:"services"`
 	Resources *cuefrontend.ResourceList `json:"resources"`

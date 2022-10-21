@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -76,8 +77,8 @@ type cueInstantiate struct {
 }
 
 type cueCallback struct {
-	InvokeInternal string           `json:"invokeInternal"`
-	InvokeBinary   *CueInvokeBinary `json:"invokeBinary,omitempty"`
+	InvokeInternal string                  `json:"invokeInternal"`
+	InvokeBinary   *binary.CueInvokeBinary `json:"invokeBinary,omitempty"`
 }
 
 type cueEnvironmentRequirements struct {

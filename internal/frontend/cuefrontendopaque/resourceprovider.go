@@ -10,6 +10,7 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -17,10 +18,10 @@ import (
 )
 
 type cueResourceProvider struct {
-	InitializedWith *cuefrontend.CueInvokeBinary `json:"initializedWith"`
-	PrepareWith     *cuefrontend.CueInvokeBinary `json:"prepareWith"`
-	Resources       *cuefrontend.ResourceList    `json:"resources"`
-	ResourceInputs  map[string]string            `json:"inputs"` // Key: name, Value: serialized class ref
+	InitializedWith *binary.CueInvokeBinary   `json:"initializedWith"`
+	PrepareWith     *binary.CueInvokeBinary   `json:"prepareWith"`
+	Resources       *cuefrontend.ResourceList `json:"resources"`
+	ResourceInputs  map[string]string         `json:"inputs"` // Key: name, Value: serialized class ref
 	// TODO: parse prepare hook.
 }
 

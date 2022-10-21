@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -17,8 +18,8 @@ import (
 )
 
 type cueContainer struct {
-	Args *cuefrontend.ArgsListOrMap `json:"args"`
-	Env  map[string]string          `json:"env"`
+	Args *args.ArgsListOrMap `json:"args"`
+	Env  map[string]string   `json:"env"`
 }
 
 type parsedCueContainer struct {
