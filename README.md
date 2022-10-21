@@ -12,6 +12,8 @@
  🗼 <a href="https://docs.namespace.so/architecture?utm_source=github">Architecture</a>
  <span>&nbsp;•&nbsp;</span>
  🏛️ <a href="https://docs.namespace.so/reference?utm_source=github">Reference</a>
+ <span>&nbsp;•&nbsp;</span>
+ 💬 <a href="https://slack.namespace.so?utm_source=github">Slack</a>
 </div>
 
 
