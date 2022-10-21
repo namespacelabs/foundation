@@ -144,13 +144,7 @@ func (pl *PackageLoader) Seal() pkggraph.SealedPackageLoader {
 }
 
 func (pl *PackageLoader) Resolve(ctx context.Context, original schema.PackageName) (pkggraph.Location, error) {
-	packageName := original
-	// Support library.namespace.so until we have a separate module.
-	if packageName == "library.namespace.so" {
-		packageName = "namespacelabs.dev/foundation/library"
-	} else if strings.HasPrefix(string(packageName), "library.namespace.so/") {
-		packageName = schema.PackageName("namespacelabs.dev/foundation/library/" + strings.TrimPrefix(string(packageName), "library.namespace.so/"))
-	}
+	packageName := maybeRewritePackage(original)
 
 	pkg := string(packageName)
 
@@ -405,7 +399,9 @@ func (l *loadingPackage) Get(ctx context.Context) (*pkggraph.Package, error) {
 	}
 }
 
-func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.PackageName) (pkggraph.Location, error) {
+func (sealed sealedPackages) Resolve(ctx context.Context, original schema.PackageName) (pkggraph.Location, error) {
+	packageName := maybeRewritePackage(original)
+
 	if pkg, ok := sealed.packages[packageName]; ok {
 		return pkg.Location, nil
 	}
@@ -417,7 +413,9 @@ func (sealed sealedPackages) Resolve(ctx context.Context, packageName schema.Pac
 	return pkggraph.Location{}, fnerrors.InternalError("%s: package not loaded while resolving!", packageName)
 }
 
-func (sealed sealedPackages) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
+func (sealed sealedPackages) LoadByName(ctx context.Context, original schema.PackageName) (*pkggraph.Package, error) {
+	packageName := maybeRewritePackage(original)
+
 	if pkg, ok := sealed.packages[packageName]; ok {
 		return pkg, nil
 	}
@@ -444,4 +442,17 @@ func (sealed sealedPackages) Packages() []*pkggraph.Package {
 func Ensure(ctx context.Context, packages pkggraph.PackageLoader, packageName schema.PackageName) error {
 	_, err := packages.LoadByName(ctx, packageName)
 	return err
+}
+
+func maybeRewritePackage(pkg schema.PackageName) schema.PackageName {
+	for key, target := range schema.StaticModuleRewrites {
+		if string(pkg) == key {
+			return schema.PackageName(filepath.Join(target.ModuleName, target.RelPath))
+		} else if strings.HasPrefix(string(pkg), key+"/") {
+			rel := strings.TrimPrefix(string(pkg), key+"/")
+			return schema.PackageName(filepath.Join(target.ModuleName, target.RelPath, rel))
+		}
+	}
+
+	return pkg
 }

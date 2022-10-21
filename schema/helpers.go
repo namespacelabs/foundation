@@ -6,12 +6,27 @@ package schema
 
 import (
 	"sort"
+
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 const (
 	ClearTextGrpcProtocol = "grpc"
 	GrpcProtocol          = "grpcs"
 	HttpProtocol          = "http"
+)
+
+var (
+	StaticModuleRewrites = map[string]struct {
+		ModuleName string
+		RelPath    string
+	}{
+		"library.namespace.so": {
+			ModuleName: "namespacelabs.dev/foundation",
+			RelPath:    "library",
+		},
+	}
 )
 
 func (sc *Schema) ExtsAndServices() []*Node {
@@ -201,8 +216,9 @@ func (ws *Workspace) AllReferencedModules() []string {
 		modules = append(modules, replace.ModuleName)
 	}
 
-	modules = append(modules, "library.namespace.so") // Handled internally.
+	modules = append(modules, maps.Keys(StaticModuleRewrites)...)
 
+	slices.Sort(modules)
 	return modules
 }
 
