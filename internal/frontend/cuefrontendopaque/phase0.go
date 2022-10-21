@@ -41,7 +41,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	}
 
 	if tests := v.LookupPath("tests"); tests.Exists() {
-		parsedTests, err := parseTests(ctx, ft.env, ft.loader, loc, tests)
+		parsedTests, err := parseTests(ctx, ft.env, ft.loader, parsedPkg, tests)
 		if err != nil {
 			return nil, err
 		}
@@ -165,15 +165,12 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			}
 		}
 
-		if image := server.LookupPath("image"); image.Exists() {
-			bin, err := ParseImage(ctx, loc, image)
-			if err != nil {
-				return nil, err
-			}
-
-			// TODO: don't set the server binary here, instead introduce an "image" integration.
-			err = integrationapplying.SetServerBinary(parsedPkg, bin, nil)
-			if err != nil {
+		binRef, err := ParseImage(ctx, ft.env, ft.loader, parsedPkg, "server" /* binaryName */, server)
+		if err != nil {
+			return nil, err
+		}
+		if binRef != nil {
+			if err := integrationapplying.SetServerBinaryRef(parsedPkg, binRef); err != nil {
 				return nil, err
 			}
 		}
