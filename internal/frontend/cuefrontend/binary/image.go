@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package cuefrontendopaque
+package binary
 
 import (
 	"context"
@@ -16,14 +16,14 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-const imageFromPath = "imageFrom"
+type ParseImageOpts struct {
+	Required bool
+}
 
 // Parses "image"/"imageFrom" fields.
 // If needed, generates a binary with the given name and adds it to the package.
 // Returns nil if neither of the fields is present.
-func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, binaryName string, v *fncue.CueV) (*schema.PackageRef, error) {
-	loc := pkg.Location
-
+func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, binaryName string, v *fncue.CueV, opts ParseImageOpts) (*schema.PackageRef, error) {
 	var outRef *schema.PackageRef
 
 	if image := v.LookupPath("image"); image.Exists() {
@@ -38,17 +38,17 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 				LayerBuildPlan: []*schema.ImageBuildPlan{{ImageId: str}},
 			},
 		}
-		outRef = schema.MakePackageRef(loc.PackageName, binaryName)
+		outRef = schema.MakePackageRef(pkg.PackageName(), binaryName)
 
 		pkg.Binaries = append(pkg.Binaries, inlineBinary)
 	}
 
-	if build := v.LookupPath(imageFromPath); build.Exists() {
+	if build := v.LookupPath("imageFrom"); build.Exists() {
 		if outRef != nil {
-			return nil, fnerrors.UserError(loc, "cannot specify both '%s' and 'image'", imageFromPath)
+			return nil, fnerrors.UserError(pkg.Location, "cannot specify both 'imageFrom' and 'image'")
 		}
 
-		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
+		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, pkg.Location, build)
 		if err != nil {
 			return nil, err
 		}
@@ -57,6 +57,10 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if outRef == nil && opts.Required {
+		return nil, fnerrors.UserError(pkg.Location, "missing 'imageFrom' or 'image' definition")
 	}
 
 	return outRef, nil
