@@ -14,3 +14,9 @@ vs others. Our goal is to support our users where they are.
 The Namespace platform is built so that anyone can build resource providers and
 extensions of their own, and we'd like to support the community's effort in
 doing so.
+
+## Directory Structure
+
+Resource classes are grouped by their purpose (e.g. `storage/s3`, `database/postgres`).
+
+Resource providers are grouped by their provider (e.g. `aws/rds`), with open-source providers grouped under `oss`.
