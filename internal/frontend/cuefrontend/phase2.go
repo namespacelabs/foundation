@@ -10,6 +10,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
@@ -24,8 +25,8 @@ type phase2plan struct {
 }
 
 type cueStartupPlan struct {
-	Args *ArgsListOrMap `json:"args"`
-	Env  *EnvMap        `json:"env"`
+	Args *args.ArgsListOrMap `json:"args"`
+	Env  *args.EnvMap        `json:"env"`
 }
 
 var _ pkggraph.PreStartup = phase2plan{}

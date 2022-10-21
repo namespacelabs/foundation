@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -37,7 +38,7 @@ type CueResourceInstance struct {
 	RawIntent any               `json:"intent"`
 	Resources map[string]string `json:"resources"`
 
-	IntentFrom *CueInvokeBinary `json:"from"`
+	IntentFrom *binary.CueInvokeBinary `json:"from"`
 
 	// Prefer the definition above.
 	Kind     string `json:"kind"`
