@@ -1,7 +1,7 @@
 resourceClasses: {
 	"Server": {
 		intent: {
-			type:   "foundation.std.runtime.ServerIntent"
+			type:   "foundation.library.runtime.ServerIntent"
 			source: "./intents.proto"
 		}
 		produces: {
@@ -11,11 +11,11 @@ resourceClasses: {
 	}
 	"Secret": {
 		intent: {
-			type:   "foundation.std.runtime.SecretIntent"
+			type:   "foundation.library.runtime.SecretIntent"
 			source: "./intents.proto"
 		}
 		produces: {
-			type:   "foundation.std.runtime.SecretInstance"
+			type:   "foundation.library.runtime.SecretInstance"
 			source: "./instances.proto"
 		}
 	}

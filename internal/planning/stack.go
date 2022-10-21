@@ -22,9 +22,9 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/internal/versions"
+	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -262,7 +262,7 @@ func discoverDeclaredServers(resources []pkggraph.ResourceInstance, serverList *
 	for _, res := range resources {
 		switch {
 		case parsing.IsServerResource(res.Spec.Class.Ref):
-			serverIntent := &stdruntime.ServerIntent{}
+			serverIntent := &runtimepb.ServerIntent{}
 			if err := proto.Unmarshal(res.Spec.Source.Intent.Value, serverIntent); err != nil {
 				return fnerrors.InternalError("failed to unwrap Server")
 			}

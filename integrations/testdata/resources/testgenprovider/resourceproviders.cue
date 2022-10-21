@@ -6,12 +6,12 @@ providers: {
 
 		resources: {
 			another: {
-				kind: "namespacelabs.dev/foundation/std/runtime:Server"
+				kind: "namespacelabs.dev/foundation/library/runtime:Server"
 				input: package_name: "namespacelabs.dev/foundation/integrations/testdata/dockerfile/simple"
 			}
 
-			secretres: {
-				kind: "namespacelabs.dev/foundation/std/runtime:Secret"
+			secrets: {
+				kind: "namespacelabs.dev/foundation/library/runtime:Secret"
 				input: ref: ":key1"
 			}
 		}

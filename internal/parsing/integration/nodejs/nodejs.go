@@ -15,16 +15,16 @@ import (
 	"namespacelabs.dev/foundation/internal/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/internal/languages/opaque"
 	"namespacelabs.dev/foundation/internal/parsing/integration/api"
+	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/runtime"
 )
 
 const (
 	startScript = "start"
 	buildScript = "build"
 	devScript   = "dev"
-	runtimePkg  = "namespacelabs.dev/foundation/std/runtime"
+	runtimePkg  = "namespacelabs.dev/foundation/library/runtime"
 )
 
 func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.NodejsIntegration, pkg *pkggraph.Package) error {

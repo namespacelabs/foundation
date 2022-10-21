@@ -12,9 +12,9 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/runtime"
 )
 
 type packageRefLike interface {
@@ -22,12 +22,16 @@ type packageRefLike interface {
 	GetName() string
 }
 
+func isRuntimeResource(ref packageRefLike) bool {
+	return ref.GetPackageName() == "namespacelabs.dev/foundation/library/runtime" || ref.GetPackageName() == "library.namespace.so/runtime"
+}
+
 func IsServerResource(ref packageRefLike) bool {
-	return ref.GetPackageName() == "namespacelabs.dev/foundation/std/runtime" && ref.GetName() == "Server"
+	return isRuntimeResource(ref) && ref.GetName() == "Server"
 }
 
 func IsSecretResource(ref packageRefLike) bool {
-	return ref.GetPackageName() == "namespacelabs.dev/foundation/std/runtime" && ref.GetName() == "Secret"
+	return isRuntimeResource(ref) && ref.GetName() == "Secret"
 }
 
 func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {

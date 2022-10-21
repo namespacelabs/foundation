@@ -24,10 +24,10 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
+	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
-	stdruntime "namespacelabs.dev/foundation/std/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -59,7 +59,7 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 
 			switch {
 			case parsing.IsServerResource(resource.Class.Ref):
-				serverIntent := &stdruntime.ServerIntent{}
+				serverIntent := &runtimepb.ServerIntent{}
 				if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
 					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 				}
@@ -293,7 +293,7 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 	var secrets []runtime.SecretResourceDependency
 	for _, dep := range inputs {
 		if parsing.IsSecretResource(dep.Spec.Class.Ref) {
-			secretIntent := &stdruntime.SecretIntent{}
+			secretIntent := &runtimepb.SecretIntent{}
 			if err := proto.Unmarshal(dep.Spec.Source.Intent.Value, secretIntent); err != nil {
 				return nil, nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 			}
