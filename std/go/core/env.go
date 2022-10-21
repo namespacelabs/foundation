@@ -15,48 +15,23 @@ import (
 	"sync/atomic"
 	"time"
 
-	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/framework/resources"
-	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/framework/runtime"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/schema/runtime"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/core/types"
 )
 
 var (
 	debug = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
 
-	rt          *runtime.RuntimeConfig
-	rtVcs       *runtime.BuildVCS
+	rt          *runtimepb.RuntimeConfig
+	rtVcs       *runtimepb.BuildVCS
 	serverName  string
 	initialized uint32
 )
 
 var Log = log.New(os.Stderr, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-
-func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
-	configBytes, err := os.ReadFile("/namespace/config/runtime.json")
-	if err != nil {
-		return nil, rpcerrors.Errorf(codes.Internal, "failed to unwrap runtime configuration: %w", err)
-	}
-
-	rt := &runtime.RuntimeConfig{}
-	if err := json.Unmarshal(configBytes, rt); err != nil {
-		return nil, rpcerrors.Errorf(codes.Internal, "failed to unmarshal runtime configuration: %w", err)
-	}
-
-	return rt, nil
-}
-
-func LoadResources() (*resources.Parsed, error) {
-	configBytes, err := os.ReadFile("/namespace/config/resources.json")
-	if err != nil {
-		return nil, rpcerrors.Errorf(codes.Internal, "failed to unwrap resource configuration: %w", err)
-	}
-
-	return resources.ParseResourceData(configBytes)
-}
 
 func PrepareEnv(specifiedServerName string) *ServerResources {
 	if !atomic.CompareAndSwapUint32(&initialized, 0, 1) {
@@ -66,22 +41,14 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 	Log.Println("Initializing server...")
 
 	var err error
-	rt, err = LoadRuntimeConfig()
+	rt, err = runtime.LoadRuntimeConfig()
 	if err != nil {
 		Log.Fatal(err)
 	}
 
-	serializedVCS, err := os.ReadFile("/namespace/config/buildvcs.json")
+	rtVcs, err = runtime.LoadBuildVCS()
 	if err != nil {
-		if !os.IsNotExist(err) {
-			Log.Fatal("failed to load VCS information", err)
-		}
-	} else {
-		vcs := &runtime.BuildVCS{}
-		if err := json.Unmarshal(serializedVCS, vcs); err != nil {
-			Log.Fatal("failed to parse VCS information", err)
-		}
-		rtVcs = vcs
+		Log.Fatal(err)
 	}
 
 	serverName = specifiedServerName

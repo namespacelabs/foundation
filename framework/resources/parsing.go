@@ -8,10 +8,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"os"
 )
 
 type Parsed struct {
 	resources map[string]any
+}
+
+func LoadResources() (*Parsed, error) {
+	configBytes, err := os.ReadFile("/namespace/config/resources.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to unwrap resource configuration: %w", err)
+	}
+
+	return ParseResourceData(configBytes)
 }
 
 func ParseResourceData(data []byte) (*Parsed, error) {
