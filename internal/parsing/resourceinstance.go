@@ -76,7 +76,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 
 		provider := providerPkg.LookupResourceProvider(instance.Class)
 		if provider == nil {
-			return nil, fnerrors.UserError(pp.Location, "package %q does not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
+			return nil, fnerrors.UserError(pp.Location, "package %q is not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
 		}
 
 		ri.Provider = provider
