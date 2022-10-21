@@ -143,7 +143,15 @@ func (pl *PackageLoader) Seal() pkggraph.SealedPackageLoader {
 	return sealed
 }
 
-func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.PackageName) (pkggraph.Location, error) {
+func (pl *PackageLoader) Resolve(ctx context.Context, original schema.PackageName) (pkggraph.Location, error) {
+	packageName := original
+	// Support library.namespace.so until we have a separate module.
+	if packageName == "library.namespace.so" {
+		packageName = "namespacelabs.dev/foundation/library"
+	} else if strings.HasPrefix(string(packageName), "library.namespace.so/") {
+		packageName = schema.PackageName("namespacelabs.dev/foundation/library/" + strings.TrimPrefix(string(packageName), "library.namespace.so/"))
+	}
+
 	pkg := string(packageName)
 
 	if pkg == "" || pkg == "." {
@@ -154,14 +162,6 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		return pl.rootmodule.MakeLocation("."), nil
 	} else if rel := strings.TrimPrefix(pkg, pl.workspace.ModuleName()+"/"); rel != pkg {
 		return pl.rootmodule.MakeLocation(rel), nil
-	}
-
-	for _, alias := range pl.workspace.Proto().InternalAlias {
-		if packageName.Equals(alias.ModuleName) {
-			return pl.rootmodule.MakeLocation(alias.RelPath), nil
-		} else if rel := strings.TrimPrefix(pkg, alias.ModuleName+"/"); rel != pkg {
-			return pl.rootmodule.MakeLocation(filepath.Join(alias.RelPath, rel)), nil
-		}
 	}
 
 	replaced, err := pl.MatchModuleReplace(ctx, packageName)

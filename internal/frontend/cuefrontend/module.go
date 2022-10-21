@@ -184,13 +184,6 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 
 	w.ExperimentalProtoModuleImports = m.ProtoModuleImports
 
-	if len(m.InternalAlias) > 0 {
-		if m.ModuleName != "namespacelabs.dev/foundation" {
-			return nil, fnerrors.BadInputError("internalAliases is not available for use")
-		}
-		w.InternalAlias = m.InternalAlias
-	}
-
 	return w, nil
 }
 
@@ -363,7 +356,6 @@ type cueModule struct {
 	Prebuilts          *cueWorkspacePrebuilts                 `json:"prebuilts"`
 	Environments       map[string]cueEnvironment              `json:"environment"`
 	ProtoModuleImports []*schema.Workspace_ProtoModuleImports `json:"experimentalProtoModuleImports"`
-	InternalAlias      []*schema.Workspace_Alias              `json:"internalAliases"`
 }
 
 type cueModuleFoundation struct {

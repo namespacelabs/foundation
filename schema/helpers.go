@@ -201,9 +201,7 @@ func (ws *Workspace) AllReferencedModules() []string {
 		modules = append(modules, replace.ModuleName)
 	}
 
-	for _, alias := range ws.InternalAlias {
-		modules = append(modules, alias.ModuleName)
-	}
+	modules = append(modules, "library.namespace.so") // Handled internally.
 
 	return modules
 }

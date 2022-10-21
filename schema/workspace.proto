@@ -33,7 +33,6 @@ message Workspace {
     FoundationRequirements foundation = 8;
 
     repeated ProtoModuleImports experimental_proto_module_imports = 9;
-    repeated Alias              internal_alias                    = 11;
 
     message Dependency {
         string module_name = 1;
