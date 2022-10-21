@@ -77,9 +77,9 @@ func containerStateLabel(ps *v1.PodStatus, st v1.ContainerState) string {
 	return "(Unknown)"
 }
 
-func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, ns string, replicaset string) ([]*orchestration.Event_WaitStatus, error) {
+func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string, replicaset string) ([]*orchestration.Event_WaitStatus, error) {
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
-	pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+	pods, err := cli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs())})
 	if err != nil {
 		return nil, fnerrors.Wrapf(nil, err, "unable to list pods")
 	}

@@ -10,12 +10,13 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func fetchReplicaSetName(ctx context.Context, cli *k8s.Clientset, ns string, owner string, gen int64) (string, error) {
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
-	replicasets, err := cli.AppsV1().ReplicaSets(ns).List(ctx, metav1.ListOptions{})
+	replicasets, err := cli.AppsV1().ReplicaSets(ns).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs())})
 	if err != nil {
 		return "", fnerrors.Wrapf(nil, err, "unable to list replica sets")
 	}
