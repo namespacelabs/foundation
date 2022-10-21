@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/github"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	workspaceCmd "namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
+	"namespacelabs.dev/foundation/internal/cli/cmd"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
@@ -39,6 +40,7 @@ func main() {
 	root.AddCommand(github.NewGithubCmd())
 	root.AddCommand(workspaceCmd.NewWorkspaceCmd())
 	root.AddCommand(runs.NewRunsCmd())
+	root.AddCommand(cmd.NewImagesCmd())
 	root.AddCommand(newRobotLogin("robot-login"))
 
 	ctx := tasks.WithSink(context.Background(), simplelog.NewSink(os.Stderr, maxLogLevel))
