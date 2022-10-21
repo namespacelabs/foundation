@@ -9,13 +9,13 @@ import (
 	"log"
 	"net/http"
 
-	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/framework/runtime"
 )
 
 func main() {
-	config, err := core.LoadRuntimeConfig()
+	config, err := runtime.LoadRuntimeConfig()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	port := config.Current.Port[0].Port
