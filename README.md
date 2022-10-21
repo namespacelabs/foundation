@@ -1,25 +1,37 @@
-![Logo](/.github/intro/intro.svg)
+<p>
+  <a href="https://namespace.so">
+    <img src="https://storage.googleapis.com/namespacelabs-docs-assets/gh/intro.svg" height="300">
+  </a>
+</p>
 
 <div>
- <a href="https://docs.namespace.so/getting-started?utm_source=github">Getting Started</a>
+ 🎬 <a href="https://docs.namespace.so/getting-started?utm_source=github"><b>Getting Started</b></a>
  <span>&nbsp;•&nbsp;</span>
- <a href="https://docs.namespace.so/examples?utm_source=github">Examples</a>
+ 🏗️ <a href="https://docs.namespace.so/examples?utm_source=github"><b>Examples</b></a>
  <span>&nbsp;•&nbsp;</span>
- <a href="https://docs.namespace.so/reference?utm_source=github">Reference</a>
+ 🗼 <a href="https://docs.namespace.so/architecture?utm_source=github">Architecture</a>
+ <span>&nbsp;•&nbsp;</span>
+ 🏛️ <a href="https://docs.namespace.so/reference?utm_source=github">Reference</a>
 </div>
 
 
 ### **About Namespace**
 
-Namespace is a development platform which is helps you manage your development, testing and production workflows.
+Namespace is a development platform which is helps you manage your development, testing and production workflows, in a consistent and unified way.
 
-- **Manages your builds** so you don't have to manage Dockerfiles manually, manage dependencies that you would need to install your workstation, ensuring that builds are fast and correct, and that you the information you need to understand what gets built into your images.
+You describe the servers in your application, how they're built, the relationship between them and which additional resources they need. And from that description -- built out of a set of composable and extensible blocks -- Namespace orchestrates:
 
-- **Offers a robust stateful development workflow** which allows you to develop against production-like environments, as if those services would be running in your own workstation.
+- **Build**: start with your Dockerfiles, or use one our language-specific integrations so you don't have to manage Dockerfiles manually. Apart from their ease of use, language-specific integrations setup your build and development environment with the latest best practices, and make harder things simple (e.g. support multiple platforms).
 
-- **Simplifies using Kubernetes** so you and your team can think about the semantics you care about: services, resources, backends, etc. Under the covers you'll find the industry-standard Kubernetes and CNCF projects; but if you don't have a need to, you don't need to look under the covers.
+- **Development environment**: With Namespace you don't need to manage your development dependencies manually -- the days of asking folks in the team to install the right SDK versions will be gone. We'll manage SDKs and dependencies on your behalf. Getting someone new onboarded into the application development environment will take minutes rather than hours or days.
+ 
+- **Representative environments**: How many times have you hit bugs in production, or testing, which are hard to reproduce locally? Namespace helps you bridge the gap between environments, managing production-like environment across development and testing.
 
-- **Packages dependencies** so using a piece of infrastructure -- whether it's S3, a database, a messaging system, etc -- it's as simple as adding a dependency to your application.
+- **Effortless end-to-end testing**: When you have an application setup with Namespace, writing an end-to-end system test becomes simple. From the same application definition used to setup a development environment, Namespace is also capable of creating ephemeral testing environments used to run end-to-end tests.
+
+- **Kubernetes**: (but you don't need to care). We help you and your team to think about concepts you care about: services, resources, backends, etc. Under the covers you'll find the industry-standard Kubernetes and CNCF projects; which means that as you grow or need you can easily tap to the broad Kubernetes ecosystem. No hidden implementation, no vendor lock-in.
+
+- **Packaged dependencies**: adding support infrastructure, or a resource -- whether it's storage bucket, a database, a messaging system, etc -- it's as simple as adding a dependency to your application.
 
 ### **Getting Started**
 
