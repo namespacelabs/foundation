@@ -6,9 +6,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"time"
@@ -16,13 +14,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/cenkalti/backoff/v4"
-	fnresources "namespacelabs.dev/foundation/framework/resources"
-	"namespacelabs.dev/foundation/framework/runtime"
-	"namespacelabs.dev/foundation/library/storage/s3"
-	fnruntime "namespacelabs.dev/foundation/schema/runtime"
+	"namespacelabs.dev/foundation/framework/resources"
+	"namespacelabs.dev/foundation/framework/resources/provider"
+	s3class "namespacelabs.dev/foundation/library/storage/s3"
 )
 
 const (
@@ -30,17 +27,11 @@ const (
 	connBackoff = 500 * time.Millisecond
 )
 
-var (
-	intent    = flag.String("intent", "", "The serialized JSON intent.")
-	resources = flag.String("resources", "", "The serialized JSON resources.")
-)
-
 func main() {
-	flag.Parse()
+	intent := &s3class.BucketIntent{}
+	ctx, resources := provider.MustPrepare(intent)
 
-	ctx := context.Background()
-
-	instance, err := createInstance()
+	instance, err := prepareInstance(resources, intent)
 	if err != nil {
 		log.Fatalf("failed to create instance: %v", err)
 	}
@@ -58,7 +49,7 @@ func main() {
 		log.Fatalf("failed to load aws config: %v", err)
 	}
 
-	cli := awss3.NewFromConfig(cfg, func(o *awss3.Options) {
+	cli := s3.NewFromConfig(cfg, func(o *s3.Options) {
 		o.UsePathStyle = true
 	})
 
@@ -66,63 +57,35 @@ func main() {
 		log.Fatalf("failed to create bucket: %v", err)
 	}
 
-	serialized, err := json.Marshal(instance)
-	if err != nil {
-		log.Fatalf("failed to marshal instance: %v", err)
-	}
-
-	fmt.Printf("namespace.provision.result: %s\n", serialized)
+	provider.EmitResult(instance)
 }
 
-func getEndpoint(resources *fnresources.Parser) (string, error) {
-	key := fmt.Sprintf("%s:minioServer", providerPkg)
-	srv := &fnruntime.Server{}
-	if err := resources.Decode(key, &srv); err != nil {
-		return "", err
-	}
-
-	return runtime.Endpoint(srv, "api")
-}
-
-func createInstance() (*s3.BucketInstance, error) {
-	if *intent == "" {
-		return nil, fmt.Errorf("--intent is missing")
-	}
-
-	i := &s3.BucketIntent{}
-	if err := json.Unmarshal([]byte(*intent), i); err != nil {
-		return nil, err
-	}
-
-	if *resources == "" {
-		return nil, fmt.Errorf("--resources is missing")
-	}
-	r := fnresources.NewParser([]byte(*resources))
-
-	endpoint, err := getEndpoint(r)
+func prepareInstance(r *resources.Parsed, intent *s3class.BucketIntent) (*s3class.BucketInstance, error) {
+	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:minioServer", providerPkg), "api")
 	if err != nil {
 		return nil, err
 	}
 
-	accessKeyID, err := r.ReadSecret(fmt.Sprintf("%s:minioUser", providerPkg))
-	if err != nil {
-		return nil, err
-	}
-	secretAccessKey, err := r.ReadSecret(fmt.Sprintf("%s:minioPassword", providerPkg))
+	accessKeyID, err := resources.ReadSecret(r, fmt.Sprintf("%s:minioUser", providerPkg))
 	if err != nil {
 		return nil, err
 	}
 
-	return &s3.BucketInstance{
-		Region:          i.Region,
-		AccessKey:       accessKeyID,
-		SecretAccessKey: secretAccessKey,
-		BucketName:      i.BucketName,
+	secretAccessKey, err := resources.ReadSecret(r, fmt.Sprintf("%s:minioPassword", providerPkg))
+	if err != nil {
+		return nil, err
+	}
+
+	return &s3class.BucketInstance{
+		Region:          intent.Region,
+		AccessKey:       string(accessKeyID),
+		SecretAccessKey: string(secretAccessKey),
+		BucketName:      intent.BucketName,
 		Url:             fmt.Sprintf("http://%s", endpoint),
 	}, nil
 }
 
-func createBucket(ctx context.Context, cli *awss3.Client, bucketName string) error {
+func createBucket(ctx context.Context, cli *s3.Client, bucketName string) error {
 	// Retry until bucket is ready.
 	log.Printf("Creating bucket %s.\n", bucketName)
 	if err := backoff.Retry(func() error {
@@ -130,7 +93,7 @@ func createBucket(ctx context.Context, cli *awss3.Client, bucketName string) err
 		ctx, cancel := context.WithTimeout(ctx, connBackoff)
 		defer cancel()
 
-		_, err := cli.CreateBucket(ctx, &awss3.CreateBucketInput{
+		_, err := cli.CreateBucket(ctx, &s3.CreateBucketInput{
 			Bucket: aws.String(bucketName),
 		})
 		var alreadyExists *types.BucketAlreadyExists

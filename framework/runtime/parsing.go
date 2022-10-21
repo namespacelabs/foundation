@@ -10,7 +10,9 @@ import (
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-func Endpoint(srv *runtime.Server, name string) (string, error) {
+type Server = runtime.Server
+
+func Endpoint(srv *Server, name string) (string, error) {
 	for _, s := range srv.Service {
 		if s.Name == name {
 			return s.Endpoint, nil
@@ -18,7 +20,6 @@ func Endpoint(srv *runtime.Server, name string) (string, error) {
 	}
 
 	return "", fmt.Errorf("endpoint %s not found for server %s", name, srv.PackageName)
-
 }
 
 func ServerEndpoint(rtcfg *runtime.RuntimeConfig, pkg, name string) (string, error) {

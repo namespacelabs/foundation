@@ -5,56 +5,73 @@
 package resources
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
-
-	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/library/runtime"
 )
 
-type Parser struct {
-	data []byte
+type Parsed struct {
+	resources map[string]any
 }
 
-func NewParser(data []byte) *Parser {
-	return &Parser{data: data}
-}
+func ParseResourceData(data []byte) (*Parsed, error) {
+	dec := json.NewDecoder(bytes.NewReader(data))
 
-func (p *Parser) Decode(resource string, out any) error {
-	resources := make(map[string]any)
-	if err := json.Unmarshal(p.data, &resources); err != nil {
-		return err
+	tok, err := dec.Token()
+	if err == nil && tok != json.Delim('{') {
+		err = fmt.Errorf("expected an object, got %v", tok)
 	}
 
-	val, ok := resources[resource]
+	if err != nil {
+		return nil, fmt.Errorf("bad resource data: %w", err)
+	}
+
+	resources := map[string]any{}
+	for dec.More() {
+		label, err := dec.Token()
+		if err != nil {
+			return nil, fmt.Errorf("bad resource data: %w", err)
+		}
+
+		strLabel, ok := label.(string)
+		if !ok {
+			return nil, fmt.Errorf("bad resource data, expected label: %w", err)
+		}
+
+		var raw any
+		if err := dec.Decode(&raw); err != nil {
+			return nil, fmt.Errorf("bad resource data: failed to decode: %w", err)
+		}
+
+		resources[strLabel] = raw
+	}
+
+	finalTok, err := dec.Token()
+	if err == nil && finalTok != json.Delim('}') {
+		err = fmt.Errorf("expected object closure, got %v", finalTok)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("bad resource data: %w", err)
+	}
+
+	return &Parsed{resources: resources}, nil
+}
+
+func (p *Parsed) Unmarshal(resource string, out any) error {
+	raw, ok := p.resources[resource]
 	if !ok {
-		return fnerrors.InternalError("no resource config found for resource %q", resource)
+		return fmt.Errorf("no resource config found for resource %q", resource)
 	}
 
-	// TODO use json decoder to avoid this marshal
-	data, err := json.Marshal(val)
+	data, err := json.Marshal(raw)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: failed to re-marshal value: %w", resource, err)
 	}
 
-	return json.Unmarshal(data, out)
-}
-
-func (p *Parser) ReadSecret(resource string) (string, error) {
-	secret := &runtime.SecretInstance{}
-	if err := p.Decode(resource, &secret); err != nil {
-		return "", err
+	if err := json.Unmarshal(data, out); err != nil {
+		return fmt.Errorf("%s: failed to unmarshal resource: %w", resource, err)
 	}
 
-	if secret.Path == "" {
-		return "", fmt.Errorf("secret %s is missing a path to read from", resource)
-	}
-
-	data, err := os.ReadFile(secret.Path)
-	if err != nil {
-		return "", fmt.Errorf("failed to read secret %s from path %s: %w", resource, secret.Path, err)
-	}
-
-	return string(data), nil
+	return nil
 }

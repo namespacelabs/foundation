@@ -49,13 +49,13 @@ func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
 	return rt, nil
 }
 
-func LoadResources() (*resources.Parser, error) {
+func LoadResources() (*resources.Parsed, error) {
 	configBytes, err := os.ReadFile("/namespace/config/resources.json")
 	if err != nil {
 		return nil, rpcerrors.Errorf(codes.Internal, "failed to unwrap resource configuration: %w", err)
 	}
 
-	return resources.NewParser(configBytes), nil
+	return resources.ParseResourceData(configBytes)
 }
 
 func PrepareEnv(specifiedServerName string) *ServerResources {
