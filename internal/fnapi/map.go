@@ -7,6 +7,7 @@ package fnapi
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -22,21 +23,22 @@ type MapResponse struct {
 
 func Map(ctx context.Context, fqdn, target string) error {
 	return tasks.Action("dns.map-name").Arg("fqdn", fqdn).Arg("target", target).Run(ctx, func(ctx context.Context) error {
-		return doMap(ctx, fqdn, target)
-	})
-}
+		var nr MapResponse
+		err := Call[MapRequest]{
+			Endpoint: EndpointAddress,
+			Method:   "nsl.naming.NamingService/Map",
+			PreAuthenticateRequest: func(ua *UserAuth, rt *MapRequest) error {
+				rt.UserAuth = ua
+				return nil
+			},
+		}.Do(ctx, MapRequest{
+			FQDN:   fqdn,
+			Target: target,
+		}, DecodeJSONResponse(&nr))
+		if err != nil {
+			return fnerrors.New("mapping %q to %q failed: %w", fqdn, target, err)
+		}
 
-func doMap(ctx context.Context, fqdn, target string) error {
-	var nr MapResponse
-	return Call[MapRequest]{
-		Endpoint: EndpointAddress,
-		Method:   "nsl.naming.NamingService/Map",
-		PreAuthenticateRequest: func(ua *UserAuth, rt *MapRequest) error {
-			rt.UserAuth = ua
-			return nil
-		},
-	}.Do(ctx, MapRequest{
-		FQDN:   fqdn,
-		Target: target,
-	}, DecodeJSONResponse(&nr))
+		return nil
+	})
 }

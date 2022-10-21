@@ -122,6 +122,12 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		if err == nil {
 			st.Code = int32(intVar)
 			st.Message = grpcMessage[0]
+
+			switch st.Code {
+			case int32(codes.PermissionDenied):
+				return fnerrors.NoAccessToLimitedFeature()
+			}
+
 			return status.ErrorProto(st)
 		}
 	}
@@ -130,7 +136,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	case http.StatusInternalServerError:
 		return fnerrors.InvocationError("internal server error, and wasn't able to parse error response")
 	case http.StatusForbidden:
-		return fnerrors.InvocationError("forbidden")
+		return fnerrors.NoAccessToLimitedFeature()
 	case http.StatusUnauthorized:
 		return ErrRelogin
 	default:

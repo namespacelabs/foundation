@@ -111,14 +111,12 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming
 
-	if !t.Package.NewFrontend {
-		if t.entry.ServerNaming == nil {
-			t.entry.ServerNaming = &schema.Naming{}
-		} else {
-			t.entry.ServerNaming = protos.Clone(t.entry.ServerNaming)
-		}
-		t.entry.ServerNaming.EnableNamespaceManaged = true
+	if t.entry.ServerNaming == nil {
+		t.entry.ServerNaming = &schema.Naming{}
+	} else {
+		t.entry.ServerNaming = protos.Clone(t.entry.ServerNaming)
 	}
+	t.entry.ServerNaming.EnableNamespaceManaged = true
 
 	return t, nil
 }

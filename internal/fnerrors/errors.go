@@ -58,6 +58,10 @@ func InvocationError(format string, args ...interface{}) error {
 	return &InvocationErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
 }
 
+func NoAccessToLimitedFeature() error {
+	return InvocationError("this feature is not broadly available yet; please reach out to us at hello@namespacelabs.com to be added to the access list")
+}
+
 // The input does match our expectations (e.g. missing bits, wrong version, etc).
 func BadInputError(format string, args ...interface{}) error {
 	return &InternalErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
