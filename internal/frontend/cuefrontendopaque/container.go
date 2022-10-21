@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -55,13 +56,9 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 	}
 
 	var err error
-	out.container.BinaryRef, err = ParseImage(ctx, env, pl, pkg, name, v)
+	out.container.BinaryRef, err = binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: true})
 	if err != nil {
-		return nil, err
-	}
-
-	if out.container.BinaryRef == nil {
-		return nil, fnerrors.UserError(loc, "missing '%s' or 'image' definition", imageFromPath)
+		return nil, fnerrors.Wrapf(loc, err, "container %q", name)
 	}
 
 	return out, nil

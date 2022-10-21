@@ -10,6 +10,7 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -165,7 +166,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			}
 		}
 
-		binRef, err := ParseImage(ctx, ft.env, ft.loader, parsedPkg, "server" /* binaryName */, server)
+		binRef, err := binary.ParseImage(ctx, ft.env, ft.loader, parsedPkg, "server" /* binaryName */, server, binary.ParseImageOpts{})
 		if err != nil {
 			return nil, err
 		}

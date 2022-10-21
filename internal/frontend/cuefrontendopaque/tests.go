@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -49,13 +50,9 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		ServersUnderTest: bits.Servers,
 	}
 
-	binRef, err := ParseImage(ctx, env, pl, pkg, name, v)
+	_, err := binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: true})
 	if err != nil {
-		return nil, err
-	}
-
-	if binRef == nil {
-		return nil, fnerrors.UserError(pkg.Location, "test %q: missing '%s' or 'image' definition", name, imageFromPath)
+		return nil, fnerrors.Wrapf(pkg.Location, err, "test %q", name)
 	}
 
 	// TODO: use a PackageRef for the test driver binary instead of adding and then removing it from package binaries.
