@@ -201,6 +201,10 @@ func (ws *Workspace) AllReferencedModules() []string {
 		modules = append(modules, replace.ModuleName)
 	}
 
+	for _, alias := range ws.InternalAlias {
+		modules = append(modules, alias.ModuleName)
+	}
+
 	return modules
 }
 

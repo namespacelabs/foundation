@@ -12,7 +12,7 @@ import "google/protobuf/any.proto";
 import "schema/environment.proto";
 
 // Workspace definition.
-// Next ID: 11
+// Next ID: 12
 message Workspace {
     reserved 2;
 
@@ -33,6 +33,7 @@ message Workspace {
     FoundationRequirements foundation = 8;
 
     repeated ProtoModuleImports experimental_proto_module_imports = 9;
+    repeated Alias              internal_alias                    = 11;
 
     message Dependency {
         string module_name = 1;
@@ -72,6 +73,11 @@ message Workspace {
         string abs_path        = 1;
         string definition_file = 2;
         bytes  contents        = 3;
+    }
+
+    message Alias {
+        string module_name = 1;
+        string rel_path    = 2;
     }
 }
 

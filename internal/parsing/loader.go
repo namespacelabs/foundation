@@ -156,6 +156,14 @@ func (pl *PackageLoader) Resolve(ctx context.Context, packageName schema.Package
 		return pl.rootmodule.MakeLocation(rel), nil
 	}
 
+	for _, alias := range pl.workspace.Proto().InternalAlias {
+		if packageName.Equals(alias.ModuleName) {
+			return pl.rootmodule.MakeLocation(alias.RelPath), nil
+		} else if rel := strings.TrimPrefix(pkg, alias.ModuleName+"/"); rel != pkg {
+			return pl.rootmodule.MakeLocation(filepath.Join(alias.RelPath, rel)), nil
+		}
+	}
+
 	replaced, err := pl.MatchModuleReplace(ctx, packageName)
 	if err != nil {
 		return pkggraph.Location{}, err
