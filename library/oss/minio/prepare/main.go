@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	providerPkg = "namespacelabs.dev/foundation/library/storage/minio"
+	providerPkg = "namespacelabs.dev/foundation/library/oss/minio"
 	connBackoff = 500 * time.Millisecond
 )
 
