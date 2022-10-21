@@ -9,15 +9,11 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
-	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
-	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
-
-const imageFromPath = "imageFrom"
 
 type cueContainer struct {
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
@@ -58,35 +54,10 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		}
 	}
 
-	if image := v.LookupPath("image"); image.Exists() {
-		bin, err := ParseImage(ctx, loc, image)
-		if err != nil {
-			return nil, err
-		}
-
-		inlineBinary := &schema.Binary{
-			Name:      name,
-			BuildPlan: bin,
-		}
-		out.container.BinaryRef = schema.MakePackageRef(loc.PackageName, name)
-		out.inlineBinaries = append(out.inlineBinaries, inlineBinary)
-	}
-
-	if build := v.LookupPath(imageFromPath); build.Exists() {
-		if out.container.BinaryRef != nil {
-			return nil, fnerrors.UserError(loc, "cannot specify both '%s' and 'image'", imageFromPath)
-		}
-
-		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
-		if err != nil {
-			return nil, err
-		}
-
-		binaryRef, err := integrationapplying.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, name, integration.Data)
-		if err != nil {
-			return nil, err
-		}
-		out.container.BinaryRef = binaryRef
+	var err error
+	out.container.BinaryRef, err = ParseImage(ctx, env, pl, pkg, name, v)
+	if err != nil {
+		return nil, err
 	}
 
 	if out.container.BinaryRef == nil {

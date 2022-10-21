@@ -8,10 +8,8 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
-	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -20,7 +18,7 @@ type cueTest struct {
 	Servers []string `json:"serversUnderTest"`
 }
 
-func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) ([]*schema.Test, error) {
+func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) ([]*schema.Test, error) {
 	it, err := v.Val.Fields()
 	if err != nil {
 		return nil, err
@@ -29,7 +27,7 @@ func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 	out := []*schema.Test{}
 
 	for it.Next() {
-		parsedTest, err := parseTest(ctx, env, pl, loc, it.Label(), (&fncue.CueV{Val: it.Value()}))
+		parsedTest, err := parseTest(ctx, env, pl, pkg, it.Label(), (&fncue.CueV{Val: it.Value()}))
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +38,7 @@ func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 	return out, nil
 }
 
-func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.Test, error) {
+func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, name string, v *fncue.CueV) (*schema.Test, error) {
 	var bits cueTest
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
@@ -51,21 +49,18 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		ServersUnderTest: bits.Servers,
 	}
 
-	if build := v.LookupPath(imageFromPath); build.Exists() {
-		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
-		if err != nil {
-			return nil, err
-		}
-
-		binary, err := integrationapplying.GenerateBinary(ctx, env, pl, loc, name, integration.Data)
-		if err != nil {
-			return nil, err
-		}
-
-		out.Driver = binary
-	} else {
-		return nil, fnerrors.UserError(loc, "missing '%s' definition for test %s", imageFromPath, name)
+	binRef, err := ParseImage(ctx, env, pl, pkg, name, v)
+	if err != nil {
+		return nil, err
 	}
+
+	if binRef == nil {
+		return nil, fnerrors.UserError(pkg.Location, "test %q: missing '%s' or 'image' definition", name, imageFromPath)
+	}
+
+	// TODO: use a PackageRef for the test driver binary instead of adding and then removing it from package binaries.
+	out.Driver = pkg.Binaries[len(pkg.Binaries)-1]
+	pkg.Binaries = pkg.Binaries[:len(pkg.Binaries)-1]
 
 	return out, nil
 }
