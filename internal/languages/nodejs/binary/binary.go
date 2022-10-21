@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/production"
 )
 
 const (
@@ -101,35 +100,22 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
+	if !bnj.isDevBuild && bnj.config.BuildScript != "" {
+		srcWithBackendsConfig = srcWithBackendsConfig.Run(
+			llb.Shlexf("%s run %s", packageManagerState.CLI, bnj.config.BuildScript),
+			llb.Dir(AppRootPath),
+		).Root()
+	}
+
 	var out llb.State
-	// The dev and prod builds are different:
-	//  - For prod we produce the smallest image, without the package manager and its dependencies.
-	//  - For dev we keep the base image with the package manager.
-	// This can cause discrepancies between environments however the risk seems to be small.
-	if bnj.isDevBuild {
-		out = srcWithBackendsConfig
+	if bnj.config.BuildOutDir != "" && !bnj.isDevBuild {
+		// In this case creating an image with just the built files.
+		// TODO: do it outside of the Node.js implementation.
+		pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
+
+		out = llb.Scratch().With(llbutil.CopyFrom(srcWithBackendsConfig, pathToCopy, pathToCopy))
 	} else {
-		if bnj.config.BuildScript != "" {
-			srcWithBackendsConfig = srcWithBackendsConfig.Run(
-				llb.Shlexf("%s run %s", packageManagerState.CLI, bnj.config.BuildScript),
-				llb.Dir(AppRootPath),
-			).Root()
-		}
-
-		if bnj.config.BuildOutDir != "" {
-			// In this case creating an image with just the built files.
-			// TODO: do it outside of the Node.js implementation.
-			pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
-
-			out = llb.Scratch().With(llbutil.CopyFrom(srcWithBackendsConfig, pathToCopy, pathToCopy))
-		} else {
-			// For non-dev builds creating an optimized, small image.
-			// buildBase and prodBase must have compatible libcs, e.g. both must be glibc or musl.
-			out = base.With(
-				production.NonRootUser(),
-				llbutil.CopyFrom(srcWithBackendsConfig, AppRootPath, AppRootPath),
-			)
-		}
+		out = srcWithBackendsConfig
 	}
 
 	out = out.AddEnv("NODE_ENV", n.nodejsEnv)
