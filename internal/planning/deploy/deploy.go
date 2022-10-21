@@ -244,11 +244,8 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 				}
 			}
 
-			sealedCtx := stack.Servers[0].SealedContext()
-			return planResources(ctx, sealedCtx, planner, registry, stackAndDefs.Stack, rp)
+			return planResources(ctx, planner, registry, stackAndDefs.Stack, rp)
 		})
-
-	finalInputs := compute.Inputs()
 
 	imageInputs := compute.Inputs().Indigestible("packages", packages)
 	for k, pkg := range packages {
@@ -269,7 +266,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 	deploymentPlan := compute.Map(
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
-		finalInputs.
+		compute.Inputs().
 			Proto("env", env.Environment()).
 			Computable("resourcePlan", resourcePlan).
 			Computable("images", imageIDs).

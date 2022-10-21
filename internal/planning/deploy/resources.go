@@ -38,7 +38,7 @@ type resourcePlan struct {
 	Secrets     []runtime.SecretResourceDependency
 }
 
-func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -107,6 +107,13 @@ func planResources(ctx context.Context, sealedCtx pkggraph.SealedContext, planne
 		if initializer.RequiresKeys || initializer.Snapshots != nil || initializer.Inject != nil {
 			return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
 		}
+
+		if len(resource.ParentContexts) == 0 {
+			return nil, fnerrors.InternalError("%s: resource is missing a context", resource.ID)
+		}
+
+		// Any of the contexts should be valid to load the binary, as all of them refer to this resources.
+		sealedCtx := resource.ParentContexts[0]
 
 		pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, initializer.BinaryRef)
 		if err != nil {
