@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-const builderPath = "builder"
+const imageFromPath = "imageFrom"
 
 type cueContainer struct {
 	Args *cuefrontend.ArgsListOrMap `json:"args"`
@@ -72,9 +72,9 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		out.inlineBinaries = append(out.inlineBinaries, inlineBinary)
 	}
 
-	if build := v.LookupPath(builderPath); build.Exists() {
+	if build := v.LookupPath(imageFromPath); build.Exists() {
 		if out.container.BinaryRef != nil {
-			return nil, fnerrors.UserError(loc, "cannot specify both '%s' and 'image'", builderPath)
+			return nil, fnerrors.UserError(loc, "cannot specify both '%s' and 'image'", imageFromPath)
 		}
 
 		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
@@ -90,7 +90,7 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 	}
 
 	if out.container.BinaryRef == nil {
-		return nil, fnerrors.UserError(loc, "missing '%s' or 'image' definition", builderPath)
+		return nil, fnerrors.UserError(loc, "missing '%s' or 'image' definition", imageFromPath)
 	}
 
 	return out, nil

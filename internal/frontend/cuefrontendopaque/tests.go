@@ -51,7 +51,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		ServersUnderTest: bits.Servers,
 	}
 
-	if build := v.LookupPath(builderPath); build.Exists() {
+	if build := v.LookupPath(imageFromPath); build.Exists() {
 		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, loc, build)
 		if err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 
 		out.Driver = binary
 	} else {
-		return nil, fnerrors.UserError(loc, "missing '%s' definition for test %s", builderPath, name)
+		return nil, fnerrors.UserError(loc, "missing '%s' definition for test %s", imageFromPath, name)
 	}
 
 	return out, nil

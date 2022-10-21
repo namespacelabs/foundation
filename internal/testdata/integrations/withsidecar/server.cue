@@ -19,7 +19,7 @@ server: {
 
 sidecars: {
 	sc1: {
-		builder: {
+		imageFrom: {
 			kind:       "namespace.so/from-dockerfile"
 			dockerfile: "mysidecar/Dockerfile"
 		}
