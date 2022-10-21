@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package internal.testdata.service.proto;
+
+option go_package = "namespacelabs.dev/foundation/internal/testdata/service/proto";
+
+import "google/protobuf/empty.proto";
+import "internal/testdata/service/proto/list.proto";
+
+service MultiDbListService {
+    rpc AddRds(AddRequest) returns (google.protobuf.Empty);
+    rpc AddPostgres(AddRequest) returns (google.protobuf.Empty);
+    rpc AddMaria(AddRequest) returns (google.protobuf.Empty);
+    // Merges from all dbs.
+    rpc List(google.protobuf.Empty) returns (ListResponse);
+}

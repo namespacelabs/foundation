@@ -188,13 +188,13 @@ You can then update the `prebuilt_binary` definitions in `workspace.textpb` with
 Any node type:
 
 ```bash
-nsdev debug print-computed std/testdata/server/gogrpc
+nsdev debug print-computed internal/testdata/server/gogrpc
 ```
 
 For servers:
 
 ```bash
-nsdev debug print-sealed std/testdata/server/gogrpc
+nsdev debug print-sealed internal/testdata/server/gogrpc
 ```
 
 ### Debugging latency
@@ -219,14 +219,14 @@ Check out the trace at [http://localhost:20000/](http://localhost:20000/).
 ### Iterating on the internal Dev UI
 
 ```bash
-ns dev --devweb std/testdata/server/gogrpc
+ns dev --devweb internal/testdata/server/gogrpc
 ```
 
 Adding `--devweb` starts a development web frontend. Yarn and NodeJS are required for `--devweb`.
 Also, run `yarn install` in the `devworkflow/web` directory to fetch and link node dependencies.
 
 ```bash
-ns dev -H 0.0.0.0:4001 --devweb std/testdata/server/gogrpc
+ns dev -H 0.0.0.0:4001 --devweb internal/testdata/server/gogrpc
 ```
 
 Use `-H` to change the listening hostname/port, in case you're running `ns dev` in a machine or VM
@@ -248,13 +248,13 @@ Created age1kacjakcg8dqyxzdwldemrx4pt79ructa6z0mgw7nk03mgxl3vqsslph4fz
 ```
 
 ```bash
-$ ns secrets set std/testdata/server/gogrpc --secret namespacelabs.dev/foundation/std/testdata/datastore:cert
+$ ns secrets set internal/testdata/server/gogrpc --secret namespacelabs.dev/foundation/internal/testdata/datastore:cert
 
-Specify a value for "cert" in namespacelabs.dev/foundation/std/testdata/datastore.
+Specify a value for "cert" in namespacelabs.dev/foundation/internal/testdata/datastore.
 
 Value: <value>
 
-Wrote std/testdata/server/gogrpc/server.secrets
+Wrote internal/testdata/server/gogrpc/server.secrets
 ```
 
 A `server.secrets` will be produced which can be submitted to the repository, as the secret values
@@ -264,8 +264,8 @@ To grant access to the encrypted file, merely have your teammate generate a key 
 run:
 
 ```bash
-$ ns secrets add-reader std/testdata/server/gogrpc --key <pubkey>
-Wrote std/testdata/server/gogrpc/server.secrets
+$ ns secrets add-reader internal/testdata/server/gogrpc --key <pubkey>
+Wrote internal/testdata/server/gogrpc/server.secrets
 ```
 
 The resulting file can then be submitted to the repository.
@@ -273,11 +273,11 @@ The resulting file can then be submitted to the repository.
 To inspect who has access to the bundle, and which secrets are stored, run:
 
 ```bash
-$ ns secrets info std/testdata/server/gogrpc
+$ ns secrets info internal/testdata/server/gogrpc
 Readers:
   age1mlefr5zhnesgzfl7aefy95qlem0feuyfpdpmee6lk50x4h6mlskqdffjxv
 Definitions:
-  namespacelabs.dev/foundation/std/testdata/datastore:cert
+  namespacelabs.dev/foundation/internal/testdata/datastore:cert
 ```
 
 Note: this mechanism for secret management does not handle revocations. If a key has been issued

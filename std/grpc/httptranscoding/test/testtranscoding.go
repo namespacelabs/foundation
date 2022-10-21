@@ -15,7 +15,7 @@ import (
 	"net/http"
 
 	"namespacelabs.dev/foundation/framework/testing"
-	"namespacelabs.dev/foundation/std/testdata/service/proto"
+	"namespacelabs.dev/foundation/internal/testdata/service/proto"
 )
 
 func main() {
@@ -28,9 +28,9 @@ func main() {
 
 		// Lets check if the grpc service is being transcoded to http.
 
-		// std.testdata.service.proto.PostService is hosted in server/gogrpc.
+		// internal.testdata.service.proto.PostService is hosted in server/gogrpc.
 		if err := makeTest(endpoint.Address(), match[*proto.PostResponse]{
-			ServiceName: "std.testdata.service.proto.PostService",
+			ServiceName: "internal.testdata.service.proto.PostService",
 			MethodName:  "Post",
 			Request:     &proto.PostRequest{Input: "xyz"},
 			Response:    &proto.PostResponse{},

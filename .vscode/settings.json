@@ -14,7 +14,7 @@
 	"prettier.arrowParens": "always",
 	"prettier.jsxBracketSameLine": true,
 	"deno.enablePaths": [
-		"std/testdata/datastore/denokeygen",
+		"internal/testdata/datastore/denokeygen",
 		"std/experimental/deno"
 	],
 	"deno.unstable": true,

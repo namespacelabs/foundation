@@ -112,7 +112,7 @@ jobs:
         run: kubectl cluster-info
 
       # namespace-ci already deploys all servers with buildkit, so only testing golang_use_buildkit=false here.
-      - name: Deploy std/testdata/server/gogrpc
+      - name: Deploy internal/testdata/server/gogrpc
         run: |
           /tmp/ns deploy \
             --buildkit_import_cache=type=gha \
@@ -121,7 +121,7 @@ jobs:
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
-            std/testdata/server/gogrpc
+            internal/testdata/server/gogrpc
 
   run_e2e_tests:
     name: cross-repo e2e tests

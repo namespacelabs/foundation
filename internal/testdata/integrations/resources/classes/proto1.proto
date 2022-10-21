@@ -1,0 +1,13 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
+// available at http://github.com/namespacelabs/foundation
+
+syntax = "proto3";
+
+package foundation.internal.testdata.integrations.resources.classes;
+
+option go_package = "namespacelabs.dev/foundation/internal/testdata/integrations/resources/classes";
+
+message DatabaseIntent {
+    string name = 1;
+}

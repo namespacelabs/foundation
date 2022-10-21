@@ -36,6 +36,10 @@ func EnsureBucketExistsByName(ctx context.Context, client *s3.Client, name, regi
 			}
 		}
 
+		// Speed up bucket creation through faster retries.
+		ctx, cancel := context.WithTimeout(ctx, connBackoff)
+		defer cancel()
+
 		if _, err := client.CreateBucket(ctx, input); err != nil {
 			var alreadyExists *types.BucketAlreadyExists
 			var alreadyOwned *types.BucketAlreadyOwnedByYou

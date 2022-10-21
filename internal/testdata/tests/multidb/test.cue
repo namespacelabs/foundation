@@ -1,15 +1,13 @@
 import "namespacelabs.dev/foundation/std/fn"
 
 test: fn.#Test & {
-	name: "test-transcoding"
+	name: "test-multidb"
 
 	binary: {
 		from: go_package: "."
 	}
 
 	fixture: {
-		serversUnderTest: [
-			"namespacelabs.dev/foundation/internal/testdata/server/gogrpc",
-		]
+		sut: "namespacelabs.dev/foundation/internal/testdata/server/multidb"
 	}
 }
