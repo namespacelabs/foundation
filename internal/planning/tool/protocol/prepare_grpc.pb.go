@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: provision/tool/protocol/prepare.proto
+// source: internal/planning/tool/protocol/prepare.proto
 
 package protocol
 
@@ -99,5 +99,5 @@ var PrepareService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "provision/tool/protocol/prepare.proto",
+	Metadata: "internal/planning/tool/protocol/prepare.proto",
 }

@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: provision/tool/protocol/toolprotocol.proto
+// source: internal/planning/tool/protocol/toolprotocol.proto
 
 package protocol
 
@@ -99,5 +99,5 @@ var InvocationService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "provision/tool/protocol/toolprotocol.proto",
+	Metadata: "internal/planning/tool/protocol/toolprotocol.proto",
 }
