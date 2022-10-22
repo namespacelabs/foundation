@@ -18,19 +18,22 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func exportToRegistry(ref string, insecure bool) exporter[oci.Image] {
-	return &exportRegistry{ref: ref, insecure: insecure}
+func exportToRegistry(original ExportToRegistryRequest, rewritten *ExportToRegistryRequest) exporter[oci.Image] {
+	if rewritten == nil {
+		rewritten = &original
+	}
+	return &exportRegistry{requested: original, target: *rewritten}
 }
 
 type exportRegistry struct {
-	ref      string
-	insecure bool
+	requested ExportToRegistryRequest
+	target    ExportToRegistryRequest
 
 	parsed name.Repository
 }
 
 func (e *exportRegistry) Prepare(ctx context.Context) error {
-	p, err := name.NewRepository(e.ref, e.nameOpts()...)
+	p, err := name.NewRepository(e.requested.Name, e.nameOpts()...)
 	if err != nil {
 		return err
 	}
@@ -39,7 +42,7 @@ func (e *exportRegistry) Prepare(ctx context.Context) error {
 }
 
 func (e *exportRegistry) nameOpts() []name.Option {
-	if e.insecure {
+	if e.requested.Insecure {
 		return []name.Option{name.Insecure}
 	}
 
@@ -51,9 +54,9 @@ func (e *exportRegistry) Exports() []client.ExportEntry {
 		Type: client.ExporterImage,
 		Attrs: map[string]string{
 			"push":              "true",
-			"name":              e.ref,
+			"name":              e.target.Name,
 			"push-by-digest":    "true",
-			"registry.insecure": fmt.Sprintf("%v", e.insecure),
+			"registry.insecure": fmt.Sprintf("%v", e.target.Insecure),
 			"buildinfo":         "false", // Remove build info to keep reproducibility.
 		},
 	}}
@@ -81,7 +84,9 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 }
 
 func canonical(ctx context.Context, original oci.Image) (oci.Image, error) {
-	img, err := oci.WithCanonicalManifest(ctx, original)
+	img, err := tasks.Return(ctx, tasks.Action("buildkit.make-canonical"), func(ctx context.Context) (oci.Image, error) {
+		return oci.WithCanonicalManifest(ctx, original)
+	})
 	if err != nil {
 		return nil, err
 	}

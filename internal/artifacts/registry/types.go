@@ -38,7 +38,7 @@ type Manager interface {
 	IsInsecure() bool
 
 	AllocateName(repository string) compute.Computable[oci.AllocatedName]
-	AuthRepository(oci.ImageID) (oci.AllocatedName, error)
+	AttachKeychain(oci.ImageID) (oci.AllocatedName, error)
 }
 
 func GetRegistry(ctx context.Context, env cfg.Context) (Manager, error) {
@@ -77,14 +77,17 @@ func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string)
 	return nil, fnerrors.UserError(nil, "%q is not a known registry provider", name)
 }
 
-func StaticName(registry *registry.Registry, imageID oci.ImageID, keychain oci.Keychain) compute.Computable[oci.AllocatedName] {
+func StaticName(parent Manager, imageID oci.ImageID, insecure bool, keychain oci.Keychain) compute.Computable[oci.AllocatedName] {
 	return compute.Map(tasks.Action("registry.allocate-tag").Arg("ref", imageID.ImageRef()), compute.Inputs().
+		Bool("insecure", insecure).
 		JSON("imageID", imageID).
-		Indigestible("registry", registry).Indigestible("keychain", keychain),
+		Indigestible("parent", parent).
+		Indigestible("keychain", keychain),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, r compute.Resolved) (oci.AllocatedName, error) {
 			return oci.AllocatedName{
-				InsecureRegistry: registry.GetInsecure(),
+				Parent:           parent,
+				InsecureRegistry: insecure,
 				ImageID:          imageID,
 				Keychain:         keychain,
 			}, nil

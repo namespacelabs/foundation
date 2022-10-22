@@ -130,7 +130,7 @@ func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations
 			if baseRepository != "" {
 				tag = registry.StaticName(nil, oci.ImageID{
 					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
-				}, nil)
+				}, false, nil)
 			} else {
 				var err error
 				tag, err = registry.AllocateName(ctx, env, pkg.PackageName())

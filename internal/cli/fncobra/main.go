@@ -66,6 +66,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
+	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -250,6 +251,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		iam.RegisterGraphHandlers()
 		nscloud.RegisterRegistry()
 		nscloud.RegisterClusterProvider()
+		k3dp.Register()
 
 		// Runtimes.
 		kubernetes.Register()

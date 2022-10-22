@@ -49,5 +49,10 @@ func (l *reqToFS) Action() *tasks.ActionEvent {
 }
 
 func (l *reqToFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	return l.solve(ctx, deps, nil, exportToFS())
+	c, err := compute.GetValue(ctx, connectToClient(l.config, l.targetPlatform))
+	if err != nil {
+		return nil, err
+	}
+
+	return l.solve(ctx, c, deps, nil, exportToFS())
 }

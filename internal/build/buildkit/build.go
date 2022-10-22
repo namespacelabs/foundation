@@ -42,15 +42,25 @@ var (
 
 const SSHAgentProviderID = "default"
 
+type GatewayClient struct {
+	*client.Client
+
+	conf *Overrides
+}
+
+func (cli *GatewayClient) UsesDocker() bool {
+	return cli.conf.GetBuildkitAddr() == ""
+}
+
 type clientInstance struct {
 	conf *Overrides
 
-	compute.DoScoped[*client.Client] // Only connect once per configuration.
+	compute.DoScoped[*GatewayClient] // Only connect once per configuration.
 }
 
 var OverridesConfigType = cfg.DefineConfigType[*Overrides]()
 
-func connectToClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*client.Client] {
+func connectToClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*GatewayClient] {
 	conf, _ := OverridesConfigType.CheckGetForPlatform(config, targetPlatform)
 
 	if conf.BuildkitAddr == "" && conf.ContainerName == "" {
@@ -60,7 +70,7 @@ func connectToClient(config cfg.Configuration, targetPlatform specs.Platform) co
 	return &clientInstance{conf: conf}
 }
 
-var _ compute.Computable[*client.Client] = &clientInstance{}
+var _ compute.Computable[*GatewayClient] = &clientInstance{}
 
 func (c *clientInstance) Action() *tasks.ActionEvent {
 	return tasks.Action("buildkit.connect")
@@ -70,7 +80,7 @@ func (c *clientInstance) Inputs() *compute.In {
 	return compute.Inputs().Proto("conf", c.conf)
 }
 
-func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*client.Client, error) {
+func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*GatewayClient, error) {
 	conf, err := setupBuildkit(ctx, c.conf)
 	if err != nil {
 		return nil, err
@@ -89,7 +99,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*clie
 	// 	return cli.Close()
 	// })
 
-	return cli, nil
+	return &GatewayClient{Client: cli, conf: c.conf}, nil
 }
 
 type frontendReq struct {

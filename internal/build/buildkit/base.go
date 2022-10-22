@@ -159,15 +159,10 @@ func (l *baseRequest[V]) Output() compute.Output {
 	}
 }
 
-func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keychain oci.Keychain, exp exporter[V]) (V, error) {
+func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compute.Resolved, keychain oci.Keychain, exp exporter[V]) (V, error) {
 	var res V
 
 	req := compute.MustGetDepValue(deps, l.req, "req")
-
-	c, err := compute.GetValue(ctx, connectToClient(l.config, l.targetPlatform))
-	if err != nil {
-		return res, err
-	}
 
 	sid := ids.NewRandomBase62ID(8)
 
@@ -187,6 +182,12 @@ func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keych
 		FrontendAttrs:  req.FrontendOpt,
 		FrontendInputs: req.FrontendInputs,
 	}
+
+	var attrs []map[string]string
+	for _, exp := range solveOpt.Exports {
+		attrs = append(attrs, exp.Attrs)
+	}
+	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exports.attrs: %v\n", sid, attrs)
 
 	if len(l.localDirs) > 0 {
 		solveOpt.LocalDirs = map[string]string{}
@@ -248,6 +249,8 @@ func (l *baseRequest[V]) solve(ctx context.Context, deps compute.Resolved, keych
 	if err := eg.Wait(); err != nil {
 		return res, err
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exported: %v\n", sid, solveRes.ExporterResponse)
 
 	return exp.Provide(ctx, solveRes)
 }

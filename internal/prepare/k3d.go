@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	kubeclient "namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
@@ -57,10 +58,13 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[[]*schem
 				return nil, fnerrors.InternalError("failed address registration for %q", registryName)
 			}
 
-			r := &registry.Registry{Url: "http://" + registryAddr}
+			r := &k3dp.Configuration{
+				RegistryContainerName: registryName,
+				ClusterName:           clusterName,
+			}
 
 			hostEnv := kubeclient.NewLocalHostEnv("k3d-"+clusterName, env)
-			c, err := devhost.MakeConfiguration(r, hostEnv)
+			c, err := devhost.MakeConfiguration(r, hostEnv, &registry.Provider{Provider: "k3d"})
 			if err != nil {
 				return nil, err
 			}

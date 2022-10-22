@@ -19,6 +19,8 @@ type Keychain interface {
 }
 
 type AllocatedName struct {
+	Parent interface{}
+
 	InsecureRegistry bool
 	Keychain         Keychain
 	ImageID

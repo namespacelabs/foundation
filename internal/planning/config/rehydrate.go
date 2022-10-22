@@ -38,7 +38,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 			return nil, err
 		}
 
-		allocated, err := reg.AuthRepository(imageID)
+		allocated, err := reg.AttachKeychain(imageID)
 		if err != nil {
 			return nil, err
 		}

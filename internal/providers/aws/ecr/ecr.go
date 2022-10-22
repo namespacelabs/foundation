@@ -96,7 +96,7 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 	)
 }
 
-func (em ecrManager) AuthRepository(img oci.ImageID) (oci.AllocatedName, error) {
+func (em ecrManager) AttachKeychain(img oci.ImageID) (oci.AllocatedName, error) {
 	keychain := keychainSession(em)
 
 	return oci.AllocatedName{

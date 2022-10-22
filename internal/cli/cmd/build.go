@@ -156,7 +156,7 @@ func writePrebuilts(ctx context.Context, baseRepository string, results []comput
 
 		target := registry.StaticName(nil, oci.ImageID{
 			Repository: filepath.Join(baseRepository, v.PackageRef.PackageName),
-		}, nil)
+		}, false, nil)
 
 		if v.BinaryImage != nil {
 			img := oci.PublishResolvable(target, v.BinaryImage)

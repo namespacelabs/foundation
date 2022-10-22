@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package foundation.providers.nscloud;
 
-option go_package = "namespacelabs.dev/foundation/providers/nscloud";
+option go_package = "namespacelabs.dev/foundation/internal/providers/nscloud";
 
 message PrebuiltCluster {
     string cluster_id        = 1;
