@@ -1,122 +1,202 @@
-EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 
-These license terms (“Terms”) are an agreement between Namespace Labs Inc, a 
-Delaware corporation (“Namespace Labs” or “we”) and the entity on whose behalf 
-you accept this agreement (“you”, or if no such entity exists, such terms apply 
-to you as an individual, and “you” shall refer to you in your individual 
-capacity). If you are acting on behalf of an entity, you represent and warrant 
-that you are authorized to bind that entity to these Terms. 
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
 
-These Terms apply to the pre-release software made available to you at 
-github.com/namespacelabs/foundation (“Early Access Software”). These terms also 
-apply to any updates or upgrades thereto, as well as any support or other 
-services which Namespace Labs may provide you in connection with the Early 
-Access Software (“Other Services”). 
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
-By accessing and downloading the Early Access Software, whether in source or 
-object form, you agree in full to these Terms. 
+   1. Definitions.
 
-If you do not have authority to bind your entity or do not agree with these 
-Terms, you must not accept these Terms and may not use the Early Access 
-Software or receive any Other Services. The “Effective Date” of these Terms is 
-the date you first access or use the Early Access Software.
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
 
-1. Installation and Use Rights. You may install and use any number of copies of 
-the Early Access Software to evaluate the Early Access Software and provide 
-feedback to Namespace Labs; but may not test the Early Access Software in a 
-production environment or otherwise use the Early Access Software in production.
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
 
-2. Term and Termination. The term of these Terms and your right to use the 
-Early Access Software shall continue until the date Namespace Labs makes 
-available the Early Access Software generally available, whether freely or for 
-a fee; or the date Namespace Labs informs you that it is terminating the Terms, 
-which it may do at any time, for any reason or no reason, with or without 
-notice. Upon termination for any reason, you will purge all stored elements of 
-the Early Access Software from your systems.
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
 
-3. Other Software. The Early Access Software may be provided alongside other 
-software offered by Namespace Labs or third parties (such third party software, 
-“Third Party Applications”). You agree that any such offerings may be provided 
-under separate additional terms and conditions. You agree that Third Party 
-Applications made available to you by Namespace Labs are licensed to you by the 
-applicable third party, and not Namespace Labs. Any included notices for Third 
-Party Applications are for your information only.
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
 
-4. No SLAs; No Support Guarantee. You acknowledge and agree that the Early 
-Access Software is not provided subject to any service level agreement that you 
-may have entered into with Namespace Labs and that Namespace Labs may not 
-provide support for the Early Access Software.
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
 
-5. Data Collection. The Early Access Software may collect information about you 
-and your use of the software and send that to Namespace Labs. Namespace Labs 
-may use this information to provide services and improve Namespace Labs’ 
-products and services. This includes data about the performance of the 
-services, any problems you experience with them, and the features you use. This 
-also includes data about your device and the network you use to connect to our 
-services, including IP address, device identifiers, regional and language 
-settings. It includes information about the operating systems and other 
-software installed on your device. You can learn more about Namespace Labs’ 
-data collection and use in the Namespace Labs Privacy Policy located at 
-http://namespacelabs.com/privacy.
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
 
-By using this software, you consent to Namespace Labs’ collection of usage and 
-performance data related to your use of the Early Access Software.
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
 
-6. Feedback. If you provide any suggestions, enhancement requests, or other 
-feedback regarding the Early Access Software (“Feedback”), you hereby grant 
-Namespace Labs a perpetual, irrevocable, non-exclusive, worldwide, fully-paid, 
-sub-licensable (through multiple layers), assignable license to incorporate 
-into the Namespace Labs products and services or otherwise use any Feedback.
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
 
-7. Scope of License. The Early Access Software is licensed, not sold. This 
-agreement only gives you some rights to use the Early Access Software. 
-Namespace Labs reserves all other rights. Unless applicable law gives you more 
-rights despite this limitation, you may use the Early Access Software only as 
-expressly permitted in this agreement. In doing so, you must comply with any 
-technical limitations in the software that only allow you to use it in certain 
-ways. 
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
 
-8. Disclaimer of Warranty; Limitation of Liability. THE EARLY ACCESS SOFTWARE 
-IS PROVIDED “AS IS” AND WITHOUT WARRANTY OF ANY KIND BY NAMESPACE LABS. WITHOUT 
-LIMITATION, NAMESPACE LABS DISCLAIMS ALL WARRANTIES OF ANY KIND, EXPRESS OR 
-IMPLIED, STATUTORY OR OTHERWISE, REGARDING THE EARLY ACCESS SOFTWARE. NAMESPACE 
-LABS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, CONSEQUENTIAL, OR 
-SPECIAL LOSS, EVEN IF NAMESPACE LABS HAS BEEN ADVISED OF THE POSSIBILITY OF 
-SUCH LOSSES OCCURRING. NAMESPACE LABS’ LIABILITY FOR THE EARLY ACCESS SOFTWARE 
-SHALL BE LIMITED TO THE GREATER OF (A) ANY AMOUNT PAID BY YOU FOR THE EARLY 
-ACCESS SOFTWARE IN THE SIX (6) MONTHS PRECEEDING A CLAIM, IF ANY; AND (B) FIVE 
-DOLLARS ($5). EACH PARTY ACKNOWLEDGES AND AGREES THAT THE ESSENTIAL PURPOSE OF 
-THIS SECTION IS TO ALLOCATE THE RISKS BETWEEN THE PARTIES AND LIMIT POTENTIAL 
-LIABILITY GIVEN THE NATURE OF THE EARLY ACCESS SOFTWARE. NAMESPACE LABS’ 
-WILLINGNESS TO PROVIDE YOU WITH THE EARLY ACCESS SOFTWARE IS DEPENDENT ON YOUR 
-AGREEING TO THIS ALLOCATION OF RISK. EACH PARTY HAS RELIED ON THESE LIMITATIONS 
-IN DETERMINING WHETHER TO ENTER INTO THESE TERMS.
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
 
-9. Governing Law. These Terms are governed by the laws of the state of 
-California.
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
 
-10. Entire Agreement, Construction and Execution. If any provision of these 
-Terms is held to be unenforceable or invalid, that provision will be enforced 
-to the maximum extent possible, and the other provisions will remain in full 
-force and effect. These Terms are the complete and exclusive understanding and 
-agreement between the parties regarding the Early Access Software. Nothing in 
-the preceding sentence shall limit or exclude any liability for fraud or 
-fraudulent misrepresentation. The headings in these Terms are solely for 
-convenience, and shall not be taken into consideration in interpretation of 
-these Terms. Each party acknowledges and agrees that it has adequate 
-sophistication, including legal representation, to fully review and understand 
-these Terms; therefore, in interpretation of these Terms with respect to any 
-drafting ambiguities that may be identified or alleged, no presumption shall be 
-given in favor of the non-drafting party. These Terms may not be modified or 
-amended except by mutual written agreement of the parties.
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
 
-11. Assignment. No assignment of a party’s rights and obligations under these 
-Terms is permitted except with the prior written approval of the other party, 
-which shall not be unreasonably withheld; provided, however, that either party 
-may freely make such assignment to a successor in interest upon a change of 
-control.
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
 
-12. Notice. Any required notice under these Terms shall be deemed given 1 
-business day after being sent by email. You shall send any required notices to 
-hello@namespacelabs.com.
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
 
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.

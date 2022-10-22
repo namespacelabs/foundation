@@ -1,6 +1,6 @@
 // Copyright 2022 Namespace Labs Inc; All rights reserved.
-// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
-// available at http://github.com/namespacelabs/foundation
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
 
 package debug
 
@@ -39,43 +39,44 @@ func newUpdateLicenseCmd() *cobra.Command {
 		Use: "update-license",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			var paths []string
-
 			fsys := os.DirFS(".")
 
-			if err := fnfs.WalkDir(fsys, ".", func(path string, d fs.DirEntry) error {
-				if d.Name() == "." {
-					return nil
-				}
-
-				if len(d.Name()) > 0 && d.Name()[0] == '.' {
-					if d.IsDir() {
-						return fs.SkipDir
-					}
-					return nil
-				}
-
-				if d.IsDir() {
-					// "dist" contains compiled Typescript code, for example, std/nodejs/runtime.
-					if d.Name() == "node_modules" || d.Name() == "dist" {
-						return fs.SkipDir
-					}
-
-					return nil
-				}
-
-				for _, ignore := range ignoreSuffixes {
-					if strings.HasSuffix(path, ignore) {
+			paths := args
+			if len(paths) == 0 {
+				if err := fnfs.WalkDir(fsys, ".", func(path string, d fs.DirEntry) error {
+					if d.Name() == "." {
 						return nil
 					}
-				}
 
-				if slices.Contains(checkExtensions, filepath.Ext(path)) {
-					paths = append(paths, path)
+					if len(d.Name()) > 0 && d.Name()[0] == '.' {
+						if d.IsDir() {
+							return fs.SkipDir
+						}
+						return nil
+					}
+
+					if d.IsDir() {
+						// "dist" contains compiled Typescript code, for example, std/nodejs/runtime.
+						if d.Name() == "node_modules" || d.Name() == "dist" {
+							return fs.SkipDir
+						}
+
+						return nil
+					}
+
+					for _, ignore := range ignoreSuffixes {
+						if strings.HasSuffix(path, ignore) {
+							return nil
+						}
+					}
+
+					if slices.Contains(checkExtensions, filepath.Ext(path)) {
+						paths = append(paths, path)
+					}
+					return nil
+				}); err != nil {
+					return err
 				}
-				return nil
-			}); err != nil {
-				return err
 			}
 
 			var headers []struct {
@@ -83,16 +84,16 @@ func newUpdateLicenseCmd() *cobra.Command {
 				prefix []byte
 			}
 
-			for _, lic := range []string{apacheLicense, earlyAccessLicense} {
-				for _, p := range []func(string) []byte{cppComment, cComment, shellComment} {
+			for _, lic := range []string{apacheLicense, earlyAccessLicense, shortApacheLicense} {
+				for _, prependComment := range []func(string) []byte{cppComment, cComment, shellComment} {
 					headers = append(headers, struct {
 						target string
 						prefix []byte
-					}{lic, p(lic)})
+					}{lic, prependComment(lic)})
 				}
 			}
 
-			const target = earlyAccessLicense
+			const target = shortApacheLicense
 
 			var wouldWrite []string
 
@@ -109,20 +110,22 @@ func newUpdateLicenseCmd() *cobra.Command {
 							continue file
 						}
 
-						updated := append(bytes.TrimSpace(bytes.TrimPrefix(contents, h.prefix)), byte('\n'))
-						if err := os.WriteFile(path, updated, 0644); err != nil {
-							return err
-						}
+						contents = bytes.TrimPrefix(contents, h.prefix)
 						break
 					}
 				}
 
-				p := extensions[filepath.Ext(path)]
-				if p != nil {
+				for len(contents) > 0 && contents[0] == '\n' {
+					contents = contents[1:]
+				}
+
+				makeHeader := extensions[filepath.Ext(path)]
+				if makeHeader != nil {
 					if check {
 						wouldWrite = append(wouldWrite, path)
 					} else {
-						gen := p(target)
+						gen := makeHeader(target)
+						gen = append(gen, '\n')
 						if err := os.WriteFile(path, append(gen, contents...), 0644); err != nil {
 							return err
 						}
@@ -170,28 +173,39 @@ const earlyAccessLicense = `Copyright 2022 Namespace Labs Inc; All rights reserv
 Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
 available at http://github.com/namespacelabs/foundation`
 
+const shortApacheLicense = `Copyright 2022 Namespace Labs Inc; All rights reserved.
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.`
+
 func cppComment(license string) []byte {
 	lines := strings.Split(strings.TrimSpace(license), "\n")
 	for k, line := range lines {
-		lines[k] = "// " + line
+		lines[k] = prepend("//", line)
 	}
-	return []byte(strings.Join(lines, "\n") + "\n\n")
+	return []byte(strings.Join(lines, "\n") + "\n")
 }
 
 func shellComment(license string) []byte {
 	lines := strings.Split(strings.TrimSpace(license), "\n")
 	for k, line := range lines {
-		lines[k] = "# " + line
+		lines[k] = prepend("#", line)
 	}
-	return []byte(strings.Join(lines, "\n") + "\n\n")
+	return []byte(strings.Join(lines, "\n") + "\n")
 }
 
 func cComment(license string) []byte {
 	lines := strings.Split(strings.TrimSpace(license), "\n")
 	for k, line := range lines {
-		lines[k] = " * " + line
+		lines[k] = prepend(" *", line)
 	}
 	allLines := append([]string{"/**"}, lines...)
 	allLines = append(allLines, " */")
-	return []byte(strings.Join(allLines, "\n") + "\n\n")
+	return []byte(strings.Join(allLines, "\n") + "\n")
+}
+
+func prepend(prefix, line string) string {
+	if line == "" {
+		return prefix
+	}
+	return prefix + " " + line
 }

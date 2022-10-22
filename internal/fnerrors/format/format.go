@@ -1,6 +1,6 @@
 // Copyright 2022 Namespace Labs Inc; All rights reserved.
-// Licensed under the EARLY ACCESS SOFTWARE LICENSE AGREEMENT
-// available at http://github.com/namespacelabs/foundation
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
 
 // Pretty-printing of various namespace errors.
 // Needs to be in a separate package to access error types from elsewhere in the codebase
