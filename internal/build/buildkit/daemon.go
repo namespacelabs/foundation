@@ -36,8 +36,7 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, erro
 		Volumes: map[string]string{
 			containerName: "/var/lib/buildkit",
 		},
-		Privileged:        true,
-		UseHostNetworking: true, // we need to be able to access APIs that are hosted by the host.
+		Privileged: true,
 	}
 
 	if err := spec.Ensure(ctx, console.TypedOutput(ctx, "docker", console.CatOutputTool)); err != nil {
