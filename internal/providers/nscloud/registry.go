@@ -12,11 +12,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	reg "namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -30,7 +31,7 @@ const loginEndpoint = "login.namespace.so/token"
 type nscloudRegistry struct{}
 
 func RegisterRegistry() {
-	reg.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (reg.Manager, error) {
+	registry.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
 		return nscloudRegistry{}, nil
 	})
 
@@ -40,11 +41,21 @@ func RegisterRegistry() {
 func (nscloudRegistry) IsInsecure() bool { return false }
 
 func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
-	return reg.AllocateStaticName(r, registryAddr, repository)
+	url := registryAddr
+	if strings.HasSuffix(url, "/") {
+		url += repository
+	} else {
+		url += "/" + repository
+	}
+
+	imgid := oci.ImageID{Repository: url}
+
+	// We need to make sure our keychain is attached to the name.
+	return registry.StaticName(r, imgid, r.IsInsecure(), defaultKeychain{})
 }
 
 func (nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{ImageID: imgid, Keychain: DefaultKeychain}, nil
+	return oci.AllocatedName{ImageID: imgid, Keychain: defaultKeychain{}}, nil
 }
 
 type defaultKeychain struct{}

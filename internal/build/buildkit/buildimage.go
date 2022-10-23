@@ -101,11 +101,7 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 				// optimization as we don't yet wire the keychain into buildkit.
 				tasks.Attachments(ctx).AddResult("push", v.Repository)
 
-				img, err := l.solve(ctx, c, deps, nil, exportToRegistry(requested, nil))
-				if err != nil {
-					return nil, console.WithLogs(ctx, err)
-				}
-				return img, err
+				return l.solve(ctx, c, deps, nil, exportToRegistry(requested, nil))
 			}
 		}
 	}
