@@ -26,7 +26,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const registryName = "k3d-registry.nslocal.host"
+const registryName = "k3d-ns-registry.nslocal.host"
 
 func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(

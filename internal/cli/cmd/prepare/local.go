@@ -55,5 +55,5 @@ func prepareK8s(ctx context.Context, env cfg.Context, contextName string) comput
 		return prepare.PrepareExistingK8s(env, contextName)
 	}
 
-	return prepare.PrepareK3d("fn", env)
+	return prepare.PrepareK3d("ns", env)
 }
