@@ -22,7 +22,7 @@ import (
 var confConfigType = cfg.DefineConfigType[*Configuration]()
 
 type k3dRegistry struct {
-	PublicHostname     string
+	ContainerName      string
 	PublicPort         string
 	ContainerIPAddress string
 }
@@ -59,7 +59,7 @@ func Register() {
 			}
 
 			return &k3dRegistry{
-				PublicHostname:     conf.RegistryContainerName,
+				ContainerName:      conf.RegistryContainerName,
 				PublicPort:         inspected.NetworkSettings.Ports["5000/tcp"][0].HostPort,
 				ContainerIPAddress: inspected.NetworkSettings.Networks["bridge"].IPAddress,
 			}, nil
@@ -70,7 +70,7 @@ func Register() {
 func (r *k3dRegistry) IsInsecure() bool { return true }
 
 func (r *k3dRegistry) baseUrl() string {
-	return fmt.Sprintf("%s:%s", r.PublicHostname, r.PublicPort)
+	return fmt.Sprintf("127.0.0.1:%s", r.PublicPort)
 }
 
 func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
