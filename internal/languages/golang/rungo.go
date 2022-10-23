@@ -18,7 +18,7 @@ import (
 func RunGo(ctx context.Context, loc pkggraph.Location, sdk golang.LocalSDK, args ...string) error {
 	return tasks.Action("go.run").Arg("dir", loc.Rel()).HumanReadablef("go "+strings.Join(args, " ")).Run(ctx, func(ctx context.Context) error {
 		var cmd localexec.Command
-		cmd.Command = sdk.GoBin()
+		cmd.Command = golang.GoBin(sdk)
 		cmd.Args = args
 		cmd.AdditionalEnv = makeGoEnv(sdk)
 		cmd.Dir = loc.Abs()
@@ -28,5 +28,5 @@ func RunGo(ctx context.Context, loc pkggraph.Location, sdk golang.LocalSDK, args
 }
 
 func makeGoEnv(sdk golang.LocalSDK) []string {
-	return append([]string{sdk.GoRootEnv(), goPrivate()}, git.NoPromptEnv().Serialize()...)
+	return append([]string{golang.GoRootEnv(sdk), goPrivate()}, git.NoPromptEnv().Serialize()...)
 }

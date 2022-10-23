@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
@@ -37,7 +38,7 @@ func Build(ctx context.Context, env cfg.Context, bin GoBinary, conf build.Config
 }
 
 func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
-	sdk, err := golang.MatchSDK(bin.GoVersion, golang.HostPlatform())
+	sdk, err := golang.MatchSDK(bin.GoVersion, host.HostPlatform())
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +102,7 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 
 	var cmd localexec.Command
 	cmd.Label = "go build"
-	cmd.Command = sdk.GoBin()
+	cmd.Command = golang.GoBin(sdk)
 	cmd.Args = append(goBuildArgs(sdk.Version), "-o="+out, pkg)
 	cmd.AdditionalEnv = append(env, makeGoEnv(sdk)...)
 	cmd.Dir = modulePath

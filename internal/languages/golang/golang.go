@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
@@ -111,7 +112,7 @@ func (impl) TidyServer(ctx context.Context, env cfg.Context, pkgs pkggraph.Packa
 		return fnerrors.Wrap(loc, err)
 	}
 
-	sdk, err := golang.MatchSDK(ext.GoVersion, golang.HostPlatform())
+	sdk, err := golang.MatchSDK(ext.GoVersion, host.HostPlatform())
 	if err != nil {
 		return fnerrors.Wrap(loc, err)
 	}

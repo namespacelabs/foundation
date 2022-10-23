@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -64,7 +65,7 @@ func sdkList(sdks []string, goVersion string) []sdk {
 		{
 			name: "go",
 			make: func(ctx context.Context, in *compute.In, verify bool) (*compute.In, error) {
-				sdk, err := golang.SDK(goVersion, golang.HostPlatform())
+				sdk, err := golang.SDK(goVersion, host.HostPlatform())
 				if err != nil {
 					return nil, err
 				}

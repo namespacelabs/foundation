@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/languages/golang"
 	"namespacelabs.dev/foundation/internal/parsing"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -39,7 +40,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 				return err
 			}
 
-			sdk, err := golangsdk.MatchSDK(goVersion, golangsdk.HostPlatform())
+			sdk, err := golangsdk.MatchSDK(goVersion, host.HostPlatform())
 			if err != nil {
 				return fnerrors.Wrap(loc, err)
 			}
