@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
 package host
 
 import (
@@ -42,7 +46,7 @@ func (p *ParsedVersions) Get() *VersionConfiguration {
 	return &p.v
 }
 
-func (p *ParsedVersions) SDK(version string, platform specs.Platform, binary string, makeURL func(string, specs.Platform) string) (compute.Computable[LocalSDK], error) {
+func (p *ParsedVersions) SDK(version string, platform specs.Platform, makeURL func(string, specs.Platform) (string, string)) (compute.Computable[LocalSDK], error) {
 	v := p.Get()
 
 	actualVer, has := v.Versions[version]
@@ -61,13 +65,15 @@ func (p *ParsedVersions) SDK(version string, platform specs.Platform, binary str
 		return nil, fnerrors.UserError(nil, "%s/sdk: no platform configuration for %q in %q", p.Name, key, actualVer)
 	}
 
+	url, binary := makeURL(actualVer, platform)
+
 	ref := artifacts.Reference{
-		URL: makeURL(actualVer, platform),
+		URL: url,
 		Digest: schema.Digest{
 			Algorithm: "sha256",
 			Hex:       digest,
 		},
 	}
 
-	return &PrepareSDK{Name: p.Name, Binary: binary, Version: actualVer, Ref: ref}, nil
+	return &PrepareSDK{Name: p.Name, Platform: platform, Binary: binary, Version: actualVer, Ref: ref}, nil
 }

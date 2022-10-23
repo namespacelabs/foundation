@@ -30,7 +30,7 @@ type downloadUrl struct {
 }
 
 func (dl *downloadUrl) Action() *tasks.ActionEvent {
-	return tasks.Action("artifact.download").Arg("url", dl.url).Arg("digest", dl.digest)
+	return tasks.Action("artifact.download").Arg("url", dl.url).Arg("digest", dl.digest.String())
 }
 
 func (dl *downloadUrl) Inputs() *compute.In {

@@ -15,17 +15,15 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/artifacts"
-	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
-	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/disk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -86,8 +84,8 @@ type Registry = Node
 
 type K3D string
 
-func EnsureSDK(ctx context.Context) (K3D, error) {
-	sdk, err := SDK(ctx)
+func EnsureSDK(ctx context.Context, p specs.Platform) (K3D, error) {
+	sdk, err := SDK(ctx, p)
 	if err != nil {
 		return "", err
 	}
@@ -95,9 +93,8 @@ func EnsureSDK(ctx context.Context) (K3D, error) {
 	return compute.GetValue(ctx, sdk)
 }
 
-func SDK(ctx context.Context) (compute.Computable[K3D], error) {
-	platform := devhost.RuntimePlatform()
-	key := fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+func SDK(ctx context.Context, p specs.Platform) (compute.Computable[K3D], error) {
+	key := fmt.Sprintf("%s/%s", p.OS, p.Architecture)
 	ref, ok := Pins[key]
 	if !ok {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
@@ -115,19 +112,11 @@ func SDK(ctx context.Context) (compute.Computable[K3D], error) {
 
 	return compute.Map(
 		tasks.Action("k3d.ensure").Arg("version", version).HumanReadablef("Ensuring k3d %s is installed", version),
-		compute.Inputs().Computable("k3d", w),
+		compute.Inputs().Computable("k3d", w).JSON("platform", p),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (K3D, error) {
 			return K3D(filepath.Join(compute.MustGetDepValue(r, w, "k3d").Files, "k3d")), nil
 		}), nil
-}
-
-func AllDownloads() []compute.Computable[bytestream.ByteStream] {
-	var downloads []compute.Computable[bytestream.ByteStream]
-	for _, v := range Pins {
-		downloads = append(downloads, download.URL(v))
-	}
-	return downloads
 }
 
 // https://github.com/rancher/k3d/issues/807

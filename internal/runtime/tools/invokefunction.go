@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/sdk/deno"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/types"
@@ -36,7 +37,7 @@ func InvokeFunction(ctx context.Context, loc pkggraph.Location, rootDir string, 
 
 	switch inv.ExperimentalFunction.Runtime {
 	case denoRuntime:
-		d, err := deno.SDK(ctx)
+		d, err := deno.SDK(ctx, host.HostPlatform())
 		if err != nil {
 			return nil, fnerrors.New("failed to invoke deno: %w", err)
 		}

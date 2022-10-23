@@ -10,9 +10,7 @@ import (
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
-	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
-	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -49,8 +47,4 @@ func SDK(ctx context.Context) (compute.Computable[Yarn], error) {
 		func(ctx context.Context, r compute.Resolved) (Yarn, error) {
 			return Yarn(filepath.Join(compute.MustGetDepValue(r, w, "yarn").Files, "yarn.js")), nil
 		}), nil
-}
-
-func AllDownloads() []compute.Computable[bytestream.ByteStream] {
-	return []compute.Computable[bytestream.ByteStream]{download.URL(Pin)}
 }

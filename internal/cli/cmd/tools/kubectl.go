@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -47,7 +48,7 @@ func newKubeCtlCmd() *cobra.Command {
 			fmt.Fprintf(console.Stderr(ctx), "Running kubectl %s\n", strings.Join(cmdLine, " "))
 		}
 
-		kubectlBin, err := kubectl.EnsureSDK(ctx)
+		kubectlBin, err := kubectl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
 			return fnerrors.Wrapf(nil, err, "failed to download Kubernetes SDK")
 		}

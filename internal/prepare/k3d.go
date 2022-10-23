@@ -20,6 +20,7 @@ import (
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	kubeclient "namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -33,7 +34,7 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[[]*schem
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
 			// download k3d
-			k3dbin, err := k3d.EnsureSDK(ctx)
+			k3dbin, err := k3d.EnsureSDK(ctx, host.HostPlatform())
 			if err != nil {
 				return nil, err
 			}

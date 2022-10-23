@@ -10,15 +10,14 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
-	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/zipfs"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
@@ -64,8 +63,8 @@ var Pins = map[string]artifacts.Reference{
 
 type Deno string
 
-func EnsureSDK(ctx context.Context) (Deno, error) {
-	sdk, err := SDK(ctx)
+func EnsureSDK(ctx context.Context, p specs.Platform) (Deno, error) {
+	sdk, err := SDK(ctx, p)
 	if err != nil {
 		return "", err
 	}
@@ -73,9 +72,8 @@ func EnsureSDK(ctx context.Context) (Deno, error) {
 	return compute.GetValue(ctx, sdk)
 }
 
-func SDK(ctx context.Context) (compute.Computable[Deno], error) {
-	platform := devhost.RuntimePlatform()
-	key := fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
+func SDK(ctx context.Context, p specs.Platform) (compute.Computable[Deno], error) {
+	key := fmt.Sprintf("%s/%s", p.OS, p.Architecture)
 	ref, ok := Pins[key]
 	if !ok {
 		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
@@ -85,7 +83,7 @@ func SDK(ctx context.Context) (compute.Computable[Deno], error) {
 
 	return compute.Map(
 		tasks.Action("deno.ensure").Arg("version", version),
-		compute.Inputs().Computable("deno", w),
+		compute.Inputs().Computable("deno", w).JSON("platform", p),
 		compute.Output{},
 		func(ctx context.Context, r compute.Resolved) (Deno, error) {
 			denoBin := filepath.Join(compute.MustGetDepValue(r, w, "deno").Files, "deno")
@@ -96,14 +94,6 @@ func SDK(ctx context.Context) (compute.Computable[Deno], error) {
 
 			return Deno(denoBin), nil
 		}), nil
-}
-
-func AllDownloads() []compute.Computable[bytestream.ByteStream] {
-	var downloads []compute.Computable[bytestream.ByteStream]
-	for _, v := range Pins {
-		downloads = append(downloads, download.URL(v))
-	}
-	return downloads
 }
 
 func (deno Deno) Run(ctx context.Context, dir string, rio rtypes.IO, args ...string) error {

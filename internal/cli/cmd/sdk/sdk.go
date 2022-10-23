@@ -12,13 +12,15 @@ import (
 	"path/filepath"
 
 	"github.com/morikuni/aec"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
@@ -26,13 +28,15 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
+	"namespacelabs.dev/foundation/internal/sdk/nodejs"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewSdkCmd() *cobra.Command {
-	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "octant", "deno"}
+	sdks := []string{"go", "nodejs", "k3d", "kubectl", "grpcurl", "deno"}
 
 	goSdkVersion := "1.19"
+	nodejsVersion := "16"
 
 	cmd := &cobra.Command{
 		Use:   "sdk",
@@ -40,10 +44,11 @@ func NewSdkCmd() *cobra.Command {
 	}
 
 	selectedSdkList := func() []sdk {
-		return sdkList(sdks, goSdkVersion)
+		return sdkList(sdks, goSdkVersion, nodejsVersion)
 	}
 
 	cmd.PersistentFlags().StringVar(&goSdkVersion, "go_version", goSdkVersion, "Go version.")
+	cmd.PersistentFlags().StringVar(&nodejsVersion, "nodejs_version", nodejsVersion, "NodeJS version.")
 	cmd.PersistentFlags().StringArrayVar(&sdks, "sdks", sdks, "The SDKs we download.")
 
 	cmd.AddCommand(newSdkShellCmd(selectedSdkList))
@@ -56,30 +61,44 @@ func NewSdkCmd() *cobra.Command {
 
 type sdk struct {
 	name     string
-	make     func(context.Context, *compute.In, bool) (*compute.In, error)
-	makePath func(deps compute.Resolved) (string, error)
+	make     func(context.Context, string, *compute.In, specs.Platform) (*compute.In, error)
+	makePath func(compute.Resolved, string) (string, error)
 }
 
-func sdkList(sdks []string, goVersion string) []sdk {
+func sdkList(sdks []string, goVersion, nodejsVersion string) []sdk {
 	var available = []sdk{
 		{
 			name: "go",
-			make: func(ctx context.Context, in *compute.In, verify bool) (*compute.In, error) {
-				sdk, err := golang.SDK(goVersion, host.HostPlatform())
+			make: func(ctx context.Context, key string, in *compute.In, p specs.Platform) (*compute.In, error) {
+				sdk, err := golang.SDK(goVersion, p)
 				if err != nil {
 					return nil, err
 				}
-				return in.Computable("sdk", sdk), nil
+				return in.Computable(key, sdk), nil
 			},
-			makePath: func(deps compute.Resolved) (string, error) {
-				goSdk, _ := compute.GetDepWithType[golang.LocalSDK](deps, "sdk")
-				return filepath.Join(goSdk.Value.Path, "go/bin"), nil
+			makePath: func(deps compute.Resolved, key string) (string, error) {
+				sdk, _ := compute.GetDepWithType[golang.LocalSDK](deps, key)
+				return filepath.Dir(sdk.Value.Binary), nil
 			},
 		},
-		simpleFileSDK("k3d", k3d.SDK, k3d.AllDownloads),
-		simpleFileSDK("kubectl", kubectl.SDK, kubectl.AllDownloads),
-		simpleFileSDK("grpcurl", grpcurl.SDK, grpcurl.AllDownloads),
-		simpleFileSDK("deno", deno.SDK, deno.AllDownloads),
+		{
+			name: "nodejs",
+			make: func(ctx context.Context, key string, in *compute.In, p specs.Platform) (*compute.In, error) {
+				sdk, err := nodejs.SDK(nodejsVersion, p)
+				if err != nil {
+					return nil, err
+				}
+				return in.Computable(key, sdk), nil
+			},
+			makePath: func(deps compute.Resolved, key string) (string, error) {
+				sdk, _ := compute.GetDepWithType[nodejs.LocalSDK](deps, key)
+				return filepath.Dir(sdk.Value.Binary), nil
+			},
+		},
+		simpleFileSDK("k3d", k3d.SDK),
+		simpleFileSDK("kubectl", kubectl.SDK),
+		simpleFileSDK("grpcurl", grpcurl.SDK),
+		simpleFileSDK("deno", deno.SDK),
 	}
 
 	var ret []sdk
@@ -91,26 +110,18 @@ func sdkList(sdks []string, goVersion string) []sdk {
 	return ret
 }
 
-func simpleFileSDK[V ~string](name string, makeComputable func(context.Context) (compute.Computable[V], error),
-	allDownloads func() []compute.Computable[bytestream.ByteStream]) sdk {
+func simpleFileSDK[V ~string](name string, makeComputable func(context.Context, specs.Platform) (compute.Computable[V], error)) sdk {
 	return sdk{
 		name: name,
-		make: func(ctx context.Context, in *compute.In, verify bool) (*compute.In, error) {
-			if verify {
-				for k, download := range allDownloads() {
-					in = in.Computable(fmt.Sprintf("%s:%d", name, k), download)
-				}
-				return in, nil
-			}
-
-			sdk, err := makeComputable(ctx)
+		make: func(ctx context.Context, key string, in *compute.In, p specs.Platform) (*compute.In, error) {
+			sdk, err := makeComputable(ctx, p)
 			if err != nil {
 				return nil, err
 			}
-			return in.Computable(name, sdk), nil
+			return in.Computable(key, sdk), nil
 		},
-		makePath: func(deps compute.Resolved) (string, error) {
-			sdk, _ := compute.GetDepWithType[V](deps, name)
+		makePath: func(deps compute.Resolved, key string) (string, error) {
+			sdk, _ := compute.GetDepWithType[V](deps, key)
 			return filepath.Dir(string(sdk.Value)), nil
 		},
 	}
@@ -153,7 +164,7 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 			switch filepath.Base(shell) {
 			case "bash":
 				prompt := fmt.Sprintf("%s %s %s \\w$ ",
-					aec.LightBlueF.Apply("(fn)"),
+					aec.LightBlueF.Apply("(ns)"),
 					aec.LightGreenF.Apply("\\u"),
 					aec.LightBlackF.Apply("\\h"))
 
@@ -161,7 +172,7 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 				shellEnv = []string{"PS1=" + prompt}
 			case "zsh":
 				prompt := fmt.Sprintf("%s %s %s %%~$ ",
-					aec.LightBlueF.Apply("(fn)"),
+					aec.LightBlueF.Apply("(ns)"),
 					aec.LightGreenF.Apply("%n"),
 					aec.LightBlackF.Apply("%m"))
 
@@ -217,12 +228,22 @@ func newSdkVerifyCmd(selectedSdkList func() []sdk) *cobra.Command {
 				return err
 			}
 
+			platforms := []specs.Platform{
+				{Architecture: "amd64", OS: "linux"},
+				{Architecture: "arm64", OS: "linux"},
+				{Architecture: "amd64", OS: "darwin"},
+				{Architecture: "arm64", OS: "darwin"},
+			}
+
 			in := compute.Inputs()
 			for _, sdk := range selectedSdkList() {
-				var err error
-				in, err = sdk.make(ctx, in, true)
-				if err != nil {
-					return err
+				for _, p := range platforms {
+					newIn, err := sdk.make(ctx, fmt.Sprintf("%s-%s", sdk.name, devhost.FormatPlatform(p)), in, p)
+					if err != nil {
+						fmt.Fprintf(console.Warnings(ctx), "Skipped %q (%s): %v\n", sdk.name, devhost.FormatPlatform(p), err)
+					} else {
+						in = newIn
+					}
 				}
 			}
 
@@ -249,7 +270,7 @@ func prependPath(existing, additional string) string {
 func makeDownloads(ctx context.Context, sdks []sdk) ([]compute.Computable[string], error) {
 	var downloads []compute.Computable[string]
 	for _, sdk := range sdks {
-		c, err := sdk.make(ctx, compute.Inputs(), false)
+		c, err := sdk.make(ctx, sdk.name, compute.Inputs(), host.HostPlatform())
 		if err != nil {
 			return nil, err
 		}
@@ -260,7 +281,7 @@ func makeDownloads(ctx context.Context, sdks []sdk) ([]compute.Computable[string
 			tasks.Action("sdk.download"),
 			c, compute.Output{},
 			func(ctx context.Context, deps compute.Resolved) (string, error) {
-				return sdk.makePath(deps)
+				return sdk.makePath(deps, sdk.name)
 			}))
 	}
 	return downloads, nil

@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
 package host
 
 import (
@@ -5,6 +9,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
@@ -21,10 +26,11 @@ type LocalSDK struct {
 }
 
 type PrepareSDK struct {
-	Name    string
-	Binary  string
-	Version string
-	Ref     artifacts.Reference
+	Name     string
+	Platform specs.Platform
+	Binary   string
+	Version  string
+	Ref      artifacts.Reference
 
 	compute.DoScoped[LocalSDK]
 }
@@ -33,7 +39,12 @@ func (p *PrepareSDK) Action() *tasks.ActionEvent {
 	return tasks.Action(fmt.Sprintf("%s.sdk.prepare", p.Name)).Arg("version", p.Version)
 }
 func (p *PrepareSDK) Inputs() *compute.In {
-	return compute.Inputs().Str("version", p.Version).JSON("ref", p.Ref)
+	return compute.Inputs().
+		Str("version", p.Version).
+		JSON("ref", p.Ref).
+		Str("name", p.Name).
+		JSON("platform", p.Platform).
+		Str("binary", p.Binary)
 }
 func (p *PrepareSDK) Output() compute.Output { return compute.Output{NotCacheable: true} }
 func (p *PrepareSDK) Compute(ctx context.Context, _ compute.Resolved) (LocalSDK, error) {

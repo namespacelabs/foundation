@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/sdk/deno"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -23,7 +24,7 @@ func newDenoCmd() *cobra.Command {
 	}
 
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
-		d, err := deno.EnsureSDK(ctx)
+		d, err := deno.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
 			return err
 		}

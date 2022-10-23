@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -18,7 +19,7 @@ type k3dUnprepare struct {
 
 func UnprepareK3d(ctx context.Context) error {
 	return tasks.Action("unprepare.k3d").Run(ctx, func(ctx context.Context) error {
-		k3dbin, err := k3d.EnsureSDK(ctx)
+		k3dbin, err := k3d.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
 			return err
 		}

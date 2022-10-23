@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
+	"namespacelabs.dev/foundation/internal/sdk/host"
 )
 
 func newGRPCurlCmd() *cobra.Command {
@@ -21,7 +22,7 @@ func newGRPCurlCmd() *cobra.Command {
 		DisableFlagParsing: true,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			bin, err := grpcurl.EnsureSDK(ctx)
+			bin, err := grpcurl.EnsureSDK(ctx, host.HostPlatform())
 			if err != nil {
 				return err
 			}

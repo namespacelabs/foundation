@@ -37,8 +37,8 @@ func MatchSDK(version string, platform specs.Platform) (compute.Computable[Local
 }
 
 func SDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
-	return v.SDK(version, platform, "go/bin/go", func(ver string, platform specs.Platform) string {
-		return fmt.Sprintf("https://go.dev/dl/go%s.%s-%s.tar.gz", ver, platform.OS, platform.Architecture)
+	return v.SDK(version, platform, func(ver string, platform specs.Platform) (string, string) {
+		return fmt.Sprintf("https://go.dev/dl/go%s.%s-%s.tar.gz", ver, platform.OS, platform.Architecture), "go/bin/go"
 	})
 }
 
