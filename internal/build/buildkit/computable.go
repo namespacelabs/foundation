@@ -86,7 +86,7 @@ func digestRequest(ctx context.Context, req *frontendReq) (schema.Digest, error)
 	return schema.FromHash("sha256", w), nil
 }
 
-func makeImage(env cfg.Context, conf build.BuildTarget, req compute.Computable[*frontendReq], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedName]) compute.Computable[oci.Image] {
+func makeImage(env cfg.Context, conf build.BuildTarget, req compute.Computable[*frontendReq], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedRepository]) compute.Computable[oci.Image] {
 	base := &baseRequest[oci.Image]{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),

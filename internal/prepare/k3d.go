@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
@@ -26,6 +25,8 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
+
+const registryName = "k3d-registry.nslocal.host"
 
 func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
@@ -50,7 +51,6 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.
 
 			k3dPrepare := &k3dPrepare{clusterName, k3dbin, dockerclient}
 
-			const registryName = "k3d-registry.nslocal.dev"
 			registryAddr, err := k3dPrepare.createOrRestartRegistry(ctx, registryName)
 			if err != nil {
 				return nil, err
@@ -91,14 +91,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 			return "", err
 		}
 
-		requestedRegistryPort := 41000
-		// If running in CI, use dynamic port allocation to reduce probability of a port collision.
-		// And in CI there's little need for stable addresses.
-		if environment.IsRunningInCI() {
-			requestedRegistryPort = 0
-		}
-
-		if err := p.k3dbin.CreateRegistry(ctx, registryName, requestedRegistryPort); err != nil {
+		if err := p.k3dbin.CreateRegistry(ctx, registryName, 0); err != nil {
 			return "", err
 		}
 
@@ -109,7 +102,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 	}
 
 	if !registryCtr.State.Running {
-		if err := p.k3dbin.StartNode(ctx, registryName); err != nil {
+		if err := p.dockerclient.ContainerStart(ctx, registryName, types.ContainerStartOptions{}); err != nil {
 			return "", fnerrors.InternalError("failed to restart registry %q: %w", registryName, err)
 		}
 

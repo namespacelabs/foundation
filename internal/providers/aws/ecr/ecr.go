@@ -18,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -52,24 +51,7 @@ func repoURL(sesh aws.Config, caller *sts.GetCallerIdentityOutput) string {
 
 func (em ecrManager) IsInsecure() bool { return false }
 
-func (em ecrManager) Tag(ctx context.Context, packageName schema.PackageName) (oci.AllocatedName, error) {
-	res, err := compute.Get(ctx, keychainSession(em).resolveAccount())
-	if err != nil {
-		return oci.AllocatedName{}, err
-	}
-
-	caller := res.Value
-	url := packageURL(repoURL(em.sesh.Config(), caller), packageName.String())
-
-	return oci.AllocatedName{
-		Keychain: keychainSession(em),
-		ImageID: oci.ImageID{
-			Repository: url,
-		},
-	}, nil
-}
-
-func (em ecrManager) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
+func (em ecrManager) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	keychain := keychainSession(em)
 
 	var repo compute.Computable[string] = &makeRepository{
@@ -81,28 +63,28 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 	return compute.Map(tasks.Action("ecr.allocate-tag").Category("aws"),
 		compute.Inputs().Str("repository", repository).Computable("repo", repo),
 		compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedName, error) {
+		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedRepository, error) {
 			imgid := oci.ImageID{
 				Repository: compute.MustGetDepValue(deps, repo, "repo"),
 			}
 
 			tasks.Attachments(ctx).AddResult("repository", imgid.Repository)
 
-			return oci.AllocatedName{
-				Keychain: keychain,
-				ImageID:  imgid,
+			return oci.AllocatedRepository{
+				Parent: em,
+				TargetRepository: oci.TargetRepository{
+					Keychain: keychain,
+					ImageID:  imgid,
+				},
 			}, nil
 		},
 	)
 }
 
-func (em ecrManager) AttachKeychain(img oci.ImageID) (oci.AllocatedName, error) {
+func (em ecrManager) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
 	keychain := keychainSession(em)
 
-	return oci.AllocatedName{
-		Keychain: keychain,
-		ImageID:  img,
-	}, nil
+	return registry.AttachStaticKeychain(em, img, keychain), nil
 }
 
 type makeRepository struct {

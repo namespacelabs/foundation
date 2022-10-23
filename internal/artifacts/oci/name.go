@@ -18,15 +18,18 @@ type Keychain interface {
 	Resolve(context.Context, authn.Resource) (authn.Authenticator, error)
 }
 
-type AllocatedName struct {
+type AllocatedRepository struct {
 	Parent interface{}
+	TargetRepository
+}
 
+type TargetRepository struct {
 	InsecureRegistry bool
 	Keychain         Keychain
 	ImageID
 }
 
-func (t AllocatedName) ComputeDigest(context.Context) (schema.Digest, error) {
+func (t AllocatedRepository) ComputeDigest(context.Context) (schema.Digest, error) {
 	return schema.DigestOf("insecureRegistry", t.InsecureRegistry, "repository", t.Repository, "tag", t.Tag, "digest", t.Digest)
 }
 
@@ -39,7 +42,7 @@ func defaultTag(digest v1.Hash) string {
 	return strings.TrimPrefix(digest.String(), "sha256:")
 }
 
-func ParseTag(tag AllocatedName, digest v1.Hash) (name.Tag, error) {
+func ParseTag(tag TargetRepository, digest v1.Hash) (name.Tag, error) {
 	var opts []name.Option
 	if tag.InsecureRegistry {
 		opts = append(opts, name.Insecure)

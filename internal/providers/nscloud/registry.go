@@ -40,7 +40,7 @@ func RegisterRegistry() {
 
 func (nscloudRegistry) IsInsecure() bool { return false }
 
-func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
+func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	url := registryAddr
 	if strings.HasSuffix(url, "/") {
 		url += repository
@@ -54,8 +54,8 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 	return registry.StaticName(r, imgid, r.IsInsecure(), defaultKeychain{})
 }
 
-func (nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{ImageID: imgid, Keychain: defaultKeychain{}}, nil
+func (r nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedRepository, error) {
+	return registry.AttachStaticKeychain(r, imgid, defaultKeychain{}), nil
 }
 
 type defaultKeychain struct{}

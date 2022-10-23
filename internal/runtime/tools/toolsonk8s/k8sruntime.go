@@ -61,7 +61,12 @@ func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSta
 			tasks.Attachments(ctx).AddResult("ref", resolvedName.ImageID.ImageRef())
 
 			// XXX this ideally would have done by the parent, so we'd have parallelism.
-			return oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName, true)
+			digest, err := oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName.TargetRepository, true)
+			if err != nil {
+				return oci.ImageID{}, err
+			}
+
+			return resolvedName.WithDigest(digest), nil
 		})
 		if err != nil {
 			return err

@@ -14,15 +14,15 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func pushImage(ctx context.Context, tag AllocatedName, img v1.Image, trackProgress bool) (ImageID, error) {
+func pushImage(ctx context.Context, tag TargetRepository, img v1.Image, trackProgress bool) (v1.Hash, error) {
 	digest, err := img.Digest()
 	if err != nil {
-		return ImageID{}, fnerrors.InternalError("digest missing on %q: %w", reflect.TypeOf(img).String(), err)
+		return v1.Hash{}, fnerrors.InternalError("digest missing on %q: %w", reflect.TypeOf(img).String(), err)
 	}
 
 	ref, err := ParseTag(tag, digest)
 	if err != nil {
-		return ImageID{}, fnerrors.InternalError("failed to parse tag: %w", err)
+		return v1.Hash{}, fnerrors.InternalError("failed to parse tag: %w", err)
 	}
 
 	remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
@@ -33,13 +33,13 @@ func pushImage(ctx context.Context, tag AllocatedName, img v1.Image, trackProgre
 	}
 
 	if err := remote.Write(ref, img, remoteOpts...); err != nil {
-		return ImageID{}, fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
+		return v1.Hash{}, fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
 	}
 
-	return tag.WithDigest(digest), nil
+	return digest, nil
 }
 
-func pushImageIndex(ctx context.Context, tag AllocatedName, img v1.ImageIndex, trackProgress bool) error {
+func pushImageIndex(ctx context.Context, tag TargetRepository, img v1.ImageIndex, trackProgress bool) error {
 	digest, err := img.Digest()
 	if err != nil {
 		return err

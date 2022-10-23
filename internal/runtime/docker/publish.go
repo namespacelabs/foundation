@@ -13,12 +13,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PublishImage(tag compute.Computable[oci.AllocatedName], image compute.Computable[oci.ResolvableImage]) compute.Computable[oci.ImageID] {
+func PublishImage(tag compute.Computable[oci.AllocatedRepository], image compute.Computable[oci.ResolvableImage]) compute.Computable[oci.ImageID] {
 	return &publishImage{tag: tag, image: image}
 }
 
 type publishImage struct {
-	tag   compute.Computable[oci.AllocatedName]
+	tag   compute.Computable[oci.AllocatedRepository]
 	image compute.Computable[oci.ResolvableImage]
 
 	compute.LocalScoped[oci.ImageID]
@@ -51,7 +51,7 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci
 	if err != nil {
 		return oci.ImageID{}, err
 	}
-	ref, err := oci.ParseTag(tag, digest)
+	ref, err := oci.ParseTag(tag.TargetRepository, digest)
 	if err != nil {
 		return oci.ImageID{}, err
 	}

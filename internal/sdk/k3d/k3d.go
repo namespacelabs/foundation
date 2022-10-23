@@ -226,10 +226,6 @@ func (k3d K3D) CreateRegistry(ctx context.Context, name string, port int) error 
 
 	return tasks.Action("k3d.create-image-registry").Run(ctx, func(ctx context.Context) error {
 		args := []string{"registry", "create", strings.TrimPrefix(name, "k3d-")}
-		if port != 0 {
-			args = append(args, "-p", fmt.Sprintf("%d", port))
-		}
-
 		return k3d.do(ctx, args...)
 	})
 }
@@ -257,6 +253,8 @@ func (k3d K3D) do(ctx context.Context, args ...string) error {
 }
 
 func (k3d K3D) doWithStdoutStderr(ctx context.Context, stdout io.Writer, stderr io.Writer, args ...string) error {
+	fmt.Fprintf(console.Debug(ctx), "k3d: running %s\n", strings.Join(append([]string{string(k3d)}, args...), " "))
+
 	cmd := exec.CommandContext(ctx, string(k3d), args...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr

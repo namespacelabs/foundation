@@ -32,7 +32,7 @@ type ResolvableImage interface {
 	Image() (Image, error)
 	ImageForPlatform(specs.Platform) (Image, error)
 	ImageIndex() (ImageIndex, error)
-	Push(context.Context, AllocatedName, bool) (ImageID, error)
+	Push(context.Context, TargetRepository, bool) (v1.Hash, error)
 
 	cache(context.Context, cache.Cache) (schema.Digest, error)
 }
@@ -85,7 +85,7 @@ func (raw rawImage) ImageIndex() (ImageIndex, error) {
 	return nil, fnerrors.InternalError("expected an image index, saw an image")
 }
 
-func (raw rawImage) Push(ctx context.Context, tag AllocatedName, trackProgress bool) (ImageID, error) {
+func (raw rawImage) Push(ctx context.Context, tag TargetRepository, trackProgress bool) (v1.Hash, error) {
 	return pushImage(ctx, tag, raw.image, trackProgress)
 }
 
@@ -121,17 +121,17 @@ func (raw rawImageIndex) ImageIndex() (ImageIndex, error) {
 	return raw.index, nil
 }
 
-func (raw rawImageIndex) Push(ctx context.Context, tag AllocatedName, trackProgress bool) (ImageID, error) {
+func (raw rawImageIndex) Push(ctx context.Context, tag TargetRepository, trackProgress bool) (v1.Hash, error) {
 	digest, err := raw.index.Digest()
 	if err != nil {
-		return ImageID{}, err
+		return v1.Hash{}, err
 	}
 
 	if err := pushImageIndex(ctx, tag, raw.index, trackProgress); err != nil {
-		return ImageID{}, err
+		return v1.Hash{}, err
 	}
 
-	return tag.WithDigest(digest), nil
+	return digest, nil
 }
 
 func (raw rawImageIndex) cache(ctx context.Context, c cache.Cache) (schema.Digest, error) {

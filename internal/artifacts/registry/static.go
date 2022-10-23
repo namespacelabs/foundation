@@ -24,11 +24,11 @@ func (sr staticRegistry) IsInsecure() bool {
 	return sr.r.Insecure
 }
 
-func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
+func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	return AllocateStaticName(sr, sr.r.Url, repository)
 }
 
-func AllocateStaticName(r Manager, url, repository string) compute.Computable[oci.AllocatedName] {
+func AllocateStaticName(r Manager, url, repository string) compute.Computable[oci.AllocatedRepository] {
 	if strings.HasSuffix(url, "/") {
 		url += repository
 	} else {
@@ -40,10 +40,17 @@ func AllocateStaticName(r Manager, url, repository string) compute.Computable[oc
 	return StaticName(r, imgid, r.IsInsecure(), nil)
 }
 
-func (sr staticRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{
-		Parent:           sr,
-		InsecureRegistry: sr.r.GetInsecure(),
-		ImageID:          img,
-	}, nil
+func (sr staticRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
+	return AttachStaticKeychain(sr, img, nil), nil
+}
+
+func AttachStaticKeychain(r Manager, img oci.ImageID, keychain oci.Keychain) oci.AllocatedRepository {
+	return oci.AllocatedRepository{
+		Parent: r,
+		TargetRepository: oci.TargetRepository{
+			InsecureRegistry: r.IsInsecure(),
+			ImageID:          img,
+			Keychain:         keychain,
+		},
+	}
 }

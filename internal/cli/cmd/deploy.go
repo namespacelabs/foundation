@@ -249,11 +249,9 @@ func uploadPlanTo(ctx context.Context, targetRepo string, plan *schema.DeployPla
 
 	image := oci.MakeImageFromScratch("deploy plan", oci.MakeLayer("deploy plan contents", compute.Precomputed[fs.FS](&contents, digestfs.Digest)))
 
-	result := oci.PublishImage(registry.Precomputed(oci.AllocatedName{
-		ImageID: oci.ImageID{
-			Repository: filepath.Join(targetRepo, "plan"),
-		},
-	}), image)
+	result := oci.PublishImage(registry.Precomputed(registry.AttachStaticKeychain(nil, oci.ImageID{
+		Repository: filepath.Join(targetRepo, "plan"),
+	}, nil)), image)
 	resultImageID, err := compute.GetValue(ctx, result.ImageID())
 	if err != nil {
 		return err

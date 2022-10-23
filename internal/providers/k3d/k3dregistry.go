@@ -31,6 +31,7 @@ var registries = tcache.NewCache[*k3dRegistry]()
 
 var _ registry.Manager = &k3dRegistry{}
 var _ buildkit.BuildkitAwareRegistry = &k3dRegistry{}
+var _ oci.TargetRewritter = &k3dRegistry{}
 
 func Register() {
 	registry.Register("k3d", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
@@ -70,22 +71,18 @@ func Register() {
 func (r *k3dRegistry) IsInsecure() bool { return true }
 
 func (r *k3dRegistry) baseUrl() string {
-	return fmt.Sprintf("127.0.0.1:%s", r.PublicPort)
+	return fmt.Sprintf("%s:%s", r.ContainerName, r.PublicPort)
 }
 
-func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedName] {
+func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	return registry.AllocateStaticName(r, r.baseUrl(), repository)
 }
 
-func (r *k3dRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedName, error) {
-	return oci.AllocatedName{
-		Parent:           r,
-		InsecureRegistry: r.IsInsecure(),
-		ImageID:          img,
-	}, nil
+func (r *k3dRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
+	return registry.AttachStaticKeychain(r, img, nil), nil
 }
 
-func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedName) *buildkit.ExportToRegistryRequest {
+func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedRepository) *buildkit.ExportToRegistryRequest {
 	// There are some assumptions baked into this that are not verified at
 	// runtime, notably that buildkit and the registry are deployed to the same
 	// docker instance.
@@ -100,5 +97,13 @@ func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.A
 		}
 	}
 
+	return nil
+}
+
+func (r *k3dRegistry) CheckRewriteLocalUse(target oci.TargetRepository) *oci.TargetRepository {
+	if x := strings.TrimPrefix(target.ImageID.Repository, r.baseUrl()+"/"); x != target.ImageID.Repository {
+		target.ImageID.Repository = fmt.Sprintf("127.0.0.1:%s/%s", r.PublicPort, x)
+		return &target
+	}
 	return nil
 }

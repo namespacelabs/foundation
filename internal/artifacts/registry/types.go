@@ -37,8 +37,8 @@ type Manager interface {
 	// Returns true if calls to the registry should be made over HTTP (instead of HTTPS).
 	IsInsecure() bool
 
-	AllocateName(repository string) compute.Computable[oci.AllocatedName]
-	AttachKeychain(oci.ImageID) (oci.AllocatedName, error)
+	AllocateName(repository string) compute.Computable[oci.AllocatedRepository]
+	AttachKeychain(oci.ImageID) (oci.AllocatedRepository, error)
 }
 
 func GetRegistry(ctx context.Context, env cfg.Context) (Manager, error) {
@@ -77,24 +77,26 @@ func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string)
 	return nil, fnerrors.UserError(nil, "%q is not a known registry provider", name)
 }
 
-func StaticName(parent Manager, imageID oci.ImageID, insecure bool, keychain oci.Keychain) compute.Computable[oci.AllocatedName] {
+func StaticName(parent Manager, imageID oci.ImageID, insecure bool, keychain oci.Keychain) compute.Computable[oci.AllocatedRepository] {
 	return compute.Map(tasks.Action("registry.allocate-tag").Arg("ref", imageID.ImageRef()), compute.Inputs().
 		Bool("insecure", insecure).
 		JSON("imageID", imageID).
 		Indigestible("parent", parent).
 		Indigestible("keychain", keychain),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, r compute.Resolved) (oci.AllocatedName, error) {
-			return oci.AllocatedName{
-				Parent:           parent,
-				InsecureRegistry: insecure,
-				ImageID:          imageID,
-				Keychain:         keychain,
+		func(ctx context.Context, r compute.Resolved) (oci.AllocatedRepository, error) {
+			return oci.AllocatedRepository{
+				Parent: parent,
+				TargetRepository: oci.TargetRepository{
+					InsecureRegistry: insecure,
+					ImageID:          imageID,
+					Keychain:         keychain,
+				},
 			}, nil
 		})
 }
 
-func AllocateName(ctx context.Context, env cfg.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedName], error) {
+func AllocateName(ctx context.Context, env cfg.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedRepository], error) {
 	registry, err := GetRegistry(ctx, env)
 	if err != nil {
 		return nil, err
@@ -103,7 +105,7 @@ func AllocateName(ctx context.Context, env cfg.Context, pkg schema.PackageName) 
 	return registry.AllocateName(pkg.String()), nil
 }
 
-func RawAllocateName(ctx context.Context, ck cfg.Configuration, repo string) (compute.Computable[oci.AllocatedName], error) {
+func RawAllocateName(ctx context.Context, ck cfg.Configuration, repo string) (compute.Computable[oci.AllocatedRepository], error) {
 	registry, err := GetRegistryFromConfig(ctx, "", ck)
 	if err != nil {
 		return nil, err
@@ -112,13 +114,13 @@ func RawAllocateName(ctx context.Context, ck cfg.Configuration, repo string) (co
 	return registry.AllocateName(repo), nil
 }
 
-func Precomputed(tag oci.AllocatedName) compute.Computable[oci.AllocatedName] {
+func Precomputed(tag oci.AllocatedRepository) compute.Computable[oci.AllocatedRepository] {
 	return precomputedTag{tag: tag}
 }
 
 type precomputedTag struct {
-	tag oci.AllocatedName
-	compute.PrecomputeScoped[oci.AllocatedName]
+	tag oci.AllocatedRepository
+	compute.PrecomputeScoped[oci.AllocatedRepository]
 }
 
 var _ compute.Digestible = precomputedTag{}
@@ -135,7 +137,7 @@ func (r precomputedTag) Action() *tasks.ActionEvent {
 	return tasks.Action("registry.tag").Arg("ref", r.tag.ImageRef())
 }
 
-func (r precomputedTag) Compute(ctx context.Context, _ compute.Resolved) (oci.AllocatedName, error) {
+func (r precomputedTag) Compute(ctx context.Context, _ compute.Resolved) (oci.AllocatedRepository, error) {
 	return r.tag, nil
 }
 

@@ -126,7 +126,7 @@ func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations
 		}
 
 		for _, image := range resolvables {
-			var tag compute.Computable[oci.AllocatedName]
+			var tag compute.Computable[oci.AllocatedRepository]
 			if baseRepository != "" {
 				tag = registry.StaticName(nil, oci.ImageID{
 					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),

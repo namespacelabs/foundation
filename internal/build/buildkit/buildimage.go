@@ -24,7 +24,7 @@ type ExportToRegistryRequest struct {
 }
 
 type BuildkitAwareRegistry interface {
-	CheckExportRequest(*GatewayClient, oci.AllocatedName) *ExportToRegistryRequest
+	CheckExportRequest(*GatewayClient, oci.AllocatedRepository) *ExportToRegistryRequest
 }
 
 func BuildDefinitionToImage(env cfg.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
@@ -45,7 +45,7 @@ type reqToImage struct {
 
 	// If set, targetName will resolve into the allocated image name that this
 	// image will be uploaded to, by our caller.
-	targetName compute.Computable[oci.AllocatedName]
+	targetName compute.Computable[oci.AllocatedRepository]
 }
 
 func (l *reqToImage) Action() *tasks.ActionEvent {

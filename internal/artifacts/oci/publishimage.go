@@ -11,13 +11,17 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+type TargetRewritter interface {
+	CheckRewriteLocalUse(TargetRepository) *TargetRepository
+}
+
 var ConvertImagesToEstargz = false
 
-func PublishImage(tag compute.Computable[AllocatedName], image NamedImage) NamedImageID {
+func PublishImage(tag compute.Computable[AllocatedRepository], image NamedImage) NamedImageID {
 	return MakeNamedImageID(image.Description(), &publishImage{tag: tag, label: image.Description(), image: AsResolvable(image.Image())})
 }
 
-func PublishResolvable(tag compute.Computable[AllocatedName], image compute.Computable[ResolvableImage]) compute.Computable[ImageID] {
+func PublishResolvable(tag compute.Computable[AllocatedRepository], image compute.Computable[ResolvableImage]) compute.Computable[ImageID] {
 	if ConvertImagesToEstargz {
 		image = &convertToEstargz{resolvable: image}
 	}
@@ -26,7 +30,7 @@ func PublishResolvable(tag compute.Computable[AllocatedName], image compute.Comp
 }
 
 type publishImage struct {
-	tag   compute.Computable[AllocatedName]
+	tag   compute.Computable[AllocatedRepository]
 	image compute.Computable[ResolvableImage]
 	label string // Does not affect the output.
 
@@ -52,5 +56,21 @@ func (pi *publishImage) Action() *tasks.ActionEvent {
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	tasks.Attachments(ctx).AddResult("ref", tag.ImageRef())
-	return compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, tag, true)
+
+	target := tag.TargetRepository
+	if tag.Parent != nil {
+		if x, ok := tag.Parent.(TargetRewritter); ok {
+			if newTarget := x.CheckRewriteLocalUse(target); newTarget != nil {
+				target = *newTarget
+			}
+		}
+	}
+
+	digest, err := compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, target, true)
+	if err != nil {
+		return ImageID{}, err
+	}
+
+	// Use the original name, not the rewritten one, for readability purposes.
+	return tag.TargetRepository.WithDigest(digest), nil
 }

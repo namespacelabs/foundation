@@ -41,7 +41,7 @@ type Plan struct {
 	// to, in case the builder implementation can use this information for
 	// optimization purposes. This may be null, and an implementation can always
 	// elect to ignore it.
-	PublishName compute.Computable[oci.AllocatedName]
+	PublishName compute.Computable[oci.AllocatedRepository]
 }
 
 type Workspace interface {
@@ -56,7 +56,7 @@ type BuildTarget interface {
 
 	TargetPlatform() *specs.Platform
 	// See Plan.PublishName.
-	PublishName() compute.Computable[oci.AllocatedName]
+	PublishName() compute.Computable[oci.AllocatedRepository]
 }
 
 type Configuration interface {
