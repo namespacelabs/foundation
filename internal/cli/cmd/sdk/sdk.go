@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
-	"namespacelabs.dev/foundation/internal/sdk/octant"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -78,7 +77,6 @@ func sdkList(sdks []string, goVersion string) []sdk {
 		},
 		simpleFileSDK("k3d", k3d.SDK, k3d.AllDownloads),
 		simpleFileSDK("kubectl", kubectl.SDK, kubectl.AllDownloads),
-		simpleFileSDK("octant", octant.SDK, octant.AllDownloads),
 		simpleFileSDK("grpcurl", grpcurl.SDK, grpcurl.AllDownloads),
 		simpleFileSDK("deno", deno.SDK, deno.AllDownloads),
 	}
