@@ -27,12 +27,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
-		compute.Inputs().Str("clusterName", clusterName).Proto("env", env.Environment()),
+		compute.Inputs().Str("clusterName", clusterName).Indigestible("env", env),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
 			// download k3d
 			k3dbin, err := k3d.EnsureSDK(ctx, host.HostPlatform())
 			if err != nil {
@@ -69,13 +69,12 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[[]*schem
 			if err != nil {
 				return nil, err
 			}
-			c.Name = env.Environment().Name
 
-			if err = k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr); err != nil {
+			if err := k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr); err != nil {
 				return nil, err
 			}
 
-			return []*schema.DevHost_ConfigureEnvironment{c}, nil
+			return c, nil
 		})
 }
 

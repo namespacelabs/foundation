@@ -138,43 +138,38 @@ func Update(devHost *schema.DevHost, confs ...*schema.DevHost_ConfigureEnvironme
 
 	var totalChangeCount int
 	for _, conf := range confs {
+		var previous *schema.DevHost_ConfigureEnvironment
+		for _, existing := range copy.Configure {
+			if existing.Name == conf.Name && existing.Purpose == conf.Purpose && existing.Runtime == conf.Runtime {
+				previous = existing
+				break
+			}
+		}
 
-		for _, newCfg := range conf.Configuration {
-			var exists bool
+		if previous == nil {
+			copy.Configure = append(copy.Configure, conf)
+			totalChangeCount++
+			continue
+		}
 
-			for _, existing := range copy.Configure {
-				if existing.Name != conf.Name || existing.Purpose != conf.Purpose || existing.Runtime != conf.Runtime {
-					continue
-				}
+		for _, newConf := range conf.Configuration {
+			var found bool
 
-				for k, existingMsg := range existing.Configuration {
-					if existingMsg.TypeUrl != newCfg.TypeUrl {
-						continue
-					}
-
-					exists = true
-					if bytes.Equal(existingMsg.Value, newCfg.Value) {
-						// XXX use proto equality.
-					} else {
-						existing.Configuration[k] = newCfg
+			for _, existing := range previous.Configuration {
+				if existing.TypeUrl == newConf.TypeUrl {
+					if !bytes.Equal(existing.Value, newConf.Value) {
+						existing.Value = newConf.Value
 						totalChangeCount++
 					}
+					found = true
 					break
 				}
 			}
 
-			if exists {
-				continue
+			if !found {
+				previous.Configuration = append(previous.Configuration, newConf)
+				totalChangeCount++
 			}
-
-			copy.Configure = append(copy.Configure, &schema.DevHost_ConfigureEnvironment{
-				Configuration: []*anypb.Any{newCfg},
-				Name:          conf.Name,
-				Purpose:       conf.Purpose,
-				Runtime:       conf.Runtime,
-			})
-
-			totalChangeCount++
 		}
 	}
 

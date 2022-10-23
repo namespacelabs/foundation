@@ -9,13 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func newEksCmd() *cobra.Command {
@@ -39,17 +35,11 @@ func newEksCmd() *cobra.Command {
 				return err
 			}
 
-			sealedCtx := pkggraph.MakeSealedContext(env, parsing.NewPackageLoader(env).Seal())
-
-			prepares := baseline(sealedCtx)
-
-			var aws []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
-			aws = append(aws, prepare.PrepareAWSProfile(env, awsProfile))
-			aws = append(aws, prepare.PrepareEksCluster(env, clusterName))
-
-			prepares = append(prepares, prepare.PrepareCluster(env, aws...)...)
-
-			return collectPreparesAndUpdateDevhost(ctx, root, prepares)
+			return collectPreparesAndUpdateDevhost(ctx, root, envRef,
+				prepare.PrepareCluster(env,
+					prepare.PrepareAWSProfile(awsProfile),
+					prepare.PrepareEksCluster(clusterName),
+				))
 		}),
 	}
 

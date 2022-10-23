@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -18,8 +19,9 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -55,76 +57,72 @@ func NewPrepareCmd() *cobra.Command {
 	return rootCmd
 }
 
-func baseline(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
-	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
-	prepares = append(prepares, prepare.PrepareBuildkit(env))
-	prepares = append(prepares, prebuilts(env)...)
-	return prepares
-}
-
-func prebuilts(env pkggraph.SealedContext) []compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func downloadPrebuilts(env cfg.Context) compute.Computable[[]oci.ResolvableImage] {
 	var prebuilts = []schema.PackageName{
 		"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
 		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
 		"namespacelabs.dev/foundation/std/secrets/kubernetes",
 	}
 
-	preparedPrebuilts := prepare.DownloadPrebuilts(env, prebuilts)
-
-	var prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]
-	prepares = append(prepares, compute.Map(
-		tasks.Action("prepare.map-prebuilts"),
-		compute.Inputs().Computable("preparedPrebuilts", preparedPrebuilts),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
-			return nil, nil
-		}))
-	return prepares
+	return prepare.DownloadPrebuilts(env, prebuilts)
 }
 
-func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, prepares []compute.Computable[[]*schema.DevHost_ConfigureEnvironment]) error {
-	prepareAll := compute.Collect(tasks.Action("prepare.collect-all"), prepares...)
-	results, err := compute.GetValue(ctx, prepareAll)
+func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, envName string, prepared compute.Computable[*schema.DevHost_ConfigureEnvironment]) error {
+	env, err := cfg.LoadContext(root, "dev")
 	if err != nil {
 		return err
 	}
 
-	var confs [][]*schema.DevHost_ConfigureEnvironment
-	for _, r := range results {
-		confs = append(confs, r.Value)
-	}
+	x := compute.Map(
+		tasks.Action("prepare"),
+		compute.Inputs().
+			Indigestible("root", root).
+			Str("env", envName).
+			Computable("prebuilts", downloadPrebuilts(env)).
+			Computable("prepared", prepared),
+		compute.Output{NotCacheable: true}, func(ctx context.Context, r compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
+			results := compute.MustGetDepValue(r, prepared, "prepared")
 
-	stdout := console.Stdout(ctx)
+			prepared := protos.Clone(results)
+			prepared.Name = envName
 
-	updateCount, err := devHostUpdates(ctx, root, confs)
-	if err != nil {
+			stdout := console.Stdout(ctx)
+
+			updateCount, err := devHostUpdates(ctx, root, prepared)
+			if err != nil {
+				return nil, err
+			}
+
+			if updateCount == 0 {
+				fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
+				return nil, nil
+			}
+
+			if err := devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, root.LoadedDevHost); err != nil {
+				return nil, err
+			}
+
+			return prepared, nil
+		})
+
+	if _, err := compute.GetValue(ctx, x); err != nil {
 		return err
 	}
 
-	if updateCount == 0 {
-		fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
-		return nil
-	}
+	return nil
 
-	return devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, root.LoadedDevHost)
 }
 
-func devHostUpdates(ctx context.Context, root *parsing.Root, confs [][]*schema.DevHost_ConfigureEnvironment) (int, error) {
+func devHostUpdates(ctx context.Context, root *parsing.Root, confs ...*schema.DevHost_ConfigureEnvironment) (int, error) {
 	var updateCount int
-	for _, conf := range confs {
-		if len(conf) == 0 {
-			continue
-		}
-
-		updated, was := devhost.Update(root.LoadedDevHost, conf...)
-		if was {
-			updateCount++
-		}
-
-		// Make sure that the subsequent calls observe an up to date configuration.
-		// XXX this is not right, Root() should be immutable.
-		root.LoadedDevHost = updated
+	updated, was := devhost.Update(root.LoadedDevHost, confs...)
+	if was {
+		updateCount++
 	}
+
+	// Make sure that the subsequent calls observe an up to date configuration.
+	// XXX this is not right, Root() should be immutable.
+	root.LoadedDevHost = updated
 
 	// Remove deprecated bits.
 	for k, u := range root.LoadedDevHost.Configure {

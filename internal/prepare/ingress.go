@@ -17,12 +17,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareIngress(env cfg.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func PrepareIngress(env cfg.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller"),
 		compute.Inputs().Str("kind", "ingress").Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) ([]*schema.DevHost_ConfigureEnvironment, error) {
+		func(ctx context.Context, deps compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
 			kube := compute.MustGetDepValue(deps, kube, "runtime")
 
 			if err := PrepareIngressInKube(ctx, env, kube); err != nil {

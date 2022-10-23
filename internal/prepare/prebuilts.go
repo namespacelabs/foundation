@@ -15,11 +15,12 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func DownloadPrebuilts(env pkggraph.SealedContext, packages []schema.PackageName) compute.Computable[[]oci.ResolvableImage] {
+func DownloadPrebuilts(env cfg.Context, packages []schema.PackageName) compute.Computable[[]oci.ResolvableImage] {
 	return compute.Map(
 		tasks.Action("prepare.download-prebuilts").HumanReadablef("Download prebuilt package images"),
 		compute.Inputs().Proto("env", env.Environment()).Strs("packages", schema.Strs(packages...)),

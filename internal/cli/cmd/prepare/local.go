@@ -11,12 +11,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func newLocalCmd() *cobra.Command {
@@ -37,19 +35,13 @@ func newLocalCmd() *cobra.Command {
 				return err
 			}
 
-			if env.Environment().Purpose == schema.Environment_PRODUCTION && contextName == "" {
-				return fnerrors.UsageError("Please also specify `--context`.",
-					"Kubernetes context is required for preparing a production environment.")
+			if env.Environment().Purpose != schema.Environment_DEVELOPMENT {
+				return fnerrors.BadInputError("only development environments are supported locally")
 			}
 
-			sealedCtx := pkggraph.MakeSealedContext(env, parsing.NewPackageLoader(env).Seal())
-
-			prepares := baseline(sealedCtx)
-
 			k8sconfig := prepareK8s(ctx, env, contextName)
-			prepares = append(prepares, prepare.PrepareCluster(env, k8sconfig)...)
 
-			return collectPreparesAndUpdateDevhost(ctx, root, prepares)
+			return collectPreparesAndUpdateDevhost(ctx, root, envRef, prepare.PrepareCluster(env, k8sconfig))
 		}),
 	}
 
@@ -58,7 +50,7 @@ func newLocalCmd() *cobra.Command {
 	return localCmd
 }
 
-func prepareK8s(ctx context.Context, env cfg.Context, contextName string) compute.Computable[[]*schema.DevHost_ConfigureEnvironment] {
+func prepareK8s(ctx context.Context, env cfg.Context, contextName string) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	if contextName != "" {
 		return prepare.PrepareExistingK8s(env, contextName)
 	}
