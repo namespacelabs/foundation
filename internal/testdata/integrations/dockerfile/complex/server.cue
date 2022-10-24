@@ -1,7 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: "docker"
+	integration: "dockerfile"
 
 	env: {
 		NAME: "\($env.name)-Bob"
@@ -30,7 +30,7 @@ server: {
 tests: {
 	// TODO: fix a k8s error when a test name is too long.
 	hello: {
-		integration: docker: dockerfile: "test/Dockerfile"
+		integration: dockerfile: "test/Dockerfile"
 	}
 }
 

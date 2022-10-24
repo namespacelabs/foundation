@@ -1,7 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: "docker"
+	integration: "dockerfile"
 
 	services: {
 		webapi: {
@@ -20,8 +20,9 @@ server: {
 sidecars: {
 	sc1: {
 		imageFrom: {
-			kind:       "namespace.so/from-dockerfile"
-			dockerfile: "mysidecar/Dockerfile"
+			// Example of a full syntax form
+			kind: "namespace.so/from-dockerfile"
+			src:  "mysidecar/Dockerfile"
 		}
 
 		env: {

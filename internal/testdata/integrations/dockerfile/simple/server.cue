@@ -1,7 +1,7 @@
 server: {
 	name: "myserver"
 
-	integration: "docker"
+	integration: "dockerfile"
 
 	services: {
 		webapi: {

@@ -17,8 +17,9 @@ message Integration {
     google.protobuf.Any data = 1;
 }
 
-message DockerIntegration {
-    string dockerfile = 1;
+message DockerfileIntegration {
+    // The Dockerfile to use.
+    string src = 1;
 }
 
 message ShellScriptIntegration {

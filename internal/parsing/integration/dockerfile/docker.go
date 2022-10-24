@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package docker
+package dockerfile
 
 import (
 	"context"
@@ -16,14 +16,14 @@ import (
 )
 
 func Register() {
-	api.RegisterIntegration[*schema.DockerIntegration, *schema.DockerIntegration](impl{})
+	api.RegisterIntegration[*schema.DockerfileIntegration, *schema.DockerfileIntegration](impl{})
 }
 
 type impl struct {
-	api.BinaryTestIntegration[*schema.DockerIntegration]
+	api.BinaryTestIntegration[*schema.DockerfileIntegration]
 }
 
-func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.DockerIntegration) error {
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.DockerfileIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "docker integration requires a server")
@@ -37,8 +37,8 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.DockerIntegration) (*schema.Binary, error) {
-	dockerfile := data.Dockerfile
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.DockerfileIntegration) (*schema.Binary, error) {
+	dockerfile := data.Src
 	if dockerfile == "" {
 		dockerfile = "Dockerfile"
 	}

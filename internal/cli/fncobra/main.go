@@ -39,7 +39,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
-	dockerparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/docker"
+	dockerfileparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/dockerfile"
 	goparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/golang"
 	nodejsparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
 	shellparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/shellscript"
@@ -55,7 +55,7 @@ import (
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	dockerapplier "namespacelabs.dev/foundation/internal/parsing/integration/docker"
+	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
 	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
 	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
 	shellapplier "namespacelabs.dev/foundation/internal/parsing/integration/shellscript"
@@ -216,7 +216,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Opaque integrations: parsing
 		integrationparsing.IntegrationParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
-			dockerparser.NewParser(),
+			&dockerfileparser.Parser{},
 			shellparser.NewParser(),
 			goparser.NewParser(),
 			&nodejsparser.Parser{},
@@ -224,14 +224,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		})
 		integrationparsing.BuildParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
 			// Same syntax as docker integration so we can reuse the parser.
-			dockerparser.NewParser(),
+			&dockerfileparser.Parser{},
 			shellparser.NewParser(),
 			// Same syntax as go integration so we can reuse the parser.
 			goparser.NewParser(),
 		})
 
 		// Opaque integrations: applying
-		dockerapplier.Register()
+		dockerfileapplier.Register()
 		goapplier.Register()
 		nodejsapplier.Register()
 		webapplier.Register()
