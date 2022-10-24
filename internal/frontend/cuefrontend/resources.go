@@ -27,10 +27,8 @@ import (
 
 type ResourceList struct {
 	Refs      []string
-	Instances map[string]CueResourceInstance
+	Instances map[string]*fncue.CueV
 }
-
-var _ json.Unmarshaler = &ResourceList{}
 
 type CueResourceInstance struct {
 	Class     string            `json:"class"`
@@ -38,21 +36,10 @@ type CueResourceInstance struct {
 	RawIntent any               `json:"intent"`
 	Resources map[string]string `json:"resources"`
 
-	IntentFrom *binary.CueInvokeBinary `json:"from"`
-
 	// Prefer the definition above.
 	Kind     string `json:"kind"`
 	On       string `json:"on"`
 	RawInput any    `json:"input"`
-}
-
-func ParseResourceInstanceFromCue(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
-	var instance CueResourceInstance
-	if err := v.Val.Decode(&instance); err != nil {
-		return nil, err
-	}
-
-	return parseResourceInstance(ctx, pl, loc, name, instance)
 }
 
 func exclusiveFieldsErr(fieldName ...string) error {
@@ -68,20 +55,25 @@ func exclusiveFieldsErr(fieldName ...string) error {
 	return fnerrors.BadInputError("%s and %s are exclusive: only one of them can be set", strings.Join(quoted[:len(quoted)-1], ", "), quoted[len(quoted)-1])
 }
 
-func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, name string, src CueResourceInstance) (*schema.ResourceInstance, error) {
+func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
+	var src CueResourceInstance
+	if err := v.Val.Decode(&src); err != nil {
+		return nil, err
+	}
+
 	class, err1 := parseStrFieldCompat("class", src.Class, "kind", src.Kind, true)
 	provider, err2 := parseStrFieldCompat("provider", src.Provider, "on", src.On, false)
 	if err := multierr.New(err1, err2); err != nil {
 		return nil, err
 	}
 
-	if provider != "" && loc.PackageName != schema.PackageName(provider) {
+	if provider != "" && pkg.PackageName() != schema.PackageName(provider) {
 		if _, err := pl.LoadByName(ctx, schema.PackageName(provider)); err != nil {
 			return nil, err
 		}
 	}
 
-	classRef, err := schema.ParsePackageRef(loc.PackageName, class)
+	classRef, err := schema.ParsePackageRef(pkg.PackageName(), class)
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +87,12 @@ func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc p
 		rawIntent = src.RawInput
 	}
 
-	intent, err := parseResourceIntent(ctx, pl, loc, classRef, rawIntent)
+	intent, err := parseResourceIntent(ctx, pl, pkg.Location, classRef, rawIntent)
 	if err != nil {
 		return nil, err
 	}
 
-	intentFrom, err := src.IntentFrom.ToInvocation(loc.PackageName)
+	intentFrom, err := binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-from-"+name /* binaryName */, "from" /* cuePath */, v)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +107,7 @@ func parseResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc p
 
 	var parseErrs []error
 	for key, value := range src.Resources {
-		ref, err := schema.ParsePackageRef(loc.PackageName, value)
+		ref, err := schema.ParsePackageRef(pkg.PackageName(), value)
 		if err != nil {
 			parseErrs = append(parseErrs, err)
 		} else {
@@ -191,27 +183,37 @@ func parseResourceIntentProto(pkg schema.PackageName, value any, intentType prot
 	return fnany.Marshal(pkg, msg)
 }
 
-func (rl *ResourceList) UnmarshalJSON(contents []byte) error {
+func ParseResourceList(v *fncue.CueV) (*ResourceList, error) {
+	contents, err := v.Val.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	var rl ResourceList
+
 	var list []string
 	if json.Unmarshal(contents, &list) == nil {
 		rl.Refs = list
-		return nil
+		return &rl, nil
 	}
 
-	var instances map[string]CueResourceInstance
-	if err := json.Unmarshal(contents, &instances); err != nil {
-		return err
+	it, err := v.Val.Fields()
+	if err != nil {
+		return nil, err
 	}
 
-	rl.Instances = instances
-	return nil
+	rl.Instances = map[string]*fncue.CueV{}
+	for it.Next() {
+		rl.Instances[it.Label()] = &fncue.CueV{Val: it.Value()}
+	}
+	return &rl, nil
 }
 
-func (rl *ResourceList) ToPack(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location) (*schema.ResourcePack, error) {
+func (rl *ResourceList) ToPack(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package) (*schema.ResourcePack, error) {
 	pack := &schema.ResourcePack{}
 
 	for _, resource := range rl.Refs {
-		r, err := parseResourceRef(ctx, pl, loc, resource)
+		r, err := parseResourceRef(ctx, pl, pkg.Location, resource)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +222,7 @@ func (rl *ResourceList) ToPack(ctx context.Context, pl pkggraph.PackageLoader, l
 	}
 
 	for name, instance := range rl.Instances {
-		instance, err := parseResourceInstance(ctx, pl, loc, name, instance)
+		instance, err := ParseResourceInstanceFromCue(ctx, env, pl, pkg, name, instance)
 		if err != nil {
 			return nil, err
 		}

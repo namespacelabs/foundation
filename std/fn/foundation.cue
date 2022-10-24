@@ -208,9 +208,13 @@ _#ConfigureBase: {
 }
 
 #InvokeBinary: {
-	binary:     inputs.#Package
+	imageFrom:  #ImageFrom
 	args:       #Args
 	workingDir: *"/" | string
+}
+
+#ImageFrom: {
+	binary: inputs.#Package
 }
 
 #Configure: _#ConfigureBase & {

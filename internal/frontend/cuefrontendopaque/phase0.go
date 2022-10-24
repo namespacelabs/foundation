@@ -76,7 +76,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		for it.Next() {
 			val := &fncue.CueV{Val: it.Value()}
 
-			parsedProvider, err := parseResourceProvider(ctx, ft.loader, loc, it.Label(), val)
+			parsedProvider, err := parseResourceProvider(ctx, ft.env, ft.loader, parsedPkg, it.Label(), val)
 			if err != nil {
 				return nil, err
 			}
@@ -93,7 +93,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 		for it.Next() {
 			val := &fncue.CueV{Val: it.Value()}
-			parsedResource, err := cuefrontend.ParseResourceInstanceFromCue(ctx, ft.loader, loc, it.Label(), val)
+			parsedResource, err := cuefrontend.ParseResourceInstanceFromCue(ctx, ft.env, ft.loader, parsedPkg, it.Label(), val)
 			if err != nil {
 				return nil, err
 			}
@@ -120,7 +120,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	}
 
 	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.loader, loc, server)
+		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}

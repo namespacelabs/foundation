@@ -1,8 +1,6 @@
 providers: {
 	"namespacelabs.dev/foundation/library/storage/s3:Bucket": {
-		initializedWith: {
-			binary: "namespacelabs.dev/foundation/library/oss/minio/prepare"
-		}
+		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/minio/prepare"
 
 		resources: {
 			// Adds the server to the stack

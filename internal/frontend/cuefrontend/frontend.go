@@ -18,6 +18,7 @@ import (
 
 type impl struct {
 	loader          parsing.EarlyPackageLoader
+	env             *schema.Environment
 	evalctx         *fncue.EvalCtx
 	newSyntaxParser NewSyntaxParser
 }
@@ -47,6 +48,7 @@ func InjectedScope(env *schema.Environment) interface{} {
 func NewFrontend(pl parsing.EarlyPackageLoader, opaqueParser NewSyntaxParser, env *schema.Environment) parsing.Frontend {
 	return impl{
 		loader:          pl,
+		env:             env,
 		evalctx:         fncue.NewEvalCtx(WorkspaceLoader{pl}, InjectedScope(env)),
 		newSyntaxParser: opaqueParser,
 	}
@@ -74,14 +76,14 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 
 	var count int
 	if extension := v.LookupPath("extension"); extension.Exists() {
-		if err := parseCueNode(ctx, ft.loader, loc, schema.Node_EXTENSION, v, extension, parsed); err != nil {
+		if err := parseCueNode(ctx, ft.env, ft.loader, loc, schema.Node_EXTENSION, v, extension, parsed); err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing extension")
 		}
 		count++
 	}
 
 	if service := v.LookupPath("service"); service.Exists() {
-		if err := parseCueNode(ctx, ft.loader, loc, schema.Node_SERVICE, v, service, parsed); err != nil {
+		if err := parseCueNode(ctx, ft.env, ft.loader, loc, schema.Node_SERVICE, v, service, parsed); err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing service")
 		}
 		count++

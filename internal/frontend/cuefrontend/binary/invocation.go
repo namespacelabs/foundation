@@ -5,8 +5,13 @@
 package binary
 
 import (
+	"context"
+
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
+	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type cueInvocationSnapshot struct {
@@ -15,8 +20,7 @@ type cueInvocationSnapshot struct {
 	RequireFile   bool   `json:"requireFile"`
 }
 
-type CueInvokeBinary struct {
-	Binary       string                           `json:"binary"`
+type cueInvokeBinary struct {
 	Args         *args.ArgsListOrMap              `json:"args"`
 	WorkingDir   string                           `json:"workingDir"`
 	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
@@ -25,13 +29,31 @@ type CueInvokeBinary struct {
 	Inject       []string                         `json:"inject"`
 }
 
-func (cib *CueInvokeBinary) ToInvocation(owner schema.PackageName) (*schema.Invocation, error) {
-	if cib == nil {
-		return nil, nil
+func ParseBinaryInvocationField(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, binaryName string, cuePath string, v *fncue.CueV) (*schema.Invocation, error) {
+	if b := v.LookupPath(cuePath); b.Exists() {
+		return parseBinaryInvocation(ctx, env, pl, pkg, binaryName, b)
 	}
 
-	binRef, err := schema.ParsePackageRef(owner, cib.Binary)
+	return nil, nil
+}
+
+func parseBinaryInvocation(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, binaryName string, v *fncue.CueV) (*schema.Invocation, error) {
+	var cib cueInvokeBinary
+	if err := v.Val.Decode(&cib); err != nil {
+		return nil, err
+	}
+
+	binRef, err := ParseImage(ctx, env, pl, pkg, binaryName, v, ParseImageOpts{Required: true})
 	if err != nil {
+		return nil, err
+	}
+
+	return ParseBinaryInvocationForBinaryRef(ctx, binRef, v)
+}
+
+func ParseBinaryInvocationForBinaryRef(ctx context.Context, binRef *schema.PackageRef, v *fncue.CueV) (*schema.Invocation, error) {
+	var cib cueInvokeBinary
+	if err := v.Val.Decode(&cib); err != nil {
 		return nil, err
 	}
 

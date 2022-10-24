@@ -74,17 +74,22 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 		}
 	}
 
+	// Not using parseBinaryInvocation because it may modify the Package which is not allowed in phase1.
+	// This parsing needs to happen in phase1 for "std/secrets" where "$workspace" value is used.
 	if with := vv.LookupPath("configure.with"); with.Exists() {
-		var dec binary.CueInvokeBinary
-		if err := with.Val.Decode(&dec); err != nil {
+		binName, err := with.LookupPath("binary").Val.String()
+		if err != nil {
 			return pdata, err
 		}
-
-		inv, err := dec.ToInvocation(p1.owner)
+		binRef, err := schema.ParsePackageRef(p1.owner, binName)
 		if err != nil {
 			return pdata, err
 		}
 
+		inv, err := binary.ParseBinaryInvocationForBinaryRef(ctx, binRef, with)
+		if err != nil {
+			return pdata, err
+		}
 		pdata.ComputePlanWith = append(pdata.ComputePlanWith, inv)
 	}
 

@@ -77,15 +77,14 @@ type cueInstantiate struct {
 }
 
 type cueCallback struct {
-	InvokeInternal string                  `json:"invokeInternal"`
-	InvokeBinary   *binary.CueInvokeBinary `json:"invokeBinary,omitempty"`
+	InvokeInternal string `json:"invokeInternal"`
 }
 
 type cueEnvironmentRequirements struct {
 	RequiredLabels map[string]string `json:"required"`
 }
 
-func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package) error {
+func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, kind schema.Node_Kind, parent, v *fncue.CueV, out *pkggraph.Package) error {
 	node := &schema.Node{
 		PackageName: loc.PackageName.String(),
 		ModuleName:  loc.Module.ModuleName(),
@@ -384,24 +383,24 @@ func parseCueNode(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision`")
 		}
 
-		if callback.InvokeInternal == "" {
-			if callback.InvokeBinary == nil {
-				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
-			}
-		} else {
-			if callback.InvokeBinary != nil {
-				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
-			}
-		}
-
-		invBinary, err := callback.InvokeBinary.ToInvocation(loc.PackageName)
+		binInvocation, err := binary.ParseBinaryInvocationField(ctx, env, pl, out, "genb-node-inv" /* binaryName */, "invokeBinary" /* cuePath */, on)
 		if err != nil {
 			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision.invokeBinary`")
 		}
 
+		if callback.InvokeInternal == "" {
+			if binInvocation == nil {
+				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
+			}
+		} else {
+			if binInvocation != nil {
+				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
+			}
+		}
+
 		out.PrepareHooks = append(out.PrepareHooks, pkggraph.PrepareHook{
 			InvokeInternal: callback.InvokeInternal,
-			InvokeBinary:   invBinary,
+			InvokeBinary:   binInvocation,
 		})
 	}
 
