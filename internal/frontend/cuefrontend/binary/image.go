@@ -48,14 +48,25 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 			return nil, fnerrors.UserError(pkg.Location, "cannot specify both 'imageFrom' and 'image'")
 		}
 
-		integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, pkg.Location, build)
-		if err != nil {
-			return nil, err
-		}
+		if binary := build.LookupPath("binary"); binary.Exists() {
+			str, err := binary.Val.String()
+			if err != nil {
+				return nil, err
+			}
+			outRef, err = schema.ParsePackageRef(pkg.PackageName(), str)
+			if err != nil {
+				return nil, fnerrors.Wrapf(pkg.Location, err, "parsing binary reference")
+			}
+		} else {
+			integration, err := integrationparsing.BuildParser.ParseEntity(ctx, pl, pkg.Location, build)
+			if err != nil {
+				return nil, err
+			}
 
-		outRef, err = integrationapplying.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, binaryName, integration.Data)
-		if err != nil {
-			return nil, err
+			outRef, err = integrationapplying.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, binaryName, integration.Data)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
