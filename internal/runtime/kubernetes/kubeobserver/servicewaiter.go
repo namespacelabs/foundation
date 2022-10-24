@@ -47,6 +47,8 @@ func (w *serviceWaiter) Prepare(ctx context.Context, c *k8s.Clientset) error {
 
 func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	if !DialLocalServicePorts {
+		// Emitting this debug message as only deployments from the Orchestrator can wait for service readyness.
+		fmt.Fprintf(console.Debug(ctx), "will not wait for service %s...\n", w.name)
 		return true, nil
 	}
 
