@@ -31,7 +31,7 @@ extension: fn.#Extension & {
 	on: {
 		prepare: {
 			invokeBinary: {
-				binary: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
+				imageFrom: binary: "namespacelabs.dev/foundation/universe/storage/s3/internal/prepare"
 			}
 			requires: [
 				"namespacelabs.dev/foundation/universe/development/localstack",

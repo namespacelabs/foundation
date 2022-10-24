@@ -38,7 +38,7 @@ extension: fn.#Extension & {
 	on: {
 		prepare: {
 			invokeBinary: {
-				binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
+				imageFrom: binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
 			}
 			requires: [
 				"namespacelabs.dev/foundation/universe/db/postgres/internal/init",

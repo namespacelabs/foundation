@@ -23,12 +23,13 @@ type cueServer struct {
 	Args *args.ArgsListOrMap `json:"args"`
 	Env  *args.EnvMap        `json:"env"`
 
-	Services  map[string]cueService     `json:"services"`
-	Resources *cuefrontend.ResourceList `json:"resources"`
+	Services map[string]cueService `json:"services"`
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
-func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
+func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
+	loc := pkg.Location
+
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, nil, err
@@ -68,13 +69,13 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		}
 	}
 
-	env, err := bits.Env.Parsed(loc.PackageName)
+	envVars, err := bits.Env.Parsed(loc.PackageName)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Ensure each ref is loaded.
-	for _, e := range env {
+	for _, e := range envVars {
 		if e.FromSecretRef == nil {
 			continue
 		}
@@ -91,7 +92,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
-		Env:  env,
+		Env:  envVars,
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
@@ -104,8 +105,13 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		out.MainContainer.Mount = parsedMounts
 	}
 
-	if bits.Resources != nil {
-		pack, err := bits.Resources.ToPack(ctx, pl, loc)
+	if resources := v.LookupPath("resources"); resources.Exists() {
+		resourceList, err := cuefrontend.ParseResourceList(resources)
+		if err != nil {
+			return nil, nil, fnerrors.Wrapf(loc, err, "parsing resources")
+		}
+
+		pack, err := resourceList.ToPack(ctx, env, pl, pkg)
 		if err != nil {
 			return nil, nil, err
 		}

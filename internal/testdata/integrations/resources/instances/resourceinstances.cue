@@ -17,9 +17,7 @@ resources: {
 		kind: "namespacelabs.dev/foundation/internal/testdata/integrations/resources/classes:Database"
 		on:   "namespacelabs.dev/foundation/internal/testdata/integrations/resources/providers"
 
-		from: {
-			binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
-		}
+		from: imageFrom: binary: "namespacelabs.dev/foundation/universe/db/postgres/rds/prepare"
 	}
 
 	test1: {

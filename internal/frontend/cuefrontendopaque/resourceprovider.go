@@ -9,6 +9,7 @@ import (
 
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -18,50 +19,53 @@ import (
 )
 
 type cueResourceProvider struct {
-	InitializedWith *binary.CueInvokeBinary   `json:"initializedWith"`
-	PrepareWith     *binary.CueInvokeBinary   `json:"prepareWith"`
-	Resources       *cuefrontend.ResourceList `json:"resources"`
-	ResourceInputs  map[string]string         `json:"inputs"` // Key: name, Value: serialized class ref
+	ResourceInputs map[string]string `json:"inputs"` // Key: name, Value: serialized class ref
 	// TODO: parse prepare hook.
 }
 
-func parseResourceProvider(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
+func parseResourceProvider(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
 	var bits cueResourceProvider
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
 	}
 
-	classRef, err := schema.ParsePackageRef(loc.PackageName, key)
+	classRef, err := schema.ParsePackageRef(pkg.PackageName(), key)
 	if err != nil {
 		return nil, err
 	}
 
-	initializedWith, err := bits.InitializedWith.ToInvocation(loc.PackageName)
+	initializedWithInvocation, err := binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-init-"+key /* binaryName */, "initializedWith" /* cuePath */, v)
 	if err != nil {
 		return nil, err
 	}
 
 	rp := &schema.ResourceProvider{
 		ProvidesClass:   classRef,
-		InitializedWith: initializedWith,
+		InitializedWith: initializedWithInvocation,
 	}
 
-	if bits.Resources != nil {
-		pack, err := bits.Resources.ToPack(ctx, pl, loc)
+	if resources := v.LookupPath("resources"); resources.Exists() {
+		resourceList, err := cuefrontend.ParseResourceList(resources)
+		if err != nil {
+			return nil, fnerrors.Wrapf(pkg.Location, err, "parsing resources")
+		}
+
+		pack, err := resourceList.ToPack(ctx, env, pl, pkg)
 		if err != nil {
 			return nil, err
 		}
+
 		rp.ResourcePack = pack
 	}
 
 	var errs []error
 	for key, value := range bits.ResourceInputs {
-		class, err := schema.ParsePackageRef(loc.PackageName, value)
+		class, err := schema.ParsePackageRef(pkg.PackageName(), value)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
 			rp.ResourceInput = append(rp.ResourceInput, &schema.ResourceProvider_ResourceInput{
-				Name:  schema.MakePackageRef(loc.PackageName, key),
+				Name:  schema.MakePackageRef(pkg.PackageName(), key),
 				Class: class,
 			})
 		}
@@ -79,12 +83,9 @@ func parseResourceProvider(ctx context.Context, pl parsing.EarlyPackageLoader, l
 		return x < 0
 	})
 
-	if bits.PrepareWith != nil {
-		prepareWith, err := bits.PrepareWith.ToInvocation(loc.PackageName)
-		if err != nil {
-			return nil, err
-		}
-		rp.PrepareWith = prepareWith
+	rp.PrepareWith, err = binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-prep-"+key /* binaryName */, "prepareWith" /* cuePath */, v)
+	if err != nil {
+		return nil, err
 	}
 
 	return rp, nil
