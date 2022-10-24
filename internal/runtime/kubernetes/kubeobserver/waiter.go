@@ -9,10 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -183,113 +181,4 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			return ev.Ready == orchestration.Event_READY, nil
 		})
 	})
-}
-
-type podWaiter struct {
-	namespace string
-	selector  metav1.ListOptions
-	isOk      func(corev1.PodStatus) (bool, error)
-
-	mu                   sync.Mutex
-	podCount, matchCount int
-}
-
-// FormatProgress implements ActionProgress.
-func (w *podWaiter) FormatProgress() string {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	if w.podCount == 0 {
-		return "(waiting for pods...)"
-	}
-
-	return fmt.Sprintf("%d / %d", w.matchCount, w.podCount)
-}
-
-func (w *podWaiter) Prepare(ctx context.Context, c *k8s.Clientset) error {
-	tasks.Attachments(ctx).SetProgress(w)
-	return nil
-}
-
-func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
-	list, err := c.CoreV1().Pods(w.namespace).List(ctx, w.selector)
-	if err != nil {
-		return false, err
-	}
-
-	var count int
-	for _, pod := range list.Items {
-		// If the pod is configured to never restart, we check if it's in an unrecoverable state.
-		if pod.Spec.RestartPolicy == corev1.RestartPolicyNever {
-			var failures []runtime.ErrContainerFailed_Failure
-			for _, init := range pod.Status.InitContainerStatuses {
-				if init.State.Terminated != nil && init.State.Terminated.ExitCode != 0 {
-					failures = append(failures, runtime.ErrContainerFailed_Failure{
-						Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, nil),
-						Reason:    init.State.Terminated.Reason,
-						Message:   init.State.Terminated.Message,
-						ExitCode:  init.State.Terminated.ExitCode,
-					})
-				}
-			}
-
-			for _, container := range pod.Status.ContainerStatuses {
-				if container.State.Terminated != nil && container.State.Terminated.ExitCode != 0 {
-					failures = append(failures, runtime.ErrContainerFailed_Failure{
-						Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
-						Reason:    container.State.Terminated.Reason,
-						Message:   container.State.Terminated.Message,
-						ExitCode:  container.State.Terminated.ExitCode,
-					})
-				}
-			}
-
-			if len(failures) > 0 {
-				return false, runtime.ErrContainerFailed{
-					Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
-					Failures: failures,
-				}
-			}
-		}
-
-		ok, err := w.isOk(pod.Status)
-		if err != nil {
-			return false, err
-		}
-		if ok {
-			count++
-			break // Don't overcount.
-		}
-	}
-
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	w.podCount = len(list.Items)
-	w.matchCount = count
-
-	return count > 0 && count == len(list.Items), nil
-}
-
-func WaitForPodConditition(namespace string, selector metav1.ListOptions, isOk func(corev1.PodStatus) (bool, error)) ConditionWaiter[*k8s.Clientset] {
-	return NewPodCondititionWaiter(namespace, selector, isOk)
-}
-
-func NewPodCondititionWaiter(namespace string, selector metav1.ListOptions, isOk func(corev1.PodStatus) (bool, error)) *podWaiter {
-	return &podWaiter{namespace: namespace, selector: selector, isOk: isOk}
-}
-
-func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) (bool, error) {
-	return func(ps corev1.PodStatus) (bool, error) {
-		return matchPodCondition(ps, typ), nil
-	}
-}
-
-func matchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) bool {
-	for _, cond := range ps.Conditions {
-		if cond.Type == typ && cond.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
 }

@@ -27,6 +27,10 @@ func IsPod(obj Object) bool {
 	return IsGVKPod(obj.GroupVersionKind())
 }
 
+func IsService(obj Object) bool {
+	return IsGVKService(obj.GroupVersionKind())
+}
+
 func IsGVKDeployment(gvk schema.GroupVersionKind) bool {
 	return gvk.GroupVersion().String() == "apps/v1" && gvk.Kind == "Deployment"
 }
@@ -37,6 +41,10 @@ func IsGVKStatefulSet(gvk schema.GroupVersionKind) bool {
 
 func IsGVKPod(gvk schema.GroupVersionKind) bool {
 	return gvk.GroupVersion().String() == "v1" && gvk.Kind == "Pod"
+}
+
+func IsGVKService(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "v1" && gvk.Kind == "Service"
 }
 
 func IsCRD(obj Object) bool {
