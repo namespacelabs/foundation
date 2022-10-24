@@ -77,6 +77,7 @@ import (
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/foundation/internal/welcome"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/schema"
@@ -500,6 +501,8 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 		Example: `  ns prepare local  Prepares the local workspace for development or production.
   ns test           Run all functional end-to-end tests in the current workspace.
   ns dev            Starts a development session, continuously building and deploying servers.`,
+
+		Long: welcome.WelcomeMessage(false /* firstRun*/),
 	}
 }
 

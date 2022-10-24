@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
+	"namespacelabs.dev/foundation/internal/welcome"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/go-ids"
 )
@@ -153,6 +154,11 @@ func getOrGenerateEphemeralCliID(ctx context.Context) ephemeralCliID {
 				return clientID
 			}
 		}
+	}
+
+	if os.IsNotExist(err) {
+		// First NS run - print a welcome message.
+		welcome.PrintWelcome(ctx, true /* firstRun */)
 	}
 
 	newClientID := ephemeralCliID{newRandID(), newRandID()}
