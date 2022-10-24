@@ -91,8 +91,13 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
+	baseWithPackageSources = baseWithPackageSources.AddEnv("NODE_ENV", n.nodejsEnv)
+
 	srcWithPkgMgr := baseWithPackageSources.
-		Run(llb.Shlexf("%s install", packageManagerState.CLI), llb.Dir(AppRootPath)).
+		Run(
+			llb.Shlexf("%s install", packageManagerState.CLI),
+			llb.Dir(AppRootPath),
+		).
 		With(llbutil.CopyFrom(src, ".", AppRootPath))
 
 	srcWithBackendsConfig, err := generateBackendsJs(ctx, srcWithPkgMgr, bnj)

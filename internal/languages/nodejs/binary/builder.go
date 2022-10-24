@@ -76,9 +76,9 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 }
 
 func nodeEnv(env cfg.Context) string {
-	if env.Environment().GetPurpose() == schema.Environment_PRODUCTION {
-		return "production"
-	} else {
+	if opaque.UseDevBuild(env.Environment()) {
 		return "development"
+	} else {
+		return "production"
 	}
 }
