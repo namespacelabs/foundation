@@ -502,6 +502,7 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
   ns test           Run all functional end-to-end tests in the current workspace.
   ns dev            Starts a development session, continuously building and deploying servers.`,
 
+		// adds the welcome message to `ns`, `ns help` and `ns --help`
 		Long: welcome.WelcomeMessage(false /* firstRun*/),
 	}
 }
