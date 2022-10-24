@@ -14,12 +14,11 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const dialTimeout = 100 * time.Millisecond
-
-var DialLocalServicePorts = false
 
 type serviceWaiter struct {
 	namespace, name string
@@ -46,9 +45,12 @@ func (w *serviceWaiter) Prepare(ctx context.Context, c *k8s.Clientset) error {
 }
 
 func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
-	if !DialLocalServicePorts {
-		// Emitting this debug message as only deployments from the Orchestrator can wait for service readyness.
+	if !client.IsInclusterClient(c) {
+		// Emitting this debug message as only incluster deployments know how to determine service readyness.
 		fmt.Fprintf(console.Debug(ctx), "will not wait for service %s...\n", w.name)
+
+		// Assume service is always ready for now.
+		// TODO implement readiness check that also supports non-incluster deployments.
 		return true, nil
 	}
 

@@ -18,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -74,7 +73,4 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	tasks.LogActions = true
 	// Always log debug to console, we redirect the log on the client.
 	console.DebugToConsole = true
-
-	// Orch lives in the same cluster so it may dial even private service ports.
-	kubeobserver.DialLocalServicePorts = true
 }

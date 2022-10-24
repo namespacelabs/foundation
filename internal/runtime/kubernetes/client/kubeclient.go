@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"net/url"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
@@ -195,4 +196,19 @@ func CheckGetHostEnv(cfg cfg.Configuration) (*HostEnv, error) {
 		return nil, fnerrors.UsageError("Try running one `ns prepare local` or `ns prepare eks`", "%s: no kubernetes configuration available", cfg.EnvKey())
 	}
 	return hostEnv, nil
+}
+
+func IsInclusterClient(c *k8s.Clientset) bool {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return false
+	}
+
+	url, err := url.Parse(config.Host)
+	if err != nil {
+		return false
+	}
+
+	// TODO is there a cleaner way?
+	return url.Host == c.RESTClient().Get().URL().Host
 }
