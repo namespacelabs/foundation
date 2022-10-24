@@ -528,6 +528,8 @@ type containerImage struct {
 	OwnerServer schema.PackageName
 	Image       compute.Computable[oci.ImageID]
 	Command     []string
+	Args        []string
+	WorkingDir  string
 }
 
 func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, assets assets.AvailableBuildAssets) ([]containerImage, error) {

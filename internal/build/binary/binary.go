@@ -43,9 +43,11 @@ var prebuiltsConfType = cfg.DefineConfigType[*Prebuilts]()
 const LLBGenBinaryName = "llbgen"
 
 type Prepared struct {
-	Name    string
-	Plan    build.Plan
-	Command []string
+	Name       string
+	Plan       build.Plan
+	Command    []string
+	Args       []string
+	WorkingDir string
 }
 
 type PreparedImage struct {
@@ -93,10 +95,12 @@ func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context,
 	}
 
 	return &Prepared{
-		Name:    loc.PackageName.String(),
-		Plan:    plan,
-		Command: binary.Config.GetCommand(),
-		// XXX pass args, and env.
+		Name:       loc.PackageName.String(),
+		Plan:       plan,
+		Command:    binary.Config.GetCommand(),
+		Args:       binary.Config.GetArgs(),
+		WorkingDir: binary.Config.GetWorkingDir(),
+		// XXX pass env.
 	}, nil
 }
 

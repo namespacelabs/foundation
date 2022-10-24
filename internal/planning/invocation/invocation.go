@@ -82,11 +82,17 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 		return nil, err
 	}
 
+	workingDir := with.WorkingDir
+	if prepared.WorkingDir != "" {
+		workingDir = prepared.WorkingDir
+	}
+
 	invocation := &Invocation{
 		ImageName:  bin.Name,
 		Command:    prepared.Command,
+		Args:       prepared.Args,
+		WorkingDir: workingDir,
 		Image:      image,
-		WorkingDir: with.WorkingDir,
 		NoCache:    with.NoCache,
 		Inject:     with.Inject,
 	}

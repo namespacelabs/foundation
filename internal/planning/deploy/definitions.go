@@ -503,7 +503,9 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 	return &types.DeferredInvocation{
 		BinaryRef: ref,
 		BinaryConfig: &schema.BinaryConfig{
-			Command: prepared.Command,
+			Command:    prepared.Command,
+			Args:       prepared.Args,
+			WorkingDir: prepared.WorkingDir,
 		},
 		Cacheable: inv.Cacheable,
 		WithInput: inv.WithInput,

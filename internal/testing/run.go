@@ -45,8 +45,10 @@ type testRun struct {
 
 	TestRef *schema.PackageRef
 
-	TestBinCommand []string
-	TestBinImageID compute.Computable[oci.ImageID]
+	TestBinCommand    []string
+	TestBinArgs       []string
+	TestBinWorkingDir string
+	TestBinImageID    compute.Computable[oci.ImageID]
 
 	Stack            *schema.Stack
 	ServersUnderTest []string // Package names.
@@ -69,6 +71,8 @@ func (test *testRun) Inputs() *compute.In {
 		Str("testName", test.TestRef.Name).
 		Stringer("testPkg", test.TestRef.AsPackageName()).
 		Strs("testBinCommand", test.TestBinCommand).
+		Strs("testBinArgs", test.TestBinArgs).
+		Str("testBinWorkingDir", test.TestBinWorkingDir).
 		Computable("testBin", test.TestBinImageID).
 		Proto("workspace", test.SealedContext.Workspace().Proto()).
 		Proto("env", test.SealedContext.Environment()).
@@ -122,7 +126,8 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		testRun := runtime.ContainerRunOpts{
 			Image:              compute.MustGetDepValue(r, test.TestBinImageID, "testBin"),
 			Command:            test.TestBinCommand,
-			Args:               nil,
+			Args:               test.TestBinArgs,
+			WorkingDir:         test.TestBinWorkingDir,
 			ReadOnlyFilesystem: true,
 		}
 

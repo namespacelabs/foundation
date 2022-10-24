@@ -135,17 +135,19 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	}
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
-		SealedContext:    sealedCtx,
-		Cluster:          cluster,
-		TestRef:          testRef,
-		Plan:             deployPlan,
-		ServersUnderTest: sutServers,
-		Stack:            stack.Proto(),
-		RuntimeConfig:    runtimeConfig,
-		TestBinCommand:   testBin.Command,
-		TestBinImageID:   fixtureImage,
-		Debug:            opts.Debug,
-		OutputProgress:   opts.OutputProgress,
+		SealedContext:     sealedCtx,
+		Cluster:           cluster,
+		TestRef:           testRef,
+		Plan:              deployPlan,
+		ServersUnderTest:  sutServers,
+		Stack:             stack.Proto(),
+		RuntimeConfig:     runtimeConfig,
+		TestBinCommand:    testBin.Command,
+		TestBinArgs:       testBin.Args,
+		TestBinWorkingDir: testBin.WorkingDir,
+		TestBinImageID:    fixtureImage,
+		Debug:             opts.Debug,
+		OutputProgress:    opts.OutputProgress,
 	}
 
 	createdTs := timestamppb.Now()
