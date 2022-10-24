@@ -63,7 +63,7 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 	}
 
 	n := nodeJsBinary{
-		nodejsEnv: nodeEnv(env),
+		nodejsEnv: NodeEnv(env.Environment()),
 		module:    module,
 	}
 
@@ -75,8 +75,8 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 	return buildkit.BuildImage(ctx, env, conf, state, local...)
 }
 
-func nodeEnv(env cfg.Context) string {
-	if opaque.UseDevBuild(env.Environment()) {
+func NodeEnv(env *schema.Environment) string {
+	if opaque.UseDevBuild(env) {
 		return "development"
 	} else {
 		return "production"

@@ -32,8 +32,8 @@ func RegisterIntegration[ServerData proto.Message, BuildData proto.Message](impl
 
 func GenerateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, binaryName string, data proto.Message) (*schema.Binary, error) {
 	url := protos.TypeUrlForInstance(data)
-	if i, ok := createBinaryHandlers[url]; ok {
-		binary, err := i(ctx, env, pl, loc, data)
+	if handler, ok := createBinaryHandlers[url]; ok {
+		binary, err := handler(ctx, env, pl, loc, data)
 		if err != nil {
 			return nil, err
 		}

@@ -42,15 +42,15 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	packageManagerState, err := handlePackageManager(*conf.TargetPlatform(), bnj.config.NodePkgMgr)
+	packageManagerState, err := LookupPackageManager(bnj.config.NodePkgMgr)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
 	base := llbutil.Image(nodeImage, *conf.TargetPlatform())
 
-	if packageManagerState.State != nil {
-		base = base.With(packageManagerState.State)
+	if packageManagerState.MakeState != nil {
+		base = base.With(packageManagerState.MakeState)
 	}
 
 	fsys, err := compute.GetValue(ctx, conf.Workspace().VersionedFS(bnj.loc.Rel(), false))
@@ -69,7 +69,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	src := buildkit.MakeLocalState(local)
 
 	opts := fnfs.MatcherOpts{
-		IncludeFiles:      append([]string{"package.json"}, packageManagerState.Files...),
+		IncludeFiles:      append([]string{"package.json"}, packageManagerState.RequiredFiles...),
 		ExcludeFilesGlobs: packageManagerState.ExcludePatterns,
 	}
 
@@ -100,7 +100,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		).
 		With(llbutil.CopyFrom(src, ".", AppRootPath))
 
-	srcWithBackendsConfig, err := generateBackendsJs(ctx, srcWithPkgMgr, bnj)
+	srcWithBackendsConfig, err := maybeGenerateBackendsJs(ctx, srcWithPkgMgr, bnj)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -128,30 +128,31 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	return out, []buildkit.LocalContents{local}, nil
 }
 
-func generateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJS) (llb.State, error) {
-	if len(bnj.config.InternalDoNotUseBackend) > 0 {
-		if _, err := fs.Stat(bnj.loc.Module.ReadOnlyFS(), bnj.loc.Rel(backendsConfigFn)); os.IsNotExist(err) {
-			bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, true /* placeholder */)
-			if err != nil {
-				return llb.State{}, err
-			}
+func maybeGenerateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJS) (llb.State, error) {
+	if len(bnj.config.InternalDoNotUseBackend) == 0 {
+		return base, nil
+	}
 
-			return base, fnerrors.UserError(bnj.loc, `%q must be present in the source tree when Web backends are used. Example content:
-
-%s
-`, backendsConfigFn, bytes)
-		}
-
-		bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, false /* placeholder */)
+	// XXX replace with general purpose `genrule` layer.
+	if _, err := fs.Stat(bnj.loc.Module.ReadOnlyFS(), bnj.loc.Rel(backendsConfigFn)); os.IsNotExist(err) {
+		bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, true /* placeholder */)
 		if err != nil {
 			return llb.State{}, err
 		}
 
-		var fsys memfs.FS
-		fsys.Add(backendsConfigFn, bytes)
+		return base, fnerrors.UserError(bnj.loc, `%q must be present in the source tree when Web backends are used. Example content:
 
-		return llbutil.WriteFS(ctx, &fsys, base, filepath.Join(AppRootPath))
-	} else {
-		return base, nil
+%s
+`, backendsConfigFn, bytes)
 	}
+
+	bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, false /* placeholder */)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	var fsys memfs.FS
+	fsys.Add(backendsConfigFn, bytes)
+
+	return llbutil.WriteFS(ctx, &fsys, base, AppRootPath)
 }
