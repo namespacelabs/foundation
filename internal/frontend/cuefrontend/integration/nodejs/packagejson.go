@@ -23,13 +23,13 @@ type packageJson struct {
 	Scripts map[string]string `json:"scripts"`
 }
 
-func readPackageJson(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*packageJson, error) {
+func readPackageJson(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, relPath string) (*packageJson, error) {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return nil, err
 	}
 
-	jsonRaw, err := fs.ReadFile(fsys, filepath.Join(loc.Rel(), packageJsonFn))
+	jsonRaw, err := fs.ReadFile(fsys, filepath.Join(relPath, packageJsonFn))
 	if err != nil {
 		return nil, fnerrors.UserError(loc, "error while reading %s : %s", packageJsonFn, err)
 	}

@@ -46,14 +46,16 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		}
 	}
 
-	pkgMgr, err := detectPkgMgr(ctx, pl, loc)
+	relPath := filepath.Join(loc.Rel(), bits.Pkg)
+
+	pkgMgr, err := detectPkgMgr(ctx, pl, loc, relPath)
 	if err != nil {
 		return nil, err
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "nodejs: %s: detected package manager: %s\n", loc.Abs(), pkgMgr)
 
-	packageJson, err := readPackageJson(ctx, pl, loc)
+	packageJson, err := readPackageJson(ctx, pl, loc, relPath)
 	if err != nil {
 		return nil, err
 	}
@@ -76,22 +78,22 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 	}, nil
 }
 
-func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (schema.NodejsIntegration_NodePkgMgr, error) {
+func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, relPath string) (schema.NodejsIntegration_NodePkgMgr, error) {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return schema.NodejsIntegration_PKG_MGR_UNKNOWN, err
 	}
 
-	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), npmLockfile)); err == nil {
+	if _, err := fs.Stat(fsys, filepath.Join(relPath, npmLockfile)); err == nil {
 		return schema.NodejsIntegration_NPM, nil
 	}
-	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), ".yarn", "releases")); err == nil {
+	if _, err := fs.Stat(fsys, filepath.Join(relPath, ".yarn", "releases")); err == nil {
 		return schema.NodejsIntegration_YARN3, nil
 	}
-	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), yarnLockfile)); err == nil {
+	if _, err := fs.Stat(fsys, filepath.Join(relPath, yarnLockfile)); err == nil {
 		return schema.NodejsIntegration_YARN, nil
 	}
-	if _, err := fs.Stat(fsys, filepath.Join(loc.Rel(), pnpmLockfile)); err == nil {
+	if _, err := fs.Stat(fsys, filepath.Join(relPath, pnpmLockfile)); err == nil {
 		return schema.NodejsIntegration_PNPM, nil
 	}
 
