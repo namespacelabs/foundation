@@ -10,11 +10,22 @@ import (
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.ShellScriptIntegration) (*schema.Binary, error) {
+func Register() {
+	api.RegisterIntegration[*schema.ShellScriptIntegration, *schema.ShellScriptIntegration](impl{})
+}
+
+type impl struct{}
+
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.ShellScriptIntegration) error {
+	return fnerrors.UserError(pkg.Location, "shellscript integration is not supported on the server")
+}
+
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.ShellScriptIntegration) (*schema.Binary, error) {
 	if data.Entrypoint == "" {
 		return nil, fnerrors.UserError(loc, "missing required field `entrypoint`")
 	}

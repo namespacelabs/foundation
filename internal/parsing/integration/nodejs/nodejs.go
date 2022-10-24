@@ -27,7 +27,13 @@ const (
 	runtimePkg  = "namespacelabs.dev/foundation/library/runtime"
 )
 
-func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.NodejsIntegration, pkg *pkggraph.Package) error {
+func Register() {
+	api.RegisterIntegration[*schema.NodejsIntegration, *schema.NodejsIntegration](impl{})
+}
+
+type impl struct{}
+
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.NodejsIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "nodejs integration requires a server")
@@ -50,7 +56,11 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
+	return CreateNodejsBinary(ctx, env, pl, loc, data)
+}
+
+func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
 	nodePkg := data.Pkg
 	if nodePkg == "" {
 		nodePkg = "."

@@ -55,7 +55,6 @@ import (
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	integrationapplying "namespacelabs.dev/foundation/internal/parsing/integration/api"
 	dockerapplier "namespacelabs.dev/foundation/internal/parsing/integration/docker"
 	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
 	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
@@ -230,15 +229,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		})
 
 		// Opaque integrations: applying
-		integrationapplying.RegisterPackageIntegration(dockerapplier.ApplyToPackage)
-		integrationapplying.RegisterBinaryIntegration(dockerapplier.CreateBinary)
-		integrationapplying.RegisterPackageIntegration(goapplier.Apply)
-		integrationapplying.RegisterBinaryIntegration(goapplier.CreateBinary)
-		integrationapplying.RegisterPackageIntegration(nodejsapplier.Apply)
-		integrationapplying.RegisterBinaryIntegration(nodejsapplier.CreateBinary)
-		integrationapplying.RegisterPackageIntegration(webapplier.Apply)
-		integrationapplying.RegisterBinaryIntegration(webapplier.CreateBinary)
-		integrationapplying.RegisterBinaryIntegration(shellapplier.CreateBinary)
+		dockerapplier.Register()
+		goapplier.Register()
+		nodejsapplier.Register()
+		webapplier.Register()
+		shellapplier.Register()
 
 		// Codegen
 		genpackage.Register()

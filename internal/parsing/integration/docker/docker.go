@@ -15,7 +15,13 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func ApplyToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.DockerIntegration, pkg *pkggraph.Package) error {
+func Register() {
+	api.RegisterIntegration[*schema.DockerIntegration, *schema.DockerIntegration](impl{})
+}
+
+type impl struct{}
+
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.DockerIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "docker integration requires a server")
@@ -29,7 +35,7 @@ func ApplyToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.Pa
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.DockerIntegration) (*schema.Binary, error) {
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.DockerIntegration) (*schema.Binary, error) {
 	dockerfile := data.Dockerfile
 	if dockerfile == "" {
 		dockerfile = "Dockerfile"

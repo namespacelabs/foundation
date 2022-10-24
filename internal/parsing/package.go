@@ -18,7 +18,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	var err error
 
 	if pp.Integration != nil {
-		if err = api.ApplyPackageIntegration(ctx, env, pl, pp); err != nil {
+		if err = api.ApplyServerIntegration(ctx, env, pl, pp); err != nil {
 			return nil, err
 		}
 	}

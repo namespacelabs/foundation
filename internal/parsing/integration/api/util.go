@@ -5,6 +5,9 @@
 package api
 
 import (
+	"context"
+
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -31,4 +34,15 @@ func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) err
 	pkg.Server.MainContainer.BinaryRef = binaryRef
 
 	return nil
+}
+
+func GenerateBinaryAndAddToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, binaryName string, data proto.Message) (*schema.PackageRef, error) {
+	binary, err := GenerateBinary(ctx, env, pl, pkg.Location, binaryName, data)
+	if err != nil {
+		return nil, err
+	}
+
+	pkg.Binaries = append(pkg.Binaries, binary)
+
+	return schema.MakePackageRef(pkg.Location.PackageName, binaryName), nil
 }

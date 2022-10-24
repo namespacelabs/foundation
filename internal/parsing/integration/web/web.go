@@ -18,7 +18,13 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.WebIntegration, pkg *pkggraph.Package) error {
+func Register() {
+	api.RegisterIntegration[*schema.WebIntegration, *schema.WebIntegration_Build](impl{})
+}
+
+type impl struct{}
+
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.WebIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "web integration requires a server")
@@ -57,10 +63,10 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.WebIntegration_Build) (*schema.Binary, error) {
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.WebIntegration_Build) (*schema.Binary, error) {
 	nodejsData := protos.Clone(data.Nodejs)
 	nodejsData.BuildOutputDir = data.BuildOutputDir
-	nodejsBinary, err := nodejs.CreateBinary(ctx, env, pl, loc, nodejsData)
+	nodejsBinary, err := nodejs.CreateNodejsBinary(ctx, env, pl, loc, nodejsData)
 	if err != nil {
 		return nil, err
 	}

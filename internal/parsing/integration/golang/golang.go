@@ -13,7 +13,13 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, data *schema.GoIntegration, pkg *pkggraph.Package) error {
+func Register() {
+	api.RegisterIntegration[*schema.GoIntegration, *schema.GoIntegration](impl{})
+}
+
+type impl struct{}
+
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.GoIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "go integration requires a server")
@@ -31,7 +37,7 @@ func Apply(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoad
 		[]string{"/" + pkg.Server.Name})
 }
 
-func CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.GoIntegration) (*schema.Binary, error) {
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.GoIntegration) (*schema.Binary, error) {
 	goPkg := data.Pkg
 	if goPkg == "" {
 		goPkg = "."
