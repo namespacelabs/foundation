@@ -94,10 +94,6 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 	}
 
 	if opaque.UseDevBuild(env) {
-		if !slices.Contains(data.PackageJsonScripts, devScript) {
-			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in "dev" environment`, devScript)
-		}
-
 		// Making sure that the controller package is loaded.
 		_, err := pl.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
 		if err != nil {
@@ -110,6 +106,8 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 		})
 
 		config.Command = []string{"/filesync-controller"}
+		// Existence of the "dev" script is not checked, because this code is executed during package loading,
+		// and for "ns test" it happens initially with the "DEV" environment.
 		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), cliName, "run", devScript}
 	} else {
 		if !slices.Contains(data.PackageJsonScripts, startScript) {
