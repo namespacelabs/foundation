@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
+//nolint directives: stylecheck:sa1019
 package storage
 
 import (
@@ -11,7 +12,6 @@ import (
 	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
-	"namespacelabs.dev/foundation/schema"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -26,7 +26,7 @@ func ToStorageNetworkPlan(localHostname string, stack *fnschema.Stack, focus []f
 		LocalHostname: localHostname,
 	}
 
-	r.FocusedServerPackages = schema.Strs(focus...)
+	r.FocusedServerPackages = fnschema.Strs(focus...)
 
 	for _, i := range ingressFragments {
 		domain := convertDomain(i.Domain)
@@ -177,13 +177,6 @@ func addDeprecatedFields(r *storage.NetworkPlan) {
 			nonLocalNonManaged = append(nonLocalNonManaged, n)
 		} else if n.Domain.GetManaged() == storage.Domain_CLOUD_MANAGED || n.Domain.GetManaged() == storage.Domain_USER_SPECIFIED_TLS_MANAGED {
 			nonLocalManaged = append(nonLocalManaged, n)
-		}
-	}
-
-	var localDomains []*filteredDomain
-	for _, n := range domains {
-		if n.Domain.GetManaged() == storage.Domain_LOCAL_MANAGED {
-			localDomains = append(localDomains, n)
 		}
 	}
 
