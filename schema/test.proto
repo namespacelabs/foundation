@@ -9,6 +9,7 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "schema/binary.proto";
+import "schema/integration.proto";
 
 message Test {
     // The package name (computed).
@@ -17,4 +18,8 @@ message Test {
     string          name             = 2;
     Binary          driver           = 3;
     repeated string serversUnderTest = 4;
+
+    // Integration that needs to be applied to this test. May be nil.
+    // Shouldn't be used outside of workspace.FinalizePackage.
+    Integration integration = 5;
 }

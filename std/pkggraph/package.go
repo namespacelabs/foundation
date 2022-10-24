@@ -35,9 +35,9 @@ type Package struct {
 	// Inlined or explicitly defined binaries.
 	Binaries []*schema.Binary
 
-	// Integration that has been applied to this package. May be nil.
-	// Shouldn't be used outside of workspace.SealPackage.
-	Integration *schema.PackageIntegration
+	// Integration that has been applied to the server in this package. May be nil.
+	// Shouldn't be used outside of workspace.FinalizePackage.
+	Integration *schema.Integration
 
 	// Parsed secret definitions within the package.
 	Secrets []*schema.SecretSpec

@@ -31,6 +31,12 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	for _, test := range pp.Tests {
+		if test.Integration != nil {
+			if err = api.ApplyTestIntegration(ctx, env, pl, pp, test); err != nil {
+				return nil, err
+			}
+		}
+
 		if err := transformTest(pp.Location, pp.Server, test); err != nil {
 			return nil, err
 		}

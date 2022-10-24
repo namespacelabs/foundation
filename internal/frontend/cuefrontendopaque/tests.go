@@ -9,8 +9,11 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
+	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/integration/api"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -50,14 +53,29 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		ServersUnderTest: bits.Servers,
 	}
 
-	_, err := binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: true})
+	binaryRef, err := binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: false})
 	if err != nil {
 		return nil, fnerrors.Wrapf(pkg.Location, err, "test %q", name)
 	}
 
-	// TODO: use a PackageRef for the test driver binary instead of adding and then removing it from package binaries.
-	out.Driver = pkg.Binaries[len(pkg.Binaries)-1]
-	pkg.Binaries = pkg.Binaries[:len(pkg.Binaries)-1]
+	if binaryRef != nil {
+		// TODO: use a PackageRef for the test driver binary instead of adding and then removing it from package binaries.
+		if err := api.SetTestDriver(pkg.Location, out, pkg.Binaries[len(pkg.Binaries)-1]); err != nil {
+			return nil, err
+		}
+		pkg.Binaries = pkg.Binaries[:len(pkg.Binaries)-1]
+	}
+
+	if i := v.LookupPath("integration"); i.Exists() {
+		integration, err := integrationparsing.IntegrationParser.ParseEntity(ctx, pl, pkg.Location, i)
+		if err != nil {
+			return nil, err
+		}
+
+		out.Integration = &schema.Integration{
+			Data: protos.WrapAnyOrDie(integration.Data),
+		}
+	}
 
 	return out, nil
 }

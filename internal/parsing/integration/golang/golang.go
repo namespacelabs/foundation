@@ -17,7 +17,9 @@ func Register() {
 	api.RegisterIntegration[*schema.GoIntegration, *schema.GoIntegration](impl{})
 }
 
-type impl struct{}
+type impl struct {
+	api.BinaryTestIntegration[*schema.GoIntegration]
+}
 
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.GoIntegration) error {
 	if pkg.Server == nil {

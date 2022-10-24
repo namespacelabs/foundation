@@ -30,7 +30,7 @@ server: {
 tests: {
 	// TODO: fix a k8s error when a test name is too long.
 	hello: {
-		imageFrom: docker: dockerfile: "test/Dockerfile"
+		integration: docker: dockerfile: "test/Dockerfile"
 	}
 }
 

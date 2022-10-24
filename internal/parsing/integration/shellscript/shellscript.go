@@ -19,7 +19,9 @@ func Register() {
 	api.RegisterIntegration[*schema.ShellScriptIntegration, *schema.ShellScriptIntegration](impl{})
 }
 
-type impl struct{}
+type impl struct {
+	api.BinaryTestIntegration[*schema.ShellScriptIntegration]
+}
 
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.ShellScriptIntegration) error {
 	return fnerrors.UserError(pkg.Location, "shellscript integration is not supported on the server")

@@ -18,12 +18,15 @@ import (
 var (
 	// Key: typeUrl of ServerData
 	serverApplyHandlers = map[string]func(context.Context, *schema.Environment, pkggraph.PackageLoader, *pkggraph.Package, *anypb.Any) error{}
+	// Key: typeUrl of ServerData
+	testApplyHandlers = map[string]func(context.Context, *schema.Environment, pkggraph.PackageLoader, *pkggraph.Package, *schema.Test, *anypb.Any) error{}
 	// Key: typeUrl of BuildData
 	createBinaryHandlers = map[string]func(context.Context, *schema.Environment, pkggraph.PackageLoader, pkggraph.Location, proto.Message) (*schema.Binary, error){}
 )
 
 func RegisterIntegration[ServerData proto.Message, BuildData proto.Message](impl Integration[ServerData, BuildData]) {
 	registerServerApplyHandler(impl.ApplyToServer)
+	registerTestApplyHandler(impl.ApplyToTest)
 	registerCreateBinaryHandler(impl.CreateBinary)
 }
 
@@ -54,6 +57,18 @@ func ApplyServerIntegration(ctx context.Context, env *schema.Environment, pl pkg
 	}
 }
 
+func ApplyTestIntegration(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test) error {
+	if test.Integration == nil {
+		return nil
+	}
+
+	if i, ok := testApplyHandlers[test.Integration.Data.TypeUrl]; ok {
+		return i(ctx, env, pl, pkg, test, test.Integration.Data)
+	} else {
+		return fnerrors.UserError(pkg.Location, "unknown integration kind: %s", test.Integration)
+	}
+}
+
 func registerServerApplyHandler[V proto.Message](handler func(context.Context, *schema.Environment, pkggraph.PackageLoader, *pkggraph.Package, V) error) {
 	serverApplyHandlers[protos.TypeUrl[V]()] = func(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *anypb.Any) error {
 		msg := protos.NewFromType[V]()
@@ -62,6 +77,17 @@ func registerServerApplyHandler[V proto.Message](handler func(context.Context, *
 		}
 
 		return handler(ctx, env, pl, pkg, msg)
+	}
+}
+
+func registerTestApplyHandler[V proto.Message](handler func(context.Context, *schema.Environment, pkggraph.PackageLoader, *pkggraph.Package, *schema.Test, V) error) {
+	testApplyHandlers[protos.TypeUrl[V]()] = func(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test, data *anypb.Any) error {
+		msg := protos.NewFromType[V]()
+		if err := data.UnmarshalTo(msg); err != nil {
+			return err
+		}
+
+		return handler(ctx, env, pl, pkg, test, msg)
 	}
 }
 

@@ -14,5 +14,7 @@ import (
 type Integration[ServerData any, BuildData any] interface {
 	ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data ServerData) error
 
+	ApplyToTest(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test, data ServerData) error
+
 	CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data BuildData) (*schema.Binary, error)
 }

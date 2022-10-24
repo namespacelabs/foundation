@@ -63,6 +63,10 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
+func (impl) ApplyToTest(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test, data *schema.WebIntegration) error {
+	return fnerrors.UserError(pkg.Location, "web integration doesn't support tests yet")
+}
+
 func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.WebIntegration_Build) (*schema.Binary, error) {
 	nodejsData := protos.Clone(data.Nodejs)
 	nodejsData.BuildOutputDir = data.BuildOutputDir

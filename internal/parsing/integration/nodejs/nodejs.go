@@ -31,7 +31,9 @@ func Register() {
 	api.RegisterIntegration[*schema.NodejsIntegration, *schema.NodejsIntegration](impl{})
 }
 
-type impl struct{}
+type impl struct {
+	api.BinaryTestIntegration[*schema.NodejsIntegration]
+}
 
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.NodejsIntegration) error {
 	if pkg.Server == nil {

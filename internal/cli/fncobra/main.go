@@ -217,6 +217,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Opaque integrations: parsing
 		integrationparsing.IntegrationParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
 			dockerparser.NewParser(),
+			shellparser.NewParser(),
 			goparser.NewParser(),
 			&nodejsparser.Parser{},
 			&webparser.Parser{},

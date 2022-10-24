@@ -14,7 +14,7 @@ server: {
 
 tests: {
 	health: {
-		imageFrom: shellscript: {
+		integration: shellscript: {
 			entrypoint: "test/test.sh"
 			requiredPackages: ["jq"]
 		}
