@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/protobuf/encoding/protojson"
 	"namespacelabs.dev/foundation/internal/artifacts"
@@ -54,20 +55,44 @@ type versionCache struct {
 }
 
 func main() {
-	ctx := context.Background()
-
 	fncobra.SetupViper()
 	compute.RegisterProtoCacheable()
 	compute.RegisterBytesCacheable()
 	fscache.RegisterFSCacheable()
 
 	sink, style, cleanup := fncobra.ConsoleToSink(fncobra.StandardConsole())
-	ctxWithSink := colors.WithStyle(tasks.WithSink(ctx, sink), style)
+	ctxWithSink := colors.WithStyle(tasks.WithSink(context.Background(), sink), style)
 
-	var path string
+	// It's a bit awkward, but the main command execution is split between the command proper
+	// and the execution of the inner ns binary after all the nsboot cleanup is done.
+	// This variable is passes the path to execute from inside the command to the outside.
+	var pathToExec string
+
+	rootCmd := &cobra.Command{
+		Use:                "nsboot",
+		Args:               cobra.ArbitraryArgs,
+		SilenceUsage:       true,
+		SilenceErrors:      true,
+		DisableFlagParsing: true,
+
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			pathToExec, err = updateAndRun(cmd.Context())
+			return
+		},
+	}
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "update-ns",
+		Short: "Checks and downloads updates for the ns command.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return forceUpdate(cmd.Context())
+		},
+	})
+	rootCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
+
 	err := compute.Do(ctxWithSink, func(ctx context.Context) (err error) {
-		path, err = run(ctx)
-		return
+		return rootCmd.ExecuteContext(ctx)
 	})
 	if cleanup != nil {
 		cleanup()
@@ -78,38 +103,58 @@ func main() {
 	}
 
 	// We make sure to flush all the output before starting the command.
-
-	proc := exec.CommandContext(ctx, filepath.Join(path, "ns"), os.Args[1:]...)
-	proc.Stdin = os.Stdin
-	proc.Stdout = os.Stdout
-	proc.Stderr = os.Stderr
-	proc.Env = append(os.Environ(), fmt.Sprintf("NSBOOT_VERSION=%s", formatNSBootVersion()))
-	err = proc.Run()
-	if err != nil {
-		format.Format(os.Stderr, err, format.WithStyle(style))
-
-		if exiterr, ok := err.(*exec.ExitError); ok {
-			os.Exit(exiterr.ExitCode())
+	if pathToExec != "" {
+		proc := exec.CommandContext(context.Background(), filepath.Join(pathToExec, "ns"), os.Args[1:]...)
+		proc.Stdin = os.Stdin
+		proc.Stdout = os.Stdout
+		proc.Stderr = os.Stderr
+		proc.Env = append(os.Environ(), fmt.Sprintf("NSBOOT_VERSION=%s", formatNSBootVersion()))
+		err = proc.Run()
+		if err != nil {
+			if exiterr, ok := err.(*exec.ExitError); ok {
+				os.Exit(exiterr.ExitCode())
+			} else {
+				format.Format(os.Stderr, err, format.WithStyle(style))
+				os.Exit(3)
+			}
 		}
 	}
 }
 
-func run(ctx context.Context) (path string, err error) {
+// Performs the normal logic of checking for updates lazily.
+func updateAndRun(ctx context.Context) (path string, err error) {
 	latestVersion, needUpdate, err := getCachedVersion(ctx)
 	if err != nil {
 		return "", fnerrors.Wrapf(nil, err, "failed to load versions.json")
 	}
 
 	if latestVersion == nil || needUpdate {
-		path, err = performUpdate(ctx)
+		_, path, err = performUpdate(ctx)
 	} else {
 		path, err = fetchBinary(ctx, latestVersion)
 	}
 	return
 }
 
-// Returns the latest version of the tool.
-// If the current version cache is stale it also hits the remote endpoint.
+func forceUpdate(ctx context.Context) error {
+	cachedVersion, _, err := getCachedVersion(ctx)
+	if err != nil {
+		return err
+	}
+	newVersion, _, err := performUpdate(ctx)
+	if err != nil {
+		return err
+	}
+	if cachedVersion.TagName == newVersion.TagName {
+		fmt.Fprintf(console.Stdout(ctx), "Already up-to-date at %s.\n", newVersion.TagName)
+	} else {
+		fmt.Fprintf(console.Stdout(ctx), "Updated to version %s.\n", newVersion.TagName)
+	}
+
+	return nil
+}
+
+// Loads version cache and applies default update policy.
 func getCachedVersion(ctx context.Context) (version *toolVersion, needUpdate bool, err error) {
 	cache, err := loadVersionCache()
 	if err != nil {
@@ -128,19 +173,19 @@ func getCachedVersion(ctx context.Context) (version *toolVersion, needUpdate boo
 	return
 }
 
-func performUpdate(ctx context.Context) (string, error) {
+func performUpdate(ctx context.Context) (*toolVersion, string, error) {
 	newVersion, err := loadRemoteVersion(ctx)
 	if err != nil {
-		return "", fnerrors.Wrapf(nil, err, "failed to load an update from the update service")
+		return nil, "", fnerrors.Wrapf(nil, err, "failed to load an update from the update service")
 	}
 	path, err := fetchBinary(ctx, newVersion)
 	if err != nil {
-		return "", fnerrors.Wrapf(nil, err, "failed to fetch a new tarball")
+		return nil, "", fnerrors.Wrapf(nil, err, "failed to fetch a new tarball")
 	}
 	if err := persistCache(newVersion); err != nil {
-		return "", fnerrors.Wrapf(nil, err, "failed to persist the version cache")
+		return nil, "", fnerrors.Wrapf(nil, err, "failed to persist the version cache")
 	}
-	return path, nil
+	return newVersion, path, nil
 }
 
 func loadRemoteVersion(ctx context.Context) (*toolVersion, error) {
