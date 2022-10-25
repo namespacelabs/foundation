@@ -190,14 +190,14 @@ func formatUsageError(w io.Writer, err *fnerrors.UsageErr, opts *FormatOptions) 
 func formatInternalError(w io.Writer, err *fnerrors.InternalErr, opts *FormatOptions) {
 	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("internal error"), err.Err.Error())
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "This was unexpected, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
+	fmt.Fprintf(w, "This was unexpected, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
 	errorReportRequest(w)
 }
 
 func formatInvocationError(w io.Writer, err *fnerrors.InvocationErr, opts *FormatOptions) {
 	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("invocation error"), err.Err.Error())
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please file a bug at https://github.com/namespacelabs/foundation/issues\n")
+	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
 	errorReportRequest(w)
 }
 
