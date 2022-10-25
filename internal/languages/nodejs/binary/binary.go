@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 const (
@@ -47,18 +48,18 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		return llb.State{}, nil, err
 	}
 
-	base := llbutil.Image(nodeImage, *conf.TargetPlatform())
+	devImage := llbutil.Image(nodeImage, *conf.TargetPlatform()).
+		AddEnv("NODE_ENV", "development").
+		File(llb.Mkdir(AppRootPath, 0644))
 
 	if packageManagerState.MakeState != nil {
-		base = base.With(packageManagerState.MakeState)
+		devImage = devImage.With(packageManagerState.MakeState)
 	}
 
 	fsys, err := compute.GetValue(ctx, conf.Workspace().VersionedFS(bnj.loc.Rel(), false))
 	if err != nil {
 		return llb.State{}, nil, err
 	}
-
-	baseWithPackageSources := base.File(llb.Mkdir(AppRootPath, 0644))
 
 	local := buildkit.LocalContents{
 		Module:          n.module,
@@ -68,60 +69,70 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	}
 	src := buildkit.MakeLocalState(local)
 
-	opts := fnfs.MatcherOpts{
-		IncludeFiles:      append([]string{"package.json"}, packageManagerState.RequiredFiles...),
-		ExcludeFilesGlobs: packageManagerState.ExcludePatterns,
-	}
-
-	for _, wc := range packageManagerState.WildcardDirectories {
-		opts.IncludeFilesGlobs = append(opts.IncludeFilesGlobs, wc+"/**/*")
-	}
-
-	m, err := fnfs.NewMatcher(opts)
+	devImage, err = copySrcForInstall(ctx, devImage, src, fsys.FS(), packageManagerState)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	if err := fnfs.VisitFiles(ctx, fsys.FS(), func(path string, bs bytestream.ByteStream, _ fs.DirEntry) error {
-		if !m.Excludes(path) && m.Includes(path) {
-			baseWithPackageSources = baseWithPackageSources.With(llbutil.CopyFrom(src, path, filepath.Join(AppRootPath, path)))
-		}
-		return nil
-	}); err != nil {
-		return llb.State{}, nil, err
-	}
-
-	srcWithPkgMgr := baseWithPackageSources.
+	devImage = devImage.
 		Run(
 			llb.Shlexf("%s install", packageManagerState.CLI),
 			llb.Dir(AppRootPath),
 		).
 		With(llbutil.CopyFrom(src, ".", AppRootPath))
 
-	srcWithBackendsConfig, err := maybeGenerateBackendsJs(ctx, srcWithPkgMgr, bnj)
+	devImage, err = maybeGenerateBackendsJs(ctx, devImage, bnj)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	if !bnj.isDevBuild && bnj.config.BuildScript != "" {
-		srcWithBackendsConfig = srcWithBackendsConfig.Run(
-			llb.Shlexf("%s run %s", packageManagerState.CLI, bnj.config.BuildScript),
-			llb.Dir(AppRootPath),
-		).Root()
-	}
-
 	var out llb.State
-	if bnj.config.BuildOutDir != "" && !bnj.isDevBuild {
-		// In this case creating an image with just the built files.
-		// TODO: do it outside of the Node.js implementation.
-		pathToCopy := filepath.Join(AppRootPath, bnj.config.BuildOutDir)
-
-		out = llb.Scratch().With(llbutil.CopyFrom(srcWithBackendsConfig, pathToCopy, pathToCopy))
+	if bnj.isDevBuild {
+		out = devImage
 	} else {
-		out = srcWithBackendsConfig
-	}
+		prodCfg := bnj.config.Prod
 
-	out = out.AddEnv("NODE_ENV", n.nodejsEnv)
+		var prodImage llb.State
+		if prodCfg.InstallDeps {
+			prodImage = llbutil.Image(nodeImage, *conf.TargetPlatform()).
+				AddEnv("NODE_ENV", "production").
+				File(llb.Mkdir(AppRootPath, 0644))
+
+			prodImage, err = copySrcForInstall(ctx, prodImage, src, fsys.FS(), packageManagerState)
+			if err != nil {
+				return llb.State{}, nil, err
+			}
+
+			prodImage = prodImage.Run(
+				llb.Shlexf("%s install", packageManagerState.CLI),
+				llb.Dir(AppRootPath),
+			).Root()
+
+		} else {
+			prodImage = llb.Scratch()
+		}
+
+		if prodCfg.BuildScript != "" {
+			devImage = devImage.
+				// Important to build in the prod mode.
+				AddEnv("NODE_ENV", "production").
+				Run(
+					llb.Shlexf("%s run %s", packageManagerState.CLI, prodCfg.BuildScript),
+					llb.Dir(AppRootPath),
+				).Root()
+		}
+
+		pathToCopy := filepath.Join(AppRootPath, prodCfg.BuildOutDir)
+		destPath := pathToCopy
+		if prodCfg.BuildOutDir == "" {
+			destPath = "."
+		}
+
+		prodImage = prodImage.With(llbutil.CopyFromExcluding(devImage, pathToCopy, destPath,
+			append(packageManagerState.ExcludePatterns, dirs.BasePatternsToExclude...)))
+
+		out = prodImage
+	}
 
 	return out, []buildkit.LocalContents{local}, nil
 }
@@ -153,4 +164,32 @@ func maybeGenerateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJ
 	fsys.Add(backendsConfigFn, bytes)
 
 	return llbutil.WriteFS(ctx, &fsys, base, AppRootPath)
+}
+
+// Copies package.json and other files from "src" that are needed for the "install" call.
+func copySrcForInstall(ctx context.Context, base llb.State, src llb.State, fsys fs.FS, packageManagerState *PackageManager) (llb.State, error) {
+	opts := fnfs.MatcherOpts{
+		IncludeFiles:      append([]string{"package.json"}, packageManagerState.RequiredFiles...),
+		ExcludeFilesGlobs: packageManagerState.ExcludePatterns,
+	}
+
+	for _, wc := range packageManagerState.WildcardDirectories {
+		opts.IncludeFilesGlobs = append(opts.IncludeFilesGlobs, wc+"/**/*")
+	}
+
+	m, err := fnfs.NewMatcher(opts)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	if err := fnfs.VisitFiles(ctx, fsys, func(path string, bs bytestream.ByteStream, _ fs.DirEntry) error {
+		if !m.Excludes(path) && m.Includes(path) {
+			base = base.With(llbutil.CopyFrom(src, path, filepath.Join(AppRootPath, path)))
+		}
+		return nil
+	}); err != nil {
+		return llb.State{}, err
+	}
+
+	return base, nil
 }

@@ -33,23 +33,25 @@ message GoIntegration {
     string pkg = 1;
 }
 
-message NodejsIntegration {
+// Shared between "integration" and "imageFrom" for now.
+message NodejsBuild {
+    reserved 3, 4;
+
     // Path to `package.json`, relative to the Namespace package. Default is "."
     string pkg = 1;
 
     // Detected Node.js package manager.
     NodePkgMgr node_pkg_mgr = 2;
 
-    // Names of the scripts from `package.json`.
-    repeated string package_json_scripts = 3;
-
-    // Relative path to copy to the output image. If set, the result image contains only these files.
-    // Only affects non-dev environments.
-    // TODO: Move copying the files out of the Node.js implementation.
-    string build_output_dir = 4;
-
     // For Web builds. It is here because building the image for Web is done by the Node.js builder.
-    repeated Backend backend = 5;
+    // This is a temporary internal API. Will be replaced with a nodejs-independent way in the future.
+    repeated Backend internal_do_not_use_backend = 5;
+
+    // Entry point for the container.
+    string run_script = 6;
+
+    // Configuration for prod/test builds.
+    Prod prod = 7;
 
     enum NodePkgMgr {
         PKG_MGR_UNKNOWN = 0;
@@ -57,6 +59,18 @@ message NodejsIntegration {
         YARN            = 2;
         YARN3           = 4;
         PNPM            = 3;
+    }
+
+    message Prod {
+        // If set, this script from package.json is executed.
+        string build_script = 1;
+
+        // Relative path within the build image to copy to the prod image (to the same path).
+        string build_out_dir = 2;
+
+        // If true, the "install" package manager command is executed in the prod image, too.
+        // Dev dependencies are not installed in this case.
+        bool install_deps = 3;
     }
 
     message Backend {
@@ -68,20 +82,16 @@ message NodejsIntegration {
 }
 
 message WebIntegration {
-    NodejsIntegration nodejs = 1;
-
-    string build_output_dir = 2;
+    NodejsBuild nodejs = 1;
 
     // The service that corresponds to this web integration.
     // Needed to get the port for prod serving.
     string service = 3;
+}
 
-    message Build {
-        NodejsIntegration nodejs = 1;
+message WebBuild {
+    NodejsBuild nodejs = 1;
 
-        string build_output_dir = 2;
-
-        // Passed to nginx
-        int32 port = 3;
-    }
+    // Passed to nginx
+    int32 port = 3;
 }

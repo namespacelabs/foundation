@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/hotreload"
@@ -21,21 +20,18 @@ import (
 )
 
 const (
-	startScript = "start"
-	buildScript = "build"
-	devScript   = "dev"
-	runtimePkg  = "namespacelabs.dev/foundation/library/runtime"
+	runtimePkg = "namespacelabs.dev/foundation/library/runtime"
 )
 
 func Register() {
-	api.RegisterIntegration[*schema.NodejsIntegration, *schema.NodejsIntegration](impl{})
+	api.RegisterIntegration[*schema.NodejsBuild, *schema.NodejsBuild](impl{})
 }
 
 type impl struct {
-	api.DefaultBinaryTestIntegration[*schema.NodejsIntegration]
+	api.DefaultBinaryTestIntegration[*schema.NodejsBuild]
 }
 
-func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.NodejsIntegration) error {
+func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.NodejsBuild) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
 		return fnerrors.UserError(pkg.Location, "nodejs integration requires a server")
@@ -44,8 +40,8 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	pkg.Server.Framework = schema.Framework_OPAQUE_NODEJS
 
 	// Adding a dependency to the backends via resources.
-	if len(data.Backend) > 0 {
-		if err := InjectBackendsAsResourceDeps(ctx, pl, pkg, data.Backend); err != nil {
+	if len(data.InternalDoNotUseBackend) > 0 {
+		if err := InjectBackendsAsResourceDeps(ctx, pl, pkg, data.InternalDoNotUseBackend); err != nil {
 			return err
 		}
 	}
@@ -58,36 +54,20 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	return api.SetServerBinaryRef(pkg, binaryRef)
 }
 
-func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsBuild) (*schema.Binary, error) {
 	return CreateNodejsBinary(ctx, env, pl, loc, data)
 }
 
-func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsIntegration) (*schema.Binary, error) {
-	nodePkg := data.Pkg
-	if nodePkg == "" {
-		nodePkg = "."
-	}
+func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.NodejsBuild) (*schema.Binary, error) {
+	layers := []*schema.ImageBuildPlan{{
+		Description: loc.PackageName.String(),
+		NodejsBuild: data,
+	}}
 
 	packageManager, err := binary.LookupPackageManager(data.NodePkgMgr)
 	if err != nil {
 		return nil, err
 	}
-
-	nodejsBuild := &schema.ImageBuildPlan_NodejsBuild{
-		RelPath:                 nodePkg,
-		NodePkgMgr:              data.NodePkgMgr,
-		BuildOutDir:             data.BuildOutputDir,
-		InternalDoNotUseBackend: data.Backend,
-	}
-
-	if slices.Contains(data.PackageJsonScripts, buildScript) {
-		nodejsBuild.BuildScript = buildScript
-	}
-
-	layers := []*schema.ImageBuildPlan{{
-		Description: loc.PackageName.String(),
-		NodejsBuild: nodejsBuild,
-	}}
 
 	config := &schema.BinaryConfig{
 		WorkingDir: binary.AppRootPath,
@@ -112,13 +92,9 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 		config.Command = []string{"/filesync-controller"}
 		// Existence of the "dev" script is not checked, because this code is executed during package loading,
 		// and for "ns test" it happens initially with the "DEV" environment.
-		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), packageManager.CLI, "run", devScript}
+		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), packageManager.CLI, "run", data.RunScript}
 	} else {
-		if !slices.Contains(data.PackageJsonScripts, startScript) {
-			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in non-dev environments`, startScript)
-		}
-
-		config.Args = []string{"run", startScript}
+		config.Args = []string{"run", data.RunScript}
 	}
 
 	return &schema.Binary{
@@ -127,7 +103,7 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 	}, nil
 }
 
-func InjectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, backends []*schema.NodejsIntegration_Backend) error {
+func InjectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, backends []*schema.NodejsBuild_Backend) error {
 	if pkg.Server.ResourcePack == nil {
 		pkg.Server.ResourcePack = &schema.ResourcePack{}
 	}

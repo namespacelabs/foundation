@@ -19,7 +19,7 @@ import (
 )
 
 func Register() {
-	api.RegisterIntegration[*schema.WebIntegration, *schema.WebIntegration_Build](impl{})
+	api.RegisterIntegration[*schema.WebIntegration, *schema.WebBuild](impl{})
 }
 
 type impl struct{}
@@ -33,8 +33,8 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	pkg.Server.Framework = schema.Framework_OPAQUE_NODEJS
 
 	// Adding a dependency to the backends via resources.
-	if len(data.Nodejs.Backend) > 0 {
-		if err := nodejs.InjectBackendsAsResourceDeps(ctx, pl, pkg, data.Nodejs.Backend); err != nil {
+	if len(data.Nodejs.InternalDoNotUseBackend) > 0 {
+		if err := nodejs.InjectBackendsAsResourceDeps(ctx, pl, pkg, data.Nodejs.InternalDoNotUseBackend); err != nil {
 			return err
 		}
 	}
@@ -51,10 +51,9 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 		return fnerrors.UserError(pkg.Location, "web integration: couldn't find service %q", data.Service)
 	}
 
-	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, pkg.Server.Name, &schema.WebIntegration_Build{
-		Nodejs:         data.Nodejs,
-		BuildOutputDir: data.BuildOutputDir,
-		Port:           port,
+	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, pkg.Server.Name, &schema.WebBuild{
+		Nodejs: data.Nodejs,
+		Port:   port,
 	})
 	if err != nil {
 		return err
@@ -67,9 +66,8 @@ func (impl) ApplyToTest(ctx context.Context, env *schema.Environment, pl pkggrap
 	return fnerrors.UserError(pkg.Location, "web integration doesn't support tests yet")
 }
 
-func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.WebIntegration_Build) (*schema.Binary, error) {
+func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.WebBuild) (*schema.Binary, error) {
 	nodejsData := protos.Clone(data.Nodejs)
-	nodejsData.BuildOutputDir = data.BuildOutputDir
 	nodejsBinary, err := nodejs.CreateNodejsBinary(ctx, env, pl, loc, nodejsData)
 	if err != nil {
 		return nil, err
@@ -84,7 +82,7 @@ func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggra
 					[]*schema.ImageBuildPlan{{
 						Description: "nginx",
 						StaticFilesServer: &schema.ImageBuildPlan_StaticFilesServer{
-							Dir:  filepath.Join(binary.AppRootPath, data.BuildOutputDir),
+							Dir:  filepath.Join(binary.AppRootPath, data.Nodejs.Prod.BuildOutDir),
 							Port: data.Port,
 						}}},
 					nodejsBinary.BuildPlan.LayerBuildPlan...,
