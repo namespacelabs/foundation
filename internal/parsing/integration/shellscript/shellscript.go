@@ -20,7 +20,7 @@ func Register() {
 }
 
 type impl struct {
-	api.BinaryTestIntegration[*schema.ShellScriptIntegration]
+	api.DefaultBinaryTestIntegration[*schema.ShellScriptIntegration]
 }
 
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.ShellScriptIntegration) error {

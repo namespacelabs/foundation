@@ -59,9 +59,9 @@ func GenerateBinaryAndAddToPackage(ctx context.Context, env *schema.Environment,
 }
 
 // Simply creates a binary for a test
-type BinaryTestIntegration[ServerData proto.Message] struct{}
+type DefaultBinaryTestIntegration[ServerData proto.Message] struct{}
 
-func (BinaryTestIntegration[ServerData]) ApplyToTest(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test, data ServerData) error {
+func (DefaultBinaryTestIntegration[ServerData]) ApplyToTest(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test, data ServerData) error {
 	_, err := GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, test.Name, data)
 	if err != nil {
 		return err
