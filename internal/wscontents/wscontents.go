@@ -63,16 +63,15 @@ func (cc *computeContents) Compute(ctx context.Context, _ compute.Resolved) (fs.
 	return &contentFS{absPath: cc.absPath, fs: inmem}, nil
 }
 
-func SnapshotContents(ctx context.Context, modulePath, rel string) (fsys *memfs.FS, err error) {
-	err = tasks.Action("module.contents.snapshot").Arg("absPath", modulePath).Arg("rel", rel).Run(ctx, func(ctx context.Context) error {
+func SnapshotContents(ctx context.Context, modulePath, rel string) (*memfs.FS, error) {
+	return tasks.Return(ctx, tasks.Action("module.contents.snapshot").Arg("absPath", modulePath).Arg("rel", rel), func(ctx context.Context) (*memfs.FS, error) {
 		if err := verifyDir(modulePath); err != nil {
-			return err
+			return nil, err
 		}
 
-		var err error
-		fsys, err = SnapshotDirectory(ctx, filepath.Join(modulePath, rel))
+		fsys, err := SnapshotDirectory(ctx, filepath.Join(modulePath, rel))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		att := tasks.Attachments(ctx)
@@ -81,9 +80,8 @@ func SnapshotContents(ctx context.Context, modulePath, rel string) (fsys *memfs.
 			att.AddResult("fs.totalSize", humanize.Bytes(ts))
 		}
 
-		return nil
+		return fsys, nil
 	})
-	return
 }
 
 func verifyDir(path string) error {
