@@ -181,7 +181,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 	created, err := cli.ContainerCreate(ctx, containerConfig, hostConfig, networkConfig, nil, name)
 	if err != nil {
-		return err
+		return fnerrors.New("failed to create container: %w", err)
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "docker: created container %q (image=%s args=%v)\n",
@@ -194,7 +194,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			// conflict with `removal of container XYZ is already in progress`.
 			// We ignore that error here.
 			if !client.IsErrNotFound(err) && !errdefs.IsConflict(err) {
-				return err
+				return fnerrors.New("failed to remove container: %w", err)
 			}
 		}
 		return nil
@@ -207,11 +207,11 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		Stderr: containerConfig.AttachStderr,
 	})
 	if err != nil {
-		return err
+		return fnerrors.New("failed to attach to container: %w", err)
 	}
 
 	if err := cli.ContainerStart(ctx, created.ID, types.ContainerStartOptions{}); err != nil {
-		return err
+		return fnerrors.New("failed to start container: %w", err)
 	}
 
 	var errChs []chan error
@@ -292,6 +292,10 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			// code 0, we should still not return an error.
 			return fnerrors.ExitWithCode(fmt.Errorf("docker: container exit code %d", result.StatusCode), int(result.StatusCode))
 		case err := <-errs:
+			if client.IsErrNotFound(err) {
+				// We schedule containers with AutoRemove so they might disappear before we get a chance to wait for them.
+				return nil
+			}
 			return err
 		}
 	}()
@@ -310,7 +314,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			}
 		}
 
-		return waitErr
+		return fnerrors.New("failed to wait for container: %w", waitErr)
 	}
 
 	return multierr.New(goroutineErrs...)
