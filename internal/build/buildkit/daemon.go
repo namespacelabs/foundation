@@ -53,6 +53,7 @@ func RemoveBuildkitd(ctx context.Context) error {
 	if err != nil {
 		return fnerrors.InternalError("failed to instantiate the docker client while removing buildkitd: %w", err)
 	}
+
 	// Ignore if the container is already removed.
 	ctr, err := dockerclient.ContainerInspect(ctx, DefaultContainerName)
 	if err != nil {
@@ -62,10 +63,12 @@ func RemoveBuildkitd(ctx context.Context) error {
 			return err
 		}
 	}
+
 	opts := types.ContainerRemoveOptions{Force: true}
 	if err := dockerclient.ContainerRemove(ctx, ctr.Name, opts); err != nil {
 		return fnerrors.InternalError("failed to remove the buildkitd container: %w", err)
 	}
+
 	return nil
 }
 

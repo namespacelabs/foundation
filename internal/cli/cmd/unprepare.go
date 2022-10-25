@@ -6,26 +6,38 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute/cache"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/unprepare"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewUnprepareCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "unprepare",
-		Aliases: []string{"clean"},
-		Short:   "Reverts the local workspace to zero state by deleting all Namespace-managed containers and caches.",
-		Args:    cobra.NoArgs,
+		Use:   "unprepare",
+		Short: "Removes Namespace-created docker containers and user-level caches.",
+		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			root, err := module.FindRoot(ctx, ".")
+			result, err := tui.Ask(ctx, "Do you want to remove all of Namespace locally managed resources?",
+				`If you've run Namespace before, various resources were setup in your
+workstation, including a result cache, but most importantly a series of
+containers running within your Docker instance.
+
+Do you wish to remove these?
+
+Type "unprepare" for them to be removed.`, "")
+
+			if result != "yes" {
+				return context.Canceled
+			}
+
 			if err != nil {
 				return err
 			}
@@ -40,17 +52,12 @@ func NewUnprepareCmd() *cobra.Command {
 				return err
 			}
 
-			// Remove the devhost configuration.
-			if err := tasks.Action("delete.devhost").Run(ctx, func(ctx context.Context) error {
-				return devhost.Delete(ctx, root)
-			}); err != nil {
-				return err
-			}
-
 			// Prune cached build artifacts and command history artifacts.
 			if err := cache.Prune(ctx); err != nil {
 				return err
 			}
+
+			fmt.Fprintf(console.Stdout(ctx), "The contents of your %q are no longer valid.\n", devhost.DevHostFilename)
 
 			return nil
 		}),
