@@ -112,6 +112,10 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			return fnerrors.New("docker: doesn't support env.ExperimentalFromSecret")
 		}
 
+		if kv.FromSecretRef != nil {
+			return fnerrors.New("docker: doesn't support env.FromSecretRef")
+		}
+
 		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
 	}
 
