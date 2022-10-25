@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
@@ -22,6 +23,6 @@ type SimpleJsonParser[V proto.Message] struct {
 func (p *SimpleJsonParser[V]) Url() string      { return p.SyntaxUrl }
 func (p *SimpleJsonParser[V]) Shortcut() string { return p.SyntaxShortcut }
 
-func (p *SimpleJsonParser[V]) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (p *SimpleJsonParser[V]) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	return fncue.DecodeToTypedProtoMessage[V](v)
 }

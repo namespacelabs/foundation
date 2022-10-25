@@ -24,7 +24,7 @@ type Parser struct{}
 func (p *Parser) Url() string      { return "namespace.so/from-dockerfile" }
 func (p *Parser) Shortcut() string { return "dockerfile" }
 
-func (p *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (p *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	if v != nil {
 		if str, err := v.Val.String(); err == nil {
 			// Shortcut: `dockerfile: "<filename>"`

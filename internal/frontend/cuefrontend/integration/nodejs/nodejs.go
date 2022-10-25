@@ -10,16 +10,21 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/languages/opaque"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const (
+	startScript  = "start"
+	buildScript  = "build"
+	devScript    = "dev"
 	npmLockfile  = "package-lock.json"
 	yarnLockfile = "yarn.lock"
 	pnpmLockfile = "pnpm-lock.yaml"
@@ -31,6 +36,8 @@ func (i *Parser) Url() string      { return "namespace.so/from-nodejs" }
 func (i *Parser) Shortcut() string { return "nodejs" }
 
 type cueIntegrationNodejs struct {
+	Build cueIntegrationNodejsBuild `json:"build"`
+
 	Pkg string `json:"pkg"`
 
 	// Name -> package name.
@@ -38,7 +45,11 @@ type cueIntegrationNodejs struct {
 	Backends map[string]string `json:"backends"`
 }
 
-func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+type cueIntegrationNodejsBuild struct {
+	OutDir string `json:"outDir"`
+}
+
+func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	var bits cueIntegrationNodejs
 	if v != nil {
 		if err := v.Val.Decode(&bits); err != nil {
@@ -70,45 +81,70 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		return nil, err
 	}
 
-	return &schema.NodejsIntegration{
-		Pkg:                bits.Pkg,
-		NodePkgMgr:         pkgMgr,
-		PackageJsonScripts: scripts,
-		Backend:            backends,
-	}, nil
+	out := &schema.NodejsBuild{
+		Pkg:                     bits.Pkg,
+		NodePkgMgr:              pkgMgr,
+		InternalDoNotUseBackend: backends,
+	}
+
+	if opaque.UseDevBuild(env) {
+		// Existence of the "dev" script is not checked, because this code is executed during package loading,
+		// and for "ns test" it happens initially with the "DEV" environment.
+		out.RunScript = devScript
+	} else {
+		if !slices.Contains(scripts, startScript) {
+			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in non-dev environments`, startScript)
+		}
+
+		out.RunScript = startScript
+		out.Prod = &schema.NodejsBuild_Prod{
+			BuildOutDir: bits.Build.OutDir,
+			InstallDeps: true,
+		}
+
+		if slices.Contains(scripts, buildScript) {
+			out.Prod.BuildScript = buildScript
+		} else {
+			if out.Prod.BuildOutDir != "" {
+				return nil, fnerrors.UserError(loc, `package.json must contain '%s' script if 'build.outDir' is set`, buildScript)
+			}
+		}
+	}
+
+	return out, nil
 }
 
-func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, relPath string) (schema.NodejsIntegration_NodePkgMgr, error) {
+func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, relPath string) (schema.NodejsBuild_NodePkgMgr, error) {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
-		return schema.NodejsIntegration_PKG_MGR_UNKNOWN, err
+		return schema.NodejsBuild_PKG_MGR_UNKNOWN, err
 	}
 
 	if _, err := fs.Stat(fsys, filepath.Join(relPath, npmLockfile)); err == nil {
-		return schema.NodejsIntegration_NPM, nil
+		return schema.NodejsBuild_NPM, nil
 	}
 	if _, err := fs.Stat(fsys, filepath.Join(relPath, ".yarn", "releases")); err == nil {
-		return schema.NodejsIntegration_YARN3, nil
+		return schema.NodejsBuild_YARN3, nil
 	}
 	if _, err := fs.Stat(fsys, filepath.Join(relPath, yarnLockfile)); err == nil {
-		return schema.NodejsIntegration_YARN, nil
+		return schema.NodejsBuild_YARN, nil
 	}
 	if _, err := fs.Stat(fsys, filepath.Join(relPath, pnpmLockfile)); err == nil {
-		return schema.NodejsIntegration_PNPM, nil
+		return schema.NodejsBuild_PNPM, nil
 	}
 
-	return schema.NodejsIntegration_PKG_MGR_UNKNOWN, fnerrors.UserError(loc, "no package manager detected")
+	return schema.NodejsBuild_PKG_MGR_UNKNOWN, fnerrors.UserError(loc, "no package manager detected")
 }
 
-func ParseBackends(loc pkggraph.Location, src map[string]string) ([]*schema.NodejsIntegration_Backend, error) {
-	backends := []*schema.NodejsIntegration_Backend{}
+func ParseBackends(loc pkggraph.Location, src map[string]string) ([]*schema.NodejsBuild_Backend, error) {
+	backends := []*schema.NodejsBuild_Backend{}
 	for k, v := range src {
 		serviceRef, err := schema.ParsePackageRef(loc.PackageName, v)
 		if err != nil {
 			return nil, err
 		}
 
-		backends = append(backends, &schema.NodejsIntegration_Backend{
+		backends = append(backends, &schema.NodejsBuild_Backend{
 			Name:    k,
 			Service: serviceRef,
 		})

@@ -26,9 +26,9 @@ type PackageManager struct {
 	ExcludePatterns     []string
 }
 
-func LookupPackageManager(pkgMgr schema.NodejsIntegration_NodePkgMgr) (*PackageManager, error) {
+func LookupPackageManager(pkgMgr schema.NodejsBuild_NodePkgMgr) (*PackageManager, error) {
 	switch pkgMgr {
-	case schema.NodejsIntegration_NPM:
+	case schema.NodejsBuild_NPM:
 		return &PackageManager{
 			CLI: "npm",
 			// Not installing the "npm" binary itself: relying on the base version built into the "node:alpine" image.
@@ -36,7 +36,7 @@ func LookupPackageManager(pkgMgr schema.NodejsIntegration_NodePkgMgr) (*PackageM
 			RequiredFiles: npmFiles,
 		}, nil
 
-	case schema.NodejsIntegration_YARN, schema.NodejsIntegration_YARN3:
+	case schema.NodejsBuild_YARN, schema.NodejsBuild_YARN3:
 		pm := &PackageManager{
 			CLI: "yarn",
 			// Not installing "yarn v1" itself: relying on the base version built into the "node:alpine" image.
@@ -44,14 +44,14 @@ func LookupPackageManager(pkgMgr schema.NodejsIntegration_NodePkgMgr) (*PackageM
 			RequiredFiles: yarnFiles,
 		}
 
-		if pkgMgr == schema.NodejsIntegration_YARN3 {
+		if pkgMgr == schema.NodejsBuild_YARN3 {
 			pm.WildcardDirectories = []string{".yarn"}
 			pm.ExcludePatterns = []string{".yarn/cache/**"}
 		}
 
 		return pm, nil
 
-	case schema.NodejsIntegration_PNPM:
+	case schema.NodejsBuild_PNPM:
 		return &PackageManager{
 			CLI: "pnpm",
 			MakeState: func(base llb.State) llb.State {

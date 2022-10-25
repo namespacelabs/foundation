@@ -21,9 +21,14 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.ImageBuildPlan_NodejsBuild, assets assets.AvailableBuildAssets, isFocus bool) (build.Spec, error) {
+func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.NodejsBuild, assets assets.AvailableBuildAssets, isFocus bool) (build.Spec, error) {
+	relPath := config.Pkg
+	if relPath == "" {
+		relPath = "."
+	}
+
 	return &buildNodeJS{
-		loc:        loc.Module.MakeLocation(loc.Rel(config.RelPath)),
+		loc:        loc.Module.MakeLocation(loc.Rel(relPath)),
 		config:     config,
 		assets:     assets,
 		isDevBuild: opaque.UseDevBuild(env.Environment()),
@@ -33,7 +38,7 @@ func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.ImageB
 
 type buildNodeJS struct {
 	loc        pkggraph.Location
-	config     *schema.ImageBuildPlan_NodejsBuild
+	config     *schema.NodejsBuild
 	assets     assets.AvailableBuildAssets
 	isDevBuild bool
 	isFocus    bool

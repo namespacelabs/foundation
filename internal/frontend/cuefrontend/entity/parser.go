@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
@@ -37,7 +38,7 @@ type ParsedEntity struct {
 	Data proto.Message
 }
 
-func (p *DispatchingEntityParser) ParseEntity(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (ParsedEntity, error) {
+func (p *DispatchingEntityParser) ParseEntity(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (ParsedEntity, error) {
 	// First checking for the full cueUrl
 	if cueUrl := v.LookupPath(p.urlCueKey); cueUrl.Exists() {
 		url, err := cueUrl.Val.String()
@@ -46,7 +47,7 @@ func (p *DispatchingEntityParser) ParseEntity(ctx context.Context, pl parsing.Ea
 		}
 
 		if i, ok := p.registeredParsers[url]; ok {
-			return parse(ctx, pl, loc, i, v)
+			return parse(ctx, env, pl, loc, i, v)
 		} else {
 			return ParsedEntity{}, fnerrors.UserError(loc, "unknown url: %s", url)
 		}
@@ -58,20 +59,20 @@ func (p *DispatchingEntityParser) ParseEntity(ctx context.Context, pl parsing.Ea
 	//   }
 	for _, p := range p.registeredParsers {
 		if shortV := v.LookupPath(p.Shortcut()); shortV.Exists() {
-			return parse(ctx, pl, loc, p, shortV)
+			return parse(ctx, env, pl, loc, p, shortV)
 		}
 		// Shortest form:
 		//  integration: "golang"
 		if str, err := v.Val.String(); err == nil && str == p.Shortcut() {
-			return parse(ctx, pl, loc, p, nil)
+			return parse(ctx, env, pl, loc, p, nil)
 		}
 	}
 
 	return ParsedEntity{}, fnerrors.UserError(loc, "%q content is not recognized, neither a full form nor a shorcut", v.Val.Path())
 }
 
-func parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, p EntityParser, v *fncue.CueV) (ParsedEntity, error) {
-	data, err := p.Parse(ctx, pl, loc, v)
+func parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, p EntityParser, v *fncue.CueV) (ParsedEntity, error) {
+	data, err := p.Parse(ctx, env, pl, loc, v)
 	if err != nil {
 		return ParsedEntity{}, err
 	}

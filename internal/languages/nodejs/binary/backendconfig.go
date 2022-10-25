@@ -19,7 +19,7 @@ import (
 )
 
 // Generates a "backends.fn.js" with ingress addresses for required backends.
-func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends []*schema.NodejsIntegration_Backend, ingressFragments compute.Computable[[]*schema.IngressFragment], placeholder bool) ([]byte, error) {
+func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends []*schema.NodejsBuild_Backend, ingressFragments compute.Computable[[]*schema.IngressFragment], placeholder bool) ([]byte, error) {
 	var fragments []*schema.IngressFragment
 	if ingressFragments != nil {
 		var err error

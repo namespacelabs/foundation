@@ -27,7 +27,7 @@ type parser struct {
 func (p *parser) Url() string      { return "namespace.so/from-shellscript" }
 func (p *parser) Shortcut() string { return "shellscript" }
 
-func (p *parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (p *parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	var msg cueShellScriptIntegration
 	if v != nil {
 		if err := v.Val.Decode(&msg); err != nil {

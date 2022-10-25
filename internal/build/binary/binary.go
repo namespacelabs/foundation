@@ -35,7 +35,7 @@ var BuildWeb func(pkggraph.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
-var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.ImageBuildPlan_NodejsBuild, assets.AvailableBuildAssets, bool /* isFocus */) (build.Spec, error)
+var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.NodejsBuild, assets.AvailableBuildAssets, bool /* isFocus */) (build.Spec, error)
 var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
 
 var prebuiltsConfType = cfg.DefineConfigType[*Prebuilts]()

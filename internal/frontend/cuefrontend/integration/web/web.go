@@ -22,32 +22,34 @@ func (i *Parser) Url() string      { return "namespace.so/from-web" }
 func (i *Parser) Shortcut() string { return "web" }
 
 type cueIntegrationWeb struct {
-	Build cueIntegrationWebBuild `json:"build"`
-
 	// The service that corresponds to this web integration.
 	// Needed to get the port for prod serving.
 	Service string `json:"service"`
-
-	// Name -> package name.
-	// The ingress urls for backends are injected into the built image as a JS file.
-	Backends map[string]string `json:"backends"`
 }
 
-type cueIntegrationWebBuild struct {
-	OutDir string `json:"outDir"`
-}
-
-func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
 	nodejsParser := &nodejs.Parser{}
 
-	rawNodejsInt, err := nodejsParser.Parse(ctx, pl, loc, v)
+	rawNodejsBuild, err := nodejsParser.Parse(ctx, env, pl, loc, v)
 	if err != nil {
 		return nil, err
 	}
 
-	nodejsInt, ok := rawNodejsInt.(*schema.NodejsIntegration)
+	nodejsBuild, ok := rawNodejsBuild.(*schema.NodejsBuild)
 	if !ok {
 		return nil, fnerrors.InternalError("expected nodejs integration")
+	}
+
+	if nodejsBuild.Prod != nil {
+		nodejsBuild.Prod.InstallDeps = false
+
+		if nodejsBuild.Prod.BuildOutDir == "" {
+			nodejsBuild.Prod.BuildOutDir = "dist"
+		}
+
+		if nodejsBuild.Prod.BuildScript == "" {
+			return nil, fnerrors.UserError(loc, "The `build` script is required for prod web build")
+		}
 	}
 
 	var bits cueIntegrationWeb
@@ -57,22 +59,12 @@ func (i *Parser) Parse(ctx context.Context, pl parsing.EarlyPackageLoader, loc p
 		}
 	}
 
-	nodejsInt.Backend, err = nodejs.ParseBackends(loc, bits.Backends)
-	if err != nil {
-		return nil, err
-	}
-
 	if bits.Service == "" {
 		return nil, fnerrors.UserError(loc, "web integration requires a service name")
 	}
 
-	if bits.Build.OutDir == "" {
-		bits.Build.OutDir = "dist"
-	}
-
 	return &schema.WebIntegration{
-		Nodejs:         nodejsInt,
-		BuildOutputDir: bits.Build.OutDir,
-		Service:        bits.Service,
+		Nodejs:  nodejsBuild,
+		Service: bits.Service,
 	}, nil
 }

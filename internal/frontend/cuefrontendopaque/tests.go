@@ -67,7 +67,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 	}
 
 	if i := v.LookupPath("integration"); i.Exists() {
-		integration, err := integrationparsing.IntegrationParser.ParseEntity(ctx, pl, pkg.Location, i)
+		integration, err := integrationparsing.IntegrationParser.ParseEntity(ctx, env, pl, pkg.Location, i)
 		if err != nil {
 			return nil, err
 		}
