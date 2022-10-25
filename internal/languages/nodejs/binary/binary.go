@@ -6,11 +6,14 @@ package binary
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/moby/buildkit/client/llb"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/bytestream"
@@ -20,12 +23,15 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 const (
 	AppRootPath      = "/app"
 	backendsConfigFn = "src/config/backends.ns.js"
+	// TODO: support other package managers.
+	YarnContainerCacheDir = "/cache/yarn"
 )
 
 var (
@@ -38,22 +44,9 @@ type nodeJsBinary struct {
 }
 
 func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Configuration) (llb.State, []buildkit.LocalContents, error) {
-	nodeImage, err := pins.CheckDefault("node")
-	if err != nil {
-		return llb.State{}, nil, err
-	}
-
 	packageManagerState, err := LookupPackageManager(bnj.config.NodePkgMgr)
 	if err != nil {
 		return llb.State{}, nil, err
-	}
-
-	devImage := llbutil.Image(nodeImage, *conf.TargetPlatform()).
-		AddEnv("NODE_ENV", "development").
-		File(llb.Mkdir(AppRootPath, 0644))
-
-	if packageManagerState.MakeState != nil {
-		devImage = devImage.With(packageManagerState.MakeState)
 	}
 
 	fsys, err := compute.GetValue(ctx, conf.Workspace().VersionedFS(bnj.loc.Rel(), false))
@@ -69,17 +62,12 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	}
 	src := buildkit.MakeLocalState(local)
 
-	devImage, err = copySrcForInstall(ctx, devImage, src, fsys.FS(), packageManagerState)
+	devImage, err := createBaseImageAndInstallYarn(ctx, *conf.TargetPlatform(), src, fsys.FS(), "development", packageManagerState)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
 
-	devImage = devImage.
-		Run(
-			llb.Shlexf("%s install", packageManagerState.CLI),
-			llb.Dir(AppRootPath),
-		).
-		With(llbutil.CopyFrom(src, ".", AppRootPath))
+	devImage = devImage.With(llbutil.CopyFrom(src, ".", AppRootPath))
 
 	devImage, err = maybeGenerateBackendsJs(ctx, devImage, bnj)
 	if err != nil {
@@ -94,20 +82,10 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 		var prodImage llb.State
 		if prodCfg.InstallDeps {
-			prodImage = llbutil.Image(nodeImage, *conf.TargetPlatform()).
-				AddEnv("NODE_ENV", "production").
-				File(llb.Mkdir(AppRootPath, 0644))
-
-			prodImage, err = copySrcForInstall(ctx, prodImage, src, fsys.FS(), packageManagerState)
+			prodImage, err = createBaseImageAndInstallYarn(ctx, *conf.TargetPlatform(), src, fsys.FS(), "production", packageManagerState)
 			if err != nil {
 				return llb.State{}, nil, err
 			}
-
-			prodImage = prodImage.Run(
-				llb.Shlexf("%s install", packageManagerState.CLI),
-				llb.Dir(AppRootPath),
-			).Root()
-
 		} else {
 			prodImage = llb.Scratch()
 		}
@@ -192,4 +170,37 @@ func copySrcForInstall(ctx context.Context, base llb.State, src llb.State, fsys 
 	}
 
 	return base, nil
+}
+
+func createBaseImageAndInstallYarn(ctx context.Context, platform specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
+	nodeImage, err := pins.CheckDefault("node")
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	baseImage := llbutil.Image(nodeImage, platform).
+		AddEnv("YARN_CACHE_FOLDER", YarnContainerCacheDir).
+		AddEnv("NODE_ENV", nodeEnv).
+		File(llb.Mkdir(AppRootPath, 0644))
+
+	if packageManagerState.MakeState != nil {
+		baseImage = baseImage.With(packageManagerState.MakeState)
+	}
+
+	baseImage, err = copySrcForInstall(ctx, baseImage, src, fsys, packageManagerState)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	plfrm := strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-")
+
+	pkgMgrInstall := baseImage.
+		Run(
+			llb.Shlexf("%s install", packageManagerState.CLI),
+			llb.Dir(AppRootPath),
+		)
+	pkgMgrInstall.AddMount(YarnContainerCacheDir, llb.Scratch(),
+		llb.AsPersistentCacheDir(fmt.Sprintf("yarn-cache-%s-%s", nodeEnv, plfrm), llb.CacheMountShared))
+
+	return pkgMgrInstall.Root(), nil
 }
