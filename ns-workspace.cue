@@ -39,6 +39,7 @@ prebuilts: {
 	}
 	baseRepository: "us-docker.pkg.dev/foundation-344819/prebuilts/"
 }
-internalAliases: [
-	{module_name: "library.namespace.so", rel_path: "library"},
-]
+internalAliases: [{
+	module_name: "library.namespace.so"
+	rel_path:    "library"
+}]
