@@ -13,7 +13,7 @@
  <span>&nbsp;•&nbsp;</span>
  🏛️ <a href="https://docs.namespace.so/reference?utm_source=github">Reference</a>
  <span>&nbsp;•&nbsp;</span>
- 💬 <a href="https://community.namespace.so/discord?utm_source=github">Slack</a>
+ 💬 <a href="https://community.namespace.so/discord?utm_source=github">Discord</a>
 </div>
 
 ### **About Namespace**
