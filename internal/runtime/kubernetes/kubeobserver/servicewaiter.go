@@ -17,7 +17,10 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -26,7 +29,7 @@ const dialTimeout = 100 * time.Millisecond
 type serviceWaiter struct {
 	namespace, name string
 
-	isReady func([]corev1.Pod, error) bool
+	isReady func(string, []corev1.Pod, error) bool
 
 	mu                    sync.Mutex
 	portCount, matchCount int
@@ -69,6 +72,11 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 		return false, fnerrors.InternalError("service %q is missing server label", w.name)
 	}
 
+	scope, ok := service.Annotations[kubedef.K8sServicePackageName]
+	if !ok {
+		return false, fnerrors.InternalError("service %q is missing package name", w.name)
+	}
+
 	pod, err := c.CoreV1().Pods(w.namespace).List(ctx, v1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(map[string]string{
 			kubedef.K8sServerId: id,
@@ -83,8 +91,7 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 		addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, port.Port)
 
 		rawConn, err := net.DialTimeout("tcp", addr, dialTimeout)
-		if !w.isReady(pod.Items, err) {
-			fmt.Fprintf(console.Debug(ctx), "service not ready: %s\n", service.Name)
+		if !w.isReady(scope, pod.Items, err) {
 			continue
 		}
 
@@ -100,6 +107,15 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 	return w.matchCount > 0 && w.matchCount == w.portCount, nil
 }
 
-func WaitForService(namespace, name string, isReady func([]corev1.Pod, error) bool) ConditionWaiter[*k8s.Clientset] {
+func WaitForService(namespace, name string, isReady func(string, []corev1.Pod, error) bool) ConditionWaiter[*k8s.Clientset] {
 	return &serviceWaiter{namespace: namespace, name: name, isReady: isReady}
+}
+
+func WaiterFromServiceErr(err error) *orchestration.Event_WaitStatus {
+	return &orchestration.Event_WaitStatus{
+		Description: "Service not ready",
+		Opaque: protos.WrapAnyOrDie(&runtime.WaitError{
+			Message: err.Error(),
+		}),
+	}
 }

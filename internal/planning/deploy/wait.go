@@ -55,6 +55,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
 		pending := map[string][]*runtimepb.ContainerWaitStatus{}
+		waitErrors := map[string]string{}
 		helps := map[string]string{}
 
 		runDiagnosis := func() {
@@ -76,6 +77,10 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 				buf := bytes.NewBuffer(nil)
 				out := io.MultiWriter(buf, console.Debug(ctx))
+
+				if msg, ok := waitErrors[resourceID]; ok && msg != "" {
+					fmt.Fprintf(out, "%s\n", msg)
+				}
 
 				if help, ok := helps[resourceID]; ok && !env.Environment().GetEphemeral() {
 					fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
@@ -155,6 +160,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 				if ev.Ready != orchestration.Event_READY {
 					pending[ev.ResourceId] = nil
+					delete(waitErrors, ev.ResourceId)
 					helps[ev.ResourceId] = ev.RuntimeSpecificHelp
 
 					failed := false
@@ -164,19 +170,21 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 						}
 
 						cws := &runtimepb.ContainerWaitStatus{}
-						if err := w.Opaque.UnmarshalTo(cws); err != nil {
-							continue
-						}
-						pending[ev.ResourceId] = append(pending[ev.ResourceId], cws)
+						waitErr := &runtimepb.WaitError{}
+						if err := w.Opaque.UnmarshalTo(cws); err == nil {
+							pending[ev.ResourceId] = append(pending[ev.ResourceId], cws)
 
-						var ctrs []*runtimepb.ContainerUnitWaitStatus
-						ctrs = append(ctrs, cws.Containers...)
-						ctrs = append(ctrs, cws.Initializers...)
+							var ctrs []*runtimepb.ContainerUnitWaitStatus
+							ctrs = append(ctrs, cws.Containers...)
+							ctrs = append(ctrs, cws.Initializers...)
 
-						for _, ctr := range ctrs {
-							if ctr.Status.Crashed || ctr.Status.Failed() {
-								failed = true
+							for _, ctr := range ctrs {
+								if ctr.Status.Crashed || ctr.Status.Failed() {
+									failed = true
+								}
 							}
+						} else if err := w.Opaque.UnmarshalTo(waitErr); err == nil {
+							waitErrors[ev.ResourceId] = waitErr.Message
 						}
 					}
 

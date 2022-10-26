@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -42,22 +41,21 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 	})
 }
 
-func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, deployable runtime.Deployable) *orchestration.Event {
+func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, scope string) *orchestration.Event {
 	ev := &orchestration.Event{
 		ResourceId:          fmt.Sprintf("%s/%s", namespace, name),
 		RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", namespace, strings.ToLower(gvk.Kind), name),
 		Ready:               orchestration.Event_NOT_READY,
+		Scope:               scope,
 	}
 
 	switch {
 	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
 		ev.Category = "Servers deployed"
+	case kubedef.IsGVKService(gvk):
+		ev.Category = "Services deployed"
 	default:
 		ev.Category = desc
-	}
-
-	if deployable != nil {
-		ev.Scope = deployable.GetPackageName()
 	}
 
 	return ev
@@ -92,7 +90,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 	}
 
 	return ev.Run(ctx, func(ctx context.Context) error {
-		ev := PrepareEvent(w.GroupVersionKind, w.Namespace, w.Name, w.Description, nil)
+		ev := PrepareEvent(w.GroupVersionKind, w.Namespace, w.Name, w.Description, "")
 		ev.Scope = w.Scope.String()
 		if w.PreviousGen > 0 && w.PreviousGen == w.ExpectedGen {
 			ev.AlreadyExisted = true

@@ -185,7 +185,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 	if ch != nil {
 		switch {
 		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj):
-			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable.GetPackageName())
 			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
 				Description: "Commited...",
 			})
@@ -238,7 +238,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 								return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
 							}
 
-							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable.GetPackageName())
 							ev.ImplMetadata = meta
 							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(obj.GetNamespace(), obj.GetName(), ps))
 
@@ -270,10 +270,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("service.wait").Scope(scope...),
 					kobs.WaitForService(obj.GetNamespace(), obj.GetName(),
-						func(pods []v1.Pod, err error) bool {
-							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
-
-							fmt.Fprintf(console.Debug(ctx), "found %d pods for service %s\n", len(pods), obj.GetName())
+						func(scope string, pods []v1.Pod, err error) bool {
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, scope)
 
 							for _, p := range pods {
 								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(p.Namespace, p.Name, p.Status))
@@ -281,10 +279,11 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 							if err == nil {
 								ev.Ready = orchestration.Event_READY
+							} else {
+								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromServiceErr(err))
 							}
 
 							if ch != nil {
-								fmt.Fprintf(console.Debug(ctx), "emitting event for service %s\n", obj.GetName())
 								ch <- ev
 							}
 

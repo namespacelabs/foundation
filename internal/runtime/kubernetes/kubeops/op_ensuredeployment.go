@@ -44,7 +44,7 @@ func registerEnsureDeployment() {
 				return
 			}
 
-			ev := kubeobserver.PrepareEvent(parsed.obj.GroupVersionKind(), parsed.obj.GetNamespace(), parsed.obj.GetName(), d.Description, parsed.spec.Deployable)
+			ev := kubeobserver.PrepareEvent(parsed.obj.GroupVersionKind(), parsed.obj.GetNamespace(), parsed.obj.GetName(), d.Description, parsed.spec.GetDeployable().GetPackageName())
 			ch <- ev
 		},
 
