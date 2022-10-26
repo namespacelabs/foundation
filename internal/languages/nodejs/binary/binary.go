@@ -30,8 +30,6 @@ import (
 const (
 	AppRootPath      = "/app"
 	backendsConfigFn = "src/config/backends.ns.js"
-	// TODO: support other package managers.
-	YarnContainerCacheDir = "/cache/yarn"
 )
 
 var (
@@ -179,7 +177,6 @@ func createBaseImageAndInstallYarn(ctx context.Context, platform specs.Platform,
 	}
 
 	baseImage := llbutil.Image(nodeImage, platform).
-		AddEnv("YARN_CACHE_FOLDER", YarnContainerCacheDir).
 		AddEnv("NODE_ENV", nodeEnv).
 		File(llb.Mkdir(AppRootPath, 0644))
 
@@ -196,11 +193,14 @@ func createBaseImageAndInstallYarn(ctx context.Context, platform specs.Platform,
 
 	pkgMgrInstall := baseImage.
 		Run(
-			llb.Shlexf("%s install", packageManagerState.CLI),
+			llb.Shlexf(packageManagerState.InstallCmd),
 			llb.Dir(AppRootPath),
 		)
-	pkgMgrInstall.AddMount(YarnContainerCacheDir, llb.Scratch(),
-		llb.AsPersistentCacheDir(fmt.Sprintf("yarn-cache-%s-%s", nodeEnv, plfrm), llb.CacheMountShared))
+	pkgMgrInstall.AddMount(filepath.Join(containerCacheDir, packageManagerState.CacheKey), llb.Scratch(),
+		llb.AsPersistentCacheDir(fmt.Sprintf("%s-cache-%s-%s", packageManagerState.CacheKey, nodeEnv, plfrm),
+			// Not using a shared cache: it causes transient failures when the same files
+			// are accessed by multiple package manager instances.
+			llb.CacheMountPrivate))
 
 	return pkgMgrInstall.Root(), nil
 }
