@@ -181,12 +181,6 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			sidecars:       parsedSidecars,
 			initContainers: parsedInitContainers,
 		}
-		if requires := server.LookupPath("requires"); requires.Exists() {
-			phase1plan.declaredStack, err = parseRequires(ctx, ft.loader, loc, requires)
-			if err != nil {
-				return nil, err
-			}
-		}
 
 		parsedPkg.Parsed = phase1plan
 	}
