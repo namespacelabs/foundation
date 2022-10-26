@@ -19,15 +19,16 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
+	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
-
-	fnschema "namespacelabs.dev/foundation/schema"
 )
 
 type ClusterNamespace struct {
@@ -36,7 +37,7 @@ type ClusterNamespace struct {
 }
 
 type clusterTarget struct {
-	env       *fnschema.Environment
+	env       *schema.Environment
 	namespace string
 }
 
@@ -117,7 +118,75 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 	})
 }
 
-func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) error) error {
+func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deployable) error {
+	// XXX incorporate service readiness in check as well.
+
+	fmt.Fprintf(console.Debug(ctx), "wait-until-ready: asPods: %v deployable: %+v\n", deployAsPods(r.target.env), srv)
+
+	return tasks.Action("deployable.wait-until-ready").
+		Scope(schema.PackageName(srv.GetPackageName())).
+		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
+		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+			if deployAsPods(r.target.env) {
+				return r.isPodReady(ctx, srv)
+			}
+
+			switch srv.GetDeployableClass() {
+			case string(schema.DeployableClass_STATELESS):
+				deployment, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				replicas := deployment.Status.Replicas
+				readyReplicas := deployment.Status.ReadyReplicas
+				updatedReplicas := deployment.Status.UpdatedReplicas
+
+				return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
+
+			case string(schema.DeployableClass_STATEFUL):
+				deployment, err := r.cluster.cli.AppsV1().StatefulSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				replicas := deployment.Status.Replicas
+				readyReplicas := deployment.Status.ReadyReplicas
+				updatedReplicas := deployment.Status.UpdatedReplicas
+
+				return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
+
+			case string(schema.DeployableClass_MANUAL), string(schema.DeployableClass_ONESHOT):
+				return r.isPodReady(ctx, srv)
+
+			default:
+				return false, fnerrors.InternalError("don't how to check for readiness of %q", srv.GetDeployableClass())
+			}
+		})
+	})
+}
+
+func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
+	pod, err := r.cluster.cli.CoreV1().Pods(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
+		return true, nil
+	}
+
+	for _, reason := range pod.Status.Conditions {
+		if reason.Type == corev1.PodReady && reason.Status == corev1.ConditionTrue {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// Return true on the callback to signal you're done observing.
+func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) (bool, error)) error {
 	// XXX use a watch
 	announced := map[string]*runtimepb.ContainerReference{}
 
@@ -172,8 +241,10 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 			if _, ok := newM[k]; ok {
 				delete(newM, k)
 			} else {
-				if err := onInstance(runtime.ObserveEvent{ContainerReference: ref, Removed: true}); err != nil {
+				if done, err := onInstance(runtime.ObserveEvent{ContainerReference: ref, Removed: true}); err != nil {
 					return err
+				} else if done {
+					return nil
 				}
 				// The previously announced pod is not present in the current list and is already announced as `Removed`.
 				delete(announced, k)
@@ -190,8 +261,10 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 				human = instance.HumanReference
 			}
 
-			if err := onInstance(runtime.ObserveEvent{ContainerReference: instance, HumanReadableID: human, Added: true}); err != nil {
+			if done, err := onInstance(runtime.ObserveEvent{ContainerReference: instance, HumanReadableID: human, Added: true}); err != nil {
 				return err
+			} else if done {
+				return nil
 			}
 			announced[instance.UniqueId] = instance
 		}
@@ -205,7 +278,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 }
 
 func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.Deployable) ([]runtime.ContainerStatus, error) {
-	if object.GetDeployableClass() != string(fnschema.DeployableClass_ONESHOT) && object.GetDeployableClass() != string(fnschema.DeployableClass_MANUAL) {
+	if object.GetDeployableClass() != string(schema.DeployableClass_ONESHOT) && object.GetDeployableClass() != string(schema.DeployableClass_MANUAL) {
 		return nil, fnerrors.InternalError("WaitForTermination: only support one-shot deployments")
 	}
 
@@ -282,7 +355,7 @@ func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clien
 }
 
 func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server runtime.Deployable) (oci.ImageID, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(fnschema.PackageName(server.GetPackageName())),
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageName())),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
 			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
@@ -322,13 +395,13 @@ func (r *ClusterNamespace) DeleteDeployable(ctx context.Context, deployable runt
 	listOpts := metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(deployable))}
 
 	switch deployable.GetDeployableClass() {
-	case string(fnschema.DeployableClass_ONESHOT), string(fnschema.DeployableClass_MANUAL):
+	case string(schema.DeployableClass_ONESHOT), string(schema.DeployableClass_MANUAL):
 		return r.cluster.cli.CoreV1().Pods(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
-	case string(fnschema.DeployableClass_STATEFUL):
+	case string(schema.DeployableClass_STATEFUL):
 		return r.cluster.cli.AppsV1().StatefulSets(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
-	case string(fnschema.DeployableClass_STATELESS):
+	case string(schema.DeployableClass_STATELESS):
 		return r.cluster.cli.AppsV1().Deployments(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
 	default:

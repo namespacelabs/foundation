@@ -152,7 +152,12 @@ type ClusterNamespace interface {
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.
-	Observe(context.Context, Deployable, ObserveOpts, func(ObserveEvent) error) error
+	Observe(context.Context, Deployable, ObserveOpts, func(ObserveEvent) (bool, error)) error
+
+	// WaitUntilReady blocks until the target deployable reports ready. If the
+	// deployable represents a collection of replicas, readiness waits for all
+	// replicas to become ready.
+	WaitUntilReady(ctx context.Context, object Deployable) error
 
 	// Waits until the specified deployable is no longer running (typically a one-shot).
 	WaitForTermination(ctx context.Context, object Deployable) ([]ContainerStatus, error)

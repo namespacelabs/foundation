@@ -169,7 +169,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			if observedGeneration > w.ExpectedGen {
 				ev.Ready = orchestration.Event_READY
 			} else if observedGeneration == w.ExpectedGen {
-				if readyReplicas == replicas && updatedReplicas == replicas && replicas > 0 {
+				if AreReplicasReady(replicas, readyReplicas, updatedReplicas) {
 					ev.Ready = orchestration.Event_READY
 				}
 			}
@@ -181,4 +181,8 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			return ev.Ready == orchestration.Event_READY, nil
 		})
 	})
+}
+
+func AreReplicasReady(replicas, ready, updated int32) bool {
+	return ready == replicas && updated == replicas && replicas > 0
 }

@@ -147,7 +147,7 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) err
 
 	var mu sync.Mutex
 	streams := map[string]*logStream{}
-	return rt.Observe(ctx, server, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) error {
+	return rt.Observe(ctx, server, runtime.ObserveOpts{}, func(ev runtime.ObserveEvent) (bool, error) {
 		mu.Lock()
 		existing := streams[ev.ContainerReference.UniqueId]
 		if ev.Removed {
@@ -157,13 +157,13 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) err
 
 		if ev.Added {
 			if existing != nil {
-				return nil
+				return false, nil
 			}
 		} else if ev.Removed {
 			if existing != nil {
 				existing.cancel()
 			}
-			return nil
+			return false, nil
 		}
 
 		newS := &logStream{}
@@ -188,7 +188,7 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) err
 			})
 		})
 
-		return nil
+		return false, nil
 	})
 }
 

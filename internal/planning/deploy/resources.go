@@ -83,7 +83,8 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 
 				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 					ResourceInstanceId: resource.ID,
-					Server:             makeServerConfig(stack, target.Server),
+					ServerConfig:       makeServerConfig(stack, target.Server),
+					Deployable:         runtime.DeployableToProto(target.Proto()),
 				})
 				if err != nil {
 					return nil, err

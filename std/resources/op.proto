@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/std/resources";
 
 import "schema/package.proto";
 import "schema/runtime/config.proto";
+import "schema/runtime/deployable.proto";
 
 message ResourceDependency {
     foundation.schema.PackageRef resource_ref         = 1;
@@ -18,6 +19,7 @@ message ResourceDependency {
 }
 
 message OpCaptureServerConfig {
-    string                           resource_instance_id = 1;
-    foundation.schema.runtime.Server server               = 2;
+    string                               resource_instance_id = 1;
+    foundation.schema.runtime.Server     server_config        = 2;
+    foundation.schema.runtime.Deployable deployable           = 3;
 }
