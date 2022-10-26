@@ -269,7 +269,27 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				}
 
 				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("service.wait").Scope(scope...),
-					kobs.WaitForService(obj.GetNamespace(), obj.GetName()))
+					kobs.WaitForService(obj.GetNamespace(), obj.GetName(),
+						func(pods []v1.Pod, err error) bool {
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+
+							fmt.Fprintf(console.Debug(ctx), "found %d pods for service %s\n", len(pods), obj.GetName())
+
+							for _, p := range pods {
+								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(p.Namespace, p.Name, p.Status))
+							}
+
+							if err == nil {
+								ev.Ready = orchestration.Event_READY
+							}
+
+							if ch != nil {
+								fmt.Fprintf(console.Debug(ctx), "emitting event for service %s\n", obj.GetName())
+								ch <- ev
+							}
+
+							return ev.Ready == orchestration.Event_READY
+						}))
 			},
 		}, nil
 	}

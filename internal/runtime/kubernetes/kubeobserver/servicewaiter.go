@@ -11,9 +11,12 @@ import (
 	"sync"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -22,6 +25,8 @@ const dialTimeout = 100 * time.Millisecond
 
 type serviceWaiter struct {
 	namespace, name string
+
+	isReady func([]corev1.Pod, error) bool
 
 	mu                    sync.Mutex
 	portCount, matchCount int
@@ -59,13 +64,27 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 		return false, err
 	}
 
+	id, ok := service.Labels[kubedef.K8sServerId]
+	if !ok {
+		return false, fnerrors.InternalError("service %q is missing server label", w.name)
+	}
+
+	pod, err := c.CoreV1().Pods(w.namespace).List(ctx, v1.ListOptions{
+		LabelSelector: kubedef.SerializeSelector(map[string]string{
+			kubedef.K8sServerId: id,
+		}),
+	})
+	if err != nil {
+		return false, err
+	}
+
 	var count int
 	for _, port := range service.Spec.Ports {
 		addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, port.Port)
 
 		rawConn, err := net.DialTimeout("tcp", addr, dialTimeout)
-		if err != nil {
-			fmt.Fprintf(console.Debug(ctx), "failed to dial %s: %v\n", addr, err)
+		if !w.isReady(pod.Items, err) {
+			fmt.Fprintf(console.Debug(ctx), "service not ready: %s\n", service.Name)
 			continue
 		}
 
@@ -81,6 +100,6 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 	return w.matchCount > 0 && w.matchCount == w.portCount, nil
 }
 
-func WaitForService(namespace, name string) ConditionWaiter[*k8s.Clientset] {
-	return &serviceWaiter{namespace: namespace, name: name}
+func WaitForService(namespace, name string, isReady func([]corev1.Pod, error) bool) ConditionWaiter[*k8s.Clientset] {
+	return &serviceWaiter{namespace: namespace, name: name, isReady: isReady}
 }
