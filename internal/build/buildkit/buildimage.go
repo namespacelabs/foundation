@@ -24,7 +24,7 @@ type ExportToRegistryRequest struct {
 }
 
 type BuildkitAwareRegistry interface {
-	CheckExportRequest(*GatewayClient, oci.AllocatedRepository) *ExportToRegistryRequest
+	CheckExportRequest(*GatewayClient, oci.AllocatedRepository) (*ExportToRegistryRequest, *ExportToRegistryRequest)
 }
 
 func BuildDefinitionToImage(env cfg.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
@@ -85,23 +85,26 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 			// we're pushing to, in order to ensure that the image ends up in
 			// the registry.
 			if bar, ok := v.Parent.(BuildkitAwareRegistry); ok {
-				transformed := bar.CheckExportRequest(c, v)
+				req, transformed := bar.CheckExportRequest(c, v)
+				if req != nil {
+					requested = *req
+				}
 				if transformed != nil {
 					fmt.Fprintf(console.Debug(ctx), "buildkit: exporting to transformed registry: %q -> %v\n", v.Repository, transformed)
-					return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(requested, transformed))
+					return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(v.Parent, requested, transformed))
 				}
 			}
 		}
 
 		if !v.InsecureRegistry {
 			if ForwardKeychain {
-				return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(requested, nil))
+				return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(v.Parent, requested, nil))
 			} else if v.Keychain == nil {
 				// If the target needs permissions, we don't do the direct push
 				// optimization as we don't yet wire the keychain into buildkit.
 				tasks.Attachments(ctx).AddResult("push", v.Repository)
 
-				return l.solve(ctx, c, deps, nil, exportToRegistry(requested, nil))
+				return l.solve(ctx, c, deps, nil, exportToRegistry(v.Parent, requested, nil))
 			}
 		}
 	}

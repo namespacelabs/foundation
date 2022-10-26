@@ -18,14 +18,15 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func exportToRegistry(original ExportToRegistryRequest, rewritten *ExportToRegistryRequest) exporter[oci.Image] {
+func exportToRegistry(parent any, original ExportToRegistryRequest, rewritten *ExportToRegistryRequest) exporter[oci.Image] {
 	if rewritten == nil {
 		rewritten = &original
 	}
-	return &exportRegistry{requested: original, target: *rewritten}
+	return &exportRegistry{parent: parent, requested: original, target: *rewritten}
 }
 
 type exportRegistry struct {
+	parent    any
 	requested ExportToRegistryRequest
 	target    ExportToRegistryRequest
 

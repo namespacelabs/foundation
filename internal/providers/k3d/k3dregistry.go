@@ -82,7 +82,7 @@ func (r *k3dRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, 
 	return registry.AttachStaticKeychain(r, img, nil), nil
 }
 
-func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedRepository) *buildkit.ExportToRegistryRequest {
+func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedRepository) (*buildkit.ExportToRegistryRequest, *buildkit.ExportToRegistryRequest) {
 	// There are some assumptions baked into this that are not verified at
 	// runtime, notably that buildkit and the registry are deployed to the same
 	// docker instance.
@@ -90,14 +90,19 @@ func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.A
 		trimmed := strings.TrimPrefix(name.Repository, r.baseUrl())
 		if trimmed != name.Repository {
 			return &buildkit.ExportToRegistryRequest{
-				// Connect directly to the registry via the default bridge.
-				Name:     fmt.Sprintf("%s:5000%s", r.ContainerIPAddress, trimmed),
-				Insecure: r.IsInsecure(),
-			}
+					// Connect directly to the registry via localhost.
+					Name:     fmt.Sprintf("127.0.0.1:%s%s", r.PublicPort, trimmed),
+					Insecure: r.IsInsecure(),
+				},
+				&buildkit.ExportToRegistryRequest{
+					// Connect directly to the registry via the default bridge.
+					Name:     fmt.Sprintf("%s:5000%s", r.ContainerIPAddress, trimmed),
+					Insecure: r.IsInsecure(),
+				}
 		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (r *k3dRegistry) CheckRewriteLocalUse(target oci.TargetRepository) *oci.TargetRepository {
