@@ -46,7 +46,7 @@ func (w *serviceWaiter) Prepare(ctx context.Context, c *k8s.Clientset) error {
 
 func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	if !client.IsInclusterClient(c) {
-		// Emitting this debug message as only incluster deployments know how to determine service readyness.
+		// Emitting this debug message as only incluster deployments know how to determine service readiness.
 		fmt.Fprintf(console.Debug(ctx), "will not wait for service %s...\n", w.name)
 
 		// Assume service is always ready for now.
