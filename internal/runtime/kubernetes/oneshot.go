@@ -81,7 +81,7 @@ func makePodSpec(name string, runOpts runtime.ContainerRunOpts) (*applycorev1.Po
 func spawnAndWaitPod(ctx context.Context, cli *k8s.Clientset, ns, name string, container *applycorev1.PodSpecApplyConfiguration, allErrors bool) error {
 	pod := applycorev1.Pod(name, ns).
 		WithSpec(container.WithRestartPolicy(corev1.RestartPolicyNever)).
-		WithLabels(kubedef.SelectNamespaceDriver())
+		WithLabels(kubedef.SelectNamespaceDriver()).WithLabels(kubedef.ManagedByUs())
 
 	if _, err := cli.CoreV1().Pods(ns).Apply(ctx, pod, kubedef.Ego()); err != nil {
 		return err
