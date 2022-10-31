@@ -9,11 +9,11 @@ package library.storage.redis;
 option go_package = "namespacelabs.dev/foundation/library/storage/redis";
 
 message DatabaseIntent {
-    int32 Database = 1;
+    int32 database = 1;
 }
 
 message DatabaseInstance {
-    int32  Database = 1;
-    string URL      = 2;
-    string Password = 3;
+    int32  database = 1;
+    string url      = 2;
+    string password = 3;
 }

@@ -32,13 +32,13 @@ func main() {
 
 	instance := &redisclass.DatabaseInstance{
 		Database: intent.Database,
-		URL:      endpoint,
+		Url:      endpoint,
 		Password: "", // TODO model password as a generated secret
 	}
 
 	client := redis.NewClient(&redis.Options{
 		Network:  "tcp",
-		Addr:     instance.URL,
+		Addr:     instance.Url,
 		Password: instance.Password,
 		DB:       int(instance.Database),
 	})
