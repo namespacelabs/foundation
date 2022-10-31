@@ -31,7 +31,7 @@ extension: fn.#Extension & {
 $env: inputs.#Environment
 
 $redisServer: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/universe/db/redis/server"
+	packageName: "namespacelabs.dev/foundation/library/oss/redis/server"
 }
 
 configure: fn.#Configure & {
