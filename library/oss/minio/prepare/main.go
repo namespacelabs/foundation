@@ -31,6 +31,10 @@ func main() {
 	intent := &s3class.BucketIntent{}
 	ctx, resources := provider.MustPrepare(intent)
 
+	if intent.BucketName == "" {
+		log.Fatal("bucket name is required")
+	}
+
 	instance, err := prepareInstance(resources, intent)
 	if err != nil {
 		log.Fatalf("failed to create instance: %v", err)

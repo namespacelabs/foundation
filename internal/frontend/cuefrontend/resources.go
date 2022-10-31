@@ -78,20 +78,6 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 		return nil, err
 	}
 
-	rawIntent := src.RawIntent
-	if rawIntent != nil {
-		if src.RawInput != nil {
-			return nil, exclusiveFieldsErr("intent", "input")
-		}
-	} else {
-		rawIntent = src.RawInput
-	}
-
-	intent, err := parseResourceIntent(ctx, pl, pkg.Location, classRef, rawIntent)
-	if err != nil {
-		return nil, err
-	}
-
 	intentFrom, err := binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-from-"+name /* binaryName */, "from" /* cuePath */, v)
 	if err != nil {
 		return nil, err
@@ -101,8 +87,26 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 		Name:       name,
 		Class:      classRef,
 		Provider:   provider,
-		Intent:     intent,
 		IntentFrom: intentFrom,
+	}
+
+	rawIntent := src.RawIntent
+	if rawIntent != nil {
+		if src.RawInput != nil {
+			return nil, exclusiveFieldsErr("intent", "input")
+		}
+	} else {
+		rawIntent = src.RawInput
+	}
+
+	if intentFrom == nil {
+		// Returns an empty proto of the intent type, wrapper into an Any, if rawIntent is nil.
+		instance.Intent, err = parseResourceIntent(ctx, pl, pkg.Location, classRef, rawIntent)
+		if err != nil {
+			return nil, err
+		}
+	} else if rawIntent != nil {
+		return nil, fnerrors.UserError(pkg.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", name)
 	}
 
 	var parseErrs []error
@@ -150,10 +154,6 @@ func parseStrFieldCompat(namev2, valuev2, namev1, valuev1 string, required bool)
 }
 
 func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
-	if value == nil {
-		return nil, nil
-	}
-
 	pkg, err := pl.LoadByName(ctx, classRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -168,16 +168,18 @@ func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkg
 }
 
 func parseResourceIntentProto(pkg schema.PackageName, value any, intentType protoreflect.MessageDescriptor) (*anypb.Any, error) {
-	serializedValue, err := json.Marshal(value)
-	if err != nil {
-		return nil, fnerrors.InternalError("%s: failed to serialize input: %w", pkg, err)
-	}
-
 	msg := dynamicpb.NewMessage(intentType).Interface()
 
-	// TODO: custom parsing of "foundation.std.types.Resource" types: inlining resource files etc.
-	if err := (protojson.UnmarshalOptions{}).Unmarshal(serializedValue, msg); err != nil {
-		return nil, fnerrors.InternalError("%s: failed to coerce input: %w", pkg, err)
+	if value != nil {
+		serializedValue, err := json.Marshal(value)
+		if err != nil {
+			return nil, fnerrors.InternalError("%s: failed to serialize input: %w", pkg, err)
+		}
+
+		// TODO: custom parsing of "foundation.std.types.Resource" types: inlining resource files etc.
+		if err := (protojson.UnmarshalOptions{}).Unmarshal(serializedValue, msg); err != nil {
+			return nil, fnerrors.InternalError("%s: failed to coerce input: %w", pkg, err)
+		}
 	}
 
 	return fnany.Marshal(pkg, msg)
