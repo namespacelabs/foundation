@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,6 +44,7 @@ type Call[RequestT any] struct {
 	Method                 string
 	PreAuthenticateRequest func(*UserAuth, *RequestT) error
 	Anonymous              bool
+	SkipMissingAuth        bool // Don't fail if not authenticated.
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -57,19 +59,21 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	if !c.Anonymous {
 		user, err := LoadUser()
 		if err != nil {
-			return err
-		}
-
-		headers.Add("Authorization", "Bearer "+base64.RawStdEncoding.EncodeToString(user.Opaque))
-
-		if c.PreAuthenticateRequest != nil {
-			if err := c.PreAuthenticateRequest(user, &request); err != nil {
+			if !errors.Is(err, ErrRelogin) || !c.SkipMissingAuth {
 				return err
+			}
+		} else {
+			headers.Add("Authorization", "Bearer "+base64.RawStdEncoding.EncodeToString(user.Opaque))
+
+			if c.PreAuthenticateRequest != nil {
+				if err := c.PreAuthenticateRequest(user, &request); err != nil {
+					return err
+				}
 			}
 		}
 	}
 
-	if tel := TelemetryOn(ctx); tel != nil {
+	if tel := TelemetryOn(ctx); tel != nil && tel.IsTelemetryEnabled() {
 		headers.Add("NS-Client-ID", tel.GetClientID())
 	}
 
