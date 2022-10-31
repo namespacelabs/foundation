@@ -22,12 +22,7 @@ type EnvMap struct {
 type envValue struct {
 	value               string
 	fromSecret          string
-	withServiceEndpoint *envServiceEndpoint
-}
-
-type envServiceEndpoint struct {
-	ServerRef   string `json:"serverRef"`
-	ServiceName string `json:"service"`
+	withServiceEndpoint string
 }
 
 var _ json.Unmarshaler = &EnvMap{}
@@ -60,12 +55,15 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				return nil, err
 			}
 			out.FromSecretRef = secretRef
-		} else if value.withServiceEndpoint != nil {
-			serverRef, err := schema.ParsePackageRef(owner, value.withServiceEndpoint.ServerRef)
+		} else if value.withServiceEndpoint != "" {
+			serviceRef, err := schema.ParsePackageRef(owner, value.withServiceEndpoint)
 			if err != nil {
 				return nil, err
 			}
-			out.WithServiceEndpoint = &schema.ServiceRef{ServerRef: serverRef, ServiceName: value.withServiceEndpoint.ServiceName}
+			out.WithServiceEndpoint = &schema.ServiceRef{
+				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
+				ServiceName: serviceRef.Name,
+			}
 		}
 		env = append(env, out)
 	}
@@ -76,6 +74,8 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 
 	return env, nil
 }
+
+var validKeys = []string{"fromSecret", "withServiceEndpoint"}
 
 func (ev *envValue) UnmarshalJSON(data []byte) error {
 	d := json.NewDecoder(bytes.NewReader(data))
@@ -91,11 +91,18 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 		}
 
 		keys := maps.Keys(m)
-		if len(keys) != 1 || keys[0] != "fromSecret" {
-			return fnerrors.BadInputError("when setting an object to a env var map, expected a single key `fromSecret`")
+		if len(keys) != 1 || !slices.Contains(validKeys, keys[0]) {
+			return fnerrors.BadInputError("when setting an object to a env var map, expected a single key, one of %s", strings.Join(validKeys, ", "))
 		}
 
-		ev.fromSecret = m[keys[0]]
+		switch keys[0] {
+		case "fromSecret":
+			ev.fromSecret = m[keys[0]]
+
+		case "withServiceEndpoint":
+			ev.withServiceEndpoint = m[keys[0]]
+		}
+
 		return nil
 	}
 

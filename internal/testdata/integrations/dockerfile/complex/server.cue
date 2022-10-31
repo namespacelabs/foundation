@@ -5,7 +5,8 @@ server: {
 
 	env: {
 		NAME: "\($env.name)-Bob"
-		SECRET: fromSecret: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/complex:key1"
+		SECRET: fromSecret:            "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/complex:key1"
+		ENDPOINT: withServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple:webapi"
 	}
 
 	services: {

@@ -916,7 +916,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 	})
 
 	for _, kv := range env {
-		entry := applycorev1.EnvVar().WithName(kv.Name)
+		var entry *applycorev1.EnvVarApplyConfiguration
 
 		switch {
 		case kv.ExperimentalFromSecret != "":
@@ -924,8 +924,9 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 			if len(parts) < 2 {
 				return nil, fnerrors.New("invalid experimental_from_secret format")
 			}
-			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
-				applycorev1.SecretKeySelector().WithName(parts[0]).WithKey(parts[1])))
+			entry = applycorev1.EnvVar().WithName(kv.Name).
+				WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
+					applycorev1.SecretKeySelector().WithName(parts[0]).WithKey(parts[1])))
 
 		case kv.FromSecretRef != nil:
 			if out == nil {
@@ -937,9 +938,10 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 				return nil, err
 			}
 
-			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
-				applycorev1.SecretKeySelector().WithName(name).WithKey(key),
-			))
+			entry = applycorev1.EnvVar().WithName(kv.Name).
+				WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
+					applycorev1.SecretKeySelector().WithName(name).WithKey(key),
+				))
 
 		case kv.WithServiceEndpoint != nil:
 			if out == nil {
@@ -952,11 +954,15 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 				},
 			})
 
+			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
+
 		default:
-			entry = entry.WithValue(kv.Value)
+			entry = applycorev1.EnvVar().WithName(kv.Name).WithValue(kv.Value)
 		}
 
-		container = container.WithEnv(entry)
+		if entry != nil {
+			container = container.WithEnv(entry)
+		}
 	}
 
 	return container, nil
