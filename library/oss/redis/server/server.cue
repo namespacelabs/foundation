@@ -10,6 +10,7 @@ server: {
 		kind: "tcp"
 	}
 
+	// TODO configure a generated password with --requirepass
 	args: ["--save", "60", "1"]
 
 	mounts: {
