@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -200,7 +201,7 @@ func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*
 	var errs []error
 	for _, setField := range setFields {
 		for _, setArg := range setField.GetSetArg() {
-			value, err := selectValue(output, setArg.Value)
+			value, err := selectValue(output, setArg)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
@@ -211,7 +212,7 @@ func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*
 		}
 
 		for _, setEnv := range setField.GetSetEnv() {
-			value, err := selectValue(output, setEnv.Value)
+			value, err := selectValue(output, setEnv)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
@@ -224,16 +225,43 @@ func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*
 	return multierr.New(errs...)
 }
 
-func selectValue(output *kubedef.EnsureRuntimeConfigOutput, source runtime.SetContainerField_ValueSource) (string, error) {
-	switch source {
+func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetContainerField_SetValue) (string, error) {
+	switch set.Value {
 	case runtime.SetContainerField_RUNTIME_CONFIG:
 		return output.SerializedRuntimeJson, nil
 
 	case runtime.SetContainerField_RESOURCE_CONFIG:
 		return output.SerializedResourceJson, nil
+
+	case runtime.SetContainerField_RESOURCE_CONFIG_SERVICE_ENDPOINT:
+		if set.ServiceRef == nil {
+			return "", fnerrors.BadInputError("missing required service endpoint")
+		}
+
+		rt := &runtime.RuntimeConfig{}
+		// XXX unmarshal once.
+		if err := protojson.Unmarshal([]byte(output.SerializedRuntimeJson), rt); err != nil {
+			return "", fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
+		}
+
+		for _, srv := range rt.StackEntry {
+			if srv.PackageName == set.ServiceRef.GetServerRef().GetPackageName() {
+				for _, service := range srv.Service {
+					if service.Name == set.ServiceRef.ServiceName {
+						// Returns a hostname:port pair.
+						return service.Endpoint, nil
+					}
+				}
+
+				return "", fnerrors.BadInputError("the required service %q is not exported by %q",
+					set.ServiceRef.ServiceName, set.ServiceRef.GetServerRef().GetPackageName())
+			}
+		}
+
+		return "", fnerrors.BadInputError("the required server %q is not present in the stack", set.ServiceRef.GetServerRef().GetPackageName())
 	}
 
-	return "", fnerrors.BadInputError("%s: don't know this value", source)
+	return "", fnerrors.BadInputError("%s: don't know this value", set.Value)
 }
 
 func updateContainers(spec *v1.PodSpec, name string, update func(container *v1.Container)) error {
