@@ -32,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
+	rtschema "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/runtime/constants"
@@ -376,7 +377,17 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
 	secrets := newSecretCollector(secretId)
 
-	if _, err := fillEnv(mainContainer, mainEnv, opts.secrets, secrets); err != nil {
+	ensure := kubedef.EnsureDeployment{
+		Deployable:    deployable,
+		InhibitEvents: deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
+		SchedCategory: []string{
+			runtime.DeployableCategory(deployable),
+			runtime.OwnedByDeployable(deployable),
+		},
+		SetContainerFields: slices.Clone(deployable.SetContainerField),
+	}
+
+	if _, err := fillEnv(mainContainer, mainEnv, opts.secrets, secrets, &ensure); err != nil {
 		return err
 	}
 
@@ -514,16 +525,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithReadOnly(mount.Readonly))
 	}
 
-	ensure := kubedef.EnsureDeployment{
-		Deployable:    deployable,
-		InhibitEvents: deployable.Class == schema.DeployableClass_MANUAL || (target.namespace == kubedef.AdminNamespace && !deployable.Focused),
-		SchedCategory: []string{
-			runtime.DeployableCategory(deployable),
-			runtime.OwnedByDeployable(deployable),
-		},
-		SetContainerFields: deployable.SetContainerField,
-	}
-
 	regularResources := slices.Clone(deployable.Resources)
 
 	const projectedSecretsVolName = "ns-projected-secrets"
@@ -631,7 +632,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(scntr, sidecar.Env, opts.secrets, secrets); err != nil {
+		if _, err := fillEnv(scntr, sidecar.Env, opts.secrets, secrets, &ensure); err != nil {
 			return err
 		}
 
@@ -663,7 +664,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithCommand(init.Command...).
 			WithVolumeMounts(initVolumeMounts...)
 
-		if _, err := fillEnv(scntr, init.Env, opts.secrets, secrets); err != nil {
+		if _, err := fillEnv(scntr, init.Env, opts.secrets, secrets, &ensure); err != nil {
 			return err
 		}
 
@@ -909,7 +910,7 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	return nil, nil
 }
 
-func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets runtime.GroundedSecrets, out *secretCollector) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets runtime.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
 	sort.SliceStable(env, func(i, j int) bool {
 		return env[i].Name < env[j].Name
 	})
@@ -939,6 +940,17 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 			entry = entry.WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
 				applycorev1.SecretKeySelector().WithName(name).WithKey(key),
 			))
+
+		case kv.WithServiceEndpoint != nil:
+			if out == nil {
+				return nil, fnerrors.InternalError("can't use WithServiceEndpoint in this context")
+			}
+
+			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
+				SetEnv: []*rtschema.SetContainerField_SetValue{
+					{ContainerName: *container.Name, Key: kv.Name, Value: rtschema.SetContainerField_RESOURCE_CONFIG_SERVICE_ENDPOINT, ServiceRef: kv.WithServiceEndpoint},
+				},
+			})
 
 		default:
 			entry = entry.WithValue(kv.Value)

@@ -65,11 +65,6 @@ message SetContainerField {
         string      key            = 2;  // The target argument or environment variable.
         ValueSource value          = 3;
 
-        ServiceRef service_ref = 4;  // Only valid if RESOURCE_CONFIG_SERVICE_ENDPOINT is set.
+        foundation.schema.ServiceRef service_ref = 4;  // Only valid if RESOURCE_CONFIG_SERVICE_ENDPOINT is set.
     }
-}
-
-message ServiceRef {
-    foundation.schema.PackageRef server_ref   = 1;
-    string                       service_name = 2;
 }

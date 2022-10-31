@@ -17,3 +17,8 @@ message PackageRef {
     // Can be empty if parsed from the user code, e.g. a legacy reference to a binary.
     string name = 2;
 }
+
+message ServiceRef {
+    PackageRef server_ref   = 1;
+    string     service_name = 2;
+}
