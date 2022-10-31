@@ -22,7 +22,7 @@ type EnvMap struct {
 type envValue struct {
 	value               string
 	fromSecret          string
-	withServiceEndpoint string
+	fromServiceEndpoint string
 }
 
 var _ json.Unmarshaler = &EnvMap{}
@@ -55,12 +55,12 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				return nil, err
 			}
 			out.FromSecretRef = secretRef
-		} else if value.withServiceEndpoint != "" {
-			serviceRef, err := schema.ParsePackageRef(owner, value.withServiceEndpoint)
+		} else if value.fromServiceEndpoint != "" {
+			serviceRef, err := schema.ParsePackageRef(owner, value.fromServiceEndpoint)
 			if err != nil {
 				return nil, err
 			}
-			out.WithServiceEndpoint = &schema.ServiceRef{
+			out.FromServiceEndpoint = &schema.ServiceRef{
 				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
 				ServiceName: serviceRef.Name,
 			}
@@ -75,7 +75,7 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 	return env, nil
 }
 
-var validKeys = []string{"fromSecret", "withServiceEndpoint"}
+var validKeys = []string{"fromSecret", "fromServiceEndpoint"}
 
 func (ev *envValue) UnmarshalJSON(data []byte) error {
 	d := json.NewDecoder(bytes.NewReader(data))
@@ -99,8 +99,8 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 		case "fromSecret":
 			ev.fromSecret = m[keys[0]]
 
-		case "withServiceEndpoint":
-			ev.withServiceEndpoint = m[keys[0]]
+		case "fromServiceEndpoint":
+			ev.fromServiceEndpoint = m[keys[0]]
 		}
 
 		return nil

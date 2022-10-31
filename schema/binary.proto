@@ -86,6 +86,6 @@ message BinaryConfig {
         string     value                    = 2;
         string     experimental_from_secret = 3;  // Runtime specific.
         PackageRef from_secret_ref          = 4;
-        ServiceRef with_service_endpoint    = 5;  // Inject the endpoint of a service in the stack.
+        ServiceRef from_service_endpoint    = 5;  // Inject the endpoint of a service in the stack.
     }
 }

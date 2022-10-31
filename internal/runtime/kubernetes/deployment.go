@@ -943,14 +943,14 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 					applycorev1.SecretKeySelector().WithName(name).WithKey(key),
 				))
 
-		case kv.WithServiceEndpoint != nil:
+		case kv.FromServiceEndpoint != nil:
 			if out == nil {
-				return nil, fnerrors.InternalError("can't use WithServiceEndpoint in this context")
+				return nil, fnerrors.InternalError("can't use FromServiceEndpoint in this context")
 			}
 
 			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
 				SetEnv: []*rtschema.SetContainerField_SetValue{
-					{ContainerName: *container.Name, Key: kv.Name, Value: rtschema.SetContainerField_RESOURCE_CONFIG_SERVICE_ENDPOINT, ServiceRef: kv.WithServiceEndpoint},
+					{ContainerName: *container.Name, Key: kv.Name, Value: rtschema.SetContainerField_RESOURCE_CONFIG_SERVICE_ENDPOINT, ServiceRef: kv.FromServiceEndpoint},
 				},
 			})
 
