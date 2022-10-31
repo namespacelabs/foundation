@@ -20,8 +20,14 @@ type EnvMap struct {
 }
 
 type envValue struct {
-	value      string
-	fromSecret string
+	value               string
+	fromSecret          string
+	withServiceEndpoint *envServiceEndpoint
+}
+
+type envServiceEndpoint struct {
+	ServerRef   string `json:"serverRef"`
+	ServiceName string `json:"service"`
 }
 
 var _ json.Unmarshaler = &EnvMap{}
@@ -54,6 +60,12 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				return nil, err
 			}
 			out.FromSecretRef = secretRef
+		} else if value.withServiceEndpoint != nil {
+			serverRef, err := schema.ParsePackageRef(owner, value.withServiceEndpoint.ServerRef)
+			if err != nil {
+				return nil, err
+			}
+			out.WithServiceEndpoint = &schema.ServiceRef{ServerRef: serverRef, ServiceName: value.withServiceEndpoint.ServiceName}
 		}
 		env = append(env, out)
 	}
