@@ -67,14 +67,8 @@ func NewLoginCmd() *cobra.Command {
 					fmt.Fprintf(stdout, "Login pre-approved with a single-use token.\n")
 				}
 
-				tel := fnapi.TelemetryOn(ctx)
-				ephemeralCliID := ""
-				if tel != nil {
-					ephemeralCliID = tel.GetEphemeralCliID(ctx)
-				}
-
 				var err error
-				auth, err = fnapi.CompleteLogin(ctx, id, ephemeralCliID)
+				auth, err = fnapi.CompleteLogin(ctx, id, fnapi.TelemetryOn(ctx).GetID())
 				if err != nil {
 					return err
 				}

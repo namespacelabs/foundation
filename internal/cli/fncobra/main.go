@@ -111,10 +111,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
 	}
 
-	tel := fnapi.NewTelemetry()
-
 	sink, style, flushLogs := ConsoleToSink(StandardConsole())
-	ctxWithSink := fnapi.WithTelemetry(colors.WithStyle(tasks.WithSink(ctx, sink), style), tel)
+	ctx = colors.WithStyle(tasks.WithSink(ctx, sink), style)
+
+	tel := fnapi.NewTelemetry(ctx)
+
+	ctxWithSink := fnapi.WithTelemetry(ctx, tel)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
@@ -128,6 +130,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var useTelemetry bool
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		// XXX move id management out of telemetry, it's used for other purposes too.
+		if tel.IsFirstRun() {
+			// First NS run - print a welcome message.
+			welcome.PrintWelcome(ctx, true /* firstRun */)
+		}
+
 		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
 		if useTelemetry {
 			tel.Enable()

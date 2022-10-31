@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
-	"namespacelabs.dev/foundation/internal/welcome"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/go-ids"
 )
@@ -39,15 +38,23 @@ type Telemetry struct {
 	errorLogging bool // For testing and debugging.
 
 	backendAddress string
-	recID          atomic.String // Set after an invocation is recorded.
-	makeClientID   func(context.Context) ephemeralCliID
+	recID          *atomic.String // Set after an invocation is recorded.
+	id             ephemeralCliID
+	created        bool // True if this the first invocation with a new ID.
 }
 
-func NewTelemetry() *Telemetry {
+func NewTelemetry(ctx context.Context) *Telemetry {
+	return InternalNewTelemetry(ctx, getOrGenerateEphemeralCliID)
+}
+
+func InternalNewTelemetry(ctx context.Context, makeID func(context.Context) (ephemeralCliID, bool)) *Telemetry {
+	id, created := makeID(ctx)
+
 	return &Telemetry{
 		errorLogging:   false,
 		backendAddress: EndpointAddress,
-		makeClientID:   getOrGenerateEphemeralCliID,
+		id:             id,
+		created:        created,
 	}
 }
 
@@ -139,10 +146,10 @@ func newRandID() string {
 	return ids.NewRandomBase62ID(16)
 }
 
-func getOrGenerateEphemeralCliID(ctx context.Context) ephemeralCliID {
+func getOrGenerateEphemeralCliID(ctx context.Context) (ephemeralCliID, bool) {
 	configDir, err := dirs.Config()
 	if err != nil {
-		return ephemeralCliID{newRandID(), newRandID()}
+		panic(err) // XXX Config() should not return an error.
 	}
 
 	idfile := filepath.Join(configDir, "clientid.json")
@@ -151,14 +158,9 @@ func getOrGenerateEphemeralCliID(ctx context.Context) ephemeralCliID {
 		var clientID ephemeralCliID
 		if err := json.Unmarshal(idcontents, &clientID); err == nil {
 			if clientID.ID != "" && clientID.Salt != "" {
-				return clientID
+				return clientID, false
 			}
 		}
-	}
-
-	if os.IsNotExist(err) {
-		// First NS run - print a welcome message.
-		welcome.PrintWelcome(ctx, true /* firstRun */)
 	}
 
 	newClientID := ephemeralCliID{newRandID(), newRandID()}
@@ -166,7 +168,7 @@ func getOrGenerateEphemeralCliID(ctx context.Context) ephemeralCliID {
 		fmt.Fprintln(console.Warnings(ctx), "failed to persist user-id", err)
 	}
 
-	return newClientID
+	return newClientID, os.IsNotExist(err)
 }
 
 func writeJSON(path string, msg interface{}) error {
@@ -238,11 +240,13 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 		return
 	}
 
-	c := tel.makeClientID(ctx)
+	req := buildRecordInvocationRequest(ctx, cmd, tel.id, reqID, args)
 
-	req := buildRecordInvocationRequest(ctx, cmd, c, reqID, args)
-
-	tel.recID.Store(req.ID)
+	if tel.recID == nil {
+		tel.recID = atomic.NewString(req.ID)
+	} else {
+		tel.recID.Store(req.ID)
+	}
 
 	if err := tel.postRecordInvocationRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)
@@ -297,10 +301,16 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 	}
 }
 
-func (tel *Telemetry) GetEphemeralCliID(ctx context.Context) string {
+func (tel *Telemetry) IsFirstRun() bool { return tel.created }
+
+func (tel *Telemetry) GetID() string {
+	if tel == nil {
+		return ""
+	}
+
 	if !tel.IsTelemetryEnabled() {
 		return ""
 	}
 
-	return tel.makeClientID(ctx).ID
+	return tel.id.ID
 }

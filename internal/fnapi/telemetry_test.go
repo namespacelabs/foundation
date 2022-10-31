@@ -25,11 +25,9 @@ func TestTelemetryDisabled(t *testing.T) {
 	reset := setupEnv(t)
 	defer reset()
 
-	tel := &Telemetry{
-		useTelemetry: false,
-		errorLogging: true,
-		makeClientID: generateTestIDs,
-	}
+	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
+	tel.useTelemetry = false
+	tel.errorLogging = true
 
 	cmd := &cobra.Command{
 		Use: "fake-command",
@@ -51,19 +49,17 @@ func TestTelemetryDisabled(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 }
 
-func generateTestIDs(ctx context.Context) ephemeralCliID {
-	return ephemeralCliID{newRandID(), newRandID()}
+func generateTestIDs(ctx context.Context) (ephemeralCliID, bool) {
+	return ephemeralCliID{newRandID(), newRandID()}, true
 }
 
 func TestTelemetryDisabledViaEnv(t *testing.T) {
 	reset := setupEnv(t)
 	defer reset()
 
-	tel := &Telemetry{
-		useTelemetry: true,
-		errorLogging: true,
-		makeClientID: generateTestIDs,
-	}
+	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
+	tel.useTelemetry = true
+	tel.errorLogging = true
 
 	t.Setenv("DO_NOT_TRACK", "1")
 
@@ -96,11 +92,9 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 
 	viper.Set("enable_telemetry", false)
 
-	tel := &Telemetry{
-		useTelemetry: true,
-		errorLogging: true,
-		makeClientID: generateTestIDs,
-	}
+	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
+	tel.useTelemetry = true
+	tel.errorLogging = true
 
 	cmd := &cobra.Command{
 		Use: "fake-command",
@@ -129,11 +123,9 @@ func TestTelemetryRecordInvocationAnon(t *testing.T) {
 	reset := setupEnv(t)
 	defer reset()
 
-	tel := &Telemetry{
-		useTelemetry: true,
-		errorLogging: true,
-		makeClientID: generateTestIDs,
-	}
+	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
+	tel.useTelemetry = true
+	tel.errorLogging = true
 
 	sentID := make(chan string, 1)
 	cmd := &cobra.Command{
@@ -182,12 +174,10 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 	reset := setupEnv(t)
 	defer reset()
 
-	tel := &Telemetry{
-		useTelemetry: true,
-		errorLogging: true,
-		recID:        *atomic.NewString("fake-id"),
-		makeClientID: generateTestIDs,
-	}
+	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
+	tel.useTelemetry = true
+	tel.errorLogging = true
+	tel.recID = atomic.NewString("fake-id")
 
 	var req recordErrorRequest
 	receivedID := make(chan string, 1)
