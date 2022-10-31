@@ -69,6 +69,10 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		}
 	}
 
+	if tel := TelemetryOn(ctx); tel != nil {
+		headers.Add("NS-Client-ID", tel.GetClientID())
+	}
+
 	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.APIVersion))
 
 	reqBytes, err := json.Marshal(request)

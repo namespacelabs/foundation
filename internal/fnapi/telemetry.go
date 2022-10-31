@@ -303,7 +303,7 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 
 func (tel *Telemetry) IsFirstRun() bool { return tel.created }
 
-func (tel *Telemetry) GetID() string {
+func (tel *Telemetry) GetClientID() string {
 	if tel == nil {
 		return ""
 	}

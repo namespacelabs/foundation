@@ -68,7 +68,7 @@ func NewLoginCmd() *cobra.Command {
 				}
 
 				var err error
-				auth, err = fnapi.CompleteLogin(ctx, id, fnapi.TelemetryOn(ctx).GetID())
+				auth, err = fnapi.CompleteLogin(ctx, id, fnapi.TelemetryOn(ctx).GetClientID())
 				if err != nil {
 					return err
 				}
