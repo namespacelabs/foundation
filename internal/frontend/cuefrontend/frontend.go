@@ -136,16 +136,19 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 }
 
 func isNewSyntax(partial *fncue.Partial) bool {
-	// Detecting the simplified syntax to define opaque servers.
-	server := partial.CueV.LookupPath("server")
-	resources := partial.CueV.LookupPath("resources")
-	resourceClasses := partial.CueV.LookupPath("resourceClasses")
-	providers := partial.CueV.LookupPath("providers")
-	volumes := partial.CueV.LookupPath("volumes")
-	secrets := partial.CueV.LookupPath("secrets")
+	if len(partial.CueImports) > 1 {
+		// There is at least one import: the file itself.
+		return false
+	}
 
-	// There is at least one import: the file itself.
-	return len(partial.CueImports) <= 1 && (server.Exists() || resources.Exists() || resourceClasses.Exists() || providers.Exists() || volumes.Exists() || secrets.Exists())
+	// Detecting the simplified syntax to define opaque servers.
+	for _, path := range []string{"server", "resources", "resourceClasses", "providers", "volumes", "secrets", "tests"} {
+		if partial.CueV.LookupPath(path).Exists() {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (parsing.PackageType, error) {
