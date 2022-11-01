@@ -44,9 +44,9 @@ func (r *readFiles) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, 
 
 type leftMap map[string]struct{}
 
-func (lm leftMap) Has(p string) bool {
+func (lm leftMap) Match(p string) (string, bool) {
 	_, ok := lm[p]
-	return ok
+	return p, ok
 }
 
 func ReadFilesFromImage(img v1.Image, paths ...string) (*memfs.FS, error) {

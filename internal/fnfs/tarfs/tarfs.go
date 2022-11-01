@@ -46,7 +46,7 @@ func (l FS) Open(path string) (fs.File, error) {
 
 type checkPath string
 
-func (c checkPath) Has(p string) bool { return p == string(c) }
+func (c checkPath) Match(p string) (string, bool) { return p, p == string(c) }
 
 func (l FS) ReadDir(dir string) ([]fs.DirEntry, error) {
 	if !fs.ValidPath(dir) {
@@ -138,7 +138,7 @@ func (l FS) VisitFiles(ctx context.Context, visitor func(string, bytestream.Byte
 }
 
 type HasHasString interface {
-	Has(string) bool
+	Match(string) (string, bool)
 }
 
 func ReadFilesInto(fsys fnfs.WriteFS, tarStream TarStreamFunc, include HasHasString) ([]string, error) {
@@ -160,9 +160,7 @@ func ReadFilesInto(fsys fnfs.WriteFS, tarStream TarStreamFunc, include HasHasStr
 			return nil, fnerrors.BadInputError("unexpected error: %v", err)
 		}
 
-		clean := filepath.Clean(h.Name)
-
-		if include.Has(clean) {
+		if clean, ok := include.Match(filepath.Clean(h.Name)); ok {
 			w, err := fsys.OpenWrite(clean, h.FileInfo().Mode())
 			if err != nil {
 				return nil, fnerrors.TransientError("failed to open %q for writing (was %q)", clean, h.Name)

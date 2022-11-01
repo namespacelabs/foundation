@@ -19,22 +19,35 @@ import (
 )
 
 func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: ref.URL, digest: ref.Digest}
+	return &downloadUrl{url: ref.URL, digest: &ref.Digest}
+}
+
+func UnverifiedURL(url string) compute.Computable[bytestream.ByteStream] {
+	return &downloadUrl{url: url}
 }
 
 type downloadUrl struct {
 	url    string
-	digest schema.Digest
+	digest *schema.Digest
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
 
 func (dl *downloadUrl) Action() *tasks.ActionEvent {
-	return tasks.Action("artifact.download").Arg("url", dl.url).Arg("digest", dl.digest.String())
+	action := tasks.Action("artifact.download").Arg("url", dl.url)
+	if dl.digest != nil {
+		return action.Arg("digest", dl.digest.String())
+	}
+	return action
 }
 
 func (dl *downloadUrl) Inputs() *compute.In {
-	return compute.Inputs().Str("url", dl.url).Digest("digest", dl.digest)
+	inputs := compute.Inputs().Str("url", dl.url)
+	if dl.digest != nil {
+		return inputs.Digest("digest", dl.digest)
+	} else {
+		return inputs.Indigestible("digest", nil) // Don't cache.
+	}
 }
 
 func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
@@ -77,13 +90,15 @@ func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestr
 		return nil, err
 	}
 
-	resultDigest, err := bytestream.Digest(ctx, bs)
-	if err != nil {
-		return nil, err
-	}
+	if dl.digest != nil {
+		resultDigest, err := bytestream.Digest(ctx, bs)
+		if err != nil {
+			return nil, err
+		}
 
-	if !resultDigest.Equals(dl.digest) {
-		return nil, fnerrors.InternalError("artifact.download: %s: digest didn't match, got %s expected %s", dl.url, resultDigest, dl.digest)
+		if !resultDigest.Equals(*dl.digest) {
+			return nil, fnerrors.InternalError("artifact.download: %s: digest didn't match, got %s expected %s", dl.url, resultDigest, dl.digest)
+		}
 	}
 
 	// XXX support returning a io.Reader here so we don't need to buffer the download.

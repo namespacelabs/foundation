@@ -11,11 +11,17 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"golang.org/x/net/html"
+	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/zipfs"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -24,6 +30,10 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
+
+var publicRepos = []string{
+	"https://github.com/namespacelabs/foundation",
+}
 
 // LocalModule represents a module that is present in the specified LocalPath.
 type LocalModule struct {
@@ -49,13 +59,7 @@ func ResolveModuleVersion(ctx context.Context, packageName string) (*schema.Work
 }
 
 func ModuleHead(ctx context.Context, resolved *ResolvedPackage) (*schema.Workspace_Dependency, error) {
-	dep := &schema.Workspace_Dependency{}
-	err := moduleHeadTo(ctx, resolved, dep)
-	return dep, err
-}
-
-func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Workspace_Dependency) error {
-	return tasks.Action("module.resolve-head").Arg("name", resolved.ModuleName).Run(ctx, func(ctx context.Context) error {
+	return tasks.Return(ctx, tasks.Action("module.resolve-head").Arg("name", resolved.ModuleName), func(ctx context.Context) (*schema.Workspace_Dependency, error) {
 		var out bytes.Buffer
 		cmd := exec.CommandContext(ctx, "git", "ls-remote", "-q", resolved.Repository, "HEAD")
 		cmd.Env = append(os.Environ(), git.NoPromptEnv().Serialize()...)
@@ -63,17 +67,18 @@ func moduleHeadTo(ctx context.Context, resolved *ResolvedPackage, dep *schema.Wo
 		cmd.Stderr = console.Output(ctx, "git")
 
 		if err := cmd.Run(); err != nil {
-			return fnerrors.InvocationError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
+			return nil, fnerrors.InvocationError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
 		}
 
 		gitout := strings.TrimSpace(out.String())
 		if p := strings.TrimSuffix(gitout, "\tHEAD"); p != gitout {
+			dep := &schema.Workspace_Dependency{}
 			dep.ModuleName = resolved.ModuleName
 			dep.Version = strings.TrimSpace(p)
-			return nil
+			return dep, nil
 		}
 
-		return fnerrors.InvocationError("%s: failed to resolve HEAD", resolved.Repository)
+		return nil, fnerrors.InvocationError("%s: failed to resolve HEAD", resolved.Repository)
 	})
 }
 
@@ -203,36 +208,31 @@ func getAttr(attrs []html.Attribute, key string) *html.Attribute {
 }
 
 func DownloadModule(ctx context.Context, dep *schema.Workspace_Dependency, force bool) (*LocalModule, error) {
-	var dl LocalModule
-	err := downloadModuleTo(ctx, dep, force, &dl)
-	return &dl, err
-}
-
-func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, force bool, downloaded *LocalModule) error {
-	return tasks.Action("module.download").Arg("name", dep.ModuleName).Arg("version", dep.Version).Run(ctx, func(ctx context.Context) error {
+	return tasks.Return(ctx, tasks.Action("module.download").Arg("name", dep.ModuleName).Arg("version", dep.Version), func(ctx context.Context) (*LocalModule, error) {
 		modDir, err := dirs.ModuleCache(dep.ModuleName, dep.Version)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// XXX more thorough check of the contents?
 		if !force {
 			if _, err := os.Stat(modDir); err == nil {
 				// Already exists.
-				*downloaded = LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
-				return nil
+				return &LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}, nil
 			}
 		}
 
 		mod, err := ResolveModule(ctx, dep.ModuleName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		tmpModDir, err := dirs.ModuleCache(dep.ModuleName, fmt.Sprintf("tmp-%s", ids.NewRandomBase32ID(8)))
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		srcDir := tmpModDir
 
 		defer func() {
 			if tmpModDir != "" {
@@ -240,20 +240,38 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 			}
 		}()
 
-		var cmd localexec.Command
-		cmd.Command = "git"
-		cmd.Args = []string{"clone", "-q", mod.Repository, tmpModDir}
-		cmd.AdditionalEnv = git.NoPromptEnv().Serialize()
-		cmd.Label = "git clone"
-		if err := cmd.Run(ctx); err != nil {
-			return err
-		}
+		if slices.Contains(publicRepos, mod.Repository) {
+			contents, err := compute.GetValue(ctx, download.UnverifiedURL(fmt.Sprintf("%s/archive/%s.zip", mod.Repository, dep.Version)))
+			if err != nil {
+				return nil, err
+			}
 
-		cmd.Args = []string{"reset", "-q", "--hard", dep.Version}
-		cmd.Label = "git reset"
-		cmd.Dir = tmpModDir
-		if err := cmd.Run(ctx); err != nil {
-			return err
+			if err := tasks.Action("module.extract").Arg("module", mod.Repository).Arg("version", dep.Version).
+				Run(ctx, func(ctx context.Context) error {
+					return zipfs.UnzipContents(ctx, fnfs.ReadWriteLocalFS(tmpModDir), contents)
+				}); err != nil {
+				return nil, err
+			}
+
+			srcDir = filepath.Join(tmpModDir, fmt.Sprintf("%s-%s", filepath.Base(mod.Repository), dep.Version))
+		} else {
+			var cmd localexec.Command
+			cmd.Command = "git"
+			cmd.Args = []string{"clone", "-q", mod.Repository, tmpModDir}
+			cmd.AdditionalEnv = git.NoPromptEnv().Serialize()
+			cmd.Label = "git clone"
+			if err := cmd.Run(ctx); err != nil {
+				return nil, err
+			}
+
+			cmd.Args = []string{"reset", "-q", "--hard", dep.Version}
+			cmd.Label = "git reset"
+			cmd.Dir = tmpModDir
+			if err := cmd.Run(ctx); err != nil {
+				return nil, err
+			}
+
+			tmpModDir = "" // Inhibit the os.RemoveAll() above.
 		}
 
 		if force {
@@ -262,14 +280,11 @@ func downloadModuleTo(ctx context.Context, dep *schema.Workspace_Dependency, for
 			_ = os.RemoveAll(modDir)
 		}
 
-		if err := os.Rename(tmpModDir, modDir); err != nil {
-			return err
+		if err := os.Rename(srcDir, modDir); err != nil {
+			return nil, err
 		}
 
-		tmpModDir = "" // Inhibit the os.RemoveAll() above.
-
-		*downloaded = LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}
-		return nil
+		return &LocalModule{ModuleName: dep.ModuleName, LocalPath: modDir, Version: dep.Version}, nil
 	})
 }
 

@@ -25,27 +25,35 @@ func Unzip(contents compute.Computable[bytestream.ByteStream]) compute.Computabl
 		func(ctx context.Context, r compute.Resolved) (fs.FS, error) {
 			blob := compute.MustGetDepValue(r, contents, "contents")
 
-			if blob.ContentLength() >= math.MaxInt64 {
-				return nil, fnerrors.InternalError("blob is too big")
-			}
-
-			bsr, err := bytestream.ReaderAt(blob)
-			if err != nil {
-				return nil, err
-			}
-
-			defer bsr.Close()
-
-			zipr, err := zip.NewReader(bsr, int64(blob.ContentLength()))
-			if err != nil {
-				return nil, err
-			}
-
 			var snapshot memfs.FS
-			if err := fnfs.CopyTo(ctx, &snapshot, ".", zipr); err != nil {
+			if err := UnzipContents(ctx, &snapshot, blob); err != nil {
 				return nil, err
 			}
 
 			return &snapshot, nil
 		})
+}
+
+func UnzipContents(ctx context.Context, target fnfs.WriteFS, blob bytestream.ByteStream) error {
+	if blob.ContentLength() >= math.MaxInt64 {
+		return fnerrors.InternalError("blob is too big")
+	}
+
+	bsr, err := bytestream.ReaderAt(blob)
+	if err != nil {
+		return err
+	}
+
+	defer bsr.Close()
+
+	zipr, err := zip.NewReader(bsr, int64(blob.ContentLength()))
+	if err != nil {
+		return err
+	}
+
+	if err := fnfs.CopyTo(ctx, target, ".", zipr); err != nil {
+		return err
+	}
+
+	return nil
 }
