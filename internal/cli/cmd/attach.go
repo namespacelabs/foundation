@@ -48,6 +48,7 @@ func NewAttachCmd() *cobra.Command {
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
 				Provider: observer,
 				Keybindings: []keyboard.Handler{
+					view.NewNetworkPlanKeybinding("ingress"),
 					logtail.Keybinding{
 						LoadEnvironment: func(name string) (cfg.Context, error) {
 							if name == res.Env.Environment().Name {
@@ -57,7 +58,6 @@ func NewAttachCmd() *cobra.Command {
 							return nil, fnerrors.InternalError("requested invalid environment: %s", name)
 						},
 					},
-					view.NewNetworkPlanKeybinding("ingress"),
 				},
 				Handler: func(ctx context.Context) error {
 					pfwd := devsession.NewPortFwd(ctx, nil, res.Env, cluster, "localhost")

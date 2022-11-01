@@ -74,23 +74,10 @@ func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan
 		content = out.String()
 	}
 
-	if plan != nil && isDeploymentFinished(ctx, plan) {
+	if plan != nil && plan.IsDeploymentFinished() {
 		fmt.Fprintln(console.TypedOutput(ctx, "network plan", common.CatOutputUs), content)
 		console.SetStickyContent(ctx, k.name, "")
 	} else {
 		console.SetStickyContent(ctx, k.name, content)
 	}
-}
-
-// Heuristic
-func isDeploymentFinished(ctx context.Context, plan *storage.NetworkPlan) bool {
-	hasIngress := false
-	for _, endpoint := range plan.Endpoints {
-		if endpoint.LocalPort == 0 {
-			return false
-		}
-		hasIngress = hasIngress || render.IsIngress(endpoint)
-	}
-
-	return hasIngress
 }

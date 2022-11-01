@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -34,8 +35,8 @@ type logState struct {
 }
 
 func (l Keybinding) Key() string { return "l" }
-func (l Keybinding) Label(enabled bool) string {
-	if !enabled {
+func (l Keybinding) Label(disabled bool) string {
+	if disabled {
 		return "stream logs"
 	}
 	return "pause logs " // Additional space at the end for a better allignment.
@@ -53,7 +54,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 	// are no longer in the stack, or as part of an environment change.
 	listening := map[string]*logState{} // `{env}/{package}` --> LogState
 
-	out := console.Output(ctx, "server-logs")
+	out := console.TypedOutput(ctx, "server-logs", console.CatOutputUs)
 
 	for event := range ch {
 		newStack := previousStack
@@ -62,13 +63,20 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 		switch event.Operation {
 		case keyboard.OpSet:
-			logging = event.Enabled
+			// TODO: provide a way to set the "enabled" default.
+			logging = !event.Enabled
 
 		case keyboard.OpStackUpdate:
 			newStack = event.StackUpdate.Stack
 			newEnv = event.StackUpdate.Env.GetName()
 			newFocus = event.StackUpdate.Focus
+
+			if event.StackUpdate.NetworkPlan != nil && event.StackUpdate.NetworkPlan.IsDeploymentFinished() {
+				logging = true
+			}
 		}
+
+		style := colors.Ctx(ctx)
 
 		if logging {
 			for _, server := range newStack.GetEntry() {
@@ -80,8 +88,6 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 				if previous, has := listening[key]; has {
 					previous.Revision = event.EventID
 				} else {
-					fmt.Fprintf(out, "starting log for %s\n", key)
-
 					// Start logging.
 					ctxWithCancel, cancelF := context.WithCancel(ctx)
 					listening[key] = &logState{
@@ -92,6 +98,11 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 					server := server.Server // Capture server.
 					go func() {
+						// There is a race with the "Network plan" block also receiving the same event,
+						// and we want to log this message after the network plan has been printed,
+						// so doing it in a goroutine.
+						fmt.Fprintf(out, "%s %s\n", style.Header.Apply("Starting log for"), style.LogArgument.Apply(key))
+
 						env, err := l.LoadEnvironment(newEnv)
 						if err == nil {
 							err = Listen(ctxWithCancel, env, server)
@@ -115,7 +126,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		}
 
 		if len(keys) > 0 {
-			fmt.Fprintf(out, "Stopped listening to logs of: %s\n", strings.Join(keys, ", "))
+			fmt.Fprintf(out, "%s %s\n", style.Header.Apply("Stopped listening to logs of:"), style.LogArgument.Apply(strings.Join(keys, ", ")))
 		}
 
 		previousStack = newStack
@@ -180,7 +191,10 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) err
 				return nil
 			}
 
-			fmt.Fprintf(w, "<Starting log tail for %s>\n", ev.HumanReadableID)
+			style := colors.Ctx(ctx)
+			fmt.Fprintf(w, "\n%s", style.Comment.Apply("──────────"))
+			fmt.Fprint(w, style.Highlight.Apply(fmt.Sprintf(" Log tail for %s ", ev.HumanReadableID)))
+			fmt.Fprintf(w, "%s\n\n", style.Comment.Apply("──────────"))
 
 			return rt.Cluster().FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
 				TailLines: 30,

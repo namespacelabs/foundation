@@ -97,12 +97,12 @@ func NewDevCmd() *cobra.Command {
 				return keyboard.Handle(ctx, keyboard.HandleOpts{
 					Provider: sesh,
 					Keybindings: []keyboard.Handler{
+						view.NewNetworkPlanKeybinding("stack"),
 						logtail.Keybinding{
 							LoadEnvironment: func(envName string) (cfg.Context, error) {
 								return cfg.LoadContext(locs.Root, envName)
 							},
 						},
-						view.NewNetworkPlanKeybinding("stack"),
 					},
 					Handler: func(ctx context.Context) error {
 						r := mux.NewRouter()
