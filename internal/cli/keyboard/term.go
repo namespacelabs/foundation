@@ -26,8 +26,7 @@ import (
 type Handler interface {
 	// Key MUST be a pure function. E.g. "l"
 	Key() string
-	// Label MUST be a pure function. E.g. "stream logs"
-	Label(bool) string
+	Label() string
 	// Must only leave when chan Event is closed. OpSet events must be Acknowledged by writing to Control.
 	Handle(context.Context, chan Event, chan<- Control)
 }
@@ -37,7 +36,7 @@ type ControlOp string
 
 const (
 	OpStackUpdate EventOp = "op.stackupdate"
-	OpSet         EventOp = "op.set"
+	OpToggle      EventOp = "op.toggle"
 
 	ControlAck ControlOp = "control.ack"
 )
@@ -52,7 +51,6 @@ type Event struct {
 		Focus       []string
 		NetworkPlan *storage.NetworkPlan
 	}
-	Enabled bool
 }
 
 type Control struct {
@@ -146,7 +144,6 @@ type handlerState struct {
 	HandlerID     int
 	Ch            chan Event
 	ExitCh        chan struct{}
-	Enabled       bool
 	HandlingEvent string
 }
 
@@ -160,7 +157,6 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 			HandlerID: k,
 			Ch:        make(chan Event),
 			ExitCh:    make(chan struct{}),
-			Enabled:   false,
 		}
 
 		state[k] = st
@@ -196,7 +192,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 				style = aec.LightBlackF
 			}
 
-			labels = append(labels, fmt.Sprintf(" (%s): %s", aec.Bold.Apply(state.Handler.Key()), style.Apply(state.Handler.Label(state.Enabled))))
+			labels = append(labels, fmt.Sprintf(" (%s): %s", aec.Bold.Apply(state.Handler.Key()), style.Apply(state.Handler.Label())))
 		}
 
 		keybindings := fmt.Sprintf(" %s%s (%s): quit", aec.LightBlackF.Apply("Key bindings"), strings.Join(labels, ""), aec.Bold.Apply("q"))
@@ -244,13 +240,11 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 				// Don't allow multiple state changes until the handler acknowledges the command.
 				if state.HandlingEvent == "" {
 					state.HandlingEvent = fmt.Sprintf("%d", eventID)
-					state.Enabled = !state.Enabled
 
 					state.Ch <- Event{
 						HandlerID: state.HandlerID,
 						EventID:   state.HandlingEvent,
-						Operation: OpSet,
-						Enabled:   state.Enabled,
+						Operation: OpToggle,
 					}
 				}
 

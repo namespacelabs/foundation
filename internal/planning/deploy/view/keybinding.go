@@ -18,34 +18,35 @@ import (
 )
 
 type NetworkPlanKeybinding struct {
-	name string
+	name               string
+	showSupportServers bool
 }
 
 func NewNetworkPlanKeybinding(name string) *NetworkPlanKeybinding {
 	return &NetworkPlanKeybinding{
-		name: name,
+		name:               name,
+		showSupportServers: false,
 	}
 }
 
-func (k NetworkPlanKeybinding) Key() string { return "s" }
+func (k *NetworkPlanKeybinding) Key() string { return "s" }
 
-func (k NetworkPlanKeybinding) Label(enabled bool) string {
-	if !enabled {
+func (k *NetworkPlanKeybinding) Label() string {
+	if !k.showSupportServers {
 		return "show support servers"
 	}
 	return "hide support servers"
 }
 
-func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
-	showSupportServers := false
+func (k *NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
 	var networkPlan *storage.NetworkPlan
 
 	for event := range ch {
 		switch event.Operation {
-		case keyboard.OpSet:
-			showSupportServers := event.Enabled
+		case keyboard.OpToggle:
+			k.showSupportServers = !k.showSupportServers
 
-			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
+			k.renderStickyNetworkPlan(ctx, networkPlan)
 
 			c := keyboard.Control{Operation: keyboard.ControlAck}
 			c.AckEvent.HandlerID = event.HandlerID
@@ -56,12 +57,12 @@ func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Even
 		case keyboard.OpStackUpdate:
 			networkPlan = event.StackUpdate.NetworkPlan
 
-			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
+			k.renderStickyNetworkPlan(ctx, networkPlan)
 		}
 	}
 }
 
-func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan *storage.NetworkPlan, showSupportServers bool) {
+func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan *storage.NetworkPlan) {
 	content := ""
 	if plan != nil {
 		summary := render.NetworkPlanToSummary(plan)
@@ -69,7 +70,7 @@ func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan
 		NetworkPlanToText(&out, summary, &NetworkPlanToTextOpts{
 			Style:                 colors.WithColors,
 			Checkmark:             true,
-			IncludeSupportServers: showSupportServers,
+			IncludeSupportServers: k.showSupportServers,
 		})
 		content = out.String()
 	}

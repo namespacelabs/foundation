@@ -25,6 +25,15 @@ import (
 
 type Keybinding struct {
 	LoadEnvironment func(name string) (cfg.Context, error)
+
+	enableLogs                         bool
+	logsHaveBeenEnabledAfterDeployment bool
+}
+
+func NewKeybinding(loadEnvironment func(name string) (cfg.Context, error)) *Keybinding {
+	return &Keybinding{
+		LoadEnvironment: loadEnvironment,
+	}
 }
 
 type logState struct {
@@ -34,17 +43,15 @@ type logState struct {
 	Cancel      func()
 }
 
-func (l Keybinding) Key() string { return "l" }
-func (l Keybinding) Label(disabled bool) string {
-	if disabled {
-		return "stream logs"
+func (l *Keybinding) Key() string { return "l" }
+func (l *Keybinding) Label() string {
+	if l.enableLogs {
+		return "pause logs " // Additional space at the end for a better allignment.
 	}
-	return "pause logs " // Additional space at the end for a better allignment.
+	return "stream logs"
 }
 
-func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
-	logging := false
-
+func (l *Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
 	var previousStack *schema.Stack
 	var previousEnv string
 	var previousFocus []string
@@ -62,23 +69,24 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		newFocus := previousFocus
 
 		switch event.Operation {
-		case keyboard.OpSet:
-			// TODO: provide a way to set the "enabled" default.
-			logging = !event.Enabled
+		case keyboard.OpToggle:
+			l.enableLogs = !l.enableLogs
 
 		case keyboard.OpStackUpdate:
 			newStack = event.StackUpdate.Stack
 			newEnv = event.StackUpdate.Env.GetName()
 			newFocus = event.StackUpdate.Focus
 
-			if event.StackUpdate.NetworkPlan != nil && event.StackUpdate.NetworkPlan.IsDeploymentFinished() {
-				logging = true
+			if event.StackUpdate.NetworkPlan != nil && event.StackUpdate.NetworkPlan.IsDeploymentFinished() && !l.logsHaveBeenEnabledAfterDeployment {
+				l.enableLogs = true
+				// Auto-enable logs after the first deployment.
+				l.logsHaveBeenEnabledAfterDeployment = true
 			}
 		}
 
 		style := colors.Ctx(ctx)
 
-		if logging {
+		if l.enableLogs {
 			for _, server := range newStack.GetEntry() {
 				if slices.Index(newFocus, server.Server.PackageName) < 0 {
 					continue
@@ -134,7 +142,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		previousFocus = newFocus
 
 		switch event.Operation {
-		case keyboard.OpSet:
+		case keyboard.OpToggle:
 			c := keyboard.Control{Operation: keyboard.ControlAck}
 			c.AckEvent.HandlerID = event.HandlerID
 			c.AckEvent.EventID = event.EventID
