@@ -31,7 +31,7 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 
 	localIngressPort := uint32(0)
 	for _, p := range endpoints {
-		if isIngress(p) {
+		if IsIngress(p) {
 			localIngressPort = p.LocalPort
 			break
 		}
@@ -42,7 +42,7 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 			continue
 		}
 
-		if isIngress(p) || p.Port == nil {
+		if IsIngress(p) || p.Port == nil {
 			continue
 		}
 
@@ -176,7 +176,7 @@ func grpcAccessCmd(tls, trusted bool, port uint32, hostname string, serviceName 
 		extraArg, hostname, port, serviceName)
 }
 
-func isIngress(endpoint *storage.Endpoint) bool {
+func IsIngress(endpoint *storage.Endpoint) bool {
 	return endpoint != nil && endpoint.EndpointOwner == "" && endpoint.ServiceName == constants.IngressServiceName
 }
 
@@ -293,13 +293,13 @@ func sortPorts(portFwds []*storage.Endpoint, focusedPackages []string) {
 	sort.SliceStable(portFwds, func(i, j int) bool {
 		a, b := portFwds[i], portFwds[j]
 
-		if isIngress(b) {
-			if isIngress(a) {
+		if IsIngress(b) {
+			if IsIngress(a) {
 				return a.LocalPort < b.LocalPort
 			}
 
 			return true
-		} else if isIngress(a) {
+		} else if IsIngress(a) {
 			return false
 		} else {
 			if IsFocusEndpoint(focusedPackages, a) {
