@@ -32,7 +32,9 @@ func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggra
 		return nil, fnerrors.UserError(loc, "missing required field `entrypoint`")
 	}
 
-	if _, err := fs.Stat(loc.Module.ReadOnlyFS(), filepath.Join(loc.Rel(), data.Entrypoint)); err != nil {
+	entrypoint := filepath.Clean(data.Entrypoint)
+
+	if _, err := fs.Stat(loc.Module.ReadOnlyFS(), filepath.Join(loc.Rel(), entrypoint)); err != nil {
 		return nil, fnerrors.Wrapf(loc, err, "could not find %q file, please verify that the specified script path is correct", data.Entrypoint)
 	}
 
@@ -44,12 +46,13 @@ func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggra
 			LayerBuildPlan: []*schema.ImageBuildPlan{{
 				AlpineBuild: &schema.ImageBuildPlan_AlpineBuild{Package: required},
 			}, {
-				SnapshotFiles: []string{data.Entrypoint},
+				SnapshotFiles: []string{entrypoint},
 			}},
 		},
 		Config: &schema.BinaryConfig{
 			WorkingDir: "/",
-			Command:    []string{data.Entrypoint},
+			// "./" is important to resolve the entrypoint script relative to the working directory.
+			Command: []string{"./" + entrypoint},
 		},
 	}, nil
 }
