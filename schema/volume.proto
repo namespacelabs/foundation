@@ -42,6 +42,11 @@ message PersistentVolume {
     uint64 size_bytes = 2;
 }
 
+message WorkspaceSyncVolume {
+    // A directory, relative to package.
+    string path = 1;
+}
+
 message ConfigurableVolume {
     repeated Entry entries = 1;
 

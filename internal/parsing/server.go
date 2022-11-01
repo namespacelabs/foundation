@@ -181,10 +181,19 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 }
 
 func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server) error {
+	filesyncControllerMounts := 0
 	for _, m := range srv.MainContainer.Mount {
-		if findVolume(srv.Volume, m.VolumeRef) == nil {
+		// Only supporting volumes within the same package for now.
+		volume := findVolume(srv.Volume, m.VolumeRef)
+		if volume == nil {
 			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeRef.Canonical())
 		}
+		if volume.Kind == constants.VolumeKindWorkspaceSync {
+			filesyncControllerMounts++
+		}
+	}
+	if filesyncControllerMounts > 1 {
+		return fnerrors.UserError(loc, "only one workspace sync mount is allowed per server")
 	}
 
 	volumeNames := map[string]struct{}{}

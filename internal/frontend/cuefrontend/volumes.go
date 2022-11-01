@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -52,15 +53,15 @@ func ParseVolumes(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 
 type cueVolume struct {
 	cuePersistentVolume
-	cueFilesetVolume
+	cueWorkspaceSyncVolume
 
 	Kind string `json:"kind"`
 
 	// Shortcuts
-	Ephemeral    interface{}          `json:"ephemeral"`
-	Persistent   *cuePersistentVolume `json:"persistent"`
-	PackageSync  *cueFilesetVolume    `json:"packageSync"`
-	Configurable interface{}          `json:"configurable"`
+	Ephemeral     interface{}             `json:"ephemeral"`
+	Persistent    *cuePersistentVolume    `json:"persistent"`
+	WorkspaceSync *cueWorkspaceSyncVolume `json:"syncWorkspace"`
+	Configurable  interface{}             `json:"configurable"`
 }
 
 type cuePersistentVolume struct {
@@ -68,9 +69,8 @@ type cuePersistentVolume struct {
 	Size string `json:"size"`
 }
 
-type cueFilesetVolume struct {
-	Include []string `json:"include"`
-	Exclude []string `json:"exclude"`
+type cueWorkspaceSyncVolume struct {
+	FromDir string `json:"fromDir"`
 }
 
 type cueConfigurableEntry struct {
@@ -95,9 +95,9 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			bits.cuePersistentVolume = *bits.Persistent
 			bits.Kind = constants.VolumeKindPersistent
 		}
-		if bits.PackageSync != nil {
-			bits.cueFilesetVolume = *bits.PackageSync
-			bits.Kind = constants.VolumeKindPackageSync
+		if bits.WorkspaceSync != nil {
+			bits.cueWorkspaceSyncVolume = *bits.WorkspaceSync
+			bits.Kind = constants.VolumeKindWorkspaceSync
 		}
 		if bits.Configurable != nil {
 			// Parsing can't be done via JSON unmarshalling, so doing it manually below.
@@ -126,6 +126,21 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 		definition = &schema.PersistentVolume{
 			Id:        bits.Id,
 			SizeBytes: uint64(sizeBytes),
+		}
+
+	case constants.VolumeKindWorkspaceSync:
+		if bits.FromDir == "" {
+			return nil, fnerrors.UserError(loc, "workspace sync: missing required field 'fromDir'")
+		}
+
+		definition = &schema.WorkspaceSyncVolume{
+			Path: bits.FromDir,
+		}
+
+		// Making sure that the controller package is loaded.
+		_, err := pl.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
+		if err != nil {
+			return nil, err
 		}
 
 	case constants.VolumeKindConfigurable:

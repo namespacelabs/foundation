@@ -5,8 +5,8 @@
 package constants
 
 const (
-	VolumeKindEphemeral    = "namespace.so/volume/ephemeral"
-	VolumeKindPersistent   = "namespace.so/volume/persistent"
-	VolumeKindConfigurable = "namespace.so/volume/configurable"
-	VolumeKindPackageSync  = "namespace.so/volume/package-sync"
+	VolumeKindEphemeral     = "namespace.so/volume/ephemeral"
+	VolumeKindPersistent    = "namespace.so/volume/persistent"
+	VolumeKindConfigurable  = "namespace.so/volume/configurable"
+	VolumeKindWorkspaceSync = "namespace.so/volume/workspacesync"
 )
