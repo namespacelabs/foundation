@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	enverr "namespacelabs.dev/foundation/internal/fnerrors/env"
@@ -98,7 +99,7 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 
-			stderr := console.Stderr(ctx)
+			out := console.TypedOutput(ctx, "test-results", common.CatOutputUs)
 			style := colors.Ctx(ctx)
 
 			testOpts.ParentRunID = storedrun.ParentID
@@ -121,7 +122,7 @@ func NewTestCmd() *cobra.Command {
 						pl := parsing.NewPackageLoader(buildEnv)
 
 						status := style.Header.Apply("BUILDING")
-						fmt.Fprintf(stderr, "%s: Test %s\n", testRef.Canonical(), status)
+						fmt.Fprintf(out, "%s: Test %s\n", testRef.Canonical(), status)
 
 						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts)
 						if err != nil {
@@ -129,7 +130,7 @@ func NewTestCmd() *cobra.Command {
 							if errors.As(err, &inc) {
 								incompatible[k] = &inc
 								if !parallel && !parallelWork {
-									printIncompatible(stderr, style, testRef)
+									printIncompatible(out, style, testRef)
 								}
 
 								return nil
@@ -176,7 +177,7 @@ func NewTestCmd() *cobra.Command {
 								runs.Run[k].TestBundleId = res.ImageRef()
 							}
 
-							printResult(stderr, style, testRef, runs.Run[k], false)
+							printResult(out, style, testRef, runs.Run[k], false)
 						}
 
 						return nil
@@ -239,14 +240,16 @@ func NewTestCmd() *cobra.Command {
 					return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
 				})
 
+				fmt.Fprintln(out)
+
 				for _, res := range sortedRuns {
 					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestSummary.TestPackage), res.TestSummary.TestName)
-					printResult(stderr, style, pkgRef, res, true)
+					printResult(out, style, pkgRef, res, true)
 				}
 
 				for _, res := range runs.IncompatibleTest {
 					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestPackage), res.TestName)
-					printIncompatible(stderr, style, pkgRef)
+					printIncompatible(out, style, pkgRef)
 				}
 			}
 

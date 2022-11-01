@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
@@ -112,7 +113,9 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 
 	deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), test.Stack, p, test.ServersUnderTest)
 
-	fmt.Fprintf(console.Stderr(ctx), "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
+	out := console.TypedOutput(ctx, "test", common.CatOutputUs)
+
+	fmt.Fprintf(out, "%s: Test %s\n", test.TestRef.Canonical(), aec.LightBlackF.Apply("RUNNING"))
 
 	var waitErr error
 	if err := orchestration.Deploy(ctx, env, cluster, deployPlan, true, test.OutputProgress); err != nil {
@@ -227,7 +230,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	}
 
 	if test.OutputProgress {
-		fmt.Fprintln(console.Stdout(ctx), "Collecting post-execution server logs...")
+		fmt.Fprintf(out, "\nCollecting post-execution server logs...\n\n")
 	}
 
 	// Limit how much time we spend on collecting logs out of the test environment.
