@@ -54,6 +54,11 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
 		}
+
+		// Not fully implemented yet, disabling for now.
+		if len(out.container.Mount) != 0 {
+			return nil, fnerrors.UserError(loc, "mounts are not supported for sidecar containers at the moment")
+		}
 	}
 
 	var err error
