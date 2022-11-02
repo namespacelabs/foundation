@@ -231,6 +231,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
       - name: Download Foundation
         uses: actions/download-artifact@v3
         with:
