@@ -53,7 +53,7 @@ func WelcomePage(srv *runtime.Server) func(http.ResponseWriter, *http.Request) {
 		data.Static.LogoBase64 = logoBytesBase64
 
 		if err := welcomeTemplate.Execute(rw, data); err != nil {
-			log.Fatal(err)
+			log.Printf("rendering welcome failed: %v", err)
 		}
 	}
 }
