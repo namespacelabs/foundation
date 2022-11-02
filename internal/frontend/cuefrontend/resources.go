@@ -8,10 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
@@ -151,7 +151,7 @@ func parseStrFieldCompat(namev2, valuev2, namev1, valuev1 string, required bool)
 	return "", nil
 }
 
-func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
+func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
 	pkg, err := pl.LoadByName(ctx, classRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -162,20 +162,26 @@ func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkg
 		return nil, fnerrors.UserError(loc, "resource class %q not found", classRef.Canonical())
 	}
 
-	return parseResourceIntentProto(rc.PackageName(), value, rc.IntentType.Descriptor)
-}
-
-func parseResourceIntentProto(pkg schema.PackageName, value any, intentType protoreflect.MessageDescriptor) (*anypb.Any, error) {
-	if value != nil {
-		msg, err := allocateMessage(intentType, value)
-		if err != nil {
-			return nil, err
-		}
-
-		return fnany.Marshal(pkg, msg)
+	if value == nil {
+		return nil, nil
 	}
 
-	return nil, nil
+	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
+	}
+
+	subFsys, err := fs.Sub(fsys, loc.Rel())
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
+	}
+
+	msg, err := allocateMessage(subFsys, rc.IntentType.Descriptor, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return fnany.Marshal(rc.PackageName(), msg)
 }
 
 func ParseResourceList(v *fncue.CueV) (*ResourceList, error) {

@@ -8,13 +8,14 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	wsprotos "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
-func Marshal(pkg schema.PackageName, msg proto.Message) (*anypb.Any, error) {
+func Marshal(pkg schema.PackageName, msg protoreflect.ProtoMessage) (*anypb.Any, error) {
 	typename := string(msg.ProtoReflect().Descriptor().FullName())
 
 	msgBytes, err := proto.MarshalOptions{Deterministic: true}.Marshal(msg)

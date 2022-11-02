@@ -5,6 +5,7 @@
 package cuefrontend
 
 import (
+	"embed"
 	"encoding/json"
 	"log"
 	"testing"
@@ -13,6 +14,11 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/testing/protocmp"
 	"namespacelabs.dev/foundation/schema"
+)
+
+var (
+	//go:embed testdata/*.txt
+	testData embed.FS
 )
 
 func TestAllocateMessage(t *testing.T) {
@@ -54,8 +60,36 @@ func TestAllocateMessage(t *testing.T) {
 				},
 			},
 		},
+		{
+			JSON: `{
+				"inline": "testdata/fileresource.txt"
+			}`,
+			Expected: &schema.ConfigurableVolume_Entry{
+				Inline: &schema.FileContents{
+					Contents: []byte("This is test data."),
+					Utf8:     true,
+				},
+			},
+		},
+		{
+			JSON: `{
+				"resource": ["testdata/fileresource.txt", "testdata/secondresource.txt"]
+			}`,
+			Expected: &schema.ResourceSet{
+				Resource: []*schema.FileContents{
+					{
+						Contents: []byte("This is test data."),
+						Utf8:     true,
+					},
+					{
+						Contents: []byte("Another test."),
+						Utf8:     true,
+					},
+				},
+			},
+		},
 	} {
-		msg, err := allocateMessage(test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
+		msg, err := allocateMessage(testData, test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
 		if err != nil {
 			t.Error(err)
 		} else {

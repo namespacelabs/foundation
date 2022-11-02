@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -58,6 +59,7 @@ type local struct {
 
 var _ MkdirFS = local{}
 var _ RmdirFS = local{}
+var _ fs.SubFS = local{}
 
 func (l local) Open(path string) (fs.File, error) {
 	return os.DirFS(l.root).Open(path)
@@ -115,4 +117,16 @@ func (l local) MkdirAll(path string, mode fs.FileMode) error {
 	}
 
 	return os.MkdirAll(filepath.Join(l.root, path), mode)
+}
+
+func (l local) Sub(dir string) (fs.FS, error) {
+	if strings.HasPrefix(dir, "../") {
+		return nil, fnerrors.New("can't escape the local workspace")
+	}
+
+	return &local{
+		root:             filepath.Join(l.root, dir),
+		readWrite:        l.readWrite,
+		announceWritesTo: l.announceWritesTo,
+	}, nil
 }
