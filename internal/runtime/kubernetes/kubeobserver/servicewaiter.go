@@ -81,7 +81,7 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 
 	var count int
 	for _, port := range service.Spec.Ports {
-		addr := fmt.Sprintf("fail%s.%s.svc.cluster.local:%d", w.name, w.namespace, port.Port)
+		addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", w.name, w.namespace, port.Port)
 
 		rawConn, err := net.DialTimeout("tcp", addr, dialTimeout)
 		if !w.isReady(pod.Items, err) {
