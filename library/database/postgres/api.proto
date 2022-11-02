@@ -4,16 +4,17 @@
 
 syntax = "proto3";
 
-package library.storage.redis;
+package library.database.postgres;
 
-option go_package = "namespacelabs.dev/foundation/library/storage/redis";
+option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 
 message DatabaseIntent {
-    int32 database = 1;
+    string name   = 1;
+    string schema = 2;  // TODO change to resource proto.
 }
 
 message DatabaseInstance {
-    int32  database = 1;
+    string name     = 1;
     string url      = 2;
     string password = 3;
 }

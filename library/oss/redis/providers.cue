@@ -1,5 +1,5 @@
 providers: {
-	"namespacelabs.dev/foundation/library/storage/redis:Database": {
+	"namespacelabs.dev/foundation/library/database/redis:Database": {
 		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/redis/prepare"
 
 		resources: {
