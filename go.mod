@@ -31,7 +31,7 @@ require (
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/docker/go-connections v0.4.0
-	github.com/docker/go-units v0.4.0
+	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.0
 	github.com/envoyproxy/go-control-plane v0.10.2-0.20220325020618-49ff273808a1
 	github.com/fsnotify/fsevents v0.1.1
