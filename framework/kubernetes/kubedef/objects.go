@@ -13,6 +13,7 @@ type Object interface {
 	GetName() string
 	GetNamespace() string
 	GetLabels() map[string]string
+	GetAnnotations() map[string]string
 }
 
 func IsDeployment(obj Object) bool {

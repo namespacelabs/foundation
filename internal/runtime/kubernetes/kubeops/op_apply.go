@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -262,6 +263,12 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			}}, nil
 
 	case kubedef.IsService(obj):
+		pkg, ok := obj.GetAnnotations()[kubedef.K8sServicePackageName]
+		if ok && !slices.Contains(scope, fnschema.PackageName(pkg)) {
+			// Refine scope with service package for understandability.
+			scope = append(scope, fnschema.PackageName(pkg))
+		}
+
 		return &execution.HandleResult{
 			Waiter: func(ctx context.Context, ch chan *orchestration.Event) error {
 				if ch != nil {
@@ -270,8 +277,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("service.wait").Scope(scope...),
 					kobs.WaitForService(obj.GetNamespace(), obj.GetName(),
-						func(scope string, pods []v1.Pod, err error) bool {
-							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, scope)
+						func(pods []v1.Pod, err error) bool {
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, pkg)
 
 							for _, p := range pods {
 								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(p.Namespace, p.Name, p.Status))

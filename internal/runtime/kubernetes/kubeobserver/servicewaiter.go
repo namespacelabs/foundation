@@ -29,7 +29,7 @@ const dialTimeout = 100 * time.Millisecond
 type serviceWaiter struct {
 	namespace, name string
 
-	isReady func(string, []corev1.Pod, error) bool
+	isReady func([]corev1.Pod, error) bool
 
 	mu                    sync.Mutex
 	portCount, matchCount int
@@ -72,11 +72,6 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 		return false, fnerrors.InternalError("service %q is missing server label", w.name)
 	}
 
-	scope, ok := service.Annotations[kubedef.K8sServicePackageName]
-	if !ok {
-		return false, fnerrors.InternalError("service %q is missing package name", w.name)
-	}
-
 	pod, err := c.CoreV1().Pods(w.namespace).List(ctx, v1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(map[string]string{
 			kubedef.K8sServerId: id,
@@ -88,10 +83,10 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 
 	var count int
 	for _, port := range service.Spec.Ports {
-		addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, port.Port)
+		addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", w.name, w.namespace, port.Port)
 
 		rawConn, err := net.DialTimeout("tcp", addr, dialTimeout)
-		if !w.isReady(scope, pod.Items, err) {
+		if !w.isReady(pod.Items, err) {
 			continue
 		}
 
@@ -107,7 +102,7 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 	return w.matchCount > 0 && w.matchCount == w.portCount, nil
 }
 
-func WaitForService(namespace, name string, isReady func(string, []corev1.Pod, error) bool) ConditionWaiter[*k8s.Clientset] {
+func WaitForService(namespace, name string, isReady func([]corev1.Pod, error) bool) ConditionWaiter[*k8s.Clientset] {
 	return &serviceWaiter{namespace: namespace, name: name, isReady: isReady}
 }
 
