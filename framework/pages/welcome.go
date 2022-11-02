@@ -7,9 +7,11 @@ package pages
 import (
 	"embed"
 	"encoding/base64"
+	"errors"
 	"html/template"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 
@@ -53,6 +55,12 @@ func WelcomePage(srv *runtime.Server) func(http.ResponseWriter, *http.Request) {
 		data.Static.LogoBase64 = logoBytesBase64
 
 		if err := welcomeTemplate.Execute(rw, data); err != nil {
+			var opError *net.OpError
+			if errors.As(err, &opError) {
+				// Do not log network errors (e.g. connection reset by peer)
+				return
+			}
+
 			log.Printf("rendering welcome failed: %v", err)
 		}
 	}
