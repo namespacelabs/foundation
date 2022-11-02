@@ -11,9 +11,7 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
@@ -168,21 +166,16 @@ func parseResourceIntent(ctx context.Context, pl pkggraph.PackageLoader, loc pkg
 }
 
 func parseResourceIntentProto(pkg schema.PackageName, value any, intentType protoreflect.MessageDescriptor) (*anypb.Any, error) {
-	msg := dynamicpb.NewMessage(intentType).Interface()
-
 	if value != nil {
-		serializedValue, err := json.Marshal(value)
+		msg, err := allocateMessage(intentType, value)
 		if err != nil {
-			return nil, fnerrors.InternalError("%s: failed to serialize input: %w", pkg, err)
+			return nil, err
 		}
 
-		// TODO: custom parsing of "foundation.std.types.Resource" types: inlining resource files etc.
-		if err := (protojson.UnmarshalOptions{}).Unmarshal(serializedValue, msg); err != nil {
-			return nil, fnerrors.InternalError("%s: failed to coerce input: %w", pkg, err)
-		}
+		return fnany.Marshal(pkg, msg)
 	}
 
-	return fnany.Marshal(pkg, msg)
+	return nil, nil
 }
 
 func ParseResourceList(v *fncue.CueV) (*ResourceList, error) {
