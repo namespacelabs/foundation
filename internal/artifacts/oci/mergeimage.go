@@ -56,8 +56,13 @@ func (al *mergeImages) Inputs() *compute.In {
 }
 
 func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
+	if len(al.images) == 0 {
+		return empty.Image, nil
+	}
+
 	var layers []v1.Layer
 	var digests []string
+	var base Image
 	for k, image := range al.images {
 		if image.Image() == nil {
 			continue
@@ -70,15 +75,20 @@ func (al *mergeImages) Compute(ctx context.Context, deps compute.Resolved) (Imag
 
 		digests = append(digests, image.Digest.String())
 
-		imageLayers, err := image.Value.Layers()
-		if err != nil {
-			return nil, err
-		}
+		if k == 0 {
+			base = image.Value
+		} else {
+			imageLayers, err := image.Value.Layers()
+			if err != nil {
+				return nil, err
+			}
 
-		layers = append(layers, imageLayers...)
+			layers = append(layers, imageLayers...)
+		}
 	}
 
 	tasks.Attachments(ctx).AddResult("digests", digests)
 
-	return mutate.AppendLayers(empty.Image, layers...)
+	// Using the first image as the based, propagating its config (including command and args) to the result image.
+	return mutate.AppendLayers(base, layers...)
 }
