@@ -107,6 +107,9 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 	})
 
 	style := colors.Ctx(ctx)
+
+	var built, prebuilt int
+
 	for k, it := range results {
 		if k > 0 {
 			fmt.Fprintln(out)
@@ -119,18 +122,47 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 		fmt.Fprintf(out, "    %s ", style.Header.Apply("Binary:"))
 		if resolved.PrebuiltBinary {
 			fmt.Fprint(out, style.LessRelevant.Apply("prebuilt "))
+			prebuilt++
+		} else {
+			built++
 		}
 
-		fmt.Fprintf(out, "%s\n", resolved.Binary)
+		fmt.Fprintf(out, "%s\n", resolved.Binary.Repository)
+		fmt.Fprintf(out, "    %s %s\n", spaces("Binary:"), resolved.Binary.Digest)
 
 		if resolved.Config.String() != "" {
-			fmt.Fprintf(out, "    %s %s\n", style.Header.Apply("Config:"), resolved.Config)
+			fmt.Fprintf(out, "    %s %s\n", style.Header.Apply("Config:"), resolved.Config.Repository)
+			fmt.Fprintf(out, "    %s %s\n", spaces("Config:"), resolved.Config.Digest)
 		}
 
 		for _, sidecar := range resolved.Sidecars {
-			fmt.Fprintf(out, "    %s %s %s\n", style.Header.Apply("Sidecar:"), sidecar.PackageRef.Canonical(), sidecar.Binary)
+			fmt.Fprintf(out, "    %s %s\n", style.Header.Apply("Sidecar:"), sidecar.PackageRef.Canonical())
+			fmt.Fprintf(out, "    %s %s\n", spaces("Sidecar:"), sidecar.Binary.Repository)
+			fmt.Fprintf(out, "    %s %s\n", spaces("Sidecar:"), sidecar.Binary.Digest)
 		}
 	}
+
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "Built and pushed %d server %s (%d were prebuilt).\n", built, plural(built, "image", "images"), prebuilt)
+}
+
+func plural(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
+}
+
+func spaces(str string) string {
+	return spacesN(len(str))
+}
+
+func spacesN(n int) string {
+	str := make([]byte, n)
+	for x := 0; x < n; x++ {
+		str[x] = ' '
+	}
+	return string(str)
 }
 
 type continuousBuild struct {
