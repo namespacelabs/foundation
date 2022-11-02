@@ -162,7 +162,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 				if ev.Ready != orchestration.Event_READY {
 					pending[ev.ResourceId] = nil
-					delete(waitErrors, ev.ResourceId)
+					waitErrors[ev.ResourceId] = nil
 					helps[ev.ResourceId] = ev.RuntimeSpecificHelp
 
 					failed := false
