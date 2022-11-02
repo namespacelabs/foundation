@@ -221,3 +221,36 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: failure() && github.event_name == 'push'
+
+  test_unprepare:
+    name: Test unprepare os=${{ matrix.os }}
+    needs: build_fn
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Download Foundation
+        uses: actions/download-artifact@v3
+        with:
+          name: ns-${{ runner.os }}
+
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make Foundation executable
+        run: chmod +x ns && mv ns /tmp/ns
+
+      - name: Prepare first environment
+        run: /tmp/ns prepare local
+
+      - name: Test first environment
+        run: /tmp/ns doctor --test=workspace,kubernetes-run
+
+      - name: Unprepare
+        run: /tmp/ns unprepare
+
+      - name: Prepare second environment
+        run: /tmp/ns prepare local
+
+      - name: Test second environment
+        run: /tmp/ns doctor --test=workspace,kubernetes-run
