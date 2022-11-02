@@ -247,7 +247,7 @@ jobs:
         run: /tmp/ns prepare local
 
       - name: Test first environment
-        run: /tmp/ns doctor --test=workspace,kubernetes-run
+        run: /tmp/ns doctor --tests=workspace,kubernetes-run
 
       - name: Unprepare
         run: /tmp/ns unprepare
@@ -256,4 +256,4 @@ jobs:
         run: /tmp/ns prepare local
 
       - name: Test second environment
-        run: /tmp/ns doctor --test=workspace,kubernetes-run
+        run: /tmp/ns doctor --tests=workspace,kubernetes-run
