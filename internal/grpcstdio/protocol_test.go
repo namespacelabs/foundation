@@ -69,18 +69,20 @@ func TestProtocol(t *testing.T) {
 
 			defer conn.Close()
 
-			for k := 0; k < 3; k++ {
-				log.Println("will issue make")
-				_, err = testdata.NewTestServiceClient(conn).Make(ctx, &testdata.Request{})
-				log.Println("got a make response")
-			}
-
-			eg.Go(func(ctx context.Context) error {
+			defer eg.Go(func(ctx context.Context) error {
 				s.GracefulStop()
 				return nil
 			})
 
-			return err
+			for k := 0; k < 3; k++ {
+				log.Println("will issue make")
+				if _, err = testdata.NewTestServiceClient(conn).Make(ctx, &testdata.Request{}); err != nil {
+					return err
+				}
+				log.Println("got a make response")
+			}
+
+			return nil
 		})
 
 		if err := eg.Wait(); err != nil {
