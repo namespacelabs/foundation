@@ -1,0 +1,61 @@
+<html>
+	<head>
+		<style>
+			body {
+				font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+					"Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+				background-color: #141627;
+				color: white;
+			}
+		</style>
+		<link href="output.css" rel="stylesheet" />
+		<title>Namespace: Welcome</title>
+	</head>
+	<body>
+		<div class="flex flex-col absolute top-0 left-0 right-0 bottom-0 justify-center items-center">
+			<div>
+				<div class="mb-8 flex">
+					<img src="logo.png" class="w-12 h-12" />
+				</div>
+
+				<div class="mb-24">
+					<div class="mx-auto max-w-2xl text-left">
+						<div class="my-8">
+							<h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+								<span class="block">Welcome to Namespace.</span>
+								<!-- <span class="block">Start using our app today.</span> -->
+							</h2>
+							<p class="mt-4 text-lg leading-6 text-indigo-200">
+								The server <code>{{.PackageName}}</code> is up and running.
+							</p>
+							<p class="mt-4 text-lg leading-6 text-indigo-200">Try running its tests with:</p>
+							<code class="block bg-black bg-opacity-50 px-2 py-1.5 rounded-lg my-3"
+								>ns test {{.PackageName}}</code
+							>
+						</div>
+						<a
+							href="https://docs.namespace.so"
+							target="_blank"
+							class="inline-flex w-full items-center justify-center rounded-md border border-transparent bg-white px-5 py-3 text-base font-medium text-indigo-600 hover:bg-indigo-50 sm:w-auto"
+							>Documentation
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke-width="1.5"
+								stroke="currentColor"
+								class="w-5 h-5 ml-2"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+								/>
+							</svg>
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
