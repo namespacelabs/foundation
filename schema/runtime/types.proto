@@ -68,7 +68,3 @@ message SetContainerField {
         foundation.schema.ServiceRef service_ref = 4;  // Only valid if RESOURCE_CONFIG_SERVICE_ENDPOINT is set.
     }
 }
-
-message WaitError {
-    string message = 1;
-}

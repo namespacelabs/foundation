@@ -37,8 +37,9 @@ message Event {
     repeated WaitStatus wait_status   = 8;
 
     message WaitStatus {
-        string              description = 1;
-        google.protobuf.Any opaque      = 2;
+        string              description   = 1;
+        google.protobuf.Any opaque        = 2;
+        string              error_message = 3;
     }
 
     string wait_details = 9;

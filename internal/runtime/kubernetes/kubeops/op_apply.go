@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -186,7 +185,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 	if ch != nil {
 		switch {
 		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj):
-			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable.GetPackageName())
+			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
 			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
 				Description: "Commited...",
 			})
@@ -239,7 +238,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 								return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
 							}
 
-							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable.GetPackageName())
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
 							ev.ImplMetadata = meta
 							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(obj.GetNamespace(), obj.GetName(), ps))
 
@@ -264,9 +263,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 	case kubedef.IsService(obj):
 		pkg, ok := obj.GetAnnotations()[kubedef.K8sServicePackageName]
-		if ok && !slices.Contains(scope, fnschema.PackageName(pkg)) {
-			// Refine scope with service package for understandability.
-			scope = append(scope, fnschema.PackageName(pkg))
+		if !ok {
+			return nil, fnerrors.InternalError("service %s has no service package annotation", obj.GetName())
 		}
 
 		return &execution.HandleResult{
@@ -275,10 +273,11 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 					defer close(ch)
 				}
 
-				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("service.wait").Scope(scope...),
+				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("service.wait").Scope(scope...).Arg("package", pkg),
 					kobs.WaitForService(obj.GetNamespace(), obj.GetName(),
 						func(pods []v1.Pod, err error) bool {
-							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, pkg)
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, nil)
+							ev.Scope = pkg
 
 							for _, p := range pods {
 								ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(p.Namespace, p.Name, p.Status))

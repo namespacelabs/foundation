@@ -55,7 +55,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 		// Keep track of the pending ContainerWaitStatus per resource type.
 		pending := map[string][]*runtimepb.ContainerWaitStatus{}
-		waitErrors := map[string]string{}
+		waitErrors := map[string][]string{}
 		helps := map[string]string{}
 
 		runDiagnosis := func() {
@@ -78,8 +78,10 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 				buf := bytes.NewBuffer(nil)
 				out := io.MultiWriter(buf, console.Debug(ctx))
 
-				if msg, ok := waitErrors[resourceID]; ok && msg != "" {
-					fmt.Fprintf(out, "%s\n", msg)
+				if errs, ok := waitErrors[resourceID]; ok {
+					for _, msg := range errs {
+						fmt.Fprintf(out, "%s\n", msg)
+					}
 				}
 
 				if help, ok := helps[resourceID]; ok && !env.Environment().GetEphemeral() {
@@ -165,12 +167,15 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 					failed := false
 					for _, w := range ev.WaitStatus {
+						if w.ErrorMessage != "" {
+							waitErrors[ev.ResourceId] = append(waitErrors[ev.ResourceId], w.ErrorMessage)
+						}
+
 						if w.Opaque == nil {
 							continue
 						}
 
 						cws := &runtimepb.ContainerWaitStatus{}
-						waitErr := &runtimepb.WaitError{}
 						if err := w.Opaque.UnmarshalTo(cws); err == nil {
 							pending[ev.ResourceId] = append(pending[ev.ResourceId], cws)
 
@@ -183,8 +188,6 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 									failed = true
 								}
 							}
-						} else if err := w.Opaque.UnmarshalTo(waitErr); err == nil {
-							waitErrors[ev.ResourceId] = waitErr.Message
 						}
 					}
 

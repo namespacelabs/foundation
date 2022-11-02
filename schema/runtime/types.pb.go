@@ -491,53 +491,6 @@ func (x *SetContainerField) GetSetEnv() []*SetContainerField_SetValue {
 	return nil
 }
 
-type WaitError struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
-}
-
-func (x *WaitError) Reset() {
-	*x = WaitError{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_types_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *WaitError) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*WaitError) ProtoMessage() {}
-
-func (x *WaitError) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_types_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use WaitError.ProtoReflect.Descriptor instead.
-func (*WaitError) Descriptor() ([]byte, []int) {
-	return file_schema_runtime_types_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *WaitError) GetMessage() string {
-	if x != nil {
-		return x.Message
-	}
-	return ""
-}
-
 type SetContainerField_SetValue struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -552,7 +505,7 @@ type SetContainerField_SetValue struct {
 func (x *SetContainerField_SetValue) Reset() {
 	*x = SetContainerField_SetValue{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_types_proto_msgTypes[6]
+		mi := &file_schema_runtime_types_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -565,7 +518,7 @@ func (x *SetContainerField_SetValue) String() string {
 func (*SetContainerField_SetValue) ProtoMessage() {}
 
 func (x *SetContainerField_SetValue) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_types_proto_msgTypes[6]
+	mi := &file_schema_runtime_types_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -712,17 +665,15 @@ var file_schema_runtime_types_proto_rawDesc = []byte{
 	0x55, 0x52, 0x43, 0x45, 0x5f, 0x43, 0x4f, 0x4e, 0x46, 0x49, 0x47, 0x10, 0x02, 0x12, 0x24, 0x0a,
 	0x20, 0x52, 0x45, 0x53, 0x4f, 0x55, 0x52, 0x43, 0x45, 0x5f, 0x43, 0x4f, 0x4e, 0x46, 0x49, 0x47,
 	0x5f, 0x53, 0x45, 0x52, 0x56, 0x49, 0x43, 0x45, 0x5f, 0x45, 0x4e, 0x44, 0x50, 0x4f, 0x49, 0x4e,
-	0x54, 0x10, 0x03, 0x22, 0x25, 0x0a, 0x09, 0x57, 0x61, 0x69, 0x74, 0x45, 0x72, 0x72, 0x6f, 0x72,
-	0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x2a, 0x49, 0x0a, 0x0d, 0x43, 0x6f,
-	0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x4b, 0x69, 0x6e, 0x64, 0x12, 0x1e, 0x0a, 0x1a, 0x43,
-	0x4f, 0x4e, 0x54, 0x41, 0x49, 0x4e, 0x45, 0x52, 0x5f, 0x4b, 0x49, 0x4e, 0x44, 0x5f, 0x55, 0x4e,
-	0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x50,
-	0x52, 0x49, 0x4d, 0x41, 0x52, 0x59, 0x10, 0x01, 0x12, 0x0b, 0x0a, 0x07, 0x53, 0x55, 0x50, 0x50,
-	0x4f, 0x52, 0x54, 0x10, 0x02, 0x42, 0x2d, 0x5a, 0x2b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2f, 0x72, 0x75, 0x6e,
-	0x74, 0x69, 0x6d, 0x65, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x54, 0x10, 0x03, 0x2a, 0x49, 0x0a, 0x0d, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72,
+	0x4b, 0x69, 0x6e, 0x64, 0x12, 0x1e, 0x0a, 0x1a, 0x43, 0x4f, 0x4e, 0x54, 0x41, 0x49, 0x4e, 0x45,
+	0x52, 0x5f, 0x4b, 0x49, 0x4e, 0x44, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49,
+	0x45, 0x44, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x50, 0x52, 0x49, 0x4d, 0x41, 0x52, 0x59, 0x10,
+	0x01, 0x12, 0x0b, 0x0a, 0x07, 0x53, 0x55, 0x50, 0x50, 0x4f, 0x52, 0x54, 0x10, 0x02, 0x42, 0x2d,
+	0x5a, 0x2b, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e,
+	0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73,
+	0x63, 0x68, 0x65, 0x6d, 0x61, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x62, 0x06, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -738,7 +689,7 @@ func file_schema_runtime_types_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_runtime_types_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_schema_runtime_types_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_schema_runtime_types_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_schema_runtime_types_proto_goTypes = []interface{}{
 	(ContainerKind)(0),                 // 0: foundation.schema.runtime.ContainerKind
 	(SetContainerField_ValueSource)(0), // 1: foundation.schema.runtime.SetContainerField.ValueSource
@@ -747,11 +698,10 @@ var file_schema_runtime_types_proto_goTypes = []interface{}{
 	(*ContainerReference)(nil),         // 4: foundation.schema.runtime.ContainerReference
 	(*Diagnostics)(nil),                // 5: foundation.schema.runtime.Diagnostics
 	(*SetContainerField)(nil),          // 6: foundation.schema.runtime.SetContainerField
-	(*WaitError)(nil),                  // 7: foundation.schema.runtime.WaitError
-	(*SetContainerField_SetValue)(nil), // 8: foundation.schema.runtime.SetContainerField.SetValue
-	(*anypb.Any)(nil),                  // 9: google.protobuf.Any
-	(*timestamppb.Timestamp)(nil),      // 10: google.protobuf.Timestamp
-	(*schema.ServiceRef)(nil),          // 11: foundation.schema.ServiceRef
+	(*SetContainerField_SetValue)(nil), // 7: foundation.schema.runtime.SetContainerField.SetValue
+	(*anypb.Any)(nil),                  // 8: google.protobuf.Any
+	(*timestamppb.Timestamp)(nil),      // 9: google.protobuf.Timestamp
+	(*schema.ServiceRef)(nil),          // 10: foundation.schema.ServiceRef
 }
 var file_schema_runtime_types_proto_depIdxs = []int32{
 	3,  // 0: foundation.schema.runtime.ContainerWaitStatus.containers:type_name -> foundation.schema.runtime.ContainerUnitWaitStatus
@@ -759,12 +709,12 @@ var file_schema_runtime_types_proto_depIdxs = []int32{
 	4,  // 2: foundation.schema.runtime.ContainerUnitWaitStatus.reference:type_name -> foundation.schema.runtime.ContainerReference
 	5,  // 3: foundation.schema.runtime.ContainerUnitWaitStatus.status:type_name -> foundation.schema.runtime.Diagnostics
 	0,  // 4: foundation.schema.runtime.ContainerReference.Kind:type_name -> foundation.schema.runtime.ContainerKind
-	9,  // 5: foundation.schema.runtime.ContainerReference.opaque:type_name -> google.protobuf.Any
-	10, // 6: foundation.schema.runtime.Diagnostics.started:type_name -> google.protobuf.Timestamp
-	8,  // 7: foundation.schema.runtime.SetContainerField.set_arg:type_name -> foundation.schema.runtime.SetContainerField.SetValue
-	8,  // 8: foundation.schema.runtime.SetContainerField.set_env:type_name -> foundation.schema.runtime.SetContainerField.SetValue
+	8,  // 5: foundation.schema.runtime.ContainerReference.opaque:type_name -> google.protobuf.Any
+	9,  // 6: foundation.schema.runtime.Diagnostics.started:type_name -> google.protobuf.Timestamp
+	7,  // 7: foundation.schema.runtime.SetContainerField.set_arg:type_name -> foundation.schema.runtime.SetContainerField.SetValue
+	7,  // 8: foundation.schema.runtime.SetContainerField.set_env:type_name -> foundation.schema.runtime.SetContainerField.SetValue
 	1,  // 9: foundation.schema.runtime.SetContainerField.SetValue.value:type_name -> foundation.schema.runtime.SetContainerField.ValueSource
-	11, // 10: foundation.schema.runtime.SetContainerField.SetValue.service_ref:type_name -> foundation.schema.ServiceRef
+	10, // 10: foundation.schema.runtime.SetContainerField.SetValue.service_ref:type_name -> foundation.schema.ServiceRef
 	11, // [11:11] is the sub-list for method output_type
 	11, // [11:11] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
@@ -839,18 +789,6 @@ func file_schema_runtime_types_proto_init() {
 			}
 		}
 		file_schema_runtime_types_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*WaitError); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_schema_runtime_types_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*SetContainerField_SetValue); i {
 			case 0:
 				return &v.state
@@ -869,7 +807,7 @@ func file_schema_runtime_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_runtime_types_proto_rawDesc,
 			NumEnums:      2,
-			NumMessages:   7,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

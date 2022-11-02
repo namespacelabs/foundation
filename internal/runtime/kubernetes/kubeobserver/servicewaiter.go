@@ -17,10 +17,8 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema/orchestration"
-	"namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -83,7 +81,7 @@ func (w *serviceWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error
 
 	var count int
 	for _, port := range service.Spec.Ports {
-		addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", w.name, w.namespace, port.Port)
+		addr := fmt.Sprintf("fail%s.%s.svc.cluster.local:%d", w.name, w.namespace, port.Port)
 
 		rawConn, err := net.DialTimeout("tcp", addr, dialTimeout)
 		if !w.isReady(pod.Items, err) {
@@ -108,9 +106,7 @@ func WaitForService(namespace, name string, isReady func([]corev1.Pod, error) bo
 
 func WaiterFromServiceErr(err error) *orchestration.Event_WaitStatus {
 	return &orchestration.Event_WaitStatus{
-		Description: "Service not ready",
-		Opaque: protos.WrapAnyOrDie(&runtime.WaitError{
-			Message: err.Error(),
-		}),
+		Description:  "Service not ready",
+		ErrorMessage: err.Error(),
 	}
 }
