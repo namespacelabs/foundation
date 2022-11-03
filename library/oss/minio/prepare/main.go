@@ -65,17 +65,17 @@ func main() {
 }
 
 func prepareInstance(r *resources.Parsed, intent *s3class.BucketIntent) (*s3class.BucketInstance, error) {
-	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:minioServer", providerPkg), "api")
+	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:server", providerPkg), "api")
 	if err != nil {
 		return nil, err
 	}
 
-	accessKeyID, err := resources.ReadSecret(r, fmt.Sprintf("%s:minioUser", providerPkg))
+	accessKeyID, err := resources.ReadSecret(r, fmt.Sprintf("%s:user", providerPkg))
 	if err != nil {
 		return nil, err
 	}
 
-	secretAccessKey, err := resources.ReadSecret(r, fmt.Sprintf("%s:minioPassword", providerPkg))
+	secretAccessKey, err := resources.ReadSecret(r, fmt.Sprintf("%s:password", providerPkg))
 	if err != nil {
 		return nil, err
 	}
