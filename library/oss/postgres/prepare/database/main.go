@@ -14,7 +14,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v4"
 	"namespacelabs.dev/foundation/framework/resources/provider"
-	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
+	"namespacelabs.dev/foundation/library/database/postgres"
 )
 
 const (
@@ -23,10 +23,10 @@ const (
 )
 
 func main() {
-	intent := &postgresclass.DatabaseIntent{}
+	intent := &postgres.DatabaseIntent{}
 	ctx, r := provider.MustPrepare(intent)
 
-	cluster := &postgresclass.ClusterInstance{}
+	cluster := &postgres.ClusterInstance{}
 	resource := fmt.Sprintf("%s:cluster", providerPkg)
 	if err := r.Unmarshal(resource, cluster); err != nil {
 		log.Fatalf("unable to read required resource %q: %v", resource, err)
@@ -44,7 +44,7 @@ func main() {
 		}
 	}
 
-	instance := &postgresclass.DatabaseInstance{
+	instance := &postgres.DatabaseInstance{
 		Name:     intent.Name,
 		Url:      cluster.Url,
 		Password: cluster.Password,
