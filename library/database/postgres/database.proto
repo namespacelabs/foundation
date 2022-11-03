@@ -8,6 +8,7 @@ package library.database.postgres;
 
 option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 
+import "library/database/postgres/cluster.proto";
 import "schema/volume.proto";
 
 message DatabaseIntent {
@@ -16,7 +17,6 @@ message DatabaseIntent {
 }
 
 message DatabaseInstance {
-    string name     = 1;
-    string url      = 2;
-    string password = 3;
+    string          name    = 1;
+    ClusterInstance cluster = 2;
 }

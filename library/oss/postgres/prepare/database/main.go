@@ -32,7 +32,7 @@ func main() {
 		log.Fatalf("unable to read required resource %q: %v", resource, err)
 	}
 
-	conn, err := ensureDb(ctx, cluster.Url, cluster.Password, intent.Name)
+	conn, err := ensureDatabase(ctx, cluster.Url, cluster.Password, intent.Name)
 	if err != nil {
 		log.Fatalf("unable to create database %q: %v", intent.Name, err)
 	}
@@ -45,15 +45,14 @@ func main() {
 	}
 
 	instance := &postgres.DatabaseInstance{
-		Name:     intent.Name,
-		Url:      cluster.Url,
-		Password: cluster.Password,
+		Name:    intent.Name,
+		Cluster: cluster,
 	}
 
 	provider.EmitResult(instance)
 }
 
-func ensureDb(ctx context.Context, password, url, name string) (*pgx.Conn, error) {
+func ensureDatabase(ctx context.Context, password, url, name string) (*pgx.Conn, error) {
 	// Postgres needs a database to connect to so we pin one that is guaranteed to exist.
 	conn, err := connect(ctx, password, url, "postgres")
 	if err != nil {
@@ -61,7 +60,7 @@ func ensureDb(ctx context.Context, password, url, name string) (*pgx.Conn, error
 	}
 	defer conn.Close(ctx)
 
-	exists, err := existsDb(ctx, conn, name)
+	exists, err := existsDatabase(ctx, conn, name)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +82,7 @@ func ensureDb(ctx context.Context, password, url, name string) (*pgx.Conn, error
 	return connect(ctx, password, url, name)
 }
 
-func existsDb(ctx context.Context, conn *pgx.Conn, name string) (bool, error) {
+func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, error) {
 	rows, err := conn.Query(ctx, "SELECT FROM pg_database WHERE datname = $1;", name)
 	if err != nil {
 		return false, fmt.Errorf("failed to check for database %q: %w", name, err)
