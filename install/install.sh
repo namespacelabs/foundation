@@ -56,7 +56,7 @@ do_install() {
     sh_c="echo"
   fi
 
-  echo "Executing the installation script for the Namespace CLI"
+  echo "Executing Namespace's installation script..."
 
   if is_darwin; then
     os="darwin"
@@ -65,7 +65,7 @@ do_install() {
   elif is_wsl; then
     os="linux"
   else
-    echo "Unsupported host operating system for the Namespace CLI. Available only for Mac OS X, GNU/Linux and the Windows Subsystem for Linux (WSL)."
+    echo "Unsupported host operating system. Available only for Mac OS X, GNU/Linux and the Windows Subsystem for Linux (WSL)."
     exit 1
   fi
 
@@ -73,11 +73,12 @@ do_install() {
 
   case $(uname -m) in
     x86_64) architecture="amd64" ;;
+    arm64) architecture="arm64" ;;
     arm)    dpkg --print-architecture | grep -q "arm64" && architecture="arm64" || architecture="arm" ;;
   esac
 
   if [ -z $architecture ]; then
-    echo "Unsupported platform architecture for the Namespace CLI. Available only on amd64 and arm64 currently."
+    echo "Unsupported platform architecture. Available only on amd64 and arm64 currently."
     exit 1
   fi
 
@@ -93,7 +94,7 @@ do_install() {
 
   download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/nsboot/v${version}/nsboot_${version}_${os}_${architecture}.tar.gz"
 
-  echo "Downloading and installing the Namespace CLI from ${download_uri}"
+  echo "Downloading and installing Namespace from ${download_uri}"
 
   $sh_c "curl --fail --location --progress-bar --output ${temp_tar} ${download_uri}"
 
@@ -105,11 +106,14 @@ do_install() {
 
   $sh_c "rm ${temp_tar}"
 
-  echo "Namespace CLI was installed successfully to ${bin_dir}/ns"
+  echo
+  echo "Namespace was successfully installed to ${bin_dir}/ns"
+  echo
 
   if ! $dry_run; then
     if command -v ns >/dev/null; then
-      echo "Run 'ns create starter' to get started"
+      echo "Check out our examples at https://docs.namespace.so/examples to get started."
+      echo
     else
       case $SHELL in
 	      /bin/zsh) shell_profile=".zshrc" ;;
@@ -118,7 +122,9 @@ do_install() {
       echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
 	    echo "  export NS_ROOT=\"$ns_root\""
 	    echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
-	    echo "Run '${bin_dir}/ns create starter' to get started"
+            echo
+            echo "Check out our examples at https://docs.namespace.so/examples to get started."
+            echo
 	  fi
   fi
 }
