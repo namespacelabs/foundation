@@ -11,7 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/syncbuffer"
+	fnsync "namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -53,7 +53,7 @@ func (ev *EventAttachments) seal() {
 	defer ev.mu.Unlock()
 
 	for name, b := range ev.buffers {
-		if cb, ok := b.buffer.(*syncbuffer.ByteBuffer); ok {
+		if cb, ok := b.buffer.(*fnsync.ByteBuffer); ok {
 			sealed := cb.Seal()
 			ev.buffers[name] = attachedBuffer{
 				id:          ids.NewRandomBase62ID(8),
@@ -78,7 +78,7 @@ func (ev *EventAttachments) attach(name OutputName, body []byte) {
 
 	ev.buffers[name.computed] = attachedBuffer{
 		id:          ids.NewRandomBase62ID(8),
-		buffer:      syncbuffer.Seal(body),
+		buffer:      fnsync.Seal(body),
 		writer:      io.Discard,
 		name:        name.name,
 		contentType: name.contentType,
@@ -176,14 +176,14 @@ func (ev *EventAttachments) ReaderByName(name string) io.ReadCloser {
 
 func (ev *EventAttachments) ensureOutput(name OutputName, outputType common.CatOutputType, addIfMissing bool) (io.Writer, bool) {
 	if ev == nil {
-		return syncbuffer.Discard, false
+		return fnsync.Discard, false
 	}
 
 	ev.mu.Lock()
 	defer ev.mu.Unlock()
 
 	if !addIfMissing && ev.buffers == nil {
-		return syncbuffer.Discard, false
+		return fnsync.Discard, false
 	}
 
 	ev.init()
@@ -191,10 +191,10 @@ func (ev *EventAttachments) ensureOutput(name OutputName, outputType common.CatO
 	added := false
 	if _, ok := ev.buffers[name.computed]; !ok {
 		if !addIfMissing {
-			return syncbuffer.Discard, false
+			return fnsync.Discard, false
 		}
 
-		buf := syncbuffer.NewByteBuffer()
+		buf := fnsync.NewByteBuffer()
 		out := buf.Writer()
 
 		if sinkOutput := ev.sink.Output(name.name, name.contentType, outputType); sinkOutput != nil {

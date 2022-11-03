@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
@@ -124,7 +125,8 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 		return os.Stderr
 	}
 
-	return text.NewIndentWriter(os.Stdout, []byte(name+": "))
+	// IndentWriter is not thread safe.
+	return sync.SyncWriter(text.NewIndentWriter(os.Stdout, []byte(name+": ")))
 }
 
 // ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.

@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/support/naming"
-	"namespacelabs.dev/foundation/internal/syncbuffer"
+	fnsync "namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -122,7 +122,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		waitErr = fnerrors.Wrap(test.TestRef.AsPackageName(), err)
 	}
 
-	var testLogBuf *syncbuffer.ByteBuffer
+	var testLogBuf *fnsync.ByteBuffer
 	if waitErr == nil {
 		// All servers deployed. Lets start the test driver.
 
@@ -265,7 +265,7 @@ func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespa
 		PackageName   string
 		ContainerName string
 		ContainerKind runtimepb.ContainerKind
-		Buffer        *syncbuffer.ByteBuffer
+		Buffer        *fnsync.ByteBuffer
 	}
 
 	var serverLogs []serverLog
@@ -357,8 +357,8 @@ func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespa
 	return bundle, nil
 }
 
-func makeLog(otherWriters ...io.Writer) (io.Writer, *syncbuffer.ByteBuffer) {
-	buf := syncbuffer.NewByteBuffer()
+func makeLog(otherWriters ...io.Writer) (io.Writer, *fnsync.ByteBuffer) {
+	buf := fnsync.NewByteBuffer()
 	if len(otherWriters) == 0 {
 		return buf, buf
 	}
