@@ -2,7 +2,9 @@ providers: {
 	"namespacelabs.dev/foundation/library/database/postgres:Database": {
 		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/postgres/prepare/database"
 
-		// Requires namespacelabs.dev/foundation/library/oss/postgres:cluster to be provided.
+		inputs: {
+			"cluster": "namespacelabs.dev/foundation/library/database/postgres:Cluster"
+		}
 	}
 	"namespacelabs.dev/foundation/library/database/postgres:Cluster": {
 		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/postgres/prepare/cluster"

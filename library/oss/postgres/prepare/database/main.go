@@ -27,12 +27,11 @@ func main() {
 	ctx, r := provider.MustPrepare(intent)
 
 	cluster := &postgres.ClusterInstance{}
-	resource := fmt.Sprintf("%s:cluster", providerPkg)
-	if err := r.Unmarshal(resource, cluster); err != nil {
-		log.Fatalf("unable to read required resource %q: %v", resource, err)
+	if err := r.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
+		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
 
-	conn, err := ensureDatabase(ctx, cluster.Url, cluster.Password, intent.Name)
+	conn, err := ensureDatabase(ctx, cluster, intent.Name)
 	if err != nil {
 		log.Fatalf("unable to create database %q: %v", intent.Name, err)
 	}
@@ -52,9 +51,9 @@ func main() {
 	provider.EmitResult(instance)
 }
 
-func ensureDatabase(ctx context.Context, password, url, name string) (*pgx.Conn, error) {
+func ensureDatabase(ctx context.Context, cluster *postgres.ClusterInstance, name string) (*pgx.Conn, error) {
 	// Postgres needs a database to connect to so we pin one that is guaranteed to exist.
-	conn, err := connect(ctx, password, url, "postgres")
+	conn, err := connect(ctx, cluster, "postgres")
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +78,7 @@ func ensureDatabase(ctx context.Context, password, url, name string) (*pgx.Conn,
 		}
 	}
 
-	return connect(ctx, password, url, name)
+	return connect(ctx, cluster, name)
 }
 
 func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, error) {
@@ -92,8 +91,8 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 	return rows.Next(), nil
 }
 
-func connect(ctx context.Context, password, url, db string) (conn *pgx.Conn, err error) {
-	cfg, err := pgx.ParseConfig(fmt.Sprintf("postgres://postgres:%s@%s/%s", password, url, db))
+func connect(ctx context.Context, cluster *postgres.ClusterInstance, db string) (conn *pgx.Conn, err error) {
+	cfg, err := pgx.ParseConfig(fmt.Sprintf("postgres://postgres:%s@%s/%s", cluster.Password, cluster.Url, db))
 	if err != nil {
 		return nil, err
 	}
