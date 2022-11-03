@@ -18,7 +18,7 @@ func SyncWriter(w io.Writer) io.Writer {
 	return &syncWriter{w: w}
 }
 
-func (s *syncWriter) Write(p []byte) (n int, err error) {
+func (s *syncWriter) Write(p []byte) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.w.Write(p)
