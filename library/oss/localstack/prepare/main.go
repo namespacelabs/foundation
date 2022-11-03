@@ -16,15 +16,30 @@ import (
 	"namespacelabs.dev/foundation/library/storage/s3"
 )
 
-const providerPkg = "namespacelabs.dev/foundation/library/oss/minio"
+const (
+	providerPkg = "namespacelabs.dev/foundation/library/oss/localstack"
+
+	// Any non-empty access key is valid for localstack.
+	// https://github.com/localstack/localstack/issues/62#issuecomment-294749459
+	accessKey       = "localstack"
+	secretAccessKey = "localstack"
+)
 
 func main() {
 	intent := &s3.BucketIntent{}
-	ctx, resources := provider.MustPrepare(intent)
+	ctx, r := provider.MustPrepare(intent)
 
-	instance, err := prepareInstance(resources, intent)
+	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:server", providerPkg), "api")
 	if err != nil {
-		log.Fatalf("failed to create instance: %v", err)
+		log.Fatalf("failed to get localstack server: %v", err)
+	}
+
+	instance := &s3.BucketInstance{
+		Region:          intent.Region,
+		BucketName:      intent.BucketName,
+		AccessKey:       accessKey,
+		SecretAccessKey: secretAccessKey,
+		Url:             fmt.Sprintf("http://%s", endpoint),
 	}
 
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
@@ -45,29 +60,4 @@ func main() {
 	}
 
 	provider.EmitResult(instance)
-}
-
-func prepareInstance(r *resources.Parsed, intent *s3.BucketIntent) (*s3.BucketInstance, error) {
-	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:server", providerPkg), "api")
-	if err != nil {
-		return nil, err
-	}
-
-	accessKeyID, err := resources.ReadSecret(r, fmt.Sprintf("%s:user", providerPkg))
-	if err != nil {
-		return nil, err
-	}
-
-	secretAccessKey, err := resources.ReadSecret(r, fmt.Sprintf("%s:password", providerPkg))
-	if err != nil {
-		return nil, err
-	}
-
-	return &s3.BucketInstance{
-		Region:          intent.Region,
-		AccessKey:       string(accessKeyID),
-		SecretAccessKey: string(secretAccessKey),
-		BucketName:      intent.BucketName,
-		Url:             fmt.Sprintf("http://%s", endpoint),
-	}, nil
 }
