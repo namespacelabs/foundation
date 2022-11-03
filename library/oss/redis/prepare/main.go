@@ -13,7 +13,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
-	redisclass "namespacelabs.dev/foundation/library/storage/redis"
+	redisclass "namespacelabs.dev/foundation/library/database/redis"
 )
 
 const (

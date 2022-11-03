@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package library.storage.redis;
+package library.database.redis;
 
-option go_package = "namespacelabs.dev/foundation/library/storage/redis";
+option go_package = "namespacelabs.dev/foundation/library/database/redis";
 
 message DatabaseIntent {
     int32 database = 1;
