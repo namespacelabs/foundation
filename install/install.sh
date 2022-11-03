@@ -85,7 +85,7 @@ do_install() {
 
   ns_root="${NS_ROOT:-$HOME/.ns}"
   bin_dir="$ns_root/bin"
-  tar="$(mktemp -t nsboot.tgz)"
+  temp_tar="$(mktemp)"
 
   if [ ! -d "$bin_dir" ]; then
     $sh_c "mkdir -p ${bin_dir}"
@@ -95,15 +95,15 @@ do_install() {
 
   echo "Downloading and installing the Namespace CLI from ${download_uri}"
 
-  $sh_c "curl --fail --location --progress-bar --output ${tar} ${download_uri}"
+  $sh_c "curl --fail --location --progress-bar --output ${temp_tar} ${download_uri}"
 
-  $sh_c "tar -xzf ${tar} -C ${bin_dir}"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir}"
 
   $sh_c "chmod +x ${bin_dir}/nsboot"
 
   $sh_c "ln -sf ./nsboot ${bin_dir}/ns"
 
-  $sh_c "rm ${tar}"
+  $sh_c "rm ${temp_tar}"
 
   echo "Namespace CLI was installed successfully to ${bin_dir}/ns"
 
