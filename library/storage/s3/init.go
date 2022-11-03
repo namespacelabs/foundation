@@ -7,6 +7,7 @@ package s3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -24,7 +25,7 @@ func CreateBucket(ctx context.Context, cfg aws.Config, name string) error {
 	})
 
 	if name == "" {
-		log.Fatal("bucket name is required")
+		return fmt.Errorf("bucket name is required")
 	}
 
 	// Retry until bucket is ready.
