@@ -3,6 +3,7 @@ providers: {
 		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/postgres/prepare/database"
 
 		inputs: {
+			// TODO define default
 			"cluster": "namespacelabs.dev/foundation/library/database/postgres:Cluster"
 		}
 	}
