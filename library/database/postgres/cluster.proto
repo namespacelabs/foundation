@@ -8,13 +8,10 @@ package library.database.postgres;
 
 option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 
-message DatabaseIntent {
-    string name   = 1;
-    string schema = 2;  // TODO change to resource proto.
+message ClusterIntent {
 }
 
-message DatabaseInstance {
-    string name     = 1;
-    string url      = 2;
-    string password = 3;
+message ClusterInstance {
+    string url      = 1;
+    string password = 2;
 }

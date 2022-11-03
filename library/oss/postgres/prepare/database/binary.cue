@@ -1,4 +1,4 @@
 binary: {
-	name: "postgres-prepare-hook"
+	name: "postgres-prepare-database"
 	from: go_package: "."
 }
