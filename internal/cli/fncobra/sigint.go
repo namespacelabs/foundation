@@ -17,26 +17,31 @@ func WithSigIntCancel(ctx context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	cancelled := atomic.NewBool(false)
 
 	go func() {
-		select {
-		case <-c:
-			if cancelled.CAS(false, true) {
-				cancel()
+		defer signal.Stop(c)
 
-				// Give cleanups a moment to run, and then force exit.
-				time.Sleep(2 * time.Second)
-				os.Exit(2)
-			} else {
-				// Already cancelled, exit immediately.
-				os.Exit(3)
+		cancelled := atomic.NewBool(false)
+		for {
+			select {
+			case <-c:
+				if cancelled.CAS(false, true) {
+					cancel()
+
+					// Give cleanups a moment to run, and then force exit.
+					go func() {
+						time.Sleep(2 * time.Second)
+						os.Exit(2)
+					}()
+				} else {
+					// Already cancelled, exit immediately.
+					os.Exit(3)
+				}
+			case <-ctx.Done():
+				return
 			}
-		case <-ctx.Done():
 		}
 	}()
-	return ctx, func() {
-		signal.Stop(c)
-		cancel()
-	}
+
+	return ctx, cancel
 }
