@@ -57,7 +57,7 @@ brews:
     description: "Developer platform with a unified experience from development to production."
     homepage: "https://namespacelabs.com/"
     # Point to the publicly-accessible S3 builds instead of GitHub releases (which are in a private repo).
-    url_template: "https://ns-releases.s3.us-east-2.amazonaws.com/{{.ProjectName}}/v{{.Version}}/{{.ArtifactName}}"
+    url_template: "https://get.namespace.so/packages/{{.ProjectName}}/v{{.Version}}/{{.ArtifactName}}"
     install: |
       libexec.install "nsboot"
       bin.install_symlink libexec/"nsboot" => "ns"
