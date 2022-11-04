@@ -68,7 +68,7 @@ type ClusterInstance struct {
 	unknownFields protoimpl.UnknownFields
 
 	Url      string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"`
+	Password string `protobuf:"bytes,2,opt,name=password,proto3" json:"password,omitempty"` // TODO export as secret reference
 }
 
 func (x *ClusterInstance) Reset() {

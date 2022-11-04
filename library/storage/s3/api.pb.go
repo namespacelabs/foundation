@@ -87,8 +87,8 @@ type BucketInstance struct {
 	Region          string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	BucketName      string `protobuf:"bytes,2,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
 	Url             string `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
-	AccessKey       string `protobuf:"bytes,4,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`
-	SecretAccessKey string `protobuf:"bytes,5,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"`
+	AccessKey       string `protobuf:"bytes,4,opt,name=access_key,json=accessKey,proto3" json:"access_key,omitempty"`                     // TODO export as secret reference
+	SecretAccessKey string `protobuf:"bytes,5,opt,name=secret_access_key,json=secretAccessKey,proto3" json:"secret_access_key,omitempty"` // TODO export as secret reference
 }
 
 func (x *BucketInstance) Reset() {

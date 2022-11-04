@@ -17,6 +17,6 @@ message BucketInstance {
     string region            = 1;
     string bucket_name       = 2;
     string url               = 3;
-    string access_key        = 4;
-    string secret_access_key = 5;
+    string access_key        = 4;  // TODO export as secret reference
+    string secret_access_key = 5;  // TODO export as secret reference
 }
