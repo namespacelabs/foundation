@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
 	"namespacelabs.dev/foundation/internal/artifacts/unpack"
+	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -271,7 +272,7 @@ func fetchBinary(ctx context.Context, version *toolVersion) (string, error) {
 		},
 	}
 
-	fsys := unpack.Unpack("tool", tarfs.TarGunzip(download.URL(tarRef)), unpack.SkipChecksumCheck())
+	fsys := unpack.Unpack("tool", tarfs.TarGunzip(downloadWithTelemetry(ctx, tarRef)), unpack.SkipChecksumCheck())
 	unpacked, err := compute.GetValue(ctx, fsys)
 	if err != nil {
 		return "", err
@@ -300,4 +301,17 @@ func formatNSBootVersion() string {
 		return fmt.Sprintf(`{"error": %q}`, err)
 	}
 	return string(bs)
+}
+
+func downloadWithTelemetry(ctx context.Context, ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
+	dlOpts := []download.Opt{}
+	tel := fnapi.NewTelemetry(ctx)
+	tel.Enable() // may still be disabled via environment or Viper config
+	if !tel.IsTelemetryEnabled() {
+		dlOpts = append(dlOpts, download.WithHeader("DNT", "1"))
+	}
+	if clientID := tel.GetClientID(); tel.IsTelemetryEnabled() && clientID != "" {
+		dlOpts = append(dlOpts, download.WithHeader("NS-Client-ID", clientID))
+	}
+	return download.URL(ref, dlOpts...)
 }

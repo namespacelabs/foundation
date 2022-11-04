@@ -18,17 +18,37 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: ref.URL, digest: &ref.Digest}
+func URL(ref artifacts.Reference, opts ...Opt) compute.Computable[bytestream.ByteStream] {
+	dl := &downloadUrl{url: ref.URL, digest: &ref.Digest}
+	for _, o := range opts {
+		o(dl)
+	}
+	return dl
 }
 
-func UnverifiedURL(url string) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: url}
+func UnverifiedURL(url string, opts ...Opt) compute.Computable[bytestream.ByteStream] {
+	dl := &downloadUrl{url: url}
+	for _, o := range opts {
+		o(dl)
+	}
+	return dl
+}
+
+type Opt func(*downloadUrl)
+
+func WithHeader(k, v string) Opt {
+	return func(dl *downloadUrl) {
+		if dl.headers == nil {
+			dl.headers = map[string]string{}
+		}
+		dl.headers[k] = v
+	}
 }
 
 type downloadUrl struct {
-	url    string
-	digest *schema.Digest
+	url     string
+	digest  *schema.Digest
+	headers map[string]string
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
@@ -43,6 +63,7 @@ func (dl *downloadUrl) Action() *tasks.ActionEvent {
 
 func (dl *downloadUrl) Inputs() *compute.In {
 	inputs := compute.Inputs().Str("url", dl.url)
+	inputs = inputs.StrMap("headers", dl.headers)
 	if dl.digest != nil {
 		return inputs.Digest("digest", dl.digest)
 	} else {
@@ -51,7 +72,14 @@ func (dl *downloadUrl) Inputs() *compute.In {
 }
 
 func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
-	resp, err := http.Get(dl.url)
+	req, err := http.NewRequestWithContext(ctx, "GET", dl.url, nil)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range dl.headers {
+		req.Header[k] = []string{v} // .Set would mangle the header name case.
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
