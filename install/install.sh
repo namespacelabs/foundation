@@ -92,7 +92,7 @@ do_install() {
     $sh_c "mkdir -p ${bin_dir}"
   fi
 
-  download_uri="https://ns-releases.s3.us-east-2.amazonaws.com/nsboot/v${version}/nsboot_${version}_${os}_${architecture}.tar.gz"
+  download_uri="https://github.com/namespacelabs/foundation/releases/download/v${version}/nsboot_${version}_${os}_${architecture}.tar.gz"
 
   echo "Downloading and installing Namespace from ${download_uri}"
 
