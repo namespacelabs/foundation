@@ -105,7 +105,21 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 						env, err := l.LoadEnvironment(newEnv)
 						if err == nil {
-							err = Listen(ctxWithCancel, env, server)
+							containerCount := 0
+							err = Listen(ctxWithCancel, env, server, func(ev runtime.ObserveEvent) io.Writer {
+								return &writerWithHeader{
+									onStart: func(w io.Writer) {
+										if containerCount > 0 {
+											fmt.Fprintf(out, "%s\n", style.Comment.Apply("You may still observe logs of previous instances of the same server."))
+										}
+										containerCount++
+										fmt.Fprintln(w)
+										fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", ev.HumanReadableID)))
+										fmt.Fprintln(w)
+									},
+									w: console.Output(ctx, ev.HumanReadableID),
+								}
+							})
 						}
 
 						if err != nil && !errors.Is(err, context.Canceled) {
@@ -149,7 +163,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 }
 
 // Listen blocks fetching logs from a container.
-func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) error {
+func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable, writerFactory func(ev runtime.ObserveEvent) io.Writer) error {
 	// TODO simplify runtime creation.
 	rt, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
@@ -183,14 +197,11 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) err
 		mu.Unlock()
 
 		compute.On(ctx).Detach(tasks.Action("stream-log").Indefinite(), func(ctx context.Context) error {
-			style := colors.Ctx(ctx)
-			w := &writerWithHeader{
-				onStart: func(w io.Writer) {
-					fmt.Fprintln(w)
-					fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", ev.HumanReadableID)))
-					fmt.Fprintln(w)
-				},
-				w: console.Output(ctx, ev.HumanReadableID),
+			var w io.Writer
+			if writerFactory != nil {
+				w = writerFactory(ev)
+			} else {
+				w = console.Output(ctx, ev.HumanReadableID)
 			}
 			ctx, cancel := context.WithCancel(ctx)
 

@@ -78,7 +78,7 @@ func NewLogsCmd() *cobra.Command {
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
 				Provider: observer,
 				Handler: func(ctx context.Context) error {
-					return logtail.Listen(ctx, server.SealedContext(), server.Proto())
+					return logtail.Listen(ctx, server.SealedContext(), server.Proto(), nil)
 				},
 			})
 		})
