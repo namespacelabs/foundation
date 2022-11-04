@@ -101,7 +101,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 						// There is a race with the "Network plan" block also receiving the same event,
 						// and we want to log this message after the network plan has been printed,
 						// so doing it in a goroutine.
-						fmt.Fprintf(out, "%s %s\n", style.Header.Apply("Starting log for"), style.LogArgument.Apply(key))
+						fmt.Fprintf(out, "%s %s %s\n", style.Comment.Apply("── Starting log for"), style.LogArgument.Apply(key), style.Comment.Apply("──"))
 
 						env, err := l.LoadEnvironment(newEnv)
 						if err == nil {
@@ -183,18 +183,21 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable) err
 		mu.Unlock()
 
 		compute.On(ctx).Detach(tasks.Action("stream-log").Indefinite(), func(ctx context.Context) error {
-			w := console.Output(ctx, ev.HumanReadableID)
+			style := colors.Ctx(ctx)
+			w := &writerWithHeader{
+				onStart: func(w io.Writer) {
+					fmt.Fprintln(w)
+					fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", ev.HumanReadableID)))
+					fmt.Fprintln(w)
+				},
+				w: console.Output(ctx, ev.HumanReadableID),
+			}
 			ctx, cancel := context.WithCancel(ctx)
 
 			if !newS.set(cancel, w) {
 				// Raced with pod disappearing.
 				return nil
 			}
-
-			style := colors.Ctx(ctx)
-			fmt.Fprintf(w, "\n%s", style.Comment.Apply("──────────"))
-			fmt.Fprint(w, style.Highlight.Apply(fmt.Sprintf(" Log tail for %s ", ev.HumanReadableID)))
-			fmt.Fprintf(w, "%s\n\n", style.Comment.Apply("──────────"))
 
 			return rt.Cluster().FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
 				TailLines: 30,
@@ -238,4 +241,18 @@ func (ls *logStream) set(cancel func(), w io.Writer) bool {
 	ls.w = w
 	ls.mu.Unlock()
 	return !cancelled
+}
+
+// On first write, calls onStart.
+type writerWithHeader struct {
+	onStart func(w io.Writer)
+	w       io.Writer
+}
+
+func (w *writerWithHeader) Write(p []byte) (int, error) {
+	if w.onStart != nil {
+		w.onStart(w.w)
+		w.onStart = nil
+	}
+	return w.w.Write(p)
 }
