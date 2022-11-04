@@ -7,6 +7,10 @@ server: {
 		NAME: "\($env.name)-Bob"
 		SECRET: fromSecret:            "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/complex:key1"
 		ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple:webapi"
+		XYZ: fromResourceField: {
+			resource: "namespacelabs.dev/foundation/internal/testdata/integrations/resources/instances:test1"
+			fieldRef: "url"
+		}
 	}
 
 	services: {

@@ -185,7 +185,7 @@ func (rp ResourceProvider) LookupExpected(name *schema.PackageRef) *ExpectedReso
 	return nil
 }
 
-func LookupResourceClass(ctx context.Context, pl PackageLoader, ref *schema.PackageRef) (*ResourceClass, error) {
+func LookupResourceClass(ctx context.Context, pl MinimalPackageLoader, ref *schema.PackageRef) (*ResourceClass, error) {
 	pkg, err := pl.LoadByName(ctx, ref.AsPackageName())
 	if err != nil {
 		return nil, err

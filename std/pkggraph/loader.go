@@ -10,6 +10,10 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+type MinimalPackageLoader interface {
+	LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error)
+}
+
 type PackageLoader interface {
 	Resolve(ctx context.Context, packageName schema.PackageName) (Location, error)
 	LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error)

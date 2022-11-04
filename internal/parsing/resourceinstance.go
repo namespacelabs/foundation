@@ -43,14 +43,9 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		}
 	}
 
-	classPkg, err := pl.LoadByName(ctx, instance.Class.AsPackageName())
+	class, err := pkggraph.LookupResourceClass(ctx, pl, instance.Class)
 	if err != nil {
 		return nil, err
-	}
-
-	class := classPkg.LookupResourceClass(instance.Class.Name)
-	if class == nil {
-		return nil, fnerrors.UserError(pp.Location, "no such resource class %q", instance.Class.Canonical())
 	}
 
 	name := &schema.PackageRef{PackageName: instance.PackageName, Name: instance.Name}

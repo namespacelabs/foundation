@@ -7,7 +7,9 @@ package cuefrontendopaque
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -78,22 +80,6 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		return nil, nil, err
 	}
 
-	// Ensure each ref is loaded.
-	for _, e := range envVars {
-		if e.FromSecretRef == nil {
-			continue
-		}
-
-		pkg := e.FromSecretRef.AsPackageName()
-		if pkg == loc.PackageName {
-			continue
-		}
-
-		if _, err := pl.LoadByName(ctx, pkg); err != nil {
-			return nil, nil, err
-		}
-	}
-
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
 		Env:  envVars,
@@ -162,4 +148,91 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	}
 
 	return out, startupPlan, nil
+}
+
+func validateStartupPlan(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, startupPlan *schema.StartupPlan) error {
+	return validateEnvironment(ctx, pl, pkg, startupPlan.Env)
+}
+
+func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, env []*schema.BinaryConfig_EnvEntry) error {
+	// Ensure each ref is loaded.
+	for _, e := range env {
+		switch {
+		case e.FromSecretRef != nil:
+			if _, err := ensureLoad(ctx, pl, pkg, e.FromSecretRef); err != nil {
+				return err
+			}
+
+		case e.FromServiceEndpoint.GetServerRef() != nil:
+			if _, err := ensureLoad(ctx, pl, pkg, e.FromServiceEndpoint.GetServerRef()); err != nil {
+				return err
+			}
+
+		case e.FromResourceField.GetResource() != nil:
+			resource := e.FromResourceField.GetResource()
+			targetPkg, err := ensureLoad(ctx, pl, pkg, resource)
+			if err != nil {
+				return err
+			}
+
+			topLevelInstance := targetPkg.LookupResourceInstance(resource.Name)
+			if topLevelInstance != nil {
+				return validateClassInstanceFieldRef(ctx, pl, topLevelInstance.Spec.Class.Ref, e.FromResourceField.FieldSelector)
+			} else {
+				// Maybe it's an inline resource?
+				for _, r := range targetPkg.Server.GetResourcePack().GetResourceInstance() {
+					if r.Name == resource.Name {
+						return validateClassInstanceFieldRef(ctx, pl, r.Class, e.FromResourceField.GetFieldSelector())
+					}
+				}
+
+				return fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, classRef *schema.PackageRef, fieldSelector string) error {
+	class, err := pkggraph.LookupResourceClass(ctx, pl, classRef)
+	if err != nil {
+		return err
+	}
+
+	return validateJsonPath(class.InstanceType.Descriptor, class.InstanceType.Descriptor, fieldSelector, fieldSelector)
+}
+
+func validateJsonPath(originalDesc, desc protoreflect.MessageDescriptor, originalSel, fieldSel string) error {
+	parts := strings.SplitN(fieldSel, ".", 2)
+
+	f := desc.Fields().ByJSONName(parts[0])
+	if f == nil {
+		return fnerrors.BadInputError("%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
+	}
+
+	if len(parts) == 1 {
+		switch f.Kind() {
+		case protoreflect.StringKind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.Int64Kind, protoreflect.Uint64Kind:
+			return nil
+
+		default:
+			return fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+		}
+	}
+
+	if f.Kind() != protoreflect.MessageKind {
+		return fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+	}
+
+	return validateJsonPath(originalDesc, f.Message(), originalSel, parts[1])
+}
+
+func ensureLoad(ctx context.Context, pl parsing.EarlyPackageLoader, parent *pkggraph.Package, ref *schema.PackageRef) (*pkggraph.Package, error) {
+	pkg := ref.AsPackageName()
+	if pkg != parent.PackageName() {
+		return pl.LoadByName(ctx, pkg)
+	}
+
+	return parent, nil
 }

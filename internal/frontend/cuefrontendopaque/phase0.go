@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"cuelang.org/go/cue"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
@@ -119,11 +120,18 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		parsedPkg.Secrets = append(parsedPkg.Secrets, secretSpecs...)
 	}
 
+	var validators []func() error
+
 	if server := v.LookupPath("server"); server.Exists() {
 		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
 		if err != nil {
 			return nil, fnerrors.Wrapf(loc, err, "parsing server")
 		}
+
+		// Defer validating the startup plan until the rest of the package is loaded.
+		validators = append(validators, func() error {
+			return validateStartupPlan(ctx, ft.loader, parsedPkg, startupPlan)
+		})
 
 		parsedSrv.Volume = append(parsedSrv.Volume, parsedPkg.Volumes...)
 
@@ -188,5 +196,12 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	parsedPkg.NewFrontend = true
 	parsedPkg.PackageSources = partial.Package.Snapshot
 
-	return parsedPkg, nil
+	var errs []error
+	for _, validator := range validators {
+		if err := validator(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return parsedPkg, multierr.New(errs...)
 }
