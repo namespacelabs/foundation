@@ -111,9 +111,9 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 
 	return r.cluster.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
 		Command: cmd,
-		Stdin:   true,
-		Stdout:  true,
-		Stderr:  true,
+		Stdin:   rio.Stdin != nil,
+		Stdout:  rio.Stdout != nil,
+		Stderr:  rio.Stderr != nil,
 		TTY:     rio.TTY,
 	})
 }
