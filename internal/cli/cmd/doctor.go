@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -224,6 +223,7 @@ func NewDoctorCmd() *cobra.Command {
 						err = k.RunAttachedOpts(ctx, "default", "doctor-"+ids.NewRandomBase32ID(8),
 							runtime.ContainerRunOpts{Image: helloID}, runtime.TerminalIO{}, func() {})
 						r.RunLatency = time.Since(t)
+
 						return r, err
 					})
 				}
@@ -234,8 +234,10 @@ func NewDoctorCmd() *cobra.Command {
 			}
 		}
 
+		fmt.Fprintf(console.TypedOutput(ctx, "Support", common.CatOutputUs), "\nHaving trouble? Chat with us at https://community.namespace.so/discord\n")
+
 		if errCount > 0 {
-			os.Exit(1)
+			return fnerrors.ExitWithCode(fmt.Errorf("%d tests failed", errCount), 1)
 		}
 
 		return nil
