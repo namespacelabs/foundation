@@ -71,5 +71,10 @@ func (pi *updateCluster) Updated(ctx context.Context, deps compute.Resolved) err
 }
 
 func (pi *updateCluster) Cleanup(_ context.Context) error {
+	for _, obs := range pi.observers {
+		if err := obs.Close(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
