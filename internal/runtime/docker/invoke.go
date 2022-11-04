@@ -116,6 +116,14 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			return fnerrors.New("docker: doesn't support env.FromSecretRef")
 		}
 
+		if kv.FromServiceEndpoint != nil {
+			return fnerrors.New("docker: doesn't support env.FromServiceEndpoint")
+		}
+
+		if kv.FromResourceField != nil {
+			return fnerrors.New("docker: doesn't support env.FromResourceField")
+		}
+
 		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
 	}
 

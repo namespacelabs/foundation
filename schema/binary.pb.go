@@ -362,6 +362,61 @@ func (x *BinaryConfig) GetWorkingDir() string {
 	return ""
 }
 
+type ResourceConfigFieldSelector struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Resource      *PackageRef `protobuf:"bytes,1,opt,name=resource,proto3" json:"resource,omitempty"`
+	FieldSelector string      `protobuf:"bytes,2,opt,name=field_selector,json=fieldSelector,proto3" json:"field_selector,omitempty"`
+}
+
+func (x *ResourceConfigFieldSelector) Reset() {
+	*x = ResourceConfigFieldSelector{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_binary_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ResourceConfigFieldSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceConfigFieldSelector) ProtoMessage() {}
+
+func (x *ResourceConfigFieldSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_binary_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceConfigFieldSelector.ProtoReflect.Descriptor instead.
+func (*ResourceConfigFieldSelector) Descriptor() ([]byte, []int) {
+	return file_schema_binary_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ResourceConfigFieldSelector) GetResource() *PackageRef {
+	if x != nil {
+		return x.Resource
+	}
+	return nil
+}
+
+func (x *ResourceConfigFieldSelector) GetFieldSelector() string {
+	if x != nil {
+		return x.FieldSelector
+	}
+	return ""
+}
+
 type ImageBuildPlan_LLBPlan struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -373,7 +428,7 @@ type ImageBuildPlan_LLBPlan struct {
 func (x *ImageBuildPlan_LLBPlan) Reset() {
 	*x = ImageBuildPlan_LLBPlan{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_binary_proto_msgTypes[4]
+		mi := &file_schema_binary_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -386,7 +441,7 @@ func (x *ImageBuildPlan_LLBPlan) String() string {
 func (*ImageBuildPlan_LLBPlan) ProtoMessage() {}
 
 func (x *ImageBuildPlan_LLBPlan) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_binary_proto_msgTypes[4]
+	mi := &file_schema_binary_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -424,7 +479,7 @@ type ImageBuildPlan_GoBuild struct {
 func (x *ImageBuildPlan_GoBuild) Reset() {
 	*x = ImageBuildPlan_GoBuild{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_binary_proto_msgTypes[5]
+		mi := &file_schema_binary_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -437,7 +492,7 @@ func (x *ImageBuildPlan_GoBuild) String() string {
 func (*ImageBuildPlan_GoBuild) ProtoMessage() {}
 
 func (x *ImageBuildPlan_GoBuild) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_binary_proto_msgTypes[5]
+	mi := &file_schema_binary_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,7 +548,7 @@ type ImageBuildPlan_AlpineBuild struct {
 func (x *ImageBuildPlan_AlpineBuild) Reset() {
 	*x = ImageBuildPlan_AlpineBuild{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_binary_proto_msgTypes[6]
+		mi := &file_schema_binary_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -506,7 +561,7 @@ func (x *ImageBuildPlan_AlpineBuild) String() string {
 func (*ImageBuildPlan_AlpineBuild) ProtoMessage() {}
 
 func (x *ImageBuildPlan_AlpineBuild) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_binary_proto_msgTypes[6]
+	mi := &file_schema_binary_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -549,7 +604,7 @@ type ImageBuildPlan_StaticFilesServer struct {
 func (x *ImageBuildPlan_StaticFilesServer) Reset() {
 	*x = ImageBuildPlan_StaticFilesServer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_binary_proto_msgTypes[7]
+		mi := &file_schema_binary_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -562,7 +617,7 @@ func (x *ImageBuildPlan_StaticFilesServer) String() string {
 func (*ImageBuildPlan_StaticFilesServer) ProtoMessage() {}
 
 func (x *ImageBuildPlan_StaticFilesServer) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_binary_proto_msgTypes[7]
+	mi := &file_schema_binary_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -597,17 +652,18 @@ type BinaryConfig_EnvEntry struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name                   string      `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Value                  string      `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-	ExperimentalFromSecret string      `protobuf:"bytes,3,opt,name=experimental_from_secret,json=experimentalFromSecret,proto3" json:"experimental_from_secret,omitempty"` // Runtime specific.
-	FromSecretRef          *PackageRef `protobuf:"bytes,4,opt,name=from_secret_ref,json=fromSecretRef,proto3" json:"from_secret_ref,omitempty"`
-	FromServiceEndpoint    *ServiceRef `protobuf:"bytes,5,opt,name=from_service_endpoint,json=fromServiceEndpoint,proto3" json:"from_service_endpoint,omitempty"` // Inject the endpoint of a service in the stack.
+	Name                   string                       `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value                  string                       `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	ExperimentalFromSecret string                       `protobuf:"bytes,3,opt,name=experimental_from_secret,json=experimentalFromSecret,proto3" json:"experimental_from_secret,omitempty"` // Runtime specific.
+	FromSecretRef          *PackageRef                  `protobuf:"bytes,4,opt,name=from_secret_ref,json=fromSecretRef,proto3" json:"from_secret_ref,omitempty"`
+	FromServiceEndpoint    *ServiceRef                  `protobuf:"bytes,5,opt,name=from_service_endpoint,json=fromServiceEndpoint,proto3" json:"from_service_endpoint,omitempty"` // Inject the endpoint of a service in the stack.
+	FromResourceField      *ResourceConfigFieldSelector `protobuf:"bytes,6,opt,name=from_resource_field,json=fromResourceField,proto3" json:"from_resource_field,omitempty"`
 }
 
 func (x *BinaryConfig_EnvEntry) Reset() {
 	*x = BinaryConfig_EnvEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_binary_proto_msgTypes[8]
+		mi := &file_schema_binary_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -620,7 +676,7 @@ func (x *BinaryConfig_EnvEntry) String() string {
 func (*BinaryConfig_EnvEntry) ProtoMessage() {}
 
 func (x *BinaryConfig_EnvEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_binary_proto_msgTypes[8]
+	mi := &file_schema_binary_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -667,6 +723,13 @@ func (x *BinaryConfig_EnvEntry) GetFromSecretRef() *PackageRef {
 func (x *BinaryConfig_EnvEntry) GetFromServiceEndpoint() *ServiceRef {
 	if x != nil {
 		return x.FromServiceEndpoint
+	}
+	return nil
+}
+
+func (x *BinaryConfig_EnvEntry) GetFromResourceField() *ResourceConfigFieldSelector {
+	if x != nil {
+		return x.FromResourceField
 	}
 	return nil
 }
@@ -763,7 +826,7 @@ var file_schema_binary_proto_rawDesc = []byte{
 	0x21, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68,
 	0x65, 0x6d, 0x61, 0x2e, 0x49, 0x6d, 0x61, 0x67, 0x65, 0x42, 0x75, 0x69, 0x6c, 0x64, 0x50, 0x6c,
 	0x61, 0x6e, 0x52, 0x0e, 0x6c, 0x61, 0x79, 0x65, 0x72, 0x42, 0x75, 0x69, 0x6c, 0x64, 0x50, 0x6c,
-	0x61, 0x6e, 0x22, 0xa4, 0x03, 0x0a, 0x0c, 0x42, 0x69, 0x6e, 0x61, 0x72, 0x79, 0x43, 0x6f, 0x6e,
+	0x61, 0x6e, 0x22, 0x84, 0x04, 0x0a, 0x0c, 0x42, 0x69, 0x6e, 0x61, 0x72, 0x79, 0x43, 0x6f, 0x6e,
 	0x66, 0x69, 0x67, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x18, 0x01,
 	0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x12, 0x0a,
 	0x04, 0x61, 0x72, 0x67, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x04, 0x61, 0x72, 0x67,
@@ -772,7 +835,7 @@ var file_schema_binary_proto_rawDesc = []byte{
 	0x6d, 0x61, 0x2e, 0x42, 0x69, 0x6e, 0x61, 0x72, 0x79, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x2e,
 	0x45, 0x6e, 0x76, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x03, 0x65, 0x6e, 0x76, 0x12, 0x1f, 0x0a,
 	0x0b, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67, 0x5f, 0x64, 0x69, 0x72, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x0a, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67, 0x44, 0x69, 0x72, 0x1a, 0x88,
+	0x28, 0x09, 0x52, 0x0a, 0x77, 0x6f, 0x72, 0x6b, 0x69, 0x6e, 0x67, 0x44, 0x69, 0x72, 0x1a, 0xe8,
 	0x02, 0x0a, 0x08, 0x45, 0x6e, 0x76, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x12, 0x0a, 0x04, 0x6e,
 	0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12,
 	0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
@@ -789,10 +852,24 @@ var file_schema_binary_proto_rawDesc = []byte{
 	0x05, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
 	0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
 	0x65, 0x52, 0x65, 0x66, 0x52, 0x13, 0x66, 0x72, 0x6f, 0x6d, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
-	0x65, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d,
-	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66,
-	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74, 0x12, 0x5e, 0x0a, 0x13, 0x66, 0x72, 0x6f,
+	0x6d, 0x5f, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x5f, 0x66, 0x69, 0x65, 0x6c, 0x64,
+	0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x52, 0x65, 0x73, 0x6f, 0x75,
+	0x72, 0x63, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x53, 0x65,
+	0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x52, 0x11, 0x66, 0x72, 0x6f, 0x6d, 0x52, 0x65, 0x73, 0x6f,
+	0x75, 0x72, 0x63, 0x65, 0x46, 0x69, 0x65, 0x6c, 0x64, 0x22, 0x7f, 0x0a, 0x1b, 0x52, 0x65, 0x73,
+	0x6f, 0x75, 0x72, 0x63, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x46, 0x69, 0x65, 0x6c, 0x64,
+	0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x12, 0x39, 0x0a, 0x08, 0x72, 0x65, 0x73, 0x6f,
+	0x75, 0x72, 0x63, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x50,
+	0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x52, 0x65, 0x66, 0x52, 0x08, 0x72, 0x65, 0x73, 0x6f, 0x75,
+	0x72, 0x63, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x73, 0x65, 0x6c,
+	0x65, 0x63, 0x74, 0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x66, 0x69, 0x65,
+	0x6c, 0x64, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61,
+	0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f,
+	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d,
+	0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -807,40 +884,43 @@ func file_schema_binary_proto_rawDescGZIP() []byte {
 	return file_schema_binary_proto_rawDescData
 }
 
-var file_schema_binary_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_schema_binary_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_schema_binary_proto_goTypes = []interface{}{
 	(*Binary)(nil),                           // 0: foundation.schema.Binary
 	(*ImageBuildPlan)(nil),                   // 1: foundation.schema.ImageBuildPlan
 	(*LayeredImageBuildPlan)(nil),            // 2: foundation.schema.LayeredImageBuildPlan
 	(*BinaryConfig)(nil),                     // 3: foundation.schema.BinaryConfig
-	(*ImageBuildPlan_LLBPlan)(nil),           // 4: foundation.schema.ImageBuildPlan.LLBPlan
-	(*ImageBuildPlan_GoBuild)(nil),           // 5: foundation.schema.ImageBuildPlan.GoBuild
-	(*ImageBuildPlan_AlpineBuild)(nil),       // 6: foundation.schema.ImageBuildPlan.AlpineBuild
-	(*ImageBuildPlan_StaticFilesServer)(nil), // 7: foundation.schema.ImageBuildPlan.StaticFilesServer
-	(*BinaryConfig_EnvEntry)(nil),            // 8: foundation.schema.BinaryConfig.EnvEntry
-	(*NodejsBuild)(nil),                      // 9: foundation.schema.NodejsBuild
-	(*PackageRef)(nil),                       // 10: foundation.schema.PackageRef
-	(*ServiceRef)(nil),                       // 11: foundation.schema.ServiceRef
+	(*ResourceConfigFieldSelector)(nil),      // 4: foundation.schema.ResourceConfigFieldSelector
+	(*ImageBuildPlan_LLBPlan)(nil),           // 5: foundation.schema.ImageBuildPlan.LLBPlan
+	(*ImageBuildPlan_GoBuild)(nil),           // 6: foundation.schema.ImageBuildPlan.GoBuild
+	(*ImageBuildPlan_AlpineBuild)(nil),       // 7: foundation.schema.ImageBuildPlan.AlpineBuild
+	(*ImageBuildPlan_StaticFilesServer)(nil), // 8: foundation.schema.ImageBuildPlan.StaticFilesServer
+	(*BinaryConfig_EnvEntry)(nil),            // 9: foundation.schema.BinaryConfig.EnvEntry
+	(*NodejsBuild)(nil),                      // 10: foundation.schema.NodejsBuild
+	(*PackageRef)(nil),                       // 11: foundation.schema.PackageRef
+	(*ServiceRef)(nil),                       // 12: foundation.schema.ServiceRef
 }
 var file_schema_binary_proto_depIdxs = []int32{
 	3,  // 0: foundation.schema.Binary.config:type_name -> foundation.schema.BinaryConfig
 	2,  // 1: foundation.schema.Binary.build_plan:type_name -> foundation.schema.LayeredImageBuildPlan
-	5,  // 2: foundation.schema.ImageBuildPlan.go_build:type_name -> foundation.schema.ImageBuildPlan.GoBuild
-	4,  // 3: foundation.schema.ImageBuildPlan.llb_plan:type_name -> foundation.schema.ImageBuildPlan.LLBPlan
-	9,  // 4: foundation.schema.ImageBuildPlan.nodejs_build:type_name -> foundation.schema.NodejsBuild
-	10, // 5: foundation.schema.ImageBuildPlan.binary:type_name -> foundation.schema.PackageRef
-	7,  // 6: foundation.schema.ImageBuildPlan.static_files_server:type_name -> foundation.schema.ImageBuildPlan.StaticFilesServer
-	6,  // 7: foundation.schema.ImageBuildPlan.alpine_build:type_name -> foundation.schema.ImageBuildPlan.AlpineBuild
+	6,  // 2: foundation.schema.ImageBuildPlan.go_build:type_name -> foundation.schema.ImageBuildPlan.GoBuild
+	5,  // 3: foundation.schema.ImageBuildPlan.llb_plan:type_name -> foundation.schema.ImageBuildPlan.LLBPlan
+	10, // 4: foundation.schema.ImageBuildPlan.nodejs_build:type_name -> foundation.schema.NodejsBuild
+	11, // 5: foundation.schema.ImageBuildPlan.binary:type_name -> foundation.schema.PackageRef
+	8,  // 6: foundation.schema.ImageBuildPlan.static_files_server:type_name -> foundation.schema.ImageBuildPlan.StaticFilesServer
+	7,  // 7: foundation.schema.ImageBuildPlan.alpine_build:type_name -> foundation.schema.ImageBuildPlan.AlpineBuild
 	1,  // 8: foundation.schema.LayeredImageBuildPlan.layer_build_plan:type_name -> foundation.schema.ImageBuildPlan
-	8,  // 9: foundation.schema.BinaryConfig.env:type_name -> foundation.schema.BinaryConfig.EnvEntry
-	0,  // 10: foundation.schema.ImageBuildPlan.LLBPlan.output_of:type_name -> foundation.schema.Binary
-	10, // 11: foundation.schema.BinaryConfig.EnvEntry.from_secret_ref:type_name -> foundation.schema.PackageRef
-	11, // 12: foundation.schema.BinaryConfig.EnvEntry.from_service_endpoint:type_name -> foundation.schema.ServiceRef
-	13, // [13:13] is the sub-list for method output_type
-	13, // [13:13] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	9,  // 9: foundation.schema.BinaryConfig.env:type_name -> foundation.schema.BinaryConfig.EnvEntry
+	11, // 10: foundation.schema.ResourceConfigFieldSelector.resource:type_name -> foundation.schema.PackageRef
+	0,  // 11: foundation.schema.ImageBuildPlan.LLBPlan.output_of:type_name -> foundation.schema.Binary
+	11, // 12: foundation.schema.BinaryConfig.EnvEntry.from_secret_ref:type_name -> foundation.schema.PackageRef
+	12, // 13: foundation.schema.BinaryConfig.EnvEntry.from_service_endpoint:type_name -> foundation.schema.ServiceRef
+	4,  // 14: foundation.schema.BinaryConfig.EnvEntry.from_resource_field:type_name -> foundation.schema.ResourceConfigFieldSelector
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_schema_binary_proto_init() }
@@ -900,7 +980,7 @@ func file_schema_binary_proto_init() {
 			}
 		}
 		file_schema_binary_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ImageBuildPlan_LLBPlan); i {
+			switch v := v.(*ResourceConfigFieldSelector); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -912,7 +992,7 @@ func file_schema_binary_proto_init() {
 			}
 		}
 		file_schema_binary_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ImageBuildPlan_GoBuild); i {
+			switch v := v.(*ImageBuildPlan_LLBPlan); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -924,7 +1004,7 @@ func file_schema_binary_proto_init() {
 			}
 		}
 		file_schema_binary_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ImageBuildPlan_AlpineBuild); i {
+			switch v := v.(*ImageBuildPlan_GoBuild); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -936,7 +1016,7 @@ func file_schema_binary_proto_init() {
 			}
 		}
 		file_schema_binary_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ImageBuildPlan_StaticFilesServer); i {
+			switch v := v.(*ImageBuildPlan_AlpineBuild); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -948,6 +1028,18 @@ func file_schema_binary_proto_init() {
 			}
 		}
 		file_schema_binary_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*ImageBuildPlan_StaticFilesServer); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_binary_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*BinaryConfig_EnvEntry); i {
 			case 0:
 				return &v.state
@@ -966,7 +1058,7 @@ func file_schema_binary_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_binary_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

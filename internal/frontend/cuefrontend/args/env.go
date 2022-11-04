@@ -23,6 +23,7 @@ type envValue struct {
 	value               string
 	fromSecret          string
 	fromServiceEndpoint string
+	fromResourceField   *resourceFieldSyntax
 }
 
 var _ json.Unmarshaler = &EnvMap{}
@@ -64,6 +65,16 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
 				ServiceName: serviceRef.Name,
 			}
+		} else if value.fromResourceField != nil {
+			resourceRef, err := schema.ParsePackageRef(owner, value.fromResourceField.Resource)
+			if err != nil {
+				return nil, err
+			}
+
+			out.FromResourceField = &schema.ResourceConfigFieldSelector{
+				Resource:      resourceRef,
+				FieldSelector: value.fromResourceField.FieldRef,
+			}
 		}
 		env = append(env, out)
 	}
@@ -75,7 +86,7 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 	return env, nil
 }
 
-var validKeys = []string{"fromSecret", "fromServiceEndpoint"}
+var validKeys = []string{"fromSecret", "fromServiceEndpoint", "fromResourceField"}
 
 func (ev *envValue) UnmarshalJSON(data []byte) error {
 	d := json.NewDecoder(bytes.NewReader(data))
@@ -85,7 +96,7 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 	}
 
 	if tok == json.Delim('{') {
-		var m map[string]string
+		var m map[string]any
 		if err := json.Unmarshal(data, &m); err != nil {
 			return err
 		}
@@ -95,15 +106,25 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 			return fnerrors.BadInputError("when setting an object to a env var map, expected a single key, one of %s", strings.Join(validKeys, ", "))
 		}
 
+		var err error
 		switch keys[0] {
 		case "fromSecret":
-			ev.fromSecret = m[keys[0]]
+			ev.fromSecret, err = mustString("fromSecret", m[keys[0]])
 
 		case "fromServiceEndpoint":
-			ev.fromServiceEndpoint = m[keys[0]]
+			ev.fromServiceEndpoint, err = mustString("fromServiceEndpoint", m[keys[0]])
+
+		case "fromResourceField":
+			var ref resourceFieldSyntax
+			if err := reUnmarshal(m[keys[0]], &ref); err != nil {
+				return fnerrors.BadInputError("failed to parse fromResourceField: %w", err)
+			}
+
+			ev.fromResourceField = &ref
+			return nil
 		}
 
-		return nil
+		return err
 	}
 
 	if str, ok := tok.(string); ok {
@@ -112,4 +133,25 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 	}
 
 	return fnerrors.BadInputError("failed to parse value, unexpected token %v", tok)
+}
+
+func mustString(what string, value any) (string, error) {
+	if str, ok := value.(string); ok {
+		return str, nil
+	}
+
+	return "", fnerrors.BadInputError("%s: expected a string", what)
+}
+
+func reUnmarshal(value any, target any) error {
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(bytes, target)
+}
+
+type resourceFieldSyntax struct {
+	Resource string `json:"resource"`
+	FieldRef string `json:"fieldRef"`
 }

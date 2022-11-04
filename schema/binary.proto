@@ -82,10 +82,16 @@ message BinaryConfig {
     string            working_dir = 4;
 
     message EnvEntry {
-        string     name                     = 1;
-        string     value                    = 2;
-        string     experimental_from_secret = 3;  // Runtime specific.
-        PackageRef from_secret_ref          = 4;
-        ServiceRef from_service_endpoint    = 5;  // Inject the endpoint of a service in the stack.
+        string                      name                     = 1;
+        string                      value                    = 2;
+        string                      experimental_from_secret = 3;  // Runtime specific.
+        PackageRef                  from_secret_ref          = 4;
+        ServiceRef                  from_service_endpoint    = 5;  // Inject the endpoint of a service in the stack.
+        ResourceConfigFieldSelector from_resource_field      = 6;
     }
+}
+
+message ResourceConfigFieldSelector {
+    foundation.schema.PackageRef resource       = 1;
+    string                       field_selector = 2;
 }

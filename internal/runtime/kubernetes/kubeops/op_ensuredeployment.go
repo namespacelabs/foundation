@@ -7,6 +7,8 @@ package kubeops
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"reflect"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	appsv1 "k8s.io/api/apps/v1"
@@ -14,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
@@ -205,9 +208,13 @@ func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*
 			if err != nil {
 				errs = append(errs, err)
 			} else {
-				errs = append(errs, updateContainers(spec, setArg.ContainerName, func(container *v1.Container) {
-					container.Args = append(container.Args, setArg.Key+"="+value)
-				}))
+				if value.From != nil {
+					errs = append(errs, fnerrors.BadInputError("%s: can't set an argument from an env source", setArg.Key))
+				} else {
+					errs = append(errs, updateContainers(spec, setArg.ContainerName, func(container *v1.Container) {
+						container.Args = append(container.Args, setArg.Key+"="+value.Inline)
+					}))
+				}
 			}
 		}
 
@@ -217,7 +224,7 @@ func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*
 				errs = append(errs, err)
 			} else {
 				errs = append(errs, updateContainers(spec, setEnv.ContainerName, func(container *v1.Container) {
-					container.Env = append(container.Env, v1.EnvVar{Name: setEnv.Key, Value: value})
+					container.Env = append(container.Env, v1.EnvVar{Name: setEnv.Key, Value: value.Inline, ValueFrom: value.From})
 				}))
 			}
 		}
@@ -225,23 +232,28 @@ func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*
 	return multierr.New(errs...)
 }
 
-func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetContainerField_SetValue) (string, error) {
+type value struct {
+	Inline string
+	From   *v1.EnvVarSource
+}
+
+func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetContainerField_SetValue) (*value, error) {
 	switch set.Value {
 	case runtime.SetContainerField_RUNTIME_CONFIG:
-		return output.SerializedRuntimeJson, nil
+		return &value{Inline: output.SerializedRuntimeJson}, nil
 
 	case runtime.SetContainerField_RESOURCE_CONFIG:
-		return output.SerializedResourceJson, nil
+		return &value{Inline: output.SerializedResourceJson}, nil
 
-	case runtime.SetContainerField_RESOURCE_CONFIG_SERVICE_ENDPOINT:
+	case runtime.SetContainerField_RUNTIME_CONFIG_SERVICE_ENDPOINT:
 		if set.ServiceRef == nil {
-			return "", fnerrors.BadInputError("missing required service endpoint")
+			return nil, fnerrors.BadInputError("missing required service endpoint")
 		}
 
 		rt := &runtime.RuntimeConfig{}
 		// XXX unmarshal once.
 		if err := protojson.Unmarshal([]byte(output.SerializedRuntimeJson), rt); err != nil {
-			return "", fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
+			return nil, fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
 		}
 
 		for _, srv := range rt.StackEntry {
@@ -249,19 +261,45 @@ func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetCont
 				for _, service := range srv.Service {
 					if service.Name == set.ServiceRef.ServiceName {
 						// Returns a hostname:port pair.
-						return service.Endpoint, nil
+						return &value{Inline: service.Endpoint}, nil
 					}
 				}
 
-				return "", fnerrors.BadInputError("the required service %q is not exported by %q",
+				return nil, fnerrors.BadInputError("the required service %q is not exported by %q",
 					set.ServiceRef.ServiceName, set.ServiceRef.GetServerRef().GetPackageName())
 			}
 		}
 
-		return "", fnerrors.BadInputError("the required server %q is not present in the stack", set.ServiceRef.GetServerRef().GetPackageName())
+		return nil, fnerrors.BadInputError("the required server %q is not present in the stack", set.ServiceRef.GetServerRef().GetPackageName())
+
+	case runtime.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR:
+		if set.ResourceConfigFieldSelector == nil {
+			return nil, fnerrors.BadInputError("missing required field selector")
+		}
+
+		resources, err := resources.ParseResourceData([]byte(output.SerializedResourceJson))
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to unmarshal resource configuration: %w", err)
+		}
+
+		v, err := resources.SelectField(set.ResourceConfigFieldSelector.GetResource().Canonical(), set.ResourceConfigFieldSelector.GetFieldSelector())
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to select resource value: %w", err)
+		}
+
+		switch x := v.(type) {
+		case string:
+			return &value{Inline: x}, nil
+
+		case int32, int64, uint32, uint64, int:
+			return &value{Inline: fmt.Sprintf("%d", x)}, nil
+
+		default:
+			return nil, fnerrors.BadInputError("unsupported resource field value %q", reflect.TypeOf(v).String())
+		}
 	}
 
-	return "", fnerrors.BadInputError("%s: don't know this value", set.Value)
+	return nil, fnerrors.BadInputError("%s: don't know this value", set.Value)
 }
 
 func updateContainers(spec *v1.PodSpec, name string, update func(container *v1.Container)) error {

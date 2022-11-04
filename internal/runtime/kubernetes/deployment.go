@@ -950,7 +950,30 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 
 			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
 				SetEnv: []*rtschema.SetContainerField_SetValue{
-					{ContainerName: *container.Name, Key: kv.Name, Value: rtschema.SetContainerField_RESOURCE_CONFIG_SERVICE_ENDPOINT, ServiceRef: kv.FromServiceEndpoint},
+					{
+						ContainerName: *container.Name,
+						Key:           kv.Name,
+						Value:         rtschema.SetContainerField_RUNTIME_CONFIG_SERVICE_ENDPOINT,
+						ServiceRef:    kv.FromServiceEndpoint,
+					},
+				},
+			})
+
+			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
+
+		case kv.FromResourceField != nil:
+			if out == nil {
+				return nil, fnerrors.InternalError("can't use FromResourceField in this context")
+			}
+
+			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
+				SetEnv: []*rtschema.SetContainerField_SetValue{
+					{
+						ContainerName:               *container.Name,
+						Key:                         kv.Name,
+						Value:                       rtschema.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR,
+						ResourceConfigFieldSelector: kv.FromResourceField,
+					},
 				},
 			})
 

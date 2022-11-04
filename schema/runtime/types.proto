@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/schema/runtime";
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 import "schema/package.proto";
+import "schema/binary.proto";
 
 enum ContainerKind {
     CONTAINER_KIND_UNSPECIFIED = 0;
@@ -51,10 +52,11 @@ message Diagnostics {
 
 message SetContainerField {
     enum ValueSource {
-        VALUE_SOURCE_UNKNOWN             = 0;
-        RUNTIME_CONFIG                   = 1;
-        RESOURCE_CONFIG                  = 2;
-        RESOURCE_CONFIG_SERVICE_ENDPOINT = 3;
+        VALUE_SOURCE_UNKNOWN            = 0;
+        RUNTIME_CONFIG                  = 1;
+        RESOURCE_CONFIG                 = 2;
+        RUNTIME_CONFIG_SERVICE_ENDPOINT = 3;
+        RESOURCE_CONFIG_FIELD_SELECTOR  = 4;
     }
 
     repeated SetValue set_arg = 1;
@@ -65,6 +67,7 @@ message SetContainerField {
         string      key            = 2;  // The target argument or environment variable.
         ValueSource value          = 3;
 
-        foundation.schema.ServiceRef service_ref = 4;  // Only valid if RESOURCE_CONFIG_SERVICE_ENDPOINT is set.
+        foundation.schema.ServiceRef                  service_ref                    = 4;  // Only valid if RUNTIME_CONFIG_SERVICE_ENDPOINT is set.
+        foundation.schema.ResourceConfigFieldSelector resource_config_field_selector = 5;  // Only valid if RESOURCE_CONFIG_FIELD_SELECTOR is set.
     }
 }
