@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -44,6 +46,35 @@ const (
 	checkTimeLimit = 30 * time.Second
 )
 
+type DoctorResults struct {
+	NSVersion     *VersionInfo                    `json:"ns"`
+	NSBootVersion *storage.NamespaceBinaryVersion `json:"nsboot"`
+	DockerInfo    *DoctorResults_DockerInfo       `json:"docker_info"`
+	DockerRun     *DoctorResults_DockerRun        `json:"docker_run"`
+	Buildkit      *DoctorResults_BuildkitResults  `json:"buildkit"`
+	KubeResults   *DoctorResults_KubeResults      `json:"kubernetes"`
+}
+
+type DoctorResults_DockerInfo struct {
+	dockertypes.Version
+	dockertypes.Info
+}
+
+type DoctorResults_DockerRun struct {
+	ImageLatency time.Duration `json:"image_latency"`
+	RunLatency   time.Duration `json:"run_latency"`
+}
+
+type DoctorResults_BuildkitResults struct {
+	BuildLatency time.Duration `json:"build_latency"`
+	ImageDigest  string        `json:"image_digest"`
+}
+
+type DoctorResults_KubeResults struct {
+	ConnectLatency time.Duration `json:"connect_latency"`
+	RunLatency     time.Duration `json:"run_latency"`
+}
+
 func NewDoctorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
@@ -51,7 +82,10 @@ func NewDoctorCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
+	var results DoctorResults
+
 	testFilter := cmd.Flags().StringSlice("tests", nil, "If set, filters which tests are run.")
+	uploadResults := cmd.Flags().Bool("upload_results", !environment.IsRunningInCI(), "If set, anonymized results are pushed to the Namespace team.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		var errCount int
@@ -60,7 +94,10 @@ func NewDoctorCmd() *cobra.Command {
 			versionI := runDiagnostic(ctx, "doctor.version-info", func(ctx context.Context) (*VersionInfo, error) {
 				return CollectVersionInfo()
 			})
-			printDiagnostic(ctx, "Namespace version", versionI, &errCount, FormatVersionInfo)
+			printDiagnostic(ctx, "Namespace version", versionI, &errCount, func(w io.Writer, vi *VersionInfo) {
+				results.NSVersion = vi
+				FormatVersionInfo(w, vi)
+			})
 		}
 
 		if filterIncludes(testFilter, "nsboot-version") {
@@ -74,26 +111,31 @@ func NewDoctorCmd() *cobra.Command {
 				}
 				return v, nil
 			})
-			printDiagnostic(ctx, "NSBoot version", nsbootI, &errCount, FormatBinaryVersion)
+			printDiagnostic(ctx, "NSBoot version", nsbootI, &errCount, func(w io.Writer, vi *storage.NamespaceBinaryVersion) {
+				results.NSBootVersion = vi
+				FormatBinaryVersion(w, vi)
+			})
 		}
 
 		if filterIncludes(testFilter, "docker-info") {
-			dockerI := runDiagnostic(ctx, "doctor.docker-info", func(ctx context.Context) (dockerInfo, error) {
+			dockerI := runDiagnostic(ctx, "doctor.docker-info", func(ctx context.Context) (DoctorResults_DockerInfo, error) {
 				client, err := docker.NewClient()
 				if err != nil {
-					return dockerInfo{}, err
+					return DoctorResults_DockerInfo{}, err
 				}
 				version, err := client.ServerVersion(ctx)
 				if err != nil {
-					return dockerInfo{}, err
+					return DoctorResults_DockerInfo{}, err
 				}
 				info, err := client.Info(ctx)
 				if err != nil {
-					return dockerInfo{}, err
+					return DoctorResults_DockerInfo{}, err
 				}
-				return dockerInfo{version, info}, nil
+				return DoctorResults_DockerInfo{version, info}, nil
 			})
-			printDiagnostic(ctx, "Docker", dockerI, &errCount, func(w io.Writer, info dockerInfo) {
+			printDiagnostic(ctx, "Docker", dockerI, &errCount, func(w io.Writer, info DoctorResults_DockerInfo) {
+				info.ID = "" // Clear IDs.
+				results.DockerInfo = &info
 				fmt.Fprintf(w, "version=%s (commit=%s) for %s-%s\n", info.Version.Version, info.Version.GitCommit, info.Version.Os, info.Version.Arch)
 				fmt.Fprintf(w, "api version=%s (min=%s)\n", info.Version.APIVersion, info.Version.MinAPIVersion)
 				fmt.Fprintf(w, "kernel version=%s\n", info.Version.KernelVersion)
@@ -124,18 +166,13 @@ func NewDoctorCmd() *cobra.Command {
 		}
 
 		if filterIncludes(testFilter, "docker-run") {
-			type dockerResults struct {
-				ImageLatency time.Duration
-				RunLatency   time.Duration
-			}
-
-			dockerRunI := runDiagnostic(ctx, "doctor.docker-run", func(ctx context.Context) (dockerResults, error) {
+			dockerRunI := runDiagnostic(ctx, "doctor.docker-run", func(ctx context.Context) (DoctorResults_DockerRun, error) {
 				t := time.Now()
 				image, err := compute.GetValue(ctx, oci.ResolveImage(pins.Image("hello-world"), docker.HostPlatform()).Image())
 				if err != nil {
-					return dockerResults{}, err
+					return DoctorResults_DockerRun{}, err
 				}
-				var r dockerResults
+				var r DoctorResults_DockerRun
 				r.ImageLatency = time.Since(t)
 				t = time.Now()
 				err = docker.Impl().Run(ctx, rtypes.RunToolOpts{
@@ -146,7 +183,9 @@ func NewDoctorCmd() *cobra.Command {
 				r.RunLatency = time.Since(t)
 				return r, err
 			})
-			printDiagnostic(ctx, "Docker Run Check", dockerRunI, &errCount, func(w io.Writer, info dockerResults) {
+
+			printDiagnostic(ctx, "Docker Run Check", dockerRunI, &errCount, func(w io.Writer, info DoctorResults_DockerRun) {
+				results.DockerRun = &info
 				fmt.Fprintf(w, "image_pull_latency=%v docker_run_latency=%v\n", info.ImageLatency, info.RunLatency)
 			})
 		}
@@ -160,51 +199,44 @@ func NewDoctorCmd() *cobra.Command {
 			})
 
 			if filterIncludes(testFilter, "buildkit-build") {
-				type buildkitResults struct {
-					BuildLatency time.Duration
-					Image        oci.Image
-				}
-
-				buildkitI := errorOr[buildkitResults]{err: fnerrors.New("no workspace")}
+				buildkitI := errorOr[DoctorResults_BuildkitResults]{err: fnerrors.New("no workspace")}
 				if workspaceI.err == nil {
-					buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (buildkitResults, error) {
+					buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (DoctorResults_BuildkitResults, error) {
 						env, err := cfg.LoadContext(workspaceI.v, "dev")
 						if err != nil {
-							return buildkitResults{}, err
+							return DoctorResults_BuildkitResults{}, err
 						}
 						hostPlatform := buildkit.HostPlatform()
 						state := llb.Scratch().File(llb.Mkfile("/hello", 0644, []byte("cachehit")))
 						conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel("doctor.hello-world")
-						var r buildkitResults
+						var r DoctorResults_BuildkitResults
 						t := time.Now()
 						imageC, err := buildkit.BuildImage(ctx, env, conf, state)
 						if err != nil {
-							return buildkitResults{}, err
+							return DoctorResults_BuildkitResults{}, err
 						}
 						image, err := compute.Get(ctx, imageC)
 						if err != nil {
-							return buildkitResults{}, err
+							return DoctorResults_BuildkitResults{}, err
 						}
 						r.BuildLatency = time.Since(t)
-						r.Image = image.Value
+						if digest, err := image.Value.Digest(); err == nil {
+							r.ImageDigest = digest.String()
+						}
 						return r, nil
 					})
 				}
-				printDiagnostic(ctx, "Buildkit", buildkitI, &errCount, func(w io.Writer, r buildkitResults) {
-					digest, _ := r.Image.Digest()
-					fmt.Fprintf(w, "success build_latency=%v image_digest=%v\n", r.BuildLatency, digest)
+				printDiagnostic(ctx, "Buildkit", buildkitI, &errCount, func(w io.Writer, r DoctorResults_BuildkitResults) {
+					results.Buildkit = &r
+					fmt.Fprintf(w, "success build_latency=%v image_digest=%v\n", r.BuildLatency, r.ImageDigest)
 				})
 			}
 
 			if filterIncludes(testFilter, "kubernetes-run") {
-				type kubeResults struct {
-					ConnectLatency time.Duration
-					RunLatency     time.Duration
-				}
-				kubernetesI := errorOr[kubeResults]{err: fnerrors.New("no workspace")}
+				kubernetesI := errorOr[DoctorResults_KubeResults]{err: fnerrors.New("no workspace")}
 				if workspaceI.err == nil {
-					kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (kubeResults, error) {
-						var r kubeResults
+					kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (DoctorResults_KubeResults, error) {
+						var r DoctorResults_KubeResults
 						env, err := cfg.LoadContext(workspaceI.v, "dev")
 						if err != nil {
 							return r, err
@@ -228,13 +260,35 @@ func NewDoctorCmd() *cobra.Command {
 					})
 				}
 
-				printDiagnostic(ctx, "Kubernetes Run Check", kubernetesI, &errCount, func(w io.Writer, info kubeResults) {
+				printDiagnostic(ctx, "Kubernetes Run Check", kubernetesI, &errCount, func(w io.Writer, info DoctorResults_KubeResults) {
+					results.KubeResults = &info
 					fmt.Fprintf(w, "connect_latency=%v run_latency=%v\n", info.ConnectLatency, info.RunLatency)
 				})
 			}
 		}
 
-		fmt.Fprintf(console.TypedOutput(ctx, "Support", common.CatOutputUs), "\nHaving trouble? Chat with us at https://community.namespace.so/discord\n")
+		out := console.TypedOutput(ctx, "Support", common.CatOutputUs)
+		fmt.Fprintf(out, "\nHaving trouble? Chat with us at https://community.namespace.so/discord\n")
+
+		if *uploadResults {
+			serialized, err := json.Marshal(results)
+			if err == nil {
+				var response recordDoctorResponse
+				if err := (fnapi.Call[recordDoctorRequest]{
+					Endpoint:  fnapi.EndpointAddress,
+					Method:    "nsl.support.SupportService/RecordDoctor",
+					Anonymous: true,
+				}).Do(ctx, recordDoctorRequest{ResultsBlob: serialized}, func(r io.Reader) error {
+					return json.NewDecoder(r).Decode(&response)
+				}); err != nil {
+					fmt.Fprintf(console.Warnings(ctx), "Failed to push results: %v\n", err)
+				} else if response.InvocationId != "" {
+					fmt.Fprintf(out, "\nAnd please refer to %q (your anonymized results) so we can more quickly help you.\n", response.InvocationId)
+				}
+			} else {
+				fmt.Fprintf(console.Warnings(ctx), "Failed to serialized results: %v\n", err)
+			}
+		}
 
 		if errCount > 0 {
 			return fnerrors.ExitWithCode(fmt.Errorf("%d tests failed", errCount), 1)
@@ -280,12 +334,15 @@ func printDiagnostic[V any](ctx context.Context, title string, res errorOr[V], e
 	}
 }
 
-type dockerInfo struct {
-	dockertypes.Version
-	dockertypes.Info
-}
-
 type errorOr[V any] struct {
 	v   V
 	err error
+}
+
+type recordDoctorRequest struct {
+	ResultsBlob []byte `protobuf:"bytes,1,opt,name=results_blob,json=resultsBlob,proto3" json:"results_blob,omitempty"`
+}
+
+type recordDoctorResponse struct {
+	InvocationId string `protobuf:"bytes,1,opt,name=invocation_id,json=invocationId,proto3" json:"invocation_id,omitempty"`
 }

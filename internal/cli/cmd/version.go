@@ -55,9 +55,12 @@ func NewVersionCmd() *cobra.Command {
 }
 
 type VersionInfo struct {
-	Binary                                   *storage.NamespaceBinaryVersion
-	GOOS, GOARCH                             string
-	APIVersion, CacheVersion, ToolAPIVersion int
+	Binary         *storage.NamespaceBinaryVersion `json:"binary"`
+	GOOS           string                          `json:"GOOS"`
+	GOARCH         string                          `json:"GOARCH"`
+	APIVersion     int                             `json:"api_version"`
+	CacheVersion   int                             `json:"cache_version"`
+	ToolAPIVersion int                             `json:"tool_api_version"`
 }
 
 func CollectVersionInfo() (*VersionInfo, error) {
