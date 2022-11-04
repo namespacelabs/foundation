@@ -139,6 +139,13 @@ func deployAsPods(env *schema.Environment) bool {
 	return env.GetPurpose() == schema.Environment_TESTING && DeployAsPodsInTests
 }
 
+// Transient data structure used to prepare volumes and mounts
+type volumeDef struct {
+	name string
+	// True if the volume is actually a filesync and needs a different handling.
+	isWorkspaceSync bool
+}
+
 func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, opts deployOpts, s *serverRunState) error {
 	if deployable.MainContainer.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.MainContainer.Image)
@@ -394,14 +401,15 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	volumes := deployable.Volumes
 	mounts := deployable.MainContainer.Mounts
 
-	volumeNames := make(map[string]string)
+	volumeDefs := map[string]*volumeDef{}
 	for k, volume := range volumes {
 		if volume.Name == "" {
 			return fnerrors.InternalError("volume #%d is missing a name", k)
 		}
 
 		name := kubedef.MakeVolumeName(volume)
-		volumeNames[volume.Name] = name
+		volumeDef := &volumeDef{name: name}
+		volumeDefs[volume.Name] = volumeDef
 
 		switch volume.Kind {
 		case constants.VolumeKindEphemeral:
@@ -424,6 +432,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 			spec = spec.WithVolumes(v)
 			s.operations = append(s.operations, operations...)
+
+		case constants.VolumeKindWorkspaceSync:
+			volumeDef.isWorkspaceSync = true
 
 		case constants.VolumeKindConfigurable:
 			cv := &schema.ConfigurableVolume{}
@@ -514,15 +525,17 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.InternalError("mount %q is missing a target volume", mount.Path)
 		}
 
-		volumeName, ok := volumeNames[mount.VolumeRef.Name]
+		volumeDef, ok := volumeDefs[mount.VolumeRef.Name]
 		if !ok {
 			return fnerrors.InternalError("unknown target volume %q for mount %q", mount.VolumeRef.Name, mount.Path)
 		}
 
-		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
-			WithMountPath(mount.Path).
-			WithName(volumeName).
-			WithReadOnly(mount.Readonly))
+		if !volumeDef.isWorkspaceSync {
+			mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
+				WithMountPath(mount.Path).
+				WithName(volumeDef.name).
+				WithReadOnly(mount.Readonly))
+		}
 	}
 
 	regularResources := slices.Clone(deployable.Resources)

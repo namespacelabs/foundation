@@ -13,17 +13,17 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type mergeSpecs struct {
-	specs               []build.Spec
-	descriptions        []string // Same indexing as specs.
+type MergeSpecs struct {
+	Specs               []build.Spec
+	Descriptions        []string // Same indexing as specs.
 	platformIndependent bool
 }
 
-func (m mergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	images := make([]oci.NamedImage, len(m.specs))
+func (m MergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	images := make([]oci.NamedImage, len(m.Specs))
 
-	for k, spec := range m.specs {
-		xconf := build.CopyConfiguration(conf).WithSourceLabel(m.descriptions[k])
+	for k, spec := range m.Specs {
+		xconf := build.CopyConfiguration(conf).WithSourceLabel(m.Descriptions[k])
 
 		// XXX we ignore whether the request is platform-specific.
 		image, err := spec.BuildImage(ctx, env, xconf)
@@ -31,10 +31,10 @@ func (m mergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 			return nil, err
 		}
 
-		images[k] = oci.MakeNamedImage(m.descriptions[k], image)
+		images[k] = oci.MakeNamedImage(m.Descriptions[k], image)
 	}
 
 	return oci.MergeImageLayers(images...), nil
 }
 
-func (m mergeSpecs) PlatformIndependent() bool { return m.platformIndependent }
+func (m MergeSpecs) PlatformIndependent() bool { return m.platformIndependent }

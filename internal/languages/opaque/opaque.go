@@ -6,17 +6,23 @@ package opaque
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 )
 
 func Register() {
@@ -26,7 +32,6 @@ func Register() {
 type OpaqueIntegration struct {
 	languages.MaybeGenerate
 	languages.MaybeTidy // TODO implement tidy per parser.
-	languages.NoDev
 }
 
 func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
@@ -47,7 +52,29 @@ func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.Availab
 		return nil, err
 	}
 
-	return prep.Plan.Spec, nil
+	filesyncConfig, err := getFilesyncWorkspacePath(server)
+	if err != nil {
+		return nil, err
+	}
+
+	if filesyncConfig != nil {
+		pkg, err := server.SealedContext().LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
+		if err != nil {
+			return nil, err
+		}
+
+		ctrlBin, err := binary.Plan(ctx, pkg, hotreload.ControllerPkg.Name, server.SealedContext(), assets, binary.BuildImageOpts{UsePrebuilts: false})
+		if err != nil {
+			return nil, err
+		}
+
+		return binary.MergeSpecs{
+			Specs:        []build.Spec{prep.Plan.Spec, ctrlBin.Plan.Spec},
+			Descriptions: []string{prep.Name, "workspace sync controller"},
+		}, nil
+	} else {
+		return prep.Plan.Spec, nil
+	}
 }
 
 func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server, run *runtime.ContainerRunOpts) error {
@@ -65,9 +92,39 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server,
 			run.Args = config.Args
 			run.Env = config.Env
 		}
+
+		filesyncConfig, err := getFilesyncWorkspacePath(server)
+		if err != nil {
+			return err
+		}
+
+		if filesyncConfig != nil {
+			if len(run.Command) == 0 {
+				return fnerrors.UserError(server.Location, "dockerfile command must be explicitly set when there is a workspace sync mount")
+			}
+
+			run.Args = append(append(
+				[]string{filesyncConfig.mountPath, fmt.Sprint(hotreload.FileSyncPort)},
+				run.Command...),
+				run.Args...)
+			run.Command = []string{hotreload.ControllerCommand}
+		}
 	}
 
 	return nil
+}
+
+func (OpaqueIntegration) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, server planning.Server) (context.Context, languages.DevObserver, error) {
+	filesyncConfig, err := getFilesyncWorkspacePath(server)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if filesyncConfig != nil {
+		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, server)
+	}
+
+	return ctx, nil, nil
 }
 
 func (OpaqueIntegration) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
@@ -80,4 +137,75 @@ func (OpaqueIntegration) PostParseServer(ctx context.Context, _ *parsing.Sealed)
 
 func (OpaqueIntegration) DevelopmentPackages() []schema.PackageName {
 	return nil
+}
+
+func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
+	filesyncConfig, err := getFilesyncWorkspacePath(srv)
+	if err != nil {
+		// Shouldn't happen because getFilesyncWorkspacePath() is already called in PrepareDev().
+		panic(fnerrors.InternalError("Error from getFilesyncWorkspacePath in PrepareHotReload, shouldn't happen: %v", err))
+	}
+
+	if filesyncConfig == nil {
+		return nil
+	}
+
+	return &languages.HotReloadOpts{
+		// "ModuleName" and "Rel" are empty because we have only one module in the image and
+		// we put the package content directly under the root "/app" directory.
+		Sink: remote.For(&wsremote.Signature{ModuleName: "", Rel: ""}),
+		EventProcessor: func(ev *wscontents.FileEvent) *wscontents.FileEvent {
+			if strings.HasPrefix(ev.Path, filesyncConfig.srcPath+"/") {
+				return &wscontents.FileEvent{
+					Event:       ev.Event,
+					Path:        ev.Path[len(filesyncConfig.srcPath)+1:],
+					NewContents: ev.NewContents,
+					Mode:        ev.Mode,
+				}
+			} else {
+				return nil
+			}
+		},
+	}
+}
+
+type filesyncConfig struct {
+	// Relative to the package
+	srcPath   string
+	mountPath string
+}
+
+// If not nil, filesync is requested and enabled.
+func getFilesyncWorkspacePath(server planning.Server) (*filesyncConfig, error) {
+	if !UseDevBuild(server.SealedContext().Environment()) {
+		return nil, nil
+	}
+
+	for _, m := range server.Proto().MainContainer.Mount {
+		// Only supporting volumes within the same package for now.
+		v, err := findVolume(server.Proto().Volume, m.VolumeRef.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		if v.Kind == constants.VolumeKindWorkspaceSync {
+			cv := &schema.WorkspaceSyncVolume{}
+			if err := v.Definition.UnmarshalTo(cv); err != nil {
+				return nil, fnerrors.InternalError("%s: failed to unmarshal workspacesync volume definition: %w", v.Name, err)
+			}
+
+			return &filesyncConfig{cv.Path, m.Path}, nil
+		}
+	}
+
+	return nil, nil
+}
+
+func findVolume(volumes []*schema.Volume, name string) (*schema.Volume, error) {
+	for _, v := range volumes {
+		if v.Name == name {
+			return v, nil
+		}
+	}
+	return nil, fnerrors.InternalError("volume %s not found", name)
 }

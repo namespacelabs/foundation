@@ -11,5 +11,6 @@ var (
 )
 
 const (
-	FileSyncPort = 50000
+	FileSyncPort      = 50000
+	ControllerCommand = "/filesync-controller"
 )
