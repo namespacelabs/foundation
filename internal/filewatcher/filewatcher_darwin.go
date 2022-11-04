@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsevents"
@@ -66,16 +67,16 @@ func (fsn *fsEvents) StartWatching(ctx context.Context) (EventsAndErrors, error)
 		dirs.Add(d)
 	}
 
-	root := longestCommonPrefix(dirs.Strings())
+	root := longestCommonPathPrefix(dirs.Strings())
 	if root == "" || root == "/" {
 		return nil, fnerrors.New("fs notify common root is /, would watch too many files")
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "fsevents: common root is %q\n", root)
+	fmt.Fprintf(console.Debug(ctx), "fsevents: common root for %v is %q\n", dirs.Strings(), root)
 
 	dev, err := fsevents.DeviceForPath(root)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve device: %w", err)
+		return nil, fmt.Errorf("failed to retrieve device for %s: %w", root, err)
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "fsevents: device is %v\n", dev)
@@ -135,25 +136,25 @@ func (fsn *fsEvents) Close() error {
 	return nil
 }
 
-func longestCommonPrefix(strs []string) string {
+func longestCommonPathPrefix(strs []string) string {
 	if len(strs) == 0 {
 		return ""
 	}
 
 	sort.Strings(strs)
-	first := strs[0]
-	last := strs[len(strs)-1]
+	first := strings.Split(strs[0], "/")
+	last := strings.Split(strs[len(strs)-1], "/")
 
-	longestPrefix := ""
+	longestPrefix := []string{}
 	for i := 0; i < len(first); i++ {
 		if last[i] != first[i] {
 			break
 		}
 
-		longestPrefix += string(last[i])
+		longestPrefix = append(longestPrefix, last[i])
 	}
 
-	return longestPrefix
+	return strings.Join(longestPrefix, "/")
 }
 
 type passEvents struct {
