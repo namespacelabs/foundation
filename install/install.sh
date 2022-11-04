@@ -96,7 +96,7 @@ do_install() {
 
   echo "Downloading and installing Namespace from ${download_uri}"
 
-  $sh_c "curl --fail --location --progress-bar --output ${temp_tar} ${download_uri}"
+  $sh_c "curl --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} ${download_uri}"
 
   $sh_c "tar -xzf ${temp_tar} -C ${bin_dir}"
 
