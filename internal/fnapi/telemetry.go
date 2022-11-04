@@ -277,7 +277,7 @@ func (tel *Telemetry) postRecordErrorRequest(ctx context.Context, req recordErro
 }
 
 func (tel *Telemetry) RecordError(ctx context.Context, err error) {
-	if !tel.IsTelemetryEnabled() || err == nil {
+	if !tel.IsTelemetryEnabled() || err == nil || tel.recID == nil {
 		return
 	}
 
