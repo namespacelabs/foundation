@@ -188,7 +188,8 @@ func (w wrappedClient) Close() error {
 }
 
 func maybeReplaceErr(err error) error {
-	if errors.Is(err, os.ErrPermission) {
+	switch {
+	case errors.Is(err, os.ErrPermission):
 		var lines = []string{
 			"Failed to connect to Docker, due to lack of permissions. This is likely",
 			"due to your user not being in the right group to be able to use Docker.",
@@ -205,6 +206,11 @@ func maybeReplaceErr(err error) error {
 		}
 
 		return fnerrors.Wrapf(nil, err, strings.Join(lines, "\n"))
+
+	case client.IsErrConnectionFailed(err):
+		return fnerrors.UsageError("If you don't have Docker installed, please visit https://docs.namespace.so/getting-started/#install-docker", "unable to connect to Docker: %w", err)
+
+	default:
+		return err
 	}
-	return err
 }
