@@ -7,7 +7,6 @@ import { readFileSync } from "fs";
 
 const nsConfigRaw = readFileSync("/namespace/config/runtime.json");
 const nsConfig = JSON.parse(nsConfigRaw.toString());
-console.log(`Namespace config: ${JSON.stringify(nsConfig, null, 2)}`);
 
 // Constants
 const PORT = nsConfig.current.port.find((s: any) => s.name === "webapi").port;
