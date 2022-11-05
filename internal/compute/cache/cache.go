@@ -28,9 +28,14 @@ import (
 const VerifyCacheWrites = false
 const indexDir = "index"
 
+type CacheInfo interface {
+	Size() int64
+}
+
 type Cache interface {
 	Bytes(context.Context, schema.Digest) ([]byte, error)
 	Blob(schema.Digest) (io.ReadCloser, error) // XXX No context is required here to make it simpler for Compressed() to call Blob().
+	Stat(context.Context, schema.Digest) (CacheInfo, error)
 
 	WriteBlob(context.Context, schema.Digest, io.ReadCloser) error
 	WriteBytes(context.Context, schema.Digest, []byte) error
@@ -90,6 +95,10 @@ func (c *localCache) Bytes(ctx context.Context, h schema.Digest) ([]byte, error)
 		return nil, fnerrors.InternalError("digest not set")
 	}
 	return os.ReadFile(c.blobPath(h))
+}
+
+func (c *localCache) Stat(ctx context.Context, h schema.Digest) (CacheInfo, error) {
+	return os.Stat(c.blobPath(h))
 }
 
 func (c *localCache) Blob(h schema.Digest) (io.ReadCloser, error) {

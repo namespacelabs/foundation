@@ -340,6 +340,16 @@ func lazyLoadFromCache(ctx context.Context, cache cache.Cache, d v1.Hash) (v1.Im
 		ci.rawConfig = rawConfig
 		ci.manifest = m
 
+		// If one of the layers has not been cached, don't consider that the image is cached.
+		for _, layer := range m.Layers {
+			if _, err := cache.Stat(ctx, schema.Digest(layer.Digest)); err != nil {
+				if os.IsNotExist(err) {
+					return nil, nil
+				}
+				return nil, fnerrors.InternalError("%s: failed to stat layer %s: %w", d, layer.Digest, err)
+			}
+		}
+
 		return &cachedImage{
 			CompressedImageCore: ci,
 		}, nil

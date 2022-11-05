@@ -63,11 +63,15 @@ func (r *fetchImage) Action() *tasks.ActionEvent {
 }
 
 func (r *fetchImage) Inputs() *compute.In {
-	return compute.Inputs().JSON("platform", r.platform).Computable("descriptor", r.descriptor).Computable("imageid", r.imageid.ImageID())
+	return compute.Inputs().
+		JSON("platform", r.platform).
+		Computable("descriptor", r.descriptor).
+		Computable("imageid", r.imageid.ImageID())
 }
 
 func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	descriptor := compute.MustGetDepValue(deps, r.descriptor, "descriptor")
+	imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
 
 	switch {
 	case isIndexMediaType(types.MediaType(descriptor.MediaType)):
@@ -83,7 +87,6 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		})
 
 	case isImageMediaType(types.MediaType(descriptor.MediaType)):
-		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
 		return cacheAndReturn(ctx, imageid, r.opts)
 	}
 
