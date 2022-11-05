@@ -99,3 +99,9 @@ func (p *progressReader) Close() error {
 func (p *progressReader) FormatProgress() string {
 	return p.pw.FormatProgress()
 }
+
+func MaybeUpdateSkippedBytes(r io.ReadCloser, count int64) {
+	if p, ok := r.(*progressReader); ok {
+		p.pw.Update(uint64(count))
+	}
+}

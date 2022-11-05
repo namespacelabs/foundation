@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -118,7 +119,7 @@ func (c *localCache) WriteBlob(ctx context.Context, h schema.Digest, r io.ReadCl
 	}
 
 	file := c.blobPath(h)
-	if _, err := os.Stat(file); err == nil {
+	if fi, err := os.Stat(file); err == nil {
 		if VerifyCacheWrites {
 			f, err := os.Open(file)
 			if err != nil {
@@ -131,7 +132,9 @@ func (c *localCache) WriteBlob(ctx context.Context, h schema.Digest, r io.ReadCl
 			}
 			return verifyHash(h, hash)
 		}
-		return nil
+
+		artifacts.MaybeUpdateSkippedBytes(r, fi.Size())
+		return r.Close()
 	}
 
 	rid := ids.NewRandomBase32ID(8)
