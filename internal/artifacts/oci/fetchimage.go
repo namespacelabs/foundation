@@ -55,7 +55,7 @@ type fetchImage struct {
 }
 
 func (r *fetchImage) Action() *tasks.ActionEvent {
-	action := tasks.Action("oci.pull-image").Arg("ref", r.imageid.Description())
+	action := tasks.Action("oci.pull-image")
 	if r.platform != nil {
 		action = action.Arg("platform", devhost.FormatPlatform(*r.platform))
 	}
@@ -72,6 +72,9 @@ func (r *fetchImage) Inputs() *compute.In {
 func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image, error) {
 	descriptor := compute.MustGetDepValue(deps, r.descriptor, "descriptor")
 	imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
+
+	tasks.Attachments(ctx).AddResult("repository", imageid.Repository)
+	tasks.Attachments(ctx).AddResult("digest", imageid.Digest)
 
 	switch {
 	case isIndexMediaType(types.MediaType(descriptor.MediaType)):
