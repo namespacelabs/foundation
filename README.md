@@ -36,7 +36,7 @@ You describe the servers in your application, how they're built, their relations
 
 ### **Getting Started**
 
-To get started follow our [getting started guide](https://docs.namespace.so/getting-started/). After installing `ns`, explore some of the [examples](/namespacelabs/examples) our team put together.
+To get started follow our [getting started guide](https://docs.namespace.so/getting-started/). After installing `ns`, explore some of the [examples](https://namespacelabs.dev/examples) our team put together.
 
 ### **Useful links**
 
