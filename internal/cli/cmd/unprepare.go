@@ -34,7 +34,7 @@ Do you wish to remove these?
 
 Type "unprepare" for them to be removed.`, "")
 
-			if result != "yes" {
+			if result != "unprepare" {
 				return context.Canceled
 			}
 
