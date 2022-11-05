@@ -6,7 +6,6 @@ package kubeobserver
 
 import (
 	"context"
-	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,30 +17,31 @@ import (
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) *orchestration.Event_WaitStatus {
+func PodStatusToWaitStatus(ns, name string, ps v1.PodStatus) *orchestration.Event_WaitStatus {
 	if ps.Phase == v1.PodPending && len(ps.ContainerStatuses) == 0 {
 		return &orchestration.Event_WaitStatus{Description: "Pending..."}
 	}
 
-	cw := &runtime.ContainerWaitStatus{}
+	cw := &runtime.ContainerWaitStatus{
+		IsReady: matchPodCondition(ps, v1.PodReady),
+	}
+
 	for _, container := range ps.ContainerStatuses {
-		if lbl := containerStateLabel(&ps, container.State); lbl != "" {
+		if status := StatusToDiagnostic(container); status != nil {
 			cw.Containers = append(cw.Containers, &runtime.ContainerUnitWaitStatus{
-				Reference:   kubedef.MakePodRef(ns, name, container.Name, nil),
-				Name:        container.Name,
-				StatusLabel: lbl,
-				Status:      StatusToDiagnostic(container),
+				Reference: kubedef.MakePodRef(ns, name, container.Name, nil),
+				Name:      container.Name,
+				Status:    status,
 			})
 		}
 	}
 
 	for _, init := range ps.InitContainerStatuses {
-		if lbl := containerStateLabel(nil, init.State); lbl != "" {
+		if status := StatusToDiagnostic(init); status != nil {
 			cw.Initializers = append(cw.Initializers, &runtime.ContainerUnitWaitStatus{
-				Reference:   kubedef.MakePodRef(ns, name, init.Name, nil),
-				Name:        init.Name,
-				StatusLabel: lbl,
-				Status:      StatusToDiagnostic(init),
+				Reference: kubedef.MakePodRef(ns, name, init.Name, nil),
+				Name:      init.Name,
+				Status:    status,
 			})
 		}
 	}
@@ -50,31 +50,6 @@ func WaiterFromPodStatus(ns, name string, ps v1.PodStatus) *orchestration.Event_
 		Description: cw.WaitStatus(),
 		Opaque:      protos.WrapAnyOrDie(cw),
 	}
-}
-
-func containerStateLabel(ps *v1.PodStatus, st v1.ContainerState) string {
-	if st.Running != nil {
-		label := "Running"
-		if ps != nil {
-			if !matchPodCondition(*ps, v1.PodReady) {
-				label += " (not ready)"
-			}
-		}
-		return label
-	}
-
-	if st.Waiting != nil {
-		return st.Waiting.Reason
-	}
-
-	if st.Terminated != nil {
-		if st.Terminated.ExitCode == 0 {
-			return ""
-		}
-		return fmt.Sprintf("Terminated: %s (exit code %d)", st.Terminated.Reason, st.Terminated.ExitCode)
-	}
-
-	return "(Unknown)"
 }
 
 func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string, replicaset string) ([]*orchestration.Event_WaitStatus, error) {
@@ -96,7 +71,7 @@ func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string,
 			continue
 		}
 
-		statuses = append(statuses, WaiterFromPodStatus(pod.Namespace, pod.Name, pod.Status))
+		statuses = append(statuses, PodStatusToWaitStatus(pod.Namespace, pod.Name, pod.Status))
 	}
 
 	return statuses, nil

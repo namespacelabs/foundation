@@ -240,7 +240,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
 							ev.ImplMetadata = meta
-							ev.WaitStatus = append(ev.WaitStatus, kobs.WaiterFromPodStatus(obj.GetNamespace(), obj.GetName(), ps))
+							ev.WaitStatus = append(ev.WaitStatus, kobs.PodStatusToWaitStatus(obj.GetNamespace(), obj.GetName(), ps))
 
 							var done bool
 							if ps.Phase == v1.PodFailed || ps.Phase == v1.PodSucceeded {

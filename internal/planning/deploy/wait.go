@@ -97,14 +97,14 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 					}
 					fmt.Fprintln(out, ":")
 
-					switch {
-					case diagnostics.Running:
+					switch diagnostics.State {
+					case runtimepb.Diagnostics_RUNNING:
 						fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
 						if err := cluster.Cluster().FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("    ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}); err != nil {
 							fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 						}
 
-					case diagnostics.Waiting:
+					case runtimepb.Diagnostics_WAITING:
 						fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
 						if diagnostics.Crashed {
 							fmt.Fprintf(out, "  Crashed, logs (last %d lines):\n", tailLinesOnFailure)
@@ -113,7 +113,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 							}
 						}
 
-					case diagnostics.Terminated:
+					case runtimepb.Diagnostics_TERMINATED:
 						if diagnostics.ExitCode > 0 {
 							fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
 							if err := cluster.Cluster().FetchLogsTo(ctx, text.NewIndentWriter(out, []byte("  ")), ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}); err != nil {

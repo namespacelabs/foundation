@@ -10,13 +10,13 @@ import (
 )
 
 func (d *Diagnostics) Failed() bool {
-	return d.Terminated && d.ExitCode > 0
+	return d.State == Diagnostics_TERMINATED && d.ExitCode > 0
 }
 
 func (cw *ContainerWaitStatus) WaitStatus() string {
 	var inits []string
 	for _, init := range cw.Initializers {
-		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, init.StatusLabel))
+		inits = append(inits, fmt.Sprintf("%s: %s", init.Name, containerStateLabel(init)))
 	}
 
 	joinedInits := strings.Join(inits, "; ")
@@ -25,15 +25,38 @@ func (cw *ContainerWaitStatus) WaitStatus() string {
 	case 0:
 		return joinedInits
 	case 1:
-		return box(cw.Containers[0].StatusLabel, joinedInits)
+		return box(containerStateLabel(cw.Containers[0]), joinedInits)
 	default:
 		var labels []string
 		for _, ctr := range cw.Containers {
-			labels = append(labels, fmt.Sprintf("%s: %s", ctr.Name, ctr.StatusLabel))
+			labels = append(labels, fmt.Sprintf("%s: %s", ctr.Name, containerStateLabel(ctr)))
 		}
 
 		return box(fmt.Sprintf("{%s}", strings.Join(labels, "; ")), joinedInits)
 	}
+}
+
+func containerStateLabel(st *ContainerUnitWaitStatus) string {
+	switch st.Status.GetState() {
+	case Diagnostics_RUNNING:
+		label := "Running"
+		if !st.Status.GetIsReady() {
+			label += " (not ready)"
+		}
+		return label
+
+	case Diagnostics_WAITING:
+		return st.Status.GetWaitingReason()
+
+	case Diagnostics_TERMINATED:
+		if st.Status.GetExitCode() == 0 {
+			return ""
+		}
+
+		return fmt.Sprintf("Terminated: %s (exit code %d)", st.Status.GetTerminatedReason(), st.Status.GetExitCode())
+	}
+
+	return "(Unknown)"
 }
 
 func box(a, b string) string {

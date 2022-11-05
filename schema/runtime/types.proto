@@ -20,15 +20,17 @@ enum ContainerKind {
 }
 
 message ContainerWaitStatus {
+    bool                             is_ready     = 3;
     repeated ContainerUnitWaitStatus containers   = 1;
     repeated ContainerUnitWaitStatus initializers = 2;
 }
 
 message ContainerUnitWaitStatus {
-    ContainerReference reference    = 1;
-    string             Name         = 2;
-    string             status_label = 3;
-    Diagnostics        status       = 4;
+    ContainerReference reference = 1;
+    string             Name      = 2;
+    Diagnostics        status    = 4;
+
+    reserved 3;
 }
 
 message ContainerReference {
@@ -39,15 +41,25 @@ message ContainerReference {
 }
 
 message Diagnostics {
-    bool                      running           = 1;
-    google.protobuf.Timestamp started           = 2;
-    bool                      waiting           = 3;
-    string                    waiting_reason    = 4;
-    bool                      crashed           = 5;
-    bool                      terminated        = 6;
-    string                    terminated_reason = 7;
-    int32                     exit_code         = 8;
-    int32                     restart_count     = 9;
+    enum State {
+        STATE_UNKNOWN = 0;
+        RUNNING       = 1;
+        WAITING       = 2;
+        TERMINATED    = 3;
+    }
+
+    State                     state         = 11;
+    google.protobuf.Timestamp started       = 2;
+    bool                      is_ready      = 10;
+    int32                     restart_count = 9;
+
+    string waiting_reason = 4;
+    bool   crashed        = 5;
+
+    string terminated_reason = 7;
+    int32  exit_code         = 8;
+
+    reserved 1, 3, 6;
 }
 
 message SetContainerField {

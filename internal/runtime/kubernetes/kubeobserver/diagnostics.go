@@ -14,19 +14,22 @@ func StatusToDiagnostic(status v1.ContainerStatus) *runtime.Diagnostics {
 	diag := &runtime.Diagnostics{}
 
 	diag.RestartCount = status.RestartCount
+	diag.IsReady = status.Ready
 
 	switch {
 	case status.State.Running != nil:
-		diag.Running = true
+		diag.State = runtime.Diagnostics_RUNNING
 		diag.Started = timestamppb.New(status.State.Running.StartedAt.Time)
 	case status.State.Waiting != nil:
-		diag.Waiting = true
+		diag.State = runtime.Diagnostics_WAITING
 		diag.WaitingReason = status.State.Waiting.Reason
 		diag.Crashed = status.State.Waiting.Reason == "CrashLoopBackOff"
 	case status.State.Terminated != nil:
-		diag.Terminated = true
+		diag.State = runtime.Diagnostics_TERMINATED
 		diag.TerminatedReason = status.State.Terminated.Reason
 		diag.ExitCode = status.State.Terminated.ExitCode
+	default:
+		return nil
 	}
 
 	return diag
