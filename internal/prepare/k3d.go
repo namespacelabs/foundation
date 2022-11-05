@@ -30,7 +30,7 @@ const registryName = "k3d-ns-registry.nslocal.host"
 
 func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
-		tasks.Action("prepare.k3d").HumanReadablef("Prepare the local k3d environment"),
+		tasks.Action("prepare.k3d").HumanReadablef("Preparing a local Kubernetes cluster (k3s running in Docker)"),
 		compute.Inputs().Str("clusterName", clusterName).Indigestible("env", env),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {

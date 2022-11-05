@@ -58,11 +58,7 @@ func NewPrepareCmd() *cobra.Command {
 }
 
 func downloadPrebuilts(env cfg.Context) compute.Computable[[]oci.ResolvableImage] {
-	var prebuilts = []schema.PackageName{
-		"namespacelabs.dev/foundation/std/monitoring/grafana/tool",
-		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool",
-		"namespacelabs.dev/foundation/std/secrets/kubernetes",
-	}
+	var prebuilts = []schema.PackageName{}
 
 	return prepare.DownloadPrebuilts(env, prebuilts)
 }

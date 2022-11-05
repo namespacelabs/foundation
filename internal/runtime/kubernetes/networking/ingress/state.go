@@ -24,7 +24,7 @@ func RegisterRuntimeState() {
 			return nil, fnerrors.InternalError("%s: only supported with Kubernetes clusters", nginxIngressState)
 		}
 
-		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until nginx (ingress) is running").Run(ctx, func(ctx context.Context) error {
+		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller (nginx) is ready").Run(ctx, func(ctx context.Context) error {
 			return nginx.IngressWaiter(kube.PreparedClient().RESTConfig).WaitUntilReady(ctx, nil)
 		}); err != nil {
 			return nil, err

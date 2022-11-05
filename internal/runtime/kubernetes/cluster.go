@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -79,19 +78,6 @@ func (u *Cluster) PreparedClient() client.Prepared {
 
 func (u *Cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
 	return &ClusterNamespace{cluster: u, target: newTarget(env)}, nil
-}
-
-func (r *Cluster) PrepareCluster(ctx context.Context) (*runtime.DeploymentPlan, error) {
-	var state runtime.DeploymentPlan
-
-	ingressDefs, err := ingress.EnsureStack(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	state.Definitions = ingressDefs
-
-	return &state, nil
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {

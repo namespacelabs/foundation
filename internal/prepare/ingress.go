@@ -44,14 +44,15 @@ func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes
 		}
 	}
 
-	state, err := kube.PrepareCluster(ctx)
+	ingressDefs, err := ingress.EnsureStack(ctx)
 	if err != nil {
 		return err
 	}
 
-	g := execution.NewPlan(state.Definitions...)
+	g := execution.NewPlan(ingressDefs...)
 
-	if err := execution.Execute(ctx, env, "ingress.deploy", g, nil, runtime.ClusterInjection.With(kube)); err != nil {
+	// Don't wait for the deployment to complete.
+	if err := execution.RawExecute(ctx, env, "ingress.deploy", g, runtime.ClusterInjection.With(kube)); err != nil {
 		return err
 	}
 

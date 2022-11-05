@@ -19,6 +19,8 @@ import (
 )
 
 func NewUnprepareCmd() *cobra.Command {
+	var pruneCache bool
+
 	cmd := &cobra.Command{
 		Use:   "unprepare",
 		Short: "Removes Namespace-created docker containers and user-level caches.",
@@ -52,9 +54,11 @@ Type "unprepare" for them to be removed.`, "")
 				return err
 			}
 
-			// Prune cached build artifacts and command history artifacts.
-			if err := cache.Prune(ctx); err != nil {
-				return err
+			if pruneCache {
+				// Prune cached build artifacts and command history artifacts.
+				if err := cache.Prune(ctx); err != nil {
+					return err
+				}
 			}
 
 			fmt.Fprintf(console.Stdout(ctx), "The contents of your %q are no longer valid.\n", devhost.DevHostFilename)
@@ -62,6 +66,8 @@ Type "unprepare" for them to be removed.`, "")
 			return nil
 		}),
 	}
+
+	cmd.Flags().BoolVar(&pruneCache, "prune_cache", pruneCache, "If set, also triggers a global cache prune.")
 
 	return cmd
 }
