@@ -35,7 +35,7 @@ type baseImage struct {
 	manifest    *v1.Manifest
 }
 
-type cachedImage struct {
+type cachedImageCore struct {
 	baseImage
 	cache cache.Cache
 }
@@ -56,7 +56,7 @@ func (li *baseImage) RawConfigFile() ([]byte, error) {
 	return li.rawConfig, nil
 }
 
-func (li *cachedImage) LayerByDigest(h v1.Hash) (partial.CompressedLayer, error) {
+func (li *cachedImageCore) LayerByDigest(h v1.Hash) (partial.CompressedLayer, error) {
 	if h == li.manifest.Config.Digest {
 		return &compressedBlob{
 			cache: li.cache,
@@ -267,7 +267,7 @@ func (imageCacheable) ComputeDigest(ctx context.Context, v interface{}) (schema.
 }
 
 func (imageCacheable) LoadCached(ctx context.Context, c cache.Cache, _ compute.CacheableInstance, h schema.Digest) (compute.Result[v1.Image], error) {
-	img, err := loadFromCache(ctx, c, v1.Hash(h))
+	img, err := lazyLoadFromCache(ctx, c, v1.Hash(h))
 	if err != nil {
 		return compute.Result[v1.Image]{}, err
 	}
@@ -288,7 +288,14 @@ func (imageCacheable) Cache(ctx context.Context, c cache.Cache, img v1.Image) (s
 		return schema.Digest{}, err
 	}
 
-	if err := writeImage(ctx, c, img); err != nil {
+	if _, ok := img.(*cachedImage); ok {
+		// Don't write back to the cache an image that was loaded from the cache.
+		return schema.Digest(d), nil
+	}
+
+	if err := tasks.Action("oci.image-cache.write").LogLevel(2).Arg("digest", d.String()).Run(ctx, func(ctx context.Context) error {
+		return writeImage(ctx, c, img)
+	}); err != nil {
 		return schema.Digest{}, err
 	}
 
@@ -312,7 +319,7 @@ func loadCachedManifest(ctx context.Context, cache cache.Cache, d v1.Hash) ([]by
 	return rawManifest, m, nil
 }
 
-func loadFromCache(ctx context.Context, cache cache.Cache, d v1.Hash) (v1.Image, error) {
+func lazyLoadFromCache(ctx context.Context, cache cache.Cache, d v1.Hash) (v1.Image, error) {
 	rawManifest, m, err := loadCachedManifest(ctx, cache, d)
 	if err != nil {
 		return nil, err
@@ -328,11 +335,14 @@ func loadFromCache(ctx context.Context, cache cache.Cache, d v1.Hash) (v1.Image,
 			return nil, err
 		}
 
-		ci := &cachedImage{cache: cache}
+		ci := &cachedImageCore{cache: cache}
 		ci.rawManifest = rawManifest
 		ci.rawConfig = rawConfig
 		ci.manifest = m
-		return partial.CompressedToImage(ci)
+
+		return &cachedImage{
+			CompressedImageCore: ci,
+		}, nil
 	}
 
 	return nil, nil
@@ -416,7 +426,7 @@ func loadCachedResolvable(ctx context.Context, cache cache.Cache, h v1.Hash) (Re
 		return rawImageIndex{index: cachedIndex{rawManifest: rawManifest, parsed: idx, cache: cache, children: children}}, nil
 
 	case isImageMediaType(m.MediaType):
-		image, err := loadFromCache(ctx, cache, h)
+		image, err := lazyLoadFromCache(ctx, cache, h)
 		if err != nil {
 			return nil, err
 		}
@@ -489,59 +499,58 @@ func writeImage(ctx context.Context, cache cache.Cache, img Image) error {
 		return err
 	}
 
-	return tasks.Action("oci.image-cache.write").LogLevel(2).Arg("digest", digest.String()).Run(ctx, func(ctx context.Context) error {
-		manifest, err := img.RawManifest()
+	manifest, err := img.RawManifest()
+	if err != nil {
+		return err
+	}
+
+	cfgBlob, err := img.RawConfigFile()
+	if err != nil {
+		return err
+	}
+
+	cfgName, err := img.ConfigName()
+	if err != nil {
+		return err
+	}
+
+	layers, err := img.Layers()
+	if err != nil {
+		return err
+	}
+
+	totalBytes := uint64(len(manifest) + len(cfgBlob))
+
+	for _, layer := range layers {
+		size, err := layer.Size()
 		if err != nil {
 			return err
 		}
 
-		cfgBlob, err := img.RawConfigFile()
-		if err != nil {
-			return err
-		}
+		totalBytes += uint64(size)
+	}
 
-		layers, err := img.Layers()
-		if err != nil {
-			return err
-		}
+	progress := artifacts.NewProgressWriter(totalBytes, nil)
+	tasks.Attachments(ctx).SetProgress(progress)
 
-		totalBytes := uint64(len(manifest) + len(cfgBlob))
+	// Write the layers concurrently.
+	eg := executor.New(ctx, "oci.image-cache.write-layers")
+	for _, layer := range layers {
+		layer := layer // Capture layer.
+		eg.Go(func(ctx context.Context) error {
+			return writeLayer(ctx, cache, layer, progress)
+		})
+	}
 
-		for _, layer := range layers {
-			size, err := layer.Size()
-			if err != nil {
-				return err
-			}
+	eg.Go(func(ctx context.Context) error {
+		return cache.WriteBlob(ctx, schema.Digest(cfgName), progress.WrapBytesAsReader(cfgBlob))
+	})
 
-			totalBytes += uint64(size)
-		}
-
-		progress := artifacts.NewProgressWriter(totalBytes, nil)
-		tasks.Attachments(ctx).SetProgress(progress)
-
-		// Write the layers concurrently.
-		eg := executor.New(ctx, "oci.image-cache.write-layers")
-		for _, layer := range layers {
-			layer := layer // Capture layer.
-			eg.Go(func(ctx context.Context) error {
-				return writeLayer(ctx, cache, layer, progress)
-			})
-		}
-		if err := eg.Wait(); err != nil {
-			return err
-		}
-
-		cfgName, err := img.ConfigName()
-		if err != nil {
-			return err
-		}
-
-		if err := cache.WriteBlob(ctx, schema.Digest(cfgName), progress.WrapBytesAsReader(cfgBlob)); err != nil {
-			return err
-		}
-
+	eg.Go(func(ctx context.Context) error {
 		return cache.WriteBlob(ctx, schema.Digest(digest), progress.WrapBytesAsReader(manifest))
 	})
+
+	return eg.Wait()
 }
 
 func writeLayer(ctx context.Context, cache cache.Cache, layer v1.Layer, progress artifacts.ProgressWriter) error {

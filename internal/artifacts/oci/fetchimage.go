@@ -79,33 +79,47 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 		tasks.Attachments(ctx).AddResult("index", true)
 
 		return imageForPlatform(idx, r.platform, func(h v1.Hash) (Image, error) {
-			img, err := loadFromCache(ctx, compute.Cache(ctx), h)
-			if err != nil {
-				return nil, err
-			}
-
-			if img != nil {
-				return img, nil
-			}
-
-			d := ImageID{Repository: descriptor.Repository, Digest: h.String()}
-			fetched, err := fetchRemoteImage(ctx, d, r.opts)
-			if err != nil {
-				return nil, err
-			}
-
-			// Best effort caching.
-			_ = writeImage(ctx, compute.Cache(ctx), fetched)
-			return fetched, nil
+			return cacheAndReturn(ctx, ImageID{Repository: descriptor.Repository, Digest: h.String()}, r.opts)
 		})
 
 	case isImageMediaType(types.MediaType(descriptor.MediaType)):
 		imageid := compute.MustGetDepValue(deps, r.imageid.ImageID(), "imageid")
-
-		return fetchRemoteImage(ctx, imageid, r.opts)
+		return cacheAndReturn(ctx, imageid, r.opts)
 	}
 
 	return nil, fnerrors.BadInputError("unexpected media type: %s (expected image or image index)", descriptor.MediaType)
+}
+
+func cacheAndReturn(ctx context.Context, d ImageID, opts ResolveOpts) (Image, error) {
+	h, err := v1.NewHash(d.Digest)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to parse digest: %w", err)
+	}
+
+	img, err := lazyLoadFromCache(ctx, compute.Cache(ctx), h)
+	if err != nil {
+		return nil, err
+	}
+
+	if img != nil {
+		return img, nil
+	}
+
+	fetched, err := fetchRemoteImage(ctx, d, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	// We force a write, to ensure that all remote bytes have been loaded before
+	// returning. This both means that we know that the image has been fully
+	// loaded, but also that the load is done when the context is still alive.
+	//
+	// NOTE: writeImage will attach a progress to the parent action.
+	if err := writeImage(ctx, compute.Cache(ctx), fetched); err != nil {
+		return nil, fnerrors.InternalError("failed to store image: %w", err)
+	}
+
+	return lazyLoadFromCache(ctx, compute.Cache(ctx), h)
 }
 
 func fetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (Image, error) {
