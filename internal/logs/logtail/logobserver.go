@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/atomic"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -51,6 +52,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 	var previousStack *schema.Stack
 	var previousEnv string
 	var previousFocus []string
+	var previousDeployed bool
 
 	// This map keeps track of which servers we're streaming logs for, keyed
 	// also by environment. This leads to a natural cancelation of servers that
@@ -63,6 +65,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		newStack := previousStack
 		newEnv := previousEnv
 		newFocus := previousFocus
+		newDeployed := previousDeployed
 
 		switch event.Operation {
 		case keyboard.OpSet:
@@ -72,6 +75,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 			newStack = event.StackUpdate.Stack
 			newEnv = event.StackUpdate.Env.GetName()
 			newFocus = event.StackUpdate.Focus
+			newDeployed = event.StackUpdate.Deployed
 
 		default:
 			continue
@@ -79,7 +83,8 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 		style := colors.Ctx(ctx)
 
-		if logging {
+		// Only start streaming after getting a Deployed signal, so the UX is better.
+		if logging && newDeployed {
 			for _, server := range newStack.GetEntry() {
 				if slices.Index(newFocus, server.Server.PackageName) < 0 {
 					continue
@@ -99,24 +104,23 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 					server := server.Server // Capture server.
 					go func() {
-						// There is a race with the "Network plan" block also receiving the same event,
-						// and we want to log this message after the network plan has been printed,
-						// so doing it in a goroutine.
-						fmt.Fprintf(out, "%s %s %s\n", style.Comment.Apply("── Starting log for"), style.LogArgument.Apply(key), style.Comment.Apply("──"))
+						var once sync.Once
 
 						env, err := l.LoadEnvironment(newEnv)
 						if err == nil {
-							containerCount := 0
+							var containerCount atomic.Int32
 							err = Listen(ctxWithCancel, env, server, func(ev runtime.ObserveEvent) io.Writer {
 								return &writerWithHeader{
 									onStart: func(w io.Writer) {
-										if containerCount > 0 {
+										once.Do(func() {
+											fmt.Fprintf(out, "%s %s %s\n", style.Comment.Apply("── Logging"), style.LogArgument.Apply(key), style.Comment.Apply("──"))
+										})
+
+										if containerCount.Inc() > 1 {
 											fmt.Fprintf(out, "%s\n", style.Comment.Apply("You may still observe logs of previous instances of the same server."))
+											fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", ev.HumanReadableID)))
+											fmt.Fprintln(w)
 										}
-										containerCount++
-										fmt.Fprintln(w)
-										fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", ev.HumanReadableID)))
-										fmt.Fprintln(w)
 									},
 									w: console.Output(ctx, ev.HumanReadableID),
 								}
@@ -141,12 +145,13 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		}
 
 		if len(keys) > 0 {
-			fmt.Fprintf(out, "%s %s\n", style.Header.Apply("Stopped listening to logs of:"), style.LogArgument.Apply(strings.Join(keys, ", ")))
+			fmt.Fprintf(out, "%s %s %s\n", style.Header.Apply("── No longer logging"), style.LogArgument.Apply(strings.Join(keys, ", ")), style.Comment.Apply("──"))
 		}
 
 		previousStack = newStack
 		previousEnv = newEnv
 		previousFocus = newFocus
+		previousDeployed = newDeployed
 
 		switch event.Operation {
 		case keyboard.OpSet:
