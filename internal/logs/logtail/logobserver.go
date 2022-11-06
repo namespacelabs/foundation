@@ -113,7 +113,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 								return &writerWithHeader{
 									onStart: func(w io.Writer) {
 										once.Do(func() {
-											fmt.Fprintf(out, "%s %s %s\n", style.Comment.Apply("── Logging"), style.LogArgument.Apply(key), style.Comment.Apply("──"))
+											fmt.Fprintf(out, "%s %s\n", ">>> Logging", style.LogArgument.Apply(key))
 										})
 
 										if containerCount.Inc() > 1 {
@@ -145,7 +145,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 		}
 
 		if len(keys) > 0 {
-			fmt.Fprintf(out, "%s %s %s\n", style.Header.Apply("── No longer logging"), style.LogArgument.Apply(strings.Join(keys, ", ")), style.Comment.Apply("──"))
+			fmt.Fprintf(out, "%s %s\n", "<<< No longer logging", style.LogArgument.Apply(strings.Join(keys, ", ")))
 		}
 
 		previousStack = newStack
