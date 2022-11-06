@@ -142,6 +142,7 @@ func (o *Observer) post(update *Update) {
 				Stack:       update.StackUpdate.Stack,
 				Focus:       update.StackUpdate.Focus,
 				NetworkPlan: update.StackUpdate.NetworkPlan,
+				Deployed:    update.StackUpdate.Deployed,
 			}
 		}
 	} else {

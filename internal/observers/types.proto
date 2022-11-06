@@ -17,4 +17,5 @@ message StackUpdateEvent {
     schema.Stack               stack        = 2;
     repeated string            focus        = 3;
     schema.storage.NetworkPlan network_plan = 4;
+    bool                       deployed     = 5;
 }

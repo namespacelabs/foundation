@@ -69,7 +69,8 @@ func NewLogsCmd() *cobra.Command {
 				Stack: &schema.Stack{
 					Entry: []*schema.Stack_Entry{server.StackEntry()},
 				},
-				Focus: []string{server.Proto().PackageName},
+				Focus:    []string{server.Proto().PackageName},
+				Deployed: true,
 			}
 
 			observer := observers.Static()

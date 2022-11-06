@@ -35,15 +35,18 @@ type logState struct {
 }
 
 func (l Keybinding) Key() string { return "l" }
-func (l Keybinding) Label(disabled bool) string {
-	if disabled {
-		return "stream logs"
+
+func (l Keybinding) States() []keyboard.HandlerState {
+	return []keyboard.HandlerState{
+		{State: "logging", Label: "pause logs "}, // Additional space at the end for a better allignment.
+		{State: "notlogging", Label: "stream logs"},
 	}
-	return "pause logs " // Additional space at the end for a better allignment.
 }
 
 func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
-	logging := false
+	defer close(control)
+
+	logging := true
 
 	var previousStack *schema.Stack
 	var previousEnv string
@@ -63,17 +66,15 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 		switch event.Operation {
 		case keyboard.OpSet:
-			// TODO: provide a way to set the "enabled" default.
-			logging = !event.Enabled
+			logging = event.CurrentState == "logging"
 
 		case keyboard.OpStackUpdate:
 			newStack = event.StackUpdate.Stack
 			newEnv = event.StackUpdate.Env.GetName()
 			newFocus = event.StackUpdate.Focus
 
-			if event.StackUpdate.NetworkPlan != nil && event.StackUpdate.NetworkPlan.IsDeploymentFinished() {
-				logging = true
-			}
+		default:
+			continue
 		}
 
 		style := colors.Ctx(ctx)
@@ -149,11 +150,15 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 		switch event.Operation {
 		case keyboard.OpSet:
-			c := keyboard.Control{Operation: keyboard.ControlAck}
-			c.AckEvent.HandlerID = event.HandlerID
+			c := keyboard.Control{}
 			c.AckEvent.EventID = event.EventID
-
 			control <- c
+
+		case keyboard.OpStackUpdate:
+			set := event.StackUpdate.Deployed
+			control <- keyboard.Control{
+				SetEnabled: &set,
+			}
 		}
 	}
 

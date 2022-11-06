@@ -29,26 +29,27 @@ func NewNetworkPlanKeybinding(name string) *NetworkPlanKeybinding {
 
 func (k NetworkPlanKeybinding) Key() string { return "s" }
 
-func (k NetworkPlanKeybinding) Label(enabled bool) string {
-	if !enabled {
-		return "show support servers"
+func (k NetworkPlanKeybinding) States() []keyboard.HandlerState {
+	return []keyboard.HandlerState{
+		{State: "hidden", Label: "show support servers"},
+		{State: "shown", Label: "hide support servers"},
 	}
-	return "hide support servers"
 }
 
 func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
+	defer close(control)
+
 	showSupportServers := false
 	var networkPlan *storage.NetworkPlan
 
 	for event := range ch {
 		switch event.Operation {
 		case keyboard.OpSet:
-			showSupportServers := event.Enabled
+			showSupportServers := event.CurrentState == "shown"
 
 			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
 
-			c := keyboard.Control{Operation: keyboard.ControlAck}
-			c.AckEvent.HandlerID = event.HandlerID
+			c := keyboard.Control{}
 			c.AckEvent.EventID = event.EventID
 
 			control <- c
@@ -57,6 +58,11 @@ func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Even
 			networkPlan = event.StackUpdate.NetworkPlan
 
 			k.renderStickyNetworkPlan(ctx, networkPlan, showSupportServers)
+
+			set := event.StackUpdate.Deployed
+			control <- keyboard.Control{
+				SetEnabled: &set,
+			}
 		}
 	}
 }

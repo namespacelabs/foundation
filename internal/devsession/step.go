@@ -129,6 +129,8 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			s.Stack = stack.Proto()
 		})
 
+		observers = append(observers, updateDeploymentStatus{do.session})
+
 		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster.Planner(), stack)
 		if err != nil {
 			return err
@@ -191,6 +193,20 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		}
 	}
 
+	return nil
+}
+
+type updateDeploymentStatus struct {
+	session *Session
+}
+
+func (u updateDeploymentStatus) OnDeployment(ctx context.Context) {
+	u.session.updateStackInPlace(func(s *Stack) {
+		s.Deployed = true
+	})
+}
+
+func (updateDeploymentStatus) Close() error {
 	return nil
 }
 

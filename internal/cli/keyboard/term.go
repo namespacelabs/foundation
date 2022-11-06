@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/morikuni/aec"
@@ -26,10 +27,16 @@ import (
 type Handler interface {
 	// Key MUST be a pure function. E.g. "l"
 	Key() string
-	// Label MUST be a pure function. E.g. "stream logs"
-	Label(bool) string
 	// Must only leave when chan Event is closed. OpSet events must be Acknowledged by writing to Control.
 	Handle(context.Context, chan Event, chan<- Control)
+
+	// The first state is the initial state as well.
+	States() []HandlerState
+}
+
+type HandlerState struct {
+	State string
+	Label string
 }
 
 type EventOp string
@@ -38,29 +45,27 @@ type ControlOp string
 const (
 	OpStackUpdate EventOp = "op.stackupdate"
 	OpSet         EventOp = "op.set"
-
-	ControlAck ControlOp = "control.ack"
 )
 
 type Event struct {
-	HandlerID   int
 	EventID     string
 	Operation   EventOp
 	StackUpdate struct {
 		Env         *schema.Environment
 		Stack       *schema.Stack
+		Deployed    bool
 		Focus       []string
 		NetworkPlan *storage.NetworkPlan
 	}
-	Enabled bool
+	CurrentState string
 }
 
 type Control struct {
-	Operation ControlOp
+	HandlerID int
 	AckEvent  struct {
-		HandlerID int
-		EventID   string
+		EventID string
 	}
+	SetEnabled *bool
 }
 
 type HandleOpts struct {
@@ -141,33 +146,49 @@ func (m *program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-type handlerState struct {
+type internalState struct {
 	Handler       Handler
 	HandlerID     int
 	Ch            chan Event
-	ExitCh        chan struct{}
 	Enabled       bool
 	HandlingEvent string
+	States        []HandlerState
+	Current       int
 }
 
 func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Handler, keych chan tea.KeyMsg) {
 	control := make(chan Control)
-	state := make([]*handlerState, len(handlers))
+	state := make([]*internalState, len(handlers))
+
+	var goroutines sync.WaitGroup
 
 	for k, handler := range handlers {
-		st := &handlerState{
+		k := k // Close k.
+		st := &internalState{
 			Handler:   handler,
 			HandlerID: k,
-			Ch:        make(chan Event),
-			ExitCh:    make(chan struct{}),
+			Ch:        make(chan Event, 1),
+			States:    handler.States(),
+			Current:   0,
 			Enabled:   false,
 		}
 
 		state[k] = st
 
+		goroutines.Add(1)
 		go func() {
-			defer close(st.ExitCh)
-			st.Handler.Handle(ctx, st.Ch, control)
+			handlerControl := make(chan Control, 1)
+
+			go func() {
+				for op := range handlerControl {
+					op.HandlerID = k
+					control <- op
+				}
+
+				goroutines.Done()
+			}()
+
+			st.Handler.Handle(ctx, st.Ch, handlerControl)
 		}()
 	}
 
@@ -176,14 +197,10 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 			close(state.Ch)
 		}
 
-		for _, state := range state {
-			<-state.ExitCh // Wait until the go routine exits.
-		}
+		// Wait until the go routine exits.
+		goroutines.Wait()
 
 		// Only close control after all goroutines have exited.
-		//
-		// XXX there's a race condition here: if a go routine is waiting on
-		// writing to control before returning, then we may never arrive here.
 		close(control)
 	}()
 
@@ -191,12 +208,11 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 	for {
 		var labels []string
 		for _, state := range state {
-			style := aec.DefaultF
-			if state.HandlingEvent != "" {
-				style = aec.LightBlackF
+			if !state.Enabled || state.HandlingEvent != "" {
+				labels = append(labels, aec.LightBlackF.Apply(fmt.Sprintf(" (%s): %s", state.Handler.Key(), state.States[state.Current].Label)))
+			} else {
+				labels = append(labels, fmt.Sprintf(" (%s): %s", aec.Bold.Apply(state.Handler.Key()), state.States[state.Current].Label))
 			}
-
-			labels = append(labels, fmt.Sprintf(" (%s): %s", aec.Bold.Apply(state.Handler.Key()), style.Apply(state.Handler.Label(state.Enabled))))
 		}
 
 		keybindings := fmt.Sprintf(" %s%s (%s): quit", aec.LightBlackF.Apply("Key bindings"), strings.Join(labels, ""), aec.Bold.Apply("q"))
@@ -219,7 +235,6 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 
 				for _, handler := range state {
 					ev := Event{
-						HandlerID: handler.HandlerID,
 						EventID:   fmt.Sprintf("%d", eventID),
 						Operation: OpStackUpdate,
 					}
@@ -227,6 +242,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 					ev.StackUpdate.Stack = stack
 					ev.StackUpdate.Focus = focus
 					ev.StackUpdate.NetworkPlan = networkPlan
+					ev.StackUpdate.Deployed = update.Deployed
 					handler.Ch <- ev
 				}
 			}
@@ -242,15 +258,18 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 				}
 
 				// Don't allow multiple state changes until the handler acknowledges the command.
-				if state.HandlingEvent == "" {
+				if state.HandlingEvent == "" && state.Enabled {
 					state.HandlingEvent = fmt.Sprintf("%d", eventID)
-					state.Enabled = !state.Enabled
+
+					state.Current++
+					if state.Current >= len(state.States) {
+						state.Current = 0
+					}
 
 					state.Ch <- Event{
-						HandlerID: state.HandlerID,
-						EventID:   state.HandlingEvent,
-						Operation: OpSet,
-						Enabled:   state.Enabled,
+						EventID:      state.HandlingEvent,
+						Operation:    OpSet,
+						CurrentState: state.States[state.Current].State,
 					}
 				}
 
@@ -258,15 +277,17 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 			}
 
 		case c := <-control:
-			if c.Operation == ControlAck {
-				if c.AckEvent.HandlerID < 0 || c.AckEvent.HandlerID >= len(state) {
-					panic("handler id is invalid")
-				}
+			if c.HandlerID < 0 || c.HandlerID >= len(state) {
+				panic("handler id is invalid")
+			}
 
-				state := state[c.AckEvent.HandlerID]
-				if state.HandlingEvent == c.AckEvent.EventID {
-					state.HandlingEvent = ""
-				}
+			state := state[c.HandlerID]
+			if state.HandlingEvent == c.AckEvent.EventID {
+				state.HandlingEvent = ""
+			}
+
+			if c.SetEnabled != nil {
+				state.Enabled = *c.SetEnabled
 			}
 
 		case <-ctx.Done():

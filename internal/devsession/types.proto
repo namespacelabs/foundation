@@ -31,6 +31,7 @@ message Stack {
     // TODO: remove and use native Web rendering.
     string                     rendered_port_forwarding = 10;
     schema.storage.NetworkPlan network_plan             = 12;
+    bool                       deployed                 = 13;
 }
 
 message ForwardedPort {
