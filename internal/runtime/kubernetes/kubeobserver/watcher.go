@@ -19,14 +19,14 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func WatchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool)) (V, error) {
+func WatchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool, error)) (V, error) {
 	return tasks.Return(ctx, tasks.Action(actionName).Arg("id", object.GetId()).Arg("name", object.GetName()),
 		func(ctx context.Context) (V, error) {
 			return WatchPods(ctx, cli, namespace, kubedef.SelectById(object), callback)
 		})
 }
 
-func WatchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string, labels map[string]string, callback func(corev1.Pod) (V, bool)) (V, error) {
+func WatchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string, labels map[string]string, callback func(corev1.Pod) (V, bool, error)) (V, error) {
 	var empty V
 
 	for {
@@ -50,7 +50,11 @@ func WatchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string,
 				continue
 			}
 
-			v, done := callback(*pod)
+			v, done, err := callback(*pod)
+			if err != nil {
+				return v, err
+			}
+
 			if done {
 				return v, nil
 			}

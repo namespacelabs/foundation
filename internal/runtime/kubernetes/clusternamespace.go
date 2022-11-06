@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sort"
 	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -191,104 +190,76 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 		Instance   *runtimepb.ContainerReference
 		Version    string
 		Deployable *runtimepb.Deployable
-		CreatedAt  time.Time // used for sorting
 	}
 
-	// XXX use a watch
 	announced := map[string]Entry{}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			// No cancelation, moving along.
+	trackContainer := func(pod corev1.Pod, instance *runtimepb.ContainerReference) (bool, error) {
+		if _, has := announced[instance.UniqueId]; has {
+			return false, nil
 		}
 
-		pods, err := r.cluster.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
+		proto := runtime.DeployableToProto(srv)
+		entry := Entry{
+			Instance:   instance,
+			Version:    pod.ResourceVersion,
+			Deployable: proto,
+		}
+		announced[instance.UniqueId] = entry
+
+		return onInstance(runtime.ObserveEvent{
+			Deployable:         entry.Deployable,
+			ContainerReference: instance,
+			Version:            entry.Version,
+			Added:              true,
 		})
-		if err != nil {
-			return fnerrors.Wrapf(nil, err, "unable to list pods")
-		}
-
-		entries := []Entry{}
-		newM := map[string]struct{}{}
-		for _, pod := range pods.Items {
-			if pod.Status.Phase == corev1.PodRunning {
-				instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
-				proto := runtime.DeployableToProto(srv)
-
-				entries = append(entries, Entry{
-					Instance:   instance,
-					Version:    pod.ResourceVersion,
-					Deployable: proto,
-					CreatedAt:  pod.CreationTimestamp.Time,
-				})
-				newM[instance.UniqueId] = struct{}{}
-
-				if ObserveInitContainerLogs {
-					for _, container := range pod.Spec.InitContainers {
-						instance := kubedef.MakePodRef(r.target.namespace, pod.Name, container.Name, srv)
-						entries = append(entries, Entry{
-							Instance:   instance,
-							Version:    pod.ResourceVersion,
-							Deployable: proto,
-							CreatedAt:  pod.CreationTimestamp.Time,
-						})
-						newM[instance.UniqueId] = struct{}{}
-					}
-				}
-			}
-		}
-		sort.SliceStable(entries, func(i int, j int) bool {
-			return entries[i].CreatedAt.Before(entries[j].CreatedAt)
-		})
-
-		for k, entry := range announced {
-			if _, ok := newM[k]; ok {
-				delete(newM, k)
-			} else {
-				if done, err := onInstance(runtime.ObserveEvent{
-					Deployable:         entry.Deployable,
-					ContainerReference: entry.Instance,
-					Version:            entry.Version,
-					Removed:            true,
-				}); err != nil {
-					return err
-				} else if done {
-					return nil
-				}
-				// The previously announced pod is not present in the current list and is already announced as `Removed`.
-				delete(announced, k)
-			}
-		}
-
-		for _, entry := range entries {
-			instance := entry.Instance
-			if _, ok := newM[instance.UniqueId]; !ok {
-				continue
-			}
-
-			if done, err := onInstance(runtime.ObserveEvent{
-				Deployable:         entry.Deployable,
-				ContainerReference: instance,
-				Version:            entry.Version,
-				Added:              true,
-			}); err != nil {
-				return err
-			} else if done {
-				return nil
-			}
-			announced[instance.UniqueId] = entry
-		}
-
-		if opts.OneShot {
-			return nil
-		}
-
-		time.Sleep(1 * time.Second)
 	}
+
+	untrackContainer := func(_ corev1.Pod, instance *runtimepb.ContainerReference) (bool, error) {
+		existing, has := announced[instance.UniqueId]
+		if !has {
+			return false, nil
+		}
+
+		delete(announced, instance.UniqueId)
+
+		return onInstance(runtime.ObserveEvent{
+			Deployable:         existing.Deployable,
+			ContainerReference: instance,
+			Version:            existing.Version,
+			Removed:            true,
+		})
+	}
+
+	_, err := kubeobserver.WatchPods(ctx, r.cluster.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {
+		instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
+
+		t := untrackContainer
+		if pod.Status.Phase == corev1.PodRunning {
+			t = trackContainer
+		}
+
+		if done, err := t(pod, instance); err != nil {
+			return nil, false, err
+		} else if done {
+			return nil, true, nil
+		}
+
+		if ObserveInitContainerLogs {
+			for _, container := range pod.Spec.InitContainers {
+				instance := kubedef.MakePodRef(r.target.namespace, pod.Name, container.Name, srv)
+				if done, err := t(pod, instance); err != nil {
+					return nil, false, err
+				} else if done {
+					return nil, true, nil
+				}
+			}
+		}
+
+		return nil, false, nil
+	})
+
+	return err
 }
 
 func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtime.Deployable) ([]runtime.ContainerStatus, error) {
@@ -300,9 +271,9 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	namespace := r.target.namespace
 	podName := kubedef.MakeDeploymentId(object)
 
-	return kubeobserver.WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool) {
+	return kubeobserver.WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool, error) {
 		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
-			return nil, false
+			return nil, false, nil
 		}
 
 		var all []corev1.ContainerStatus
@@ -324,7 +295,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 			status = append(status, st)
 		}
 
-		return status, true
+		return status, true, nil
 	})
 }
 
@@ -346,9 +317,9 @@ func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deploy
 
 func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtimepb.ContainerReference, error) {
 	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object,
-		func(pod corev1.Pod) ([]*runtimepb.ContainerReference, bool) {
+		func(pod corev1.Pod) ([]*runtimepb.ContainerReference, bool, error) {
 			if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
-				return nil, false
+				return nil, false, nil
 			}
 
 			var refs []*runtimepb.ContainerReference
@@ -360,7 +331,7 @@ func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime
 				refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, object))
 			}
 
-			return refs, true
+			return refs, true, nil
 		})
 }
 

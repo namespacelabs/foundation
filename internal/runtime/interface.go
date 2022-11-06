@@ -293,7 +293,6 @@ type FetchLogsOpts struct {
 }
 
 type ObserveOpts struct {
-	OneShot bool
 }
 
 type ObserveEvent struct {
