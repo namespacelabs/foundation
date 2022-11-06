@@ -297,8 +297,9 @@ type ObserveOpts struct {
 }
 
 type ObserveEvent struct {
+	Deployable         *runtimepb.Deployable
 	ContainerReference *runtimepb.ContainerReference
-	HumanReadableID    string
+	Version            string
 	Added              bool
 	Removed            bool
 }

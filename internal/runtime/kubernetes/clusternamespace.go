@@ -187,8 +187,15 @@ func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployabl
 
 // Return true on the callback to signal you're done observing.
 func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, opts runtime.ObserveOpts, onInstance func(runtime.ObserveEvent) (bool, error)) error {
+	type Entry struct {
+		Instance   *runtimepb.ContainerReference
+		Version    string
+		Deployable *runtimepb.Deployable
+		CreatedAt  time.Time // used for sorting
+	}
+
 	// XXX use a watch
-	announced := map[string]*runtimepb.ContainerReference{}
+	announced := map[string]Entry{}
 
 	for {
 		select {
@@ -205,43 +212,49 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 			return fnerrors.Wrapf(nil, err, "unable to list pods")
 		}
 
-		type Key struct {
-			Instance  *runtimepb.ContainerReference
-			CreatedAt time.Time // used for sorting
-		}
-
-		keys := []Key{}
+		entries := []Entry{}
 		newM := map[string]struct{}{}
-		labels := map[string]string{}
 		for _, pod := range pods.Items {
 			if pod.Status.Phase == corev1.PodRunning {
 				instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
-				keys = append(keys, Key{
-					Instance:  instance,
-					CreatedAt: pod.CreationTimestamp.Time,
+				proto := runtime.DeployableToProto(srv)
+
+				entries = append(entries, Entry{
+					Instance:   instance,
+					Version:    pod.ResourceVersion,
+					Deployable: proto,
+					CreatedAt:  pod.CreationTimestamp.Time,
 				})
 				newM[instance.UniqueId] = struct{}{}
-				labels[instance.UniqueId] = fmt.Sprintf("%s (%s)", srv.GetName(), pod.ResourceVersion)
 
 				if ObserveInitContainerLogs {
 					for _, container := range pod.Spec.InitContainers {
 						instance := kubedef.MakePodRef(r.target.namespace, pod.Name, container.Name, srv)
-						keys = append(keys, Key{Instance: instance, CreatedAt: pod.CreationTimestamp.Time})
+						entries = append(entries, Entry{
+							Instance:   instance,
+							Version:    pod.ResourceVersion,
+							Deployable: proto,
+							CreatedAt:  pod.CreationTimestamp.Time,
+						})
 						newM[instance.UniqueId] = struct{}{}
-						labels[instance.UniqueId] = fmt.Sprintf("%s:%s (%s)", srv.GetName(), container.Name, pod.ResourceVersion)
 					}
 				}
 			}
 		}
-		sort.SliceStable(keys, func(i int, j int) bool {
-			return keys[i].CreatedAt.Before(keys[j].CreatedAt)
+		sort.SliceStable(entries, func(i int, j int) bool {
+			return entries[i].CreatedAt.Before(entries[j].CreatedAt)
 		})
 
-		for k, ref := range announced {
+		for k, entry := range announced {
 			if _, ok := newM[k]; ok {
 				delete(newM, k)
 			} else {
-				if done, err := onInstance(runtime.ObserveEvent{ContainerReference: ref, Removed: true}); err != nil {
+				if done, err := onInstance(runtime.ObserveEvent{
+					Deployable:         entry.Deployable,
+					ContainerReference: entry.Instance,
+					Version:            entry.Version,
+					Removed:            true,
+				}); err != nil {
 					return err
 				} else if done {
 					return nil
@@ -251,22 +264,23 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 			}
 		}
 
-		for _, key := range keys {
-			instance := key.Instance
+		for _, entry := range entries {
+			instance := entry.Instance
 			if _, ok := newM[instance.UniqueId]; !ok {
 				continue
 			}
-			human := labels[instance.UniqueId]
-			if human == "" {
-				human = instance.HumanReference
-			}
 
-			if done, err := onInstance(runtime.ObserveEvent{ContainerReference: instance, HumanReadableID: human, Added: true}); err != nil {
+			if done, err := onInstance(runtime.ObserveEvent{
+				Deployable:         entry.Deployable,
+				ContainerReference: instance,
+				Version:            entry.Version,
+				Added:              true,
+			}); err != nil {
 				return err
 			} else if done {
 				return nil
 			}
-			announced[instance.UniqueId] = instance
+			announced[instance.UniqueId] = entry
 		}
 
 		if opts.OneShot {

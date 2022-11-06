@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -118,11 +119,11 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 
 										if containerCount.Inc() > 1 {
 											fmt.Fprintf(out, "%s\n", style.Comment.Apply("You may still observe logs of previous instances of the same server."))
-											fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", ev.HumanReadableID)))
+											fmt.Fprint(w, style.Comment.Apply(fmt.Sprintf("Log tail for %s", humanReadable(ev))))
 											fmt.Fprintln(w)
 										}
 									},
-									w: console.Output(ctx, ev.HumanReadableID),
+									w: console.Output(ctx, humanReadable(ev)),
 								}
 							})
 						}
@@ -211,7 +212,7 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable, wri
 			if writerFactory != nil {
 				w = writerFactory(ev)
 			} else {
-				w = console.Output(ctx, ev.HumanReadableID)
+				w = console.Output(ctx, humanReadable(ev))
 			}
 			ctx, cancel := context.WithCancel(ctx)
 
@@ -228,6 +229,15 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable, wri
 
 		return false, nil
 	})
+}
+
+func humanReadable(ev runtime.ObserveEvent) string {
+	left := ev.Deployable.GetName()
+	if ev.ContainerReference.Kind != runtimepb.ContainerKind_PRIMARY {
+		left = fmt.Sprintf("%s:%s", left, ev.ContainerReference.HumanReference)
+	}
+
+	return fmt.Sprintf("%s (%s)", left, ev.Version)
 }
 
 type logStream struct {
