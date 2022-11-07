@@ -174,7 +174,7 @@ func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg
 				return err
 			}
 
-			selector, err := canonicalizeFieldSelector(ctx, pl, e.FromResourceField, targetPkg)
+			selector, err := canonicalizeFieldSelector(ctx, pl, pkg.Location, e.FromResourceField, targetPkg)
 			if err != nil {
 				return err
 			}
@@ -185,36 +185,36 @@ func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg
 	return nil
 }
 
-func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoader, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) (string, error) {
+func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) (string, error) {
 	resource := field.GetResource()
 
 	topLevelInstance := targetPkg.LookupResourceInstance(resource.Name)
 
 	if topLevelInstance != nil {
-		return canonicalizeClassInstanceFieldRef(ctx, pl, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
+		return canonicalizeClassInstanceFieldRef(ctx, pl, loc, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
 	} else {
 		// Maybe it's an inline resource?
 		for _, r := range targetPkg.Server.GetResourcePack().GetResourceInstance() {
 			if r.Name == resource.Name {
-				return canonicalizeClassInstanceFieldRef(ctx, pl, r.Class, field.GetFieldSelector())
+				return canonicalizeClassInstanceFieldRef(ctx, pl, loc, r.Class, field.GetFieldSelector())
 			}
 		}
 
-		return "", fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+		return "", fnerrors.UserError(loc, "%s: no such resource", resource.Canonical())
 	}
 
 }
 
-func canonicalizeClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, classRef *schema.PackageRef, fieldSelector string) (string, error) {
+func canonicalizeClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, fieldSelector string) (string, error) {
 	class, err := pkggraph.LookupResourceClass(ctx, pl, classRef)
 	if err != nil {
 		return "", err
 	}
 
-	return canonicalizeJsonPath(class.InstanceType.Descriptor, class.InstanceType.Descriptor, fieldSelector, fieldSelector)
+	return canonicalizeJsonPath(loc, class.InstanceType.Descriptor, class.InstanceType.Descriptor, fieldSelector, fieldSelector)
 }
 
-func canonicalizeJsonPath(originalDesc, desc protoreflect.MessageDescriptor, originalSel, fieldSel string) (string, error) {
+func canonicalizeJsonPath(loc pkggraph.Location, originalDesc, desc protoreflect.MessageDescriptor, originalSel, fieldSel string) (string, error) {
 	parts := strings.SplitN(fieldSel, ".", 2)
 
 	f := desc.Fields().ByTextName(parts[0])
@@ -223,29 +223,41 @@ func canonicalizeJsonPath(originalDesc, desc protoreflect.MessageDescriptor, ori
 	}
 
 	if f == nil {
-		return "", fnerrors.BadInputError("%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
+		return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
 	}
 
 	if len(parts) == 1 {
-		switch f.Kind() {
-		case protoreflect.StringKind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.Int64Kind, protoreflect.Uint64Kind:
+		if isSupportedProtoPrimitive(f) {
 			return string(f.Name()), nil
-
-		default:
-			return "", fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+		} else {
+			return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
 		}
 	}
 
 	if f.Kind() != protoreflect.MessageKind {
-		return "", fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+		if isSupportedProtoPrimitive(f) {
+			return "", fnerrors.UserError(loc, "%s: %q picks %v: cannot select fields inside primitive types", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+		}
+
+		return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
 	}
 
-	selector, err := canonicalizeJsonPath(originalDesc, f.Message(), originalSel, parts[1])
+	selector, err := canonicalizeJsonPath(loc, originalDesc, f.Message(), originalSel, parts[1])
 	if err != nil {
 		return "", err
 	}
 
 	return fmt.Sprintf("%s.%s", f.Name(), selector), nil
+}
+
+func isSupportedProtoPrimitive(f protoreflect.FieldDescriptor) bool {
+	switch f.Kind() {
+	case protoreflect.StringKind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.Int64Kind, protoreflect.Uint64Kind:
+		return true
+
+	default:
+		return false
+	}
 }
 
 func ensureLoad(ctx context.Context, pl parsing.EarlyPackageLoader, parent *pkggraph.Package, ref *schema.PackageRef) (*pkggraph.Package, error) {
