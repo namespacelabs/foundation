@@ -79,10 +79,6 @@ type Cluster interface {
 // may obtain external data in order to produce a plan, but none of its methods
 // mutate outside state in order to do so.
 type Planner interface {
-	// Returns a representation of the Namespace this Planner will generate
-	// plans to.
-	Namespace() Namespace
-
 	// Plans a deployment, i.e. produces a series of instructions that will
 	// instantiate the required deployment resources to run the servers in the
 	// specified Deployment. This method is side-effect free; mutations are
@@ -107,13 +103,6 @@ type Planner interface {
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
-}
-
-// Represents an application deployment target within a cluster. Clusters may
-// provider one, or more co-existing Namespaces.
-type Namespace interface {
-	// XXX document guarantees.
-	UniqueID() string
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application

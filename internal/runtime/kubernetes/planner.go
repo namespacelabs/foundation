@@ -27,15 +27,10 @@ type Planner struct {
 	target          clusterTarget
 }
 
-var _ runtime.Namespace = Planner{}
 var _ runtime.Planner = Planner{}
 
 func NewPlanner(env cfg.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
 	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env)}
-}
-
-func (r Planner) UniqueID() string {
-	return fmt.Sprintf("kubernetes:%s", r.target.namespace)
 }
 
 func (r Planner) Planner() runtime.Planner {
@@ -48,10 +43,6 @@ func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (
 
 func (r Planner) PlanIngress(ctx context.Context, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	return planIngress(ctx, r.target, stack, allFragments)
-}
-
-func (r Planner) Namespace() runtime.Namespace {
-	return r
 }
 
 func (r Planner) KubernetesNamespace() string { return r.target.namespace }

@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -145,13 +146,13 @@ func (d *deployer) execute(ctx context.Context, out *eventFile, plan *execution.
 		return err
 	}
 
+	k8s, ok := cluster.(kubedef.KubeClusterNamespace)
+
 	var releaseLease func()
-	if env.Environment().Purpose != schema.Environment_DEVELOPMENT {
+	if env.Environment().Purpose != schema.Environment_DEVELOPMENT && ok {
 		// For non-dev environments, we only allow one ongoing deployment per namespace to improve robustness.
 		// For dev environments, we do allow concurrent deployments to not slow down edit-refesh cycles.
-		ns := cluster.Planner().Namespace()
-
-		releaseLease, err = d.leaser.acquireLease(ns.UniqueID(), arrival)
+		releaseLease, err = d.leaser.acquireLease(k8s.KubeConfig().Namespace, arrival)
 		if err != nil {
 			if err == errDeployPlanTooOld {
 				// We already finished a later deployment -> skip this one.
