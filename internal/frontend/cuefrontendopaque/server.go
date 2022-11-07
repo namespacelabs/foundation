@@ -169,29 +169,36 @@ func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg
 			}
 
 		case e.FromResourceField.GetResource() != nil:
-			resource := e.FromResourceField.GetResource()
-			targetPkg, err := ensureLoad(ctx, pl, pkg, resource)
+			targetPkg, err := ensureLoad(ctx, pl, pkg, e.FromResourceField.GetResource())
 			if err != nil {
 				return err
 			}
 
-			topLevelInstance := targetPkg.LookupResourceInstance(resource.Name)
-			if topLevelInstance != nil {
-				return validateClassInstanceFieldRef(ctx, pl, topLevelInstance.Spec.Class.Ref, e.FromResourceField.FieldSelector)
-			} else {
-				// Maybe it's an inline resource?
-				for _, r := range targetPkg.Server.GetResourcePack().GetResourceInstance() {
-					if r.Name == resource.Name {
-						return validateClassInstanceFieldRef(ctx, pl, r.Class, e.FromResourceField.GetFieldSelector())
-					}
-				}
-
-				return fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+			if err := validateEnvFromResource(ctx, pl, e.FromResourceField, targetPkg); err != nil {
+				return err
 			}
 		}
 	}
 
 	return nil
+}
+
+func validateEnvFromResource(ctx context.Context, pl parsing.EarlyPackageLoader, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) error {
+	resource := field.GetResource()
+
+	topLevelInstance := targetPkg.LookupResourceInstance(resource.Name)
+	if topLevelInstance != nil {
+		return validateClassInstanceFieldRef(ctx, pl, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
+	} else {
+		// Maybe it's an inline resource?
+		for _, r := range targetPkg.Server.GetResourcePack().GetResourceInstance() {
+			if r.Name == resource.Name {
+				return validateClassInstanceFieldRef(ctx, pl, r.Class, field.GetFieldSelector())
+			}
+		}
+
+		return fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+	}
 }
 
 func validateClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, classRef *schema.PackageRef, fieldSelector string) error {
