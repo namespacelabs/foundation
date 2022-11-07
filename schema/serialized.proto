@@ -14,15 +14,16 @@ import "schema/stack.proto";
 import "schema/networking.proto";
 import "schema/workspace.proto";
 
-// Next ID: 10
+// Next ID: 11
 message DeployPlan {
-    Workspace                workspace        = 8;
-    Environment              environment      = 7;
-    Stack                    stack            = 1;
-    repeated string          focus_server     = 9;
-    repeated IngressFragment ingress_fragment = 4;
-    repeated string          hints            = 5;
-    SerializedProgram        program          = 6;
+    Workspace                workspace           = 8;
+    Environment              environment         = 7;
+    Stack                    stack               = 1;
+    repeated string          focus_server        = 9;
+    repeated IngressFragment ingress_fragment    = 4;
+    repeated string          hints               = 5;
+    SerializedProgram        program             = 6;
+    string                   namespace_reference = 10;
 
     reserved 2, 3;
 }

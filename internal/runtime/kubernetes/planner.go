@@ -155,5 +155,7 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 	state.Hints = append(state.Hints, fmt.Sprintf("Inspecting your deployment: %s",
 		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", target.namespace))))
 
+	state.NamespaceReference = target.namespace
+
 	return &state, nil
 }

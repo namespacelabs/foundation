@@ -16,12 +16,13 @@ func Serialize(ws *schema.Workspace, env *schema.Environment, stack *schema.Stac
 			Dep:        ws.Dep,
 			Replace:    ws.Replace,
 		},
-		Environment:     env,
-		Stack:           stack,
-		IngressFragment: computed.IngressFragments,
-		Program:         execution.Serialize(computed.Deployer),
-		Hints:           computed.Hints,
-		FocusServer:     focus,
+		Environment:        env,
+		Stack:              stack,
+		IngressFragment:    computed.IngressFragments,
+		Program:            execution.Serialize(computed.Deployer),
+		Hints:              computed.Hints,
+		FocusServer:        focus,
+		NamespaceReference: computed.NamespaceReference,
 	}
 
 	return deployPlan

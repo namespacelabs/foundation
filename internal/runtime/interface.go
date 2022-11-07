@@ -306,6 +306,10 @@ type ObserveEvent struct {
 type DeploymentPlan struct {
 	Definitions []*schema.SerializedInvocation
 	Hints       []string
+
+	// A unique ID that is consistent across invocations, for the same runtime,
+	// that represents a tenant namespace.
+	NamespaceReference string
 }
 
 type TerminalIO struct {

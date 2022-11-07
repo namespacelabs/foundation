@@ -74,10 +74,10 @@ type RunningDeployment struct {
 	ID string
 }
 
-func (d *deployer) Schedule(plan *schema.DeployPlan, env cfg.Context, arrival time.Time) (*RunningDeployment, error) {
+func (d *deployer) Schedule(deployPlan *schema.DeployPlan, env cfg.Context, arrival time.Time) (*RunningDeployment, error) {
 	id := ids.NewRandomBase32ID(16)
 
-	p := execution.NewPlan(plan.GetProgram().GetInvocation()...)
+	plan := execution.NewPlan(deployPlan.GetProgram().GetInvocation()...)
 
 	dir := filepath.Join(d.statusDir, id)
 	if err := os.MkdirAll(dir, 0700); err != nil {
@@ -91,7 +91,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env cfg.Context, arrival ti
 		return nil, err
 	}
 
-	of := &outputFile{out: taskFile}
+	of := &eventFile{out: taskFile}
 
 	go func() {
 		defer func() {
@@ -101,7 +101,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env cfg.Context, arrival ti
 		}()
 
 		// Use server context to not propagate context cancellation
-		err := d.executeWithLog(context.Background(), of, p, env, arrival)
+		err := d.executeWithLog(context.Background(), of, plan, env, arrival)
 
 		status := status.Convert(err)
 
@@ -119,7 +119,7 @@ func (d *deployer) Schedule(plan *schema.DeployPlan, env cfg.Context, arrival ti
 	return &RunningDeployment{ID: id}, nil
 }
 
-func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execution.Plan, env cfg.Context, arrival time.Time) error {
+func (d *deployer) executeWithLog(ctx context.Context, out *eventFile, plan *execution.Plan, env cfg.Context, arrival time.Time) error {
 	eg := executor.New(ctx, "orchestrator.executeWithLog")
 
 	ch := make(chan *protolog.Log)
@@ -127,7 +127,7 @@ func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execu
 		sink := protolog.NewSink(ch)
 		defer sink.Close()
 
-		return d.execute(tasks.WithSink(ctx, sink), out, p, env, arrival)
+		return d.execute(tasks.WithSink(ctx, sink), out, plan, env, arrival)
 	})
 
 	eg.Go(func(ctx context.Context) error {
@@ -139,7 +139,7 @@ func (d *deployer) executeWithLog(ctx context.Context, out *outputFile, p *execu
 	return eg.Wait()
 }
 
-func (d *deployer) execute(ctx context.Context, out *outputFile, p *execution.Plan, env cfg.Context, arrival time.Time) error {
+func (d *deployer) execute(ctx context.Context, out *eventFile, plan *execution.Plan, env cfg.Context, arrival time.Time) error {
 	cluster, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func (d *deployer) execute(ctx context.Context, out *outputFile, p *execution.Pl
 		defer releaseLease()
 	}
 
-	return execution.Execute(ctx, env, "deployment.execute", p, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
+	return execution.Execute(ctx, env, "deployment.execute", plan, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
 		ch := make(chan *orchestration.Event)
 		errCh := make(chan error)
 
@@ -249,12 +249,12 @@ func (sm *serializedMessage[V]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type outputFile struct {
+type eventFile struct {
 	mu  sync.Mutex
 	out *os.File
 }
 
-func (of *outputFile) writeEvent(event TaskEventEntry) error {
+func (of *eventFile) writeEvent(event TaskEventEntry) error {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -274,7 +274,7 @@ func (of *outputFile) writeEvent(event TaskEventEntry) error {
 	return nil
 }
 
-func logProtos[V proto.Message](w *outputFile, ch chan V, makeEvent func(V) TaskEventEntry) error {
+func logProtos[V proto.Message](w *eventFile, ch chan V, makeEvent func(V) TaskEventEntry) error {
 	for ev := range ch {
 		event := makeEvent(ev)
 		event.Timestamp = time.Now()

@@ -154,11 +154,12 @@ type makeDeployGraph struct {
 }
 
 type Plan struct {
-	Deployer         *execution.Plan
-	ComputedStack    *planning.Stack
-	IngressFragments []*schema.IngressFragment
-	Computed         *schema.ComputedConfigurations
-	Hints            []string // Optional messages to pass to the user.
+	Deployer           *execution.Plan
+	ComputedStack      *planning.Stack
+	IngressFragments   []*schema.IngressFragment
+	Computed           *schema.ComputedConfigurations
+	Hints              []string // Optional messages to pass to the user.
+	NamespaceReference string
 }
 
 func (m *makeDeployGraph) Action() *tasks.ActionEvent {
@@ -186,9 +187,10 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 	g.Add(pbr.Ops...)
 
 	plan := &Plan{
-		Deployer:      g,
-		ComputedStack: m.stack,
-		Hints:         pbr.Hints,
+		Deployer:           g,
+		ComputedStack:      m.stack,
+		Hints:              pbr.Hints,
+		NamespaceReference: pbr.NamespaceReference,
 	}
 
 	if ingress, ok := compute.GetDep(deps, m.ingressPlan, "ingressPlan"); ok {
@@ -217,9 +219,10 @@ func prepareHandlerInvocations(ctx context.Context, env cfg.Context, planner run
 }
 
 type prepareAndBuildResult struct {
-	HandlerResult *handlerResult
-	Ops           []*schema.SerializedInvocation
-	Hints         []string
+	HandlerResult      *handlerResult
+	Ops                []*schema.SerializedInvocation
+	Hints              []string
+	NamespaceReference string
 }
 
 func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
@@ -290,9 +293,10 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
 			deploymentPlan := compute.MustGetDepValue(deps, deploymentPlan, "deploymentPlan")
 			return prepareAndBuildResult{
-				HandlerResult: compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
-				Ops:           append(resourcePlan.Invocations, deploymentPlan.Definitions...),
-				Hints:         deploymentPlan.Hints,
+				HandlerResult:      compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
+				Ops:                append(resourcePlan.Invocations, deploymentPlan.Definitions...),
+				Hints:              deploymentPlan.Hints,
+				NamespaceReference: deploymentPlan.NamespaceReference,
 			}, nil
 		}), nil
 }
