@@ -6,17 +6,12 @@ package runtime
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 
-	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -27,8 +22,7 @@ const (
 )
 
 var (
-	NamingNoTLS             = false // Set to true in CI.
-	ReuseStoredCertificates = true
+	NamingNoTLS = false // Set to true in CI.
 
 	WorkInProgressUseShortAlias = false
 )
@@ -111,38 +105,12 @@ func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planne
 }
 
 func allocateName(ctx context.Context, srv Deployable, opts fnapi.AllocateOpts) (*schema.Certificate, error) {
-	var cacheKey string
-
-	if opts.Subdomain != "" {
-		if opts.Org == "" {
-			return nil, fnerrors.InternalError("%s: org must be specified", opts.Subdomain)
-		}
-		cacheKey = opts.Subdomain + ".wildcard"
-	} else if opts.FQDN != "" {
-		cacheKey = opts.FQDN
-	} else {
-		return nil, fnerrors.BadInputError("either FQDN or Subdomain must be set")
-	}
-
-	previous, _ := checkStored(ctx, srv, opts.Org, cacheKey)
-	if ReuseStoredCertificates {
-		if previous != nil && isResourceValid(previous) {
-			// We ignore errors.
-			return certFromResource(previous), nil
-		}
-	}
-
 	opts.NoTLS = NamingNoTLS
-	opts.Stored = previous
 	opts.Scope = schema.PackageName(srv.GetPackageName())
 
 	nr, err := fnapi.AllocateName(ctx, opts)
 	if err != nil {
 		return nil, err
-	}
-
-	if err := storeCert(ctx, srv, opts.Org, cacheKey, nr); err != nil {
-		fmt.Fprintf(console.Warnings(ctx), "failed to persistent certificate for cacheKey=%s: %v\n", cacheKey, err)
 	}
 
 	return certFromResource(nr), nil
@@ -157,68 +125,4 @@ func certFromResource(res *fnapi.NameResource) *schema.Certificate {
 	}
 
 	return nil
-}
-
-func isResourceValid(nr *fnapi.NameResource) bool {
-	if nr.Certificate.PrivateKey != nil && nr.Certificate.CertificateBundle != nil {
-		valid, _, _ := certificates.CertIsValid(nr.Certificate.CertificateBundle)
-		return valid
-	}
-
-	return false
-}
-
-func checkStored(ctx context.Context, srv Deployable, org, cacheKey string) (*fnapi.NameResource, error) {
-	// XXX security check permissions
-	certDir, err := makeCertDir(org, srv)
-	if err != nil {
-		return nil, err
-	}
-
-	// XXX security check escape
-	contents, err := os.ReadFile(filepath.Join(certDir, cacheKey+".json"))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	var nr fnapi.NameResource
-	if err := json.Unmarshal(contents, &nr); err != nil {
-		return nil, err
-	}
-
-	return &nr, nil
-}
-
-func storeCert(ctx context.Context, srv Deployable, org, cacheKey string, res *fnapi.NameResource) error {
-	certDir, err := makeCertDir(org, srv)
-	if err != nil {
-		return err
-	}
-
-	resBytes, err := json.MarshalIndent(res, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(certDir, os.ModeDir|0700); err != nil {
-		return err
-	}
-
-	return os.WriteFile(filepath.Join(certDir, cacheKey+".json"), resBytes, 0600)
-}
-
-func makeCertDir(org string, srv Deployable) (string, error) {
-	if org == "" {
-		return "", fnerrors.New("no org specified")
-	}
-
-	certDir, err := dirs.CertCache()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(certDir, org, srv.GetId()), nil
 }
