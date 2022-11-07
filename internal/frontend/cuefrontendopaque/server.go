@@ -235,11 +235,12 @@ func canonicalizeJsonPath(loc pkggraph.Location, originalDesc, desc protoreflect
 	}
 
 	if f.Kind() != protoreflect.MessageKind {
+		var hint string
 		if isSupportedProtoPrimitive(f) {
-			return "", fnerrors.UserError(loc, "%s: %q picks %v: cannot select fields inside primitive types", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+			hint = ": cannot select fields inside primitive types"
 		}
 
-		return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+		return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)%s", originalDesc.FullName(), originalSel, parts[0], f.Kind(), hint)
 	}
 
 	selector, err := canonicalizeJsonPath(loc, originalDesc, f.Message(), originalSel, parts[1])
