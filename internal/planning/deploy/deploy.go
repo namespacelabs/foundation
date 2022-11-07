@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
@@ -48,15 +49,15 @@ type ResolvedServerImages struct {
 }
 
 type ResolvedBinary struct {
-	PackageRef *schema.PackageRef
-	Binary     oci.ImageID
-	Command    []string
+	PackageRef   *schema.PackageRef
+	Binary       oci.ImageID
+	BinaryConfig *schema.BinaryConfig
 }
 
 type serverBuildSpec struct {
 	PackageName schema.PackageName
 	Binary      compute.Computable[oci.ImageID]
-	BinaryImage compute.Computable[oci.ResolvableImage]
+	SourceImage compute.Computable[oci.ResolvableImage]
 	Config      compute.Computable[oci.ImageID]
 }
 
@@ -485,10 +486,13 @@ func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.P
 			return nil, err
 		}
 
-		images.Binary, images.BinaryImage, err = ensureImage(ctx, srv.Server.SealedContext(), registry, p)
+		poster, err := ensureImage(ctx, srv.Server.SealedContext(), registry, p)
 		if err != nil {
 			return nil, err
 		}
+
+		images.Binary = poster.ImageID
+		images.SourceImage = poster.SourceImage
 
 		// In production builds, also build a "config image" which includes both the processed
 		// stack at the time of evaluation of the target image and deployment, but also the
@@ -507,9 +511,16 @@ func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.P
 	return imageList, nil
 }
 
-func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry registry.Manager, p build.Plan) (compute.Computable[oci.ImageID], compute.Computable[oci.ResolvableImage], error) {
+type imagePoster struct {
+	ImageID     compute.Computable[oci.ImageID]
+	SourceImage compute.Computable[oci.ResolvableImage]
+}
+
+func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry registry.Manager, p build.Plan) (imagePoster, error) {
 	if imgid, ok := build.IsPrebuilt(p.Spec); ok && !PushPrebuiltsToRegistry {
-		return build.Prebuilt(imgid), nil, nil
+		return imagePoster{
+			ImageID: build.Prebuilt(imgid),
+		}, nil
 	}
 
 	name := registry.AllocateName(p.SourcePackage.String())
@@ -521,16 +532,19 @@ func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry regis
 
 	bin, err := multiplatform.PrepareMultiPlatformImage(ctx, env, p)
 	if err != nil {
-		return nil, nil, err
+		return imagePoster{}, err
 	}
 
-	return oci.PublishResolvable(name, bin), bin, nil
+	return imagePoster{
+		ImageID:     oci.PublishResolvable(name, bin),
+		SourceImage: bin,
+	}, nil
 }
 
 type containerImage struct {
 	PackageRef  *schema.PackageRef
 	OwnerServer schema.PackageName
-	Image       compute.Computable[oci.ImageID]
+	ImageID     compute.Computable[oci.ImageID]
 	Command     []string
 	Args        []string
 	WorkingDir  string
@@ -568,7 +582,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 				return nil, err
 			}
 
-			pbin, _, err := ensureImage(ctx, pctx, registry, prepared.Plan)
+			poster, err := ensureImage(ctx, pctx, registry, prepared.Plan)
 			if err != nil {
 				return nil, err
 			}
@@ -576,8 +590,10 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 			res = append(res, containerImage{
 				PackageRef:  binRef,
 				OwnerServer: srv.PackageName(),
-				Image:       pbin,
+				ImageID:     poster.ImageID,
 				Command:     prepared.Command,
+				Args:        prepared.Args,
+				WorkingDir:  prepared.WorkingDir,
 			})
 		}
 	}
@@ -634,7 +650,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 		sidecarIndex := 0
 		for _, sidecar := range sidecarImages {
 			if sidecar.OwnerServer == srv.PackageName {
-				in = in.Computable(fmt.Sprintf("sidecar%d", sidecarIndex), sidecar.Image)
+				in = in.Computable(fmt.Sprintf("sidecar%d", sidecarIndex), sidecar.ImageID)
 				sidecarIndex++
 			}
 		}
@@ -642,7 +658,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 		// We make the binary image as indigestible to make it clear that it is
 		// also an input below. We just care about retaining the original
 		// compute.Computable though.
-		in = in.Indigestible("binaryImage", srv.BinaryImage)
+		in = in.Indigestible("binaryImage", srv.SourceImage)
 
 		pkgs = append(pkgs, srv.PackageName)
 		images = append(images, compute.Map(tasks.Action("server.build-images").Scope(srv.PackageName), in, compute.Output{},
@@ -652,7 +668,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 				result := ResolvedServerImages{
 					PackageRef:     &schema.PackageRef{PackageName: srv.PackageName.String()},
 					Binary:         binary.Value,
-					BinaryImage:    srv.BinaryImage,
+					BinaryImage:    srv.SourceImage,
 					PrebuiltBinary: binary.Completed.IsZero(),
 				}
 
@@ -663,11 +679,15 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 				sidecarIndex := 0
 				for _, sidecar := range sidecarImages {
 					if sidecar.OwnerServer == srv.PackageName {
-						if v, ok := compute.GetDep(deps, sidecar.Image, fmt.Sprintf("sidecar%d", sidecarIndex)); ok {
+						if v, ok := compute.GetDep(deps, sidecar.ImageID, fmt.Sprintf("sidecar%d", sidecarIndex)); ok {
 							result.Sidecars = append(result.Sidecars, ResolvedBinary{
 								PackageRef: sidecar.PackageRef,
 								Binary:     v.Value,
-								Command:    sidecar.Command,
+								BinaryConfig: &schema.BinaryConfig{
+									Command:    sidecar.Command,
+									Args:       sidecar.Args,
+									WorkingDir: sidecar.WorkingDir,
+								},
 							})
 						}
 						sidecarIndex++
@@ -754,16 +774,38 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved Res
 			return fnerrors.InternalError("%s: missing sidecar build", binRef)
 		}
 
-		*out = append(*out, runtime.SidecarRunOpts{
+		opts := runtime.SidecarRunOpts{
 			Name:      container.Name,
 			BinaryRef: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
-				Image:   sidecarBinary.Binary,
-				Args:    container.Args,
-				Env:     container.Env,
-				Command: sidecarBinary.Command,
+				Image:      sidecarBinary.Binary,
+				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.Args...),
+				Command:    sidecarBinary.BinaryConfig.GetCommand(),
+				WorkingDir: sidecarBinary.BinaryConfig.GetWorkingDir(),
 			},
-		})
+		}
+
+		mergeEnv(&opts.ContainerRunOpts.Env, sidecarBinary.BinaryConfig.GetEnv())
+		mergeEnv(&opts.ContainerRunOpts.Env, container.Env)
+
+		*out = append(*out, opts)
 	}
 	return nil
+}
+
+func mergeEnv(target *[]*schema.BinaryConfig_EnvEntry, src []*schema.BinaryConfig_EnvEntry) {
+	index := map[string]int{}
+
+	for k, x := range *target {
+		index[x.Name] = k
+	}
+
+	for _, x := range src {
+		if k, has := index[x.Name]; has {
+			// XXX replacing here without warning.
+			(*target)[k] = x
+		} else {
+			*target = append(*target, x)
+		}
+	}
 }

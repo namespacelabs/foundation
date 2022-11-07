@@ -129,12 +129,12 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 			return nil, err
 		}
 
-		imageID, _, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
+		poster, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
 		if err != nil {
 			return nil, err
 		}
 
-		imageIDs = append(imageIDs, imageID)
+		imageIDs = append(imageIDs, poster.ImageID)
 		invocations = append(invocations, &InvokeResourceProvider{
 			ResourceInstanceId:   resource.ID,
 			BinaryRef:            initializer.BinaryRef,
