@@ -174,65 +174,78 @@ func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg
 				return err
 			}
 
-			if err := validateEnvFromResource(ctx, pl, e.FromResourceField, targetPkg); err != nil {
+			selector, err := canonicalizeFieldSelector(ctx, pl, e.FromResourceField, targetPkg)
+			if err != nil {
 				return err
 			}
+			e.FromResourceField.FieldSelector = selector
 		}
 	}
 
 	return nil
 }
 
-func validateEnvFromResource(ctx context.Context, pl parsing.EarlyPackageLoader, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) error {
+func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoader, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) (string, error) {
 	resource := field.GetResource()
 
 	topLevelInstance := targetPkg.LookupResourceInstance(resource.Name)
+
 	if topLevelInstance != nil {
-		return validateClassInstanceFieldRef(ctx, pl, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
+		return canonicalizeClassInstanceFieldRef(ctx, pl, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
 	} else {
 		// Maybe it's an inline resource?
 		for _, r := range targetPkg.Server.GetResourcePack().GetResourceInstance() {
 			if r.Name == resource.Name {
-				return validateClassInstanceFieldRef(ctx, pl, r.Class, field.GetFieldSelector())
+				return canonicalizeClassInstanceFieldRef(ctx, pl, r.Class, field.GetFieldSelector())
 			}
 		}
 
-		return fnerrors.BadInputError("%s: no such resource", resource.Canonical())
+		return "", fnerrors.BadInputError("%s: no such resource", resource.Canonical())
 	}
+
 }
 
-func validateClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, classRef *schema.PackageRef, fieldSelector string) error {
+func canonicalizeClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, classRef *schema.PackageRef, fieldSelector string) (string, error) {
 	class, err := pkggraph.LookupResourceClass(ctx, pl, classRef)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return validateJsonPath(class.InstanceType.Descriptor, class.InstanceType.Descriptor, fieldSelector, fieldSelector)
+	return canonicalizeJsonPath(class.InstanceType.Descriptor, class.InstanceType.Descriptor, fieldSelector, fieldSelector)
 }
 
-func validateJsonPath(originalDesc, desc protoreflect.MessageDescriptor, originalSel, fieldSel string) error {
+func canonicalizeJsonPath(originalDesc, desc protoreflect.MessageDescriptor, originalSel, fieldSel string) (string, error) {
 	parts := strings.SplitN(fieldSel, ".", 2)
 
-	f := desc.Fields().ByJSONName(parts[0])
+	f := desc.Fields().ByTextName(parts[0])
 	if f == nil {
-		return fnerrors.BadInputError("%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
+		f = desc.Fields().ByJSONName(parts[0])
+	}
+
+	if f == nil {
+		return "", fnerrors.BadInputError("%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
 	}
 
 	if len(parts) == 1 {
 		switch f.Kind() {
 		case protoreflect.StringKind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.Int64Kind, protoreflect.Uint64Kind:
-			return nil
+			return string(f.Name()), nil
 
 		default:
-			return fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+			return "", fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
 		}
 	}
 
 	if f.Kind() != protoreflect.MessageKind {
-		return fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+		return "", fnerrors.BadInputError("%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
 	}
 
-	return validateJsonPath(originalDesc, f.Message(), originalSel, parts[1])
+	selector, err := canonicalizeJsonPath(originalDesc, f.Message(), originalSel, parts[1])
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s.%s", f.Name(), selector), nil
 }
 
 func ensureLoad(ctx context.Context, pl parsing.EarlyPackageLoader, parent *pkggraph.Package, ref *schema.PackageRef) (*pkggraph.Package, error) {
