@@ -19,6 +19,12 @@ func NewParser() entity.EntityParser {
 	return &Parser{}
 }
 
+type cueIntegration struct {
+	Src        string `json:"src"`
+	WorkingDir string `json:"workingDir"`
+	Command    string `json:"command"`
+}
+
 type Parser struct{}
 
 func (p *Parser) Url() string      { return "namespace.so/from-dockerfile" }
@@ -32,5 +38,21 @@ func (p *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 		}
 	}
 
-	return fncue.DecodeToTypedProtoMessage[*schema.DockerfileIntegration](v)
+	var bits cueIntegration
+	if v != nil {
+		if err := v.Val.Decode(&bits); err != nil {
+			return nil, err
+		}
+	}
+
+	out := &schema.DockerfileIntegration{
+		Src:        bits.Src,
+		WorkingDir: bits.WorkingDir,
+	}
+
+	if bits.Command != "" {
+		out.Command = []string{bits.Command}
+	}
+
+	return out, nil
 }

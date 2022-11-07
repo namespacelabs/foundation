@@ -20,6 +20,11 @@ message Integration {
 message DockerfileIntegration {
     // The Dockerfile to use.
     string src = 1;
+
+    // If set, this config is used to run the container instead of the one from the image.
+    // Args and env come from the server definition.
+    string          working_dir = 2;
+    repeated string command     = 3;
 }
 
 message ShellScriptIntegration {

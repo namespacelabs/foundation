@@ -47,9 +47,18 @@ func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggra
 		return nil, fnerrors.Wrapf(loc, err, "could not find %q file, please verify that the specified dockerfile path is correct", dockerfile)
 	}
 
+	var config *schema.BinaryConfig
+	if data.WorkingDir != "" || data.Command != nil {
+		config = &schema.BinaryConfig{
+			WorkingDir: data.WorkingDir,
+			Command:    data.Command,
+		}
+	}
+
 	return &schema.Binary{
 		BuildPlan: &schema.LayeredImageBuildPlan{
 			LayerBuildPlan: []*schema.ImageBuildPlan{{Dockerfile: dockerfile}},
 		},
+		Config: config,
 	}, nil
 }

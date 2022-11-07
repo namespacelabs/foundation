@@ -1,7 +1,11 @@
 server: {
 	name: "myserver"
 
-	integration: "dockerfile"
+  args: ["start"]
+
+	integration: dockerfile: {
+    command: "npm"
+  }
 
 	services: {
 		webapi: {
