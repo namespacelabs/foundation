@@ -10,6 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
+	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -36,11 +37,17 @@ type Integration interface {
 
 	// Called on `ns dev`.
 	PrepareDev(context.Context, runtime.ClusterNamespace, planning.Server) (context.Context, DevObserver, error)
+	PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.Server) *HotReloadOpts
 }
 
 type DevObserver interface {
 	io.Closer
 	OnDeployment(context.Context)
+}
+
+type HotReloadOpts struct {
+	Sink                        wsremote.Sink
+	TriggerFullRebuiltPredicate func(filepath string) bool
 }
 
 var (
@@ -92,4 +99,8 @@ type NoDev struct{}
 
 func (NoDev) PrepareDev(ctx context.Context, _ runtime.ClusterNamespace, _ planning.Server) (context.Context, DevObserver, error) {
 	return ctx, nil, nil
+}
+
+func (NoDev) PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.Server) *HotReloadOpts {
+	return nil
 }

@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/digestfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/languages/opaque"
@@ -146,7 +147,6 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 
 func prepareBuild(ctx context.Context, loc pkggraph.Location, env cfg.Context, targetConf build.Configuration, entry *schema.Server_URLMapEntry, isFocus bool, externalModules []build.Workspace, extra []*memfs.FS) (oci.NamedImage, error) {
 	if !opaque.UseDevBuild(env.Environment()) {
-
 		extra = append(extra, generateProdViteConfig())
 
 		return ViteProductionBuild(ctx, loc, env, targetConf.SourceLabel(), filepath.Join(compiledPath, entry.PathPrefix), entry.PathPrefix, externalModules, extra...)
@@ -207,6 +207,13 @@ func generateProdViteConfig() *memfs.FS {
 
 func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
 	return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
+}
+
+func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
+	return &languages.HotReloadOpts{
+		Sink:                        remote.For(&wsremote.Signature{ModuleName: srv.Module().ModuleName(), Rel: "."}),
+		TriggerFullRebuiltPredicate: func(filepath string) bool { return filepath == yarnLockFn },
+	}
 }
 
 func (impl) PrepareRun(ctx context.Context, srv planning.Server, run *runtime.ContainerRunOpts) error {

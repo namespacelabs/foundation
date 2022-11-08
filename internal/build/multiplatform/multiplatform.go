@@ -67,19 +67,20 @@ func prefix(p, label string) string {
 	return p + " " + label
 }
 
-func prepareImage(ctx context.Context, env pkggraph.SealedContext, p build.Plan) (compute.Computable[oci.ResolvableImage], error) {
-	if p.Spec.PlatformIndependent() {
-		img, err := p.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).
-			WithTargetName(p.PublishName).
-			WithSourcePackage(p.SourcePackage).
-			WithSourceLabel(p.SourceLabel))
+func prepareImage(ctx context.Context, env pkggraph.SealedContext, plan build.Plan) (compute.Computable[oci.ResolvableImage], error) {
+	if plan.Spec.PlatformIndependent() {
+		img, err := plan.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).
+			WithWorkspace(plan.Workspace).
+			WithTargetName(plan.PublishName).
+			WithSourcePackage(plan.SourcePackage).
+			WithSourceLabel(plan.SourceLabel))
 		if err != nil {
 			return nil, err
 		}
 		return oci.AsResolvable(img), nil
 	}
 
-	platforms := build.PlatformsOrOverrides(p.Platforms)
+	platforms := build.PlatformsOrOverrides(plan.Platforms)
 	if len(platforms) == 0 {
 		return nil, fnerrors.InternalError("no platform specified?")
 	}
@@ -90,18 +91,18 @@ func prepareImage(ctx context.Context, env pkggraph.SealedContext, p build.Plan)
 		return strings.Compare(devhost.FormatPlatform(a), devhost.FormatPlatform(b)) < 0
 	})
 
-	r, err := prepareMultiPlatformPlan(ctx, p, platforms)
+	r, err := prepareMultiPlatformPlan(ctx, plan, platforms)
 	if err != nil {
 		return nil, err
 	}
 
 	var images []oci.NamedImage
 	for _, br := range r.requests {
-		image, err := p.Spec.BuildImage(ctx, env, br.Configuration)
+		image, err := plan.Spec.BuildImage(ctx, env, br.Configuration)
 		if err != nil {
 			return nil, err
 		}
-		images = append(images, oci.MakeNamedImage(p.SourceLabel, image))
+		images = append(images, oci.MakeNamedImage(plan.SourceLabel, image))
 	}
 
 	if len(r.platformIndex) == 1 {
@@ -136,39 +137,21 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 	var requests []buildRequest
 	var platformIndex []int
 
-	if plan.Spec.PlatformIndependent() {
-		br := buildRequest{
+	for _, plat := range platforms {
+		label := plan.SourceLabel
+		if len(platforms) > 1 {
+			label += fmt.Sprintf(" (%s)", devhost.FormatPlatform(plat))
+		}
+
+		platformIndex = append(platformIndex, len(requests))
+		requests = append(requests, buildRequest{
 			Spec: plan.Spec,
-			Configuration: build.NewBuildTarget(nil /* Plan says it is agnostic. */).
+			Configuration: build.NewBuildTarget(platformPtr(plat)).
 				WithTargetName(plan.PublishName).
 				WithWorkspace(plan.Workspace).
 				WithSourcePackage(plan.SourcePackage).
-				WithSourceLabel(plan.SourceLabel),
-		}
-		requests = append(requests, br)
-
-		for range platforms {
-			platformIndex = append(platformIndex, 0) // All platforms point to single build.
-		}
-	} else {
-		for _, plat := range platforms {
-			label := plan.SourceLabel
-			if len(platforms) > 1 {
-				label += fmt.Sprintf(" (%s)", devhost.FormatPlatform(plat))
-			}
-
-			br := buildRequest{
-				Spec: plan.Spec,
-				Configuration: build.NewBuildTarget(platformPtr(plat)).
-					WithTargetName(plan.PublishName).
-					WithWorkspace(plan.Workspace).
-					WithSourcePackage(plan.SourcePackage).
-					WithSourceLabel(label),
-			}
-
-			platformIndex = append(platformIndex, len(requests))
-			requests = append(requests, br)
-		}
+				WithSourceLabel(label),
+		})
 	}
 
 	return &indexPlan{requests: requests, platformIndex: platformIndex}, nil

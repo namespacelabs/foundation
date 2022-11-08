@@ -10,20 +10,20 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/wscontents"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type hotReloadModule struct {
-	module *pkggraph.Module
+	module build.Workspace
 	sink   wsremote.Sink
 }
 
 // If "triggerFullRebuildPredicate" returns true, a full rebuild will be triggered instead of a hot reload.
-func NewHotReloadModule(module *pkggraph.Module, sink wsremote.Sink, triggerFullRebuildPredicate func(filepath string) bool) build.Workspace {
-	return &hotReloadModule{
+func NewHotReloadModule(module build.Workspace, opts *languages.HotReloadOpts) build.Workspace {
+	return hotReloadModule{
 		module: module,
-		sink:   observerSink{sink, triggerFullRebuildPredicate},
+		sink:   observerSink{opts.Sink, opts.TriggerFullRebuiltPredicate},
 	}
 }
 

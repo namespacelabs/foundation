@@ -12,7 +12,11 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	"namespacelabs.dev/foundation/internal/hotreload"
+	"namespacelabs.dev/foundation/internal/languages"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
@@ -25,7 +29,7 @@ import (
 
 var RunCodegen = true
 
-func MakePlan(ctx context.Context, rc runtime.Planner, server planning.Server, spec build.Spec) (build.Plan, error) {
+func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Server, focused bool, spec build.Spec) (build.Plan, error) {
 	return tasks.Return(ctx, tasks.Action("planning.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
 			platforms, err := rc.TargetPlatforms(ctx)
@@ -40,6 +44,18 @@ func MakePlan(ctx context.Context, rc runtime.Planner, server planning.Server, s
 				ws = codegenWorkspace{server}
 			} else {
 				ws = server.Module()
+			}
+
+			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v focused=%v external=%v\n",
+				server.PackageName(), wsremote.Ctx(ctx) != nil, focused, server.Module().IsExternal())
+
+			if r := wsremote.Ctx(ctx); r != nil && focused && !server.Module().IsExternal() {
+				opts := languages.IntegrationFor(server.Framework()).PrepareHotReload(ctx, r, server)
+				fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
+					server.PackageName(), server.Framework(), opts != nil)
+				if opts != nil {
+					ws = hotreload.NewHotReloadModule(ws, opts)
+				}
 			}
 
 			return build.Plan{

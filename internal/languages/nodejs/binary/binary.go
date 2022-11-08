@@ -38,7 +38,6 @@ var (
 
 type nodeJsBinary struct {
 	nodejsEnv string
-	module    build.Workspace
 }
 
 func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Configuration) (llb.State, []buildkit.LocalContents, error) {
@@ -53,7 +52,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	}
 
 	local := buildkit.LocalContents{
-		Module:          n.module,
+		Module:          conf.Workspace(),
 		Path:            bnj.loc.Rel(),
 		ObserveChanges:  bnj.isFocus,
 		ExcludePatterns: NodejsExclude,

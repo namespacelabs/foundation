@@ -54,6 +54,8 @@ func (op *observePath) Output() compute.Output {
 func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (wscontents.Versioned, error) {
 	absPath := filepath.Join(op.absPath, op.rel)
 
+	fmt.Fprintf(console.Debug(ctx), "wsremote: starting w/ snapshotting %q\n", absPath)
+
 	snapshot, err := wscontents.SnapshotDirectory(ctx, absPath)
 	if err != nil {
 		return nil, err

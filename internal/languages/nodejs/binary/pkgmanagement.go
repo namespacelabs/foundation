@@ -17,7 +17,7 @@ var (
 	yarnFiles = []string{"yarn.lock", ".yarnrc.yml"}
 	pnpmFiles = []string{"pnpm-lock.yaml", ".npmrc", ".pnpmfile.cjs"}
 
-	packageManagerSources = makeAllFiles(npmFiles, yarnFiles, pnpmFiles)
+	PackageManagerSources = makeAllFiles(npmFiles, yarnFiles, pnpmFiles)
 
 	containerCacheDir = "/cache"
 )

@@ -6,9 +6,12 @@ package opaque
 
 import (
 	"context"
+	"strings"
 
+	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/internal/languages/opaque"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -29,4 +32,24 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 	}
 
 	return ctx, nil, nil
+}
+
+func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
+	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
+		return &languages.HotReloadOpts{
+			// "ModuleName" and "Rel" are empty because we have only one module in the image and
+			// we put the package content directly under the root "/app" directory.
+			Sink: remote.For(&wsremote.Signature{ModuleName: "", Rel: ""}),
+			TriggerFullRebuiltPredicate: func(filepath string) bool {
+				for _, p := range binary.PackageManagerSources {
+					if strings.HasPrefix(filepath, p) {
+						return true
+					}
+				}
+				return false
+			},
+		}
+	}
+
+	return nil
 }

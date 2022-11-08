@@ -18,8 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/languages/nodejs/binary"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/nodejs"
@@ -60,20 +58,8 @@ func ViteProductionBuild(ctx context.Context, loc pkggraph.Location, env cfg.Con
 		compute.Named(tasks.Action("web.vite.build").Arg("builder", "buildkit"), image)), nil
 }
 
-func viteDevBuild(ctx context.Context, env cfg.Context, targetDir string, loc pkggraph.Location, isFocus bool, conf build.BuildTarget, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
-	var module build.Workspace
-
-	if r := wsremote.Ctx(ctx); r != nil && isFocus && !loc.Module.IsExternal() {
-		module = hotreload.NewHotReloadModule(
-			loc.Module,
-			r.For(&wsremote.Signature{ModuleName: loc.Module.ModuleName(), Rel: "."}),
-			func(filepath string) bool { return filepath == yarnLockFn },
-		)
-	} else {
-		module = loc.Module
-	}
-
-	local, state, err := viteBuildBase(ctx, conf, targetDir, module, loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
+func viteDevBuild(ctx context.Context, env cfg.Context, targetDir string, loc pkggraph.Location, isFocus bool, conf build.Configuration, externalModules []build.Workspace, extraFiles ...*memfs.FS) (oci.NamedImage, error) {
+	local, state, err := viteBuildBase(ctx, conf, targetDir, conf.Workspace(), loc.Rel(), loc.Module.Workspace, isFocus, externalModules, extraFiles...)
 	if err != nil {
 		return nil, err
 	}
