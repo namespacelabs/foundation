@@ -102,6 +102,24 @@ func (stack *Stack) Get(srv schema.PackageName) (PlannedServer, bool) {
 	return PlannedServer{}, false
 }
 
+func (stack *Stack) GetServerProto(srv schema.PackageName) (*schema.Server, bool) {
+	server, ok := stack.Get(srv)
+	if ok {
+		return server.Proto(), true
+	}
+
+	return nil, false
+}
+
+func (stack *Stack) GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bool) {
+	server, ok := stack.Get(srv)
+	if ok {
+		return server.Endpoints, true
+	}
+
+	return nil, false
+}
+
 func ComputeStack(ctx context.Context, servers Servers, opts ProvisionOpts) (*Stack, error) {
 	return tasks.Return(ctx, tasks.Action("planning.compute").Scope(servers.Packages().PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {

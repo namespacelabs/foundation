@@ -243,7 +243,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
-				if err := rp.checkAddServerResources(ctx, ps.Server, ps.Resources); err != nil {
+				if err := rp.checkAddOwnedResources(ctx, ps.Server, ps.Resources); err != nil {
 					return nil, err
 				}
 			}
@@ -283,7 +283,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.ResourceList.perServerResources)
+			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.ResourceList.perOwnerResources)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -302,7 +302,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources map[schema.PackageName]serverResourceInstances) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources ResourceMap) (*runtime.DeploymentPlan, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
@@ -343,8 +343,8 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 		run.MountRuntimeConfigPath = constants.NamespaceConfigMount
 		run.RuntimeConfig = rt
 		run.BuildVCS = moduleVCS[srv.Location.Module.ModuleName()]
-		run.Resources = resources[srv.PackageName()].Dependencies
-		run.SecretResources = resources[srv.PackageName()].Secrets
+		run.Resources = resources[srv.PackageRef().Canonical()].Dependencies
+		run.SecretResources = resources[srv.PackageRef().Canonical()].Secrets
 
 		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
 			return nil, err

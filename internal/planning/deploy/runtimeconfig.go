@@ -14,11 +14,11 @@ import (
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-func serverToRuntimeConfig(stack *planning.Stack, ps planning.PlannedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack serverStack, ps planning.PlannedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	srv := ps.Server
 	config := &runtime.RuntimeConfig{
 		Environment: makeEnv(srv.SealedContext().Environment()),
-		Current:     makeServerConfig(stack, srv),
+		Current:     makeServerConfig(stack, srv.Proto()),
 	}
 
 	config.Current.ImageRef = serverImage.String()
@@ -28,12 +28,12 @@ func serverToRuntimeConfig(stack *planning.Stack, ps planning.PlannedServer, ser
 			continue
 		}
 
-		ref, ok := stack.Get(pkg)
+		ref, ok := stack.GetServerProto(pkg)
 		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref.Server))
+		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref))
 	}
 
 	return config, nil
@@ -49,12 +49,12 @@ func TestStackToRuntimeConfig(stack *planning.Stack, sutServers []string) (*runt
 	}
 
 	for _, pkg := range sutServers {
-		ref, ok := stack.Get(schema.MakePackageName(pkg))
+		ref, ok := stack.GetServerProto(schema.MakePackageName(pkg))
 		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref.Server))
+		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref))
 	}
 
 	return config, nil
@@ -74,25 +74,22 @@ func makeEnv(env *schema.Environment) *runtime.RuntimeConfig_Environment {
 	return res
 }
 
-func makeServerConfig(stack *planning.Stack, server planning.Server) *runtime.Server {
+func makeServerConfig(stack serverStack, server *schema.Server) *runtime.Server {
 	current := &runtime.Server{
-		PackageName: server.Proto().PackageName,
-		ModuleName:  server.Proto().ModuleName,
+		PackageName: server.PackageName,
+		ModuleName:  server.ModuleName,
 	}
 
-	for _, service := range server.Proto().Service {
+	for _, service := range server.Service {
 		current.Port = append(current.Port, makePort(service))
 	}
 
-	for _, service := range server.Proto().Ingress {
+	for _, service := range server.Ingress {
 		current.Port = append(current.Port, makePort(service))
 	}
 
-	for _, endpoint := range stack.Endpoints {
-		if endpoint.ServerOwner != server.Proto().PackageName {
-			continue
-		}
-
+	endpoints, _ := stack.GetEndpoints(schema.PackageName(server.PackageName))
+	for _, endpoint := range endpoints {
 		current.Service = append(current.Service, &runtime.Server_Service{
 			Owner:    endpoint.EndpointOwner,
 			Name:     endpoint.ServiceName,

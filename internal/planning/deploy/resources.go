@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -38,7 +37,12 @@ type resourcePlan struct {
 	Secrets     []runtime.SecretResourceDependency
 }
 
-func planResources(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, rp resourceList) (*resourcePlan, error) {
+type serverStack interface {
+	GetServerProto(srv schema.PackageName) (*schema.Server, bool)
+	GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bool)
+}
+
+func planResources(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -64,7 +68,7 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 				}
 
-				target, has := stack.Get(schema.PackageName(serverIntent.PackageName))
+				target, has := stack.GetServerProto(schema.PackageName(serverIntent.PackageName))
 				if !has {
 					return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
 				}
@@ -76,15 +80,15 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 							resources.ResourceInstanceCategory(resource.ID),
 						},
 						SchedAfterCategory: []string{
-							runtime.OwnedByDeployable(target.Proto()),
+							runtime.OwnedByDeployable(target),
 						},
 					},
 				}
 
 				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 					ResourceInstanceId: resource.ID,
-					ServerConfig:       makeServerConfig(stack, target.Server),
-					Deployable:         runtime.DeployableToProto(target.Proto()),
+					ServerConfig:       makeServerConfig(stack, target),
+					Deployable:         runtime.DeployableToProto(target),
 				})
 				if err != nil {
 					return nil, err
@@ -168,9 +172,11 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 }
 
 type resourceList struct {
-	resources          map[string]*resourceInstance
-	perServerResources map[schema.PackageName]serverResourceInstances
+	resources         map[string]*resourceInstance
+	perOwnerResources ResourceMap
 }
+
+type ResourceMap map[string]ownedResourceInstances // The key is a canonical PackageRef.
 
 type resourceInstance struct {
 	ParentContexts []pkggraph.SealedContext
@@ -185,7 +191,7 @@ type resourceInstance struct {
 	Secrets              []runtime.SecretResourceDependency
 }
 
-type serverResourceInstances struct {
+type ownedResourceInstances struct {
 	Dependencies []*resources.ResourceDependency
 	Secrets      []runtime.SecretResourceDependency
 }
@@ -201,18 +207,23 @@ func (rp *resourceList) Resources() []*resourceInstance {
 	return resources
 }
 
-func (rp *resourceList) checkAddServerResources(ctx context.Context, owner planning.Server, instances []pkggraph.ResourceInstance) error {
+type resourceOwner interface {
+	SealedContext() pkggraph.SealedContext
+	PackageRef() *schema.PackageRef
+}
+
+func (rp *resourceList) checkAddOwnedResources(ctx context.Context, owner resourceOwner, instances []pkggraph.ResourceInstance) error {
 	var server resourceInstance
 
 	if err := rp.checkAddTo(ctx, owner.SealedContext(), "", instances, &server); err != nil {
 		return err
 	}
 
-	if rp.perServerResources == nil {
-		rp.perServerResources = map[schema.PackageName]serverResourceInstances{}
+	if rp.perOwnerResources == nil {
+		rp.perOwnerResources = ResourceMap{}
 	}
 
-	rp.perServerResources[owner.PackageName()] = serverResourceInstances{server.Dependencies, server.Secrets}
+	rp.perOwnerResources[owner.PackageRef().Canonical()] = ownedResourceInstances{server.Dependencies, server.Secrets}
 
 	return nil
 }
