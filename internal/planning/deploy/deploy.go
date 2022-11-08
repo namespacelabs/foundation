@@ -61,6 +61,12 @@ type serverBuildSpec struct {
 	Config      compute.Computable[oci.ImageID]
 }
 
+type Deployable struct {
+	Spec      *runtime.DeployableSpec
+	SealedCtx pkggraph.SealedContext
+	Resources []pkggraph.ResourceInstance
+}
+
 func PrepareDeployServers(ctx context.Context, env cfg.Context, planner runtime.Planner, focus ...planning.Server) (compute.Computable[*Plan], error) {
 	reg, err := registry.GetRegistry(ctx, env)
 	if err != nil {
@@ -75,16 +81,16 @@ func PrepareDeployServers(ctx context.Context, env cfg.Context, planner runtime.
 	return PrepareDeployStackToRegistry(ctx, env, planner, reg, stack)
 }
 
-func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, deployables ...Deployable) (compute.Computable[*Plan], error) {
 	reg, err := registry.GetRegistry(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
-	return PrepareDeployStackToRegistry(ctx, env, planner, reg, stack)
+	return PrepareDeployStackToRegistry(ctx, env, planner, reg, stack, deployables...)
 }
 
-func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack) (compute.Computable[*Plan], error) {
+func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, deployables ...Deployable) (compute.Computable[*Plan], error) {
 	def, err := prepareHandlerInvocations(ctx, env, planner, stack)
 	if err != nil {
 		return nil, err
@@ -92,7 +98,7 @@ func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner 
 
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, planner, registry, stack, def, makeBuildAssets(ingressFragments))
+	prepare, err := prepareBuildAndDeployment(ctx, env, planner, registry, stack, def, makeBuildAssets(ingressFragments), deployables...)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +232,7 @@ type prepareAndBuildResult struct {
 	NamespaceReference string
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets, deployables ...Deployable) (compute.Computable[prepareAndBuildResult], error) {
 	packages, images, err := computeStackAndImages(ctx, env, planner, registry, stack, stackDef, buildAssets)
 	if err != nil {
 		return nil, err
@@ -248,6 +254,17 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 				}
 			}
 
+			for _, d := range deployables {
+				var dep resourceInstance
+				if err := rp.checkAddTo(ctx, d.SealedCtx, "", d.Resources, &dep); err != nil {
+					return nil, err
+
+				}
+
+				d.Spec.Resources = append(d.Spec.Resources, dep.Dependencies...)
+				d.Spec.SecretResources = append(d.Spec.SecretResources, dep.Secrets...)
+			}
+
 			return planResources(ctx, planner, registry, stackAndDefs.Stack, rp)
 		})
 
@@ -267,7 +284,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			return m, nil
 		})
 
-	deploymentPlan := compute.Map(
+	deploymentSpec := compute.Map(
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
@@ -276,7 +293,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			Computable("images", imageIDs).
 			Computable("stackAndDefs", stackDef),
 		compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) (*runtime.DeploymentPlan, error) {
+		func(ctx context.Context, deps compute.Resolved) (runtime.DeploymentSpec, error) {
 			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
@@ -288,11 +305,23 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
 		Computable("resourcePlan", resourcePlan).
-		Computable("deploymentPlan", deploymentPlan).
+		Computable("deploymentSpec", deploymentSpec).
 		Computable("stackAndDefs", stackDef), compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
 			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
-			deploymentPlan := compute.MustGetDepValue(deps, deploymentPlan, "deploymentPlan")
+			deploymentSpec := compute.MustGetDepValue(deps, deploymentSpec, "deploymentSpec")
+
+			for _, d := range deployables {
+				if d.Spec != nil {
+					deploymentSpec.Specs = append(deploymentSpec.Specs, *d.Spec)
+				}
+			}
+
+			deploymentPlan, err := planner.PlanDeployment(ctx, deploymentSpec)
+			if err != nil {
+				return prepareAndBuildResult{}, err
+			}
+
 			return prepareAndBuildResult{
 				HandlerResult:      compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
 				Ops:                append(resourcePlan.Invocations, deploymentPlan.Definitions...),
@@ -302,7 +331,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources ResourceMap) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources ResourceMap) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec
@@ -324,20 +353,20 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 	}
 
 	if err := multierr.New(errs...); err != nil {
-		return nil, err
+		return runtime.DeploymentSpec{}, err
 	}
 
 	for k, srv := range stack.Servers {
 		resolved, ok := imageIDs[srv.PackageName()]
 		if !ok {
-			return nil, fnerrors.InternalError("%s: missing server build results", srv.PackageName())
+			return runtime.DeploymentSpec{}, fnerrors.InternalError("%s: missing server build results", srv.PackageName())
 		}
 
 		var run runtime.DeployableSpec
 
 		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary)
 		if err != nil {
-			return nil, err
+			return runtime.DeploymentSpec{}, err
 		}
 
 		run.MountRuntimeConfigPath = constants.NamespaceConfigMount
@@ -347,17 +376,17 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 		run.SecretResources = resources[srv.PackageRef().Canonical()].Secrets
 
 		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
-			return nil, err
+			return runtime.DeploymentSpec{}, err
 		}
 
 		sidecars, inits := stack.Servers[k].SidecarsAndInits()
 
 		if err := prepareContainerRunOpts(sidecars, resolved, &run.Sidecars); err != nil {
-			return nil, err
+			return runtime.DeploymentSpec{}, err
 		}
 
 		if err := prepareContainerRunOpts(inits, resolved, &run.Inits); err != nil {
-			return nil, err
+			return runtime.DeploymentSpec{}, err
 		}
 
 		if sr := outputs[srv.PackageName()]; sr != nil {
@@ -375,7 +404,7 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 						} else if updatedInits, ok := checkExtend(run.Inits, cext); ok {
 							run.Inits = updatedInits
 						} else {
-							return nil, fnerrors.BadInputError("%s: no such container", cext.Name)
+							return runtime.DeploymentSpec{}, fnerrors.BadInputError("%s: no such container", cext.Name)
 						}
 					}
 				}
@@ -398,7 +427,7 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 			if v.Kind == constants.VolumeKindConfigurable {
 				cv := &schema.ConfigurableVolume{}
 				if err := v.Definition.UnmarshalTo(cv); err != nil {
-					return nil, fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)
+					return runtime.DeploymentSpec{}, fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)
 				}
 
 				for _, e := range cv.Entries {
@@ -430,13 +459,13 @@ func planDeployment(ctx context.Context, env *schema.Environment, planner runtim
 
 	grounded, err := loadSecrets(ctx, env, secretSources...)
 	if err != nil {
-		return nil, err
+		return runtime.DeploymentSpec{}, err
 	}
 
-	return planner.PlanDeployment(ctx, runtime.DeploymentSpec{
+	return runtime.DeploymentSpec{
 		Specs:   serverRuns,
 		Secrets: *grounded,
-	})
+	}, nil
 }
 
 func extendContainer(target *runtime.ContainerRunOpts, cext *schema.ContainerExtension) {
