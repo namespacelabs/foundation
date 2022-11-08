@@ -38,7 +38,7 @@ type Telemetry struct {
 	errorLogging bool // For testing and debugging.
 
 	backendAddress string
-	recID          *atomic.String // Set after an invocation is recorded.
+	recID          *atomic.String // Never nil, set after an invocation is recorded.
 	id             ephemeralCliID
 	created        bool // True if this the first invocation with a new ID.
 }
@@ -53,6 +53,7 @@ func InternalNewTelemetry(ctx context.Context, makeID func(context.Context) (eph
 	return &Telemetry{
 		errorLogging:   false,
 		backendAddress: EndpointAddress,
+		recID:          atomic.NewString(""),
 		id:             id,
 		created:        created,
 	}
@@ -248,16 +249,13 @@ func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, 
 
 	req := buildRecordInvocationRequest(ctx, cmd, tel.id, reqID, args)
 
-	if tel.recID == nil {
-		tel.recID = atomic.NewString(req.ID)
-	} else {
-		tel.recID.Store(req.ID)
-	}
-
 	if err := tel.postRecordInvocationRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)
 		return
 	}
+
+	// Only store request id if recoding the invocation succeeded.
+	tel.recID.Store(req.ID)
 }
 
 func (tel *Telemetry) RecordInvocation(ctx context.Context, cmd *cobra.Command, args []string) string {
@@ -277,7 +275,7 @@ func (tel *Telemetry) postRecordErrorRequest(ctx context.Context, req recordErro
 }
 
 func (tel *Telemetry) RecordError(ctx context.Context, err error) {
-	if !tel.IsTelemetryEnabled() || err == nil || tel.recID == nil {
+	if !tel.IsTelemetryEnabled() || err == nil {
 		return
 	}
 
