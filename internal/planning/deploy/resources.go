@@ -213,9 +213,9 @@ type resourceOwner interface {
 }
 
 func (rp *resourceList) checkAddOwnedResources(ctx context.Context, owner resourceOwner, instances []pkggraph.ResourceInstance) error {
-	var server resourceInstance
+	var instance resourceInstance
 
-	if err := rp.checkAddTo(ctx, owner.SealedContext(), "", instances, &server); err != nil {
+	if err := rp.checkAddTo(ctx, owner.SealedContext(), "", instances, &instance); err != nil {
 		return err
 	}
 
@@ -223,7 +223,7 @@ func (rp *resourceList) checkAddOwnedResources(ctx context.Context, owner resour
 		rp.perOwnerResources = ResourceMap{}
 	}
 
-	rp.perOwnerResources[owner.PackageRef().Canonical()] = ownedResourceInstances{server.Dependencies, server.Secrets}
+	rp.perOwnerResources[owner.PackageRef().Canonical()] = ownedResourceInstances{instance.Dependencies, instance.Secrets}
 
 	return nil
 }
