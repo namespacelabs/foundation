@@ -48,15 +48,18 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 		out := &schema.BinaryConfig_EnvEntry{
 			Name: key,
 		}
-		if value.value != "" {
+		switch {
+		case value.value != "":
 			out.Value = value.value
-		} else if value.fromSecret != "" {
+
+		case value.fromSecret != "":
 			secretRef, err := schema.ParsePackageRef(owner, value.fromSecret)
 			if err != nil {
 				return nil, err
 			}
 			out.FromSecretRef = secretRef
-		} else if value.fromServiceEndpoint != "" {
+
+		case value.fromServiceEndpoint != "":
 			serviceRef, err := schema.ParsePackageRef(owner, value.fromServiceEndpoint)
 			if err != nil {
 				return nil, err
@@ -65,7 +68,8 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
 				ServiceName: serviceRef.Name,
 			}
-		} else if value.fromResourceField != nil {
+
+		case value.fromResourceField != nil:
 			resourceRef, err := schema.ParsePackageRef(owner, value.fromResourceField.Resource)
 			if err != nil {
 				return nil, err
