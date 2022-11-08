@@ -49,7 +49,7 @@ func NewAttachCmd() *cobra.Command {
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
 				Provider: observer,
 				Keybindings: []keyboard.Handler{
-					view.NewNetworkPlanKeybinding("ingress"),
+					view.NetworkPlanKeybinding{Name: "ingress"},
 					logtail.Keybinding{
 						LoadEnvironment: func(name string) (cfg.Context, error) {
 							if name == res.Env.Environment().Name {

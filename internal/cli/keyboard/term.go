@@ -89,7 +89,7 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 	defer obs.Close()
 
 	keych := make(chan tea.KeyMsg)
-	p := tea.NewProgram(&program{ch: keych, w: console.Stderr(ctx)}, tea.WithoutRenderer())
+	p := tea.NewProgram(&program{ch: keych, w: console.Stderr(ctx)}, tea.WithoutRenderer(), tea.WithContext(ctx))
 
 	ctx, cancelContext := context.WithCancel(ctx)
 	defer cancelContext()
@@ -100,22 +100,15 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 	eg.Go(opts.Handler)
 	eg.Go(func(ctx context.Context) error {
 		defer close(keych)
-		m, err := p.StartReturningModel()
-		if err != nil {
+		m, err := p.Run()
+		if err == tea.ErrProgramKilled {
+			return context.Canceled
+		} else if err != nil {
 			return err
-		}
-
-		if m.(*program).quit {
+		} else if m.(*program).quit {
 			return context.Canceled
 		}
 
-		return nil
-	})
-	eg.Go(func(ctx context.Context) error {
-		// Since StartReturningModel doesn't take context and doesn't respect cancellation
-		// we need to quit the TUI explicitly in cases when opts.Handler itself causes an exit (errors out).
-		<-ctx.Done()
-		p.Quit()
 		return nil
 	})
 

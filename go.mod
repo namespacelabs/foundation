@@ -23,7 +23,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/charmbracelet/bubbles v0.14.0
-	github.com/charmbracelet/bubbletea v0.22.0
+	github.com/charmbracelet/bubbletea v0.22.2-0.20221103165531-2d10416631fa
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/containerd/containerd v1.6.6
@@ -100,8 +100,8 @@ require (
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
 	golang.org/x/net v0.1.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
-	golang.org/x/sys v0.1.0
-	golang.org/x/term v0.1.0
+	golang.org/x/sys v0.2.0
+	golang.org/x/term v0.2.0
 	golang.org/x/tools v0.1.12
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c
 	google.golang.org/grpc v1.50.1
@@ -147,6 +147,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.19 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.19 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.11.17 // indirect
+	github.com/aymanbagabas/go-osc52 v1.2.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -223,7 +224,8 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mattn/go-localereader v0.0.1 // indirect
+	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/microcosm-cc/bluemonday v1.0.21 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -239,8 +241,8 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect
-	github.com/muesli/ansi v0.0.0-20211018074035-2e021307bc4b // indirect
-	github.com/muesli/termenv v0.11.1-0.20220212125758-44cd13922739 // indirect
+	github.com/muesli/ansi v0.0.0-20221106050444-61f0cd9a192a // indirect
+	github.com/muesli/termenv v0.13.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -251,7 +253,7 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/rubenv/sql-migrate v1.1.1 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/sahilm/fuzzy v0.1.0 // indirect

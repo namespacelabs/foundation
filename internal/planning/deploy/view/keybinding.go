@@ -18,13 +18,7 @@ import (
 )
 
 type NetworkPlanKeybinding struct {
-	name string
-}
-
-func NewNetworkPlanKeybinding(name string) *NetworkPlanKeybinding {
-	return &NetworkPlanKeybinding{
-		name: name,
-	}
+	Name string
 }
 
 func (k NetworkPlanKeybinding) Key() string { return "s" }
@@ -82,8 +76,8 @@ func (k NetworkPlanKeybinding) renderStickyNetworkPlan(ctx context.Context, plan
 
 	if plan != nil && plan.IsDeploymentFinished() {
 		fmt.Fprintln(console.TypedOutput(ctx, "network plan", common.CatOutputUs), content)
-		console.SetStickyContent(ctx, k.name, "")
+		console.SetStickyContent(ctx, k.Name, "")
 	} else {
-		console.SetStickyContent(ctx, k.name, content)
+		console.SetStickyContent(ctx, k.Name, content)
 	}
 }

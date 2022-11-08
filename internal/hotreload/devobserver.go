@@ -114,7 +114,7 @@ func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 
 	do.conn = conn
 
-	fmt.Fprintf(do.log, "Connected to FileSync (for hot reload), took %v.\n", time.Since(t))
+	fmt.Fprintf(do.log, " Connected to FileSync (for hot reload), took %v.\n\n", time.Since(t))
 }
 
 func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, fe []*wscontents.FileEvent) (bool, error) {
