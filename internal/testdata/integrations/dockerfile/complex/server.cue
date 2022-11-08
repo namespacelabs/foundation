@@ -30,6 +30,10 @@ server: {
 	resources: [
 		"namespacelabs.dev/foundation/internal/testdata/integrations/resources/instances:test1",
 	]
+
+	requires: [
+		"namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple",
+	]
 }
 
 tests: {
