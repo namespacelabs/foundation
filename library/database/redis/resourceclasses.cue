@@ -1,11 +1,11 @@
 resourceClasses: {
 	"Database": {
 		intent: {
-			type:   "library.storage.redis.DatabaseIntent"
+			type:   "library.database.redis.DatabaseIntent"
 			source: "./api.proto"
 		}
 		produces: {
-			type:   "library.storage.redis.DatabaseInstance"
+			type:   "library.database.redis.DatabaseInstance"
 			source: "./api.proto"
 		}
 	}
