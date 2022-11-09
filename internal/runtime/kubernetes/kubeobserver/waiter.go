@@ -49,27 +49,32 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 		Ready:               orchestration.Event_NOT_READY,
 	}
 
-	switch {
-	case isOneShot(deployable):
-		ev.Category = "One Shots deployed"
-	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
-		ev.Category = "Servers deployed"
-	default:
-		ev.Category = desc
-	}
-
 	if deployable != nil {
 		ev.Scope = deployable.GetPackageRef().Canonical()
+	}
+
+	switch {
+	case isTest(deployable):
+		ev.Category = "Tests deployed"
+	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
+		ev.Category = "Servers deployed"
+		if deployable != nil {
+			// Servers are singletons per package, so only display the pkg for brevity.
+			ev.Scope = deployable.GetPackageRef().GetPackageName()
+		}
+	default:
+		ev.Category = desc
 	}
 
 	return ev
 }
 
-func isOneShot(deployable runtime.Deployable) bool {
+func isTest(deployable runtime.Deployable) bool {
 	if deployable == nil {
 		return false
 	}
 
+	// TODO this works right now but is insufficcient
 	return deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT)
 }
 
