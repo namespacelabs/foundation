@@ -2,7 +2,9 @@
 FROM cypress/included:10.11.0
 
 # Copy our test sources
-COPY . .
+WORKDIR /app
+COPY cypress cypress
+COPY cypress.config.js .
 
 # Run the tests as a one-shot command
 ENTRYPOINT [ "cypress", "run" ]

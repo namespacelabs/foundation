@@ -2,25 +2,28 @@
 server: {
 	name: "cypress-dev-server"
 
-	// "open" wouldn't work without x11 so we use "run --no-exit" instead.
-	args: ["run", "--no-exit", "--browser=chrome"]
-
-	env: {
-		CYPRESS_REMOTE_DEBUGGING_PORT: "5001"
-	}
+	args: ["-c", "/liveserver/supervisord.conf"]
 
 	integration: dockerfile: {
-		command: "cypress"
+		// Special image for development, contains noVNC, websockify, supervisord, etc.
+		src: "liveserver/Dockerfile"
+		// Using supervisord to run multiple processes in the same container.
+		command: "supervisord"
 	}
 
 	services: {
-		webapi: {
-			// Exposing the Chrome remote debugging port
-			port: 5001
+		web: {
+			// Exposing the noVNC Web frontend port.
+			port: 8080
 			kind: "http"
 
 			ingress: internetFacing: true
 		}
+	}
+
+	// Mounting the local directory into the container.
+	mounts: "/app/cypress": {
+		syncWorkspace: fromDir: "cypress"
 	}
 
 	requires: [
