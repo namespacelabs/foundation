@@ -93,7 +93,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	}
 
 	pack := &schema.ResourcePack{}
-	if err := parsing.AddServers(testRef, stack.Focus.PackageNames(), pack); err != nil {
+	if err := parsing.AddServers(ctx, pl, testRef, stack.Focus.PackageNames(), pack); err != nil {
 		return nil, err
 	}
 

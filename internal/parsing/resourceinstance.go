@@ -201,7 +201,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 	return resources, nil
 }
 
-func AddServers(owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
+func AddServers(ctx context.Context, pl EarlyPackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
 	for _, s := range servers {
 		intent, err := anypb.New(&runtime.ServerIntent{
 			PackageName: s.String(),
@@ -218,6 +218,12 @@ func AddServers(owner *schema.PackageRef, servers []schema.PackageName, pack *sc
 			Class:       &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
 			Intent:      intent,
 		})
+	}
+
+	if len(servers) > 0 {
+		if _, err := pl.LoadByName(ctx, "namespacelabs.dev/foundation/library/runtime"); err != nil {
+			return err
+		}
 	}
 
 	return nil
