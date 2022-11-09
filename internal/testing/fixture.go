@@ -163,7 +163,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		SealedCtx: sealedCtx,
 		Template: runtime.DeployableSpec{
 			ErrorLocation:          testRef.AsPackageName(),
-			PackageName:            testRef.AsPackageName(),
+			PackageRef:             testRef,
 			Class:                  schema.DeployableClass_ONESHOT,
 			Id:                     ids.NewRandomBase32ID(8),
 			Name:                   fmt.Sprintf("%s-%s", testRef.Name, pkgId),

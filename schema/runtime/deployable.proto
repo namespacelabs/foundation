@@ -8,9 +8,14 @@ package foundation.schema.runtime;
 
 option go_package = "namespacelabs.dev/foundation/schema/runtime";
 
+import "schema/package.proto";
+
 message Deployable {
-    string package_name     = 1;
-    string id               = 2;
-    string name             = 3;
-    string deployable_class = 4;
+    // TODO remove when cli and orchestrator only use package_ref.
+    string package_name = 1 [deprecated = true];
+
+    foundation.schema.PackageRef package_ref      = 5;
+    string                       id               = 2;
+    string                       name             = 3;
+    string                       deployable_class = 4;
 }

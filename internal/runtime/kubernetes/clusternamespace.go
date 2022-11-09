@@ -121,7 +121,7 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 	fmt.Fprintf(console.Debug(ctx), "wait-until-ready: asPods: %v deployable: %+v\n", deployAsPods(r.target.env), srv)
 
 	return tasks.Action("deployable.wait-until-ready").
-		Scope(schema.PackageName(srv.GetPackageName())).
+		Scope(srv.GetPackageRef().AsPackageName()).
 		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
 			if ready, err := r.areServicesReady(ctx, srv); err != nil || !ready {
@@ -340,7 +340,7 @@ func (r *ClusterNamespace) ForwardPort(ctx context.Context, server runtime.Deplo
 		return nil, fnerrors.BadInputError("invalid port number: %d", containerPort)
 	}
 
-	return r.cluster.RawForwardPort(ctx, server.GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
+	return r.cluster.RawForwardPort(ctx, server.GetPackageRef().GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
 }
 
 func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deployable, containerPort int32) (net.Conn, error) {
@@ -376,7 +376,7 @@ func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clien
 }
 
 func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server runtime.Deployable) (oci.ImageID, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageName())),
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageRef().GetPackageName())),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
 			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
@@ -388,7 +388,7 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server run
 			cfgimage, ok := d.Annotations[kubedef.K8sConfigImage]
 			if !ok {
 				return oci.ImageID{}, fnerrors.BadInputError("%s: %q is missing as an annotation in %q",
-					server.GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
+					server.GetPackageRef().GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
 			}
 
 			imgid, err := oci.ParseImageID(cfgimage)

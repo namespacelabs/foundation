@@ -106,7 +106,7 @@ func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planne
 
 func allocateName(ctx context.Context, srv Deployable, opts fnapi.AllocateOpts) (*schema.Certificate, error) {
 	opts.NoTLS = NamingNoTLS
-	opts.Scope = schema.PackageName(srv.GetPackageName())
+	opts.Scope = srv.GetPackageRef().AsPackageName()
 
 	nr, err := fnapi.AllocateName(ctx, opts)
 	if err != nil {

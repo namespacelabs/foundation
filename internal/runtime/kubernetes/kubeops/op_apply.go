@@ -214,7 +214,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			}
 
 			if spec.Deployable != nil {
-				w.Scope = fnschema.PackageName(spec.Deployable.GetPackageName())
+				w.Scope = spec.Deployable.GetPackageRef().AsPackageName()
 			}
 
 			return &execution.HandleResult{Waiter: w.WaitUntilReady}, nil

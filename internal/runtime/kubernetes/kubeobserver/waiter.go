@@ -50,25 +50,27 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 	}
 
 	switch {
-	case isServer(gvk, deployable):
+	case isOneShot(deployable):
+		ev.Category = "One Shots deployed"
+	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
 		ev.Category = "Servers deployed"
 	default:
 		ev.Category = desc
 	}
 
 	if deployable != nil {
-		ev.Scope = deployable.GetPackageName()
+		ev.Scope = deployable.GetPackageRef().Canonical()
 	}
 
 	return ev
 }
 
-func isServer(gvk kubeschema.GroupVersionKind, deployable runtime.Deployable) bool {
-	if deployable != nil && deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT) {
+func isOneShot(deployable runtime.Deployable) bool {
+	if deployable == nil {
 		return false
 	}
 
-	return kubedef.IsGVKDeployment(gvk) || kubedef.IsGVKStatefulSet(gvk) || kubedef.IsGVKPod(gvk)
+	return deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT)
 }
 
 type WaitOnResource struct {

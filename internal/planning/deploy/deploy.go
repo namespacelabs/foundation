@@ -741,7 +741,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Server, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
 	out.ErrorLocation = srv.Location
-	out.PackageName = srv.PackageName()
+	out.PackageRef = srv.Proto().GetPackageRef()
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Id = proto.Id
 	out.Name = proto.Name

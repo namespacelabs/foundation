@@ -110,11 +110,11 @@ func NewDebugShellCmd() *cobra.Command {
 		}
 
 		return runtime.RunAttachedStdio(ctx, env, cluster, runtime.DeployableSpec{
-			PackageName: loc.AsPackageName(),
-			Class:       schema.DeployableClass_ONESHOT,
-			Name:        "debug",
-			Id:          ids.NewRandomBase32ID(8),
-			Attachable:  runtime.AttachableKind_WITH_TTY,
+			PackageRef: schema.MakePackageRef(loc.AsPackageName(), "debug"),
+			Class:      schema.DeployableClass_ONESHOT,
+			Name:       "debug",
+			Id:         ids.NewRandomBase32ID(8),
+			Attachable: runtime.AttachableKind_WITH_TTY,
 			MainContainer: runtime.ContainerRunOpts{
 				Image:   imageID,
 				Command: []string{"bash"},

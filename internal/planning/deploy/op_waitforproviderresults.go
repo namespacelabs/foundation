@@ -39,7 +39,7 @@ func register_OpWaitForProviderResults() {
 
 		HandleWithEvents: func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults, ch chan *orchpb.Event) (*execution.HandleResult, error) {
 			action := tasks.Action("resource.complete-invocation").
-				Scope(schema.PackageName(wait.Deployable.PackageName)).
+				Scope(wait.Deployable.GetPackageRef().AsPackageName()).
 				Arg("resource_instance_id", wait.ResourceInstanceId).
 				HumanReadablef(inv.Description)
 

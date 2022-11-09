@@ -45,7 +45,7 @@ func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner
 	spec := runtime.DeployableSpec{
 		// ErrorLocation: resource.ProviderPackage.Location,
 
-		PackageName: invoke.BinaryRef.AsPackageName(),
+		PackageRef:  invoke.BinaryRef,
 		Class:       schema.DeployableClass_MANUAL, // Don't emit deployment events.
 		Id:          ids.NewRandomBase32ID(8),
 		Name:        "provider",

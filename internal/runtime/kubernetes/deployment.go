@@ -212,7 +212,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
 	labels := kubedef.MakeLabels(target.env, deployable)
-	annotations := kubedef.MakeAnnotations(target.env, deployable.PackageName)
+	annotations := kubedef.MakeAnnotations(target.env, deployable.GetPackageRef().AsPackageName())
 	deploymentId := kubedef.MakeDeploymentId(deployable)
 
 	tmpl := applycorev1.PodTemplateSpec().
