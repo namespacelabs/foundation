@@ -96,10 +96,6 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	pack := &schema.ResourcePack{}
 	for k, sut := range stack.Focus.PackageNamesAsString() {
-		if _, err := pl.LoadByName(ctx, "namespacelabs.dev/foundation/library/runtime"); err != nil {
-			return nil, err
-		}
-
 		intent, err := anypb.New(&runtimepb.ServerIntent{
 			PackageName: sut,
 		})
@@ -176,9 +172,10 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	pkgId := naming.StableIDN(testRef.PackageName, 8)
 
-	testDriver := deploy.Deployable{
+	testDriver := deploy.PreparedDeployable{
+		Ref:       testRef,
 		SealedCtx: sealedCtx,
-		Spec: &runtime.DeployableSpec{
+		Template: runtime.DeployableSpec{
 			ErrorLocation:          testRef.AsPackageName(),
 			PackageName:            testRef.AsPackageName(),
 			Class:                  schema.DeployableClass_ONESHOT,
@@ -203,7 +200,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		Stack:            stack.Proto(),
-		Driver:           *testDriver.Spec,
+		Driver:           testDriver.Template,
 		OutputProgress:   opts.OutputProgress,
 	}
 

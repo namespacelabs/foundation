@@ -128,11 +128,6 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 
 		var errs []error
 		for k, server := range declaredStack {
-			if _, err := pl.LoadByName(ctx, "namespacelabs.dev/foundation/library/runtime"); err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
 			intent, err := anypb.New(&runtime.ServerIntent{
 				PackageName: server.String(),
 			})
