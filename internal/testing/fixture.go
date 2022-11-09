@@ -109,7 +109,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 		pack.ResourceInstance = append(pack.ResourceInstance, &schema.ResourceInstance{
 			PackageName: driverLoc.PackageName.String(),
-			Name:        fmt.Sprintf("$required_%d", k),
+			Name:        fmt.Sprintf("$sut_%d", k), // Since tests can live in the same package as servers, this must not collide with resources from the servers `requires` list.
 			Class:       &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
 			Intent:      intent,
 		})
