@@ -164,6 +164,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		Template: runtime.DeployableSpec{
 			ErrorLocation:          testRef.AsPackageName(),
 			PackageRef:             testRef,
+			Description:            "Test Driver",
 			Class:                  schema.DeployableClass_ONESHOT,
 			Id:                     ids.NewRandomBase32ID(8),
 			Name:                   fmt.Sprintf("%s-%s", testRef.Name, pkgId),

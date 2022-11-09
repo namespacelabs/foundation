@@ -49,14 +49,8 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 		Ready:               orchestration.Event_NOT_READY,
 	}
 
-	if deployable != nil {
-		ev.Scope = deployable.GetPackageRef().Canonical()
-	}
-
 	switch {
-	case isTest(deployable):
-		ev.Category = "Tests deployed"
-	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
+	case isServer(gvk, deployable):
 		ev.Category = "Servers deployed"
 		if deployable != nil {
 			// Servers are singletons per package, so only display the pkg for brevity.
@@ -64,18 +58,20 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 		}
 	default:
 		ev.Category = desc
+		if deployable != nil {
+			ev.Scope = deployable.GetPackageRef().Canonical()
+		}
 	}
 
 	return ev
 }
 
-func isTest(deployable runtime.Deployable) bool {
-	if deployable == nil {
+func isServer(gvk kubeschema.GroupVersionKind, deployable runtime.Deployable) bool {
+	if deployable != nil && deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT) {
 		return false
 	}
 
-	// TODO this works right now but is insufficcient
-	return deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT)
+	return kubedef.IsGVKDeployment(gvk) || kubedef.IsGVKStatefulSet(gvk) || kubedef.IsGVKPod(gvk)
 }
 
 type WaitOnResource struct {
