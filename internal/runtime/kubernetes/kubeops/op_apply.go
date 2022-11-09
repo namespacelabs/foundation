@@ -260,18 +260,6 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 							return done, nil
 						}))
 			}}, nil
-
-	case kubedef.IsService(obj):
-		return &execution.HandleResult{
-			Waiter: func(ctx context.Context, ch chan *orchestration.Event) error {
-				if ch != nil {
-					defer close(ch)
-				}
-
-				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("service.wait").Scope(scope...),
-					kobs.WaitForService(obj.GetNamespace(), obj.GetName()))
-			},
-		}, nil
 	}
 
 	return nil, nil

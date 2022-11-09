@@ -118,14 +118,16 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 }
 
 func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deployable) error {
-	// XXX incorporate service readiness in check as well.
-
 	fmt.Fprintf(console.Debug(ctx), "wait-until-ready: asPods: %v deployable: %+v\n", deployAsPods(r.target.env), srv)
 
 	return tasks.Action("deployable.wait-until-ready").
 		Scope(schema.PackageName(srv.GetPackageName())).
 		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+			if ready, err := r.areServicesReady(ctx, srv); err != nil || !ready {
+				return ready, err
+			}
+
 			if deployAsPods(r.target.env) {
 				return r.isPodReady(ctx, srv)
 			}
@@ -163,6 +165,40 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 			}
 		})
 	})
+}
+
+func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
+	if !client.IsInclusterClient(r.cluster.cli) {
+		// Emitting this debug message as only incluster deployments know how to determine service readiness.
+		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
+
+		// Assume service is always ready for now.
+		// TODO implement readiness check that also supports non-incluster deployments.
+		return true, nil
+	}
+
+	// TODO only check services that are required
+	services, err := r.cluster.cli.CoreV1().Services(r.target.namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	for _, s := range services.Items {
+		for _, port := range s.Spec.Ports {
+			addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, port.Port)
+
+			rawConn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+			if err != nil {
+				// Service not ready.
+				return false, nil
+			}
+			rawConn.Close()
+		}
+	}
+
+	return true, nil
 }
 
 func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
