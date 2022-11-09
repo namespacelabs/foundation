@@ -7,6 +7,7 @@ package keyboard
 import (
 	"context"
 	"io"
+	"log"
 	"os"
 	"strings"
 	"testing"
@@ -31,7 +32,11 @@ func TestHandleExitsWhenHandlerErrs(t *testing.T) {
 	}
 	oldStdin := os.Stdin
 	os.Stdin = tty
-	go io.Copy(pty, os.Stdout)
+	go func() {
+		if _, err := io.Copy(pty, os.Stdout); err != nil {
+			log.Printf("copy failed with %v", err)
+		}
+	}()
 	defer func() {
 		os.Stdin = oldStdin
 		tty.Close()
