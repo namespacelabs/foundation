@@ -22,7 +22,7 @@ func Ask(ctx context.Context, title, description, placeholder string) (string, e
 
 	p := tea.NewProgram(initialAskModel(title, description, placeholder))
 
-	final, err := p.StartReturningModel()
+	final, err := p.Run()
 	if err != nil {
 		return "", err
 	}

@@ -33,7 +33,7 @@ func Select[V list.DefaultItem](ctx context.Context, title string, items []V) (l
 
 	p := tea.NewProgram(initialSelectModel(title, downcast, height))
 
-	final, err := p.StartReturningModel()
+	final, err := p.Run()
 	if err != nil {
 		return nil, err
 	}
