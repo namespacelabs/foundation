@@ -89,7 +89,7 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 			Binary:      hotreload.ControllerPkg,
 		})
 
-		config.Command = []string{"/filesync-controller"}
+		config.Command = []string{hotreload.ControllerCommand}
 		// Existence of the "dev" script is not checked, because this code is executed during package loading,
 		// and for "ns test" it happens initially with the "DEV" environment.
 		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), packageManager.CLI, "run", data.RunScript}

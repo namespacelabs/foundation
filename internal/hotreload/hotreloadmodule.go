@@ -19,11 +19,10 @@ type hotReloadModule struct {
 	sink   wsremote.Sink
 }
 
-// If "triggerFullRebuildPredicate" returns true, a full rebuild will be triggered instead of a hot reload.
 func NewHotReloadModule(module build.Workspace, opts *languages.HotReloadOpts) build.Workspace {
 	return hotReloadModule{
 		module: module,
-		sink:   observerSink{opts.Sink, opts.TriggerFullRebuiltPredicate},
+		sink:   observerSink{opts.Sink, opts.EventProcessor},
 	}
 }
 
@@ -40,15 +39,21 @@ func (w hotReloadModule) VersionedFS(rel string, observeChanges bool) compute.Co
 type observerSink struct {
 	sink wsremote.Sink
 
-	triggerFullRebuildPredicate func(filepath string) bool
+	eventProcessor func(*wscontents.FileEvent) *wscontents.FileEvent
 }
 
 func (obs observerSink) Deposit(ctx context.Context, events []*wscontents.FileEvent) (bool, error) {
+	processedEvents := []*wscontents.FileEvent{}
 	for _, ev := range events {
-		if obs.triggerFullRebuildPredicate != nil && obs.triggerFullRebuildPredicate(ev.Path) {
-			return false, nil
+		processedEvent := ev
+		if obs.eventProcessor != nil {
+			processedEvent = obs.eventProcessor(ev)
+			if processedEvent == nil {
+				return false, nil
+			}
 		}
+		processedEvents = append(processedEvents, processedEvent)
 	}
 
-	return obs.sink.Deposit(ctx, events)
+	return obs.sink.Deposit(ctx, processedEvents)
 }

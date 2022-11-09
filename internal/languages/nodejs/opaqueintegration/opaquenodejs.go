@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/languages/opaque"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -40,13 +41,13 @@ func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar
 			// "ModuleName" and "Rel" are empty because we have only one module in the image and
 			// we put the package content directly under the root "/app" directory.
 			Sink: remote.For(&wsremote.Signature{ModuleName: "", Rel: ""}),
-			TriggerFullRebuiltPredicate: func(filepath string) bool {
+			EventProcessor: func(ev *wscontents.FileEvent) *wscontents.FileEvent {
 				for _, p := range binary.PackageManagerSources {
-					if strings.HasPrefix(filepath, p) {
-						return true
+					if strings.HasPrefix(ev.Path, p) {
+						return nil
 					}
 				}
-				return false
+				return ev
 			},
 		}
 	}

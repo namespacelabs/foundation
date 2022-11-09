@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/development/controller/admin"
@@ -211,8 +212,14 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 
 func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
 	return &languages.HotReloadOpts{
-		Sink:                        remote.For(&wsremote.Signature{ModuleName: srv.Module().ModuleName(), Rel: "."}),
-		TriggerFullRebuiltPredicate: func(filepath string) bool { return filepath == yarnLockFn },
+		Sink: remote.For(&wsremote.Signature{ModuleName: srv.Module().ModuleName(), Rel: "."}),
+		EventProcessor: func(ev *wscontents.FileEvent) *wscontents.FileEvent {
+			if ev.Path == yarnLockFn {
+				return nil
+			} else {
+				return ev
+			}
+		},
 	}
 }
 

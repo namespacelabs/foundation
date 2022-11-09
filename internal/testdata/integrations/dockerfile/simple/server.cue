@@ -15,4 +15,8 @@ server: {
 			ingress: internetFacing: true
 		}
 	}
+
+	mounts: "/app/src": {
+		syncWorkspace: fromDir: "src"
+	}
 }

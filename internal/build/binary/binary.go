@@ -202,7 +202,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 		}
 	}
 
-	return mergeSpecs{specs: specs, descriptions: descriptions, platformIndependent: platformIndependent}, nil
+	return MergeSpecs{Specs: specs, Descriptions: descriptions, platformIndependent: platformIndependent}, nil
 }
 
 func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, assets assets.AvailableBuildAssets, opts BuildImageOpts) (build.Spec, error) {
