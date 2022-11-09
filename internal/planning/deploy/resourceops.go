@@ -6,5 +6,5 @@ package deploy
 
 func RegisterDeployOps() {
 	register_OpWaitForProviderResults()
-	register_OpHandleServerDependency()
+	register_OpCaptureServerConfig()
 }

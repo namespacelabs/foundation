@@ -85,7 +85,7 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 					},
 				}
 
-				wrapped, err := anypb.New(&resources.OpHandleServerDependency{
+				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 					ResourceInstanceId: resource.ID,
 					ServerConfig:       makeServerConfig(stack, target),
 					Deployable:         runtime.DeployableToProto(target),

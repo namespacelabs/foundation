@@ -17,8 +17,9 @@ import (
 	"namespacelabs.dev/foundation/std/resources"
 )
 
-func register_OpHandleServerDependency() {
-	execution.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, dep *resources.OpHandleServerDependency) (*execution.HandleResult, error) {
+// TODO rename op to reflect what it does.
+func register_OpCaptureServerConfig() {
+	execution.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, capture *resources.OpCaptureServerConfig) (*execution.HandleResult, error) {
 		c, err := execution.Get(ctx, runtime.ClusterNamespaceInjection)
 		if err != nil {
 			return nil, err
@@ -28,15 +29,15 @@ func register_OpHandleServerDependency() {
 		defer done()
 
 		t := time.Now()
-		if err := c.WaitUntilReady(ctx, dep.Deployable); err != nil {
+		if err := c.WaitUntilReady(ctx, capture.Deployable); err != nil {
 			return nil, fnerrors.New("deployable never became ready in time: %w", err)
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "deployable.wait-until-ready: %s: took %v\n", dep.Deployable.Id, time.Since(t))
+		fmt.Fprintf(console.Debug(ctx), "deployable.wait-until-ready: %s: took %v\n", capture.Deployable.Id, time.Since(t))
 
 		return &execution.HandleResult{
 			Outputs: []execution.Output{
-				{InstanceID: dep.ResourceInstanceId, Message: dep.ServerConfig},
+				{InstanceID: capture.ResourceInstanceId, Message: capture.ServerConfig},
 			},
 		}, nil
 	})
