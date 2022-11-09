@@ -6,12 +6,14 @@ package parsing
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -197,4 +199,26 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 	}
 
 	return resources, nil
+}
+
+func AddServers(owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
+	for _, s := range servers {
+		intent, err := anypb.New(&runtime.ServerIntent{
+			PackageName: s.String(),
+		})
+		if err != nil {
+			return err
+		}
+
+		name := naming.StableIDN(fmt.Sprintf("%s->%s", owner.Canonical(), s.String()), 8)
+
+		pack.ResourceInstance = append(pack.ResourceInstance, &schema.ResourceInstance{
+			PackageName: owner.PackageName,
+			Name:        name,
+			Class:       &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
+			Intent:      intent,
+		})
+	}
+
+	return nil
 }

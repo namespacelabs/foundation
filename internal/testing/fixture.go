@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io/fs"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
@@ -30,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
-	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -95,20 +93,8 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	}
 
 	pack := &schema.ResourcePack{}
-	for k, sut := range stack.Focus.PackageNamesAsString() {
-		intent, err := anypb.New(&runtimepb.ServerIntent{
-			PackageName: sut,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		pack.ResourceInstance = append(pack.ResourceInstance, &schema.ResourceInstance{
-			PackageName: driverLoc.PackageName.String(),
-			Name:        fmt.Sprintf("$sut_%d", k), // Since tests can live in the same package as servers, this must not collide with resources from the servers `requires` list.
-			Class:       &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
-			Intent:      intent,
-		})
+	if err := parsing.AddServers(testRef, stack.Focus.PackageNames(), pack); err != nil {
+		return nil, err
 	}
 
 	resources, err := parsing.LoadResources(ctx, pl, driverLoc, pack)
