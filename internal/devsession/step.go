@@ -203,6 +203,7 @@ type updateDeploymentStatus struct {
 func (u updateDeploymentStatus) OnDeployment(ctx context.Context) {
 	u.session.updateStackInPlace(func(s *Stack) {
 		s.Deployed = true
+		s.DeploymentRevision++
 	})
 }
 
@@ -228,6 +229,8 @@ func resetStack(out *Stack, env cfg.Context, availableEnvs []*schema.Environment
 	out.Env = env.Environment()
 	out.Workspace = workspace
 	out.AvailableEnv = availableEnvs
+	out.Deployed = false
+	// The DeploymentRevision is purposely not reset. The contract is that it increases monotonically.
 
 	out.Focus = nil
 	out.Current = nil

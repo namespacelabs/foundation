@@ -212,12 +212,18 @@ func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
 		return nil
 	}
 
+	incomplete := false
+
 	var portFwds []*deploystorage.PortFwd
 	for _, fwd := range pi.endpointState {
 		portFwds = append(portFwds, &deploystorage.PortFwd{
 			Endpoint:  fwd.endpoint,
 			LocalPort: uint32(fwd.port.localPort),
 		})
+
+		if fwd.port.localPort == 0 {
+			incomplete = true
+		}
 	}
 
 	if len(pi.ingressState.users) > 0 {
@@ -225,9 +231,15 @@ func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
 			Endpoint:  pi.ingressState.users[0].endpoint,
 			LocalPort: uint32(pi.ingressState.localPort),
 		})
+
+		if pi.ingressState.localPort == 0 {
+			incomplete = true
+		}
 	}
 
-	return deploystorage.ToStorageNetworkPlan(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.fragments)
+	r := deploystorage.ToStorageNetworkPlan(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.fragments)
+	r.Incomplete = incomplete
+	return r
 }
 
 func (pi *PortForward) portFwd(serverOwner string, containerPort int32, revision int, callback func(int, uint)) (io.Closer, error) {

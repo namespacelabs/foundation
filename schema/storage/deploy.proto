@@ -18,6 +18,7 @@ message NetworkPlan {
     repeated IngressFragment ingress_fragments        = 7;
     repeated storage.Endpoint endpoints               = 8;
     repeated string           focused_server_packages = 9;
+    bool                      incomplete              = 10;  // If one of the port forwards are not yet complete, this will be true.
 
     message AccessCmd {
         // url for http

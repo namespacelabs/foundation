@@ -13,9 +13,10 @@ import "schema/stack.proto";
 import "schema/storage/deploy.proto";
 
 message StackUpdateEvent {
-    schema.Environment         env          = 1;
-    schema.Stack               stack        = 2;
-    repeated string            focus        = 3;
-    schema.storage.NetworkPlan network_plan = 4;
-    bool                       deployed     = 5;
+    schema.Environment         env               = 1;
+    schema.Stack               stack             = 2;
+    repeated string            focus             = 3;
+    schema.storage.NetworkPlan network_plan      = 4;
+    bool                       deployed          = 5;
+    uint64                     deployed_revision = 6;
 }

@@ -32,6 +32,7 @@ message Stack {
     string                     rendered_port_forwarding = 10;
     schema.storage.NetworkPlan network_plan             = 12;
     bool                       deployed                 = 13;
+    uint64                     deployment_revision      = 14;  // Every time that we see a deployment event, we increment the deployment_revision.
 }
 
 message ForwardedPort {

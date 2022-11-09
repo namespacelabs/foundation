@@ -51,11 +51,12 @@ type Event struct {
 	EventID     string
 	Operation   EventOp
 	StackUpdate struct {
-		Env         *schema.Environment
-		Stack       *schema.Stack
-		Deployed    bool
-		Focus       []string
-		NetworkPlan *storage.NetworkPlan
+		Env              *schema.Environment
+		Stack            *schema.Stack
+		Deployed         bool
+		DeployedRevision uint64
+		Focus            []string
+		NetworkPlan      *storage.NetworkPlan
 	}
 	CurrentState string
 }
@@ -244,6 +245,7 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 					ev.StackUpdate.Focus = focus
 					ev.StackUpdate.NetworkPlan = networkPlan
 					ev.StackUpdate.Deployed = update.Deployed
+					ev.StackUpdate.DeployedRevision = update.DeployedRevision
 					handler.Ch <- ev
 				}
 			}

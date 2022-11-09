@@ -33,10 +33,11 @@ func NewAttachCmd() *cobra.Command {
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}, &hydrateOpts{rehydrate: true})...).
 		Do(func(ctx context.Context) error {
 			event := &observers.StackUpdateEvent{
-				Env:      res.Env.Environment(),
-				Stack:    res.Stack,
-				Focus:    schema.Strs(res.Focus...),
-				Deployed: true,
+				Env:              res.Env.Environment(),
+				Stack:            res.Stack,
+				Focus:            schema.Strs(res.Focus...),
+				Deployed:         true,
+				DeployedRevision: 1,
 			}
 			observer := observers.Static()
 			observer.PushUpdate(event)

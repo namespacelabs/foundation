@@ -138,11 +138,12 @@ func (o *Observer) post(update *Update) {
 	if o.stackUpdates != nil {
 		if update.StackUpdate != nil {
 			o.stackUpdates <- &observers.StackUpdateEvent{
-				Env:         update.StackUpdate.Env,
-				Stack:       update.StackUpdate.Stack,
-				Focus:       update.StackUpdate.Focus,
-				NetworkPlan: update.StackUpdate.NetworkPlan,
-				Deployed:    update.StackUpdate.Deployed,
+				Env:              update.StackUpdate.Env,
+				Stack:            update.StackUpdate.Stack,
+				Focus:            update.StackUpdate.Focus,
+				NetworkPlan:      update.StackUpdate.NetworkPlan,
+				Deployed:         update.StackUpdate.Deployed,
+				DeployedRevision: update.StackUpdate.DeploymentRevision,
 			}
 		}
 	} else {
