@@ -189,12 +189,12 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 		for _, port := range s.Spec.Ports {
 			addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, port.Port)
 
-			rawConn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 			if err != nil {
 				// Service not ready.
 				return false, nil
 			}
-			rawConn.Close()
+			conn.Close()
 		}
 	}
 
