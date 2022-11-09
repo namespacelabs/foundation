@@ -1,5 +1,5 @@
 server: {
-	name: "myserver"
+	name: "mysimpleserver"
 
 	args: ["start"]
 

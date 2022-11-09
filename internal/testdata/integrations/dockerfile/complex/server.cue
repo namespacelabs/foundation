@@ -1,5 +1,5 @@
 server: {
-	name: "myserver"
+	name: "mycomplexserver"
 
 	integration: "dockerfile"
 

@@ -745,9 +745,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	// them with restart_policy=never, which we would otherwise not be able to do with
 	// deployments.
 	if deployAsPods(target.env) || isOneShotLike(deployable.Class) {
-		desc := "Server"
+		desc := fmt.Sprintf("Server %s", deployable.Name)
 		if isOneShotLike(deployable.Class) {
-			desc = "One-shot"
+			desc = fmt.Sprintf("One-shot %s", deployable.Name)
 		}
 
 		ensure.Description = firstStr(deployable.Description, desc)
@@ -760,7 +760,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	} else {
 		switch deployable.Class {
 		case schema.DeployableClass_STATELESS:
-			ensure.Description = firstStr(deployable.Description, "Server Deployment")
+			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server Deployment %s", deployable.Name))
 			ensure.Resource = appsv1.
 				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
@@ -772,7 +772,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
 
 		case schema.DeployableClass_STATEFUL:
-			ensure.Description = firstStr(deployable.Description, "Server StatefulSet")
+			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server StatefulSet %s", deployable.Name))
 			ensure.Resource = appsv1.
 				StatefulSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).
@@ -1005,7 +1005,7 @@ func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.Dep
 		}
 
 		s.operations = append(s.operations, kubedef.Apply{
-			Description: fmt.Sprintf("Service %s", endpoint.ServiceName),
+			Description: fmt.Sprintf("Service %s:%s", deployable.Name, endpoint.ServiceName),
 			Resource: applycorev1.
 				Service(endpoint.AllocatedName, r.namespace).
 				WithLabels(kubedef.MakeServiceLabels(r.env, deployable, endpoint)).
