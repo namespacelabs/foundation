@@ -14,14 +14,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/morikuni/aec"
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/observers"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/schema/storage"
 )
 
 type Handler interface {
@@ -48,16 +45,9 @@ const (
 )
 
 type Event struct {
-	EventID     string
-	Operation   EventOp
-	StackUpdate struct {
-		Env              *schema.Environment
-		Stack            *schema.Stack
-		Deployed         bool
-		DeployedRevision uint64
-		Focus            []string
-		NetworkPlan      *storage.NetworkPlan
-	}
+	EventID      string
+	Operation    EventOp
+	StackUpdate  *observers.StackUpdateEvent
 	CurrentState string
 }
 
@@ -228,25 +218,14 @@ func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Ha
 			}
 
 			if len(state) > 0 {
-				// Decouple changes made by devsession. Handlers should be able
-				// to assume that the received event data is immutable.
-				env := protos.Clone(update.Env)
-				stack := protos.Clone(update.Stack)
-				focus := slices.Clone(update.Focus)
-				networkPlan := protos.Clone(update.NetworkPlan)
-
 				for _, handler := range state {
-					ev := Event{
+					handler.Ch <- Event{
 						EventID:   fmt.Sprintf("%d", eventID),
 						Operation: OpStackUpdate,
+						// Decouple changes made by devsession. Handlers should be able
+						// to assume that the received event data is immutable.
+						StackUpdate: protos.Clone(update),
 					}
-					ev.StackUpdate.Env = env
-					ev.StackUpdate.Stack = stack
-					ev.StackUpdate.Focus = focus
-					ev.StackUpdate.NetworkPlan = networkPlan
-					ev.StackUpdate.Deployed = update.Deployed
-					ev.StackUpdate.DeployedRevision = update.DeployedRevision
-					handler.Ch <- ev
 				}
 			}
 
