@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/creack/pty"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -39,27 +38,18 @@ func TestHandleExitsWhenHandlerErrs(t *testing.T) {
 		pty.Close()
 	}()
 
-	ret := make(chan error)
-	go func() {
-		// This goroutine will get stuck forever if there is a logic error.
-		ret <- Handle(ctx, HandleOpts{
-			Provider:    &fakeProvider{},
-			Keybindings: []Handler{},
-			Handler: func(context.Context) error {
-				return fnerrors.New("expected-in-test")
-			},
-		})
-	}()
-
-	select {
-	case err = <-ret:
-		if !strings.Contains(err.Error(), "expected-in-test") {
-			t.Errorf("Unexpected error from Handle: %v", err)
-		}
-	case <-time.After(1 * time.Second):
-		// Yes, this is indeed a race and 1s is an arbitrary time limit
-		// on how long it takes to return from the errgroup.
-		t.Fatal("Handle didn't finish within 1s")
+	// This method blocks if there's a bug. Use `go test -timeout 5s` to run the
+	// test with a lower timeout, for debugging.
+	if err := Handle(ctx, HandleOpts{
+		Provider:    &fakeProvider{},
+		Keybindings: []Handler{},
+		Handler: func(context.Context) error {
+			return fnerrors.New("expected-in-test")
+		},
+	}); err == nil {
+		t.Fatal("expected an error")
+	} else if !strings.Contains(err.Error(), "expected-in-test") {
+		t.Errorf("Unexpected error from Handle: %v", err)
 	}
 
 }

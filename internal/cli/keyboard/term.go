@@ -80,7 +80,6 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 	defer obs.Close()
 
 	keych := make(chan tea.KeyMsg)
-	p := tea.NewProgram(&program{ch: keych, w: console.Stderr(ctx)}, tea.WithoutRenderer(), tea.WithContext(ctx))
 
 	ctx, cancelContext := context.WithCancel(ctx)
 	defer cancelContext()
@@ -91,6 +90,8 @@ func Handle(ctx context.Context, opts HandleOpts) error {
 	eg.Go(opts.Handler)
 	eg.Go(func(ctx context.Context) error {
 		defer close(keych)
+
+		p := tea.NewProgram(&program{ch: keych, w: console.Stderr(ctx)}, tea.WithoutRenderer(), tea.WithContext(ctx))
 		m, err := p.Run()
 		if err == tea.ErrProgramKilled {
 			return context.Canceled
