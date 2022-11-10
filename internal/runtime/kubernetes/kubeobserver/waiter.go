@@ -50,7 +50,7 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 	}
 
 	switch {
-	case kubedef.IsGVKDeployment(gvk), kubedef.IsGVKStatefulSet(gvk), kubedef.IsGVKPod(gvk):
+	case isServer(gvk, deployable):
 		ev.Category = "Servers deployed"
 	default:
 		ev.Category = desc
@@ -61,6 +61,14 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 	}
 
 	return ev
+}
+
+func isServer(gvk kubeschema.GroupVersionKind, deployable runtime.Deployable) bool {
+	if deployable != nil && deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT) {
+		return false
+	}
+
+	return kubedef.IsGVKDeployment(gvk) || kubedef.IsGVKStatefulSet(gvk) || kubedef.IsGVKPod(gvk)
 }
 
 type WaitOnResource struct {
