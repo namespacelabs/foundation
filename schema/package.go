@@ -61,7 +61,7 @@ func StrictParsePackageRef(ref string) (*PackageRef, error) {
 }
 
 func (n *PackageRef) AsPackageName() PackageName {
-	return MakePackageName(n.PackageName)
+	return MakePackageName(n.GetPackageName())
 }
 
 func (n *PackageRef) Equals(other *PackageRef) bool {
@@ -69,16 +69,16 @@ func (n *PackageRef) Equals(other *PackageRef) bool {
 }
 
 func (n *PackageRef) Compare(other *PackageRef) int {
-	if n.PackageName != other.PackageName {
-		return strings.Compare(n.PackageName, other.PackageName)
+	if n.GetPackageName() != other.GetPackageName() {
+		return strings.Compare(n.GetPackageName(), other.GetPackageName())
 	}
-	return strings.Compare(n.Name, other.Name)
+	return strings.Compare(n.GetName(), other.GetName())
 }
 
 func (n *PackageRef) Canonical() string {
-	if n.Name == "" {
-		return n.PackageName
+	if n.GetName() == "" {
+		return n.GetPackageName()
 	}
 
-	return n.PackageName + ":" + n.Name
+	return n.GetPackageName() + ":" + n.GetName()
 }
