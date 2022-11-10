@@ -6,8 +6,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,8 +111,7 @@ func main() {
 		proc.Stdout = os.Stdout
 		proc.Stderr = os.Stderr
 		proc.Env = append(os.Environ(), fmt.Sprintf("NSBOOT_VERSION=%s", formatNSBootVersion()))
-		err = proc.Run()
-		if err != nil {
+		if err := proc.Run(); err != nil {
 			if exiterr, ok := err.(*exec.ExitError); ok {
 				os.Exit(exiterr.ExitCode())
 			} else {
@@ -129,9 +130,12 @@ func updateAndRun(ctx context.Context) (path string, err error) {
 	}
 
 	if latestVersion == nil || needUpdate {
-		_, path, err = performUpdate(ctx)
+		_, path, err = performUpdate(ctx, false)
 	} else {
-		path, err = fetchBinary(ctx, latestVersion)
+		values := url.Values{}
+		serialized, _ := json.Marshal(latestVersion)
+		values.Add("update_from", base64.RawURLEncoding.EncodeToString(serialized))
+		path, err = fetchBinary(ctx, latestVersion, values)
 	}
 	return
 }
@@ -141,7 +145,7 @@ func forceUpdate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	newVersion, _, err := performUpdate(ctx)
+	newVersion, _, err := performUpdate(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -155,7 +159,7 @@ func forceUpdate(ctx context.Context) error {
 }
 
 // Loads version cache and applies default update policy.
-func getCachedVersion(ctx context.Context) (version *toolVersion, needUpdate bool, err error) {
+func getCachedVersion(ctx context.Context) (*toolVersion, bool, error) {
 	cache, err := loadVersionCache()
 	if err != nil {
 		return nil, false, err
@@ -164,21 +168,21 @@ func getCachedVersion(ctx context.Context) (version *toolVersion, needUpdate boo
 		return nil, false, err
 	}
 	enableAutoupdate := viper.GetBool("enable_autoupdate")
-	version = cache.Latest
+	version := cache.Latest
 	stale := cache.Latest != nil && time.Since(cache.Latest.FetchedAt) > updatePeriod
-	needUpdate = stale && enableAutoupdate
+	needUpdate := stale && enableAutoupdate
 	if stale && !enableAutoupdate {
 		fmt.Fprintf(console.Stdout(ctx), "ns version is stale, but auto-update is disabled (see \"enable_autoupdate\" in config.json)\n")
 	}
-	return
+	return version, needUpdate, nil
 }
 
-func performUpdate(ctx context.Context) (*toolVersion, string, error) {
+func performUpdate(ctx context.Context, forceUpdate bool) (*toolVersion, string, error) {
 	newVersion, err := loadRemoteVersion(ctx)
 	if err != nil {
 		return nil, "", fnerrors.Wrapf(nil, err, "failed to load an update from the update service")
 	}
-	path, err := fetchBinary(ctx, newVersion)
+	path, err := fetchBinary(ctx, newVersion, url.Values{})
 	if err != nil {
 		return nil, "", fnerrors.Wrapf(nil, err, "failed to fetch a new tarball")
 	}
@@ -223,8 +227,7 @@ func loadVersionCache() (*versionCache, error) {
 		return nil, err
 	}
 	var cache versionCache
-	err = json.Unmarshal(bs, &cache)
-	if err != nil {
+	if err := json.Unmarshal(bs, &cache); err != nil {
 		return nil, err
 	}
 	return &cache, nil
@@ -262,7 +265,7 @@ func cachePath() (string, error) {
 	return filepath.Join(toolDir, "versions.json"), nil
 }
 
-func fetchBinary(ctx context.Context, version *toolVersion) (string, error) {
+func fetchBinary(ctx context.Context, version *toolVersion, values url.Values) (string, error) {
 	tarRef := artifacts.Reference{
 		URL: version.URL,
 		Digest: schema.Digest{
@@ -271,7 +274,7 @@ func fetchBinary(ctx context.Context, version *toolVersion) (string, error) {
 		},
 	}
 
-	fsys := unpack.Unpack("tool", tarfs.TarGunzip(download.NamespaceURL(tarRef)), unpack.SkipChecksumCheck())
+	fsys := unpack.Unpack("tool", tarfs.TarGunzip(download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
 	unpacked, err := compute.GetValue(ctx, fsys)
 	if err != nil {
 		return "", err

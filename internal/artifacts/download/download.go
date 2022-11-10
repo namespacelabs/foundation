@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/url"
 
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/bytestream"
@@ -24,8 +25,8 @@ func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
 }
 
 // Must only be used when it's guaranteed that the output does not change based on the presence of Namespace headers.
-func NamespaceURL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
-	return &downloadUrl{url: ref.URL, digest: &ref.Digest, useNamespaceHeaders: true}
+func NamespaceURL(ref artifacts.Reference, values url.Values) compute.Computable[bytestream.ByteStream] {
+	return &downloadUrl{url: ref.URL, digest: &ref.Digest, useNamespaceHeaders: true, additionalValues: values}
 }
 
 func UnverifiedURL(url string) compute.Computable[bytestream.ByteStream] {
@@ -35,7 +36,8 @@ func UnverifiedURL(url string) compute.Computable[bytestream.ByteStream] {
 type downloadUrl struct {
 	url                 string
 	digest              *schema.Digest
-	useNamespaceHeaders bool // Does not affect the output.
+	useNamespaceHeaders bool       // Does not affect the output.
+	additionalValues    url.Values // Does not affect the output.
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
@@ -58,7 +60,13 @@ func (dl *downloadUrl) Inputs() *compute.In {
 }
 
 func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", dl.url, nil)
+	url := dl.url
+
+	if query := dl.additionalValues.Encode(); query != "" {
+		url += "?" + query
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
