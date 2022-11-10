@@ -161,6 +161,10 @@ type ClusterNamespace interface {
 }
 
 type Deployable interface {
+	// TODO remove when cli and orchestrator only use GetPackageRef().
+	// Returns a string to be compatible with the proto API.
+	GetPackageName() string // schema.PackageName
+
 	GetPackageRef() *schema.PackageRef
 
 	GetId() string
@@ -235,6 +239,7 @@ func (d DeployableSpec) GetId() string                     { return d.Id }
 func (d DeployableSpec) GetName() string                   { return d.Name }
 func (d DeployableSpec) GetDeployableClass() string        { return string(d.Class) }
 func (d DeployableSpec) GetPackageRef() *schema.PackageRef { return d.PackageRef }
+func (d DeployableSpec) GetPackageName() string            { return d.PackageRef.GetPackageName() }
 
 type GroundedSecrets struct {
 	Secrets []GroundedSecret
