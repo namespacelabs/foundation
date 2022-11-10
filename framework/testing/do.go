@@ -42,8 +42,7 @@ func (t Test) WaitForEndpoint(ctx context.Context, endpoint *schema.Endpoint) er
 			return fmt.Errorf("endpoint not ready: %v", err)
 		}
 
-		var d net.Dialer
-		conn, err := d.DialContext(ctx, "tcp", endpoint.Address())
+		conn, err := net.DialTimeout("tcp", endpoint.Address(), 100*time.Millisecond)
 		if err == nil {
 			conn.Close()
 			return nil
