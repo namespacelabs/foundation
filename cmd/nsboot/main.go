@@ -183,7 +183,11 @@ func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool
 	values := url.Values{}
 
 	if previous != nil && previous.Latest != nil {
-		serialized, _ := json.Marshal(previous.Latest)
+		serialized, _ := json.Marshal(reportedExistingVersion{
+			TagName: previous.Latest.TagName,
+			SHA256:  previous.Latest.SHA256,
+		})
+
 		values.Add("update_from", base64.RawURLEncoding.EncodeToString(serialized))
 	}
 

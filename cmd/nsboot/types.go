@@ -15,6 +15,11 @@ type toolVersion struct {
 	SHA256    string    `json:"tarball_sha256"`
 }
 
+type reportedExistingVersion struct {
+	TagName string `json:"tag_name"`
+	SHA256  string `json:"sha256"`
+}
+
 // Schema for $CACHE/tool/versions.json.
 type versionCache struct {
 	Latest     *toolVersion `json:"latest"`
