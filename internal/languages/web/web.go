@@ -96,7 +96,7 @@ func (impl) PrepareBuild(ctx context.Context, buildAssets assets.AvailableBuildA
 	}, nil
 }
 
-func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments compute.Computable[[]*schema.IngressFragment], srv planning.Server, isFocus bool) ([]oci.NamedImage, error) {
+func buildWebApps(ctx context.Context, conf build.Configuration, ingressFragments compute.Computable[[]*schema.IngressFragment], srv planning.Server, isFocus bool) ([]oci.NamedImage, error) {
 	var builds []oci.NamedImage
 
 	for _, entry := range srv.Proto().UrlMap {
@@ -131,7 +131,10 @@ func buildWebApps(ctx context.Context, conf build.BuildTarget, ingressFragments 
 			return nil, err
 		}
 
-		targetConf := build.NewBuildTarget(conf.TargetPlatform()).WithTargetName(conf.PublishName()).WithSourcePackage(srv.PackageName())
+		targetConf := build.NewBuildTarget(conf.TargetPlatform()).
+			WithTargetName(conf.PublishName()).
+			WithSourcePackage(srv.PackageName()).
+			WithWorkspace(conf.Workspace())
 
 		externalModules := GetExternalModuleForDeps(srv)
 
