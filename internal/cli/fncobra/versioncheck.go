@@ -50,6 +50,7 @@ func checkRemoteStatus(ctx context.Context, channel chan remoteStatus) {
 	resp, err := fnapi.GetLatestVersion(ctx, fnReqs)
 	if err != nil {
 		fmt.Fprintln(console.Debug(ctx), "version check failed:", err)
+		return
 	}
 
 	newVersion := semver.Compare(resp.Version, ver.Version) > 0
