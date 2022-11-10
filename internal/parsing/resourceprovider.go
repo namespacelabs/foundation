@@ -53,7 +53,7 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 		}
 	}
 
-	if instances, err := LoadResources(ctx, pl, pp, provider.ResourcePack); err != nil {
+	if instances, err := LoadResources(ctx, pl, pp.Location, provider.ResourcePack); err != nil {
 		errs = append(errs, err)
 	} else {
 		for _, instance := range instances {

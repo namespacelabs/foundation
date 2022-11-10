@@ -69,7 +69,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	for _, r := range pp.ResourceInstanceSpecs {
-		if parsed, err := loadResourceInstance(ctx, pl, pp, r); err != nil {
+		if parsed, err := loadResourceInstance(ctx, pl, pp.Location, r); err != nil {
 			return nil, err
 		} else {
 			pp.Resources = append(pp.Resources, *parsed)

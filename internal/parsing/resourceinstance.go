@@ -34,8 +34,8 @@ func IsSecretResource(ref packageRefLike) bool {
 	return isRuntimeResource(ref) && ref.GetName() == "Secret"
 }
 
-func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pkggraph.Package, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
-	instance.PackageName = string(pp.PackageName())
+func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
+	instance.PackageName = string(loc.PackageName)
 
 	if instance.IntentFrom != nil {
 		if _, _, err := pkggraph.LoadBinary(ctx, pl, instance.IntentFrom.BinaryRef); err != nil {
@@ -54,7 +54,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 		Class:  *class,
 	}
 
-	loadedPrimitive, err := loadPrimitiveResources(ctx, pl, pp.Location.PackageName, instance)
+	loadedPrimitive, err := loadPrimitiveResources(ctx, pl, loc.PackageName, instance)
 	if err != nil {
 		return nil, err
 	}
@@ -67,12 +67,12 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 
 		provider := providerPkg.LookupResourceProvider(instance.Class)
 		if provider == nil {
-			return nil, fnerrors.UserError(pp.Location, "package %q is not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
+			return nil, fnerrors.UserError(loc, "package %q is not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
 		}
 
 		ri.Provider = provider
 	} else if loadedPrimitive == nil {
-		return nil, fnerrors.UserError(pp.Location, "missing provider for resource instance %q", instance.Name)
+		return nil, fnerrors.UserError(loc, "missing provider for resource instance %q", instance.Name)
 	} else {
 		serialized, err := anypb.New(loadedPrimitive)
 		if err != nil {
@@ -83,7 +83,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pp *pk
 
 	if len(instance.InputResource) > 0 {
 		if instance.Provider == "" {
-			return nil, fnerrors.UserError(pp.Location, "input resources have been set, without a provider")
+			return nil, fnerrors.UserError(loc, "input resources have been set, without a provider")
 		}
 
 		var resErrs []error
@@ -170,7 +170,7 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owne
 	return msg, nil
 }
 
-func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
+func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
 	var resources []pkggraph.ResourceInstance
 
 	for _, resource := range pack.GetResourceRef() {
@@ -188,7 +188,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph
 	}
 
 	for _, resource := range pack.GetResourceInstance() {
-		instance, err := loadResourceInstance(ctx, pl, pkg, resource)
+		instance, err := loadResourceInstance(ctx, pl, loc, resource)
 		if err != nil {
 			return nil, err
 		}
