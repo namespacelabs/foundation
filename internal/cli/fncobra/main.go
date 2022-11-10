@@ -123,6 +123,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var useTelemetry bool
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+
 		tel := fnapi.TelemetryOn(ctx)
 
 		// XXX move id management out of telemetry, it's used for other purposes too.
@@ -250,7 +252,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		cfg.ValidateNoConfigTypeCollisions()
 
 		if useKubernetesRuntime {
-			rt, err := toolsonk8s.MakeRuntime(ctxWithSink)
+			rt, err := toolsonk8s.MakeRuntime(ctx)
 			if err != nil {
 				return err
 			}
@@ -259,7 +261,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		}
 
 		// Telemetry.
-		tel.RecordInvocation(ctxWithSink, cmd, args)
+		tel.RecordInvocation(ctx, cmd, args)
 		return nil
 	})
 
