@@ -52,6 +52,7 @@ func main() {
 
 	sink, style, cleanup := fncobra.ConsoleToSink(fncobra.StandardConsole())
 	ctxWithSink := colors.WithStyle(tasks.WithSink(context.Background(), sink), style)
+	rootCtx := fnapi.WithTelemetry(ctxWithSink)
 
 	// It's a bit awkward, but the main command execution is split between the command proper
 	// and the execution of the inner ns binary after all the nsboot cleanup is done.
@@ -81,7 +82,7 @@ func main() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
-	err := compute.Do(ctxWithSink, func(ctx context.Context) (err error) {
+	err := compute.Do(rootCtx, func(ctx context.Context) (err error) {
 		return rootCmd.ExecuteContext(ctx)
 	})
 	if cleanup != nil {
@@ -203,7 +204,7 @@ func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool
 }
 
 func fetchRemoteVersion(ctx context.Context) (*toolVersion, error) {
-	return tasks.Return(ctx, tasks.Action("version-check"), func(ctx context.Context) (*toolVersion, error) {
+	return tasks.Return(ctx, tasks.Action("ns.version-check"), func(ctx context.Context) (*toolVersion, error) {
 		resp, err := fnapi.GetLatestVersion(ctx, nil)
 		if err != nil {
 			return nil, err

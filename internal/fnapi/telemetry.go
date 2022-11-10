@@ -73,8 +73,8 @@ func TelemetryOn(ctx context.Context) *Telemetry {
 	return v.(*Telemetry)
 }
 
-func WithTelemetry(ctx context.Context, t *Telemetry) context.Context {
-	return context.WithValue(ctx, _telemetryKey, t)
+func WithTelemetry(ctx context.Context) context.Context {
+	return context.WithValue(ctx, _telemetryKey, NewTelemetry(ctx))
 }
 
 // Telemetry needs to be excplicitly enabled by calling this function.

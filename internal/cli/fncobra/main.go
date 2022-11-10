@@ -11,11 +11,8 @@ import (
 	"log"
 	"os"
 	"runtime/pprof"
-	"time"
 
 	"github.com/google/go-containerregistry/pkg/logs"
-	"github.com/muesli/reflow/indent"
-	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -114,9 +111,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	sink, style, flushLogs := ConsoleToSink(StandardConsole())
 	ctx = colors.WithStyle(tasks.WithSink(ctx, sink), style)
 
-	tel := fnapi.NewTelemetry(ctx)
-
-	ctxWithSink := fnapi.WithTelemetry(ctx, tel)
+	ctxWithSink := fnapi.WithTelemetry(ctx)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
@@ -124,12 +119,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	// comfortable with. 4096 is the result of experimentation.
 	ulimit.SetFileLimit(ctxWithSink, 4096)
 
-	var remoteStatusChan chan remoteStatus
-
 	var run *storedrun.Run
 	var useTelemetry bool
 
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+		tel := fnapi.TelemetryOn(ctx)
+
 		// XXX move id management out of telemetry, it's used for other purposes too.
 		if tel.IsFirstRun() {
 			// First NS run - print a welcome message.
@@ -156,17 +151,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		}
 
 		filewatcher.SetupFileWatcher()
-
-		// Checking a version could be used for fingerprinting purposes,
-		// and thus we don't do it if the user has opted-out from providing data.
-		if tel.IsTelemetryEnabled() {
-			remoteStatusChan = make(chan remoteStatus)
-			// Remote status check may linger until after we flush the main sink.
-			// So here we just suppress any messages from the background version check.
-			ctxWithNullSink := tasks.WithSink(ctx, tasks.NullSink())
-			// NB: Requires pkggraph.ModuleLoader.
-			go checkRemoteStatus(ctxWithNullSink, remoteStatusChan)
-		}
 
 		binary.BuildGo = golang.GoBuilder
 		binary.BuildWeb = web.WebBuilder
@@ -416,25 +400,13 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		cleanupTracer()
 	}
 
-	// Check if this is a version requirement error, if yes, skip the regular version checker.
-	if _, ok := err.(*fnerrors.VersionError); !ok && remoteStatusChan != nil {
-		select {
-		case status, ok := <-remoteStatusChan:
-			if ok && status.NewVersion {
-				fmt.Fprintf(os.Stdout, "New Namespace release %s is available.\nDownload: %s",
-					status.Version, downloadUrl(status.Version))
-			}
-		default:
-		}
-	}
-
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit(ctx)
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		exitCode := handleExitError(style, err, remoteStatusChan)
+		exitCode := handleExitError(style, err)
 
-		if tel != nil {
+		if tel := fnapi.TelemetryOn(ctx); tel != nil {
 			// Record errors only after the user sees them to hide potential latency implications.
 			// We pass the original ctx without sink since logs have already been flushed.
 			tel.RecordError(ctx, err)
@@ -457,26 +429,13 @@ func handleExit(ctx context.Context) {
 	}
 }
 
-func handleExitError(style colors.Style, err error, remoteStatusChan chan remoteStatus) int {
+func handleExitError(style colors.Style, err error) int {
 	if exitError, ok := err.(fnerrors.ExitError); ok {
 		// If we are exiting, because a sub-process failed, don't bother outputting
 		// an error again, just forward the appropriate exit code.
 		return exitError.ExitCode()
 	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
 		format.Format(os.Stderr, versionError, format.WithStyle(style))
-
-		select {
-		case <-time.After(5 * time.Second):
-		case status, ok := <-remoteStatusChan:
-			if ok {
-				fmt.Fprintln(os.Stderr, indent.String(
-					wordwrap.String(
-						fmt.Sprintf("\nThe latest version of Namespace is %s, available at %s\n",
-							style.Highlight.Apply(status.Version), downloadUrl(status.Version)),
-						80),
-					2))
-			}
-		}
 
 		return 2
 	} else {
@@ -552,10 +511,6 @@ func SetupViper() {
 			log.Fatal(err)
 		}
 	}
-}
-
-func downloadUrl(version string) string {
-	return fmt.Sprintf("https://github.com/namespacelabs/foundation/releases/tag/%s", version)
 }
 
 func ensureFnConfig() {
