@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -44,7 +43,7 @@ type Call[RequestT any] struct {
 	Method                 string
 	PreAuthenticateRequest func(*UserAuth, *RequestT) error
 	Anonymous              bool
-	SkipMissingAuth        bool // Don't fail if not authenticated.
+	OptionalAuth           bool // Don't fail if not authenticated.
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -67,7 +66,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	if !c.Anonymous {
 		user, err := LoadUser()
 		if err != nil {
-			if !errors.Is(err, ErrRelogin) || !c.SkipMissingAuth {
+			if !c.OptionalAuth {
 				return err
 			}
 		} else {
