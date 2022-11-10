@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"os/exec"
@@ -40,21 +41,8 @@ import (
 
 const (
 	updatePeriod = time.Hour * 24
+	versionsJson = "versions.json"
 )
-
-// Represents a tool version reference as reported by the version-check endpoint.
-type toolVersion struct {
-	TagName   string    `json:"tag_name"`
-	BuildTime time.Time `json:"build_time"`
-	FetchedAt time.Time `json:"fetched_at"`
-	URL       string    `json:"tarball_url"`
-	SHA256    string    `json:"tarball_sha256"`
-}
-
-// Schema for $CACHE/tool/versions.json.
-type versionCache struct {
-	Latest *toolVersion `json:"latest"`
-}
 
 func main() {
 	fncobra.SetupViper()
@@ -68,7 +56,7 @@ func main() {
 	// It's a bit awkward, but the main command execution is split between the command proper
 	// and the execution of the inner ns binary after all the nsboot cleanup is done.
 	// This variable is passes the path to execute from inside the command to the outside.
-	var pathToExec string
+	var cachedBinDir string
 
 	rootCmd := &cobra.Command{
 		Use:                "nsboot",
@@ -78,7 +66,7 @@ func main() {
 		DisableFlagParsing: true,
 
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			pathToExec, err = updateAndRun(cmd.Context())
+			cachedBinDir, err = updateAndRun(cmd.Context())
 			return
 		},
 	}
@@ -105,8 +93,8 @@ func main() {
 	}
 
 	// We make sure to flush all the output before starting the command.
-	if pathToExec != "" {
-		proc := exec.CommandContext(context.Background(), filepath.Join(pathToExec, "ns"), os.Args[1:]...)
+	if cachedBinDir != "" {
+		proc := exec.CommandContext(context.Background(), filepath.Join(cachedBinDir, "ns"), os.Args[1:]...)
 		proc.Stdin = os.Stdin
 		proc.Stdout = os.Stdout
 		proc.Stderr = os.Stderr
@@ -122,34 +110,40 @@ func main() {
 	}
 }
 
-// Performs the normal logic of checking for updates lazily.
-func updateAndRun(ctx context.Context) (path string, err error) {
-	latestVersion, needUpdate, err := getCachedVersion(ctx)
+func updateAndRun(ctx context.Context) (string, error) {
+	cached, needUpdate, err := checkShouldUpdate(ctx)
 	if err != nil {
 		return "", fnerrors.Wrapf(nil, err, "failed to load versions.json")
 	}
 
-	if latestVersion == nil || needUpdate {
-		_, path, err = performUpdate(ctx, false)
-	} else {
-		values := url.Values{}
-		serialized, _ := json.Marshal(latestVersion)
-		values.Add("update_from", base64.RawURLEncoding.EncodeToString(serialized))
-		path, err = fetchBinary(ctx, latestVersion, values)
+	if cached == nil || needUpdate {
+		_, path, err := performUpdate(ctx, cached, false)
+		return path, err
 	}
-	return
+
+	if cached.BinaryPath != "" {
+		if _, err := os.Stat(cached.BinaryPath); err == nil {
+			return cached.BinaryPath, nil
+		}
+	}
+
+	// If we get here, we somehow lost the binary, lets redownload it.
+	_, path, err := performUpdate(ctx, cached, true)
+	return path, err
 }
 
 func forceUpdate(ctx context.Context) error {
-	cachedVersion, _, err := getCachedVersion(ctx)
+	cached, _, err := checkShouldUpdate(ctx)
 	if err != nil {
 		return err
 	}
-	newVersion, _, err := performUpdate(ctx, true)
+
+	newVersion, _, err := performUpdate(ctx, cached, true)
 	if err != nil {
 		return err
 	}
-	if cachedVersion.TagName == newVersion.TagName {
+
+	if cached != nil && cached.Latest != nil && cached.Latest.TagName == newVersion.TagName {
 		fmt.Fprintf(console.Stdout(ctx), "Already up-to-date at %s.\n", newVersion.TagName)
 	} else {
 		fmt.Fprintf(console.Stdout(ctx), "Updated to version %s.\n", newVersion.TagName)
@@ -159,40 +153,56 @@ func forceUpdate(ctx context.Context) error {
 }
 
 // Loads version cache and applies default update policy.
-func getCachedVersion(ctx context.Context) (*toolVersion, bool, error) {
+func checkShouldUpdate(ctx context.Context) (*versionCache, bool, error) {
 	cache, err := loadVersionCache()
 	if err != nil {
 		return nil, false, err
 	}
+
 	if cache == nil {
 		return nil, false, err
 	}
+
 	enableAutoupdate := viper.GetBool("enable_autoupdate")
-	version := cache.Latest
 	stale := cache.Latest != nil && time.Since(cache.Latest.FetchedAt) > updatePeriod
 	needUpdate := stale && enableAutoupdate
 	if stale && !enableAutoupdate {
 		fmt.Fprintf(console.Stdout(ctx), "ns version is stale, but auto-update is disabled (see \"enable_autoupdate\" in config.json)\n")
 	}
-	return version, needUpdate, nil
+
+	return cache, needUpdate, nil
 }
 
-func performUpdate(ctx context.Context, forceUpdate bool) (*toolVersion, string, error) {
-	newVersion, err := loadRemoteVersion(ctx)
+func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool) (*toolVersion, string, error) {
+	newVersion, err := fetchRemoteVersion(ctx)
 	if err != nil {
 		return nil, "", fnerrors.Wrapf(nil, err, "failed to load an update from the update service")
 	}
-	path, err := fetchBinary(ctx, newVersion, url.Values{})
+
+	values := url.Values{}
+
+	if previous != nil && previous.Latest != nil {
+		serialized, _ := json.Marshal(previous.Latest)
+		values.Add("update_from", base64.RawURLEncoding.EncodeToString(serialized))
+	}
+
+	if forceUpdate {
+		values.Add("force_update", "true")
+	}
+
+	path, err := fetchBinary(ctx, newVersion, values)
 	if err != nil {
 		return nil, "", fnerrors.Wrapf(nil, err, "failed to fetch a new tarball")
 	}
-	if err := persistCache(newVersion); err != nil {
+
+	if err := persistVersion(newVersion, path); err != nil {
 		return nil, "", fnerrors.Wrapf(nil, err, "failed to persist the version cache")
 	}
+
 	return newVersion, path, nil
 }
 
-func loadRemoteVersion(ctx context.Context) (*toolVersion, error) {
+func fetchRemoteVersion(ctx context.Context) (*toolVersion, error) {
 	return tasks.Return(ctx, tasks.Action("version-check"), func(ctx context.Context) (*toolVersion, error) {
 		resp, err := fnapi.GetLatestVersion(ctx, nil)
 		if err != nil {
@@ -215,17 +225,21 @@ func loadRemoteVersion(ctx context.Context) (*toolVersion, error) {
 }
 
 func loadVersionCache() (*versionCache, error) {
-	cachePath, err := cachePath()
+	cacheDir, err := dirs.Cache()
 	if err != nil {
 		return nil, err
 	}
-	bs, err := os.ReadFile(cachePath)
-	if os.IsNotExist(err) {
-		// Missing the cache is okay.
-		return nil, nil
-	} else if err != nil {
+
+	bs, err := os.ReadFile(filepath.Join(cacheDir, versionsJson))
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Missing the cache is okay.
+			return nil, nil
+		}
+
 		return nil, err
 	}
+
 	var cache versionCache
 	if err := json.Unmarshal(bs, &cache); err != nil {
 		return nil, err
@@ -233,36 +247,47 @@ func loadVersionCache() (*versionCache, error) {
 	return &cache, nil
 }
 
-func persistCache(version *toolVersion) error {
-	// Reload to reduce the effects of concurrent writes.
-	cache, err := loadVersionCache()
-	if err != nil {
-		return err
-	}
-	if cache == nil {
-		cache = &versionCache{}
-	}
-	cache.Latest = version
-	bs, err := json.MarshalIndent(cache, "", "\t")
-	if err != nil {
-		return err
-	}
-	cachePath, err := cachePath()
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(cachePath, bs, 0644); err != nil {
-		return err
-	}
-	return nil
-}
-
-func cachePath() (string, error) {
+func persistVersion(version *toolVersion, path string) error {
 	toolDir, err := dirs.Ensure(dirs.Cache())
 	if err != nil {
-		return "", err
+		return err
 	}
-	return filepath.Join(toolDir, "versions.json"), nil
+
+	return rewrite(toolDir, versionsJson, func(w io.Writer) error {
+		cache := versionCache{
+			Latest:     version,
+			BinaryPath: path,
+		}
+
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		return enc.Encode(cache)
+	})
+}
+
+func rewrite(dir, filename string, make func(io.Writer) error) error {
+	newFile, err := os.CreateTemp(dir, filename)
+	if err != nil {
+		return fnerrors.InternalError("failed to create new %s: %w", filename, err)
+	}
+
+	writeErr := make(newFile)
+	// Always close before returning.
+	closeErr := newFile.Close()
+
+	if writeErr != nil {
+		return fnerrors.InternalError("failed to generate new %s: %w", filename, err)
+	}
+
+	if closeErr != nil {
+		return fnerrors.InternalError("failed to flush new %s: %w", filename, err)
+	}
+
+	if err := os.Rename(newFile.Name(), filepath.Join(dir, filename)); err != nil {
+		return fnerrors.InternalError("failed to update %s: %w", filename, err)
+	}
+
+	return nil
 }
 
 func fetchBinary(ctx context.Context, version *toolVersion, values url.Values) (string, error) {
@@ -274,11 +299,12 @@ func fetchBinary(ctx context.Context, version *toolVersion, values url.Values) (
 		},
 	}
 
-	fsys := unpack.Unpack("tool", tarfs.TarGunzip(download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
+	fsys := unpack.Unpack("ns", tarfs.TarGunzip(download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
 	unpacked, err := compute.GetValue(ctx, fsys)
 	if err != nil {
 		return "", err
 	}
+
 	return unpacked.Files, nil
 }
 
