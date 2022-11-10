@@ -12,8 +12,7 @@ import (
 )
 
 type GetLatestRequest struct {
-	TelemetryEnabled bool           `json:"telemetry_enabled"`
-	NS               NSRequirements `json:"ns"`
+	NS NSRequirements `json:"ns"`
 }
 
 type NSRequirements struct {
@@ -34,12 +33,8 @@ type Artifact struct {
 }
 
 func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRequirements) (*GetLatestResponse, error) {
-	tel := NewTelemetry(ctx)
-	tel.Enable()
-	telemetryEnabled := tel.IsTelemetryEnabled()
-	req := GetLatestRequest{
-		TelemetryEnabled: telemetryEnabled,
-	}
+	// "ns" must always be set.
+	req := GetLatestRequest{}
 	if nsReqs != nil {
 		req.NS = NSRequirements{
 			MinimumApi: nsReqs.MinimumApi,
@@ -47,7 +42,10 @@ func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRe
 	}
 
 	var resp GetLatestResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatest", &req, DecodeJSONResponse(&resp)); err != nil {
+	if err := (Call[any]{
+		Endpoint: EndpointAddress,
+		Method:   "nsl.versions.VersionsService/GetLatest",
+	}).Do(ctx, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 

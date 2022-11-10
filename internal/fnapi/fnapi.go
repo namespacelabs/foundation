@@ -53,6 +53,14 @@ func DecodeJSONResponse(resp any) func(io.Reader) error {
 	}
 }
 
+func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
+	if tel := TelemetryOn(ctx); tel != nil && tel.IsTelemetryEnabled() {
+		headers.Add("NS-Client-ID", tel.GetClientID())
+	}
+
+	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.APIVersion))
+}
+
 func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {
 	headers := http.Header{}
 
@@ -73,11 +81,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		}
 	}
 
-	if tel := TelemetryOn(ctx); tel != nil && tel.IsTelemetryEnabled() {
-		headers.Add("NS-Client-ID", tel.GetClientID())
-	}
-
-	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.APIVersion))
+	AddNamespaceHeaders(ctx, &headers)
 
 	reqBytes, err := json.Marshal(request)
 	if err != nil {

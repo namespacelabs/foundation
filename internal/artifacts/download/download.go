@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/ctxio"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -22,13 +23,19 @@ func URL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
 	return &downloadUrl{url: ref.URL, digest: &ref.Digest}
 }
 
+// Must only be used when it's guaranteed that the output does not change based on the presence of Namespace headers.
+func NamespaceURL(ref artifacts.Reference) compute.Computable[bytestream.ByteStream] {
+	return &downloadUrl{url: ref.URL, digest: &ref.Digest, useNamespaceHeaders: true}
+}
+
 func UnverifiedURL(url string) compute.Computable[bytestream.ByteStream] {
 	return &downloadUrl{url: url}
 }
 
 type downloadUrl struct {
-	url    string
-	digest *schema.Digest
+	url                 string
+	digest              *schema.Digest
+	useNamespaceHeaders bool // Does not affect the output.
 
 	compute.LocalScoped[bytestream.ByteStream]
 }
@@ -51,7 +58,16 @@ func (dl *downloadUrl) Inputs() *compute.In {
 }
 
 func (dl *downloadUrl) Compute(ctx context.Context, _ compute.Resolved) (bytestream.ByteStream, error) {
-	resp, err := http.Get(dl.url)
+	req, err := http.NewRequestWithContext(ctx, "GET", dl.url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if dl.useNamespaceHeaders {
+		fnapi.AddNamespaceHeaders(ctx, &req.Header)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
