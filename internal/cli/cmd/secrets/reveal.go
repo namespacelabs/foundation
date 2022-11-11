@@ -27,7 +27,7 @@ func newRevealCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "reveal {path/to/server} --secret {package_name}:{name}",
+			Use:   "reveal --secret {package_name}:{name} [server]",
 			Short: "Reveals the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
@@ -38,7 +38,7 @@ func newRevealCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.HardcodeEnv(&locLoadingEnv, "dev"),
-			fncobra.ParseLocations(&locs, &locLoadingEnv, fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &locLoadingEnv)).
 		Do(func(ctx context.Context) error {
 			envStr := specificEnv
 			if envStr == "" {
@@ -50,12 +50,12 @@ func newRevealCmd() *cobra.Command {
 				return err
 			}
 
-			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
+			loc, bundle, err := loadBundleFromArgs(ctx, env, locs, nil)
 			if err != nil {
 				return err
 			}
 
-			key, err := parseKey(secretKey, string(loc.loc.PackageName))
+			key, err := parseKey(secretKey, string(loc.packageName))
 			if err != nil {
 				return err
 			}

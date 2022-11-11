@@ -23,7 +23,7 @@ func newAddReaderCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "add-reader {path/to/server} --key {public-key}",
+			Use:   "add-reader --key {public-key} [server]",
 			Short: "Adds a receipient to a secret bundle.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
@@ -34,9 +34,9 @@ func newAddReaderCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &env)).
 		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
+			loc, bundle, err := loadBundleFromArgs(ctx, env, locs, nil)
 			if err != nil {
 				return err
 			}

@@ -12,15 +12,15 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func NewSecretsCmd() *cobra.Command {
@@ -41,14 +41,21 @@ func NewSecretsCmd() *cobra.Command {
 type createFunc func(context.Context) (*secrets.Bundle, error)
 
 type location struct {
-	root *parsing.Root
-	loc  pkggraph.Location
+	workspaceFS fnfs.ReadWriteFS
+	packageName schema.PackageName
+	sourceFile  string
 }
 
-func loadBundleFromArgs(ctx context.Context, env cfg.Context, loc fnfs.Location, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
-	root, err := module.FindRoot(ctx, ".")
-	if err != nil {
-		return nil, nil, err
+func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locations, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
+	var loc fnfs.Location
+	switch len(locs.Locs) {
+	case 0:
+		// Workspace
+		loc = locs.Root.RelPackage(".")
+	case 1:
+		loc = locs.Locs[0]
+	default:
+		return nil, nil, fnerrors.New("expected a single package to be selected, saw %d", len(locs.Locs))
 	}
 
 	pkg, err := parsing.NewPackageLoader(env).LoadByName(ctx, loc.AsPackageName())
@@ -56,15 +63,22 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, loc fnfs.Location,
 		return nil, nil, err
 	}
 
-	if !isModuleRoot(pkg.Location) && pkg.Server == nil {
+	if !isModuleRoot(loc) && pkg.Server == nil {
 		return nil, nil, fnerrors.BadInputError("%s: expected a server or a workspace root", loc.AsPackageName())
 	}
 
-	contents, err := fs.ReadFile(pkg.Location.Module.ReadWriteFS(), secretBundle(pkg.Location))
+	if env.Workspace().LoadedFrom() == nil {
+		return nil, nil, fnerrors.InternalError("%s: missing workspace's source", loc.AsPackageName())
+	}
+
+	workspaceFS := fnfs.ReadWriteLocalFS(env.Workspace().LoadedFrom().AbsPath)
+	result := &location{workspaceFS, loc.AsPackageName(), secretBundleFilename(loc)}
+
+	contents, err := fs.ReadFile(workspaceFS, result.sourceFile)
 	if err != nil {
 		if os.IsNotExist(err) && createIfMissing != nil {
 			bundle, err := createIfMissing(ctx)
-			return &location{root, pkg.Location}, bundle, err
+			return result, bundle, err
 		}
 
 		return nil, nil, err
@@ -76,7 +90,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, loc fnfs.Location,
 	}
 
 	bundle, err := secrets.LoadBundle(ctx, keyDir, contents)
-	return &location{root, pkg.Location}, bundle, err
+	return result, bundle, err
 }
 
 func parseKey(v string, defaultPkgName string) (*secrets.ValueKey, error) {
@@ -89,12 +103,12 @@ func parseKey(v string, defaultPkgName string) (*secrets.ValueKey, error) {
 }
 
 func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.root.ReadWriteFS(), secretBundle(loc.loc), func(w io.Writer) error {
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.workspaceFS, loc.sourceFile, func(w io.Writer) error {
 		return bundle.SerializeTo(ctx, w, encrypt)
 	})
 }
 
-func secretBundle(loc pkggraph.Location) string {
+func secretBundleFilename(loc fnfs.Location) string {
 	if isModuleRoot(loc) {
 		return secrets.WorkspaceBundleName
 	}
@@ -102,6 +116,6 @@ func secretBundle(loc pkggraph.Location) string {
 	return loc.Rel(secrets.ServerBundleName)
 }
 
-func isModuleRoot(loc pkggraph.Location) bool {
-	return loc.PackageName == loc.Module.RootLocation().PackageName
+func isModuleRoot(loc fnfs.Location) bool {
+	return loc.RelPath == "."
 }

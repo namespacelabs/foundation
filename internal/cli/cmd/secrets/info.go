@@ -21,15 +21,15 @@ func newInfoCmd() *cobra.Command {
 
 	return fncobra.Cmd(
 		&cobra.Command{
-			Use:   "info {path/to/server}",
+			Use:   "info [server]",
 			Short: "Describes the contents of the specified server's secrets archive.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
 		With(
 			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &env)).
 		Do(func(ctx context.Context) error {
-			_, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
+			_, bundle, err := loadBundleFromArgs(ctx, env, locs, nil)
 			if err != nil {
 				return err
 			}

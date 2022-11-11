@@ -31,7 +31,7 @@ func newSetCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "set {path/to/server} --secret {package_name}:{name} [--from_file <path>]",
+			Use:   "set --secret {package_name}:{name} [--from_file <path>] [server]",
 			Short: "Sets the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
@@ -45,33 +45,23 @@ func newSetCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.HardcodeEnv(&locLoadingEnv, "dev"),
-			fncobra.ParseLocations(&locs, &locLoadingEnv, fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &locLoadingEnv)).
 		Do(func(ctx context.Context) error {
-			envStr := specificEnv
-			if envStr == "" {
-				// Need some env for package loading.
-				envStr = "dev"
-			}
-			env, err := cfg.LoadContext(locs.Root, envStr)
-			if err != nil {
-				return err
-			}
-
-			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], func(ctx context.Context) (*secrets.Bundle, error) {
+			loc, bundle, err := loadBundleFromArgs(ctx, locLoadingEnv, locs, func(ctx context.Context) (*secrets.Bundle, error) {
 				return secrets.NewBundle(ctx, keyID)
 			})
 			if err != nil {
 				return err
 			}
 
-			key, err := parseKey(secretKey, string(loc.loc.PackageName))
+			key, err := parseKey(secretKey, string(loc.packageName))
 			if err != nil {
 				return err
 			}
 
 			key.EnvironmentName = specificEnv
 
-			if _, err := parsing.NewPackageLoader(env).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
+			if _, err := parsing.NewPackageLoader(locLoadingEnv).LoadByName(ctx, schema.PackageName(key.PackageName)); err != nil {
 				return err
 			}
 

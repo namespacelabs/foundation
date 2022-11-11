@@ -24,7 +24,7 @@ func newDeleteCmd() *cobra.Command {
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "delete {path/to/server} --secret {package_name}:{secret_name}",
+			Use:   "delete --secret {package_name}:{secret_name} [server]",
 			Short: "Deletes the specified secret value.",
 			Args:  cobra.MaximumNArgs(1),
 		}).
@@ -35,14 +35,14 @@ func newDeleteCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
+			fncobra.ParseLocations(&locs, &env)).
 		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, env, locs.Locs[0], nil)
+			loc, bundle, err := loadBundleFromArgs(ctx, env, locs, nil)
 			if err != nil {
 				return err
 			}
 
-			key, err := parseKey(secretKey, string(loc.loc.PackageName))
+			key, err := parseKey(secretKey, string(loc.packageName))
 			if err != nil {
 				return err
 			}
