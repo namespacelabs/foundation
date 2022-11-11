@@ -28,6 +28,13 @@ func (p *parser) Url() string      { return "namespace.so/from-shellscript" }
 func (p *parser) Shortcut() string { return "shellscript" }
 
 func (p *parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
+	if v != nil {
+		if str, err := v.Val.String(); err == nil {
+			// Shortcut: `shellscript: "<filename>"`
+			return &schema.ShellScriptIntegration{Entrypoint: str}, nil
+		}
+	}
+
 	var msg cueShellScriptIntegration
 	if v != nil {
 		if err := v.Val.Decode(&msg); err != nil {
