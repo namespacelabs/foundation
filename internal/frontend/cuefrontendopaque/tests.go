@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -19,7 +20,9 @@ import (
 )
 
 type cueTest struct {
-	Servers []string `json:"serversUnderTest"`
+	Servers []string            `json:"serversUnderTest"`
+	Args    *args.ArgsListOrMap `json:"args"`
+	Env     *args.EnvMap        `json:"env"`
 }
 
 func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) ([]*schema.Test, error) {
@@ -48,9 +51,20 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		return nil, err
 	}
 
+	envVars, err := bits.Env.Parsed(pkg.Location.PackageName)
+	if err != nil {
+		return nil, err
+	}
+
 	out := &schema.Test{
 		Name:             name,
 		ServersUnderTest: bits.Servers,
+		Driver: &schema.Binary{
+			Config: &schema.BinaryConfig{
+				Args: bits.Args.Parsed(),
+				Env:  envVars,
+			},
+		},
 	}
 
 	binaryRef, err := binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: false})

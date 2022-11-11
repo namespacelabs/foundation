@@ -39,9 +39,9 @@ server: {
 tests: {
 	// TODO: fix a k8s error when a test name is too long.
 	hello: {
-		integration: shellscript: {
-			entrypoint: "test/test.sh"
-			requiredPackages: ["jq"]
+		integration: shellscript: "test/test.sh"
+		env: {
+			ENDPOINT: fromServiceEndpoint: ":webapi"
 		}
 	}
 }

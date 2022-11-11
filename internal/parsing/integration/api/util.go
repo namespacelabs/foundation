@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -37,14 +38,28 @@ func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) err
 }
 
 func SetTestDriver(loc pkggraph.Location, test *schema.Test, driver *schema.Binary) error {
-	if test.Driver != nil {
-		// TODO: add a more meaningful error message
-		return fnerrors.NewWithLocation(loc, "test driver is set multiple times")
+	if test.GetDriver().GetBuildPlan() != nil {
+		return fnerrors.AttachLocation(loc,
+			fnerrors.InternalError("test driver build plan is set multiple times"))
 	}
+
+	if test.GetDriver().GetName() != "" || test.GetDriver().GetPackageName() != "" {
+		// TODO improve error message
+		return fnerrors.AttachLocation(loc,
+			fnerrors.InternalError("test driver is set multiple times"))
+	}
+
+	args := test.GetDriver().GetConfig().GetArgs()
+	envs := test.GetDriver().GetConfig().GetEnv()
 
 	test.Driver = driver
 
-	return nil
+	test.Driver.Config.Args = append(test.Driver.Config.Args, args...)
+
+	var err error
+	test.Driver.Config.Env, err = support.MergeEnvs(test.Driver.Config.Env, envs)
+
+	return err
 }
 
 func GenerateBinaryAndAddToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, binaryName string, data proto.Message) (*schema.PackageRef, error) {

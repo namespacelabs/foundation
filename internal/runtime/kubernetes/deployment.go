@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	rtschema "namespacelabs.dev/foundation/schema/runtime"
@@ -299,12 +300,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				}
 			}
 
-			for _, kv := range containerExt.Env {
-				var err error
-				mainEnv, err = runtime.SetEnv(mainEnv, kv)
-				if err != nil {
-					return err
-				}
+			var err error
+			mainEnv, err = support.MergeEnvs(mainEnv, containerExt.Env)
+			if err != nil {
+				return err
 			}
 
 			if containerExt.Args != nil {
