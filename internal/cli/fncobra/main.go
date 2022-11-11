@@ -347,6 +347,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.UsePinnedOrchestrator, "use_pinned_orchestrator", orchestration.UsePinnedOrchestrator,
 		"If set to false, we rebuild the orchestrator instead of using the pinned version. For internal testing only.")
+	rootCmd.PersistentFlags().BoolVar(&orchestration.ForceOrchestratorDeployment, "force_orchestrator_deployment", orchestration.ForceOrchestratorDeployment,
+		"If set to true, we always redeploy the orchestrator, even if the live image matches. For internal testing only.")
 	rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
 		"If set to true, we log a start event for each action, if --log_actions is also set.")
 
@@ -387,6 +389,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"also_report_start_events",
 		"buildkit_forward_keychain",
 		"use_pinned_orchestrator",
+		"force_orchestrator_deployment",
 		// Hidden for M0
 		"testing_use_namespace_cloud",
 		"use_prebuilts",
