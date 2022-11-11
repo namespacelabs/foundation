@@ -10,9 +10,9 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/languages"
-	"namespacelabs.dev/foundation/internal/languages/nodejs/binary"
-	"namespacelabs.dev/foundation/internal/languages/opaque"
+	"namespacelabs.dev/foundation/internal/integrations"
+	"namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
+	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/wscontents"
@@ -20,14 +20,14 @@ import (
 )
 
 func Register() {
-	languages.Register(schema.Framework_OPAQUE_NODEJS, impl{})
+	integrations.Register(schema.Framework_OPAQUE_NODEJS, impl{})
 }
 
 type impl struct {
 	opaque.OpaqueIntegration
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, integrations.DevObserver, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 	}
@@ -35,9 +35,9 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 	return ctx, nil, nil
 }
 
-func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
+func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
-		return &languages.HotReloadOpts{
+		return &integrations.HotReloadOpts{
 			// "ModuleName" and "Rel" are empty because we have only one module in the image and
 			// we put the package content directly under the root "/app" directory.
 			Sink: remote.For(&wsremote.Signature{ModuleName: "", Rel: ""}),

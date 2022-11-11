@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package foundation.languages.golang;
 
-option go_package = "namespacelabs.dev/foundation/internal/languages/golang";
+option go_package = "namespacelabs.dev/foundation/internal/integrations/golang";
 
 message FrameworkExt {
     // Which Go version this server is compiled against (computed).

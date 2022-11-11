@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package foundation.languages.web;
 
-option go_package = "namespacelabs.dev/foundation/internal/languages/web";
+option go_package = "namespacelabs.dev/foundation/internal/integrations/web";
 
 import "schema/node.proto";
 

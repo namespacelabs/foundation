@@ -9,7 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
@@ -57,7 +57,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env cf
 		}
 
 		if srv := sealed.Proto.Server; srv != nil {
-			defs, err := languages.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
+			defs, err := integrations.IntegrationFor(srv.Framework).GenerateServer(sealed.ParsedPackage, sealed.Proto.Node)
 			if err != nil {
 				onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "generate server", Err: err})
 			} else {

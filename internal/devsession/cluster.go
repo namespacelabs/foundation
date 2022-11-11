@@ -10,7 +10,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/portforward"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -22,7 +22,7 @@ import (
 type updateCluster struct {
 	env       cfg.Context
 	cluster   runtime.ClusterNamespace
-	observers []languages.DevObserver
+	observers []integrations.DevObserver
 
 	plan  compute.Computable[*deploy.Plan]
 	stack *schema.Stack
@@ -31,7 +31,7 @@ type updateCluster struct {
 	pfw *portforward.PortForward
 }
 
-func newUpdateCluster(env cfg.Context, cluster runtime.ClusterNamespace, stack *schema.Stack, focus []schema.PackageName, observers []languages.DevObserver, plan compute.Computable[*deploy.Plan], pfw *portforward.PortForward) *updateCluster {
+func newUpdateCluster(env cfg.Context, cluster runtime.ClusterNamespace, stack *schema.Stack, focus []schema.PackageName, observers []integrations.DevObserver, plan compute.Computable[*deploy.Plan], pfw *portforward.PortForward) *updateCluster {
 	return &updateCluster{
 		env:       env,
 		cluster:   cluster,

@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
@@ -39,7 +39,7 @@ const (
 )
 
 func Register() {
-	languages.Register(schema.Framework_GO, impl{})
+	integrations.Register(schema.Framework_GO, impl{})
 	planning.RegisterEndpointProvider(schema.Framework_GO, impl{})
 
 	execution.RegisterFuncs(execution.Funcs[*OpGenNode]{
@@ -76,8 +76,8 @@ func Register() {
 }
 
 type impl struct {
-	languages.MaybeTidy
-	languages.NoDev
+	integrations.MaybeTidy
+	integrations.NoDev
 }
 
 func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {

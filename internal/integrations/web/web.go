@@ -23,8 +23,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/languages"
-	"namespacelabs.dev/foundation/internal/languages/opaque"
+	"namespacelabs.dev/foundation/internal/integrations"
+	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -53,14 +53,14 @@ const (
 )
 
 func Register() {
-	languages.Register(schema.Framework_WEB, impl{})
+	integrations.Register(schema.Framework_WEB, impl{})
 	execution.RegisterHandlerFunc(generateWebBackend)
 }
 
 type impl struct {
-	languages.MaybePrepare
-	languages.MaybeGenerate
-	languages.MaybeTidy
+	integrations.MaybePrepare
+	integrations.MaybeGenerate
+	integrations.MaybeTidy
 }
 
 func (impl) PreParseServer(_ context.Context, _ pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
@@ -209,12 +209,12 @@ func generateProdViteConfig() *memfs.FS {
 	return &prodwebConfig
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, integrations.DevObserver, error) {
 	return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
 }
 
-func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
-	return &languages.HotReloadOpts{
+func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
+	return &integrations.HotReloadOpts{
 		Sink: remote.For(&wsremote.Signature{ModuleName: srv.Module().ModuleName(), Rel: "."}),
 		EventProcessor: func(ev *wscontents.FileEvent) *wscontents.FileEvent {
 			if ev.Path == yarnLockFn {

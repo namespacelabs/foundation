@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -26,12 +26,12 @@ import (
 )
 
 func Register() {
-	languages.Register(schema.Framework_OPAQUE, OpaqueIntegration{})
+	integrations.Register(schema.Framework_OPAQUE, OpaqueIntegration{})
 }
 
 type OpaqueIntegration struct {
-	languages.MaybeGenerate
-	languages.MaybeTidy // TODO implement tidy per parser.
+	integrations.MaybeGenerate
+	integrations.MaybeTidy // TODO implement tidy per parser.
 }
 
 func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
@@ -114,7 +114,7 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server,
 	return nil
 }
 
-func (OpaqueIntegration) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, server planning.Server) (context.Context, languages.DevObserver, error) {
+func (OpaqueIntegration) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, server planning.Server) (context.Context, integrations.DevObserver, error) {
 	filesyncConfig, err := getFilesyncWorkspacePath(server)
 	if err != nil {
 		return nil, nil, err
@@ -139,7 +139,7 @@ func (OpaqueIntegration) DevelopmentPackages() []schema.PackageName {
 	return nil
 }
 
-func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *languages.HotReloadOpts {
+func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
 	filesyncConfig, err := getFilesyncWorkspacePath(srv)
 	if err != nil {
 		// Shouldn't happen because getFilesyncWorkspacePath() is already called in PrepareDev().
@@ -150,7 +150,7 @@ func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.
 		return nil
 	}
 
-	return &languages.HotReloadOpts{
+	return &integrations.HotReloadOpts{
 		// "ModuleName" and "Rel" are empty because we have only one module in the image and
 		// we put the package content directly under the root "/app" directory.
 		Sink: remote.For(&wsremote.Signature{ModuleName: "", Rel: ""}),

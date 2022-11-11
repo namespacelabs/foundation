@@ -5,14 +5,14 @@
 package genpackage
 
 import (
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func ForServer(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
-	defs, err := languages.IntegrationFor(pkg.Server.Framework).GenerateServer(pkg, available)
+	defs, err := integrations.IntegrationFor(pkg.Server.Framework).GenerateServer(pkg, available)
 	if err != nil {
 		return nil, err
 	}

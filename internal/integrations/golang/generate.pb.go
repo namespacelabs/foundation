@@ -6,7 +6,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        (unknown)
-// source: internal/languages/golang/generate.proto
+// source: internal/integrations/golang/generate.proto
 
 package golang
 

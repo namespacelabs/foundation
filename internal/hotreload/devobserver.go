@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -38,7 +38,7 @@ type FileSyncDevObserver struct {
 	conn *grpc.ClientConn
 }
 
-func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
+func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, integrations.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
 		return nil, nil, fnerrors.NewWithLocation(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 	}

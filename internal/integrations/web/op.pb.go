@@ -6,7 +6,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        (unknown)
-// source: internal/languages/web/op.proto
+// source: internal/integrations/web/op.proto
 
 package web
 

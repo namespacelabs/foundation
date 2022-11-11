@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
@@ -95,7 +95,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 	switch do.env.Environment().Purpose {
 	case schema.Environment_DEVELOPMENT, schema.Environment_TESTING:
-		var observers []languages.DevObserver
+		var observers []integrations.DevObserver
 
 		defer func() {
 			for _, obs := range observers {
@@ -105,11 +105,11 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 		if do.env.Environment().Purpose == schema.Environment_DEVELOPMENT {
 			for _, srv := range focus {
-				var observer languages.DevObserver
+				var observer integrations.DevObserver
 
 				// Must be invoked before building to make sure stack computation and building
 				// uses the updated context.
-				ctx, observer, err = languages.IntegrationFor(srv.Framework()).PrepareDev(ctx, do.cluster, srv)
+				ctx, observer, err = integrations.IntegrationFor(srv.Framework()).PrepareDev(ctx, do.cluster, srv)
 				if err != nil {
 					return err
 				}

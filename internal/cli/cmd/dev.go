@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/devsession"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/languages/web"
+	"namespacelabs.dev/foundation/internal/integrations/web"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/reverseproxy"

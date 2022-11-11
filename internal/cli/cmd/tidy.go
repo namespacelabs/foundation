@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -82,14 +82,14 @@ func NewTidyCmd() *cobra.Command {
 			for _, pkg := range packages {
 				switch {
 				case pkg.Server != nil:
-					lang := languages.IntegrationFor(pkg.Server.Framework)
+					lang := integrations.IntegrationFor(pkg.Server.Framework)
 					if err := lang.TidyServer(ctx, env, pl, pkg.Location, pkg.Server); err != nil {
 						errs = append(errs, err)
 					}
 
 				case pkg.Node() != nil:
 					for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
-						lang := languages.IntegrationFor(fmwk)
+						lang := integrations.IntegrationFor(fmwk)
 						if err := lang.TidyNode(ctx, env, pl, pkg); err != nil {
 							errs = append(errs, err)
 						}
@@ -97,7 +97,7 @@ func NewTidyCmd() *cobra.Command {
 				}
 			}
 			for _, fmwk := range schema.Framework_value {
-				lang := languages.IntegrationFor(schema.Framework(fmwk))
+				lang := integrations.IntegrationFor(schema.Framework(fmwk))
 				if lang == nil {
 					continue
 				}

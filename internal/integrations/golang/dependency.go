@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/internal/languages/shared"
+	"namespacelabs.dev/foundation/internal/integrations/shared"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"

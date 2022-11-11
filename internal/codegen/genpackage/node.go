@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
@@ -85,7 +85,7 @@ func ProtosForNode(pkg *pkggraph.Package) ([]*schema.SerializedInvocation, error
 func ForNodeForLanguage(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var allDefs []*schema.SerializedInvocation
 	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
-		defs, err := languages.IntegrationFor(fmwk).GenerateNode(pkg, available)
+		defs, err := integrations.IntegrationFor(fmwk).GenerateNode(pkg, available)
 		if err != nil {
 			return nil, err
 		}

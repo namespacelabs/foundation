@@ -10,7 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/wscontents"
 )
 
@@ -19,7 +19,7 @@ type hotReloadModule struct {
 	sink   wsremote.Sink
 }
 
-func NewHotReloadModule(module build.Workspace, opts *languages.HotReloadOpts) build.Workspace {
+func NewHotReloadModule(module build.Workspace, opts *integrations.HotReloadOpts) build.Workspace {
 	return hotReloadModule{
 		module: module,
 		sink:   observerSink{opts.Sink, opts.EventProcessor},

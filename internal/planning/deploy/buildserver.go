@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
-	"namespacelabs.dev/foundation/internal/languages"
+	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
@@ -50,7 +50,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 				server.PackageName(), wsremote.Ctx(ctx) != nil, focused, server.Module().IsExternal())
 
 			if r := wsremote.Ctx(ctx); r != nil && focused && !server.Module().IsExternal() {
-				opts := languages.IntegrationFor(server.Framework()).PrepareHotReload(ctx, r, server)
+				opts := integrations.IntegrationFor(server.Framework()).PrepareHotReload(ctx, r, server)
 				fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
 					server.PackageName(), server.Framework(), opts != nil)
 				if opts != nil {
