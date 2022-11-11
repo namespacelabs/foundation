@@ -39,7 +39,10 @@ server: {
 tests: {
 	// TODO: fix a k8s error when a test name is too long.
 	hello: {
-		integration: dockerfile: "test/Dockerfile"
+		integration: shellscript: {
+			entrypoint: "test/test.sh"
+			requiredPackages: ["jq"]
+		}
 	}
 }
 
