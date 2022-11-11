@@ -7,10 +7,9 @@ package startup
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -44,15 +43,7 @@ func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *planning.Pa
 func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
 	merged.Args = append(merged.Args, plan.Args...)
 
-	// XXX O(n^2)
-	var errs []error
-	for _, entry := range plan.Env {
-		var err error
-		merged.Env, err = runtime.SetEnv(merged.Env, entry)
-		if err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return multierr.New(errs...)
+	var err error
+	merged.Env, err = support.MergeEnvs(merged.Env, plan.Env)
+	return err
 }

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package runtime
+package support
 
 import (
 	"google.golang.org/protobuf/proto"
@@ -10,16 +10,19 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func SetEnv(merged []*schema.BinaryConfig_EnvEntry, entry *schema.BinaryConfig_EnvEntry) ([]*schema.BinaryConfig_EnvEntry, error) {
-	for _, existing := range merged {
-		if entry.Name == existing.Name {
+func MergeEnvs(base []*schema.BinaryConfig_EnvEntry, additional []*schema.BinaryConfig_EnvEntry) ([]*schema.BinaryConfig_EnvEntry, error) {
+	merged := append(base, additional...)
+
+	// Check for collisions.
+	cache := make(map[string]*schema.BinaryConfig_EnvEntry)
+	for _, entry := range merged {
+		if existing, ok := cache[entry.Name]; ok {
 			if proto.Equal(entry, existing) {
 				continue
 			}
-
 			return nil, fnerrors.BadInputError("incompatible values being set for env key %q (%v vs %v)", entry.Name, entry, existing)
 		}
 	}
 
-	return append(merged, entry), nil
+	return merged, nil
 }
