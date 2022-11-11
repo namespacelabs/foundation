@@ -19,7 +19,7 @@ func TestErrorFormatting(t *testing.T) {
 	}{
 		{err: fnerrors.UsageError("Run 'foobar'.", "It expired."),
 			expected: "Failed: It expired.\n\n  Run 'foobar'.\n"},
-		{err: fnerrors.UserError(nil, "wrapping it: %w", fnerrors.UsageError("Run 'foobar'.", "It expired.")),
+		{err: fnerrors.New("wrapping it: %w", fnerrors.UsageError("Run 'foobar'.", "It expired.")),
 			expected: "Failed: wrapping it: It expired.\n\n  Run 'foobar'.\n"},
 	}
 

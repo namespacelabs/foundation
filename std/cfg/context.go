@@ -44,7 +44,7 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 		}
 	}
 
-	return nil, fnerrors.UserError(parent, "%s: no such environment", name)
+	return nil, fnerrors.NewWithLocation(parent, "%s: no such environment", name)
 }
 
 func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Workspace_EnvironmentSpec {

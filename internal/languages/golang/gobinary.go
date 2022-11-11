@@ -69,7 +69,7 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 func GoBuilder(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
 	gobin, err := FromLocation(loc, plan.RelPath)
 	if err != nil {
-		return nil, fnerrors.Wrap(loc, err)
+		return nil, fnerrors.AttachLocation(loc, err)
 	}
 
 	gobin.BinaryOnly = plan.BinaryOnly

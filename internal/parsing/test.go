@@ -17,19 +17,19 @@ const StartupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Test) error {
 	if test.PackageName != "" {
-		return fnerrors.UserError(loc, "package_name can not be set")
+		return fnerrors.NewWithLocation(loc, "package_name can not be set")
 	}
 
 	if test.Name == "" {
-		return fnerrors.UserError(loc, "test name must be set")
+		return fnerrors.NewWithLocation(loc, "test name must be set")
 	}
 
 	if test.Driver == nil {
-		return fnerrors.UserError(loc, "driver must be set")
+		return fnerrors.NewWithLocation(loc, "driver must be set")
 	}
 
 	if test.Driver.Name != "" && test.Driver.Name != test.Name {
-		return fnerrors.UserError(loc, "driver.name must be unset or be the same as the test name")
+		return fnerrors.NewWithLocation(loc, "driver.name must be unset or be the same as the test name")
 	} else {
 		test.Driver.Name = test.Name
 	}
@@ -43,7 +43,7 @@ func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Te
 	}
 
 	if len(test.ServersUnderTest) == 0 {
-		return fnerrors.UserError(loc, "need at least one server under test")
+		return fnerrors.NewWithLocation(loc, "need at least one server under test")
 	}
 
 	test.PackageName = loc.PackageName.String()

@@ -37,12 +37,12 @@ func collectDatabases(server *schema.Server, owner string) (map[string]*opaque.D
 	if err := allocations.Visit(server.Allocation, schema.PackageName(owner), &opaque.Database{},
 		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, db *opaque.Database) error {
 			if db.HostedAt == nil {
-				return fnerrors.UserError(nil, "%s: database %q is missing an endpoint", alloc.InstanceOwner, db.GetName())
+				return fnerrors.New("%s: database %q is missing an endpoint", alloc.InstanceOwner, db.GetName())
 			}
 			key := fmt.Sprintf("%s/%d/%s", db.HostedAt.GetAddress(), db.HostedAt.GetPort(), db.GetName())
 			if existing, ok := dbs[key]; ok {
 				if !proto.Equal(existing, db) {
-					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
+					return fnerrors.New("%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
 				}
 			} else {
 				dbs[key] = db

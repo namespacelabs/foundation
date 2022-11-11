@@ -47,7 +47,7 @@ func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Client
 
 	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
 	if err != nil {
-		return fnerrors.InvocationError("creating executor failed: %w", err)
+		return fnerrors.InvocationError("kubernetes", "creating executor failed: %w", err)
 	}
 
 	opts := remotecommand.StreamOptions{
@@ -66,7 +66,7 @@ func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Client
 	if rio.Stdin == os.Stdin {
 		restore, err := termios.MakeRaw(os.Stdin.Fd())
 		if err != nil {
-			return err
+			return fnerrors.InternalError("kubernetes/terminal: failed to set stdin to raw: %w", err)
 		}
 
 		defer func() {
@@ -79,10 +79,10 @@ func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Client
 
 	if err := exec.Stream(opts); err != nil {
 		if s, ok := err.(*k8serrors.StatusError); ok {
-			return fnerrors.InvocationError("%+v: failed to attach terminal: %w", s.ErrStatus, err)
+			return fnerrors.InvocationError("kubernetes", "%+v: failed to attach terminal: %w", s.ErrStatus, err)
 		}
 
-		return fnerrors.InvocationError("stream failed: %w", err)
+		return fnerrors.InvocationError("kubernetes", "stream failed: %w", err)
 	}
 
 	return nil

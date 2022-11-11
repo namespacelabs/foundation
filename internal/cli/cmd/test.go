@@ -136,7 +136,7 @@ func NewTestCmd() *cobra.Command {
 								return nil
 							}
 
-							return fnerrors.UserError(testRef.AsPackageName(), "failed to prepare test: %w", err)
+							return fnerrors.NewWithLocation(testRef.AsPackageName(), "failed to prepare test: %w", err)
 						}
 
 						if parallel || parallelWork {

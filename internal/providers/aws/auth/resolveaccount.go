@@ -38,12 +38,12 @@ func (r *resolveAccount) Compute(ctx context.Context, _ compute.Resolved) (*sts.
 	out, err := sts.NewFromConfig(r.Session.Config()).GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
 		return nil, CheckNeedsLoginOr(r.Session, err, func(err error) error {
-			return fnerrors.New("sts: obtaining caller identity failed: %w", err)
+			return fnerrors.InvocationError("aws", "sts: obtaining caller identity failed: %w", err)
 		})
 	}
 
 	if out.Account == nil {
-		return nil, fnerrors.InvocationError("expected GetCallerIdentityOutput.Account to be present")
+		return nil, fnerrors.InvocationError("aws", "expected GetCallerIdentityOutput.Account to be present")
 	}
 
 	tasks.Attachments(ctx).AddResult("account", *out.Account)

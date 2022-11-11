@@ -114,7 +114,7 @@ func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragme
 			}
 		}
 
-		return nil, fnerrors.UserError(loc, "no ingress matches %s, perhaps you're missing `ingress: internetFacing: true`",
+		return nil, fnerrors.NewWithLocation(loc, "no ingress matches %s, perhaps you're missing `ingress: internetFacing: true`",
 			strings.Join(matches, " "))
 	}
 

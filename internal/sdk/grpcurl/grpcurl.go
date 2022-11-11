@@ -68,7 +68,7 @@ func SDK(ctx context.Context, p specs.Platform) (compute.Computable[Grpcurl], er
 	key := fmt.Sprintf("%s/%s", p.OS, p.Architecture)
 	ref, ok := Pins[key]
 	if !ok {
-		return nil, fnerrors.UserError(nil, "platform not supported: %s", key)
+		return nil, fnerrors.New("platform not supported: %s", key)
 	}
 
 	fsys := unpack.Unpack("grpcurl", tarfs.TarGunzip(download.URL(ref)))

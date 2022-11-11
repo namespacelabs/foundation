@@ -28,7 +28,7 @@ func SetServerBinary(pkg *pkggraph.Package, buildPlan *schema.LayeredImageBuildP
 func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) error {
 	if pkg.Server.MainContainer.BinaryRef != nil {
 		// TODO: add a more meaningful error message
-		return fnerrors.UserError(pkg.Location, "server binary is set multiple times")
+		return fnerrors.NewWithLocation(pkg.Location, "server binary is set multiple times")
 	}
 
 	pkg.Server.MainContainer.BinaryRef = binaryRef
@@ -39,7 +39,7 @@ func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) err
 func SetTestDriver(loc pkggraph.Location, test *schema.Test, driver *schema.Binary) error {
 	if test.Driver != nil {
 		// TODO: add a more meaningful error message
-		return fnerrors.UserError(loc, "test driver is set multiple times")
+		return fnerrors.NewWithLocation(loc, "test driver is set multiple times")
 	}
 
 	test.Driver = driver

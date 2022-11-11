@@ -53,7 +53,7 @@ func newServerCmd(runCommand func(ctx context.Context, args []string) error) *co
 			for _, httpService := range httpServices {
 				parts := strings.Split(httpService, ":")
 				if len(parts) != 2 {
-					return fnerrors.UserError(nil, "invalid http_services format: %s", httpService)
+					return fnerrors.New("invalid http_services format: %s", httpService)
 				}
 				parsedHttpServices = append(parsedHttpServices, scaffold.HttpService{
 					Path: parts[0],

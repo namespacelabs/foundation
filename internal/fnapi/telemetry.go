@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"go.uber.org/atomic"
+	spb "google.golang.org/genproto/googleapis/rpc/status"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -134,8 +136,9 @@ type recordInvocationRequest struct {
 }
 
 type recordErrorRequest struct {
-	ID      string `json:"id,omitempty"`
-	Message string `json:"message,omitempty"`
+	ID      string      `json:"id,omitempty"`
+	Message string      `json:"message,omitempty"`
+	Status  *spb.Status `json:"status,omitempty"`
 }
 
 type ephemeralCliID struct {
@@ -283,8 +286,11 @@ func (tel *Telemetry) RecordError(ctx context.Context, err error) {
 }
 
 func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) {
-	errStr, isExpected := fnerrors.IsExpected(err)
-	if isExpected {
+	if err == nil {
+		return
+	}
+
+	if _, isExpected := fnerrors.IsExpected(err); isExpected {
 		// We are only interested in unexpected errors.
 		return
 	}
@@ -297,8 +303,10 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 
 	req := recordErrorRequest{ID: recID}
 
-	// TODO remove plain text logging after early access.
-	req.Message = errStr
+	st, _ := status.FromError(err)
+
+	req.Message = err.Error()
+	req.Status = st.Proto()
 
 	if err := tel.postRecordErrorRequest(ctx, req); err != nil {
 		tel.logError(ctx, err)

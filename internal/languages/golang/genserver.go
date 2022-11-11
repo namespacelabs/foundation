@@ -215,10 +215,10 @@ func prepareGenerate(ctx context.Context, loader pkggraph.PackageLoader, importL
 					}
 				}
 				if !found {
-					return fnerrors.UserError(nil, "didn't find reference: %s", p.Args[0])
+					return fnerrors.New("didn't find reference: %s", p.Args[0])
 				}
 			default:
-				return fnerrors.UserError(nil, "Instantiate: only support one reference right now, saw %d", len(p.Args))
+				return fnerrors.New("Instantiate: only support one reference right now, saw %d", len(p.Args))
 			}
 		}
 	}

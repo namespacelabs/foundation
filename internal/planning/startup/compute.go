@@ -21,7 +21,7 @@ func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan 
 	// For each already loaded configuration, unify the startup args to produce the final startup configuration.
 	for _, dep := range deps {
 		if err := loadStartupPlan(ctx, env, dep, info, computed); err != nil {
-			return nil, fnerrors.Wrapf(dep.Package.Location, err, "computing startup config")
+			return nil, fnerrors.NewWithLocation(dep.Package.Location, "computing startup config: %w", err)
 		}
 	}
 
@@ -35,7 +35,7 @@ func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan 
 func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *planning.ParsedNode, info pkggraph.StartupInputs, merged *schema.BinaryConfig) error {
 	plan, err := dep.ProvisionPlan.Startup.EvalStartup(ctx, env, info, dep.Allocations)
 	if err != nil {
-		return fnerrors.Wrap(dep.Package.Location, err)
+		return fnerrors.AttachLocation(dep.Package.Location, err)
 	}
 
 	return mergePlan(plan, merged)

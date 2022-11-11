@@ -36,7 +36,7 @@ func (loc Location) CheckRel(rel string) (string, error) {
 		return "", fnerrors.InternalError("%s: failed to get a relative path for %q: %w", loc.PackageName, rel, err)
 	}
 	if strings.HasPrefix(r, "../") {
-		return "", fnerrors.UserError(loc, "%s: %q attempts to leave the workspace: %s", loc.PackageName, rel, r)
+		return "", fnerrors.NewWithLocation(loc, "%s: %q attempts to leave the workspace: %s", loc.PackageName, rel, r)
 	}
 	return r, nil
 }

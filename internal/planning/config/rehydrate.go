@@ -52,7 +52,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 
 		img, err := remote.Image(ref, remoteOpts...)
 		if err != nil {
-			return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
+			return nil, fnerrors.InvocationError("registry", "failed to fetch config image: %w", err)
 		}
 
 		var r Rehydrated

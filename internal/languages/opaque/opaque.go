@@ -100,7 +100,7 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server,
 
 		if filesyncConfig != nil {
 			if len(run.Command) == 0 {
-				return fnerrors.UserError(server.Location, "dockerfile command must be explicitly set when there is a workspace sync mount")
+				return fnerrors.NewWithLocation(server.Location, "dockerfile command must be explicitly set when there is a workspace sync mount")
 			}
 
 			run.Args = append(append(

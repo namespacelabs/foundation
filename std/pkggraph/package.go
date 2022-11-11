@@ -133,7 +133,7 @@ func (pr *Package) LookupBinary(name string) (*schema.Binary, error) {
 		return pr.Binaries[0], nil
 	}
 
-	return nil, fnerrors.UserError(pr.Location, "no such binary %q", name)
+	return nil, fnerrors.NewWithLocation(pr.Location, "no such binary %q", name)
 }
 
 func (pr *Package) LookupResourceClass(name string) *ResourceClass {

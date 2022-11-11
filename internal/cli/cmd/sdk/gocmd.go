@@ -42,12 +42,12 @@ func newGoCmd(goVersion string) *cobra.Command {
 
 			sdk, err := golangsdk.MatchSDK(goVersion, host.HostPlatform())
 			if err != nil {
-				return fnerrors.Wrap(loc, err)
+				return fnerrors.AttachLocation(loc, err)
 			}
 
 			localSDK, err := compute.GetValue(ctx, sdk)
 			if err != nil {
-				return fnerrors.Wrap(loc, err)
+				return fnerrors.AttachLocation(loc, err)
 			}
 
 			return golang.RunGo(ctx, loc, localSDK, args...)

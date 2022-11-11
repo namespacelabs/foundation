@@ -27,7 +27,7 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 
 	for _, rc := range pp.ResourceClassSpecs {
 		if rc.Name == "" {
-			return fnerrors.UserError(pp.Location, "resource class name can't be empty")
+			return fnerrors.NewWithLocation(pp.Location, "resource class name can't be empty")
 		}
 
 		rc.PackageName = pp.Location.PackageName.String()
@@ -56,12 +56,12 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, spec *schema.ResourceClass_Type) (pkggraph.UserType, error) {
 	fds, err := parseOpts.ParseAtLocation(fsys, loc, []string{spec.ProtoSource})
 	if err != nil {
-		return pkggraph.UserType{}, fnerrors.UserError(loc, "failed to parse proto sources %v: %v", spec.ProtoSource, err)
+		return pkggraph.UserType{}, fnerrors.NewWithLocation(loc, "failed to parse proto sources %v: %v", spec.ProtoSource, err)
 	}
 
 	files, md, err := protos.LoadMessageByName(fds, spec.ProtoType)
 	if err != nil {
-		return pkggraph.UserType{}, fnerrors.UserError(loc, "failed to load message %q: %v", spec.ProtoType, err)
+		return pkggraph.UserType{}, fnerrors.NewWithLocation(loc, "failed to load message %q: %v", spec.ProtoType, err)
 	}
 
 	return pkggraph.UserType{Descriptor: md, Sources: fds, Registry: files}, nil

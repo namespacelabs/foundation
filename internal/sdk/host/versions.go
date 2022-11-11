@@ -51,18 +51,18 @@ func (p *ParsedVersions) SDK(version string, platform specs.Platform, makeURL fu
 
 	actualVer, has := v.Versions[version]
 	if !has {
-		return nil, fnerrors.UserError(nil, "%s/sdk: no configuration for version %q", p.Name, version)
+		return nil, fnerrors.New("%s/sdk: no configuration for version %q", p.Name, version)
 	}
 
 	arts, has := v.Artifacts[actualVer]
 	if !has {
-		return nil, fnerrors.UserError(nil, "%s/sdk: no configuration for version %q (was %q)", p.Name, actualVer, version)
+		return nil, fnerrors.New("%s/sdk: no configuration for version %q (was %q)", p.Name, actualVer, version)
 	}
 
 	key := fmt.Sprintf("%s/%s", platform.OS, platform.Architecture)
 	digest, has := arts[key]
 	if !has {
-		return nil, fnerrors.UserError(nil, "%s/sdk: no platform configuration for %q in %q", p.Name, key, actualVer)
+		return nil, fnerrors.New("%s/sdk: no platform configuration for %q in %q", p.Name, key, actualVer)
 	}
 
 	url, binary := makeURL(actualVer, platform)

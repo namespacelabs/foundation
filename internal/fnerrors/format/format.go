@@ -52,14 +52,6 @@ func WithActionTrace(tracing bool) FormatOption {
 	}
 }
 
-func isNsError(err error) bool {
-	switch err.(type) {
-	case *fnerrors.NsError, *fnerrors.UserErr, *fnerrors.InternalErr, *fnerrors.InvocationErr, *fnerrors.DependencyFailedError, *fnerrors.VersionError, *tasks.ActionError:
-		return true
-	}
-	return false
-}
-
 func Format(w io.Writer, err error, args ...FormatOption) {
 	opts := &FormatOptions{style: colors.NoColors, tracing: false}
 	for _, opt := range args {
@@ -72,7 +64,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 		w = indent(w)
 	}
 
-	var actionError *tasks.ActionError
+	var actionError *fnerrors.ActionError
 	cause := err
 	// Keep unwrapping to get the root fnError.
 	for {
@@ -80,7 +72,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 		errors.As(cause, &actionError)
 
 		child := errors.Unwrap(cause)
-		if child == nil || !isNsError(child) {
+		if child == nil || !fnerrors.IsNamespaceError(child) {
 			break
 		} else if opts.tracing {
 			format(w, cause, opts)
@@ -127,14 +119,11 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 	case *fnerrors.UsageErr:
 		formatUsageError(w, x, opts)
 
-	case *fnerrors.UserErr:
+	case *fnerrors.BaseError:
 		formatUserError(w, x, opts)
 
-	case *fnerrors.InternalErr:
-		formatInternalError(w, x, opts)
-
 	case *fnerrors.InvocationErr:
-		formatInvocationError(w, x, opts)
+		formatInvocationError(w, &x.BaseError, opts)
 
 	case *fnerrors.ErrWithLogs:
 		formatErrWithLogs(w, x, opts)
@@ -187,15 +176,8 @@ func formatUsageError(w io.Writer, err *fnerrors.UsageErr, opts *FormatOptions) 
 	fmt.Fprintf(w, "%s\n\n  %s\n", errTxt, opts.style.Highlight.Apply(err.What))
 }
 
-func formatInternalError(w io.Writer, err *fnerrors.InternalErr, opts *FormatOptions) {
-	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("internal error"), err.Err.Error())
-	fmt.Fprintln(w)
-	fmt.Fprintf(w, "This was unexpected, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
-	errorReportRequest(w)
-}
-
-func formatInvocationError(w io.Writer, err *fnerrors.InvocationErr, opts *FormatOptions) {
-	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("invocation error"), err.Err.Error())
+func formatInvocationError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) {
+	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("invocation error"), err.OriginalErr.Error())
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
 	errorReportRequest(w)
@@ -224,16 +206,34 @@ func formatDependencyFailedError(w io.Writer, err *fnerrors.DependencyFailedErro
 	if opts.tracing {
 		fmt.Fprintf(w, "failed to compute %s %s\n", depName, depType)
 	} else {
-		fmt.Fprintf(w, "failed to compute %s %s: %s\n", depName, depType, err.Err)
+		fmt.Fprintf(w, "failed to compute %s %s: %s\n", depName, depType, err.OriginalErr)
 	}
 }
 
-func formatUserError(w io.Writer, err *fnerrors.UserErr, opts *FormatOptions) {
-	if err.Location != nil {
-		loc := opts.style.LogResult.Apply(err.Location.ErrorLocation())
-		fmt.Fprintf(w, "%s at %s\n", err.Err.Error(), loc)
-	} else {
-		fmt.Fprintf(w, "%s\n", err.Err.Error())
+func formatUserError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) {
+	switch err.Kind {
+	case fnerrors.Kind_USER:
+		if err.Location != nil {
+			loc := opts.style.LogResult.Apply(err.Location.ErrorLocation())
+			fmt.Fprintf(w, "%s at %s\n", err.OriginalErr.Error(), loc)
+		} else {
+			fmt.Fprintf(w, "%s\n", err.OriginalErr.Error())
+		}
+
+	case fnerrors.Kind_INTERNAL, fnerrors.Kind_BADINPUT, fnerrors.Kind_BADDATA:
+		fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("internal error"), err.OriginalErr.Error())
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "This was unexpected, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
+		errorReportRequest(w)
+
+	case fnerrors.Kind_EXTERNAL:
+		fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("component error"), err.OriginalErr.Error())
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "This was unexpected, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
+		errorReportRequest(w)
+
+	case fnerrors.Kind_TRANSIENT:
+		formatInvocationError(w, err, opts)
 	}
 }
 

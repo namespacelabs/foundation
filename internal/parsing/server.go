@@ -26,7 +26,7 @@ func ValidateServerID(n *schema.Server) error {
 	}
 
 	if !matched {
-		return fnerrors.UserError(nil, "invalid id: %v", n.GetId())
+		return fnerrors.New("invalid id: %v", n.GetId())
 	}
 
 	return nil
@@ -34,7 +34,7 @@ func ValidateServerID(n *schema.Server) error {
 
 func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema.Server, pp *pkggraph.Package) (*schema.Server, error) {
 	if srv.Name == "" {
-		return nil, fnerrors.UserError(pp.Location, "server name is required")
+		return nil, fnerrors.NewWithLocation(pp.Location, "server name is required")
 	}
 
 	if srv.Id == "" {
@@ -97,7 +97,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		}
 
 		if n.Kind == schema.Node_SERVICE && n.ServiceFramework != srv.Framework {
-			return nil, fnerrors.UserError(
+			return nil, fnerrors.NewWithLocation(
 				dep.Location,
 				"The server '%s' can only embed services of its framework %s. Can't embed service '%s' implemented in %s.",
 				srv.PackageName,
@@ -172,7 +172,7 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 	binaryNames := map[string]bool{}
 	for _, binary := range pp.Binaries {
 		if binaryNames[binary.Name] {
-			return fnerrors.UserError(pp.Location, "duplicate binary name %q", binary.Name)
+			return fnerrors.NewWithLocation(pp.Location, "duplicate binary name %q", binary.Name)
 		}
 		binaryNames[binary.Name] = true
 	}
@@ -186,20 +186,20 @@ func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph
 		// Only supporting volumes within the same package for now.
 		volume := findVolume(srv.Volume, m.VolumeRef)
 		if volume == nil {
-			return fnerrors.UserError(loc, "volume %q does not exist", m.VolumeRef.Canonical())
+			return fnerrors.NewWithLocation(loc, "volume %q does not exist", m.VolumeRef.Canonical())
 		}
 		if volume.Kind == constants.VolumeKindWorkspaceSync {
 			filesyncControllerMounts++
 		}
 	}
 	if filesyncControllerMounts > 1 {
-		return fnerrors.UserError(loc, "only one workspace sync mount is allowed per server")
+		return fnerrors.NewWithLocation(loc, "only one workspace sync mount is allowed per server")
 	}
 
 	volumeNames := map[string]struct{}{}
 	for _, v := range srv.Volume {
 		if _, ok := volumeNames[v.Name]; ok {
-			return fnerrors.UserError(loc, "volume %q is defined multiple times", v.Name)
+			return fnerrors.NewWithLocation(loc, "volume %q is defined multiple times", v.Name)
 		}
 		volumeNames[v.Name] = struct{}{}
 	}

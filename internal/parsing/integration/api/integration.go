@@ -41,7 +41,7 @@ func GenerateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.Pa
 
 		return binary, nil
 	} else {
-		return nil, fnerrors.UserError(loc, "unknown binary kind: %s", url)
+		return nil, fnerrors.NewWithLocation(loc, "unknown binary kind: %s", url)
 	}
 }
 
@@ -53,7 +53,7 @@ func ApplyServerIntegration(ctx context.Context, env *schema.Environment, pl pkg
 	if i, ok := serverApplyHandlers[pkg.Integration.Data.TypeUrl]; ok {
 		return i(ctx, env, pl, pkg, pkg.Integration.Data)
 	} else {
-		return fnerrors.UserError(pkg.Location, "unknown integration kind: %s", pkg.Integration)
+		return fnerrors.NewWithLocation(pkg.Location, "unknown integration kind: %s", pkg.Integration)
 	}
 }
 
@@ -65,7 +65,7 @@ func ApplyTestIntegration(ctx context.Context, env *schema.Environment, pl pkggr
 	if i, ok := testApplyHandlers[test.Integration.Data.TypeUrl]; ok {
 		return i(ctx, env, pl, pkg, test, test.Integration.Data)
 	} else {
-		return fnerrors.UserError(pkg.Location, "unknown integration kind: %s", test.Integration)
+		return fnerrors.NewWithLocation(pkg.Location, "unknown integration kind: %s", test.Integration)
 	}
 }
 

@@ -33,7 +33,7 @@ func resolvePodByLabels(ctx context.Context, cli *kubernetes.Clientset, w io.Wri
 
 		pods, err := cli.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: labelSel})
 		if err != nil {
-			return corev1.Pod{}, fnerrors.Wrapf(nil, err, "unable to list pods")
+			return corev1.Pod{}, fnerrors.InvocationError("kubernetes", "unable to list pods: %w", err)
 		}
 
 		if len(pods.Items) == 0 {

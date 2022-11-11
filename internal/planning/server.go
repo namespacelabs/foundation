@@ -82,7 +82,7 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 	}
 
 	if sealed.ParsedPackage == nil || sealed.ParsedPackage.Server == nil {
-		return Server{}, fnerrors.UserError(pkgname, "not a server")
+		return Server{}, fnerrors.NewWithLocation(pkgname, "not a server")
 	}
 
 	t := Server{
@@ -104,7 +104,7 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		ServerLocation: t.Location,
 	})
 	if err != nil {
-		return Server{}, fnerrors.Wrap(t.Location, err)
+		return Server{}, fnerrors.AttachLocation(t.Location, err)
 	}
 
 	t.Startup = pdata.Startup

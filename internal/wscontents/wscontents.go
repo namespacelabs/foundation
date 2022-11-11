@@ -89,9 +89,9 @@ func verifyDir(path string) error {
 		if os.IsNotExist(err) {
 			return err
 		}
-		return fnerrors.UserError(nil, "%s: accessing the path failed: %v", path, err)
+		return fnerrors.New("%s: accessing the path failed: %v", path, err)
 	} else if !st.IsDir() {
-		return fnerrors.UserError(nil, "%s: expected it to be a directory", path)
+		return fnerrors.New("%s: expected it to be a directory", path)
 	}
 
 	return nil

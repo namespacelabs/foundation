@@ -93,7 +93,7 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 		out.RunScript = devScript
 	} else {
 		if !slices.Contains(scripts, startScript) {
-			return nil, fnerrors.UserError(loc, `package.json must contain a script named '%s': it is invoked when starting the server in non-dev environments`, startScript)
+			return nil, fnerrors.NewWithLocation(loc, `package.json must contain a script named '%s': it is invoked when starting the server in non-dev environments`, startScript)
 		}
 
 		out.RunScript = startScript
@@ -106,7 +106,7 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 			out.Prod.BuildScript = buildScript
 		} else {
 			if out.Prod.BuildOutDir != "" {
-				return nil, fnerrors.UserError(loc, `package.json must contain '%s' script if 'build.outDir' is set`, buildScript)
+				return nil, fnerrors.NewWithLocation(loc, `package.json must contain '%s' script if 'build.outDir' is set`, buildScript)
 			}
 		}
 	}
@@ -133,7 +133,7 @@ func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 		return schema.NodejsBuild_PNPM, nil
 	}
 
-	return schema.NodejsBuild_PKG_MGR_UNKNOWN, fnerrors.UserError(loc, "no package manager detected")
+	return schema.NodejsBuild_PKG_MGR_UNKNOWN, fnerrors.NewWithLocation(loc, "no package manager detected")
 }
 
 func ParseBackends(loc pkggraph.Location, src map[string]string) ([]*schema.NodejsBuild_Backend, error) {

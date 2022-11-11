@@ -12,19 +12,18 @@ import (
 )
 
 func DependencyFailed(name, typ string, err error) error {
-	return &DependencyFailedError{NsError: NsError{Err: err, stack: stacktrace.New()}, Name: name, Type: typ}
+	return &DependencyFailedError{BaseError: BaseError{OriginalErr: err, stack: stacktrace.New()}, Name: name, Type: typ}
 }
 
 type DependencyFailedError struct {
-	NsError
+	BaseError
 	Name string
 	Type string
 }
 
 func (d *DependencyFailedError) Error() string {
-	return fmt.Sprintf("resolving %s (%s) failed: %v", d.Name, d.Type, d.Err)
+	return fmt.Sprintf("resolving %s (%s) failed: %v", d.Name, d.Type, d.OriginalErr)
 }
-func (d *DependencyFailedError) Unwrap() error { return d.Err }
 
 func IsDependencyFailed(err error) bool {
 	if _, ok := err.(*DependencyFailedError); ok {

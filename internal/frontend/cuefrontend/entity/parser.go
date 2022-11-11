@@ -49,7 +49,7 @@ func (p *DispatchingEntityParser) ParseEntity(ctx context.Context, env *schema.E
 		if i, ok := p.registeredParsers[url]; ok {
 			return parse(ctx, env, pl, loc, i, v)
 		} else {
-			return ParsedEntity{}, fnerrors.UserError(loc, "unknown url: %s", url)
+			return ParsedEntity{}, fnerrors.NewWithLocation(loc, "unknown url: %s", url)
 		}
 	}
 
@@ -68,7 +68,7 @@ func (p *DispatchingEntityParser) ParseEntity(ctx context.Context, env *schema.E
 		}
 	}
 
-	return ParsedEntity{}, fnerrors.UserError(loc, "%q content is not recognized, neither a full form nor a shorcut", v.Val.Path())
+	return ParsedEntity{}, fnerrors.NewWithLocation(loc, "%q content is not recognized, neither a full form nor a shorcut", v.Val.Path())
 }
 
 func parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, p EntityParser, v *fncue.CueV) (ParsedEntity, error) {

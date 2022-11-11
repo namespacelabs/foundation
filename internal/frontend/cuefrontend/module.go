@@ -155,7 +155,7 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 	for name, env := range m.Environments {
 		purpose, ok := schema.Environment_Purpose_value[strings.ToUpper(env.Purpose)]
 		if !ok || purpose == 0 {
-			return nil, fnerrors.UserError(nil, "%s: no such environment purpose %q", name, env.Purpose)
+			return nil, fnerrors.New("%s: no such environment purpose %q", name, env.Purpose)
 		}
 
 		out := &schema.Workspace_EnvironmentSpec{

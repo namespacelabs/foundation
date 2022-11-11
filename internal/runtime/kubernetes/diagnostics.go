@@ -37,5 +37,5 @@ func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtimepb.Con
 		}
 	}
 
-	return &runtimepb.Diagnostics{}, fnerrors.UserError(nil, "%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
+	return &runtimepb.Diagnostics{}, fnerrors.New("%s/%s: no such container %q", opaque.Namespace, opaque.PodName, opaque.Container)
 }

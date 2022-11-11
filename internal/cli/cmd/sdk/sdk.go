@@ -141,7 +141,7 @@ func newSdkShellCmd(selectedSdkList func() []sdk) *cobra.Command {
 
 			shell := os.Getenv("SHELL")
 			if shell == "" {
-				return fnerrors.UserError(nil, "No $SHELL defined.")
+				return fnerrors.New("No $SHELL defined.")
 			}
 
 			updatedPath := os.Getenv("PATH")

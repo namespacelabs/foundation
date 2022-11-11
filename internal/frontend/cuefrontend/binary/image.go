@@ -45,7 +45,7 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 
 	if build := v.LookupPath("imageFrom"); build.Exists() {
 		if outRef != nil {
-			return nil, fnerrors.UserError(pkg.Location, "cannot specify both 'imageFrom' and 'image'")
+			return nil, fnerrors.NewWithLocation(pkg.Location, "cannot specify both 'imageFrom' and 'image'")
 		}
 
 		if binary := build.LookupPath("binary"); binary.Exists() {
@@ -55,7 +55,7 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 			}
 			outRef, err = schema.ParsePackageRef(pkg.PackageName(), str)
 			if err != nil {
-				return nil, fnerrors.Wrapf(pkg.Location, err, "parsing binary reference")
+				return nil, fnerrors.NewWithLocation(pkg.Location, "parsing binary reference: %w", err)
 			}
 		} else {
 			integration, err := integrationparsing.BuildParser.ParseEntity(ctx, env, pl, pkg.Location, build)
@@ -71,7 +71,7 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 	}
 
 	if outRef == nil && opts.Required {
-		return nil, fnerrors.UserError(pkg.Location, "missing 'imageFrom' or 'image' definition")
+		return nil, fnerrors.NewWithLocation(pkg.Location, "missing 'imageFrom' or 'image' definition")
 	}
 
 	return outRef, nil

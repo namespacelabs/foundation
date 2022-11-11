@@ -84,12 +84,12 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	reqBytes, err := json.Marshal(request)
 	if err != nil {
-		return fnerrors.InvocationError("failed to marshal request: %w", err)
+		return fnerrors.InternalError("failed to marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Endpoint+"/"+c.Method, bytes.NewReader(reqBytes))
 	if err != nil {
-		return fnerrors.InvocationError("failed to construct request: %w", err)
+		return fnerrors.InternalError("failed to construct request: %w", err)
 	}
 
 	for k, v := range headers {
@@ -102,7 +102,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	response, err := client.Do(httpReq)
 	if err != nil {
-		return fnerrors.InvocationError("failed to perform invocation: %w", err)
+		return fnerrors.InvocationError("namespace api", "http call failed: %w", err)
 	}
 
 	defer response.Body.Close()
@@ -145,12 +145,12 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	switch response.StatusCode {
 	case http.StatusInternalServerError:
-		return fnerrors.InvocationError("internal server error, and wasn't able to parse error response")
+		return fnerrors.InvocationError("namespace api", "internal server error, and wasn't able to parse error response")
 	case http.StatusForbidden:
 		return fnerrors.NoAccessToLimitedFeature()
 	case http.StatusUnauthorized:
 		return ErrRelogin
 	default:
-		return fnerrors.InvocationError("unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
+		return fnerrors.InvocationError("namesace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
 }

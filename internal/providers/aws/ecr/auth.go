@@ -24,21 +24,21 @@ func refreshAuth(ctx context.Context, login tokenProducerFunc, makeServerAddress
 	}
 
 	if len(authData) == 0 {
-		return nil, fnerrors.InvocationError("aws/ecr: expected at least one authorization data back")
+		return nil, fnerrors.InvocationError("aws/ecr", "expected at least one authorization data back")
 	}
 
 	if authData[0].AuthorizationToken == nil {
-		return nil, fnerrors.InvocationError("aws/ecr: expected the authorization tokens to be set")
+		return nil, fnerrors.InvocationError("aws/ecr", "expected the authorization tokens to be set")
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(*authData[0].AuthorizationToken)
 	if err != nil {
-		return nil, fnerrors.InvocationError("aws/ecr: failed to decode authorization token: %w", err)
+		return nil, fnerrors.InvocationError("aws/ecr", "failed to decode authorization token: %w", err)
 	}
 
 	parts := strings.SplitN(string(decoded), ":", 2)
 	if len(parts) < 2 {
-		return nil, fnerrors.InvocationError("aws/ecr: unexpected authorization token format")
+		return nil, fnerrors.InvocationError("aws/ecr", "unexpected authorization token format")
 	}
 
 	serverAddr, err := makeServerAddress(ctx)

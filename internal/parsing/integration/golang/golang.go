@@ -24,7 +24,7 @@ type impl struct {
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.GoIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
-		return fnerrors.UserError(pkg.Location, "go integration requires a server")
+		return fnerrors.NewWithLocation(pkg.Location, "go integration requires a server")
 	}
 
 	goPkg := data.Pkg

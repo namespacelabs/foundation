@@ -29,7 +29,7 @@ type cueIngress struct {
 
 func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, error) {
 	if svc.Kind != "http" && svc.Kind != "tcp" {
-		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.UserError(loc, "service kind is not supported: %s", svc.Kind)
+		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.NewWithLocation(loc, "service kind is not supported: %s", svc.Kind)
 	}
 
 	var endpointType schema.Endpoint_Type

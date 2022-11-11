@@ -21,16 +21,16 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl parsing.EarlyP
 	return tasks.Return(ctx, tasks.Action("cue.package.parse").LogLevel(1).Scope(loc.PackageName), func(ctx context.Context) (*fncue.Partial, error) {
 		if st, err := fs.Stat(fnfs.Local(loc.Module.Abs()), loc.Rel()); err != nil {
 			if os.IsNotExist(err) {
-				return nil, fnerrors.UserError(nil, "%s: package does not exist", loc.PackageName)
+				return nil, fnerrors.New("%s: package does not exist", loc.PackageName)
 			}
 			return nil, err
 		} else if !st.IsDir() {
-			return nil, fnerrors.UserError(loc, "expected a directory")
+			return nil, fnerrors.NewWithLocation(loc, "expected a directory")
 		}
 
 		firstPass, err := evalctx.EvalPackage(ctx, loc.PackageName.String())
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing package")
+			return nil, fnerrors.NewWithLocation(loc, "parsing package failed: %w", err)
 		}
 
 		fsys, err := pl.WorkspaceOf(ctx, loc.Module)
@@ -55,7 +55,7 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl parsing.EarlyP
 		return fncue.SerializedEval(firstPass, func() (*fncue.Partial, error) {
 			newV, newLeft, err := applyInputs(ctx, inputs, &firstPass.CueV, firstPass.Left)
 			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, "evaluating package")
+				return nil, fnerrors.NewWithLocation(loc, "evaluating package failed: %w", err)
 			}
 
 			parsedPartial := *firstPass

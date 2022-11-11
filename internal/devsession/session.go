@@ -113,7 +113,7 @@ func (s *Session) ResolveServer(ctx context.Context, serverID string) (runtime.C
 		return s.cluster, entry.Server, nil
 	}
 
-	return nil, nil, fnerrors.UserError(nil, "%s: no such server in the current session", serverID)
+	return nil, nil, fnerrors.New("%s: no such server in the current session", serverID)
 }
 
 func (s *Session) handleSetWorkspace(parentCtx context.Context, eg *executor.Executor, absRoot, envName string, servers []string) error {

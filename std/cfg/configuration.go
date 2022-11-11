@@ -90,7 +90,7 @@ func applyProvider(errorloc fnerrors.Location, merged []*anypb.Any) ([]*anypb.An
 		if p, ok := configProviders[m.TypeUrl]; ok {
 			messages, err := p(m)
 			if err != nil {
-				return nil, fnerrors.Wrapf(errorloc, err, "%s", m.TypeUrl)
+				return nil, fnerrors.NewWithLocation(errorloc, "%s: %w", m.TypeUrl, err)
 			}
 
 			for _, msg := range messages {

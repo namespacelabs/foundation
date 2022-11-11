@@ -54,12 +54,12 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
 			pp, err := pl.LoadByName(ctx, loc.AsPackageName())
 			if err != nil {
-				return fnerrors.Wrap(loc, err)
+				return fnerrors.AttachLocation(loc, err)
 			}
 
 			if pp.Server == nil {
 				if p.locs.UserSpecified {
-					return fnerrors.UserError(loc, "expected a server")
+					return fnerrors.NewWithLocation(loc, "expected a server")
 				}
 
 				return nil

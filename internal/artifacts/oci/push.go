@@ -33,7 +33,7 @@ func pushImage(ctx context.Context, tag TargetRepository, img v1.Image, trackPro
 	}
 
 	if err := remote.Write(ref, img, remoteOpts...); err != nil {
-		return v1.Hash{}, fnerrors.InvocationError("failed to push to registry %q: %w", ref, err)
+		return v1.Hash{}, fnerrors.InvocationError("registry", "failed to push image %q: %w", ref, err)
 	}
 
 	return digest, nil

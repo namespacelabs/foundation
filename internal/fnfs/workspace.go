@@ -55,7 +55,7 @@ func WriteFileExtended(ctx context.Context, dst ReadWriteFS, filePath string, mo
 			if errors.Is(err, fs.ErrNotExist) {
 				goto write
 			}
-			return fnerrors.UserError(nil, "failed to write a workspace file %q: %w", filePath, err)
+			return fnerrors.New("failed to write a workspace file %q: %w", filePath, err)
 		}
 
 		defer f.Close()

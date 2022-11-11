@@ -74,7 +74,7 @@ func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string)
 		return m(ctx, conf)
 	}
 
-	return nil, fnerrors.UserError(nil, "%q is not a known registry provider", name)
+	return nil, fnerrors.New("%q is not a known registry provider", name)
 }
 
 func StaticName(parent Manager, imageID oci.ImageID, insecure bool, keychain oci.Keychain) compute.Computable[oci.AllocatedRepository] {

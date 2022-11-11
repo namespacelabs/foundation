@@ -46,7 +46,7 @@ func LookupGoModule(srcPath string) (*modfile.File, string, error) {
 	}
 
 	if f.Module == nil {
-		return nil, gomodFile, fnerrors.UserError(nil, "%s: missing go module definition", gomodFile)
+		return nil, gomodFile, fnerrors.New("%s: missing go module definition", gomodFile)
 	}
 
 	return f, gomodFile, nil

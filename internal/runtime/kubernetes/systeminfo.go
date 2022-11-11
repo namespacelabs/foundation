@@ -24,7 +24,7 @@ func computeSystemInfo(ctx context.Context, cli *kubernetes.Clientset) (*kubedef
 
 	nodes, err := cli.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "unable to list nodes")
+		return nil, fnerrors.InvocationError("kubernetes", "unable to list nodes: %w", err)
 	}
 
 	sysInfo := &kubedef.SystemInfo{}

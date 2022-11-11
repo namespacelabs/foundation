@@ -47,7 +47,7 @@ func (obtainAccessToken) Compute(ctx context.Context, _ c.Resolved) (authn.AuthC
 	cmd.Stdout = &out
 	cmd.Stderr = console.TypedOutput(ctx, "gcloud", console.CatOutputTool)
 	if err := cmd.Run(); err != nil {
-		return authn.AuthConfig{}, fnerrors.InvocationError("failed to obtain gcloud access token: %w", err)
+		return authn.AuthConfig{}, fnerrors.InvocationError("gcp-artifactregistry", "failed to obtain gcloud access token: %w", err)
 	}
 
 	return authn.AuthConfig{

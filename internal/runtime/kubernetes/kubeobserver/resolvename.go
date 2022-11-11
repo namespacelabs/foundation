@@ -18,7 +18,7 @@ func fetchReplicaSetName(ctx context.Context, cli *k8s.Clientset, ns string, own
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
 	replicasets, err := cli.AppsV1().ReplicaSets(ns).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs())})
 	if err != nil {
-		return "", fnerrors.Wrapf(nil, err, "unable to list replica sets")
+		return "", fnerrors.InvocationError("kubernetes", "unable to list replica sets: %w", err)
 	}
 
 	for _, replicaset := range replicasets.Items {

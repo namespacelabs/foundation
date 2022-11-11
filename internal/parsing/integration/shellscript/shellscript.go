@@ -24,18 +24,18 @@ type impl struct {
 }
 
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.ShellScriptIntegration) error {
-	return fnerrors.UserError(pkg.Location, "shellscript integration is not supported on the server")
+	return fnerrors.NewWithLocation(pkg.Location, "shellscript integration is not supported on the server")
 }
 
 func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, loc pkggraph.Location, data *schema.ShellScriptIntegration) (*schema.Binary, error) {
 	if data.Entrypoint == "" {
-		return nil, fnerrors.UserError(loc, "missing required field `entrypoint`")
+		return nil, fnerrors.NewWithLocation(loc, "missing required field `entrypoint`")
 	}
 
 	entrypoint := filepath.Clean(data.Entrypoint)
 
 	if _, err := fs.Stat(loc.Module.ReadOnlyFS(), filepath.Join(loc.Rel(), entrypoint)); err != nil {
-		return nil, fnerrors.Wrapf(loc, err, "could not find %q file, please verify that the specified script path is correct", data.Entrypoint)
+		return nil, fnerrors.NewWithLocation(loc, "could not find %q file, please verify that the specified script path is correct: %w", data.Entrypoint, err)
 	}
 
 	required := []string{"bash", "curl"}

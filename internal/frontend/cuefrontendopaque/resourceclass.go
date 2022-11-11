@@ -30,11 +30,11 @@ func parseResourceClass(ctx context.Context, loc pkggraph.Location, name string,
 	}
 
 	if bits.Intent == nil {
-		return nil, fnerrors.UserError(loc, "resource class %q must specify an intent", name)
+		return nil, fnerrors.NewWithLocation(loc, "resource class %q must specify an intent", name)
 	}
 
 	if bits.Produces == nil {
-		return nil, fnerrors.UserError(loc, "resource class %q must specify the provided type", name)
+		return nil, fnerrors.NewWithLocation(loc, "resource class %q must specify the provided type", name)
 	}
 
 	return &schema.ResourceClass{

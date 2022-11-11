@@ -104,7 +104,7 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 			return nil, err
 		}
 	} else if rawIntent != nil {
-		return nil, fnerrors.UserError(pkg.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", name)
+		return nil, fnerrors.NewWithLocation(pkg.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", name)
 	}
 
 	var parseErrs []error
@@ -159,7 +159,7 @@ func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, loc
 
 	rc := pkg.LookupResourceClass(classRef.Name)
 	if rc == nil {
-		return nil, fnerrors.UserError(loc, "resource class %q not found", classRef.Canonical())
+		return nil, fnerrors.NewWithLocation(loc, "resource class %q not found", classRef.Canonical())
 	}
 
 	if value == nil {

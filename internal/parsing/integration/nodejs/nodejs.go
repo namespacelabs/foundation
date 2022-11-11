@@ -34,7 +34,7 @@ type impl struct {
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.NodejsBuild) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
-		return fnerrors.UserError(pkg.Location, "nodejs integration requires a server")
+		return fnerrors.NewWithLocation(pkg.Location, "nodejs integration requires a server")
 	}
 
 	pkg.Server.Framework = schema.Framework_OPAQUE_NODEJS

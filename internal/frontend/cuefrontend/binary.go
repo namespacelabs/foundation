@@ -85,7 +85,7 @@ func (srcBin cueBinary) ToSchema(loc fnerrors.Location) (*schema.Binary, error) 
 
 	if srcBin.From != nil {
 		if srcBin.BuildPlan != nil {
-			return nil, fnerrors.UserError(loc, "from and build_plan are exclusive -- only one can be set")
+			return nil, fnerrors.NewWithLocation(loc, "from and build_plan are exclusive -- only one can be set")
 		}
 
 		parsed, err := srcBin.From.ToSchema(loc)
@@ -192,9 +192,9 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	}
 
 	if len(set) == 0 {
-		return nil, fnerrors.UserError(loc, "plan is missing at least one instruction")
+		return nil, fnerrors.NewWithLocation(loc, "plan is missing at least one instruction")
 	} else if len(set) > 1 {
-		return nil, fnerrors.UserError(loc, "build plan must include exactly one instruction, saw %v", set)
+		return nil, fnerrors.NewWithLocation(loc, "build plan must include exactly one instruction, saw %v", set)
 	}
 
 	return plan, nil

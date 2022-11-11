@@ -87,19 +87,19 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	if fmwk, err := parseFramework(loc, bits.Framework); err == nil {
 		out.Framework = schema.Framework(fmwk)
 	} else {
-		return nil, nil, fnerrors.UserError(loc, "unrecognized framework: %s", bits.Framework)
+		return nil, nil, fnerrors.NewWithLocation(loc, "unrecognized framework: %s", bits.Framework)
 	}
 
 	if bits.Binary != nil {
 		if out.Framework != schema.Framework_OPAQUE {
-			return nil, nil, fnerrors.UserError(loc, "can't specify binary on non-opaque servers")
+			return nil, nil, fnerrors.NewWithLocation(loc, "can't specify binary on non-opaque servers")
 		}
 
 		switch x := bits.Binary.(type) {
 		case string:
 			pkgRef, err := schema.ParsePackageRef(loc.PackageName, x)
 			if err != nil {
-				return nil, nil, fnerrors.UserError(loc, "invalid package reference: %s", x)
+				return nil, nil, fnerrors.NewWithLocation(loc, "invalid package reference: %s", x)
 			}
 
 			out.MainContainer.BinaryRef = pkgRef
@@ -114,7 +114,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 				})
 				out.MainContainer.BinaryRef = schema.MakePackageRef(loc.PackageName, bits.Name)
 			} else {
-				return nil, nil, fnerrors.UserError(loc, "binary: must either specify an image, or be a pointer to a binary package")
+				return nil, nil, fnerrors.NewWithLocation(loc, "binary: must either specify an image, or be a pointer to a binary package")
 			}
 		default:
 			return nil, nil, fnerrors.InternalError("binary: unexpected type: %v", reflect.TypeOf(bits.Binary))
@@ -169,7 +169,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 
 	for name, svc := range bits.Ingress {
 		if svc.Internal {
-			return nil, nil, fnerrors.UserError(loc, "ingress[%s]: can't be internal", name)
+			return nil, nil, fnerrors.NewWithLocation(loc, "ingress[%s]: can't be internal", name)
 		}
 
 		parsed, err := parseService(loc, "ingress", name, svc)
@@ -188,7 +188,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 			}
 
 		case fncue.AllocKeyword:
-			return fnerrors.UserError(loc, "servers don't support allocations, saw %q", value)
+			return fnerrors.NewWithLocation(loc, "servers don't support allocations, saw %q", value)
 		}
 
 		return nil
@@ -217,11 +217,11 @@ func parseDetails(detail inlineAnyJson) (*anypb.Any, error) {
 
 func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) (*schema.Server_ServiceSpec, error) {
 	if svc.Metadata.ExperimentalDetails.TypeUrl != "" {
-		return nil, fnerrors.UserError(loc, "%s[%s]: only additional metadata support details", kind, name)
+		return nil, fnerrors.NewWithLocation(loc, "%s[%s]: only additional metadata support details", kind, name)
 	}
 
 	if svc.Metadata.Protocol == "" {
-		return nil, fnerrors.UserError(loc, "%s[%s]: a protocol is required", kind, name)
+		return nil, fnerrors.NewWithLocation(loc, "%s[%s]: a protocol is required", kind, name)
 	}
 
 	parsed := &schema.Server_ServiceSpec{
@@ -238,7 +238,7 @@ func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) 
 	for _, add := range svc.ExperimentalAdditionalMetadata {
 		details, err := parseDetails(add.ExperimentalDetails)
 		if err != nil {
-			return nil, fnerrors.UserError(loc, "%s[%s]: failed to parse: %w", kind, name, err)
+			return nil, fnerrors.NewWithLocation(loc, "%s[%s]: failed to parse: %w", kind, name, err)
 		}
 		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Kind: add.Kind, Protocol: add.Protocol, Details: details})
 	}

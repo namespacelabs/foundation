@@ -178,7 +178,7 @@ func FetchResource(fsys fs.FS, loc pkggraph.Location) FetcherFunc {
 		}
 
 		if load.Path == "" {
-			return nil, fnerrors.UserError(loc, "#FromPath needs to have a path specified")
+			return nil, fnerrors.NewWithLocation(loc, "#FromPath needs to have a path specified")
 		}
 
 		rsc, err := LoadResource(fsys, loc, load.Path)
@@ -193,7 +193,7 @@ func FetchResource(fsys fs.FS, loc pkggraph.Location) FetcherFunc {
 
 func LoadResource(fsys fs.FS, loc pkggraph.Location, path string) (*schema.FileContents, error) {
 	if strings.HasPrefix(path, "../") {
-		return nil, fnerrors.UserError(loc, "resources must be loaded from within the package")
+		return nil, fnerrors.NewWithLocation(loc, "resources must be loaded from within the package")
 	}
 
 	contents, err := fs.ReadFile(fsys, loc.Rel(path))
@@ -211,7 +211,7 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 	return func(ctx context.Context, v cue.Value) (interface{}, error) {
 		packageName, err := v.String()
 		if err != nil {
-			return nil, fnerrors.UserError(nil, "expected a string when loading a package: %w", err)
+			return nil, fnerrors.New("expected a string when loading a package: %w", err)
 		}
 
 		return ConsumeNoValue, parsing.Ensure(ctx, pl, schema.PackageName(packageName))

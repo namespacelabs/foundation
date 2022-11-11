@@ -108,7 +108,7 @@ func expandNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph
 		var prov typeProvider
 
 		if err := makeDep(ctx, loader, dep, produceSerialized, &prov); err != nil {
-			return fnerrors.UserError(loc, "%s.dependency[%d]: %w", n.GetPackageName(), k, err)
+			return fnerrors.NewWithLocation(loc, "%s.dependency[%d]: %w", n.GetPackageName(), k, err)
 		}
 
 		if len(prov.DepVars) > 0 {
@@ -126,7 +126,7 @@ func expandNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggraph
 			var prov typeProvider
 
 			if err := makeDep(ctx, loader, dep, produceSerialized, &prov); err != nil {
-				return fnerrors.UserError(loc, "%s.%s.dependency[%d]: %w", n.GetPackageName(), p.Name, k, err)
+				return fnerrors.NewWithLocation(loc, "%s.%s.dependency[%d]: %w", n.GetPackageName(), p.Name, k, err)
 			}
 
 			if len(prov.DepVars) > 0 {
@@ -166,7 +166,7 @@ func isGoNode(n *schema.Node) bool {
 func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Instantiate, produceSerialized bool, prov *typeProvider) error {
 	pkg, err := loader.LoadByName(ctx, schema.PackageName(dep.PackageName))
 	if err != nil {
-		return fnerrors.UserError(nil, "failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
+		return fnerrors.New("failed to load %s/%s: %w", dep.PackageName, dep.Type, err)
 	}
 
 	// XXX Well, yes, this shouldn't live here. But being practical. We need to either have
@@ -201,7 +201,7 @@ func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Ins
 
 	_, p := parsing.FindProvider(pkg, schema.PackageName(dep.PackageName), dep.Type)
 	if p == nil {
-		return fnerrors.UserError(nil, "didn't find a provider for %s/%s", dep.PackageName, dep.Type)
+		return fnerrors.New("didn't find a provider for %s/%s", dep.PackageName, dep.Type)
 	}
 
 	var goprovider *schema.Provides_AvailableIn_Go
@@ -213,7 +213,7 @@ func makeDep(ctx context.Context, loader pkggraph.PackageLoader, dep *schema.Ins
 	}
 
 	if goprovider == nil {
-		return fnerrors.UserError(nil, "%s: not available for Go", dep.Name)
+		return fnerrors.New("%s: not available for Go", dep.Name)
 	}
 
 	prov.Provides = p

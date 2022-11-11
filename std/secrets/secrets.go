@@ -62,7 +62,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 					}
 
 					if !validNameRe.MatchString(secret.Name) {
-						return nil, fnerrors.UserError(nil, "bad secret name: %q (must be alphanumeric, up to 32 characters)", secret.Name)
+						return nil, fnerrors.New("bad secret name: %q (must be alphanumeric, up to 32 characters)", secret.Name)
 					}
 
 					if secret.InitializeWith != nil || secret.SelfSignedTlsCertificate != nil {
@@ -75,9 +75,9 @@ func Collect(server *schema.Server) (*Collection, error) {
 						if secret.Generate.UniqueId == "" {
 							secret.Generate.UniqueId = naming.StableIDN(instance.InstanceOwner, 16)
 						} else if _, ok := reservedSecretNames[secret.Generate.UniqueId]; ok {
-							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
+							return nil, fnerrors.New("bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
 						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {
-							return nil, fnerrors.UserError(nil, "bad unique secret id: %q (must be alphanumeric, between 8 and 16 characters)", secret.Generate.UniqueId)
+							return nil, fnerrors.New("bad unique secret id: %q (must be alphanumeric, between 8 and 16 characters)", secret.Generate.UniqueId)
 						}
 						generated = append(generated, secret)
 					} else {

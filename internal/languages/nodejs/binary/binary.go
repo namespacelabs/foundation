@@ -124,7 +124,7 @@ func maybeGenerateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJ
 			return llb.State{}, err
 		}
 
-		return base, fnerrors.UserError(bnj.loc, `%q must be present in the source tree when Web backends are used. Example content:
+		return base, fnerrors.NewWithLocation(bnj.loc, `%q must be present in the source tree when Web backends are used. Example content:
 
 %s
 `, backendsConfigFn, bytes)

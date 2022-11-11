@@ -67,12 +67,12 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pk
 
 		provider := providerPkg.LookupResourceProvider(instance.Class)
 		if provider == nil {
-			return nil, fnerrors.UserError(loc, "package %q is not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
+			return nil, fnerrors.NewWithLocation(loc, "package %q is not a provider for resource class %q", instance.Provider, instance.Class.Canonical())
 		}
 
 		ri.Provider = provider
 	} else if loadedPrimitive == nil {
-		return nil, fnerrors.UserError(loc, "missing provider for resource instance %q", instance.Name)
+		return nil, fnerrors.NewWithLocation(loc, "missing provider for resource instance %q", instance.Name)
 	} else {
 		serialized, err := anypb.New(loadedPrimitive)
 		if err != nil {
@@ -83,7 +83,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pk
 
 	if len(instance.InputResource) > 0 {
 		if instance.Provider == "" {
-			return nil, fnerrors.UserError(loc, "input resources have been set, without a provider")
+			return nil, fnerrors.NewWithLocation(loc, "input resources have been set, without a provider")
 		}
 
 		var resErrs []error

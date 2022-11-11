@@ -193,19 +193,20 @@ func maybeReplaceErr(err error) error {
 		var lines = []string{
 			"Failed to connect to Docker, due to lack of permissions. This is likely",
 			"due to your user not being in the right group to be able to use Docker.",
-			"",
 		}
 
+		var usage []string
+
 		if runtime.GOOS == "linux" {
-			lines = append(lines,
+			usage = append(usage,
 				"Checkout the following URL for instructions on how to handle this error:",
 				"",
 				"https://docs.docker.com/engine/install/linux-postinstall/")
 		} else {
-			lines = append(lines, "Please refer to Docker's documentation on how to solve this issue.")
+			usage = append(usage, "Please refer to Docker's documentation on how to solve this issue.")
 		}
 
-		return fnerrors.Wrapf(nil, err, strings.Join(lines, "\n"))
+		return fnerrors.UsageError(strings.Join(usage, "\n"), strings.Join(lines, "\n"))
 
 	case client.IsErrConnectionFailed(err):
 		return fnerrors.UsageError("If you don't have Docker installed, please visit https://docs.namespace.so/getting-started/#install-docker", "unable to connect to Docker: %w", err)

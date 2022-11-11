@@ -62,7 +62,7 @@ func ParseMounts(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 
 func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, ref *schema.PackageRef) (*schema.Volume, error) {
 	if ref.Name == "" {
-		return nil, fnerrors.UserError(loc, "volumes refs require a name: got %q, expected \"pkg:foo\" or \":foo\"", ref.Canonical())
+		return nil, fnerrors.NewWithLocation(loc, "volumes refs require a name: got %q, expected \"pkg:foo\" or \":foo\"", ref.Canonical())
 	}
 
 	pkg := ref.AsPackageName()
@@ -82,5 +82,5 @@ func loadVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph
 	}
 
 	// TODO consolidate error UX.
-	return nil, fnerrors.UserError(loc, "No volume %q found in package %s", ref.Name, ref.PackageName)
+	return nil, fnerrors.NewWithLocation(loc, "No volume %q found in package %s", ref.Name, ref.PackageName)
 }

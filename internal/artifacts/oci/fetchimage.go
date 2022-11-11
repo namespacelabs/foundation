@@ -136,7 +136,7 @@ func fetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (I
 
 	img, err := remote.Image(ref, remoteOpts...)
 	if err != nil {
-		return nil, fnerrors.InvocationError("failed to fetch image: %w", err)
+		return nil, fnerrors.InvocationError("registry", "failed to fetch image: %w", err)
 	}
 
 	return img, nil
@@ -178,7 +178,7 @@ func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*
 	digest := compute.MustGetDepValue(deps, r.imageID.ImageID(), "resolved")
 	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.opts)
 	if err != nil {
-		return nil, fnerrors.InvocationError("failed to fetch descriptor: %w", err)
+		return nil, fnerrors.InvocationError("registry", "failed to fetch descriptor: %w", err)
 	}
 
 	res := &RawDescriptor{
@@ -191,11 +191,11 @@ func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*
 	if isImageMediaType(d.MediaType) {
 		img, err := d.Image()
 		if err != nil {
-			return nil, fnerrors.BadInputError("expected an image: %w", err)
+			return nil, fnerrors.BadDataError("expected an image: %w", err)
 		}
 		res.RawConfig, err = img.RawConfigFile()
 		if err != nil {
-			return nil, fnerrors.BadInputError("failed to fetch raw image config: %w", err)
+			return nil, fnerrors.BadDataError("failed to fetch raw image config: %w", err)
 		}
 	}
 

@@ -81,12 +81,12 @@ func RawModuleAt(ctx context.Context, path string) (pkggraph.WorkspaceData, erro
 
 		firstPass := &schema.Workspace{}
 		if err := (prototext.UnmarshalOptions{AllowPartial: true, DiscardUnknown: true}).Unmarshal(moduleBytes, firstPass); err != nil {
-			return data, fnerrors.Wrapf(nil, err, "failed to parse %s for validation", file)
+			return data, fnerrors.New("failed to parse %s for validation: %w", file, err)
 		}
 
 		w := &schema.Workspace{}
 		if err := prototext.Unmarshal(moduleBytes, w); err != nil {
-			return data, fnerrors.Wrapf(nil, err, "failed to parse %s", file)
+			return data, fnerrors.New("failed to parse %s: %w", file, err)
 		}
 
 		data.data = moduleBytes
@@ -102,7 +102,7 @@ func validateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRe
 
 	// Check that the foundation repo dep uses an API compatible with the current CLI.
 	if moduleName == foundationModule && w.GetMinimumApi() > 0 && w.GetMinimumApi() < versions.MinimumAPIVersion {
-		return fnerrors.UserError(nil, fmt.Sprintf(`Unfortunately, this version of Foundation is too recent to be used with the
+		return fnerrors.New(fmt.Sprintf(`Unfortunately, this version of Foundation is too recent to be used with the
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your
 own codebase, then you'll need to either revert to a previous version of

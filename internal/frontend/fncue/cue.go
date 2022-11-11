@@ -91,7 +91,7 @@ func (ev *EvalCtx) EvalPackage(ctx context.Context, pkgname string) (*Partial, e
 
 	pkg, ok := collectedImports[pkgname]
 	if !ok || len(pkg.Files) == 0 {
-		return nil, fnerrors.UserError(nil, "no cue package at %s?", pkgname)
+		return nil, fnerrors.New("no cue package at %s?", pkgname)
 	}
 
 	// A foundation package definition has no package statement, which we refer to as the "_"

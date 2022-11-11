@@ -73,7 +73,7 @@ func output(ctx context.Context, args ...string) ([]byte, error) {
 	c.Stderr = console.Stderr(ctx)
 	c.Stdin = nil
 	if err := c.Run(); err != nil {
-		return nil, fnerrors.InvocationError("failed to invoke: %w", err)
+		return nil, fnerrors.InternalError("failed to invoke: %w", err)
 	}
 	return b.Bytes(), nil
 }

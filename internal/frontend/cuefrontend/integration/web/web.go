@@ -48,7 +48,7 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 		}
 
 		if nodejsBuild.Prod.BuildScript == "" {
-			return nil, fnerrors.UserError(loc, "The `build` script is required for prod web build")
+			return nil, fnerrors.NewWithLocation(loc, "The `build` script is required for prod web build")
 		}
 	}
 
@@ -60,7 +60,7 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 	}
 
 	if bits.Service == "" {
-		return nil, fnerrors.UserError(loc, "web integration requires a service name")
+		return nil, fnerrors.NewWithLocation(loc, "web integration requires a service name")
 	}
 
 	return &schema.WebIntegration{

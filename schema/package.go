@@ -26,13 +26,13 @@ func MakePackageRef(pkg PackageName, name string) *PackageRef {
 // Parses from a canonical string representation.
 func ParsePackageRef(owner PackageName, ref string) (*PackageRef, error) {
 	if ref == "" {
-		return nil, fnerrors.UserError(owner, "empty package refs are not permitted")
+		return nil, fnerrors.NewWithLocation(owner, "empty package refs are not permitted")
 	}
 
 	parts := strings.Split(ref, ":")
 
 	if len(parts) > 2 {
-		return nil, fnerrors.UserError(owner, "invalid package ref %q", ref)
+		return nil, fnerrors.NewWithLocation(owner, "invalid package ref %q", ref)
 	}
 
 	pr := &PackageRef{}

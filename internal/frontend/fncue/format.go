@@ -47,9 +47,10 @@ func FormatSource(loc fnerrors.Location, w io.Writer, contents []byte) error {
 		switch e := errors.Unwrap(err).(type) {
 		case errors.Error:
 			format, args := e.Msg()
-			return fnerrors.Wrapf(loc, err, format, args...)
+			args = append(args, err)
+			return fnerrors.NewWithLocation(loc, format+": %w", args...)
 		default:
-			return fnerrors.Wrapf(loc, err, "failed to format")
+			return fnerrors.NewWithLocation(loc, "failed to format: %w", err)
 		}
 	}
 

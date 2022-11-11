@@ -259,7 +259,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			if specExt.EnsureServiceAccount {
 				createServiceAccount = true
 				if specExt.ServiceAccount == "" {
-					return fnerrors.UserError(deployable.ErrorLocation, "ensure_service_account requires service_account to be set")
+					return fnerrors.NewWithLocation(deployable.ErrorLocation, "ensure_service_account requires service_account to be set")
 				}
 			}
 
@@ -267,7 +267,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 			if specExt.ServiceAccount != "" {
 				if serviceAccount != "" && serviceAccount != specExt.ServiceAccount {
-					return fnerrors.UserError(deployable.ErrorLocation, "incompatible service accounts defined, %q vs %q",
+					return fnerrors.NewWithLocation(deployable.ErrorLocation, "incompatible service accounts defined, %q vs %q",
 						serviceAccount, specExt.ServiceAccount)
 				}
 				serviceAccount = specExt.ServiceAccount
@@ -275,7 +275,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 			if specExt.SecurityContext != nil {
 				if !protos.CheckConsolidate(specExt.SecurityContext, &specifiedSec) {
-					return fnerrors.UserError(deployable.ErrorLocation, "incompatible securitycontext defined, %v vs %v",
+					return fnerrors.NewWithLocation(deployable.ErrorLocation, "incompatible securitycontext defined, %v vs %v",
 						specifiedSec, specExt.SecurityContext)
 				}
 			}
@@ -313,7 +313,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				// Deprecated path.
 				for _, arg := range containerExt.ArgTuple {
 					if currentValue, found := getArg(mainContainer, arg.Name); found && currentValue != arg.Value {
-						return fnerrors.UserError(deployable.ErrorLocation, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
+						return fnerrors.NewWithLocation(deployable.ErrorLocation, "argument '%s' is already set to '%s' but would be overwritten to '%s' by container extension", arg.Name, currentValue, arg.Value)
 					}
 					mainContainer = mainContainer.WithArgs(fmt.Sprintf("--%s=%s", arg.Name, arg.Value))
 				}
@@ -626,7 +626,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		name := sidecarName(sidecar, "sidecar")
 		for _, c := range containers {
 			if name == c {
-				return fnerrors.UserError(deployable.ErrorLocation, "duplicate sidecar container name: %s", name)
+				return fnerrors.NewWithLocation(deployable.ErrorLocation, "duplicate sidecar container name: %s", name)
 			}
 		}
 		containers = append(containers, name)
@@ -663,7 +663,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		name := sidecarName(init, "init")
 		for _, c := range containers {
 			if name == c {
-				return fnerrors.UserError(deployable.ErrorLocation, "duplicate init container name: %s", name)
+				return fnerrors.NewWithLocation(deployable.ErrorLocation, "duplicate init container name: %s", name)
 			}
 		}
 
@@ -716,7 +716,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	if _, err := runAsToPodSecCtx(podSecCtx, deployable.MainContainer.RunAs); err != nil {
-		return fnerrors.Wrap(deployable.ErrorLocation, err)
+		return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 	}
 
 	spec = spec.
@@ -749,7 +749,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		})
 	} else {
 		if len(serviceAccountAnnotations) > 0 {
-			return fnerrors.UserError(deployable.ErrorLocation, "can't set service account annotations without ensure_service_account")
+			return fnerrors.NewWithLocation(deployable.ErrorLocation, "can't set service account annotations without ensure_service_account")
 		}
 	}
 
@@ -847,7 +847,7 @@ func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc
 
 func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, definitions, error) {
 	if sizeBytes >= math.MaxInt64 {
-		return nil, nil, fnerrors.UserError(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
+		return nil, nil, fnerrors.NewWithLocation(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
 
 	quantity := resource.NewScaledQuantity(int64(sizeBytes), 0)

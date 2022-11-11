@@ -140,7 +140,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 		if m.HostPath != "" {
 			if !filepath.IsAbs(m.HostPath) {
-				return fnerrors.UserError(nil, "host_path must be absolute, got %q", m.HostPath)
+				return fnerrors.New("host_path must be absolute, got %q", m.HostPath)
 			}
 			absPath = m.HostPath
 		} else {

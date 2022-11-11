@@ -50,7 +50,7 @@ func newKubeCtlCmd() *cobra.Command {
 
 		kubectlBin, err := kubectl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
-			return fnerrors.Wrapf(nil, err, "failed to download Kubernetes SDK")
+			return fnerrors.New("failed to download Kubernetes SDK: %w", err)
 		}
 
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
@@ -76,25 +76,25 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Ku
 	k8sconfig := cluster.KubeConfig()
 	rawConfig, err := kluster.PreparedClient().ClientConfig.RawConfig()
 	if err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to generate kubeconfig")
+		return nil, fnerrors.New("failed to generate kubeconfig: %w", err)
 	}
 
 	configBytes, err := clientcmd.Write(rawConfig)
 	if err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to serialize kubeconfig")
+		return nil, fnerrors.New("failed to serialize kubeconfig: %w", err)
 	}
 
 	tmpFile, err := dirs.CreateUserTemp("kubeconfig", "*.yaml")
 	if err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to create temp file")
+		return nil, fnerrors.New("failed to create temp file: %w", err)
 	}
 
 	if _, err := tmpFile.Write(configBytes); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to write kubeconfig")
+		return nil, fnerrors.New("failed to write kubeconfig: %w", err)
 	}
 
 	if err := tmpFile.Close(); err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "failed to close kubeconfig")
+		return nil, fnerrors.New("failed to close kubeconfig: %w", err)
 	}
 
 	return &Kubeconfig{

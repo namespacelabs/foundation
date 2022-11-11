@@ -70,7 +70,7 @@ func (pr *providerProtoResolver) FindMessageByURL(url string) (protoreflect.Mess
 		return dynamicpb.NewMessageType(providermsg), nil
 	}
 
-	return nil, fnerrors.UserError(nil, "referenced node %s does not provide type %s", packageName, typeName)
+	return nil, fnerrors.New("referenced node %s does not provide type %s", packageName, typeName)
 }
 
 func (pr *providerProtoResolver) FindExtensionByName(field protoreflect.FullName) (protoreflect.ExtensionType, error) {

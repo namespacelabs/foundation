@@ -61,7 +61,7 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 	} else if with.Binary != "" {
 		binRef = schema.MakePackageSingleRef(schema.MakePackageName(with.Binary))
 	} else {
-		return nil, fnerrors.UserError(nil, "`binary` is required to point to a binary package")
+		return nil, fnerrors.New("`binary` is required to point to a binary package")
 	}
 
 	pkg, bin, err := pkggraph.LoadBinary(ctx, pl, binRef)
@@ -110,13 +110,13 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 
 	for k, v := range with.Snapshots {
 		if serverLocRef == nil {
-			return nil, fnerrors.UserError(nil, "snapshots are not allowed in this context")
+			return nil, fnerrors.New("snapshots are not allowed in this context")
 		}
 
 		serverLoc := *serverLocRef
 
 		if v.FromWorkspace == "" {
-			return nil, fnerrors.UserError(serverLoc, "fromSnapshot can't be empty")
+			return nil, fnerrors.NewWithLocation(serverLoc, "fromSnapshot can't be empty")
 		}
 
 		st, err := os.Stat(filepath.Join(serverLoc.Module.Abs(), v.FromWorkspace))
@@ -125,25 +125,25 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 				continue
 			}
 
-			return nil, fnerrors.UserError(serverLoc, "required location %q does not exist", v.FromWorkspace)
+			return nil, fnerrors.NewWithLocation(serverLoc, "required location %q does not exist", v.FromWorkspace)
 		}
 
 		var fsys fs.FS
 		if st.IsDir() {
 			if v.RequireFile {
-				return nil, fnerrors.UserError(serverLoc, "%s: must be a file, not a directory", v.FromWorkspace)
+				return nil, fnerrors.NewWithLocation(serverLoc, "%s: must be a file, not a directory", v.FromWorkspace)
 			}
 
 			v, err := compute.GetValue(ctx, serverLoc.Module.VersionedFS(v.FromWorkspace, false))
 			if err != nil {
-				return nil, fnerrors.UserError(serverLoc, "failed to read contents: %v", err)
+				return nil, fnerrors.NewWithLocation(serverLoc, "failed to read contents: %v", err)
 			}
 
 			fsys = v.FS()
 		} else {
 			contents, err := fs.ReadFile(serverLoc.Module.ReadWriteFS(), v.FromWorkspace)
 			if err != nil {
-				return nil, fnerrors.UserError(serverLoc, "failed to read file contents: %v", err)
+				return nil, fnerrors.NewWithLocation(serverLoc, "failed to read file contents: %v", err)
 			}
 
 			m := &memfs.FS{}
@@ -161,12 +161,12 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 	// We're ok doing this for now because tools' runtime invocation is hermetic.
 	if with.RequiresKeys {
 		if serverLocRef == nil {
-			return nil, fnerrors.UserError(nil, "requiresKeys is not allowed in this context")
+			return nil, fnerrors.New("requiresKeys is not allowed in this context")
 		}
 
 		keySnapshot, err := keys.Collect(ctx)
 		if err != nil {
-			return nil, fnerrors.Wrapf(*serverLocRef, err, "setting up keys")
+			return nil, fnerrors.NewWithLocation(*serverLocRef, "setting up keys failed: %w", err)
 		}
 
 		invocation.Snapshots = append(invocation.Snapshots, Snapshot{

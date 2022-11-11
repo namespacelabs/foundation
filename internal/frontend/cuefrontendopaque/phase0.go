@@ -106,7 +106,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	if volumes := v.LookupPath("volumes"); volumes.Exists() {
 		parsedVolumes, err := cuefrontend.ParseVolumes(ctx, ft.loader, loc, volumes)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+			return nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
 		}
 		parsedPkg.Volumes = append(parsedPkg.Volumes, parsedVolumes...)
 	}
@@ -125,7 +125,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	if server := v.LookupPath("server"); server.Exists() {
 		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing server")
+			return nil, fnerrors.NewWithLocation(loc, "parsing server failed: %w", err)
 		}
 
 		// Defer validating the startup plan until the rest of the package is loaded.

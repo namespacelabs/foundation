@@ -77,14 +77,14 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	var count int
 	if extension := v.LookupPath("extension"); extension.Exists() {
 		if err := parseCueNode(ctx, ft.env, ft.loader, loc, schema.Node_EXTENSION, v, extension, parsed); err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing extension")
+			return nil, fnerrors.NewWithLocation(loc, "parsing extension: %w", err)
 		}
 		count++
 	}
 
 	if service := v.LookupPath("service"); service.Exists() {
 		if err := parseCueNode(ctx, ft.env, ft.loader, loc, schema.Node_SERVICE, v, service, parsed); err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing service")
+			return nil, fnerrors.NewWithLocation(loc, "parsing service: %w", err)
 		}
 		count++
 	}
@@ -92,7 +92,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	if server := v.LookupPath("server"); server.Exists() {
 		parsedSrv, binaries, err := parseCueServer(ctx, ft.loader, loc, v, server)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing server")
+			return nil, fnerrors.NewWithLocation(loc, "parsing server: %w", err)
 		}
 		parsed.Server = parsedSrv
 		parsed.Binaries = append(parsed.Binaries, binaries...)
@@ -104,7 +104,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	if binary := v.LookupPath("binary"); binary.Exists() {
 		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing binary")
+			return nil, fnerrors.NewWithLocation(loc, "parsing binary: %w", err)
 		}
 		parsed.Binaries = append(parsed.Binaries, parsedBinary)
 		count++
@@ -113,7 +113,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	if test := v.LookupPath("test"); test.Exists() {
 		parsedTest, err := parseCueTest(ctx, loc, v, test)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing test")
+			return nil, fnerrors.NewWithLocation(loc, "parsing test: %w", err)
 		}
 		parsed.Tests = append(parsed.Tests, parsedTest)
 		count++
@@ -122,7 +122,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	if function := v.LookupPath("function"); function.Exists() {
 		parsedFunction, err := parseCueFunction(ctx, loc, v, function)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing function")
+			return nil, fnerrors.NewWithLocation(loc, "parsing function: %w", err)
 		}
 		parsed.ExperimentalFunction = parsedFunction
 		count++

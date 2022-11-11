@@ -55,7 +55,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 
 	binaryRef, err := binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: false})
 	if err != nil {
-		return nil, fnerrors.Wrapf(pkg.Location, err, "test %q", name)
+		return nil, fnerrors.NewWithLocation(pkg.Location, "parsing test %q failed: %w", name, err)
 	}
 
 	if binaryRef != nil {

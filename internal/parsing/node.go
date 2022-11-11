@@ -44,12 +44,12 @@ func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 			}
 			ext := pkg.Extension
 			if ext == nil {
-				return fnerrors.UserError(loc, "Trying to instantiate a node that is not an extension: %s", dep.PackageName)
+				return fnerrors.NewWithLocation(loc, "Trying to instantiate a node that is not an extension: %s", dep.PackageName)
 			}
 			providesFmwks := ext.ProvidedInFrameworks()
 			for _, fmwk := range node.CodegeneratedFrameworks() {
 				if _, ok := providesFmwks[fmwk]; !ok {
-					return fnerrors.UserError(
+					return fnerrors.NewWithLocation(
 						loc,
 						"Node has generated code for framework %s but tries to instantiate an "+
 							"extension provider '%s:%s' that doesn't support this framework",
@@ -121,7 +121,7 @@ func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 func validateDependencies(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, includes []schema.PackageName, dl *schema.PackageList) error {
 	for _, include := range includes {
 		if _, err := loadDep(ctx, pl, include); err != nil {
-			return fnerrors.Wrapf(loc, err, "loading dependency: %s", include)
+			return fnerrors.NewWithLocation(loc, "loading dependency failed: %s: %w", include, err)
 		}
 
 		dl.Add(include)

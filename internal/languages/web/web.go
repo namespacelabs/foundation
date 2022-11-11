@@ -102,7 +102,7 @@ func buildWebApps(ctx context.Context, conf build.Configuration, ingressFragment
 	for _, entry := range srv.Proto().UrlMap {
 		dep := srv.GetDep(schema.PackageName(entry.PackageName))
 		if dep == nil {
-			return nil, fnerrors.UserError(srv.Location, "%s: included in url map but not loaded", entry.PackageName)
+			return nil, fnerrors.NewWithLocation(srv.Location, "%s: included in url map but not loaded", entry.PackageName)
 		}
 
 		backends, err := parseBackends(dep.Node())

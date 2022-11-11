@@ -100,7 +100,7 @@ func (provisionHook) Apply(_ context.Context, req provisioning.StackRequest, out
 		func(alloc *schema.Allocation_Instance, _ *schema.Instantiate, db *rds.Database) error {
 			if existing, ok := dbs[db.Name]; ok {
 				if !proto.Equal(existing, db) {
-					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.Name, strings.Join(owners[db.Name], ","))
+					return fnerrors.New("%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.Name, strings.Join(owners[db.Name], ","))
 				}
 			} else {
 				dbs[db.Name] = db

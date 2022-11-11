@@ -114,7 +114,7 @@ func main() {
 func updateAndRun(ctx context.Context) (string, error) {
 	cached, needUpdate, err := checkShouldUpdate(ctx)
 	if err != nil {
-		return "", fnerrors.Wrapf(nil, err, "failed to load versions.json")
+		return "", fnerrors.New("failed to load versions.json: %w", err)
 	}
 
 	if cached == nil || needUpdate {
@@ -177,7 +177,7 @@ func checkShouldUpdate(ctx context.Context) (*versionCache, bool, error) {
 func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool) (*toolVersion, string, error) {
 	newVersion, err := fetchRemoteVersion(ctx)
 	if err != nil {
-		return nil, "", fnerrors.Wrapf(nil, err, "failed to load an update from the update service")
+		return nil, "", fnerrors.New("failed to load an update from the update service: %w", err)
 	}
 
 	values := url.Values{}
@@ -197,11 +197,11 @@ func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool
 
 	path, err := fetchBinary(ctx, newVersion, values)
 	if err != nil {
-		return nil, "", fnerrors.Wrapf(nil, err, "failed to fetch a new tarball")
+		return nil, "", fnerrors.New("failed to fetch a new tarball: %w", err)
 	}
 
 	if err := persistVersion(newVersion, path); err != nil {
-		return nil, "", fnerrors.Wrapf(nil, err, "failed to persist the version cache")
+		return nil, "", fnerrors.New("failed to persist the version cache: %w", err)
 	}
 
 	return newVersion, path, nil

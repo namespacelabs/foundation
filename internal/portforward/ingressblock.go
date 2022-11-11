@@ -245,7 +245,7 @@ func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
 func (pi *PortForward) portFwd(serverOwner string, containerPort int32, revision int, callback func(int, uint)) (io.Closer, error) {
 	server := pi.stack.GetServer(schema.PackageName(serverOwner))
 	if server == nil {
-		return nil, fnerrors.UserError(nil, "%s: missing in the stack", serverOwner)
+		return nil, fnerrors.New("%s: missing in the stack", serverOwner)
 	}
 
 	return pi.ForwardPort(server.Server, containerPort, []string{pi.LocalAddr}, func(fp runtime.ForwardedPort) {

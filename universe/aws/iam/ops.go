@@ -51,17 +51,17 @@ func RegisterGraphHandlers() {
 				var e *types.EntityAlreadyExistsException
 				if errors.As(err, &e) {
 					if _, err := iamcli.TagRole(ctx, &iam.TagRoleInput{Tags: input.Tags, RoleName: input.RoleName}); err != nil {
-						return nil, fnerrors.InvocationError("IAM role already existed, and failed to update its tags: %w", err)
+						return nil, fnerrors.InvocationError("aws", "IAM role already existed, and failed to update its tags: %w", err)
 					}
 
 					if _, err := iamcli.UpdateAssumeRolePolicy(ctx, &iam.UpdateAssumeRolePolicyInput{
 						RoleName:       &m.RoleName,
 						PolicyDocument: &m.AssumeRolePolicyJson,
 					}); err != nil {
-						return nil, fnerrors.InvocationError("IAM role already existed, and failed to update its policy: %w", err)
+						return nil, fnerrors.InvocationError("aws", "IAM role already existed, and failed to update its policy: %w", err)
 					}
 				} else {
-					return nil, fnerrors.InvocationError("failed to create IAM role: %w", err)
+					return nil, fnerrors.InvocationError("aws", "failed to create IAM role: %w", err)
 				}
 			}
 
@@ -103,7 +103,7 @@ func RegisterGraphHandlers() {
 			if _, err := iamcli.PutRolePolicy(ctx, input); err != nil {
 				var e *types.EntityAlreadyExistsException
 				if !errors.As(err, &e) {
-					return nil, fnerrors.InvocationError("failed to attach policy to role: %w", err)
+					return nil, fnerrors.InvocationError("aws", "failed to attach policy to role: %w", err)
 				}
 			}
 

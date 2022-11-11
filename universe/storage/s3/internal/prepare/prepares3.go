@@ -102,7 +102,7 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 		func(alloc *schema.Allocation_Instance, instantiate *schema.Instantiate, args *s3.BucketArgs) error {
 			if existing, ok := buckets[args.GetBucketName()]; ok {
 				if !proto.Equal(existing, args) {
-					return fnerrors.UserError(nil, "%s: incompatible s3 bucket definitions for %q", alloc.InstanceOwner, args.GetBucketName())
+					return fnerrors.New("%s: incompatible s3 bucket definitions for %q", alloc.InstanceOwner, args.GetBucketName())
 				}
 			} else {
 				buckets[args.GetBucketName()] = args

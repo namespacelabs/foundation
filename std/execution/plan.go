@@ -244,7 +244,7 @@ func prepareInputs(outputs map[string]*recordedOutput, def *schema.SerializedInv
 
 	if len(missing) > 0 {
 		slices.Sort(missing)
-		return nil, fnerrors.InvocationError("required inputs are missing: %v", missing)
+		return nil, fnerrors.InternalError("required inputs are missing: %v", missing)
 	}
 
 	return out, nil

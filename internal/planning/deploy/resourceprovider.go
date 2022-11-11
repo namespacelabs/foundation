@@ -125,7 +125,7 @@ func BuildResourceMap(ctx context.Context, dependencies []*resources.ResourceDep
 		}
 
 		if len(missing) > 0 {
-			return nil, fnerrors.InvocationError("missing required resources: %v", missing)
+			return nil, fnerrors.InternalError("missing required resources: %v", missing)
 		}
 
 		return resourceData, nil

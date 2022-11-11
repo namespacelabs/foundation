@@ -111,7 +111,7 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 	}
 
 	if p.opts.RequireSingle && len(locs) != 1 {
-		return fnerrors.UserError(nil, "expected exactly one package")
+		return fnerrors.New("expected exactly one package")
 	}
 
 	*p.locsOut = Locations{
@@ -127,7 +127,7 @@ func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames [
 	var locations []fnfs.Location
 	for _, arg := range args {
 		if filepath.IsAbs(arg) {
-			return nil, fnerrors.UserError(nil, "absolute paths are not supported: %s", arg)
+			return nil, fnerrors.New("absolute paths are not supported: %s", arg)
 		}
 
 		origArg := arg
@@ -146,7 +146,7 @@ func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames [
 		fmt.Fprintf(console.Debug(ctx), "location parsing: %s -> moduleName: %q rel: %q expando: %v\n", origArg, moduleName, rel, expando)
 
 		if strings.HasPrefix(rel, "..") {
-			return nil, fnerrors.UserError(nil, "can't refer to packages outside of the module root: %s", rel)
+			return nil, fnerrors.New("can't refer to packages outside of the module root: %s", rel)
 		}
 
 		if expando {

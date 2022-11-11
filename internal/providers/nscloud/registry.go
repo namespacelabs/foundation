@@ -90,17 +90,17 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fnerrors.InvocationError("%s: unexpected status when fetching an access token: %d", r, resp.StatusCode)
+		return nil, fnerrors.InvocationError("nscloud", "%s: unexpected status when fetching an access token: %d", r, resp.StatusCode)
 	}
 
 	tokenData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fnerrors.InvocationError("%s: unexpected error when fetching an access token: %w", r, err)
+		return nil, fnerrors.InvocationError("nscloud", "%s: unexpected error when fetching an access token: %w", r, err)
 	}
 
 	var t Token
 	if err := json.Unmarshal(tokenData, &t); err != nil {
-		return nil, fnerrors.InvocationError("%s: unexpected error when unmarshalling an access token: %w", r, err)
+		return nil, fnerrors.InvocationError("nscloud", "%s: unexpected error when unmarshalling an access token: %w", r, err)
 	}
 
 	return &authn.Bearer{Token: t.Token}, nil

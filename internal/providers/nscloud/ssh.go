@@ -31,7 +31,7 @@ func fetchGithubSshKeys(ctx context.Context, username string) ([]string, error) 
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fnerrors.InvocationError("unexpected status code %d", response.StatusCode)
+		return nil, fnerrors.InvocationError("nscloud", "unexpected status code %d", response.StatusCode)
 	}
 
 	keysData, err := io.ReadAll(response.Body)

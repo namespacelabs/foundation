@@ -385,7 +385,7 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 			case 1:
 				data[col.Names[k][j]] = foundValue
 			default:
-				return nil, fnerrors.UserError(server, "%s: secret %s:%s found in multiple files: %s",
+				return nil, fnerrors.NewWithLocation(server, "%s: secret %s:%s found in multiple files: %s",
 					server.PackageName, key.PackageName, key.Key, strings.Join(foundIn, "; "))
 			}
 		}

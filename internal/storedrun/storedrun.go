@@ -129,7 +129,7 @@ func nsErrorToStatus(err error) *status.Status {
 	st, _ := status.FromError(err)
 
 	// Find the deepest ActionError to provide the action trace for the root cause.
-	var actionErr *tasks.ActionError
+	var actionErr *fnerrors.ActionError
 	for {
 		errors.As(err, &actionErr)
 		cause := errors.Unwrap(err)

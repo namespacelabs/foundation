@@ -47,7 +47,7 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	if resources := v.LookupPath("resources"); resources.Exists() {
 		resourceList, err := cuefrontend.ParseResourceList(resources)
 		if err != nil {
-			return nil, fnerrors.Wrapf(pkg.Location, err, "parsing resources")
+			return nil, fnerrors.NewWithLocation(pkg.Location, "parsing resources failed: %w", err)
 		}
 
 		pack, err := resourceList.ToPack(ctx, env, pl, pkg)

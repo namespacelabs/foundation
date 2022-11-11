@@ -120,6 +120,21 @@ func (c *CodegenMultiError) Error() string {
 	return buf.String()
 }
 
+func (c *CodegenMultiError) IsExpectedError() (error, bool) {
+	var expected []CodegenError
+	for _, err := range c.Errs {
+		if _, ok := IsExpected(err.Err); ok {
+			expected = append(expected, err)
+		}
+	}
+
+	if len(expected) > 0 {
+		return newCodegenMultiError(expected), true
+	}
+
+	return nil, false
+}
+
 // existingCommonError recursively checks for root or any of it's wrapped errors
 // in commonerrors, and returns either nil or the first unwrapped error that is found.
 func existingCommonError(commonerrs map[string]map[string]packages, root error) error {

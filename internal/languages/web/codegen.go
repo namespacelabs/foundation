@@ -61,11 +61,11 @@ func generatePlaceholder(loader pkggraph.PackageLoader) genFunc {
 	return func(ctx context.Context, loc pkggraph.Location, backend *OpGenHttpBackend_Backend) (*binary.BackendDefinition, error) {
 		parsed, err := loader.LoadByName(ctx, schema.PackageName(backend.EndpointOwner))
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "failed to load referenced endpoint %q", backend.EndpointOwner)
+			return nil, fnerrors.NewWithLocation(loc, "failed to load referenced endpoint %q: %w", backend.EndpointOwner, err)
 		}
 
 		if parsed.Server == nil {
-			return nil, fnerrors.UserError(loc, "%q must be a server", backend.EndpointOwner)
+			return nil, fnerrors.NewWithLocation(loc, "%q must be a server", backend.EndpointOwner)
 		}
 
 		return nil, nil
@@ -115,7 +115,7 @@ func resolveBackend(fragments []*schema.IngressFragment) genFunc {
 				}
 			}
 
-			return nil, fnerrors.UserError(loc, "no ingress matches %s, perhaps you're missing `ingress: internetFacing: true`",
+			return nil, fnerrors.NewWithLocation(loc, "no ingress matches %s, perhaps you're missing `ingress: internetFacing: true`",
 				strings.Join(matches, " "))
 		}
 

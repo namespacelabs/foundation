@@ -133,13 +133,13 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 	}
 	packedProxyBodySize, err := anypb.New(proxyBodySize)
 	if err != nil {
-		return fnerrors.UserError(nil, "failed to pack ProxyBodySize configuration: %v", err)
+		return fnerrors.New("failed to pack ProxyBodySize configuration: %v", err)
 	}
 
 	cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
 	packedCors, err := anypb.New(cors)
 	if err != nil {
-		return fnerrors.UserError(nil, "failed to pack CORS' configuration: %v", err)
+		return fnerrors.New("failed to pack CORS' configuration: %v", err)
 	}
 
 	kr, err := kubetool.FromRequest(req)

@@ -55,7 +55,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
 		out.IsStateful = true
 	default:
-		return nil, nil, fnerrors.UserError(loc, "%s: server class is not supported", bits.Class)
+		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}
 
 	for name, svc := range bits.Services {
@@ -71,7 +71,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		}
 
 		if endpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.HttpRoutes) > 0 {
-			return nil, nil, fnerrors.UserError(loc, "http routes are not supported for a private service %q", name)
+			return nil, nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
 		}
 	}
 
@@ -88,7 +88,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		parsedMounts, volumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
-			return nil, nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+			return nil, nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
 		}
 
 		out.Volume = append(out.Volume, volumes...)
@@ -98,7 +98,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	if resources := v.LookupPath("resources"); resources.Exists() {
 		resourceList, err := cuefrontend.ParseResourceList(resources)
 		if err != nil {
-			return nil, nil, fnerrors.Wrapf(loc, err, "parsing resources")
+			return nil, nil, fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)
 		}
 
 		pack, err := resourceList.ToPack(ctx, env, pl, pkg)
@@ -159,7 +159,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 			dep := env.FromServiceEndpoint.ServerRef.AsPackageName()
 			if _, ok := stack[dep]; !ok {
 				// TODO reconcider if we want to implicitly add the dependency NSL-357
-				return nil, nil, fnerrors.UserError(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
+				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
 			}
 		}
 	}
@@ -217,7 +217,7 @@ func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoade
 			}
 		}
 
-		return "", fnerrors.UserError(loc, "%s: no such resource", resource.Canonical())
+		return "", fnerrors.NewWithLocation(loc, "%s: no such resource", resource.Canonical())
 	}
 
 }
@@ -240,14 +240,14 @@ func canonicalizeJsonPath(loc pkggraph.Location, originalDesc, desc protoreflect
 	}
 
 	if f == nil {
-		return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
+		return "", fnerrors.NewWithLocation(loc, "%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
 	}
 
 	if len(parts) == 1 {
 		if isSupportedProtoPrimitive(f) {
 			return string(f.Name()), nil
 		} else {
-			return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
+			return "", fnerrors.NewWithLocation(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
 		}
 	}
 
@@ -257,7 +257,7 @@ func canonicalizeJsonPath(loc pkggraph.Location, originalDesc, desc protoreflect
 			hint = ": cannot select fields inside primitive types"
 		}
 
-		return "", fnerrors.UserError(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)%s", originalDesc.FullName(), originalSel, parts[0], f.Kind(), hint)
+		return "", fnerrors.NewWithLocation(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)%s", originalDesc.FullName(), originalSel, parts[0], f.Kind(), hint)
 	}
 
 	selector, err := canonicalizeJsonPath(loc, originalDesc, f.Message(), originalSel, parts[1])

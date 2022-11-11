@@ -78,7 +78,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 			}
 
 			if err := tools.Run(ctx, env.Configuration(), run); err != nil {
-				return nil, fnerrors.UserError(nil, "failed to call llbgen :%w", err)
+				return nil, fnerrors.New("failed to call llbgen :%w", err)
 			}
 
 			def, err := llb.ReadFrom(bytes.NewReader(serializedLLB.Bytes()))

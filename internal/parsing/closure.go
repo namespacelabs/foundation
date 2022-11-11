@@ -152,7 +152,7 @@ func (g *sealer) Do(pkgs ...schema.PackageName) {
 			}
 
 			if p == nil {
-				return fnerrors.UserError(pkg, "expected definition")
+				return fnerrors.NewWithLocation(pkg, "expected definition")
 			}
 
 			if p.Server != nil {
@@ -162,7 +162,7 @@ func (g *sealer) Do(pkgs ...schema.PackageName) {
 			} else if len(p.Binaries) > 0 || len(p.Tests) > 0 {
 				return nil // Nothing to do.
 			} else {
-				return fnerrors.UserError(pkg, "no server, and no node?")
+				return fnerrors.NewWithLocation(pkg, "no server, and no node?")
 			}
 		})
 	}
@@ -208,7 +208,7 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		}
 
 		if parsed == nil {
-			return Sealed{}, fnerrors.UserError(nil, "%v: missing parsed package", n.PackageName)
+			return Sealed{}, fnerrors.New("%v: missing parsed package", n.PackageName)
 		}
 
 		nodes = append(nodes, parsed)

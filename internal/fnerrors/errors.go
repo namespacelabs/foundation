@@ -9,72 +9,87 @@ import (
 	"fmt"
 	"io"
 
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
+	"namespacelabs.dev/foundation/schema/tasks"
+	"namespacelabs.dev/foundation/std/tasks/protocol"
+)
+
+type ErrorKind string
+
+const (
+	Kind_USER       ErrorKind = "ns.error.user"
+	Kind_INTERNAL   ErrorKind = "ns.error.internal"
+	Kind_EXTERNAL   ErrorKind = "ns.error.external"
+	Kind_INVOCATION ErrorKind = "ns.error.invocation"
+	Kind_BADINPUT   ErrorKind = "ns.error.badinput"
+	Kind_BADDATA    ErrorKind = "ns.error.baddata"
+	Kind_TRANSIENT  ErrorKind = "ns.error.transient"
 )
 
 // New returns a new error for a format specifier and optionals args with the
 // stack trace at the point of invocation.
 func New(format string, args ...interface{}) error {
-	return &NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}
+	return &BaseError{Kind: Kind_USER, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
-func Wrap(loc Location, err error) error {
-	if userErr, ok := err.(*UserErr); ok {
+func NewWithLocation(loc Location, format string, args ...interface{}) error {
+	return &BaseError{Kind: Kind_USER, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New(), Location: loc}
+}
+
+func AttachLocation(loc Location, err error) error {
+	if userErr, ok := err.(*BaseError); ok {
 		if userErr.Location == nil {
-			return &UserErr{NsError: NsError{Err: userErr.Err, stack: userErr.stack}, Location: loc}
+			return &BaseError{OriginalErr: userErr.OriginalErr, stack: userErr.stack, Location: loc}
 		} else if userErr.Location == loc {
 			return userErr
 		}
 	}
 
-	return &UserErr{NsError: NsError{Err: err, stack: stacktrace.New()}, Location: loc}
-}
-
-func Wrapf(loc Location, err error, whatFmt string, args ...interface{}) error {
-	args = append(args, err)
-	return &UserErr{NsError: NsError{Err: fmt.Errorf(whatFmt+": %w", args...), stack: stacktrace.New()}, Location: loc}
+	return &BaseError{OriginalErr: err, stack: stacktrace.New(), Location: loc}
 }
 
 func WithLogs(err error, readerF func() io.Reader) error {
 	return &ErrWithLogs{err, readerF}
 }
 
-func UserError(loc Location, format string, args ...interface{}) error {
-	return &UserErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, Location: loc}
-}
-
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(runThis, toFixThis string, args ...interface{}) error {
-	return &UsageErr{NsError: NsError{Err: fmt.Errorf(toFixThis, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(toFixThis, args...), What: runThis}
+	return &UsageErr{BaseError: BaseError{OriginalErr: fmt.Errorf(toFixThis, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(toFixThis, args...), What: runThis}
 }
 
-// Unexpected situation.
+// Unexpected error.
 func InternalError(format string, args ...interface{}) error {
-	return &InternalErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &BaseError{Kind: Kind_INTERNAL, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
+}
+
+// Unexpected error produced by a component external to namespace.
+func ExternalError(format string, args ...interface{}) error {
+	return &BaseError{Kind: Kind_EXTERNAL, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
 // A call to a remote endpoint failed, perhaps due to a transient issue.
-func InvocationError(format string, args ...interface{}) error {
-	return &InvocationErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+func InvocationError(what, format string, args ...interface{}) error {
+	return &InvocationErr{BaseError: BaseError{Kind: Kind_INVOCATION, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}, what: what}
 }
 
 func NoAccessToLimitedFeature() error {
-	return InvocationError("this feature is not broadly available yet; please reach out to us at hello@namespacelabs.com to be added to the access list")
+	return New("this feature is not broadly available yet; please reach out to us at hello@namespacelabs.com to be added to the access list")
 }
 
-// The input does match our expectations (e.g. missing bits, wrong version, etc).
+// A user-provided input does match our expectations (e.g. missing bits, wrong version, etc).
 func BadInputError(format string, args ...interface{}) error {
-	return &InternalErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
+	return &BaseError{Kind: Kind_BADINPUT, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
+}
+
+// The data does match our expectations (e.g. missing bits, wrong version, etc).
+func BadDataError(format string, args ...interface{}) error {
+	return &BaseError{Kind: Kind_BADDATA, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
 // We failed but it may be due a transient issue.
 func TransientError(format string, args ...interface{}) error {
-	return &InternalErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: false}
-}
-
-// This error is expected, e.g. a rebuild is required.
-func ExpectedError(format string, args ...interface{}) error {
-	return &InternalErr{NsError: NsError{Err: fmt.Errorf(format, args...), stack: stacktrace.New()}, expected: true}
+	return &BaseError{OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
 // This error means that Namespace does not meet the minimum version requirements.
@@ -85,46 +100,48 @@ func DoesNotMeetVersionRequirements(what string, expected, got int32) error {
 // This error is purely for wiring and ensures that Namespace exits with an appropriate exit code.
 // The error content has to be output independently.
 func ExitWithCode(err error, code int) error {
-	return &exitError{NsError: NsError{Err: err, stack: stacktrace.New()}, code: code}
+	return &exitError{BaseError: BaseError{OriginalErr: err, stack: stacktrace.New()}, code: code}
 }
 
 // Wraps an error with a stack trace at the point of invocation.
-type NsError struct {
-	Err   error
+type BaseError struct {
+	Kind        ErrorKind
+	OriginalErr error
+	Location    Location
+
 	stack stacktrace.StackTrace
 }
 
-func (f *NsError) Error() string {
-	return f.Err.Error()
+func (e *BaseError) Error() string {
+	var locStr string
+	if e.Location != nil {
+		locStr = e.Location.ErrorLocation() + ": "
+	}
+
+	return fmt.Sprintf("%s%v", locStr, e.OriginalErr)
 }
 
-func (f *NsError) Unwrap() error { return f.Err }
+func (e *BaseError) IsExpectedError() (error, bool) {
+	return e, e.Kind == Kind_USER
+}
+
+func (e *BaseError) Unwrap() error { return e.OriginalErr }
 
 // Signature is compatible with pkg/errors and allows frameworks like Sentry to
 // automatically extract the frame.
-func (f *NsError) StackTrace() stacktrace.StackTrace {
-	return f.stack
-}
-
-type UserErr struct {
-	NsError
-	Location Location
+func (e *BaseError) StackTrace() stacktrace.StackTrace {
+	return e.stack
 }
 
 type UsageErr struct {
-	NsError
+	BaseError
 	Why  string
 	What string
 }
 
-type InternalErr struct {
-	NsError
-	expected bool
-}
-
 type InvocationErr struct {
-	NsError
-	expected bool
+	BaseError
+	what string
 }
 
 type ErrWithLogs struct {
@@ -132,48 +149,30 @@ type ErrWithLogs struct {
 	ReaderF func() io.Reader // Returns reader with command's stderr output.
 }
 
-func IsExpected(err error) (string, bool) {
-	if x, ok := err.(*InternalErr); ok && x.expected {
-		return err.Error(), true
+func IsExpected(err error) (error, bool) {
+	if err == nil {
+		return nil, false
 	}
-	if _, ok := err.(*UserErr); ok {
-		return err.Error(), true
-	}
-	if x, ok := err.(*CodegenMultiError); ok {
-		for _, err := range x.Errs {
-			if msg, ok := IsExpected(&err); !ok {
-				return msg, false
-			}
-		}
-		return err.Error(), true
+
+	if x, ok := err.(interface {
+		IsExpectedError() (error, bool)
+	}); ok {
+		return x.IsExpectedError()
 	}
 
 	if unwrappedError := errors.Unwrap(err); unwrappedError != nil {
 		return IsExpected(unwrappedError)
 	} else {
-		return err.Error(), false
+		return err, false
 	}
-}
-
-func (e *UserErr) Error() string {
-	var locStr string
-	if e.Location != nil {
-		locStr = e.Location.ErrorLocation() + ": "
-	}
-
-	return fmt.Sprintf("%s%v", locStr, e.Err)
 }
 
 func (e *UsageErr) Error() string {
 	return fmt.Sprintf("%s\n\n  %s", e.Why, e.What)
 }
 
-func (e *InternalErr) Error() string {
-	return e.Err.Error()
-}
-
 func (e *InvocationErr) Error() string {
-	return fmt.Sprintf("failed when calling resource: %s", e.Err.Error())
+	return fmt.Sprintf("failed when calling %s: %s", e.what, e.OriginalErr.Error())
 }
 
 func (e *ErrWithLogs) Error() string {
@@ -198,12 +197,12 @@ type ExitError interface {
 }
 
 type exitError struct {
-	NsError
+	BaseError
 	code int
 }
 
 func (e *exitError) Error() string {
-	return e.Err.Error()
+	return e.OriginalErr.Error()
 }
 
 func (e *exitError) ExitCode() int {
@@ -212,4 +211,29 @@ func (e *exitError) ExitCode() int {
 
 type StackTracer interface {
 	StackTrace() stacktrace.StackTrace
+}
+
+// Represents an action error alongside the sequence of actions invocations leading to it.
+type ActionError struct {
+	ActionID    string
+	OriginalErr error
+	TraceProto  []*protocol.Task
+}
+
+func (ae *ActionError) Error() string           { return ae.OriginalErr.Error() }
+func (ae *ActionError) Unwrap() error           { return ae.OriginalErr }
+func (ae *ActionError) Trace() []*protocol.Task { return ae.TraceProto }
+
+func (ae *ActionError) GRPCStatus() *status.Status {
+	st, _ := status.FromError(ae.OriginalErr)
+	p, _ := st.WithDetails(&tasks.ErrorDetail_ActionID{ActionId: ae.ActionID})
+	return p
+}
+
+func IsNamespaceError(err error) bool {
+	switch err.(type) {
+	case *BaseError, *InvocationErr, *DependencyFailedError, *VersionError, *ActionError:
+		return true
+	}
+	return false
 }

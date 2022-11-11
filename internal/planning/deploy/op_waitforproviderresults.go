@@ -86,7 +86,7 @@ func register_OpWaitForProviderResults() {
 				if main.TerminationError != nil {
 					fmt.Fprintf(console.Errors(ctx), "%s provision failure:\n%s\n", wait.ResourceInstanceId, out.Bytes())
 
-					return nil, fnerrors.InvocationError("provider failed: %w", main.TerminationError)
+					return nil, fnerrors.ExternalError("provider failed: %w", main.TerminationError)
 				}
 
 				_, msgdesc, err := protos.LoadMessageByName(wait.InstanceTypeSource, wait.ResourceClass.InstanceType.ProtoType)
@@ -106,20 +106,20 @@ func register_OpWaitForProviderResults() {
 					}
 
 					if resultMessage != nil {
-						return nil, fnerrors.InternalError("invocation produced multiple results")
+						return nil, fnerrors.ExternalError("invocation produced multiple results")
 					}
 
 					parsedMessage := dynamicpb.NewMessage(msgdesc).Interface()
 					original := bytes.TrimPrefix(line, resultHeader)
 					if err := protojson.Unmarshal(original, parsedMessage); err != nil {
-						return nil, fnerrors.InvocationError("failed to unmarshal provision result: %w", err)
+						return nil, fnerrors.ExternalError("failed to unmarshal provision result: %w", err)
 					}
 
 					resultMessage = parsedMessage
 				}
 
 				if resultMessage == nil {
-					return nil, fnerrors.InvocationError("provision did not produce a result")
+					return nil, fnerrors.ExternalError("provision did not produce a result")
 				}
 
 				_ = tasks.Attachments(ctx).AttachSerializable("instance.json", "", resultMessage)

@@ -230,7 +230,7 @@ func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, e
 				for mv := range decoder.Stream() {
 					var resp CreateKubernetesClusterResponse
 					if err := reparse(mv.Value, &resp); err != nil {
-						return fnerrors.InvocationError("failed to parse response: %w", err)
+						return fnerrors.InvocationError("nscloud", "failed to parse response: %w", err)
 					}
 
 					progress.set(resp.Status)

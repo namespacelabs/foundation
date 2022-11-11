@@ -58,7 +58,7 @@ func NewLogsCmd() *cobra.Command {
 				}
 
 				if len(containers) != 1 {
-					return fnerrors.InvocationError("expected a single container, got %d", len(containers))
+					return fnerrors.New("expected a single container, got %d", len(containers))
 				}
 
 				return rt.Cluster().FetchLogsTo(ctx, console.Stdout(ctx), containers[0], runtime.FetchLogsOpts{})

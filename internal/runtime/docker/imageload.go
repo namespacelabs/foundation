@@ -60,7 +60,7 @@ func checkWriteImage(ctx context.Context, img v1.Image, config v1.Hash, ref name
 	}
 
 	if _, err := writeImage(ctx, client, ref, img); err != nil {
-		return fnerrors.InvocationError("failed to push to docker: %w", err)
+		return fnerrors.InvocationError("docker", "failed to write image: %w", err)
 	}
 
 	tasks.Attachments(ctx).AddResult("uploaded", true)
@@ -80,13 +80,13 @@ func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) 
 	// write the image in docker save format first, then load it
 	resp, err := client.ImageLoad(ctx, progressReader, false)
 	if err != nil {
-		return "", fnerrors.InvocationError("error loading image: %w", err)
+		return "", fnerrors.InvocationError("docker", "failed to load image: %w", err)
 	}
 	defer resp.Body.Close()
 	b, err := io.ReadAll(resp.Body)
 	response := string(b)
 	if err != nil {
-		return response, fnerrors.InvocationError("error reading load response body: %w", err)
+		return response, fnerrors.InvocationError("docker", "error reading load response body: %w", err)
 	}
 	return response, nil
 }
@@ -94,12 +94,12 @@ func writeImage(ctx context.Context, client Client, tag name.Tag, img v1.Image) 
 func writeImageOnce(name string, img v1.Image) (compute.Computable[v1.Hash], error) {
 	digest, err := img.Digest()
 	if err != nil {
-		return nil, fnerrors.InvocationError("docker: failed to fetch compute image digest: %w", err)
+		return nil, fnerrors.InternalError("docker: failed to compute image digest: %w", err)
 	}
 
 	config, err := img.ConfigName()
 	if err != nil {
-		return nil, fnerrors.InvocationError("docker: failed to fetch image config: %w", err)
+		return nil, fnerrors.InternalError("docker: failed to fetch image config: %w", err)
 	}
 
 	if name == "" {

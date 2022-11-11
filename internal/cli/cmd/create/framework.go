@@ -28,7 +28,7 @@ func selectFramework(ctx context.Context, title string, fmwkFlag string) (*schem
 			}
 		}
 		if item.fwmk == 0 {
-			return nil, fnerrors.UserError(nil, "invalid framework: %s", fmwkFlag)
+			return nil, fnerrors.New("invalid framework: %s", fmwkFlag)
 		}
 	} else {
 		selected, err := tui.Select(ctx, title, frameworks)

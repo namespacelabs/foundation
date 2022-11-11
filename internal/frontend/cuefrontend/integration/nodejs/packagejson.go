@@ -31,12 +31,12 @@ func readPackageJson(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkg
 
 	jsonRaw, err := fs.ReadFile(fsys, filepath.Join(relPath, packageJsonFn))
 	if err != nil {
-		return nil, fnerrors.UserError(loc, "error while reading %s : %s", packageJsonFn, err)
+		return nil, fnerrors.NewWithLocation(loc, "error while reading %s : %s", packageJsonFn, err)
 	}
 
 	parsedJson := &packageJson{}
 	if err := json.Unmarshal(jsonRaw, &parsedJson); err != nil {
-		return nil, fnerrors.UserError(loc, "error while parsing %s : %s", packageJsonFn, err)
+		return nil, fnerrors.NewWithLocation(loc, "error while parsing %s : %s", packageJsonFn, err)
 	}
 
 	return parsedJson, nil

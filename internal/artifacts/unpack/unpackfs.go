@@ -128,12 +128,12 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 
 	if err := os.RemoveAll(baseDir); err != nil {
 		if !os.IsNotExist(err) {
-			return Unpacked{}, fnerrors.UserError(nil, "failed to remove existing unpack directory: %w", err)
+			return Unpacked{}, fnerrors.New("failed to remove existing unpack directory: %w", err)
 		}
 	}
 
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return Unpacked{}, fnerrors.UserError(nil, "failed to create target unpack directory: %w", err)
+		return Unpacked{}, fnerrors.New("failed to create target unpack directory: %w", err)
 	}
 
 	var checksums []checksumEntry
@@ -142,7 +142,7 @@ func (u *unpackFS) Compute(ctx context.Context, deps compute.Resolved) (Unpacked
 		dir := filepath.Dir(path)
 		if dir != "." {
 			if err := os.MkdirAll(filepath.Join(targetDir, dir), 0755); err != nil {
-				return fnerrors.UserError(nil, "failed to create %q: %w", dir, err)
+				return fnerrors.New("failed to create %q: %w", dir, err)
 			}
 		}
 

@@ -11,7 +11,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
-	"namespacelabs.dev/foundation/internal/fnerrors"
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
@@ -35,7 +36,7 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 			}
 		}
 
-		return fnerrors.InvocationError("server has no identifiable primary container")
+		return rpcerrors.Errorf(codes.FailedPrecondition, "server has no identifiable primary container")
 	})
 }
 

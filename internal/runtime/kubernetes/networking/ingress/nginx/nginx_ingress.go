@@ -52,7 +52,7 @@ func RegisterGraphHandlers() {
 				}), kubedef.Ego())
 				return err
 			}); err != nil {
-				return nil, fnerrors.InvocationError("nginx: failed to ensure namespace: %w", err)
+				return nil, fnerrors.InvocationError("kubernetes", "nginx: failed to ensure namespace: %w", err)
 			}
 
 			if err := tasks.Action("nginx.generate-webhook").HumanReadablef(g.Description).Run(ctx, func(ctx context.Context) error {
@@ -61,7 +61,8 @@ func RegisterGraphHandlers() {
 					return fnerrors.InternalError("nginx: failed to deserialize webhook definition: %w", err)
 				}
 
-				secret, err := cluster.PreparedClient().Clientset.CoreV1().Secrets(op.Namespace).Get(ctx, op.SecretName, metav1.GetOptions{})
+				cli := cluster.PreparedClient().Clientset
+				secret, err := cli.CoreV1().Secrets(op.Namespace).Get(ctx, op.SecretName, metav1.GetOptions{})
 				if k8serrors.IsNotFound(err) {
 					newCa, newCert, newKey := certs.GenerateCerts(op.TargetHost)
 					newSecret := &v1.Secret{
@@ -72,24 +73,24 @@ func RegisterGraphHandlers() {
 						Data: map[string][]byte{"ca": newCa, "cert": newCert, "key": newKey},
 					}
 
-					_, err := cluster.PreparedClient().Clientset.CoreV1().Secrets(op.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
+					_, err := cli.CoreV1().Secrets(op.Namespace).Create(ctx, newSecret, metav1.CreateOptions{
 						FieldManager: kubedef.Ego().FieldManager,
 					})
 					if err != nil {
-						return fnerrors.InvocationError("nginx: failed to create secret: %w", err)
+						return fnerrors.InvocationError("kubernetes", "nginx: failed to create secret: %w", err)
 					}
 
 					secret = newSecret
 				} else if err != nil {
-					return fnerrors.InvocationError("nginx: failed to get secret: %w", err)
+					return fnerrors.InvocationError("kubernetes", "nginx: failed to get secret: %w", err)
 				}
 
 				for _, webhook := range webhook.Webhooks {
 					webhook.ClientConfig.WithCABundle(secret.Data["ca"]...)
 				}
 
-				if _, err := cluster.PreparedClient().Clientset.AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
-					return fnerrors.InvocationError("nginx: failed to apply webhook: %w", err)
+				if _, err := cli.AdmissionregistrationV1().ValidatingWebhookConfigurations().Apply(ctx, webhook, kubedef.Ego()); err != nil {
+					return fnerrors.InvocationError("kubernetes", "nginx: failed to apply webhook: %w", err)
 				}
 
 				return nil

@@ -8,10 +8,7 @@ import (
 	"context"
 	"errors"
 
-	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/schema/tasks"
-	"namespacelabs.dev/foundation/std/tasks/protocol"
 )
 
 type errType string
@@ -30,27 +27,10 @@ func ErrorType(err error) errType {
 	return ErrTypeIsRegular
 }
 
-func wrapErrorWithAction(err error, actionID ActionID) *ActionError {
+func wrapErrorWithAction(err error, actionID ActionID) *fnerrors.ActionError {
 	if err == nil {
 		return nil
 	}
 
-	return &ActionError{err: err, actionID: actionID, trace: runningActionsSink.Trace(actionID)}
-}
-
-// Represents an action error alongside the sequence of actions invocations leading to it.
-type ActionError struct {
-	actionID ActionID
-	err      error
-	trace    []*protocol.Task
-}
-
-func (ae *ActionError) Error() string           { return ae.err.Error() }
-func (ae *ActionError) Unwrap() error           { return ae.err }
-func (ae *ActionError) Trace() []*protocol.Task { return ae.trace }
-
-func (ae *ActionError) GRPCStatus() *status.Status {
-	st, _ := status.FromError(ae.err)
-	p, _ := st.WithDetails(&tasks.ErrorDetail_ActionID{ActionId: ae.actionID.String()})
-	return p
+	return &fnerrors.ActionError{OriginalErr: err, ActionID: actionID.String(), TraceProto: runningActionsSink.Trace(actionID)}
 }

@@ -90,7 +90,7 @@ func ResolveModule(ctx context.Context, packageName string) (*ResolvedPackage, e
 	}
 
 	if r.Type != "git" {
-		return nil, fnerrors.UserError(nil, "%s: %s: unsupported type", packageName, r.Type)
+		return nil, fnerrors.New("%s: %s: unsupported type", packageName, r.Type)
 	}
 
 	return &r, nil
@@ -163,7 +163,7 @@ func parseGithubPackage(packageName string) (*ResolvedPackage, error) {
 	// github.com/org/repo/rel
 	parts := strings.SplitN(packageName, "/", 4)
 	if len(parts) < 3 {
-		return nil, fnerrors.UserError(nil, "%s: invalid github package name", packageName)
+		return nil, fnerrors.New("%s: invalid github package name", packageName)
 	}
 
 	var rel string

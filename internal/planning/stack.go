@@ -310,7 +310,7 @@ func EvalProvision(ctx context.Context, server Server, n *pkggraph.Package) (*Pa
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
 		pn, err := evalProvision(ctx, server, n)
 		if err != nil {
-			return nil, fnerrors.Wrap(n.Location, err)
+			return nil, fnerrors.AttachLocation(n.Location, err)
 		}
 
 		return pn, nil
@@ -323,7 +323,7 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 		if hook.InvokeInternal != "" {
 			props, err := planninghooks.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.SealedContext(), server.StackEntry())
 			if err != nil {
-				return nil, fnerrors.Wrap(node.Location, err)
+				return nil, fnerrors.AttachLocation(node.Location, err)
 			}
 
 			if props == nil {
@@ -428,11 +428,11 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 		ServerLocation: server.Location,
 	})
 	if err != nil {
-		return nil, fnerrors.Wrap(node.Location, err)
+		return nil, fnerrors.AttachLocation(node.Location, err)
 	}
 
 	if pdata.Naming != nil {
-		return nil, fnerrors.UserError(node.Location, "nodes can't provide naming specifications")
+		return nil, fnerrors.NewWithLocation(node.Location, "nodes can't provide naming specifications")
 	}
 
 	for _, sidecar := range combinedProps.PreparedProvisionPlan.Sidecars {

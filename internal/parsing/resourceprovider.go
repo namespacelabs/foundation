@@ -15,7 +15,7 @@ import (
 
 func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, provider *schema.ResourceProvider) (*pkggraph.ResourceProvider, error) {
 	if provider.InitializedWith == nil {
-		return nil, fnerrors.UserError(pp.Location, "resource provider requires initializedWith")
+		return nil, fnerrors.NewWithLocation(pp.Location, "resource provider requires initializedWith")
 	}
 
 	if _, _, err := pkggraph.LoadBinary(ctx, pl, provider.InitializedWith.BinaryRef); err != nil {
@@ -77,7 +77,7 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 	}
 
 	if err := multierr.New(errs...); err != nil {
-		return nil, fnerrors.Wrap(pp.Location, err)
+		return nil, fnerrors.AttachLocation(pp.Location, err)
 	}
 
 	return &rp, nil

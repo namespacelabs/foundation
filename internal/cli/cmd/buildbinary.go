@@ -92,7 +92,7 @@ func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations
 		if len(pkg.Binaries) > 0 {
 			pkgs = append(pkgs, pkg)
 		} else if locs.UserSpecified {
-			return fnerrors.UserError(loc, "no binary found in package")
+			return fnerrors.NewWithLocation(loc, "no binary found in package")
 		}
 	}
 

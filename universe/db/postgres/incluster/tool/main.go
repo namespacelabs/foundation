@@ -50,7 +50,7 @@ func (tool) Apply(_ context.Context, r provisioning.StackRequest, out *provision
 		func(alloc *schema.Allocation_Instance, _ *schema.Instantiate, db *incluster.Database) error {
 			if existing, ok := dbs[db.GetName()]; ok {
 				if !proto.Equal(existing, db) {
-					return fnerrors.UserError(nil, "%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
+					return fnerrors.New("%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))
 				}
 			} else {
 				dbs[db.GetName()] = db

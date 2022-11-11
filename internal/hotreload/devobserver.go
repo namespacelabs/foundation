@@ -40,7 +40,7 @@ type FileSyncDevObserver struct {
 
 func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, languages.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
-		return nil, nil, fnerrors.UserError(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
+		return nil, nil, fnerrors.NewWithLocation(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 	}
 
 	devObserver := newFileSyncDevObserver(ctx, cluster, srv, FileSyncPort)

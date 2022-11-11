@@ -67,7 +67,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	deferred, err := runtime.ClassFor(ctx, env)
 	if err != nil {
-		return nil, fnerrors.Wrap(testPkg.Location, err)
+		return nil, fnerrors.AttachLocation(testPkg.Location, err)
 	}
 
 	purpose := fmt.Sprintf("Test cluster for %s", testPkg.Location)
@@ -75,7 +75,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	// This can block for a non-trivial amount of time.
 	cluster, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
 	if err != nil {
-		return nil, fnerrors.Wrap(testPkg.Location, err)
+		return nil, fnerrors.AttachLocation(testPkg.Location, err)
 	}
 
 	planner := cluster.Planner(env)
@@ -86,7 +86,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	stack, err := loadSUT(ctx, env, pl, testDef)
 	if err != nil {
-		return nil, fnerrors.UserError(testPkg.Location, "failed to load fixture: %w", err)
+		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
 	// Must be no "pl" usage after this point:
@@ -107,7 +107,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack)
 	if err != nil {
-		return nil, fnerrors.UserError(testPkg.Location, "failed to load stack: %w", err)
+		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
 	}
 
 	testReq := &testboot.TestRequest{
@@ -283,7 +283,7 @@ func findTest(loc pkggraph.Location, tests []*schema.Test, name string) (*schema
 			return t, nil
 		}
 	}
-	return nil, fnerrors.UserError(loc, "%s: test not found", name)
+	return nil, fnerrors.NewWithLocation(loc, "%s: test not found", name)
 }
 
 type buildAndAttachDataLayer struct {

@@ -52,19 +52,19 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		var err error
 		out.container.Mount, out.volumes, err = cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "parsing volumes")
+			return nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
 		}
 
 		// Not fully implemented yet, disabling for now.
 		if len(out.container.Mount) != 0 {
-			return nil, fnerrors.UserError(loc, "mounts are not supported for sidecar containers at the moment")
+			return nil, fnerrors.NewWithLocation(loc, "mounts are not supported for sidecar containers at the moment")
 		}
 	}
 
 	var err error
 	out.container.BinaryRef, err = binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: true})
 	if err != nil {
-		return nil, fnerrors.Wrapf(loc, err, "container %q", name)
+		return nil, fnerrors.NewWithLocation(loc, "parsing container %q failed: %w", name, err)
 	}
 
 	return out, nil

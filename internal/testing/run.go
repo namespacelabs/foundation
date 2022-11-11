@@ -119,7 +119,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 
 	var waitErr error
 	if err := orchestration.Deploy(ctx, env, cluster, deployPlan, true, test.OutputProgress); err != nil {
-		waitErr = fnerrors.Wrap(test.TestRef.AsPackageName(), err)
+		waitErr = fnerrors.AttachLocation(test.TestRef.AsPackageName(), err)
 	}
 
 	var testLogBuf *fnsync.ByteBuffer

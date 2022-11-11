@@ -56,7 +56,7 @@ func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string,
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
 	pods, err := cli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs())})
 	if err != nil {
-		return nil, fnerrors.Wrapf(nil, err, "unable to list pods")
+		return nil, fnerrors.InvocationError("kubernetes", "unable to list pods: %w", err)
 	}
 
 	var statuses []*orchestration.Event_WaitStatus

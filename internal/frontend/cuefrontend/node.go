@@ -96,7 +96,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	} else if kind == schema.Node_SERVICE {
 		out.Service = node
 	} else {
-		return fnerrors.UserError(loc, "unknown kind: %v", kind)
+		return fnerrors.NewWithLocation(loc, "unknown kind: %v", kind)
 	}
 
 	// Ensure all fields are bound.
@@ -121,7 +121,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 			return err
 		}
 		if fmwk == schema.Framework_OPAQUE {
-			return fnerrors.UserError(loc, "Only servers can be OPAQUE")
+			return fnerrors.NewWithLocation(loc, "Only servers can be OPAQUE")
 		}
 		node.ServiceFramework = fmwk
 	}
@@ -154,7 +154,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		frameworks := uniquestrings.List{}
 		for _, fmwkStr := range initializeInFrameworks {
 			if !frameworks.Add(fmwkStr) {
-				return fnerrors.UserError(loc, "Duplicate initialization framework value: %s", fmwkStr)
+				return fnerrors.NewWithLocation(loc, "Duplicate initialization framework value: %s", fmwkStr)
 			}
 
 			v, err := parseFramework(loc, fmwkStr)
@@ -170,10 +170,10 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 	} else {
 		if len(initializeBefore) > 0 {
-			return fnerrors.UserError(loc, "initializeBefore can only be set when hasInitializerIn is also set")
+			return fnerrors.NewWithLocation(loc, "initializeBefore can only be set when hasInitializerIn is also set")
 		}
 		if len(initializeAfter) > 0 {
-			return fnerrors.UserError(loc, "initializeAfter can only be set when hasInitializerIn is also set")
+			return fnerrors.NewWithLocation(loc, "initializeAfter can only be set when hasInitializerIn is also set")
 		}
 	}
 
@@ -201,7 +201,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		for _, path := range paths {
 			contents, err := fs.ReadFile(fsys, loc.Rel(path))
 			if err != nil {
-				return fnerrors.UserError(loc, "failed to load eval data %q: %w", path, err)
+				return fnerrors.NewWithLocation(loc, "failed to load eval data %q: %w", path, err)
 			}
 
 			out.PackageData = append(out.PackageData, &types.Resource{
@@ -311,16 +311,16 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	if exported := v.LookupPath("requirePersistentStorage"); exported.Exists() {
 		var d cueRequiredStorage
 		if err := exported.Val.Decode(&d); err != nil {
-			return fnerrors.Wrapf(loc, err, "failed to parse")
+			return fnerrors.NewWithLocation(loc, "failed to parse: %w", err)
 		}
 
 		if d.PersistentID == "" {
-			return fnerrors.UserError(loc, "persistentId is required")
+			return fnerrors.NewWithLocation(loc, "persistentId is required")
 		}
 
 		v, err := units.FromHumanSize(d.ByteCount)
 		if err != nil {
-			return fnerrors.Wrapf(loc, err, "failed to parse value")
+			return fnerrors.NewWithLocation(loc, "failed to parse value: %w", err)
 		}
 
 		pv, err := anypb.New(&schema.PersistentVolume{
@@ -328,7 +328,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 			SizeBytes: uint64(v),
 		})
 		if err != nil {
-			return fnerrors.Wrapf(loc, err, "failed to marshal persistent volume")
+			return fnerrors.NewWithLocation(loc, "failed to marshal persistent volume: %w", err)
 		}
 
 		node.Volume = append(node.Volume, &schema.Volume{
@@ -348,7 +348,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		parsedMounts, inlinedVolumes, err := ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
-			return fnerrors.Wrapf(loc, err, "parsing mounts")
+			return fnerrors.NewWithLocation(loc, "parsing mounts: %w", err)
 		}
 
 		node.Volume = append(node.Volume, inlinedVolumes...)
@@ -358,7 +358,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	if environment := v.LookupPath("environment"); environment.Exists() {
 		var er cueEnvironmentRequirements
 		if err := environment.Val.Decode(&er); err != nil {
-			return fnerrors.Wrapf(loc, err, "failed to parse")
+			return fnerrors.NewWithLocation(loc, "failed to parse: %w", err)
 		}
 
 		node.EnvironmentRequirement = &schema.Node_EnvironmentRequirement{}
@@ -380,21 +380,21 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	if on := v.LookupPath("on.prepare"); on.Exists() {
 		var callback cueCallback
 		if err := on.Val.Decode(&callback); err != nil {
-			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision`")
+			return fnerrors.NewWithLocation(loc, "failed to parse `on.provision`: %w", err)
 		}
 
 		binInvocation, err := binary.ParseBinaryInvocationField(ctx, env, pl, out, "genb-node-inv" /* binaryName */, "invokeBinary" /* cuePath */, on)
 		if err != nil {
-			return fnerrors.Wrapf(loc, err, "failed to parse `on.provision.invokeBinary`")
+			return fnerrors.NewWithLocation(loc, "failed to parse `on.provision.invokeBinary`: %w", err)
 		}
 
 		if callback.InvokeInternal == "" {
 			if binInvocation == nil {
-				return fnerrors.UserError(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
+				return fnerrors.NewWithLocation(loc, "on.provision.invokeInternal or on.provision.invokeBinary is required")
 			}
 		} else {
 			if binInvocation != nil {
-				return fnerrors.UserError(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
+				return fnerrors.NewWithLocation(loc, "on.provision.invokeInternal and on.provision.invokeBinary are exclusive")
 			}
 		}
 
@@ -456,17 +456,17 @@ func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggr
 
 	parsed, err := parseOpts.ParseAtLocation(fsys, loc, export.Service.Sources)
 	if err != nil {
-		return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", export.Service.Sources, err)
+		return fnerrors.NewWithLocation(loc, "failed to parse proto sources %v: %v", export.Service.Sources, err)
 	}
 
 	_, desc, err := protos.LoadDescriptorByName(parsed, export.Service.Typename)
 	if err != nil {
-		return fnerrors.UserError(loc, "failed to load service %q: %v", export.Service.Typename, err)
+		return fnerrors.NewWithLocation(loc, "failed to load service %q: %v", export.Service.Typename, err)
 	}
 
 	svc, ok := desc.(protoreflect.ServiceDescriptor)
 	if !ok {
-		return fnerrors.UserError(loc, "expected %q to be a service: %v", export.Service.Typename, err)
+		return fnerrors.NewWithLocation(loc, "expected %q to be a service: %v", export.Service.Typename, err)
 	}
 
 	// Validated that the methods exported are actually part of the service.
@@ -487,7 +487,7 @@ func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggr
 			}
 		}
 		if len(notFound) > 0 {
-			return fnerrors.UserError(loc, "%s: the following methods don't exist in the service: %v", export.Service.Typename, notFound)
+			return fnerrors.NewWithLocation(loc, "%s: the following methods don't exist in the service: %v", export.Service.Typename, notFound)
 		}
 	}
 
@@ -530,13 +530,13 @@ func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 
 		if provides.Input != nil {
 			if provides.Type != nil {
-				return fnerrors.UserError(loc, "can't specify both input and type in a provides block")
+				return fnerrors.NewWithLocation(loc, "can't specify both input and type in a provides block")
 			}
 			p.Type = provides.Input
 		} else if provides.Type != nil {
 			p.Type = provides.Type
 		} else {
-			return fnerrors.UserError(loc, "a provides block requires a input definition")
+			return fnerrors.NewWithLocation(loc, "a provides block requires a input definition")
 		}
 
 		fsys, err := pl.WorkspaceOf(ctx, loc.Module)
@@ -546,11 +546,11 @@ func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 
 		parsed, err := parseOpts.ParseAtLocation(fsys, loc, p.Type.Source)
 		if err != nil {
-			return fnerrors.UserError(loc, "failed to parse proto sources %v: %v", p.Type.Source, err)
+			return fnerrors.NewWithLocation(loc, "failed to parse proto sources %v: %v", p.Type.Source, err)
 		}
 
 		if _, _, err := protos.LoadMessageByName(parsed, p.Type.Typename); err != nil {
-			return fnerrors.UserError(loc, "failed to load message %q: %v", p.Type.Typename, err)
+			return fnerrors.NewWithLocation(loc, "failed to load message %q: %v", p.Type.Typename, err)
 		}
 
 		if pkg.Provides == nil {
@@ -570,10 +570,10 @@ func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 				g := &schema.Provides_AvailableIn_Go{}
 				remarshal, err := json.Marshal(m)
 				if err != nil {
-					return fnerrors.UserError(loc, "failed to marshal: %w", err)
+					return fnerrors.NewWithLocation(loc, "failed to marshal: %w", err)
 				}
 				if err := json.Unmarshal(remarshal, g); err != nil {
-					return fnerrors.UserError(loc, "failed to unmarshal: %w", err)
+					return fnerrors.NewWithLocation(loc, "failed to unmarshal: %w", err)
 				}
 				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
 					Go: g,
@@ -588,10 +588,10 @@ func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 				proto := &schema.Provides_AvailableIn_NodeJs{}
 				remarshal, err := json.Marshal(m)
 				if err != nil {
-					return fnerrors.UserError(loc, "failed to marshal: %w", err)
+					return fnerrors.NewWithLocation(loc, "failed to marshal: %w", err)
 				}
 				if err := json.Unmarshal(remarshal, proto); err != nil {
-					return fnerrors.UserError(loc, "failed to unmarshal: %w", err)
+					return fnerrors.NewWithLocation(loc, "failed to unmarshal: %w", err)
 				}
 				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
 					Nodejs: proto,
@@ -654,12 +654,12 @@ func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAPI bool, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*anypb.Any, error) {
 	if inst.PackageName == "" {
 		if len(inst.TypeDef.Sources) > 0 {
-			return nil, fnerrors.UserError(loc, "source can't be provided when package is unspecified")
+			return nil, fnerrors.NewWithLocation(loc, "source can't be provided when package is unspecified")
 		}
 
 		msgtype, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(inst.TypeDef.Typename))
 		if err != nil {
-			return nil, fnerrors.UserError(loc, "%s: no such message: %w", inst.TypeDef.Typename, err)
+			return nil, fnerrors.NewWithLocation(loc, "%s: no such message: %w", inst.TypeDef.Typename, err)
 		}
 
 		var msg proto.Message
@@ -669,12 +669,12 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 			msg, err = v.LookupPath("with").DecodeAs(msgtype)
 		}
 		if err != nil {
-			return nil, fnerrors.UserError(loc, "%s: failed to decode builtin message: %w", inst.TypeDef.Typename, err)
+			return nil, fnerrors.NewWithLocation(loc, "%s: failed to decode builtin message: %w", inst.TypeDef.Typename, err)
 		}
 
 		constructor, err := anypb.New(msg)
 		if err != nil {
-			return nil, fnerrors.UserError(loc, "%s: failed to serialize constructor: %w", inst.TypeDef.Typename, err)
+			return nil, fnerrors.NewWithLocation(loc, "%s: failed to serialize constructor: %w", inst.TypeDef.Typename, err)
 		}
 		return constructor, nil
 	}
@@ -697,7 +697,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 
 	msgdesc, err := opts.LoadMessageAtLocation(fsys, resolved, inst.TypeDef.Sources, inst.TypeDef.Typename)
 	if err != nil {
-		return nil, fnerrors.UserError(loc, "%s: %w", resolved.PackageName, err)
+		return nil, fnerrors.NewWithLocation(loc, "%s: %w", resolved.PackageName, err)
 	}
 
 	var msg proto.Message
@@ -707,7 +707,7 @@ func constructAny(ctx context.Context, inst cueInstantiate, v *fncue.CueV, newAP
 		msg, err = v.LookupPath("with").DecodeAs(dynamicpb.NewMessageType(msgdesc))
 	}
 	if err != nil {
-		return nil, fnerrors.UserError(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
+		return nil, fnerrors.NewWithLocation(loc, "%s: %s: failed to decode message: %w", resolved.PackageName, inst.TypeDef.Typename, err)
 	}
 
 	return fnany.Marshal(resolved.PackageName, msg)

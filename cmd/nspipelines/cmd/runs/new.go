@@ -180,7 +180,7 @@ func newNewCmd() *cobra.Command {
 		}
 
 		if resp.RunId == "" {
-			return fnerrors.InvocationError("expected a run id to be produced")
+			return fnerrors.InvocationError("storage-api", "expected a run id to be produced")
 		}
 
 		r, err := json.Marshal(resp)

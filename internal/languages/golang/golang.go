@@ -83,7 +83,7 @@ type impl struct {
 func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
-		return nil, fnerrors.Wrap(server.Location, err)
+		return nil, fnerrors.AttachLocation(server.Location, err)
 	}
 
 	bin := &GoBinary{
@@ -109,17 +109,17 @@ func (impl) PrepareRun(ctx context.Context, t planning.Server, run *runtime.Cont
 func (impl) TidyServer(ctx context.Context, env cfg.Context, pkgs pkggraph.PackageLoader, loc pkggraph.Location, server *schema.Server) error {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Ext, ext); err != nil {
-		return fnerrors.Wrap(loc, err)
+		return fnerrors.AttachLocation(loc, err)
 	}
 
 	sdk, err := golang.MatchSDK(ext.GoVersion, host.HostPlatform())
 	if err != nil {
-		return fnerrors.Wrap(loc, err)
+		return fnerrors.AttachLocation(loc, err)
 	}
 
 	localSDK, err := compute.GetValue(ctx, sdk)
 	if err != nil {
-		return fnerrors.Wrap(loc, err)
+		return fnerrors.AttachLocation(loc, err)
 	}
 
 	const foundationModule = "namespacelabs.dev/foundation"
@@ -154,13 +154,13 @@ func (impl) TidyServer(ctx context.Context, env cfg.Context, pkgs pkggraph.Packa
 
 		if foundationVersion != "" {
 			if err := RunGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", foundationModule, foundationVersion)); err != nil {
-				return fnerrors.Wrap(loc, err)
+				return fnerrors.AttachLocation(loc, err)
 			}
 		}
 	}
 
 	if err := RunGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
-		return fnerrors.Wrap(loc, err)
+		return fnerrors.AttachLocation(loc, err)
 	}
 
 	return nil
@@ -257,7 +257,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 	}
 
 	if len(sealed.Proto.Server.UrlMap) > 0 && !sealed.HasDep(httpNode) {
-		return fnerrors.UserError(sealed.Location, "server exposes HTTP paths, it must depend on %s", httpNode)
+		return fnerrors.NewWithLocation(sealed.Location, "server exposes HTTP paths, it must depend on %s", httpNode)
 	}
 
 	return nil

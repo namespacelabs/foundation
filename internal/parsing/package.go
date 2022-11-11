@@ -45,7 +45,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	if pp.Server != nil && pp.Server.RunByDefault {
 		test, err := createServerStartupTest(ctx, pl, pp.PackageName())
 		if err != nil {
-			return nil, fnerrors.Wrapf(pp.Location, err, "creating server startup test")
+			return nil, fnerrors.NewWithLocation(pp.Location, "creating server startup test: %w", err)
 		}
 		pp.Tests = append(pp.Tests, test)
 	}

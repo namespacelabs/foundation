@@ -121,7 +121,7 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 	case constants.VolumeKindPersistent:
 		sizeBytes, err := units.FromHumanSize(bits.Size)
 		if err != nil {
-			return nil, fnerrors.Wrapf(loc, err, "failed to parse value")
+			return nil, fnerrors.NewWithLocation(loc, "failed to parse value: %w", err)
 		}
 		definition = &schema.PersistentVolume{
 			Id:        bits.Id,
@@ -130,7 +130,7 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 
 	case constants.VolumeKindWorkspaceSync:
 		if bits.FromDir == "" {
-			return nil, fnerrors.UserError(loc, "workspace sync: missing required field 'fromDir'")
+			return nil, fnerrors.NewWithLocation(loc, "workspace sync: missing required field 'fromDir'")
 		}
 
 		definition = &schema.WorkspaceSyncVolume{
@@ -161,7 +161,7 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			for it.Next() {
 				parsedEntry, err := parseConfigurableEntry(ctx, pl, loc, isInlined, it.Value())
 				if err != nil {
-					return nil, fnerrors.Wrapf(loc, err, it.Label())
+					return nil, fnerrors.NewWithLocation(loc, "%s: %w", it.Label(), err)
 				}
 				parsedEntry.Path = it.Label()
 				entries = append(entries, parsedEntry)
@@ -170,7 +170,7 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			// Entry name is the volume/mount name.
 			entry, err := parseConfigurableEntry(ctx, pl, loc, isInlined, val.Val)
 			if err != nil {
-				return nil, fnerrors.Wrapf(loc, err, name)
+				return nil, fnerrors.NewWithLocation(loc, "%s: %w", name, err)
 			}
 			entry.Path = name
 			entries = append(entries, entry)
@@ -198,7 +198,7 @@ func parseConfigurableEntry(ctx context.Context, pl parsing.EarlyPackageLoader, 
 		// Inlined content.
 		str, _ := v.String()
 		if !isVolumeInlined {
-			return nil, fnerrors.UserError(loc, "Configurable content %q without target path must be inlined", str)
+			return nil, fnerrors.NewWithLocation(loc, "Configurable content %q without target path must be inlined", str)
 		}
 
 		return &schema.ConfigurableVolume_Entry{
@@ -277,6 +277,6 @@ func parseConfigurableEntry(ctx context.Context, pl parsing.EarlyPackageLoader, 
 		}}, nil
 
 	default:
-		return nil, fnerrors.UserError(loc, "must have a source")
+		return nil, fnerrors.NewWithLocation(loc, "must have a source")
 	}
 }

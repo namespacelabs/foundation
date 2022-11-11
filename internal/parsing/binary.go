@@ -12,11 +12,11 @@ import (
 
 func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 	if bin.PackageName != "" {
-		return fnerrors.UserError(loc, "package_name can not be set")
+		return fnerrors.NewWithLocation(loc, "package_name can not be set")
 	}
 
 	if bin.Name == "" {
-		return fnerrors.UserError(loc, "binary name can't be empty")
+		return fnerrors.NewWithLocation(loc, "binary name can't be empty")
 	}
 
 	bin.PackageName = loc.PackageName.String()
@@ -48,21 +48,21 @@ func isImagePlanGo(plan *schema.ImageBuildPlan) bool {
 
 func TransformFunction(loc pkggraph.Location, function *schema.ExperimentalFunction) error {
 	if function.PackageName != "" {
-		return fnerrors.UserError(loc, "package_name can not be set")
+		return fnerrors.NewWithLocation(loc, "package_name can not be set")
 	}
 
 	function.PackageName = loc.PackageName.String()
 
 	if function.Kind == "" {
-		return fnerrors.UserError(loc, "function kind can't be empty")
+		return fnerrors.NewWithLocation(loc, "function kind can't be empty")
 	}
 
 	if function.Runtime == "" {
-		return fnerrors.UserError(loc, "function runtime can't be empty")
+		return fnerrors.NewWithLocation(loc, "function runtime can't be empty")
 	}
 
 	if function.Source == "" {
-		return fnerrors.UserError(loc, "function source must be specified")
+		return fnerrors.NewWithLocation(loc, "function source must be specified")
 	}
 
 	return nil

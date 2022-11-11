@@ -137,10 +137,10 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg cfg.Configu
 			}
 
 			if imgid.Repository != selected.Repository {
-				return nil, fnerrors.UserError(loc, "conflicting repositories for prebuilt: %s vs %s", imgid.Repository, selected.Repository)
+				return nil, fnerrors.NewWithLocation(loc, "conflicting repositories for prebuilt: %s vs %s", imgid.Repository, selected.Repository)
 			}
 			if imgid.Digest != selected.Digest {
-				return nil, fnerrors.UserError(loc, "conflicting digest for prebuilt: %s vs %s", imgid.Digest, selected.Digest)
+				return nil, fnerrors.NewWithLocation(loc, "conflicting digest for prebuilt: %s vs %s", imgid.Digest, selected.Digest)
 			}
 		}
 	}
@@ -174,7 +174,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 	src := bin.BuildPlan
 
 	if src == nil || len(src.LayerBuildPlan) == 0 {
-		return nil, fnerrors.UserError(loc, "%s: don't know how to build, missing build plan", bin.Name)
+		return nil, fnerrors.NewWithLocation(loc, "%s: don't know how to build, missing build plan", bin.Name)
 	}
 
 	if len(src.LayerBuildPlan) == 1 {
@@ -207,7 +207,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 
 func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, bin *schema.Binary, src *schema.ImageBuildPlan, assets assets.AvailableBuildAssets, opts BuildImageOpts) (build.Spec, error) {
 	if src == nil {
-		return nil, fnerrors.UserError(loc, "don't know how to build %q: no plan", bin.Name)
+		return nil, fnerrors.NewWithLocation(loc, "don't know how to build %q: no plan", bin.Name)
 	}
 
 	if imageId := src.ImageId; imageId != "" {
@@ -239,7 +239,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 
 	if wb := src.WebBuild; wb != "" {
 		if wb != "." {
-			return nil, fnerrors.UserError(loc, "web_build: must be set to `.`")
+			return nil, fnerrors.NewWithLocation(loc, "web_build: must be set to `.`")
 		}
 		return BuildWeb(loc), nil
 	}
@@ -260,7 +260,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	if nix := src.NixFlake; nix != "" {
 		fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(nix), false))
 		if err != nil {
-			return nil, fnerrors.Wrap(loc, err)
+			return nil, fnerrors.AttachLocation(loc, err)
 		}
 		return BuildNix(loc.PackageName, loc.Module, fsys.FS()), nil
 	}
@@ -268,7 +268,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
 		spec, err := buildkit.DockerfileBuild(loc.Rel(), dockerFile, opts.IsFocus)
 		if err != nil {
-			return nil, fnerrors.Wrap(loc, err)
+			return nil, fnerrors.AttachLocation(loc, err)
 		}
 
 		return spec, nil
@@ -296,7 +296,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 		return snapshotFiles{loc.Rel(), src.SnapshotFiles}, nil
 	}
 
-	return nil, fnerrors.UserError(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
+	return nil, fnerrors.NewWithLocation(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 
 func EnsureImage(ctx context.Context, env pkggraph.SealedContext, prepared *Prepared) (oci.ImageID, error) {

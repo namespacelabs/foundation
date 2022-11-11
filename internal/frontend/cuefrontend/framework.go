@@ -21,5 +21,5 @@ func parseFramework(loc pkggraph.Location, str string) (schema.Framework, error)
 	}
 
 	return schema.Framework_FRAMEWORK_UNSPECIFIED,
-		fnerrors.UserError(loc, "unrecognized framework: %s", str)
+		fnerrors.NewWithLocation(loc, "unrecognized framework: %s", str)
 }

@@ -26,7 +26,7 @@ type impl struct {
 func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, data *schema.DockerfileIntegration) error {
 	if pkg.Server == nil {
 		// Can't happen with the current syntax.
-		return fnerrors.UserError(pkg.Location, "docker integration requires a server")
+		return fnerrors.NewWithLocation(pkg.Location, "docker integration requires a server")
 	}
 
 	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, pkg.Server.Name, data)
@@ -44,7 +44,7 @@ func (impl) CreateBinary(ctx context.Context, env *schema.Environment, pl pkggra
 	}
 
 	if _, err := fs.Stat(loc.Module.ReadOnlyFS(), filepath.Join(loc.Rel(), dockerfile)); err != nil {
-		return nil, fnerrors.Wrapf(loc, err, "could not find %q file, please verify that the specified dockerfile path is correct", dockerfile)
+		return nil, fnerrors.NewWithLocation(loc, "could not find %q file, please verify that the specified dockerfile path is correct: %w", dockerfile, err)
 	}
 
 	var config *schema.BinaryConfig

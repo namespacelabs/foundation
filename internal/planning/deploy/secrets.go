@@ -186,13 +186,13 @@ func loadSecretSpecs(ctx context.Context, pl pkggraph.PackageLoader, secrets ...
 			errs = append(errs, err)
 		} else {
 			if spec := secretPackage.LookupSecret(ref.Name); spec == nil {
-				errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "no such secret %q", ref.Name))
+				errs = append(errs, fnerrors.NewWithLocation(ref.AsPackageName(), "no such secret %q", ref.Name))
 			} else {
 				if spec.Generate != nil {
 					if spec.Generate.UniqueId == "" {
-						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: missing unique id", ref.Name))
+						errs = append(errs, fnerrors.NewWithLocation(ref.AsPackageName(), "%s: missing unique id", ref.Name))
 					} else if spec.Generate.RandomByteCount <= 0 {
-						errs = append(errs, fnerrors.UserError(ref.AsPackageName(), "%s: randomByteCount must be > 0", ref.Name))
+						errs = append(errs, fnerrors.NewWithLocation(ref.AsPackageName(), "%s: randomByteCount must be > 0", ref.Name))
 					}
 				}
 

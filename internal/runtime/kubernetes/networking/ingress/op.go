@@ -60,7 +60,7 @@ func Register() {
 					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
 				})
 				if err != nil {
-					return fnerrors.Wrapf(nil, err, "unable to list ingresses")
+					return fnerrors.InvocationError("kubernetes", "unable to list ingresses: %w", err)
 				}
 
 				// We no longer emit "-managed" ingresses.

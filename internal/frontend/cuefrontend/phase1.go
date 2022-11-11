@@ -159,7 +159,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			}
 
 			if data.Name == "" {
-				return nil, fnerrors.UserError(nil, "%s #%d: name is required", kind, k)
+				return nil, fnerrors.New("%s #%d: name is required", kind, k)
 			}
 
 			parsed = append(parsed, &schema.SidecarContainer{
@@ -181,7 +181,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 	var parsed []*schema.SidecarContainer
 	for name, data := range containers {
 		if data.Name != "" && data.Name != name {
-			return nil, fnerrors.UserError(nil, "%s: inconsistent container name %q", name, data.Name)
+			return nil, fnerrors.New("%s: inconsistent container name %q", name, data.Name)
 		}
 
 		binRef, err := schema.ParsePackageRef(owner, data.Binary)

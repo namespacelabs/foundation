@@ -107,7 +107,7 @@ func NewDoctorCmd() *cobra.Command {
 					return nil, err
 				}
 				if v == nil {
-					return nil, fnerrors.ExpectedError("not running nsboot")
+					return nil, fnerrors.New("not running nsboot")
 				}
 				return v, nil
 			})

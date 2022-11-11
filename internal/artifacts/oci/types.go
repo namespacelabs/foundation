@@ -75,7 +75,7 @@ func (raw rawImage) ImageForPlatform(specs specs.Platform) (Image, error) {
 	}
 
 	if !platformMatches(platform, toV1Plat(&specs)) {
-		return nil, fnerrors.InvocationError("container image platform mismatched, expected %q, got %q", specs, *platform)
+		return nil, fnerrors.BadDataError("container image platform mismatched, expected %q, got %q", specs, *platform)
 	}
 
 	return raw.image, nil
