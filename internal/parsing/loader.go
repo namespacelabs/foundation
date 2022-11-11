@@ -48,6 +48,7 @@ const (
 	PackageType_Server
 	PackageType_Binary
 	PackageType_Test
+	PackageType_NewSyntax // TODO consider refining
 )
 
 type Frontend interface {

@@ -159,10 +159,18 @@ func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (pa
 
 	topLevels := map[string]parsing.PackageType{
 		"service":   parsing.PackageType_Service,
-		"server":    parsing.PackageType_Server,
+		"server":    parsing.PackageType_Server, // TODO This can be old or new syntax. In new syntax, there can be other primitives in the same package.
 		"extension": parsing.PackageType_Extension,
 		"test":      parsing.PackageType_Test,
 		"binary":    parsing.PackageType_Binary,
+
+		// TODO consider refining.
+		"secrets":         parsing.PackageType_NewSyntax,
+		"resources":       parsing.PackageType_NewSyntax,
+		"resourceClasses": parsing.PackageType_NewSyntax,
+		"providers":       parsing.PackageType_NewSyntax,
+		"volumes":         parsing.PackageType_NewSyntax,
+		"tests":           parsing.PackageType_NewSyntax,
 	}
 	for k, v := range topLevels {
 		if firstPass.LookupPath(k).Exists() {
