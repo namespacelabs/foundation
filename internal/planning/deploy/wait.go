@@ -23,7 +23,8 @@ import (
 )
 
 const (
-	maxDeployWait      = 10 * time.Second
+	maxDeployWait      = 5 * time.Second
+	diagnosisInterval  = 3 * time.Second
 	tailLinesOnFailure = 10
 )
 
@@ -39,12 +40,30 @@ func MaybeRenderBlock(env cfg.Context, cluster runtime.ClusterNamespace, render 
 	}
 }
 
+func shouldCheckDiagnostics(commited, last time.Time, hasCrash bool, now time.Time) bool {
+	if last.IsZero() {
+		if hasCrash {
+			return true
+		}
+
+		return now.Sub(commited) >= maxDeployWait
+	}
+
+	return now.Sub(last) >= diagnosisInterval
+}
+
 // observeContainers observes the deploy events (received from the returned channel) and updates the
 // console through the `parent` channel.
 func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, parent chan *orchestration.Event) chan *orchestration.Event {
 	ch := make(chan *orchestration.Event)
-	t := time.NewTicker(maxDeployWait)
-	startedDiagnosis := true // After the first tick, we tick twice as fast.
+	t := time.NewTicker(time.Second)
+
+	type committedState struct {
+		Commited      time.Time
+		LastDiagnosis time.Time
+		Help          string
+		Waiting       []*runtimepb.ContainerWaitStatus
+	}
 
 	go func() {
 		if parent != nil {
@@ -53,32 +72,41 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 		defer t.Stop()
 
-		// Keep track of the pending ContainerWaitStatus per resource type.
-		pending := map[string][]*runtimepb.ContainerWaitStatus{}
-		helps := map[string]string{}
+		commited := map[string]*committedState{} // Key is resource ID.
 
-		runDiagnosis := func() {
-			if startedDiagnosis {
-				startedDiagnosis = false
-				t.Reset(maxDeployWait / 2)
-			}
-
-			for resourceID, wslist := range pending {
+		checkRunDiagnosis := func() {
+			for resourceID, state := range commited {
 				all := []*runtimepb.ContainerUnitWaitStatus{}
-				for _, w := range wslist {
+				for _, w := range state.Waiting {
 					all = append(all, w.Containers...)
 					all = append(all, w.Initializers...)
 				}
+
 				if len(all) == 0 {
 					// No containers are present yet, should still produce pod diagnostics.
 					continue
 				}
 
+				hasCrash := false
+				for _, ws := range all {
+					if ws.Status.Crashed || ws.Status.Failed() {
+						hasCrash = true
+						break
+					}
+				}
+
+				now := time.Now()
+				if !shouldCheckDiagnostics(state.Commited, state.LastDiagnosis, hasCrash, now) {
+					continue
+				}
+
+				state.LastDiagnosis = now
+
 				buf := bytes.NewBuffer(nil)
 				out := io.MultiWriter(buf, console.Debug(ctx))
 
-				if help, ok := helps[resourceID]; ok && !env.Environment().GetEphemeral() {
-					fmt.Fprintf(out, "For more information, run:\n  %s\n", help)
+				if state.Help != "" && !env.Environment().GetEphemeral() {
+					fmt.Fprintf(out, "For more information, run:\n  %s\n", state.Help)
 				}
 
 				fmt.Fprintf(out, "Diagnostics retrieved at %s:\n", time.Now().Format("2006-01-02 15:04:05.000"))
@@ -153,42 +181,57 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 					parent <- ev
 				}
 
-				if ev.Ready != orchestration.Event_READY {
-					pending[ev.ResourceId] = nil
-					helps[ev.ResourceId] = ev.RuntimeSpecificHelp
-
-					failed := false
-					for _, w := range ev.WaitStatus {
-						if w.Opaque == nil {
-							continue
+				if ev.Stage >= orchestration.Event_COMMITTED {
+					state, ok := commited[ev.ResourceId]
+					if !ok {
+						state = &committedState{
+							Commited: ev.Timestamp.AsTime(),
 						}
 
-						cws := &runtimepb.ContainerWaitStatus{}
-						if err := w.Opaque.UnmarshalTo(cws); err != nil {
-							continue
+						if state.Commited.IsZero() {
+							state.Commited = time.Now()
 						}
-						pending[ev.ResourceId] = append(pending[ev.ResourceId], cws)
 
-						var ctrs []*runtimepb.ContainerUnitWaitStatus
-						ctrs = append(ctrs, cws.Containers...)
-						ctrs = append(ctrs, cws.Initializers...)
+						commited[ev.ResourceId] = state
+					}
 
-						for _, ctr := range ctrs {
-							if ctr.Status.Crashed || ctr.Status.Failed() {
-								failed = true
+					if ev.Ready != orchestration.Event_READY {
+						state.Waiting = nil
+						state.Help = ev.RuntimeSpecificHelp
+
+						failed := false
+						for _, w := range ev.WaitStatus {
+							if w.Opaque == nil {
+								continue
+							}
+
+							cws := &runtimepb.ContainerWaitStatus{}
+							if err := w.Opaque.UnmarshalTo(cws); err != nil {
+								continue
+							}
+							state.Waiting = append(state.Waiting, cws)
+
+							var ctrs []*runtimepb.ContainerUnitWaitStatus
+							ctrs = append(ctrs, cws.Containers...)
+							ctrs = append(ctrs, cws.Initializers...)
+
+							for _, ctr := range ctrs {
+								if ctr.Status.Crashed || ctr.Status.Failed() {
+									failed = true
+								}
 							}
 						}
-					}
 
-					if failed && !startedDiagnosis {
-						runDiagnosis()
+						if failed {
+							checkRunDiagnosis()
+						}
+					} else {
+						delete(commited, ev.ResourceId)
 					}
-				} else {
-					delete(pending, ev.ResourceId)
 				}
 
 			case <-t.C:
-				runDiagnosis()
+				checkRunDiagnosis()
 			}
 		}
 	}()
