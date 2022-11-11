@@ -48,6 +48,7 @@ func registerEnsureDeployment() {
 			}
 
 			ev := kubeobserver.PrepareEvent(parsed.obj.GroupVersionKind(), parsed.obj.GetNamespace(), parsed.obj.GetName(), d.Description, parsed.spec.Deployable)
+			ev.Stage = orchpb.Event_WAITING
 			ch <- ev
 		},
 

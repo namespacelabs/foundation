@@ -186,8 +186,9 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		switch {
 		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj):
 			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+			ev.Stage = orchestration.Event_COMMITTED
 			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
-				Description: "Commited...",
+				Description: "Committed...",
 			})
 			ch <- ev
 		}
@@ -239,6 +240,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 							}
 
 							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+							ev.Stage = orchestration.Event_WAITING
 							ev.ImplMetadata = meta
 							ev.WaitStatus = append(ev.WaitStatus, kobs.PodStatusToWaitStatus(obj.GetNamespace(), obj.GetName(), ps))
 
@@ -252,6 +254,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 							if done {
 								ev.Ready = orchestration.Event_READY
+								ev.Stage = orchestration.Event_DONE
 							}
 
 							if ch != nil {

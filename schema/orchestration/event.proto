@@ -9,12 +9,17 @@ package foundation.schema.orchestration;
 option go_package = "namespacelabs.dev/foundation/schema/orchestration";
 
 import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
 
+// Next ID: 13
 message Event {
     reserved 2;
 
     // Opaque value that uniquely identifies the resource.
     string resource_id = 1;
+
+    // If set, the actual original timestamp of the event. If unset, assume now.
+    google.protobuf.Timestamp timestamp = 12;
 
     // A human-readable label that describes the resource.
     string category = 3;
@@ -25,10 +30,20 @@ message Event {
     ReadyTriState ready = 5;
 
     enum ReadyTriState {
-        UNKNOWN   = 0;
-        NOT_READY = 1;
-        READY     = 2;
+        UNKNOWN_READY_TRI_STATE = 0;
+        NOT_READY               = 1;
+        READY                   = 2;
     }
+
+    enum Stage {
+        UNKNOWN_STAGE = 0;
+        PLANNED       = 1;
+        COMMITTED     = 2;
+        WAITING       = 3;
+        DONE          = 4;
+    }
+
+    Stage stage = 11;
 
     bool already_existed = 6;
 

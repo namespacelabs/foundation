@@ -29,13 +29,13 @@ type consRenderer struct {
 }
 
 type blockState struct {
-	Category       string
-	Title          string
-	Ready          bool
-	AlreadyExisted bool
-	Start, End     time.Time
-	WaitStatus     []*orchestration.Event_WaitStatus
-	WaitDetails    string
+	Category              string
+	Title                 string
+	Stage                 orchestration.Event_Stage
+	AlreadyExisted        bool
+	Start, Committed, End time.Time
+	WaitStatus            []*orchestration.Event_WaitStatus
+	WaitDetails           string
 }
 
 func (rwb consRenderer) Ch() chan *orchestration.Event { return rwb.ch }
@@ -66,6 +66,23 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				return
 			}
 
+			stage := ev.Stage
+			// Backwards compatibility.
+			if stage == orchestration.Event_UNKNOWN_STAGE {
+				if ev.Ready == orchestration.Event_READY {
+					stage = orchestration.Event_DONE
+				} else {
+					stage = orchestration.Event_WAITING
+				}
+			}
+
+			var timestamp time.Time
+			if ev.Timestamp != nil {
+				timestamp = ev.Timestamp.AsTime()
+			} else {
+				timestamp = time.Now()
+			}
+
 			if _, has := resourceState[ev.ResourceId]; !has {
 				ids = append(ids, ev.ResourceId)
 				sort.Strings(ids)
@@ -78,20 +95,25 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				resourceState[ev.ResourceId] = &blockState{
 					Category: ev.Category,
 					Title:    title,
-					Ready:    ev.Ready == orchestration.Event_READY,
-					Start:    time.Now(),
+					Stage:    stage,
+					Start:    timestamp,
 				}
 			}
 
 			resourceState[ev.ResourceId].AlreadyExisted = ev.AlreadyExisted
-			resourceState[ev.ResourceId].Ready = ev.Ready == orchestration.Event_READY
+
+			if stage >= orchestration.Event_COMMITTED && resourceState[ev.ResourceId].Committed.IsZero() {
+				resourceState[ev.ResourceId].Committed = timestamp
+			}
+			if stage >= orchestration.Event_DONE && resourceState[ev.ResourceId].End.IsZero() {
+				resourceState[ev.ResourceId].End = timestamp
+			}
+
+			resourceState[ev.ResourceId].Stage = stage
 			resourceState[ev.ResourceId].WaitStatus = ev.WaitStatus
-			if resourceState[ev.ResourceId].Ready {
-				resourceState[ev.ResourceId].End = time.Now()
-			} else {
-				if ev.WaitDetails != "" {
-					resourceState[ev.ResourceId].WaitDetails = ev.WaitDetails
-				}
+
+			if stage != orchestration.Event_DONE && ev.WaitDetails != "" {
+				resourceState[ev.ResourceId].WaitDetails = ev.WaitDetails
 			}
 
 			rwb.setSticky(render(resourceState, ids, false))
@@ -134,14 +156,14 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 		for _, blk := range blocks {
 			var ready bool
 			var took string
-			if blk.AlreadyExisted && !blk.Ready {
+			if blk.AlreadyExisted && blk.Stage != orchestration.Event_DONE {
 				took = box("Waiting for previous deployment ...", mergeWaitStatus(blk.WaitStatus))
 			} else if blk.AlreadyExisted {
 				ready = true
 				took = "(no update required)"
-			} else if blk.Ready {
+			} else if blk.Stage == orchestration.Event_DONE {
 				ready = true
-				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Start)))
+				took = fmt.Sprintf("took %v (waited %v)", timefmt.Format(blk.End.Sub(blk.Committed)), timefmt.Format(blk.Committed.Sub(blk.Start)))
 			} else {
 				took = mergeWaitStatus(blk.WaitStatus)
 				if took == "" {

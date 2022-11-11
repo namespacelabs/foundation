@@ -42,12 +42,8 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 				return
 			}
 
-			if ev.Ready == orchestration.Event_UNKNOWN {
-				continue
-			}
-
-			fmt.Fprintf(l, "waiting (ready=%v alreadyExisted=%v) for id %s category %s scope %s impl %v\n",
-				ev.Ready == orchestration.Event_READY, ev.AlreadyExisted, ev.ResourceId, ev.Category, ev.Scope, string(ev.ImplMetadata))
+			fmt.Fprintf(l, "waiting (stage=%v alreadyExisted=%v) for id %s category %s scope %s impl %v\n",
+				ev.Stage, ev.AlreadyExisted, ev.ResourceId, ev.Category, ev.Scope, string(ev.ImplMetadata))
 		}
 	}
 }

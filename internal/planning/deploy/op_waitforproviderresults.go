@@ -34,6 +34,7 @@ func register_OpWaitForProviderResults() {
 				ResourceId: wait.ResourceInstanceId,
 				Category:   "Resources deployed",
 				Ready:      orchpb.Event_NOT_READY,
+				Stage:      orchpb.Event_WAITING,
 			}
 		},
 
@@ -62,6 +63,7 @@ func register_OpWaitForProviderResults() {
 						ResourceId: wait.ResourceInstanceId,
 						Category:   "Resources deployed",
 						Ready:      orchpb.Event_NOT_READY,
+						Stage:      orchpb.Event_WAITING,
 						WaitStatus: []*orchpb.Event_WaitStatus{{Description: "Waiting for provider..."}},
 					}
 				}
@@ -129,6 +131,7 @@ func register_OpWaitForProviderResults() {
 						ResourceId: wait.ResourceInstanceId,
 						Category:   "Resources deployed",
 						Ready:      orchpb.Event_READY,
+						Stage:      orchpb.Event_DONE,
 					}
 				}
 

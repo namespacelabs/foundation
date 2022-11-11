@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -47,6 +48,7 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 		ResourceId:          fmt.Sprintf("%s/%s", namespace, name),
 		RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", namespace, strings.ToLower(gvk.Kind), name),
 		Ready:               orchestration.Event_NOT_READY,
+		Timestamp:           timestamppb.Now(),
 	}
 
 	switch {
@@ -109,6 +111,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 
 	return ev.Run(ctx, func(ctx context.Context) error {
 		ev := PrepareEvent(w.GroupVersionKind, w.Namespace, w.Name, w.Description, nil)
+		ev.Stage = orchestration.Event_WAITING
 		ev.Scope = w.Scope.String()
 		if w.PreviousGen > 0 && w.PreviousGen == w.ExpectedGen {
 			ev.AlreadyExisted = true
