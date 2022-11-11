@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/binary/genbinary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
+	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/codegen"
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -260,6 +261,16 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			tools.MakeAlternativeRuntime = func(cfg cfg.Configuration) tools.Runtime { return rt }
 		}
 
+		// Download updates if enabled. We have to do it so late since we depend on dependencies
+		// injected above and flags having been parsed.
+		if updatedNS, err := nsboot.UpdateInsideNS(ctx); err != nil {
+			// Update failed, but we avoid blocking further execution.
+			fmt.Fprintf(console.Stderr(ctx), "Failed to perform auto-update: %v", err)
+		} else if updatedNS != "" {
+			// The error will stop execution of the selected command and will be handled below.
+			return updateAvailableError(updatedNS)
+		}
+
 		// Telemetry.
 		tel.RecordInvocation(ctx, cmd, args)
 		return nil
@@ -280,6 +291,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", !environment.IsRunningInCI(),
 		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
+	rootCmd.PersistentFlags().BoolVar(&nsboot.EnableAutoupdate, "autoupdate", true,
+		"If set to false, the self-update mechanism is disabled and the permanently installed version of the ns command is used.")
 	rootCmd.PersistentFlags().Var(buildkit.ImportCacheVar, "buildkit_import_cache", "Internal, set buildkit import-cache.")
 	rootCmd.PersistentFlags().Var(buildkit.ExportCacheVar, "buildkit_export_cache", "Internal, set buildkit export-cache.")
 	rootCmd.PersistentFlags().StringVar(&buildkit.BuildkitSecrets, "buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
@@ -404,6 +417,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
 	defer handleExit(ctx)
+
+	updated := updateAvailableError("")
+	if errors.As(err, &updated) {
+		err = nsboot.NSPackage(updated).Execute(context.Background())
+	}
 
 	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(style, err)
@@ -563,3 +581,7 @@ func cpuprofile(cpuprofile string) func() {
 		f.Close()
 	}
 }
+
+type updateAvailableError nsboot.NSPackage
+
+func (updateAvailableError) Error() string { return "Not an error: NS binary update available." }

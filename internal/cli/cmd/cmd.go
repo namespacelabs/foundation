@@ -11,7 +11,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
-	"namespacelabs.dev/foundation/internal/cli/cmd/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/cmd/prepare"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
@@ -46,7 +45,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(secrets.NewSecretsCmd())
 	root.AddCommand(tools.NewToolsCmd())
 	root.AddCommand(create.NewCreateCmd(RunCommand))
-	root.AddCommand(nsboot.NewPhoneUpdateNSCmd())
+	root.AddCommand(NewUpdateNSCmd())
 	root.AddCommand(NewGenerateCmd())
 }
 
