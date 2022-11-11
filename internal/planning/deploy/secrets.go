@@ -106,7 +106,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 			labels := make([]string, len(missing))
 
 			for k, secretRef := range missing {
-				labels[k] = fmt.Sprintf("  # Description: %s\n  ns secrets set %s --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
+				labels[k] = fmt.Sprintf("  # Description: %s\n  # Server: %s\n  ns secrets set --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
 			}
 
 			return nil, fnerrors.UsageError(
