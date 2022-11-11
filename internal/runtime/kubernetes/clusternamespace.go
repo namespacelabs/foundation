@@ -118,14 +118,16 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 }
 
 func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deployable) error {
-	// XXX incorporate service readiness in check as well.
-
 	fmt.Fprintf(console.Debug(ctx), "wait-until-ready: asPods: %v deployable: %+v\n", deployAsPods(r.target.env), srv)
 
 	return tasks.Action("deployable.wait-until-ready").
-		Scope(schema.PackageName(srv.GetPackageName())).
+		Scope(srv.GetPackageRef().AsPackageName()).
 		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+			if ready, err := r.areServicesReady(ctx, srv); err != nil || !ready {
+				return ready, err
+			}
+
 			if deployAsPods(r.target.env) {
 				return r.isPodReady(ctx, srv)
 			}
@@ -163,6 +165,40 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 			}
 		})
 	})
+}
+
+func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
+	if !client.IsInclusterClient(r.cluster.cli) {
+		// Emitting this debug message as only incluster deployments know how to determine service readiness.
+		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
+
+		// Assume service is always ready for now.
+		// TODO implement readiness check that also supports non-incluster deployments.
+		return true, nil
+	}
+
+	// TODO only check services that are required
+	services, err := r.cluster.cli.CoreV1().Services(r.target.namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
+	})
+	if err != nil {
+		return false, err
+	}
+
+	for _, s := range services.Items {
+		for _, port := range s.Spec.Ports {
+			addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, port.Port)
+
+			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+			if err != nil {
+				// Service not ready.
+				return false, nil
+			}
+			conn.Close()
+		}
+	}
+
+	return true, nil
 }
 
 func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
@@ -304,7 +340,7 @@ func (r *ClusterNamespace) ForwardPort(ctx context.Context, server runtime.Deplo
 		return nil, fnerrors.BadInputError("invalid port number: %d", containerPort)
 	}
 
-	return r.cluster.RawForwardPort(ctx, server.GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
+	return r.cluster.RawForwardPort(ctx, server.GetPackageRef().GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
 }
 
 func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deployable, containerPort int32) (net.Conn, error) {
@@ -340,7 +376,7 @@ func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clien
 }
 
 func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server runtime.Deployable) (oci.ImageID, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageName())),
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageRef().GetPackageName())),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
 			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
@@ -352,7 +388,7 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server run
 			cfgimage, ok := d.Annotations[kubedef.K8sConfigImage]
 			if !ok {
 				return oci.ImageID{}, fnerrors.BadInputError("%s: %q is missing as an annotation in %q",
-					server.GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
+					server.GetPackageRef().GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
 			}
 
 			imgid, err := oci.ParseImageID(cfgimage)

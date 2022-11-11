@@ -161,8 +161,7 @@ type ClusterNamespace interface {
 }
 
 type Deployable interface {
-	// Returns a string to be compatible with the proto API.
-	GetPackageName() string // schema.PackageName
+	GetPackageRef() *schema.PackageRef
 
 	GetId() string
 
@@ -180,9 +179,9 @@ type DeploymentSpec struct {
 type DeployableSpec struct {
 	ErrorLocation fnerrors.Location
 
-	PackageName schema.PackageName
-	Focused     bool // Set to true if the user explicitly asked for this object to be deployed.
-	Attachable  AttachableKind
+	PackageRef *schema.PackageRef
+	Focused    bool // Set to true if the user explicitly asked for this object to be deployed.
+	Attachable AttachableKind
 
 	Description string
 	Class       schema.DeployableClass
@@ -232,10 +231,11 @@ const (
 
 var _ Deployable = DeployableSpec{}
 
-func (d DeployableSpec) GetId() string              { return d.Id }
-func (d DeployableSpec) GetName() string            { return d.Name }
-func (d DeployableSpec) GetDeployableClass() string { return string(d.Class) }
-func (d DeployableSpec) GetPackageName() string     { return string(d.PackageName) }
+func (d DeployableSpec) GetId() string                     { return d.Id }
+func (d DeployableSpec) GetName() string                   { return d.Name }
+func (d DeployableSpec) GetDeployableClass() string        { return string(d.Class) }
+func (d DeployableSpec) GetPackageRef() *schema.PackageRef { return d.PackageRef }
+func (d DeployableSpec) GetPackageName() string            { return d.PackageRef.GetPackageName() }
 
 type GroundedSecrets struct {
 	Secrets []GroundedSecret
@@ -383,7 +383,8 @@ func (g GroundedSecrets) Get(ref *schema.PackageRef) *GroundedSecret {
 
 func DeployableToProto(spec Deployable) *runtimepb.Deployable {
 	return &runtimepb.Deployable{
-		PackageName:     spec.GetPackageName(),
+		PackageName:     spec.GetPackageRef().GetPackageName(), // TODO Remove after Orchestrator has been updated to use PackageRef instead.
+		PackageRef:      spec.GetPackageRef(),
 		Id:              spec.GetId(),
 		Name:            spec.GetName(),
 		DeployableClass: spec.GetDeployableClass(),

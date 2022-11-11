@@ -52,7 +52,7 @@ func registerEnsureDeployment() {
 		},
 
 		HandleWithEvents: func(ctx context.Context, d *fnschema.SerializedInvocation, parsed *parsedEnsureDeployment, ch chan *orchpb.Event) (*execution.HandleResult, error) {
-			return tasks.Return(ctx, tasks.Action("kubernetes.ensure-deployment").Scope(fnschema.PackageName(parsed.spec.Deployable.PackageName)),
+			return tasks.Return(ctx, tasks.Action("kubernetes.ensure-deployment").Scope(parsed.spec.Deployable.GetPackageRef().AsPackageName()),
 				func(ctx context.Context) (*execution.HandleResult, error) {
 					if parsed.spec.ConfigurationVolumeName == "" && len(parsed.spec.SetContainerField) == 0 {
 						return apply(ctx, d.Description, fnschema.PackageNames(d.Scope...), parsed.obj, &kubedef.OpApply{

@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/std/resources"
 )
 
+// TODO rename op to reflect what it does.
 func register_OpCaptureServerConfig() {
 	execution.RegisterHandlerFunc(func(ctx context.Context, inv *schema.SerializedInvocation, capture *resources.OpCaptureServerConfig) (*execution.HandleResult, error) {
 		c, err := execution.Get(ctx, runtime.ClusterNamespaceInjection)

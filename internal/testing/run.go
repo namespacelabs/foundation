@@ -15,7 +15,6 @@ import (
 	"github.com/morikuni/aec"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -23,17 +22,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	fnsync "namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/go-ids"
 )
 
 const TestRunAction = "test.run"
@@ -46,17 +41,11 @@ type testRun struct {
 
 	TestRef *schema.PackageRef
 
-	TestBinCommand    []string
-	TestBinArgs       []string
-	TestBinWorkingDir string
-	TestBinImageID    compute.Computable[oci.ImageID]
-
+	Driver           runtime.DeployableSpec
 	Stack            *schema.Stack
 	ServersUnderTest []string // Package names.
 	Plan             compute.Computable[*deploy.Plan]
-	Debug            bool
 	OutputProgress   bool
-	RuntimeConfig    *runtimepb.RuntimeConfig
 
 	compute.LocalScoped[*storage.TestResultBundle]
 }
@@ -71,16 +60,12 @@ func (test *testRun) Inputs() *compute.In {
 	in := compute.Inputs().
 		Str("testName", test.TestRef.Name).
 		Stringer("testPkg", test.TestRef.AsPackageName()).
-		Strs("testBinCommand", test.TestBinCommand).
-		Strs("testBinArgs", test.TestBinArgs).
-		Str("testBinWorkingDir", test.TestBinWorkingDir).
-		Computable("testBin", test.TestBinImageID).
 		Proto("workspace", test.SealedContext.Workspace().Proto()).
 		Proto("env", test.SealedContext.Environment()).
+		Indigestible("driver", test.Driver).
 		Proto("stack", test.Stack).
 		Strs("focus", test.ServersUnderTest).
-		Computable("plan", test.Plan).
-		Bool("debug", test.Debug)
+		Computable("plan", test.Plan)
 
 	return in
 }
@@ -124,19 +109,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 
 	var testLogBuf *fnsync.ByteBuffer
 	if waitErr == nil {
-		// All servers deployed. Lets start the test driver.
-
-		testRun := runtime.ContainerRunOpts{
-			Image:              compute.MustGetDepValue(r, test.TestBinImageID, "testBin"),
-			Command:            test.TestBinCommand,
-			Args:               test.TestBinArgs,
-			WorkingDir:         test.TestBinWorkingDir,
-			ReadOnlyFilesystem: true,
-		}
-
-		if test.Debug {
-			testRun.Args = append(testRun.Args, "--debug")
-		}
+		// All servers deployed. Lets start wait for the test driver.
 
 		localCtx, cancelAll := context.WithCancel(ctx)
 		defer cancelAll()
@@ -154,32 +127,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		ex.Go(func(ctx context.Context) error {
 			defer cancelAll() // When the test is done, cancel logging.
 
-			pkgId := naming.StableIDN(test.TestRef.PackageName, 8)
-
-			testDriver := runtime.DeployableSpec{
-				ErrorLocation:          test.TestRef.AsPackageName(),
-				PackageName:            test.TestRef.AsPackageName(),
-				Class:                  schema.DeployableClass_ONESHOT,
-				Id:                     ids.NewRandomBase32ID(8),
-				Name:                   fmt.Sprintf("%s-%s", test.TestRef.Name, pkgId),
-				MainContainer:          testRun,
-				RuntimeConfig:          test.RuntimeConfig,
-				MountRuntimeConfigPath: constants.NamespaceConfigMount,
-			}
-
-			plan, err := cluster.Planner().PlanDeployment(ctx, runtime.DeploymentSpec{Specs: []runtime.DeployableSpec{testDriver}})
-			if err != nil {
-				return err
-			}
-
-			g := execution.NewPlan(plan.Definitions...)
-
-			// Make sure that the cluster is accessible to a serialized invocation implementation.
-			if err := execution.Execute(ctx, env, "test.driver.deploy", g, nil, runtime.InjectCluster(cluster)...); err != nil {
-				return fnerrors.New("failed to deploy: %w", err)
-			}
-
-			containers, err := cluster.WaitForTermination(ctx, testDriver)
+			containers, err := cluster.WaitForTermination(ctx, test.Driver)
 			if err != nil {
 				return err
 			}

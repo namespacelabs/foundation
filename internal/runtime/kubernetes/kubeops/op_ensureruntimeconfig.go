@@ -24,8 +24,8 @@ func registerEnsureRuntimeConfig() {
 	execution.RegisterFuncs(execution.Funcs[*kubedef.OpEnsureRuntimeConfig]{
 		Handle: func(ctx context.Context, inv *schema.SerializedInvocation, ensure *kubedef.OpEnsureRuntimeConfig) (*execution.HandleResult, error) {
 			action := tasks.Action("kubernetes.ensure-runtime-config").
-				Scope(schema.PackageName(ensure.Deployable.PackageName)).
-				Arg("deployable", ensure.Deployable.PackageName).
+				Scope(ensure.Deployable.GetPackageRef().AsPackageName()).
+				Arg("deployable", ensure.Deployable.GetPackageRef().Canonical()).
 				HumanReadablef(inv.Description)
 
 			return tasks.Return(ctx, action, func(ctx context.Context) (*execution.HandleResult, error) {
@@ -115,7 +115,7 @@ func registerEnsureRuntimeConfig() {
 						return nil, err
 					}
 
-					annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, schema.PackageName(ensure.Deployable.PackageName))
+					annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, ensure.Deployable.GetPackageRef().AsPackageName())
 					labels := kubedef.MakeLabels(cluster.KubeConfig().Environment, ensure.Deployable)
 
 					if _, err := cluster.Cluster().(kubedef.KubeCluster).PreparedClient().Clientset.CoreV1().

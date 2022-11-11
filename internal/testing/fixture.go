@@ -27,12 +27,15 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 type StoredTestResults struct {
@@ -89,6 +92,16 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load fixture: %w", err)
 	}
 
+	pack := &schema.ResourcePack{}
+	if err := parsing.AddServersAsResources(ctx, pl, testRef, stack.Focus.PackageNames(), pack); err != nil {
+		return nil, err
+	}
+
+	resources, err := parsing.LoadResources(ctx, pl, driverLoc, pack)
+	if err != nil {
+		return nil, err
+	}
+
 	// Must be no "pl" usage after this point:
 	// All packages have been bound to the environment, and sealed.
 	packages := pl.Seal()
@@ -105,9 +118,10 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack)
+	sutServers := stack.Focus.PackageNamesAsString()
+	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
 	if err != nil {
-		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
+		return nil, err
 	}
 
 	testReq := &testboot.TestRequest{
@@ -126,28 +140,56 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	fixtureImage := oci.PublishResolvable(testBinTag, bin)
-
-	sutServers := stack.Focus.PackageNamesAsString()
-	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
+	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin))
 	if err != nil {
 		return nil, err
 	}
 
+	container := runtime.ContainerRunOpts{
+		Image:              driverImage,
+		Command:            testBin.Command,
+		Args:               testBin.Args,
+		WorkingDir:         testBin.WorkingDir,
+		ReadOnlyFilesystem: true,
+	}
+
+	if opts.Debug {
+		container.Args = append(container.Args, "--debug")
+	}
+
+	pkgId := naming.StableIDN(testRef.PackageName, 8)
+
+	testDriver := deploy.PreparedDeployable{
+		Ref:       testRef,
+		SealedCtx: sealedCtx,
+		Template: runtime.DeployableSpec{
+			ErrorLocation:          testRef.AsPackageName(),
+			PackageRef:             testRef,
+			Description:            "Test Driver",
+			Class:                  schema.DeployableClass_ONESHOT,
+			Id:                     ids.NewRandomBase32ID(8),
+			Name:                   fmt.Sprintf("%s-%s", testRef.Name, pkgId),
+			MainContainer:          container,
+			RuntimeConfig:          runtimeConfig,
+			MountRuntimeConfigPath: constants.NamespaceConfigMount,
+		},
+		Resources: resources,
+	}
+
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack, testDriver)
+	if err != nil {
+		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
+	}
+
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
-		SealedContext:     sealedCtx,
-		Cluster:           cluster,
-		TestRef:           testRef,
-		Plan:              deployPlan,
-		ServersUnderTest:  sutServers,
-		Stack:             stack.Proto(),
-		RuntimeConfig:     runtimeConfig,
-		TestBinCommand:    testBin.Command,
-		TestBinArgs:       testBin.Args,
-		TestBinWorkingDir: testBin.WorkingDir,
-		TestBinImageID:    fixtureImage,
-		Debug:             opts.Debug,
-		OutputProgress:    opts.OutputProgress,
+		SealedContext:    sealedCtx,
+		Cluster:          cluster,
+		TestRef:          testRef,
+		Plan:             deployPlan,
+		ServersUnderTest: sutServers,
+		Stack:            stack.Proto(),
+		Driver:           testDriver.Template,
+		OutputProgress:   opts.OutputProgress,
 	}
 
 	createdTs := timestamppb.Now()

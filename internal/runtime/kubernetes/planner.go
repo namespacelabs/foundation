@@ -94,7 +94,7 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 			}
 		}
 
-		if at := tasks.Attachments(ctx); deployable.PackageName != "" {
+		if at := tasks.Attachments(ctx); deployable.GetPackageRef().GetPackageName() != "" {
 			output := &bytes.Buffer{}
 			count := 0
 			for _, decl := range singleState.operations {
@@ -115,11 +115,11 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 				}
 			}
 
-			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", deployable.PackageName), "application/yaml"), output.Bytes())
+			at.Attach(tasks.Output(fmt.Sprintf("%s.k8s-decl.yaml", deployable.GetPackageRef().GetPackageName()), "application/yaml"), output.Bytes())
 		}
 
 		for _, apply := range singleState.operations {
-			def, err := apply.ToDefinition(deployable.PackageName)
+			def, err := apply.ToDefinition(deployable.GetPackageRef().AsPackageName())
 			if err != nil {
 				return nil, err
 			}

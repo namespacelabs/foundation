@@ -10,14 +10,11 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -126,30 +123,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 			stack[s] = struct{}{}
 		}
 
-		var errs []error
-		for k, server := range declaredStack {
-			if _, err := pl.LoadByName(ctx, "namespacelabs.dev/foundation/library/runtime"); err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
-			intent, err := anypb.New(&runtime.ServerIntent{
-				PackageName: server.String(),
-			})
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
-			out.ResourcePack.ResourceInstance = append(out.ResourcePack.ResourceInstance, &schema.ResourceInstance{
-				PackageName: pkg.Location.PackageName.String(),
-				Name:        fmt.Sprintf("$required_%d", k),
-				Class:       &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
-				Intent:      intent,
-			})
-		}
-
-		if err := multierr.New(errs...); err != nil {
+		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageRef(pkg.PackageName(), out.Name), declaredStack, out.ResourcePack); err != nil {
 			return nil, nil, err
 		}
 	}
