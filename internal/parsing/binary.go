@@ -21,7 +21,7 @@ func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 
 	bin.PackageName = loc.PackageName.String()
 
-	if bin.Config == nil {
+	if len(bin.GetConfig().GetCommand()) == 0 {
 		hasGoLayers := false
 		for _, layer := range bin.BuildPlan.LayerBuildPlan {
 			if isImagePlanGo(layer) {
@@ -33,9 +33,11 @@ func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 		// For Go, by default, assume the binary is built with the same name as the package name.
 		// TODO: revisit this heuristic.
 		if hasGoLayers {
-			bin.Config = &schema.BinaryConfig{
-				Command: []string{"/" + bin.Name},
+			if bin.Config == nil {
+				bin.Config = &schema.BinaryConfig{}
 			}
+
+			bin.Config.Command = []string{"/" + bin.Name}
 		}
 	}
 
