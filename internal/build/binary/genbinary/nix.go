@@ -65,7 +65,7 @@ experimental-features = nix-command flakes
 filter-syscalls = false
 	`
 
-	base := llb.Image(nixosImage, llb.Platform(*target.TargetPlatform())).
+	base := llbutil.Image(nixosImage, *target.TargetPlatform()).
 		File(llb.Mkfile("/etc/nix/nix.conf", 0777, []byte(nixconf))).
 		AddEnv("PATH", "/root/.nix-profile/bin")
 
