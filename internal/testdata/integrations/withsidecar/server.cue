@@ -15,6 +15,10 @@ server: {
 			kind: "http"
 		}
 	}
+
+	requires: [
+		"namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple",
+	]
 }
 
 sidecars: {
@@ -27,6 +31,7 @@ sidecars: {
 
 		env: {
 			NAME: "\($env.name)-Mary"
+			MAIN_ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple:webapi"
 		}
 	}
 

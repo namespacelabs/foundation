@@ -19,7 +19,7 @@ import (
 
 type cueContainer struct {
 	Args *args.ArgsListOrMap `json:"args"`
-	Env  map[string]string   `json:"env"`
+	Env  *args.EnvMap        `json:"env"`
 }
 
 type parsedCueContainer struct {
@@ -35,17 +35,17 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		return nil, err
 	}
 
+	envVars, err := bits.Env.Parsed(loc.PackageName)
+	if err != nil {
+		return nil, err
+	}
+
 	out := &parsedCueContainer{
 		container: &schema.SidecarContainer{
 			Name: name,
 			Args: bits.Args.Parsed(),
+			Env:  envVars,
 		},
-	}
-
-	for k, v := range bits.Env {
-		out.container.Env = append(out.container.Env, &schema.BinaryConfig_EnvEntry{
-			Name: k, Value: v,
-		})
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
@@ -61,7 +61,6 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		}
 	}
 
-	var err error
 	out.container.BinaryRef, err = binary.ParseImage(ctx, env, pl, pkg, name, v, binary.ParseImageOpts{Required: true})
 	if err != nil {
 		return nil, fnerrors.NewWithLocation(loc, "parsing container %q failed: %w", name, err)
