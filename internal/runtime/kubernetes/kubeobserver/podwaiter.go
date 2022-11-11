@@ -111,17 +111,12 @@ func NewPodCondititionWaiter(namespace string, selector metav1.ListOptions, isOk
 	return &podWaiter{namespace: namespace, selector: selector, isOk: isOk}
 }
 
-func MatchPodCondition(typ corev1.PodConditionType) func(corev1.PodStatus) (bool, error) {
-	return func(ps corev1.PodStatus) (bool, error) {
-		return matchPodCondition(ps, typ), nil
-	}
-}
-
-func matchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) bool {
+func MatchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) (corev1.PodCondition, bool) {
 	for _, cond := range ps.Conditions {
 		if cond.Type == typ && cond.Status == corev1.ConditionTrue {
-			return true
+			return cond, true
 		}
 	}
-	return false
+
+	return corev1.PodCondition{}, false
 }

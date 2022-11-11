@@ -22,8 +22,9 @@ func PodStatusToWaitStatus(ns, name string, ps v1.PodStatus) *orchestration.Even
 		return &orchestration.Event_WaitStatus{Description: "Pending..."}
 	}
 
+	_, isReady := MatchPodCondition(ps, v1.PodReady)
 	cw := &runtime.ContainerWaitStatus{
-		IsReady: matchPodCondition(ps, v1.PodReady),
+		IsReady: isReady,
 	}
 
 	for _, container := range ps.ContainerStatuses {

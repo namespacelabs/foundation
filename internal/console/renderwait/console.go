@@ -163,7 +163,10 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 				took = "(no update required)"
 			} else if blk.Stage == orchestration.Event_DONE {
 				ready = true
-				took = fmt.Sprintf("took %v (waited %v)", timefmt.Format(blk.End.Sub(blk.Committed)), timefmt.Format(blk.Committed.Sub(blk.Start)))
+				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Committed)))
+				if d := blk.Committed.Sub(blk.Start); d >= 1*time.Millisecond {
+					took += fmt.Sprintf(" (waited %v)", timefmt.Format(d))
+				}
 			} else {
 				took = mergeWaitStatus(blk.WaitStatus)
 				if took == "" {

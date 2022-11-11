@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -249,7 +250,14 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 								// If the pod is finished, then don't wait further.
 								done = true
 							} else {
-								done, _ = kobs.MatchPodCondition(v1.PodReady)(ps)
+								cond, isDone := kobs.MatchPodCondition(ps, v1.PodReady)
+								if isDone {
+									if !cond.LastTransitionTime.IsZero() {
+										ev.Timestamp = timestamppb.New(cond.LastTransitionTime.Time)
+									}
+
+									done = true
+								}
 							}
 
 							if done {
