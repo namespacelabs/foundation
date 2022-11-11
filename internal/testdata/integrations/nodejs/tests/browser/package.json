@@ -1,0 +1,9 @@
+{
+	"name": "browser",
+	"private": true,
+	"version": "1.0.0",
+	"description": "",
+	"dependencies": {
+		"cypress": "^11.0.1"
+	}
+}
