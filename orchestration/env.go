@@ -11,19 +11,11 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/internal/build/binary"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
-
-const (
-	serverPkg schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
-	toolPkg   schema.PackageName = "namespacelabs.dev/foundation/orchestration/server/tool"
-)
-
-var UsePinnedOrchestrator = true
 
 func MakeSyntheticConfiguration(wsproto *schema.Workspace, envName string, hostEnv *client.HostEnv, extra ...proto.Message) cfg.Configuration {
 	messages := []proto.Message{hostEnv}
@@ -39,7 +31,7 @@ func MakeSyntheticContext(wsproto *schema.Workspace, env *schema.Environment, ho
 	return cfg.MakeUnverifiedContext(newCfg, env)
 }
 
-func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration) (cfg.Context, error) {
+func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration, prebuilts []*schema.Workspace_BinaryDigest) (cfg.Context, error) {
 	// We use a static environment here, since the orchestrator has global scope.
 	envProto := &schema.Environment{
 		Name:      kubedef.AdminNamespace,
@@ -48,23 +40,6 @@ func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration) (cfg.C
 
 		// TODO - this can't be empty, since std/runtime/kubernetes/extension.cue checks it.
 		Purpose: schema.Environment_PRODUCTION,
-	}
-
-	var prebuilts []*schema.Workspace_BinaryDigest
-
-	if UsePinnedOrchestrator {
-		res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, prebuilt := range res.Prebuilt {
-			prebuilts = append(prebuilts, &schema.Workspace_BinaryDigest{
-				PackageName: prebuilt.PackageName,
-				Repository:  prebuilt.Repository,
-				Digest:      prebuilt.Digest,
-			})
-		}
 	}
 
 	newCfg := conf.Derive(kubedef.AdminNamespace, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
