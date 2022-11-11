@@ -8,43 +8,28 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newAddReaderCmd() *cobra.Command {
-	var (
-		keyID   string
-		rawtext bool
-		locs    fncobra.Locations
-		env     cfg.Context
-	)
+	cmd := &cobra.Command{
+		Use:   "add-reader --key {public-key} [server]",
+		Short: "Adds a receipient to a secret bundle.",
+		Args:  cobra.MaximumNArgs(1),
+	}
 
-	return fncobra.
-		Cmd(&cobra.Command{
-			Use:   "add-reader --key {public-key} [server]",
-			Short: "Adds a receipient to a secret bundle.",
-			Args:  cobra.MaximumNArgs(1),
-		}).
-		WithFlags(func(flags *pflag.FlagSet) {
-			flags.StringVar(&keyID, "key", "", "The reader public key to add to the bundle.")
-			flags.BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
-			_ = cobra.MarkFlagRequired(flags, "key")
-		}).
-		With(
-			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env)).
-		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, env, locs, nil)
-			if err != nil {
-				return err
-			}
+	keyID := cmd.Flags().String("key", "", "The reader public key to add to the bundle.")
+	rawtext := cmd.Flags().Bool("rawtext", false, "If set to true, the bundle is not encrypted (use for testing purposes only).")
+	_ = cmd.MarkFlagRequired("key")
+	env := envFromValue(cmd, static("dev"))
+	locs := locationsFromArgs(cmd, env)
+	loc, bundle := bundleFromArgs(cmd, env, locs, nil)
 
-			if err := bundle.EnsureReader(keyID); err != nil {
-				return err
-			}
+	return fncobra.With(cmd, func(ctx context.Context) error {
+		if err := bundle.EnsureReader(*keyID); err != nil {
+			return err
+		}
 
-			return writeBundle(ctx, loc, bundle, !rawtext)
-		})
+		return writeBundle(ctx, loc, bundle, !*rawtext)
+	})
 }

@@ -8,49 +8,34 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newDeleteCmd() *cobra.Command {
-	var (
-		secretKey string
-		rawtext   bool
-		locs      fncobra.Locations
-		env       cfg.Context
-	)
+	cmd := &cobra.Command{
+		Use:   "delete --secret {package_name}:{secret_name} [server]",
+		Short: "Deletes the specified secret value.",
+		Args:  cobra.MaximumNArgs(1),
+	}
 
-	return fncobra.
-		Cmd(&cobra.Command{
-			Use:   "delete --secret {package_name}:{secret_name} [server]",
-			Short: "Deletes the specified secret value.",
-			Args:  cobra.MaximumNArgs(1),
-		}).
-		WithFlags(func(flags *pflag.FlagSet) {
-			flags.StringVar(&secretKey, "secret", "", "The secret key, in {package_name}:{name} format.")
-			flags.BoolVar(&rawtext, "rawtext", rawtext, "If set to true, the bundle is not encrypted (use for testing purposes only).")
-			_ = cobra.MarkFlagRequired(flags, "secret")
-		}).
-		With(
-			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env)).
-		Do(func(ctx context.Context) error {
-			loc, bundle, err := loadBundleFromArgs(ctx, env, locs, nil)
-			if err != nil {
-				return err
-			}
+	secretKey := cmd.Flags().String("secret", "", "The secret key, in {package_name}:{name} format.")
+	rawtext := cmd.Flags().Bool("rawtext", false, "If set to true, the bundle is not encrypted (use for testing purposes only).")
+	_ = cmd.MarkFlagRequired("secret")
+	env := envFromValue(cmd, static("dev"))
+	locs := locationsFromArgs(cmd, env)
+	loc, bundle := bundleFromArgs(cmd, env, locs, nil)
 
-			key, err := parseKey(secretKey, string(loc.packageName))
-			if err != nil {
-				return err
-			}
+	return fncobra.With(cmd, func(ctx context.Context) error {
+		key, err := parseKey(*secretKey, string(loc.packageName))
+		if err != nil {
+			return err
+		}
 
-			if !bundle.Delete(key.PackageName, key.Key) {
-				return fnerrors.New("no such key")
-			}
+		if !bundle.Delete(key.PackageName, key.Key) {
+			return fnerrors.New("no such key")
+		}
 
-			return writeBundle(ctx, loc, bundle, !rawtext)
-		})
+		return writeBundle(ctx, loc, bundle, !*rawtext)
+	})
 }

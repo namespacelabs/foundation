@@ -46,6 +46,23 @@ type location struct {
 	sourceFile  string
 }
 
+func bundleFromArgs(cmd *cobra.Command, env *cfg.Context, locs *fncobra.Locations, createIfMissing createFunc) (*location, *secrets.Bundle) {
+	targetloc := new(location)
+	targetbundle := new(secrets.Bundle)
+
+	pushParse(cmd, func(ctx context.Context, args []string) error {
+		loc, bundle, err := loadBundleFromArgs(ctx, *env, *locs, createIfMissing)
+		if err != nil {
+			return err
+		}
+		*targetloc = *loc
+		*targetbundle = *bundle
+		return nil
+	})
+
+	return targetloc, targetbundle
+}
+
 func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locations, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
 	var loc fnfs.Location
 	switch len(locs.Locs) {

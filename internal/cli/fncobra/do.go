@@ -35,6 +35,13 @@ type CommandCtrl struct {
 	argParsers []ArgsParser
 }
 
+func With(cmd *cobra.Command, handler func(context.Context) error) *cobra.Command {
+	cmd.RunE = RunE(func(ctx context.Context, _ []string) error {
+		return handler(ctx)
+	})
+	return cmd
+}
+
 func Cmd(cmd *cobra.Command) *CommandCtrl {
 	return &CommandCtrl{
 		cmd:        cmd,

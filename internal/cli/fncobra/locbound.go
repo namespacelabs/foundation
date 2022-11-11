@@ -43,6 +43,14 @@ type ParseLocationsOpts struct {
 }
 
 func ParseLocations(locsOut *Locations, env *cfg.Context, opts ...ParseLocationsOpts) *LocationsParser {
+	return &LocationsParser{
+		locsOut: locsOut,
+		opts:    MergeParseLocationOpts(opts),
+		env:     env,
+	}
+}
+
+func MergeParseLocationOpts(opts []ParseLocationsOpts) ParseLocationsOpts {
 	var merged ParseLocationsOpts
 	for _, opt := range opts {
 		if opt.ReturnAllIfNoneSpecified {
@@ -52,12 +60,7 @@ func ParseLocations(locsOut *Locations, env *cfg.Context, opts ...ParseLocations
 			merged.RequireSingle = true
 		}
 	}
-
-	return &LocationsParser{
-		locsOut: locsOut,
-		opts:    merged,
-		env:     env,
-	}
+	return merged
 }
 
 func (p *LocationsParser) AddFlags(cmd *cobra.Command) {}
@@ -67,19 +70,30 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		return fnerrors.InternalError("locsOut must be set")
 	}
 
-	root, err := module.FindRoot(ctx, ".")
+	result, err := ParseLocs(ctx, args, p.env, p.opts)
 	if err != nil {
 		return err
+	}
+
+	*p.locsOut = *result
+
+	return nil
+}
+
+func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseLocationsOpts) (*Locations, error) {
+	root, err := module.FindRoot(ctx, ".")
+	if err != nil {
+		return nil, err
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	relCwd, err := filepath.Rel(root.Abs(), cwd)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var once sync.Once
@@ -88,17 +102,17 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 
 	schemaList := func() (parsing.SchemaList, error) {
 		once.Do(func() {
-			previousSchemaList, previousErr = parsing.ListSchemas(ctx, *p.env, root)
+			previousSchemaList, previousErr = parsing.ListSchemas(ctx, *env, root)
 		})
 
 		return previousSchemaList, previousErr
 	}
 
 	var locs []fnfs.Location
-	if p.opts.ReturnAllIfNoneSpecified && len(args) == 0 {
+	if opts.ReturnAllIfNoneSpecified && len(args) == 0 {
 		schemaList, err := schemaList()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		locs = schemaList.Locations
@@ -106,21 +120,19 @@ func (p *LocationsParser) Parse(ctx context.Context, args []string) error {
 		var err error
 		locs, err = locationsFromArgs(ctx, root.Workspace().ModuleName(), root.Workspace().Proto().AllReferencedModules(), relCwd, args, schemaList)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	if p.opts.RequireSingle && len(locs) != 1 {
-		return fnerrors.New("expected exactly one package")
+	if opts.RequireSingle && len(locs) != 1 {
+		return nil, fnerrors.New("expected exactly one package")
 	}
 
-	*p.locsOut = Locations{
+	return &Locations{
 		Root:          root,
 		Locs:          locs,
 		UserSpecified: len(args) > 0,
-	}
-
-	return nil
+	}, nil
 }
 
 func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames []string, cwd string, args []string, listSchemas func() (parsing.SchemaList, error)) ([]fnfs.Location, error) {
