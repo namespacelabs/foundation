@@ -38,19 +38,10 @@ func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) err
 }
 
 func SetTestDriver(loc pkggraph.Location, test *schema.Test, driver *schema.Binary) error {
-	if test.GetDriver().GetBuildPlan() != nil {
-		return fnerrors.AttachLocation(loc,
-			fnerrors.InternalError("test driver build plan is set multiple times"))
+	if test.Driver != nil {
+		// TODO: add a more meaningful error message
+		return fnerrors.NewWithLocation(loc, "test driver is set multiple times")
 	}
-
-	if test.GetDriver().GetName() != "" || test.GetDriver().GetPackageName() != "" {
-		// TODO improve error message
-		return fnerrors.AttachLocation(loc,
-			fnerrors.InternalError("test driver is set multiple times"))
-	}
-
-	args := test.GetDriver().GetConfig().GetArgs()
-	envs := test.GetDriver().GetConfig().GetEnv()
 
 	test.Driver = driver
 
@@ -58,10 +49,11 @@ func SetTestDriver(loc pkggraph.Location, test *schema.Test, driver *schema.Bina
 		test.Driver.Config = &schema.BinaryConfig{}
 	}
 
-	test.Driver.Config.Args = append(test.Driver.Config.Args, args...)
+	// TODO consider if this should be a replacement.
+	test.Driver.Config.Args = append(test.Driver.Config.Args, test.BinaryConfig.Args...)
 
 	var err error
-	test.Driver.Config.Env, err = support.MergeEnvs(test.Driver.Config.Env, envs)
+	test.Driver.Config.Env, err = support.MergeEnvs(test.Driver.Config.Env, test.BinaryConfig.Env)
 
 	return err
 }

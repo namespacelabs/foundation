@@ -59,11 +59,9 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 	out := &schema.Test{
 		Name:             name,
 		ServersUnderTest: bits.Servers,
-		Driver: &schema.Binary{
-			Config: &schema.BinaryConfig{
-				Args: bits.Args.Parsed(),
-				Env:  envVars,
-			},
+		BinaryConfig: &schema.BinaryConfig{
+			Args: bits.Args.Parsed(),
+			Env:  envVars,
 		},
 	}
 
