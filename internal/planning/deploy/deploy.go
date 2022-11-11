@@ -584,6 +584,7 @@ type containerImage struct {
 	ImageID     compute.Computable[oci.ImageID]
 	Command     []string
 	Args        []string
+	Env         []*schema.BinaryConfig_EnvEntry
 	WorkingDir  string
 }
 
@@ -630,6 +631,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 				ImageID:     poster.ImageID,
 				Command:     prepared.Command,
 				Args:        prepared.Args,
+				Env:         prepared.Env,
 				WorkingDir:  prepared.WorkingDir,
 			})
 		}
@@ -723,6 +725,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 								BinaryConfig: &schema.BinaryConfig{
 									Command:    sidecar.Command,
 									Args:       sidecar.Args,
+									Env:        sidecar.Env,
 									WorkingDir: sidecar.WorkingDir,
 								},
 							})

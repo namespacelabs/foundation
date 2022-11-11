@@ -505,6 +505,7 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		BinaryConfig: &schema.BinaryConfig{
 			Command:    prepared.Command,
 			Args:       prepared.Args,
+			Env:        prepared.Env,
 			WorkingDir: prepared.WorkingDir,
 		},
 		Cacheable: inv.Cacheable,

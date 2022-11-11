@@ -18,12 +18,13 @@ message Invocation {
     string     binary     = 1;
     PackageRef binary_ref = 9;
 
-    repeated string                 args          = 2;
-    string                          working_dir   = 4;
-    map<string, InvocationSnapshot> snapshots     = 5;
-    bool                            no_cache      = 6;
-    bool                            requires_keys = 7;
-    repeated ValueInjection         inject        = 8;
+    repeated string args                                = 2;
+    repeated schema.BinaryConfig.EnvEntry env           = 10;
+    string                                working_dir   = 4;
+    map<string, InvocationSnapshot>       snapshots     = 5;
+    bool                                  no_cache      = 6;
+    bool                                  requires_keys = 7;
+    repeated ValueInjection               inject        = 8;
 
     message ValueInjection {
         string type = 1;

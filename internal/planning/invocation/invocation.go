@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
+	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -34,6 +35,7 @@ type Invocation struct {
 	SupportedToolVersion int
 	Command              []string
 	Args                 []string
+	Env                  []*schema.BinaryConfig_EnvEntry
 	Snapshots            []Snapshot
 	WorkingDir           string
 	NoCache              bool
@@ -91,6 +93,7 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 		ImageName:  bin.Name,
 		Command:    prepared.Command,
 		Args:       prepared.Args,
+		Env:        prepared.Env,
 		WorkingDir: workingDir,
 		Image:      image,
 		NoCache:    with.NoCache,
@@ -106,7 +109,11 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 		invocation.SupportedToolVersion = int(v)
 	}
 
-	invocation.Args = with.Args
+	invocation.Args = append(invocation.Args, with.Args...)
+	invocation.Env, err = support.MergeEnvs(invocation.Env, with.Env)
+	if err != nil {
+		return nil, err
+	}
 
 	for k, v := range with.Snapshots {
 		if serverLocRef == nil {

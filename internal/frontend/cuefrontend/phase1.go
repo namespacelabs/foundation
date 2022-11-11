@@ -86,7 +86,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 			return pdata, err
 		}
 
-		inv, err := binary.ParseBinaryInvocationForBinaryRef(ctx, binRef, with)
+		inv, err := binary.ParseBinaryInvocationForBinaryRef(ctx, p1.owner, binRef, with)
 		if err != nil {
 			return pdata, err
 		}

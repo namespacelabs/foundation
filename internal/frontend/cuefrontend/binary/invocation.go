@@ -22,6 +22,7 @@ type cueInvocationSnapshot struct {
 
 type cueInvokeBinary struct {
 	Args         *args.ArgsListOrMap              `json:"args"`
+	Env          *args.EnvMap                     `json:"env"`
 	WorkingDir   string                           `json:"workingDir"`
 	Snapshots    map[string]cueInvocationSnapshot `json:"snapshot"`
 	NoCache      bool                             `json:"noCache"`
@@ -48,18 +49,24 @@ func parseBinaryInvocation(ctx context.Context, env *schema.Environment, pl pars
 		return nil, err
 	}
 
-	return ParseBinaryInvocationForBinaryRef(ctx, binRef, v)
+	return ParseBinaryInvocationForBinaryRef(ctx, pkg.Location.PackageName, binRef, v)
 }
 
-func ParseBinaryInvocationForBinaryRef(ctx context.Context, binRef *schema.PackageRef, v *fncue.CueV) (*schema.Invocation, error) {
+func ParseBinaryInvocationForBinaryRef(ctx context.Context, owner schema.PackageName, binRef *schema.PackageRef, v *fncue.CueV) (*schema.Invocation, error) {
 	var cib cueInvokeBinary
 	if err := v.Val.Decode(&cib); err != nil {
+		return nil, err
+	}
+
+	envVars, err := cib.Env.Parsed(owner)
+	if err != nil {
 		return nil, err
 	}
 
 	inv := &schema.Invocation{
 		BinaryRef:    binRef,
 		Args:         cib.Args.Parsed(),
+		Env:          envVars,
 		WorkingDir:   cib.WorkingDir,
 		NoCache:      cib.NoCache,
 		RequiresKeys: cib.RequiresKeys,

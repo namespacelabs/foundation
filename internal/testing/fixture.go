@@ -149,8 +149,8 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		Image:              driverImage,
 		Command:            testBin.Command,
 		Args:               testBin.Args,
+		Env:                testBin.Env,
 		WorkingDir:         testBin.WorkingDir,
-		Env:                testDef.Driver.Config.Env,
 		ReadOnlyFilesystem: true,
 	}
 

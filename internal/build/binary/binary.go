@@ -47,6 +47,7 @@ type Prepared struct {
 	Plan       build.Plan
 	Command    []string
 	Args       []string
+	Env        []*schema.BinaryConfig_EnvEntry
 	WorkingDir string
 }
 
@@ -99,8 +100,8 @@ func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context,
 		Plan:       plan,
 		Command:    binary.Config.GetCommand(),
 		Args:       binary.Config.GetArgs(),
+		Env:        binary.Config.GetEnv(),
 		WorkingDir: binary.Config.GetWorkingDir(),
-		// XXX pass env.
 	}, nil
 }
 
