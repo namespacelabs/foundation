@@ -14,13 +14,15 @@ func MergeEnvs(base []*schema.BinaryConfig_EnvEntry, additional []*schema.Binary
 	merged := append(base, additional...)
 
 	// Check for collisions.
-	cache := make(map[string]*schema.BinaryConfig_EnvEntry)
+	index := make(map[string]*schema.BinaryConfig_EnvEntry)
 	for _, entry := range merged {
-		if existing, ok := cache[entry.Name]; ok {
+		if existing, ok := index[entry.Name]; ok {
 			if proto.Equal(entry, existing) {
 				continue
 			}
 			return nil, fnerrors.BadInputError("incompatible values being set for env key %q (%v vs %v)", entry.Name, entry, existing)
+		} else {
+			index[entry.Name] = entry
 		}
 	}
 
