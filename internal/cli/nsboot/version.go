@@ -13,6 +13,11 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
+func SpawnedFromBoot() bool {
+	_, have := os.LookupEnv("NSBOOT_VERSION")
+	return have
+}
+
 func GetBootVersion() (*storage.NamespaceBinaryVersion, error) {
 	versionJSON, have := os.LookupEnv("NSBOOT_VERSION")
 	if !have {

@@ -22,8 +22,10 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
@@ -33,10 +35,6 @@ import (
 const (
 	updatePeriod = time.Hour * 24
 	versionsJson = "versions.json"
-)
-
-var (
-	EnableAutoupdate = true
 )
 
 type NSPackage string
@@ -50,42 +48,58 @@ func (p NSPackage) Execute(ctx context.Context) error {
 	return proc.Run()
 }
 
-func UpdateInsideNS(ctx context.Context) (NSPackage, error) {
-	var nsPackage NSPackage
-	if ver, err := GetBootVersion(); err != nil || ver != nil {
-		// Already spawned by auto-updater. Avoid infinite recursion.
-		return "", nil
+func (p NSPackage) ExecuteAndForwardExitCode(ctx context.Context, style colors.Style) {
+	err := p.Execute(ctx)
+	if err == nil {
+		os.Exit(0)
+	} else if exiterr, ok := err.(*exec.ExitError); ok {
+		os.Exit(exiterr.ExitCode())
+	} else {
+		format.Format(os.Stderr, err, format.WithStyle(style))
+		os.Exit(3)
 	}
-	return nsPackage, compute.Do(ctx, func(ctx context.Context) (err error) {
-		nsPackage, err = UpdateToRun(ctx)
-		return
-	})
 }
 
-func UpdateToRun(ctx context.Context) (NSPackage, error) {
-	cached, needUpdate, err := checkShouldUpdate(ctx)
-	if err != nil {
-		return "", fnerrors.New("failed to load versions.json: %w", err)
-	}
-
-	if cached == nil || needUpdate {
-		_, path, err := performUpdate(ctx, cached, false)
-		return NSPackage(path), err
-	}
-
-	if cached.BinaryPath != "" {
+func checkExists(cached *versionCache) (NSPackage, bool) {
+	if cached != nil && cached.BinaryPath != "" {
 		if _, err := os.Stat(cached.BinaryPath); err == nil {
-			return NSPackage(cached.BinaryPath), nil
+			return NSPackage(cached.BinaryPath), true
 		}
 	}
 
-	// If we get here, we somehow lost the binary, lets redownload it.
-	_, path, err := performUpdate(ctx, cached, true)
-	return NSPackage(path), err
+	return "", false
+}
+
+func CheckUpdate(ctx context.Context, silent, updateMissing bool) (*toolVersion, NSPackage, error) {
+	cached, needUpdate, err := LoadCheckCachedMetadata(ctx, silent)
+	if err != nil {
+		return nil, "", fnerrors.New("failed to load versions.json: %w", err)
+	}
+
+	if cached != nil && !needUpdate {
+		if ns, ok := checkExists(cached); ok {
+			return cached.Latest, ns, nil
+		}
+	}
+
+	if !updateMissing {
+		return nil, "", nil
+	}
+
+	var ver *toolVersion
+	var ns NSPackage
+
+	updateErr := compute.Do(ctx, func(ctx context.Context) error {
+		var err error
+		ver, ns, err = performUpdate(ctx, cached, !needUpdate)
+		return err
+	})
+
+	return ver, ns, updateErr
 }
 
 func ForceUpdate(ctx context.Context) error {
-	cached, err := loadVersionCache()
+	cached, err := LoadCachedMetadata()
 	if err != nil {
 		return err
 	}
@@ -105,8 +119,8 @@ func ForceUpdate(ctx context.Context) error {
 }
 
 // Loads version cache and applies default update policy.
-func checkShouldUpdate(ctx context.Context) (*versionCache, bool, error) {
-	cache, err := loadVersionCache()
+func LoadCheckCachedMetadata(ctx context.Context, silent bool) (*versionCache, bool, error) {
+	cache, err := LoadCachedMetadata()
 	if err != nil {
 		return nil, false, err
 	}
@@ -115,17 +129,18 @@ func checkShouldUpdate(ctx context.Context) (*versionCache, bool, error) {
 		return nil, false, err
 	}
 
-	enableAutoupdate := viper.GetBool("enable_autoupdate") && EnableAutoupdate
+	enableAutoupdate := viper.GetBool("enable_autoupdate")
 	stale := cache.Latest != nil && time.Since(cache.Latest.FetchedAt) > updatePeriod
 	needUpdate := stale && enableAutoupdate
-	if stale && !enableAutoupdate {
+	if stale && !enableAutoupdate && !silent {
 		fmt.Fprintf(console.Stdout(ctx), "ns version is stale, but auto-update is disabled (see \"enable_autoupdate\" in config.json)\n")
 	}
 
 	return cache, needUpdate, nil
 }
 
-func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool) (*toolVersion, string, error) {
+func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool) (*toolVersion, NSPackage, error) {
+	// XXX store the last time timestamp checked, else after 24h we're always checking.
 	newVersion, err := fetchRemoteVersion(ctx)
 	if err != nil {
 		return nil, "", fnerrors.New("failed to load an update from the update service: %w", err)
@@ -156,7 +171,7 @@ func performUpdate(ctx context.Context, previous *versionCache, forceUpdate bool
 		return nil, "", fnerrors.New("failed to persist the version cache: %w", err)
 	}
 
-	return newVersion, path, nil
+	return newVersion, NSPackage(path), nil
 }
 
 func fetchRemoteVersion(ctx context.Context) (*toolVersion, error) {
@@ -181,7 +196,7 @@ func fetchRemoteVersion(ctx context.Context) (*toolVersion, error) {
 	})
 }
 
-func loadVersionCache() (*versionCache, error) {
+func LoadCachedMetadata() (*versionCache, error) {
 	cacheDir, err := dirs.Cache()
 	if err != nil {
 		return nil, err

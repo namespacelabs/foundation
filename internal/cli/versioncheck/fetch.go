@@ -32,7 +32,7 @@ func CheckRemote(ctx context.Context, computeRequirements func(context.Context) 
 		return nil, fnerrors.InternalError("failed to obtain version information: %w", err)
 	}
 
-	if ver.BuildTime == nil || ver.Version == version.DevelopmentBuildVersion {
+	if version.IsDevelopmentBuild(ver) {
 		return nil, nil // Nothing to check.
 	}
 

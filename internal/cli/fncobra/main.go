@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/binary/genbinary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/codegen"
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -102,23 +103,36 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	SetupViper()
 
-	ctx := context.Background()
+	// These are required for nsboot.
+	compute.RegisterProtoCacheable()
+	compute.RegisterBytesCacheable()
+	fscache.RegisterFSCacheable()
+
+	rootCtx, style, flushLogs := SetupContext(context.Background())
+
+	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
+	if ver, err := version.Current(); err == nil {
+		if !nsboot.SpawnedFromBoot() && !version.IsDevelopmentBuild(ver) {
+			cached, ns, err := nsboot.CheckUpdate(rootCtx, true, false)
+			if err == nil && cached != nil {
+				flushLogs()
+
+				ns.ExecuteAndForwardExitCode(rootCtx, style)
+				// Never gets here.
+			}
+		}
+	}
 
 	var cleanupTracer func()
 	if tracerEndpoint := viper.GetString("jaeger_endpoint"); tracerEndpoint != "" && viper.GetBool("enable_tracing") {
-		ctx, cleanupTracer = actiontracing.SetupTracing(ctx, tracerEndpoint)
+		rootCtx, cleanupTracer = actiontracing.SetupTracing(rootCtx, tracerEndpoint)
 	}
-
-	sink, style, flushLogs := ConsoleToSink(StandardConsole())
-	ctx = colors.WithStyle(tasks.WithSink(ctx, sink), style)
-
-	ctxWithSink := fnapi.WithTelemetry(ctx)
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
 	// effort attempt at increasing the file limit to a number we can be more
 	// comfortable with. 4096 is the result of experimentation.
-	ulimit.SetFileLimit(ctxWithSink, 4096)
+	ulimit.SetFileLimit(rootCtx, 4096)
 
 	var run *storedrun.Run
 	var useTelemetry bool
@@ -198,9 +212,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		deploy.RegisterDeployOps()
 
 		// Compute cacheables.
-		compute.RegisterProtoCacheable()
-		compute.RegisterBytesCacheable()
-		fscache.RegisterFSCacheable()
 		oci.RegisterImageCacheable()
 
 		// Languages.
@@ -261,16 +272,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			tools.MakeAlternativeRuntime = func(cfg cfg.Configuration) tools.Runtime { return rt }
 		}
 
-		// Download updates if enabled. We have to do it so late since we depend on dependencies
-		// injected above and flags having been parsed.
-		if updatedNS, err := nsboot.UpdateInsideNS(ctx); err != nil {
-			// Update failed, but we avoid blocking further execution.
-			fmt.Fprintf(console.Stderr(ctx), "Failed to perform auto-update: %v", err)
-		} else if updatedNS != "" {
-			// The error will stop execution of the selected command and will be handled below.
-			return updateAvailableError(updatedNS)
-		}
-
 		// Telemetry.
 		tel.RecordInvocation(ctx, cmd, args)
 		return nil
@@ -291,8 +292,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	rootCmd.PersistentFlags().BoolVar(&git.AssumeSSHAuth, "git_ssh_auth", !environment.IsRunningInCI(),
 		"If set to true, assume that you use SSH authentication with git (this enables us to properly instruct git when downloading private repositories).")
 
-	rootCmd.PersistentFlags().BoolVar(&nsboot.EnableAutoupdate, "autoupdate", true,
-		"If set to false, the self-update mechanism is disabled and the permanently installed version of the ns command is used.")
 	rootCmd.PersistentFlags().Var(buildkit.ImportCacheVar, "buildkit_import_cache", "Internal, set buildkit import-cache.")
 	rootCmd.PersistentFlags().Var(buildkit.ExportCacheVar, "buildkit_export_cache", "Internal, set buildkit export-cache.")
 	rootCmd.PersistentFlags().StringVar(&buildkit.BuildkitSecrets, "buildkit_secrets", "", "A list of secrets to pass in to buildkit.")
@@ -396,7 +395,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	registerCommands(rootCmd)
 
-	cmdCtx := tasks.ContextWithThrottler(ctxWithSink, console.Debug(ctx), tasks.LoadThrottlerConfig(ctx, console.Debug(ctx)))
+	debugLog := console.Debug(rootCtx)
+	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))
 	err := rootCmd.ExecuteContext(cmdCtx)
 
 	if run != nil {
@@ -416,20 +416,15 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	}
 
 	// Ensures deferred routines after invoked gracefully before os.Exit.
-	defer handleExit(ctx)
-
-	updated := updateAvailableError("")
-	if errors.As(err, &updated) {
-		err = nsboot.NSPackage(updated).Execute(context.Background())
-	}
+	defer handleExit(rootCtx)
 
 	if err != nil && !errors.Is(err, context.Canceled) {
 		exitCode := handleExitError(style, err)
 
-		if tel := fnapi.TelemetryOn(ctx); tel != nil {
+		if tel := fnapi.TelemetryOn(rootCtx); tel != nil {
 			// Record errors only after the user sees them to hide potential latency implications.
 			// We pass the original ctx without sink since logs have already been flushed.
-			tel.RecordError(ctx, err)
+			tel.RecordError(rootCtx, err)
 		}
 
 		// Ensures graceful invocation of deferred routines in the block above before we exit.
@@ -582,6 +577,12 @@ func cpuprofile(cpuprofile string) func() {
 	}
 }
 
-type updateAvailableError nsboot.NSPackage
+func SetupContext(ctx context.Context) (context.Context, colors.Style, func()) {
+	sink, style, flushLogs := ConsoleToSink(StandardConsole())
+	ctx = colors.WithStyle(tasks.WithSink(ctx, sink), style)
+	if flushLogs == nil {
+		flushLogs = func() {}
+	}
 
-func (updateAvailableError) Error() string { return "Not an error: NS binary update available." }
+	return fnapi.WithTelemetry(ctx), style, flushLogs
+}

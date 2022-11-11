@@ -7,17 +7,13 @@ package main
 import (
 	"context"
 	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func main() {
@@ -26,14 +22,7 @@ func main() {
 	compute.RegisterBytesCacheable()
 	fscache.RegisterFSCacheable()
 
-	sink, style, cleanup := fncobra.ConsoleToSink(fncobra.StandardConsole())
-	ctxWithSink := colors.WithStyle(tasks.WithSink(context.Background(), sink), style)
-	rootCtx := fnapi.WithTelemetry(ctxWithSink)
-
-	// It's a bit awkward, but the main command execution is split between the command proper
-	// and the execution of the inner ns binary after all the nsboot cleanup is done.
-	// This variable is passes the package to execute from inside the command to the outside.
-	var nsPackage nsboot.NSPackage
+	rootCtx, style, flushLogs := fncobra.SetupContext(context.Background())
 
 	rootCmd := &cobra.Command{
 		Use:                "nsboot",
@@ -42,42 +31,36 @@ func main() {
 		SilenceErrors:      true,
 		DisableFlagParsing: true,
 
-		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			nsPackage, err = nsboot.UpdateToRun(cmd.Context())
-			return
+		RunE: func(cmd *cobra.Command, args []string) error {
+			_, pkg, err := nsboot.CheckUpdate(cmd.Context(), false, true)
+			if err == nil {
+				// We make sure to flush all the output before starting the command.
+				flushLogs()
+
+				pkg.ExecuteAndForwardExitCode(context.Background(), style)
+				// Never returns.
+			}
+			return err
 		},
 	}
+
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "update-ns",
 		Short: "Checks and downloads updates for the ns command.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return nsboot.ForceUpdate(cmd.Context())
-		},
+		RunE: fncobra.RunE(func(ctx context.Context, _ []string) error {
+			return nsboot.ForceUpdate(ctx)
+		}),
 	})
+
 	rootCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
-	err := compute.Do(rootCtx, func(ctx context.Context) (err error) {
-		return rootCmd.ExecuteContext(ctx)
-	})
-	if cleanup != nil {
-		cleanup()
-	}
+	err := rootCmd.ExecuteContext(rootCtx)
+
+	flushLogs()
+
 	if err != nil {
 		format.Format(os.Stderr, err, format.WithStyle(style))
-		return
-	}
-
-	// We make sure to flush all the output before starting the command.
-	if nsPackage != "" {
-		if err := nsPackage.Execute(context.Background()); err != nil {
-			if exiterr, ok := err.(*exec.ExitError); ok {
-				os.Exit(exiterr.ExitCode())
-			} else {
-				format.Format(os.Stderr, err, format.WithStyle(style))
-				os.Exit(3)
-			}
-		}
 	}
 }

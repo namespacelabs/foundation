@@ -61,3 +61,7 @@ func VersionFrom(info *debug.BuildInfo) (*storage.NamespaceBinaryVersion, error)
 
 	return v, nil
 }
+
+func IsDevelopmentBuild(ver *storage.NamespaceBinaryVersion) bool {
+	return ver.BuildTime == nil || ver.Version == DevelopmentBuildVersion
+}
