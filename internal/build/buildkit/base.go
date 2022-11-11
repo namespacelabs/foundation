@@ -37,7 +37,7 @@ type baseRequest[V any] struct {
 	sourcePackage  schema.PackageName // For description purposes only, does not affect output.
 	config         cfg.Configuration  // Doesn't affect the output.
 	targetPlatform specs.Platform
-	req            compute.Computable[*frontendReq]
+	req            compute.Computable[*FrontendRequest]
 	localDirs      []LocalContents // If set, the output is not cachable by us.
 
 	compute.LocalScoped[V]

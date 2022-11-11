@@ -102,7 +102,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	return &GatewayClient{Client: cli, conf: c.conf}, nil
 }
 
-type frontendReq struct {
+type FrontendRequest struct {
 	Def            *llb.Definition
 	OriginalState  *llb.State
 	Frontend       string
@@ -130,20 +130,6 @@ func MakeLocalState(src LocalContents) llb.State {
 		llb.LocalUniqueID(src.Abs()),
 		llb.ExcludePatterns(MakeLocalExcludes(src)),
 		llb.IncludePatterns(src.IncludePatterns))
-}
-
-func makeDockerOpts(platforms []specs.Platform) map[string]string {
-	return map[string]string{
-		"platform": formatPlatforms(platforms),
-	}
-}
-
-func formatPlatforms(ps []specs.Platform) string {
-	strs := make([]string, len(ps))
-	for k, p := range ps {
-		strs[k] = devhost.FormatPlatform(p)
-	}
-	return strings.Join(strs, ",")
 }
 
 func prepareSession(ctx context.Context, keychain oci.Keychain) ([]session.Attachable, error) {

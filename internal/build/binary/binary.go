@@ -15,11 +15,11 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
-	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/integrations/dockerfile"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -266,7 +266,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
-		spec, err := buildkit.DockerfileBuild(loc.Rel(), dockerFile, opts.IsFocus)
+		spec, err := dockerfile.Build(loc.Rel(), dockerFile, opts.IsFocus)
 		if err != nil {
 			return nil, fnerrors.AttachLocation(loc, err)
 		}

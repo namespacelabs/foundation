@@ -2,19 +2,22 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package buildkit
+package dockerfile
 
 import (
 	"context"
 	"fmt"
 	"io/fs"
+	"strings"
 
 	"github.com/moby/buildkit/client/llb"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -23,7 +26,7 @@ import (
 // A Dockerfile build is always relative to the module it lives in. Within that
 // module, what's the relative path to the context, and within that context,
 // what's the relative path to the Dockerfile.
-func DockerfileBuild(rel, dockerfile string, isFocus bool) (build.Spec, error) {
+func Build(rel, dockerfile string, isFocus bool) (build.Spec, error) {
 	return dockerfileBuild{rel, dockerfile, isFocus}, nil
 }
 
@@ -53,7 +56,7 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 		conf:       conf,
 	}
 
-	return makeImage(env, conf, generatedRequest, []LocalContents{dockerContext(conf, df.ContextRel)}, nil), nil
+	return buildkit.MakeImage(env, conf, generatedRequest, []buildkit.LocalContents{dockerContext(conf, df.ContextRel)}, nil), nil
 }
 
 func (df dockerfileBuild) PlatformIndependent() bool { return false }
@@ -62,10 +65,10 @@ type generateRequest struct {
 	workspace              compute.Computable[wscontents.Versioned] // Used as an input so we trigger new requests on changes to the Dockerfile.
 	contextRel, dockerfile string
 	conf                   build.Configuration
-	compute.LocalScoped[*frontendReq]
+	compute.LocalScoped[*buildkit.FrontendRequest]
 }
 
-var _ compute.Computable[*frontendReq] = &generateRequest{}
+var _ compute.Computable[*buildkit.FrontendRequest] = &generateRequest{}
 
 func (g *generateRequest) Action() *tasks.ActionEvent {
 	return tasks.Action("buildkit.make-dockerfile-request").
@@ -81,7 +84,7 @@ func (g *generateRequest) Inputs() *compute.In {
 		Indigestible("conf", g.conf)
 }
 func (g *generateRequest) Output() compute.Output { return compute.Output{NotCacheable: true} }
-func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*frontendReq, error) {
+func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*buildkit.FrontendRequest, error) {
 	workspace := compute.MustGetDepValue(deps, g.workspace, "workspace").FS()
 
 	dfcontents, err := fs.ReadFile(workspace, g.dockerfile)
@@ -89,11 +92,11 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 		return nil, err
 	}
 
-	req := &frontendReq{
+	req := &buildkit.FrontendRequest{
 		Frontend: "dockerfile.v0",
 		FrontendInputs: map[string]llb.State{
 			dockerfile.DefaultLocalNameDockerfile: makeDockerfileState(g.conf.SourceLabel(), dfcontents),
-			dockerfile.DefaultLocalNameContext:    MakeLocalState(dockerContext(g.conf, g.contextRel)),
+			dockerfile.DefaultLocalNameContext:    buildkit.MakeLocalState(dockerContext(g.conf, g.contextRel)),
 		},
 	}
 
@@ -104,10 +107,24 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 	return req, nil
 }
 
-func dockerContext(conf build.Configuration, contextRel string) LocalContents {
-	return LocalContents{
+func dockerContext(conf build.Configuration, contextRel string) buildkit.LocalContents {
+	return buildkit.LocalContents{
 		Module:         conf.Workspace(),
 		Path:           contextRel,
 		ObserveChanges: false, // We don't need to re-observe changes because changes to the workspace will already yield a new frontendReq.
 	}
+}
+
+func makeDockerOpts(platforms []specs.Platform) map[string]string {
+	return map[string]string{
+		"platform": formatPlatforms(platforms),
+	}
+}
+
+func formatPlatforms(ps []specs.Platform) string {
+	strs := make([]string, len(ps))
+	for k, p := range ps {
+		strs[k] = devhost.FormatPlatform(p)
+	}
+	return strings.Join(strs, ",")
 }

@@ -28,7 +28,7 @@ type BuildkitAwareRegistry interface {
 }
 
 func BuildDefinitionToImage(env cfg.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
-	return makeImage(env, conf, precomputedReq(&frontendReq{Def: def}), nil, nil)
+	return MakeImage(env, conf, precomputedReq(&FrontendRequest{Def: def}), nil, nil)
 }
 
 func BuildImage(ctx context.Context, env cfg.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
@@ -37,7 +37,7 @@ func BuildImage(ctx context.Context, env cfg.Context, conf build.BuildTarget, st
 		return nil, err
 	}
 
-	return makeImage(env, conf, precomputedReq(&frontendReq{Def: serialized, OriginalState: &state}), localDirs, conf.PublishName()), nil
+	return MakeImage(env, conf, precomputedReq(&FrontendRequest{Def: serialized, OriginalState: &state}), localDirs, conf.PublishName()), nil
 }
 
 type reqToImage struct {

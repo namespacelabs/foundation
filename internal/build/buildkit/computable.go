@@ -48,11 +48,11 @@ func (l LocalContents) Abs() string {
 	return filepath.Join(l.Module.Abs(), l.Path)
 }
 
-func precomputedReq(req *frontendReq) compute.Computable[*frontendReq] {
+func precomputedReq(req *FrontendRequest) compute.Computable[*FrontendRequest] {
 	return compute.Precomputed(req, digestRequest)
 }
 
-func digestRequest(ctx context.Context, req *frontendReq) (schema.Digest, error) {
+func digestRequest(ctx context.Context, req *FrontendRequest) (schema.Digest, error) {
 	var kvs []keyValue
 	for k, v := range req.FrontendInputs {
 		def, err := v.Marshal(ctx)
@@ -86,7 +86,7 @@ func digestRequest(ctx context.Context, req *frontendReq) (schema.Digest, error)
 	return schema.FromHash("sha256", w), nil
 }
 
-func makeImage(env cfg.Context, conf build.BuildTarget, req compute.Computable[*frontendReq], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedRepository]) compute.Computable[oci.Image] {
+func MakeImage(env cfg.Context, conf build.BuildTarget, req compute.Computable[*FrontendRequest], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedRepository]) compute.Computable[oci.Image] {
 	base := &baseRequest[oci.Image]{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
