@@ -161,10 +161,6 @@ type ClusterNamespace interface {
 }
 
 type Deployable interface {
-	// TODO remove when cli and orchestrator only use GetPackageRef().
-	// Returns a string to be compatible with the proto API.
-	GetPackageName() string // schema.PackageName
-
 	GetPackageRef() *schema.PackageRef
 
 	GetId() string

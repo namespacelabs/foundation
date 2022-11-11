@@ -18,10 +18,10 @@ import (
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -42,7 +42,7 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 	})
 }
 
-func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, deployable runtime.Deployable) *orchestration.Event {
+func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, deployable *runtime.Deployable) *orchestration.Event {
 	ev := &orchestration.Event{
 		ResourceId:          fmt.Sprintf("%s/%s", namespace, name),
 		RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", namespace, strings.ToLower(gvk.Kind), name),
@@ -71,7 +71,7 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 	return ev
 }
 
-func isServer(gvk kubeschema.GroupVersionKind, deployable runtime.Deployable) bool {
+func isServer(gvk kubeschema.GroupVersionKind, deployable *runtime.Deployable) bool {
 	if deployable != nil && deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT) {
 		return false
 	}

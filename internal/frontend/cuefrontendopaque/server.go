@@ -123,7 +123,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 			stack[s] = struct{}{}
 		}
 
-		if err := parsing.AddServers(ctx, pl, schema.MakePackageRef(pkg.PackageName(), out.Name), declaredStack, out.ResourcePack); err != nil {
+		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageRef(pkg.PackageName(), out.Name), declaredStack, out.ResourcePack); err != nil {
 			return nil, nil, err
 		}
 	}

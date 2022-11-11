@@ -201,7 +201,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 	return resources, nil
 }
 
-func AddServers(ctx context.Context, pl EarlyPackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
+func AddServersAsResources(ctx context.Context, pl EarlyPackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
 	for _, s := range servers {
 		intent, err := anypb.New(&runtime.ServerIntent{
 			PackageName: s.String(),

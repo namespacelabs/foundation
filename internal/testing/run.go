@@ -62,6 +62,7 @@ func (test *testRun) Inputs() *compute.In {
 		Stringer("testPkg", test.TestRef.AsPackageName()).
 		Proto("workspace", test.SealedContext.Workspace().Proto()).
 		Proto("env", test.SealedContext.Environment()).
+		Indigestible("driver", test.Driver).
 		Proto("stack", test.Stack).
 		Strs("focus", test.ServersUnderTest).
 		Computable("plan", test.Plan)

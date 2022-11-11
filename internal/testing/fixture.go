@@ -93,7 +93,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	}
 
 	pack := &schema.ResourcePack{}
-	if err := parsing.AddServers(ctx, pl, testRef, stack.Focus.PackageNames(), pack); err != nil {
+	if err := parsing.AddServersAsResources(ctx, pl, testRef, stack.Focus.PackageNames(), pack); err != nil {
 		return nil, err
 	}
 
@@ -144,6 +144,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	if err != nil {
 		return nil, err
 	}
+
 	container := runtime.ContainerRunOpts{
 		Image:              driverImage,
 		Command:            testBin.Command,
