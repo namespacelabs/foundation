@@ -54,6 +54,10 @@ func SetTestDriver(loc pkggraph.Location, test *schema.Test, driver *schema.Bina
 
 	test.Driver = driver
 
+	if test.Driver.Config == nil {
+		test.Driver.Config = &schema.BinaryConfig{}
+	}
+
 	test.Driver.Config.Args = append(test.Driver.Config.Args, args...)
 
 	var err error
