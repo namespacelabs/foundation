@@ -40,7 +40,7 @@ func newSetCmd() *cobra.Command {
 	})
 
 	return fncobra.With(cmd, func(ctx context.Context) error {
-		key, err := parseKey(*secretKey, string(loc.packageName))
+		key, err := parseKey(*secretKey)
 		if err != nil {
 			return err
 		}
@@ -55,7 +55,7 @@ func newSetCmd() *cobra.Command {
 		if *fromFile != "" {
 			value, err = os.ReadFile(*fromFile)
 			if err != nil {
-				return fnerrors.BadInputError("%s: failed to load: %w", fromFile, err)
+				return fnerrors.BadInputError("%s: failed to load: %w", *fromFile, err)
 			}
 		} else {
 			valueStr, err := tui.Ask(ctx, "Set a new secret value", fmt.Sprintf("Package: %s\nKey: %q\n\n%s", key.PackageName, key.Key, lipgloss.NewStyle().Faint(true).Render("Note: for multi-line input, use the --from_file flag.")), "Value")

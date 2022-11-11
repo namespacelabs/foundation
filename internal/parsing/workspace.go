@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -20,6 +21,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
@@ -130,6 +132,7 @@ func (r rawWorkspaceData) ModuleName() string       { return r.parsed.ModuleName
 func (r rawWorkspaceData) Proto() *schema.Workspace { return r.parsed }
 
 func (r rawWorkspaceData) AbsPath() string        { return r.absPath }
+func (r rawWorkspaceData) ReadOnlyFS() fs.FS      { return fnfs.Local(r.absPath) }
 func (r rawWorkspaceData) DefinitionFile() string { return r.definitionFile }
 func (r rawWorkspaceData) RawData() []byte        { return r.data }
 

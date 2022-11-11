@@ -27,6 +27,7 @@ import (
 )
 
 const (
+	UserBundleName      = "user.secrets"
 	WorkspaceBundleName = "workspace.secrets"
 	ServerBundleName    = "server.secrets"
 

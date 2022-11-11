@@ -29,7 +29,7 @@ func MakeSyntheticConfiguration(wsproto *schema.Workspace, envName string, hostE
 	messages := []proto.Message{hostEnv}
 	messages = append(messages, extra...)
 
-	ws := cfg.MakeWorkspace(wsproto, nil)
+	ws := cfg.MakeSyntheticWorkspace(wsproto, nil)
 
 	return cfg.MakeConfigurationWith(envName, ws, cfg.ConfigurationSlice{Configuration: protos.WrapAnysOrDie(messages...)})
 }

@@ -5,6 +5,8 @@
 package cfg
 
 import (
+	"io/fs"
+
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -14,7 +16,7 @@ type Workspace interface {
 
 	Proto() *schema.Workspace
 	ModuleName() string
-
+	ReadOnlyFS() fs.FS
 	LoadedFrom() *schema.Workspace_LoadedFrom
 }
 
@@ -23,11 +25,12 @@ type workspace struct {
 	loadedFrom *schema.Workspace_LoadedFrom
 }
 
-func MakeWorkspace(proto *schema.Workspace, lf *schema.Workspace_LoadedFrom) Workspace {
+func MakeSyntheticWorkspace(proto *schema.Workspace, lf *schema.Workspace_LoadedFrom) Workspace {
 	return workspace{proto, lf}
 }
 
 func (w workspace) ErrorLocation() string                    { return w.proto.ModuleName }
 func (w workspace) Proto() *schema.Workspace                 { return w.proto }
 func (w workspace) ModuleName() string                       { return w.proto.ModuleName }
+func (w workspace) ReadOnlyFS() fs.FS                        { return nil }
 func (w workspace) LoadedFrom() *schema.Workspace_LoadedFrom { return w.loadedFrom }

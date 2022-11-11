@@ -29,10 +29,10 @@ func newRevealCmd() *cobra.Command {
 
 	env := envFromValue(cmd, specificEnv)
 	locs := locationsFromArgs(cmd, env)
-	loc, bundle := bundleFromArgs(cmd, env, locs, nil)
+	_, bundle := bundleFromArgs(cmd, env, locs, nil)
 
 	return fncobra.With(cmd, func(ctx context.Context) error {
-		key, err := parseKey(*secretKey, string(loc.packageName))
+		key, err := parseKey(*secretKey)
 		if err != nil {
 			return err
 		}

@@ -305,7 +305,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env.Environment(), planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.ResourceList.perOwnerResources)
+			return planDeployment(ctx, env, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.ResourceList.perOwnerResources)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -339,7 +339,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env *schema.Environment, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources ResourceMap) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources ResourceMap) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverRuns []runtime.DeployableSpec

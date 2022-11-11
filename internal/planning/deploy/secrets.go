@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -29,7 +30,7 @@ type secretSource struct {
 	Secrets []*schema.PackageRef
 }
 
-func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secretSource) (*runtime.GroundedSecrets, error) {
+func loadSecrets(ctx context.Context, env cfg.Context, sources ...secretSource) (*runtime.GroundedSecrets, error) {
 	return tasks.Return(ctx, tasks.Action("planning.load-secrets"), func(ctx context.Context) (*runtime.GroundedSecrets, error) {
 		keyDir, err := keys.KeysDir()
 		if err != nil {
@@ -38,6 +39,16 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 			} else {
 				return nil, err
 			}
+		}
+
+		var userSecrets *secrets.Bundle
+
+		if fsys := env.Workspace().ReadOnlyFS(); fsys != nil {
+			loaded, err := loadSecretsFile(ctx, keyDir, env.Workspace().ModuleName(), fsys, secrets.UserBundleName)
+			if err != nil {
+				return nil, err
+			}
+			userSecrets = loaded
 		}
 
 		workspaceSecrets := map[string]*secrets.Bundle{}
@@ -83,7 +94,7 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 				}
 
 				if gsec.Spec.Generate == nil {
-					value, err := lookupSecret(ctx, env, secretRef, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
+					value, err := lookupSecret(ctx, env.Environment(), secretRef, userSecrets, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
 					if err != nil {
 						return nil, err
 					}
@@ -120,12 +131,16 @@ func loadSecrets(ctx context.Context, env *schema.Environment, sources ...secret
 }
 
 func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
-	contents, err := fs.ReadFile(module.ReadOnlyFS(), secrets.WorkspaceBundleName)
+	return loadSecretsFile(ctx, keyDir, module.ModuleName(), module.ReadOnlyFS(), secrets.WorkspaceBundleName)
+}
+
+func loadSecretsFile(ctx context.Context, keyDir fs.FS, name string, fsys fs.FS, sourceFile string) (*secrets.Bundle, error) {
+	contents, err := fs.ReadFile(fsys, sourceFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fnerrors.InternalError("%s: failed to read %q: %w", module.Workspace.ModuleName, secrets.WorkspaceBundleName, err)
+		return nil, fnerrors.InternalError("%s: failed to read %q: %w", name, sourceFile, err)
 	}
 
 	return secrets.LoadBundle(ctx, keyDir, contents)
@@ -149,28 +164,19 @@ func loadServerSecrets(ctx context.Context, keyDir fnfs.LocalFS, srv planning.Se
 	return bundle, nil
 }
 
-func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
+func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, user, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
 	key := &secrets.ValueKey{PackageName: secretRef.PackageName, Key: secretRef.Name, EnvironmentName: env.Name}
 
-	if server != nil {
-		value, err := server.Lookup(ctx, key)
-		if err != nil {
-			return nil, err
-		}
+	for _, src := range []*secrets.Bundle{user, server, workspace} {
+		if src != nil {
+			value, err := src.Lookup(ctx, key)
+			if err != nil {
+				return nil, err
+			}
 
-		if value != nil {
-			return &schema.FileContents{Contents: value, Utf8: true}, nil
-		}
-	}
-
-	if workspace != nil {
-		value, err := workspace.Lookup(ctx, key)
-		if err != nil {
-			return nil, err
-		}
-
-		if value != nil {
-			return &schema.FileContents{Contents: value, Utf8: true}, nil
+			if value != nil {
+				return &schema.FileContents{Contents: value, Utf8: true}, nil
+			}
 		}
 	}
 

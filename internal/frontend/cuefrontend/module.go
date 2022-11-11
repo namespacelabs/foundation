@@ -7,6 +7,7 @@ package cuefrontend
 import (
 	"context"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"cuelang.org/go/cue/format"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -199,6 +201,7 @@ func (r workspaceData) ModuleName() string       { return r.parsed.ModuleName }
 func (r workspaceData) Proto() *schema.Workspace { return r.parsed }
 
 func (r workspaceData) AbsPath() string           { return r.absPath }
+func (r workspaceData) ReadOnlyFS() fs.FS         { return fnfs.Local(r.absPath) }
 func (r workspaceData) DefinitionFile() string    { return r.definitionFile }
 func (r workspaceData) RawData() []byte           { return r.data }
 func (r workspaceData) structLit() *ast.StructLit { return r.source.Syntax().(*ast.StructLit) }
