@@ -28,11 +28,15 @@ const (
 )
 
 // New returns a new error for a format specifier and optionals args with the
-// stack trace at the point of invocation.
+// stack trace at the point of invocation. These errors are expected to user
+// errors, i.e. they are expected errors, due to wrong configuration, etc.
 func New(format string, args ...interface{}) error {
 	return &BaseError{Kind: Kind_USER, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
 }
 
+// NewWithLocation returns a new error for a format specifier and optionals args
+// with the stack trace at the point of invocation. These errors are expected to
+// user errors, i.e. they are expected errors, due to wrong configuration, etc.
 func NewWithLocation(loc Location, format string, args ...interface{}) error {
 	return &BaseError{Kind: Kind_USER, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New(), Location: loc}
 }
@@ -53,43 +57,49 @@ func WithLogs(err error, readerF func() io.Reader) error {
 	return &ErrWithLogs{err, readerF}
 }
 
+func makeError(kind ErrorKind, format string, args ...interface{}) *BaseError {
+	return &BaseError{Kind: kind, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.NewWithSkip(2)}
+}
+
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(runThis, toFixThis string, args ...interface{}) error {
-	return &UsageErr{BaseError: BaseError{OriginalErr: fmt.Errorf(toFixThis, args...), stack: stacktrace.New()}, Why: fmt.Sprintf(toFixThis, args...), What: runThis}
+	err := makeError(Kind_USER, toFixThis, args...)
+	return &UsageErr{BaseError: *err, Why: fmt.Sprintf(toFixThis, args...), What: runThis}
 }
 
 // Unexpected error.
 func InternalError(format string, args ...interface{}) error {
-	return &BaseError{Kind: Kind_INTERNAL, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
+	return makeError(Kind_INTERNAL, format, args...)
 }
 
 // Unexpected error produced by a component external to namespace.
 func ExternalError(format string, args ...interface{}) error {
-	return &BaseError{Kind: Kind_EXTERNAL, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
-}
-
-// A call to a remote endpoint failed, perhaps due to a transient issue.
-func InvocationError(what, format string, args ...interface{}) error {
-	return &InvocationErr{BaseError: BaseError{Kind: Kind_INVOCATION, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}, what: what}
-}
-
-func NoAccessToLimitedFeature() error {
-	return New("this feature is not broadly available yet; please reach out to us at hello@namespacelabs.com to be added to the access list")
+	return makeError(Kind_EXTERNAL, format, args...)
 }
 
 // A user-provided input does match our expectations (e.g. missing bits, wrong version, etc).
 func BadInputError(format string, args ...interface{}) error {
-	return &BaseError{Kind: Kind_BADINPUT, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
+	return makeError(Kind_BADINPUT, format, args...)
 }
 
 // The data does match our expectations (e.g. missing bits, wrong version, etc).
 func BadDataError(format string, args ...interface{}) error {
-	return &BaseError{Kind: Kind_BADDATA, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
+	return makeError(Kind_BADDATA, format, args...)
 }
 
 // We failed but it may be due a transient issue.
 func TransientError(format string, args ...interface{}) error {
-	return &BaseError{OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.New()}
+	return makeError(Kind_TRANSIENT, format, args...)
+}
+
+// A call to a remote endpoint failed, perhaps due to a transient issue.
+func InvocationError(what, format string, args ...interface{}) error {
+	err := makeError(Kind_INVOCATION, format, args...)
+	return &InvocationErr{BaseError: *err, what: what}
+}
+
+func NoAccessToLimitedFeature() error {
+	return New("this feature is not broadly available yet; please reach out to us at hello@namespacelabs.com to be added to the access list")
 }
 
 // This error means that Namespace does not meet the minimum version requirements.
@@ -100,7 +110,7 @@ func DoesNotMeetVersionRequirements(what string, expected, got int32) error {
 // This error is purely for wiring and ensures that Namespace exits with an appropriate exit code.
 // The error content has to be output independently.
 func ExitWithCode(err error, code int) error {
-	return &exitError{BaseError: BaseError{OriginalErr: err, stack: stacktrace.New()}, code: code}
+	return &exitError{OriginalErr: err, code: code}
 }
 
 // Wraps an error with a stack trace at the point of invocation.
@@ -197,8 +207,8 @@ type ExitError interface {
 }
 
 type exitError struct {
-	BaseError
-	code int
+	OriginalErr error
+	code        int
 }
 
 func (e *exitError) Error() string {

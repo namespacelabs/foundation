@@ -109,6 +109,12 @@ type StackTrace []Frame
 // New returns a new StackTrace after filtering out uninteresting frames
 // from runtime.Callers.
 func New() StackTrace {
+	return NewWithSkip(1)
+}
+
+// New returns a new StackTrace after filtering out uninteresting frames
+// from runtime.Callers.
+func NewWithSkip(k int) StackTrace {
 	const depth = 32
 	var pcs [depth]uintptr
 
@@ -116,7 +122,7 @@ func New() StackTrace {
 	// 1 identifies the call below, and 2 identifies the `New`
 	// invocation above all of which are uninteresting for the
 	// user.
-	n := runtime.Callers(3, pcs[:])
+	n := runtime.Callers(k+3, pcs[:])
 	pcslice := pcs[0:n]
 	frames := make([]Frame, len(pcslice))
 	for i := 0; i < len(frames); i++ {
