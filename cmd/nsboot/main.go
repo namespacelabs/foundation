@@ -32,7 +32,7 @@ func main() {
 		DisableFlagParsing: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, pkg, err := nsboot.CheckUpdate(cmd.Context(), false, true)
+			_, pkg, err := nsboot.CheckUpdate(cmd.Context(), false, "")
 			if err == nil {
 				// We make sure to flush all the output before starting the command.
 				flushLogs()
@@ -47,9 +47,9 @@ func main() {
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "update-ns",
 		Short: "Checks and downloads updates for the ns command.",
-		RunE: fncobra.RunE(func(ctx context.Context, _ []string) error {
+		RunE: fncobra.RunEWithStarter(func(ctx context.Context, _ []string) error {
 			return nsboot.ForceUpdate(ctx)
-		}),
+		}, nil),
 	})
 
 	rootCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true

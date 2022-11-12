@@ -22,6 +22,7 @@ type reportedExistingVersion struct {
 
 // Schema for $CACHE/tool/versions.json.
 type versionCache struct {
-	Latest     *toolVersion `json:"latest"`
-	BinaryPath string       `json:"binary_path"` // The path to a previously resolved binary.
+	Latest         *toolVersion `json:"latest"`
+	BinaryPath     string       `json:"binary_path"`               // The path to a previously resolved binary.
+	PendingVersion string       `json:"pending_version,omitempty"` // If set, will trigger an update at startup.
 }

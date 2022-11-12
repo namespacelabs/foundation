@@ -6,10 +6,15 @@ package fncobra
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"namespacelabs.dev/foundation/internal/cli/nsboot"
+	"namespacelabs.dev/foundation/internal/cli/versioncheck"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type CmdHandler func(context.Context, []string) error
@@ -20,11 +25,52 @@ type ArgsParser interface {
 }
 
 func RunE(f CmdHandler) func(*cobra.Command, []string) error {
+	return RunEWithStarter(f, func(ctx context.Context) func() {
+		// Navigate with care: within the detach below we don't use the graph
+		// context, but rather the incoming context. The reason for this is that
+		// we need to have the ability to cancel the version check. THIS IS OK
+		// BUT IT RELIES ON INTERNAL DETAILS! compute.Do invokes the callback in
+		// the same executor where Detach() runs. So we're guaranteed to observe
+		// cancelation here.
+		ctx, cancel := context.WithCancel(ctx)
+
+		compute.On(ctx).Detach(tasks.Action("ns.check-updated"), func(_ context.Context) error {
+			status, err := versioncheck.CheckRemote(ctx, nil)
+			if err != nil {
+				fmt.Fprintf(console.Debug(ctx), "failed to check remote version: %v\n", err)
+				return nil
+			}
+
+			if status == nil {
+				return nil
+			}
+
+			if newVersion, ok := nsboot.CheckInvalidate(status); ok {
+				compute.On(ctx).Cleanup(tasks.Action("ns.check-updated.notify").LogLevel(1), func(ctx context.Context) error {
+					fmt.Fprintf(console.Stdout(ctx), "\n\n  A new version of ns is available (%s). It will be automatically downloaded on the next run.\n\n", newVersion)
+					return nil
+				})
+			}
+
+			return nil
+		})
+
+		return cancel
+	})
+}
+
+func RunEWithStarter(f CmdHandler, starter func(context.Context) func()) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := WithSigIntCancel(cmd.Context())
 		defer cancel()
 
 		return compute.Do(ctx, func(ctx context.Context) error {
+			if starter != nil {
+				cancel := starter(ctx)
+				if cancel != nil {
+					defer cancel()
+				}
+			}
 			return f(ctx, args)
 		})
 	}
