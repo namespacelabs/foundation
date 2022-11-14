@@ -27,7 +27,8 @@ import (
 )
 
 type Service struct {
-	deployer deployer
+	deployer       *deployer
+	versionChecker *versionChecker
 }
 
 func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*proto.DeployResponse, error) {
@@ -61,8 +62,16 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 	return svc.deployer.Status(stream.Context(), req.Id, req.LogLevel, stream.Send)
 }
 
+func (svc *Service) GetOrchestratorVersion(ctx context.Context, req *proto.GetOrchestratorVersionRequest) (*proto.GetOrchestratorVersionResponse, error) {
+	return svc.versionChecker.GetOrchestratorVersion(), nil
+}
+
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
-	proto.RegisterOrchestrationServiceServer(srv, &Service{deployer: newDeployer()})
+	proto.RegisterOrchestrationServiceServer(srv,
+		&Service{
+			deployer:       newDeployer(),
+			versionChecker: newVersionChecker(ctx),
+		})
 
 	kubernetes.Register()
 	kubeops.Register()
