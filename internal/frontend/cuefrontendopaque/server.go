@@ -23,8 +23,9 @@ type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
 
-	Args *args.ArgsListOrMap `json:"args"`
-	Env  *args.EnvMap        `json:"env"`
+	Command string              `json:"command"`
+	Args    *args.ArgsListOrMap `json:"args"`
+	Env     *args.EnvMap        `json:"env"`
 
 	Services map[string]cueService `json:"services"`
 }
@@ -80,6 +81,10 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
 		Env:  envVars,
+	}
+
+	if bits.Command != "" {
+		out.MainContainer.Command = []string{bits.Command}
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {

@@ -38,6 +38,7 @@ message InvocationSnapshot {
 }
 
 message StartupPlan {
+    repeated string command            = 3;
     repeated string args               = 1;
     repeated BinaryConfig.EnvEntry env = 2;
 }

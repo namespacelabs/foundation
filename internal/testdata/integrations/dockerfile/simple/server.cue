@@ -1,11 +1,10 @@
 server: {
 	name: "mysimpleserver"
 
+	command: "npm"
 	args: ["start"]
 
-	integration: dockerfile: {
-		command: "npm"
-	}
+	integration: "dockerfile"
 
 	services: {
 		webapi: {

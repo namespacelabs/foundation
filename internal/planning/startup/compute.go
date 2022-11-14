@@ -41,6 +41,10 @@ func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *planning.Pa
 }
 
 func mergePlan(plan *schema.StartupPlan, merged *schema.BinaryConfig) error {
+	if plan.Command != nil {
+		merged.Command = plan.Command
+	}
+
 	merged.Args = append(merged.Args, plan.Args...)
 
 	var err error
