@@ -44,12 +44,13 @@ func NewPrepareCmd() *cobra.Command {
 			"workspace lifecycle.",
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			return fnerrors.UsageError("For example, you may call `ns prepare local` to configure a local development environment.",
-				"One of `local` or `eks` is required.")
+				"One of `local`, `existing` or `eks` is required.")
 		}),
 	}
 
 	rootCmd.AddCommand(newEksCmd())
 	rootCmd.AddCommand(newLocalCmd())
+	rootCmd.AddCommand(newExistingCmd())
 	rootCmd.AddCommand(newNewClusterCmd())
 
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")

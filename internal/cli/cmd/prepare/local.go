@@ -9,7 +9,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
@@ -25,6 +24,10 @@ func newLocalCmd() *cobra.Command {
 		Short: "Prepares the local workspace for development or production.",
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			if contextName != "" {
+				return fnerrors.New("to configure an existing cluster use `prepare existing`")
+			}
+
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
@@ -39,7 +42,7 @@ func newLocalCmd() *cobra.Command {
 				return fnerrors.BadInputError("only development environments are supported locally")
 			}
 
-			k8sconfig := prepareK8s(ctx, env, contextName)
+			k8sconfig := prepare.PrepareK3d("ns", env)
 
 			return collectPreparesAndUpdateDevhost(ctx, root, envRef, prepare.PrepareCluster(env, k8sconfig))
 		}),
@@ -48,12 +51,4 @@ func newLocalCmd() *cobra.Command {
 	localCmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
 
 	return localCmd
-}
-
-func prepareK8s(ctx context.Context, env cfg.Context, contextName string) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
-	if contextName != "" {
-		return prepare.PrepareExistingK8s(env, contextName)
-	}
-
-	return prepare.PrepareK3d("ns", env)
 }
