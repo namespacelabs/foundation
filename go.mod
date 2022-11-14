@@ -27,7 +27,7 @@ require (
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/containerd/containerd v1.6.6
-	github.com/containerd/stargz-snapshotter/estargz v0.11.4
+	github.com/containerd/stargz-snapshotter/estargz v0.13.0
 	github.com/creack/pty v1.1.11
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/docker/docker v20.10.16+incompatible
@@ -61,7 +61,7 @@ require (
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
 	github.com/jpillora/chisel v1.7.7
 	github.com/keikoproj/aws-auth v0.4.0
-	github.com/klauspost/compress v1.15.11
+	github.com/klauspost/compress v1.15.12
 	github.com/kr/text v0.2.0
 	github.com/maruel/panicparse/v2 v2.3.0
 	github.com/mattn/go-zglob v0.0.3
