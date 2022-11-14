@@ -5,7 +5,7 @@
 describe("My First Test", () => {
 	it("Smoke", () => {
 		// Visit the home page
-		cy.visit("http://" + Cypress.env("ROOT_URL"));
+		cy.visit("http://" + Cypress.env("ROOT_HOST"));
 
 		// Verify that the page contains the expected text.
 		cy.contains("Hello from npm");

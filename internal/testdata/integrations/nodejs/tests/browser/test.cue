@@ -5,7 +5,7 @@ server: {
 	args: ["-c", "/liveserver/supervisord.conf"]
 
 	env: {
-		CYPRESS_ROOT_URL: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/nodejs/npm:webapi"
+		CYPRESS_ROOT_HOST: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/nodejs/npm:webapi"
 	}
 
 	integration: dockerfile: {
@@ -39,7 +39,7 @@ tests: {
 	cypress: {
 		integration: "dockerfile"
 		env: {
-			CYPRESS_ROOT_URL: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/nodejs/npm:webapi"
+			CYPRESS_ROOT_HOST: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/nodejs/npm:webapi"
 		}
 		serversUnderTest: [
 			"namespacelabs.dev/foundation/internal/testdata/integrations/nodejs/npm",
