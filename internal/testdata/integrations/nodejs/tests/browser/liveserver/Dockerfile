@@ -27,6 +27,9 @@ ENV HOME=/root \
 # Copy our test sources and the liveserver run config
 COPY liveserver /liveserver
 
+# Making "/" serving path work.
+RUN cp /usr/share/novnc/vnc.html /usr/share/novnc/index.html
+
 WORKDIR /app
 COPY cypress cypress
 COPY cypress.config.js .
