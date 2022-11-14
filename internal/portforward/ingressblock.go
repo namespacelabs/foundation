@@ -167,16 +167,7 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 		}
 	}
 
-	hasDomains := false
-	for _, frag := range fragments {
-		if frag.Domain.GetManaged() != schema.Domain_MANAGED_UNKNOWN &&
-			frag.Domain.GetFqdn() != "" {
-			hasDomains = true
-			break
-		}
-	}
-
-	if hasDomains && pi.Env.GetPurpose() == schema.Environment_DEVELOPMENT {
+	if wantsIngressForward(pi.Env, fragments) {
 		if pi.ingressState.closer == nil {
 			pi.ingressState.closer, pi.ingressState.err = pi.ForwardIngress([]string{pi.LocalAddr}, runtime.LocalIngressPort, func(fpe runtime.ForwardedPortEvent) {
 				pi.mu.Lock()
@@ -206,6 +197,20 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 	pi.OnUpdate(pi.toNetworkPlan())
 }
 
+func hasDomains(fragments []*schema.IngressFragment) bool {
+	for _, frag := range fragments {
+		if frag.Domain.GetManaged() != schema.Domain_MANAGED_UNKNOWN &&
+			frag.Domain.GetFqdn() != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func wantsIngressForward(env *schema.Environment, fragments []*schema.IngressFragment) bool {
+	return hasDomains(fragments) && env.GetPurpose() == schema.Environment_DEVELOPMENT
+}
+
 func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
 	// No update yet.
 	if pi.revision == 0 {
@@ -226,15 +231,15 @@ func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
 		}
 	}
 
+	if wantsIngressForward(pi.Env, pi.fragments) {
+		incomplete = len(pi.ingressState.users) == 0 || pi.ingressState.localPort == 0
+	}
+
 	if len(pi.ingressState.users) > 0 {
 		portFwds = append(portFwds, &deploystorage.PortFwd{
 			Endpoint:  pi.ingressState.users[0].endpoint,
 			LocalPort: uint32(pi.ingressState.localPort),
 		})
-
-		if pi.ingressState.localPort == 0 {
-			incomplete = true
-		}
 	}
 
 	r := deploystorage.ToStorageNetworkPlan(pi.LocalAddr, pi.stack, pi.focus, portFwds, pi.fragments)
