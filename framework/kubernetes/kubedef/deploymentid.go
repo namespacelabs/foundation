@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	schema "namespacelabs.dev/foundation/schema"
 )
 
@@ -23,12 +24,12 @@ func MakeDeploymentId(srv runtime.Deployable) string {
 
 func MakeVolumeName(v *schema.Volume) string {
 	if v.Inline {
-		return LabelLike("vi", v.Name)
+		return naming.LabelLike("vi", v.Name)
 	}
 
-	return LabelLike("v", v.Name)
+	return naming.LabelLike("v", v.Name)
 }
 
 func MakeResourceName(deploymentId string, suffix ...string) string {
-	return DomainFragLike(append([]string{deploymentId}, suffix...)...)
+	return naming.DomainFragLike(append([]string{deploymentId}, suffix...)...)
 }

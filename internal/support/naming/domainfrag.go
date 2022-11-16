@@ -2,14 +2,12 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package kubedef
+package naming
 
 import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"namespacelabs.dev/foundation/internal/support/naming"
 )
 
 var (
@@ -45,7 +43,7 @@ func cleanOnePart(re *regexp.Regexp, max int, str string) string {
 			return cleanOnePart(re, max, parts[len(parts)-1])
 		}
 
-		hash := naming.StableIDN(str, 4)
+		hash := StableIDN(str, 4)
 
 		return fmt.Sprintf("%s-%s", re.ReplaceAllLiteralString(str[:max-5], "-"), hash)
 	}

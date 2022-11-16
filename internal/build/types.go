@@ -44,6 +44,11 @@ type Plan struct {
 	PublishName compute.Computable[oci.AllocatedRepository]
 }
 
+func (p Plan) GetSourceLabel() string { return p.SourceLabel }
+func (p Plan) GetSourcePackageRef() *schema.PackageRef {
+	return schema.MakePackageSingleRef(p.SourcePackage)
+}
+
 type Workspace interface {
 	ModuleName() string
 	Abs() string

@@ -140,7 +140,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin))
+	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin, testBin.Plan))
 	if err != nil {
 		return nil, err
 	}

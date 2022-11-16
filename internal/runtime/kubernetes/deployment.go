@@ -31,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/support"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	rtschema "namespacelabs.dev/foundation/schema/runtime"
@@ -551,7 +552,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 		name, key := secrets.allocateGenerated(res.SecretRef, res.Spec)
 
-		targetPathSegment := kubedef.DomainFragLike(res.ResourceRef.PackageName, res.ResourceRef.Name)
+		targetPathSegment := naming.DomainFragLike(res.ResourceRef.PackageName, res.ResourceRef.Name)
 
 		secretProjections = append(secretProjections,
 			applycorev1.SecretProjection().WithName(name).WithItems(
@@ -835,7 +836,7 @@ func (cm *collector) set(key string, rsc *schema.FileContents) {
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
-	key := kubedef.DomainFragLike(entry.Path, rsc.Path)
+	key := naming.DomainFragLike(entry.Path, rsc.Path)
 	fmt.Fprintf(hash, "%s:", key)
 	_, _ = hash.Write(rsc.Contents)
 	fmt.Fprintln(hash)

@@ -573,7 +573,7 @@ func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry regis
 	}
 
 	return imagePoster{
-		ImageID:     oci.PublishResolvable(name, bin),
+		ImageID:     oci.PublishResolvable(name, bin, p),
 		SourceImage: bin,
 	}, nil
 }

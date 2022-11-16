@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -17,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry *registry.Registry) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
+func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry proto.Message) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
 		compute.Inputs().Indigestible("env", env),

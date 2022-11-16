@@ -27,6 +27,10 @@ func (sr staticRegistry) IsInsecure() bool {
 }
 
 func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+	if sr.r.SingleRepository {
+		return StaticName(sr, oci.ImageID{Repository: sr.r.Url}, sr.IsInsecure(), sr.keychain())
+	}
+
 	return AllocateStaticName(sr, sr.r.Url, repository, sr.keychain())
 }
 

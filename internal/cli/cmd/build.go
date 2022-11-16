@@ -191,7 +191,7 @@ func writePrebuilts(ctx context.Context, baseRepository string, results []comput
 		}, false, nil)
 
 		if v.BinaryImage != nil {
-			img := oci.PublishResolvable(target, v.BinaryImage)
+			img := oci.PublishResolvable(target, v.BinaryImage, nil)
 			outputs = append(outputs, img)
 			packages = append(packages, v.PackageRef)
 		}

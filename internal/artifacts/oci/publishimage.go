@@ -8,11 +8,17 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type TargetRewritter interface {
 	CheckRewriteLocalUse(TargetRepository) *TargetRepository
+}
+
+type ImageSource interface {
+	GetSourceLabel() string
+	GetSourcePackageRef() *schema.PackageRef
 }
 
 var ConvertImagesToEstargz = false
@@ -21,18 +27,28 @@ func PublishImage(tag compute.Computable[AllocatedRepository], image NamedImage)
 	return MakeNamedImageID(image.Description(), &publishImage{tag: tag, label: image.Description(), image: AsResolvable(image.Image())})
 }
 
-func PublishResolvable(tag compute.Computable[AllocatedRepository], image compute.Computable[ResolvableImage]) compute.Computable[ImageID] {
+func PublishResolvable(tag compute.Computable[AllocatedRepository], image compute.Computable[ResolvableImage], source ImageSource) compute.Computable[ImageID] {
 	if ConvertImagesToEstargz {
 		image = &convertToEstargz{resolvable: image}
 	}
 
-	return &publishImage{tag: tag, image: image}
+	sourceLabel := ""
+	if source != nil {
+		if lbl := source.GetSourceLabel(); lbl != "" {
+			sourceLabel = lbl
+		} else if ref := source.GetSourcePackageRef(); ref != nil {
+			sourceLabel = ref.Canonical()
+		}
+	}
+
+	return &publishImage{tag: tag, image: image, sourceLabel: sourceLabel}
 }
 
 type publishImage struct {
-	tag   compute.Computable[AllocatedRepository]
-	image compute.Computable[ResolvableImage]
-	label string // Does not affect the output.
+	tag         compute.Computable[AllocatedRepository]
+	image       compute.Computable[ResolvableImage]
+	label       string // Does not affect the output.
+	sourceLabel string // Does not affect the output.
 
 	compute.LocalScoped[ImageID]
 }
@@ -49,6 +65,9 @@ func (pi *publishImage) Action() *tasks.ActionEvent {
 	action := tasks.Action("oci.publish-image")
 	if pi.label != "" {
 		action = action.Arg("image", pi.label)
+	}
+	if pi.sourceLabel != "" {
+		action = action.Arg("source", pi.sourceLabel)
 	}
 	return action
 }

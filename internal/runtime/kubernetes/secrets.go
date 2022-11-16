@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 )
@@ -41,7 +42,7 @@ func (s *secretCollector) allocate(secrets runtime.GroundedSecrets, ref *schema.
 	}
 
 	if contents.Value != nil {
-		key := kubedef.DomainFragLike(ref.PackageName, ref.Name)
+		key := naming.DomainFragLike(ref.PackageName, ref.Name)
 		s.items.set(key, contents.Value)
 
 		return s.secretId, key, nil

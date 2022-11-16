@@ -143,7 +143,7 @@ func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations
 			if opts.publishToDocker {
 				img = docker.PublishImage(tag, image)
 			} else {
-				img = oci.PublishResolvable(tag, image)
+				img = oci.PublishResolvable(tag, image, nil)
 			}
 			images = append(images, fromImage(pkg.PackageName(), img))
 		}

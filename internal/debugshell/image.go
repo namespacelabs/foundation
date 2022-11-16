@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
@@ -32,8 +33,13 @@ func Image(ctx context.Context, env pkggraph.SealedContext, platforms []specs.Pl
 		return nil, err
 	}
 
-	return oci.PublishResolvable(tag, prepared), nil
+	return oci.PublishResolvable(tag, prepared, debugShellSource{}), nil
 }
+
+type debugShellSource struct{}
+
+func (debugShellSource) GetSourceLabel() string                  { return "debugshell.image" }
+func (debugShellSource) GetSourcePackageRef() *schema.PackageRef { return nil }
 
 type debugShellBuild struct{}
 

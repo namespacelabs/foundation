@@ -311,5 +311,5 @@ func EnsureImage(ctx context.Context, env pkggraph.SealedContext, prepared *Prep
 		return oci.ImageID{}, err
 	}
 
-	return compute.GetValue(ctx, oci.PublishResolvable(name, img))
+	return compute.GetValue(ctx, oci.PublishResolvable(name, img, prepared.Plan))
 }
