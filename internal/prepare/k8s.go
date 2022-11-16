@@ -17,14 +17,17 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareExistingK8s(env cfg.Context, contextName string, registry *registry.Registry) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
+func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry *registry.Registry) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
 		compute.Inputs().Indigestible("env", env),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
 			var confs []proto.Message
-			hostEnv := client.NewLocalHostEnv(contextName, env)
+			hostEnv := &client.HostEnv{
+				Kubeconfig: kubeConfig,
+				Context:    contextName,
+			}
 			confs = append(confs, hostEnv)
 			if registry != nil {
 				confs = append(confs, registry)
