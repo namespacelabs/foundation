@@ -7,7 +7,9 @@ package prepare
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -48,6 +50,40 @@ func newExistingCmd() *cobra.Command {
 
 		if *registryAddr == "" {
 			return fnerrors.New("--registry is required; it's the url of an existing image registry")
+		}
+
+		repo, err := name.NewRepository(*registryAddr)
+		if err != nil {
+			return fnerrors.New("invalid registry definition: %w", err)
+		}
+
+		// Docker Hub validation.
+		if repo.Registry.Name() == name.DefaultRegistry {
+			warn := console.Warnings(ctx)
+
+			fmt.Fprintf(warn, `
+  Docker Hub detected as the target registry.
+
+  When using Docker Hub, we collapse all image pushes to a single repository,
+  as Docker Hub doesn't support multi segment repositories.
+
+  Also, the configured repository must be public, as we don't forward
+  your docker credentials to the cluster.
+
+`)
+
+			if !*singleRepository {
+				return fnerrors.New("--use_single_repository is required when the target registry is Docker Hub")
+			}
+
+			if !*useDockerCredentials {
+				return fnerrors.New("--use_docker_creds is required when the target registry is Docker Hub")
+			}
+
+			parts := strings.Split(repo.RepositoryStr(), "/")
+			if len(parts) != 2 || parts[0] == "library" {
+				return fnerrors.New("when using Docker Hub, you must specify the target registry explicitly. E.g. --registry docker.io/username/namespace-images")
+			}
 		}
 
 		insecureLabel := ""
