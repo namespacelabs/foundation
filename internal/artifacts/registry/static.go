@@ -5,8 +5,10 @@
 package registry
 
 import (
+	"context"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -25,10 +27,10 @@ func (sr staticRegistry) IsInsecure() bool {
 }
 
 func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
-	return AllocateStaticName(sr, sr.r.Url, repository)
+	return AllocateStaticName(sr, sr.r.Url, repository, sr.keychain())
 }
 
-func AllocateStaticName(r Manager, url, repository string) compute.Computable[oci.AllocatedRepository] {
+func AllocateStaticName(r Manager, url, repository string, keychain oci.Keychain) compute.Computable[oci.AllocatedRepository] {
 	if strings.HasSuffix(url, "/") {
 		url += repository
 	} else {
@@ -37,11 +39,19 @@ func AllocateStaticName(r Manager, url, repository string) compute.Computable[oc
 
 	imgid := oci.ImageID{Repository: url}
 
-	return StaticName(r, imgid, r.IsInsecure(), nil)
+	return StaticName(r, imgid, r.IsInsecure(), keychain)
 }
 
 func (sr staticRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
-	return AttachStaticKeychain(sr, img, nil), nil
+	return AttachStaticKeychain(sr, img, sr.keychain()), nil
+}
+
+func (sr staticRegistry) keychain() oci.Keychain {
+	if sr.r.UseDockerAuth {
+		return defaultDockerKeychain{}
+	}
+
+	return nil
 }
 
 func AttachStaticKeychain(r Manager, img oci.ImageID, keychain oci.Keychain) oci.AllocatedRepository {
@@ -53,4 +63,10 @@ func AttachStaticKeychain(r Manager, img oci.ImageID, keychain oci.Keychain) oci
 			Keychain:         keychain,
 		},
 	}
+}
+
+type defaultDockerKeychain struct{}
+
+func (defaultDockerKeychain) Resolve(_ context.Context, res authn.Resource) (authn.Authenticator, error) {
+	return authn.DefaultKeychain.Resolve(res)
 }

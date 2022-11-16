@@ -75,7 +75,7 @@ func (r *k3dRegistry) baseUrl() string {
 }
 
 func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
-	return registry.AllocateStaticName(r, r.baseUrl(), repository)
+	return registry.AllocateStaticName(r, r.baseUrl(), repository, nil)
 }
 
 func (r *k3dRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {

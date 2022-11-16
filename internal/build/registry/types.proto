@@ -9,8 +9,9 @@ package foundation.build.registry;
 option go_package = "namespacelabs.dev/foundation/internal/build/registry";
 
 message Registry {
-    string url      = 1;
-    bool   insecure = 2;
+    string url             = 1;
+    bool   insecure        = 2;
+    bool   use_docker_auth = 3;
 }
 
 message Provider {

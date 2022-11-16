@@ -28,6 +28,7 @@ func newExistingCmd() *cobra.Command {
 	registryAddr := cmd.Flags().String("registry", "", "Which registry to use for deployed images.")
 	kubeConfig := cmd.Flags().String("kube_config", "~/.kube/config", "Which kubernetes configuration to use.")
 	insecure := cmd.Flags().Bool("insecure", false, "Set to true if the image registry is not accessible via TLS.")
+	useDockerCredentials := cmd.Flags().Bool("use_docker_creds", false, "If set to true, uses Docker's credentials when accessing the registry.")
 
 	return fncobra.With(cmd, func(ctx context.Context) error {
 		root, err := module.FindRoot(ctx, ".")
@@ -56,8 +57,9 @@ func newExistingCmd() *cobra.Command {
 		fmt.Fprintf(console.Stdout(ctx), "Setting up existing cluster configured at context %q (registry %q%s)...\n", *contextName, *registryAddr, insecureLabel)
 
 		k8sconfig := prepare.PrepareExistingK8s(env, *kubeConfig, *contextName, &registry.Registry{
-			Url:      *registryAddr,
-			Insecure: *insecure,
+			Url:           *registryAddr,
+			Insecure:      *insecure,
+			UseDockerAuth: *useDockerCredentials,
 		})
 
 		return collectPreparesAndUpdateDevhost(ctx, root, envRef, prepare.PrepareCluster(env, k8sconfig))
