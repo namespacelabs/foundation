@@ -19,7 +19,7 @@ import (
 )
 
 // Generates a "backends.fn.js" with ingress addresses for required backends.
-func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends []*schema.NodejsBuild_Backend, ingressFragments compute.Computable[[]*schema.IngressFragment], placeholder bool) ([]byte, error) {
+func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends []*schema.NodejsBuild_Backend, ingressFragments compute.Computable[[]*schema.IngressFragment], opts *BackendsOpts) ([]byte, error) {
 	var fragments []*schema.IngressFragment
 	if ingressFragments != nil {
 		var err error
@@ -32,12 +32,12 @@ func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends
 	backendsMap := map[string]*BackendDefinition{}
 
 	for _, backend := range backends {
-		if placeholder {
+		if opts != nil && opts.Placeholder {
 			backendsMap[backend.Name] = &BackendDefinition{
 				Managed: "placeholder",
 			}
 		} else {
-			backendDef, err := resolveBackend(loc, backend.Service, fragments)
+			backendDef, err := resolveBackend(loc, backend.Service, fragments, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -46,7 +46,7 @@ func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends
 		}
 	}
 
-	return GenerateBackendConfFromMap(ctx, backendsMap, placeholder)
+	return GenerateBackendConfFromMap(ctx, backendsMap, opts)
 }
 
 type BackendDefinition struct {
@@ -54,11 +54,19 @@ type BackendDefinition struct {
 	Unmanaged []string `json:"unmanaged,omitempty"`
 }
 
-func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*BackendDefinition, placeholder bool) ([]byte, error) {
+type BackendsOpts struct {
+	// If true, generate a placeholder file with a comment explaining that the
+	// actual values are resolved at build time.
+	Placeholder bool
+	// If true, the URLs in the generated file will be in-cluster addresses rather than from ingress.
+	UseInClusterAddresses bool
+}
+
+func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*BackendDefinition, opts *BackendsOpts) ([]byte, error) {
 	var b bytes.Buffer
 
 	fmt.Fprintln(&b, "// This is an automatically generated file.")
-	if placeholder {
+	if opts != nil && opts.Placeholder {
 		fmt.Fprintln(&b, "//")
 		fmt.Fprintln(&b, "// This placeholder file exists as a convenience. The actual values are")
 		fmt.Fprintln(&b, "// resolved at build time, when the build is bound to an environment")
@@ -88,7 +96,7 @@ func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*Backen
 	return b.Bytes(), nil
 }
 
-func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragments []*schema.IngressFragment) (*BackendDefinition, error) {
+func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragments []*schema.IngressFragment, opts *BackendsOpts) (*BackendDefinition, error) {
 	var matching []*schema.IngressFragment
 
 	for _, fragment := range fragments {
@@ -120,17 +128,21 @@ func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragme
 
 	bd := &BackendDefinition{}
 	for _, fragment := range matching {
-		d := fragment.Domain
-		if d.Managed == schema.Domain_LOCAL_MANAGED {
-			bd.Managed = fmt.Sprintf("http://%s:%d", d.Fqdn, runtime.LocalIngressPort)
-		} else if d.Managed == schema.Domain_CLOUD_MANAGED || d.Managed == schema.Domain_CLOUD_TERMINATION {
-			if d.TlsFrontend {
-				bd.Managed = fmt.Sprintf("https://%s", d.Fqdn)
-			} else {
-				bd.Managed = fmt.Sprintf("http://%s", d.Fqdn)
-			}
+		if opts != nil && opts.UseInClusterAddresses {
+			bd.Managed = fmt.Sprintf("http://%s:%d", fragment.Endpoint.AllocatedName, fragment.Endpoint.Port.ContainerPort)
 		} else {
-			bd.Unmanaged = append(bd.Unmanaged, d.Fqdn)
+			d := fragment.Domain
+			if d.Managed == schema.Domain_LOCAL_MANAGED {
+				bd.Managed = fmt.Sprintf("http://%s:%d", d.Fqdn, runtime.LocalIngressPort)
+			} else if d.Managed == schema.Domain_CLOUD_MANAGED || d.Managed == schema.Domain_CLOUD_TERMINATION {
+				if d.TlsFrontend {
+					bd.Managed = fmt.Sprintf("https://%s", d.Fqdn)
+				} else {
+					bd.Managed = fmt.Sprintf("http://%s", d.Fqdn)
+				}
+			} else {
+				bd.Unmanaged = append(bd.Unmanaged, d.Fqdn)
+			}
 		}
 	}
 	return bd, nil

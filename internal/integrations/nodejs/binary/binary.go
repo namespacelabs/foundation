@@ -22,9 +22,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/foundation/schema"
 )
 
 const (
@@ -72,7 +74,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	}
 
 	var out llb.State
-	if bnj.isDevBuild {
+	if opaque.UseDevBuild(bnj.env) {
 		out = devImage
 	} else {
 		prodCfg := bnj.config.Prod
@@ -119,7 +121,8 @@ func maybeGenerateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJ
 
 	// XXX replace with general purpose `genrule` layer.
 	if _, err := fs.Stat(bnj.loc.Module.ReadOnlyFS(), bnj.loc.Rel(backendsConfigFn)); os.IsNotExist(err) {
-		bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, true /* placeholder */)
+		bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments,
+			&BackendsOpts{Placeholder: true})
 		if err != nil {
 			return llb.State{}, err
 		}
@@ -130,7 +133,8 @@ func maybeGenerateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJ
 `, backendsConfigFn, bytes)
 	}
 
-	bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments, false /* placeholder */)
+	bytes, err := generateBackendsConfig(ctx, bnj.loc, bnj.config.InternalDoNotUseBackend, bnj.assets.IngressFragments,
+		&BackendsOpts{Placeholder: false, UseInClusterAddresses: bnj.env.Purpose == schema.Environment_TESTING})
 	if err != nil {
 		return llb.State{}, err
 	}

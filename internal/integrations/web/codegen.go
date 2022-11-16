@@ -154,7 +154,7 @@ func generateBackendConf(ctx context.Context, loc pkggraph.Location, backend *Op
 		backends[b.InstanceName] = backend
 	}
 
-	bytes, err := binary.GenerateBackendConfFromMap(ctx, backends, placeholder)
+	bytes, err := binary.GenerateBackendConfFromMap(ctx, backends, &binary.BackendsOpts{Placeholder: placeholder})
 	if err != nil {
 		return nil, err
 	}

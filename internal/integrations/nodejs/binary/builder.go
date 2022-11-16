@@ -25,20 +25,20 @@ func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.Nodejs
 	}
 
 	return &buildNodeJS{
-		loc:        loc.Module.MakeLocation(loc.Rel(relPath)),
-		config:     config,
-		assets:     assets,
-		isDevBuild: opaque.UseDevBuild(env.Environment()),
-		isFocus:    isFocus,
+		loc:     loc.Module.MakeLocation(loc.Rel(relPath)),
+		config:  config,
+		assets:  assets,
+		env:     env.Environment(),
+		isFocus: isFocus,
 	}, nil
 }
 
 type buildNodeJS struct {
-	loc        pkggraph.Location
-	config     *schema.NodejsBuild
-	assets     assets.AvailableBuildAssets
-	isDevBuild bool
-	isFocus    bool
+	loc     pkggraph.Location
+	config  *schema.NodejsBuild
+	assets  assets.AvailableBuildAssets
+	env     *schema.Environment
+	isFocus bool
 }
 
 func (buildNodeJS) PlatformIndependent() bool { return false }
