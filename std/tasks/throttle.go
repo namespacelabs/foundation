@@ -35,8 +35,6 @@ func computeDefaultConfig() []*ThrottleConfiguration {
 	confs := []*ThrottleConfiguration{
 		{Labels: map[string]string{"action": "lowlevel.invocation"}, Capacity: 3},
 		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: 3},
-		{Labels: map[string]string{"action": "vcluster.create"}, Capacity: 2},
-		{Labels: map[string]string{"action": "vcluster.access"}, Capacity: 2},
 	}
 
 	if !environment.IsRunningInCI() {
