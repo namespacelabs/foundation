@@ -191,6 +191,7 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 
 			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 			if err != nil {
+				fmt.Fprintf(console.Debug(ctx), "failed to dial %s:%d: %v\n", s.Name, port.Port, err)
 				// Service not ready.
 				return false, nil
 			}
