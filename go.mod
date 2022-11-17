@@ -66,7 +66,7 @@ require (
 	github.com/maruel/panicparse/v2 v2.3.0
 	github.com/mattn/go-zglob v0.0.3
 	github.com/miekg/dns v1.1.50
-	github.com/moby/buildkit v0.10.4
+	github.com/moby/buildkit v0.10.6
 	github.com/morikuni/aec v1.0.0
 	github.com/muesli/cancelreader v0.2.2
 	github.com/muesli/reflow v0.3.0

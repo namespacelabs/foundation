@@ -30,7 +30,7 @@ func WriteImage(ctx context.Context, img v1.Image, ref name.Tag, ensureTag bool)
 		return err
 	}
 
-	return tasks.Action("docker.image-load").Arg("ref", ref).Arg("digest", digest).Arg("config", config).Run(ctx, func(ctx context.Context) error {
+	return tasks.Action("docker.image-load").Arg("ref", ref.String()).Arg("digest", digest).Arg("config", config).Run(ctx, func(ctx context.Context) error {
 		return checkWriteImage(ctx, img, config, ref, ensureTag)
 	})
 }
