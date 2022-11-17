@@ -14,7 +14,7 @@ import (
 	"text/template"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v45/github"
+	"github.com/google/go-github/v48/github"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
