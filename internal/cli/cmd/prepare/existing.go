@@ -12,12 +12,12 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/build/registry"
-	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -34,28 +34,18 @@ func newExistingCmd() *cobra.Command {
 	useDockerCredentials := cmd.Flags().Bool("use_docker_creds", false, "If set to true, uses Docker's credentials when accessing the registry.")
 	singleRepository := cmd.Flags().Bool("use_single_repository", false, "If set to true, collapse all images onto a single repository under the configured registry (rather than a repository per image).")
 
-	return fncobra.With(cmd, func(ctx context.Context) error {
-		root, err := module.FindRoot(ctx, ".")
-		if err != nil {
-			return err
-		}
-
-		env, err := cfg.LoadContext(root, envRef)
-		if err != nil {
-			return err
-		}
-
+	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error) {
 		if *contextName == "" {
-			return fnerrors.New("--context is required; it's the name of an existing kubernetes context")
+			return nil, fnerrors.New("--context is required; it's the name of an existing kubernetes context")
 		}
 
 		if *registryAddr == "" {
-			return fnerrors.New("--registry is required; it's the url of an existing image registry")
+			return nil, fnerrors.New("--registry is required; it's the url of an existing image registry")
 		}
 
 		repo, err := name.NewRepository(*registryAddr)
 		if err != nil {
-			return fnerrors.New("invalid registry definition: %w", err)
+			return nil, fnerrors.New("invalid registry definition: %w", err)
 		}
 
 		// Docker Hub validation.
@@ -74,26 +64,26 @@ func newExistingCmd() *cobra.Command {
 `)
 
 			if !*singleRepository {
-				return fnerrors.New("--use_single_repository is required when the target registry is Docker Hub")
+				return nil, fnerrors.New("--use_single_repository is required when the target registry is Docker Hub")
 			}
 
 			if !*useDockerCredentials {
-				return fnerrors.New("--use_docker_creds is required when the target registry is Docker Hub")
+				return nil, fnerrors.New("--use_docker_creds is required when the target registry is Docker Hub")
 			}
 
 			parts := strings.Split(repo.RepositoryStr(), "/")
 			if len(parts) != 2 || parts[0] == "library" {
-				return fnerrors.New("when using Docker Hub, you must specify the target registry explicitly. E.g. --registry docker.io/username/namespace-images")
+				return nil, fnerrors.New("when using Docker Hub, you must specify the target registry explicitly. E.g. --registry docker.io/username/namespace-images")
 			}
 		}
 
 		cfg, err := client.LoadExistingConfiguration(*kubeConfig, *contextName)
 		if err != nil {
-			return fnerrors.New("failed to load existing configuration: %w", err)
+			return nil, fnerrors.New("failed to load existing configuration: %w", err)
 		}
 
 		if _, err := cfg.ClientConfig(); err != nil {
-			return fnerrors.New("failed to load existing configuration from %q: %w (you can change which kubeconfig is used via --kube_config)", *kubeConfig, err)
+			return nil, fnerrors.New("failed to load existing configuration from %q: %w (you can change which kubeconfig is used via --kube_config)", *kubeConfig, err)
 		}
 
 		insecureLabel := ""
@@ -109,6 +99,8 @@ func newExistingCmd() *cobra.Command {
 			SingleRepository: *singleRepository,
 		})
 
-		return collectPreparesAndUpdateDevhost(ctx, root, envRef, prepare.PrepareCluster(env, k8sconfig))
+		return prepare.PrepareCluster(env, k8sconfig), nil
 	})
+
+	return cmd
 }

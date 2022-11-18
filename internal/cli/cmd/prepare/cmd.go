@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
@@ -65,26 +66,47 @@ func downloadPrebuilts(env cfg.Context) compute.Computable[[]oci.ResolvableImage
 	return prepare.DownloadPrebuilts(env, prebuilts)
 }
 
-func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, envName string, prepared compute.Computable[*schema.DevHost_ConfigureEnvironment]) error {
-	env, err := cfg.LoadContext(root, "dev")
-	if err != nil {
-		return err
+func runPrepare(prepare func(context.Context, cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error)) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		return fncobra.RunE(func(ctx context.Context, args []string) error {
+			root, err := module.FindRoot(ctx, ".")
+			if err != nil {
+				return err
+			}
+
+			env, err := cfg.LoadContext(root, envRef)
+			if err != nil {
+				return err
+			}
+
+			prepared, err := prepare(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			if err := collectPreparesAndUpdateDevhost(ctx, root, env, prepared); err != nil {
+				return err
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "\n%s\n", successMessage(env, cmd))
+			return nil
+		})(cmd, args)
 	}
+}
 
-	stdout := console.Stdout(ctx)
-
+func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, env cfg.Context, prepared compute.Computable[*schema.DevHost_ConfigureEnvironment]) error {
 	x := compute.Map(
 		tasks.Action("prepare"),
 		compute.Inputs().
 			Indigestible("root", root).
-			Str("env", envName).
+			Str("env", env.Environment().Name).
 			Computable("prebuilts", downloadPrebuilts(env)).
 			Computable("prepared", prepared),
 		compute.Output{NotCacheable: true}, func(ctx context.Context, r compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
 			results := compute.MustGetDepValue(r, prepared, "prepared")
 
 			prepared := protos.Clone(results)
-			prepared.Name = envName
+			prepared.Name = env.Environment().Name
 
 			updateCount, err := devHostUpdates(ctx, root, prepared)
 			if err != nil {
@@ -92,7 +114,7 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, en
 			}
 
 			if updateCount == 0 {
-				fmt.Fprintln(stdout, "Configuration is up to date, nothing to do.")
+				fmt.Fprintln(console.Stdout(ctx), "Configuration is up to date, nothing to do.")
 				return nil, nil
 			}
 
@@ -107,15 +129,46 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, en
 		return err
 	}
 
-	var b strings.Builder
-	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("🎉 You successfully configured environment %q for workspace %s!\n", envName, root.ModuleName()))
-	b.WriteString("You can find our documentation at https://namespace.so/docs.")
-
-	fmt.Fprintln(stdout, b.String())
-
 	return nil
+}
 
+func successMessage(env cfg.Context, cmd *cobra.Command) string {
+	var b strings.Builder
+
+	var purpose string
+	switch env.Environment().Purpose {
+	case schema.Environment_DEVELOPMENT:
+		purpose = "development"
+	case schema.Environment_PRODUCTION:
+		purpose = "production"
+	case schema.Environment_TESTING:
+		purpose = "testing"
+	}
+
+	parts := strings.SplitN(cmd.Use, " ", 2)
+	// Only consider the command (ignore flags from use)
+	switch parts[0] {
+	case "local":
+		purpose = fmt.Sprintf("local %s", purpose)
+	case "eks":
+		purpose = fmt.Sprintf("AWS EKS %s", purpose)
+	case "new-cluster":
+		purpose = fmt.Sprintf("Namespace Cloud %s", purpose)
+	case "existing":
+		purpose = fmt.Sprintf("%s using your existing environment", purpose)
+	}
+
+	b.WriteString(fmt.Sprintf("🎉 %q is now configured for %s.\n\n", env.Workspace().ModuleName(), purpose))
+
+	var envParam string
+	if env.Environment().Name != "dev" {
+		envParam = fmt.Sprintf(" --env=%s", env.Environment().Name)
+	}
+
+	b.WriteString(fmt.Sprintf("You can now run servers using `ns dev%s`, tests using `ns test%s`, and more.\n", envParam, envParam))
+	b.WriteString("Find out more at https://namespace.so/docs.")
+
+	return b.String()
 }
 
 func devHostUpdates(ctx context.Context, root *parsing.Root, confs ...*schema.DevHost_ConfigureEnvironment) (int, error) {

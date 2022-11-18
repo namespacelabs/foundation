@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/parsing/module"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -24,18 +24,8 @@ func newNewClusterCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
 
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		root, err := module.FindRoot(ctx, ".")
-		if err != nil {
-			return err
-		}
-
-		env, err := cfg.LoadContext(root, envRef)
-		if err != nil {
-			return err
-		}
-
-		return collectPreparesAndUpdateDevhost(ctx, root, envRef, prepare.PrepareCluster(env, prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral)))
+	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error) {
+		return prepare.PrepareCluster(env, prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral)), nil
 	})
 
 	return cmd
