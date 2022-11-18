@@ -93,9 +93,8 @@ func renderFocusedEndpointsText(out io.Writer, style colors.Style, services []*r
 	}
 
 	if hasNotManagedDomains {
-		fmt.Fprintf(out, "\n %s\n     %s\n",
-			style.Comment.Apply("(*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace."),
-			style.Comment.Apply("See https://docs.namespace.so/reference/managed-domains/ for more details."))
+		fmt.Fprintf(out, "\n %s\n",
+			style.Comment.Apply("(*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace."))
 	}
 }
 

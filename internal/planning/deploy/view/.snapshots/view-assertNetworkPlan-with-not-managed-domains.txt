@@ -5,5 +5,4 @@
     * http://web.example.com/path2
 
   (*) The ingress has been configured to support this domain name, but its DNS records are not managed by Namespace.
-      See https://docs.namespace.so/reference/managed-domains/ for more details.
 

@@ -112,7 +112,7 @@ do_install() {
 
   if ! $dry_run; then
     if command -v ns >/dev/null; then
-      echo "Check out our examples at https://docs.namespace.so/examples to get started."
+      echo "Check out our examples at https://namespace.so/docs#examples to get started."
       echo
     else
       case $SHELL in
@@ -123,7 +123,7 @@ do_install() {
 	    echo "  export NS_ROOT=\"$ns_root\""
 	    echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
             echo
-            echo "Check out our examples at https://docs.namespace.so/examples to get started."
+            echo "Check out our examples at https://namespace.so/docs#examples to get started."
             echo
 	  fi
   fi

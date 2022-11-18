@@ -52,7 +52,7 @@ func WelcomeMessage(firstRun bool) string {
 	// TODO add more content.
 	b.WriteString("We have assembled some canonical examples at https://namespacelabs.dev/examples.\n")
 	b.WriteString("Tell us what you think on https://community.namespace.so/discord/.\n")
-	b.WriteString("Our full documentation is located at https://docs.namespace.so.\n")
+	b.WriteString("Our full documentation is located at https://namespace.so/docs.\n")
 
 	if firstRun {
 		b.WriteString("To see this message again at a later point, just run `ns --help`.\n")

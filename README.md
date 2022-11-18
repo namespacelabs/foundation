@@ -5,13 +5,13 @@
 </p>
 
 <div>
- 🎬 <a href="https://docs.namespace.so/getting-started?utm_source=github"><b>Getting Started</b></a>
+ 🎬 <a href="https://namespace.so/docs/getting-started?utm_source=github"><b>Getting Started</b></a>
  <span>&nbsp;•&nbsp;</span>
- 🏗️ <a href="https://docs.namespace.so/examples?utm_source=github"><b>Examples</b></a>
+ 🏗️ <a href="https://namespace.so/docs#examples?utm_source=github"><b>Examples</b></a>
  <span>&nbsp;•&nbsp;</span>
- 🗼 <a href="https://docs.namespace.so/architecture?utm_source=github">Architecture</a>
+ 🗼 <a href="https://namespace.so/docs?utm_source=github">Documentation</a>
  <span>&nbsp;•&nbsp;</span>
- 🏛️ <a href="https://docs.namespace.so/reference?utm_source=github">Reference</a>
+ 🏛️ <a href="https://namespace.so/docs/syntax-reference?utm_source=github">Reference</a>
  <span>&nbsp;•&nbsp;</span>
  💬 <a href="https://community.namespace.so/discord?utm_source=github">Discord</a>
 </div>
@@ -56,7 +56,7 @@ extensible blocks -- Namespace orchestrates:
 
 ### **Getting Started**
 
-To get started follow our [getting started guide](https://docs.namespace.so/getting-started/). After
+To get started follow our [getting started guide](https://namespace.so/docs/getting-started/). After
 installing `ns`, explore some of the [examples](https://namespacelabs.dev/examples) our team put
 together.
 

@@ -57,7 +57,6 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 )
 
-// Declare a new server, see also https://docs.namespace.so/concepts/server
 server: fn.#Server & {
 	// Each server has a unique ID, which persists package moves. This allows Namespace
 	// to coordinate production changes during code refactors.

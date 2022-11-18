@@ -26,7 +26,6 @@ func CreateTestScaffold(ctx context.Context, fsfs fnfs.ReadWriteFS, loc fnfs.Loc
 var testTmpl = template.Must(template.New(testFileName).Parse(`
 import "namespacelabs.dev/foundation/std/fn"
 
-// Declare a new test, see also https://docs.namespace.so/concepts/test
 test: fn.#Test & {
 	name: "e2etest"
 
