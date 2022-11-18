@@ -102,6 +102,10 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 
+			if len(testRefs) == 0 {
+				return noTestsError(ctx, allTests, locs)
+			}
+
 			out := console.TypedOutput(ctx, "test-results", common.CatOutputUs)
 			style := colors.Ctx(ctx)
 
@@ -338,4 +342,28 @@ func printLog(out io.Writer, log *storage.TestResultBundle_InlineLog) {
 	for _, line := range bytes.Split(log.Output, []byte("\n")) {
 		fmt.Fprintf(out, "%s:%s: %s\n", log.PackageName, log.ContainerName, line)
 	}
+}
+
+func noTestsError(ctx context.Context, allTests bool, locs fncobra.Locations) error {
+	where := "in this workspace"
+	if locs.UserSpecified {
+		where = "in the specified package"
+		if len(locs.Locs) > 1 {
+			where += "s"
+		}
+	}
+
+	if !allTests {
+		return fnerrors.New("No user-defined tests found %s. Try adding `--all` to include generated tests.", where)
+	}
+
+	msg := fmt.Sprintf("No servers to test found %s.", where)
+
+	if !locs.UserSpecified {
+		// `ns test --all` should pass on empy repositories.
+		fmt.Fprintln(console.Stdout(ctx), msg)
+		return nil
+	}
+
+	return fnerrors.New(msg)
 }
