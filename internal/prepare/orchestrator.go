@@ -6,8 +6,10 @@ package prepare
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/schema"
@@ -36,6 +38,8 @@ func PrepareOrchestrator(env cfg.Context, kube compute.Computable[*kubernetes.Cl
 			if err := PrepareOrchestratorInKube(ctx, config, kube); err != nil {
 				return nil, err
 			}
+
+			fmt.Fprintln(console.Stdout(ctx), "[✓] Ensure Namespace Orchestrator is running in Kubernetes.")
 
 			// The orchestrator produces no unique configuration.
 			return nil, nil

@@ -6,8 +6,10 @@ package prepare
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
@@ -28,6 +30,8 @@ func PrepareIngress(env cfg.Context, kube compute.Computable[*kubernetes.Cluster
 			if err := PrepareIngressInKube(ctx, env, kube); err != nil {
 				return nil, err
 			}
+
+			fmt.Fprintln(console.Stdout(ctx), "[✓] Ensure Kubernetes ingress controller is deployed.")
 
 			// The ingress produces no unique configuration.
 			return nil, nil

@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
@@ -34,18 +35,20 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.
 		compute.Inputs().Str("clusterName", clusterName).Indigestible("env", env),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
-			// download k3d
-			k3dbin, err := k3d.EnsureSDK(ctx, host.HostPlatform())
-			if err != nil {
-				return nil, err
-			}
-
 			dockerclient, err := docker.NewClient()
 			if err != nil {
 				return nil, err
 			}
 
 			if err := k3d.ValidateDocker(ctx, dockerclient); err != nil {
+				return nil, err
+			}
+
+			fmt.Fprintln(console.Stdout(ctx), "[✓] Validate Docker version.")
+
+			// download k3d
+			k3dbin, err := k3d.EnsureSDK(ctx, host.HostPlatform())
+			if err != nil {
 				return nil, err
 			}
 
@@ -73,6 +76,8 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.
 			if err := k3dPrepare.createOrRestartCluster(ctx, clusterName, registryAddr); err != nil {
 				return nil, err
 			}
+
+			fmt.Fprintln(console.Stdout(ctx), "[✓] Ensure local Kubernetes cluster is running (k3s in Docker).")
 
 			return c, nil
 		})
