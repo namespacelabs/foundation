@@ -7,6 +7,7 @@ package prepare
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -70,6 +71,8 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, en
 		return err
 	}
 
+	stdout := console.Stdout(ctx)
+
 	x := compute.Map(
 		tasks.Action("prepare"),
 		compute.Inputs().
@@ -82,8 +85,6 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, en
 
 			prepared := protos.Clone(results)
 			prepared.Name = envName
-
-			stdout := console.Stdout(ctx)
 
 			updateCount, err := devHostUpdates(ctx, root, prepared)
 			if err != nil {
@@ -105,6 +106,13 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, en
 	if _, err := compute.GetValue(ctx, x); err != nil {
 		return err
 	}
+
+	var b strings.Builder
+	b.WriteString("\n")
+	b.WriteString(fmt.Sprintf("🎉 You successfully configured environment %q for workspace %s!\n", envName, root.ModuleName()))
+	b.WriteString("You can find our documentation at https://namespace.so/docs.")
+
+	fmt.Fprintln(stdout, b.String())
 
 	return nil
 
