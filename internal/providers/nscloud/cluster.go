@@ -283,13 +283,13 @@ func DestroyCluster(ctx context.Context, clusterId string) error {
 	}, nil)
 }
 
-func GetCluster(ctx context.Context, clusterId string) (*KubernetesCluster, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*KubernetesCluster, error) {
+func GetCluster(ctx context.Context, clusterId string) (*GetKubernetesClusterResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
 		if err := getKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
-		return response.Cluster, nil
+		return &response, nil
 	})
 }
 
@@ -339,7 +339,7 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 		return nil, err
 	}
 
-	return d.ensureCluster(ctx, cfg, cluster)
+	return d.ensureCluster(ctx, cfg, cluster.Cluster)
 }
 
 func (d runtimeClass) EnsureCluster(ctx context.Context, srv cfg.Configuration, purpose string) (runtime.Cluster, error) {

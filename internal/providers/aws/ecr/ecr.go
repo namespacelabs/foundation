@@ -60,7 +60,7 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 		repository:     repository,
 	}
 
-	return compute.Map(tasks.Action("ecr.allocate-tag").Category("aws"),
+	return compute.Map(tasks.Action("ecr.allocate-repository").Category("aws"),
 		compute.Inputs().Str("repository", repository).Computable("repo", repo),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedRepository, error) {

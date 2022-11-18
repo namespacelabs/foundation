@@ -158,7 +158,11 @@ func newPortForwardCmd() *cobra.Command {
 
 func selectCluster(ctx context.Context, args []string) (*nscloud.KubernetesCluster, error) {
 	if len(args) > 0 {
-		return nscloud.GetCluster(ctx, args[0])
+		response, err := nscloud.GetCluster(ctx, args[0])
+		if err != nil {
+			return nil, err
+		}
+		return response.Cluster, nil
 	}
 
 	clusters, err := nscloud.ListClusters(ctx)

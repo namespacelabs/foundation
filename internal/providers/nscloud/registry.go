@@ -22,36 +22,61 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var DefaultKeychain oci.Keychain = defaultKeychain{}
 
 const loginEndpoint = "login.namespace.so/token"
 
-type nscloudRegistry struct{}
+type nscloudRegistry struct{ clusterID string }
 
 func RegisterRegistry() {
 	registry.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
-		return nscloudRegistry{}, nil
+		conf, ok := clusterConfigType.CheckGet(ck)
+		if !ok || conf.ClusterId == "" {
+			return nil, fnerrors.InternalError("missing configuration")
+		}
+
+		return nscloudRegistry{conf.ClusterId}, nil
 	})
 
 	oci.RegisterDomainKeychain(registryAddr, DefaultKeychain, oci.Keychain_UseAlways)
 }
 
-func (nscloudRegistry) IsInsecure() bool { return false }
+func (r nscloudRegistry) IsInsecure() bool { return false }
 
 func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
-	url := registryAddr
-	if strings.HasSuffix(url, "/") {
-		url += repository
-	} else {
-		url += "/" + repository
-	}
+	return compute.Map(tasks.Action("nscloud.allocate-repository").Arg("repository", repository),
+		compute.Inputs().Str("repository", repository).Str("clusterID", r.clusterID),
+		compute.Output{},
+		func(ctx context.Context, _ compute.Resolved) (oci.AllocatedRepository, error) {
+			cluster, err := GetCluster(ctx, r.clusterID)
+			if err != nil {
+				return oci.AllocatedRepository{}, err
+			}
 
-	imgid := oci.ImageID{Repository: url}
+			url := cluster.Registry.EndpointAddress
+			if url == "" {
+				return oci.AllocatedRepository{}, fnerrors.InternalError("%s: cluster is missing registry", r.clusterID)
+			}
 
-	// We need to make sure our keychain is attached to the name.
-	return registry.StaticName(r, imgid, r.IsInsecure(), defaultKeychain{})
+			if strings.HasSuffix(url, "/") {
+				url += repository
+			} else {
+				url += "/" + repository
+			}
+
+			return oci.AllocatedRepository{
+				Parent: r,
+				TargetRepository: oci.TargetRepository{
+					InsecureRegistry: r.IsInsecure(),
+					ImageID:          oci.ImageID{Repository: url},
+					// We need to make sure our keychain is attached to the name.
+					Keychain: defaultKeychain{},
+				},
+			}, nil
+		})
 }
 
 func (r nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedRepository, error) {
