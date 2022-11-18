@@ -74,7 +74,7 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 }
 
 func isServer(gvk kubeschema.GroupVersionKind, deployable *runtime.Deployable) bool {
-	if deployable != nil && deployable.GetDeployableClass() == string(schema.DeployableClass_ONESHOT) {
+	if deployable.IsOneShot() {
 		return false
 	}
 

@@ -40,6 +40,7 @@ message Event {
         PLANNED       = 1;
         COMMITTED     = 2;
         WAITING       = 3;
+        RUNNING       = 5;
         DONE          = 4;
     }
 

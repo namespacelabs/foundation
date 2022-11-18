@@ -249,9 +249,12 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 							if ps.Phase == v1.PodFailed || ps.Phase == v1.PodSucceeded {
 								// If the pod is finished, then don't wait further.
 								done = true
+							} else if ps.Phase == v1.PodRunning && spec.Deployable.IsOneShot() {
+								ev.Ready = orchestration.Event_READY
+								ev.Stage = orchestration.Event_RUNNING
 							} else {
-								cond, isDone := kobs.MatchPodCondition(ps, v1.PodReady)
-								if isDone {
+								cond, isReady := kobs.MatchPodCondition(ps, v1.PodReady)
+								if isReady {
 									if !cond.LastTransitionTime.IsZero() {
 										ev.Timestamp = timestamppb.New(cond.LastTransitionTime.Time)
 									}

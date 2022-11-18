@@ -167,6 +167,8 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 				if d := blk.Committed.Sub(blk.Start); d >= 1*time.Millisecond {
 					took += fmt.Sprintf(" (waited %v)", timefmt.Format(d))
 				}
+			} else if blk.Stage == orchestration.Event_RUNNING {
+				took = "Running"
 			} else {
 				took = mergeWaitStatus(blk.WaitStatus)
 				if took == "" {
