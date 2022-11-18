@@ -37,7 +37,7 @@ func PrepareOrchestrator(env cfg.Context, kube compute.Computable[*kubernetes.Cl
 				return nil, err
 			}
 
-			// The ingress produces no unique configuration.
+			// The orchestrator produces no unique configuration.
 			return nil, nil
 		})
 }
