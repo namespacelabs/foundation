@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -114,6 +115,10 @@ func cacheAndReturn(ctx context.Context, d ImageID, opts ResolveOpts) (Image, er
 	fetched, err := fetchRemoteImage(ctx, d, opts)
 	if err != nil {
 		return nil, err
+	}
+
+	if cache.IsDisabled(compute.Cache(ctx)) {
+		return fetched, nil
 	}
 
 	// We force a write, to ensure that all remote bytes have been loaded before

@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -86,6 +87,7 @@ func NewDoctorCmd() *cobra.Command {
 
 	testFilter := cmd.Flags().StringSlice("tests", nil, "If set, filters which tests are run.")
 	uploadResults := cmd.Flags().Bool("upload_results", !environment.IsRunningInCI(), "If set, anonymized results are pushed to the Namespace team.")
+	envRef := cmd.Flags().String("env", "dev", "The environment to test.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		var errCount int
@@ -202,7 +204,7 @@ func NewDoctorCmd() *cobra.Command {
 				buildkitI := errorOr[DoctorResults_BuildkitResults]{err: fnerrors.New("no workspace")}
 				if workspaceI.err == nil {
 					buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (DoctorResults_BuildkitResults, error) {
-						env, err := cfg.LoadContext(workspaceI.v, "dev")
+						env, err := cfg.LoadContext(workspaceI.v, *envRef)
 						if err != nil {
 							return DoctorResults_BuildkitResults{}, err
 						}
@@ -237,7 +239,7 @@ func NewDoctorCmd() *cobra.Command {
 				if workspaceI.err == nil {
 					kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (DoctorResults_KubeResults, error) {
 						var r DoctorResults_KubeResults
-						env, err := cfg.LoadContext(workspaceI.v, "dev")
+						env, err := cfg.LoadContext(workspaceI.v, *envRef)
 						if err != nil {
 							return r, err
 						}
@@ -306,7 +308,7 @@ func runDiagnostic[V any](ctx context.Context, title string, f func(ctx context.
 	res := errorOr[V]{}
 	// We have to run in a separate orchestrator so that failures in one diagnostic
 	// do not prevent other diagnostics from proceeding.
-	res.err = compute.Do(ctx, func(ctx context.Context) error {
+	res.err = compute.DoWithCache(ctx, cache.NoCache, func(ctx context.Context) error {
 		v, err := tasks.Return(ctx, tasks.Action(title), func(ctx context.Context) (V, error) {
 			timedCtx, cancel := context.WithTimeout(ctx, checkTimeLimit)
 			defer cancel()

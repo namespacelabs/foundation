@@ -477,8 +477,12 @@ func Do(parent context.Context, do func(context.Context) error) error {
 		}
 	}
 
+	return DoWithCache(parent, c, do)
+}
+
+func DoWithCache(parent context.Context, cache cache.Cache, do func(context.Context) error) error {
 	g := &Orch{
-		cache:    c,
+		cache:    cache,
 		promises: map[string]*Promise[any]{},
 	}
 	ctx := AttachOrch(parent, g)
