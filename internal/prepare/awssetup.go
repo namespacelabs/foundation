@@ -6,8 +6,10 @@ package prepare
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -27,6 +29,9 @@ func PrepareAWSProfile(profileName string) compute.Computable[*schema.DevHost_Co
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Fprintf(console.Stdout(ctx), "[✓] Configure Namespace to use AWS profile %q.\n", profileName)
+
 			return c, nil
 		})
 }
