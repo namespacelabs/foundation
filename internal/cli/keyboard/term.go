@@ -150,7 +150,7 @@ type internalState struct {
 }
 
 func handleEvents(ctx context.Context, obs observers.StackSession, handlers []Handler, keych chan tea.KeyMsg) {
-	control := make(chan Control)
+	control := make(chan Control, 100) // TODO NSL-383 this is a mitigation to avoid deadlocks. handleEvents needs a redesign to eliminate them altogether.
 	state := make([]*internalState, len(handlers))
 
 	var goroutines sync.WaitGroup
