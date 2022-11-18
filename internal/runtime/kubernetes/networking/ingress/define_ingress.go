@@ -245,7 +245,7 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 			}
 
 			if p.GrpcService == "" && !p.AllServices {
-				return nil, nil, fnerrors.InternalError("%s")
+				return nil, nil, fnerrors.InternalError("%s: grpc service name is required", p.Service)
 			}
 
 			backend := applynetworkingv1.IngressBackend().
