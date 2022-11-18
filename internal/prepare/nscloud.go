@@ -12,6 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/schema"
@@ -20,30 +22,52 @@ import (
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
 
-func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral bool, features []string) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
+func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral, withBuild bool) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.nscloud.new-cluster"),
-		compute.Inputs().Proto("env", env.Environment()).Str("machineType", machineType).Strs("features", features).Indigestible("ephemeral", ephemeral),
+		compute.Inputs().Proto("env", env.Environment()).Str("machineType", machineType).Bool("withBuild", withBuild).Indigestible("ephemeral", ephemeral),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
-			cfg, err := api.CreateAndWaitCluster(ctx, machineType, ephemeral, env.Environment().Name, features)
-			if err != nil {
-				return nil, err
-			}
+			eg := executor.New(ctx, "prepare-new-cluster")
 
-			var messages []proto.Message
-			messages = append(messages, &configuration.Cluster{ClusterId: cfg.ClusterId})
+			var mainMessages, buildMessages []proto.Message
 
-			if cfg.BuildCluster != nil {
-				messages = append(messages, &buildkit.Overrides{
-					HostedBuildCluster: &buildkit.HostedBuildCluster{
-						ClusterId:  cfg.BuildCluster.Colocated.ClusterId,
-						TargetPort: cfg.BuildCluster.Colocated.TargetPort,
-					},
+			eg.Go(func(ctx context.Context) error {
+				cfg, err := api.CreateAndWaitCluster(ctx, machineType, ephemeral, env.Environment().Name, nil)
+				if err != nil {
+					return err
+				}
+				mainMessages = append(mainMessages, &configuration.Cluster{ClusterId: cfg.ClusterId})
+				return nil
+			})
+
+			if withBuild {
+				eg.Go(func(ctx context.Context) error {
+					cfg, err := api.CreateAndWaitCluster(ctx, "16x32", false, "build machine", []string{"BUILD_CLUSTER"})
+					if err != nil {
+						return err
+					}
+
+					if cfg.BuildCluster != nil {
+						buildMessages = append(buildMessages, &buildkit.Overrides{
+							HostedBuildCluster: &buildkit.HostedBuildCluster{
+								ClusterId:  cfg.BuildCluster.Colocated.ClusterId,
+								TargetPort: cfg.BuildCluster.Colocated.TargetPort,
+							},
+						})
+					} else {
+						return fnerrors.InternalError("expected build machine")
+					}
+
+					return nil
 				})
 			}
 
-			c, err := devhost.MakeConfiguration(messages...)
+			if err := eg.Wait(); err != nil {
+				return nil, err
+			}
+
+			c, err := devhost.MakeConfiguration(append(mainMessages, buildMessages...)...)
 			if err != nil {
 				return nil, err
 			}
