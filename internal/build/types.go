@@ -67,9 +67,9 @@ type BuildTarget interface {
 type Configuration interface {
 	BuildTarget
 
-	// If the builder has the ability to produce a buildkit, that's preferred. A
-	// reason to do this is for instance when we want to merge multiple images
-	// together, and want to defer the merge to buildkit.
+	// If the builder has the ability to produce with buildkit, that's
+	// preferred. A reason to do this is for instance when we want to merge
+	// multiple images together, and want to defer the merge to buildkit.
 	PrefersBuildkit() bool
 	Workspace() Workspace
 }

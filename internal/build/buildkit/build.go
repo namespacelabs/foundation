@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 
@@ -28,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -45,11 +47,11 @@ const SSHAgentProviderID = "default"
 type GatewayClient struct {
 	*client.Client
 
-	conf *Overrides
+	buildkitInDocker bool
 }
 
 func (cli *GatewayClient) UsesDocker() bool {
-	return cli.conf.GetBuildkitAddr() == ""
+	return cli.buildkitInDocker
 }
 
 type clientInstance struct {
@@ -63,7 +65,7 @@ var OverridesConfigType = cfg.DefineConfigType[*Overrides]()
 func connectToClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*GatewayClient] {
 	conf, _ := OverridesConfigType.CheckGetForPlatform(config, targetPlatform)
 
-	if conf.BuildkitAddr == "" && conf.ContainerName == "" {
+	if conf.BuildkitAddr == "" && conf.HostedBuildCluster == nil && conf.ContainerName == "" {
 		conf.ContainerName = DefaultContainerName
 	}
 
@@ -81,12 +83,40 @@ func (c *clientInstance) Inputs() *compute.In {
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*GatewayClient, error) {
-	conf, err := setupBuildkit(ctx, c.conf)
+	if c.conf.BuildkitAddr != "" {
+		cli, err := client.New(ctx, c.conf.BuildkitAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		return &GatewayClient{Client: cli}, nil
+	}
+
+	if c.conf.HostedBuildCluster != nil {
+		fmt.Fprintf(console.Debug(ctx), "buildkit: connecting to nscloud %s/%d\n",
+			c.conf.HostedBuildCluster.ClusterId, c.conf.HostedBuildCluster.TargetPort)
+
+		cluster, err := api.GetCluster(ctx, c.conf.HostedBuildCluster.ClusterId)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
+		}
+
+		cli, err := client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return api.DialPort(ctx, cluster.Cluster, int(c.conf.HostedBuildCluster.TargetPort))
+		}))
+		if err != nil {
+			return nil, err
+		}
+
+		return &GatewayClient{Client: cli}, nil
+	}
+
+	localAddr, err := EnsureBuildkitd(ctx, c.conf.ContainerName)
 	if err != nil {
 		return nil, err
 	}
 
-	cli, err := client.New(ctx, conf.Addr)
+	cli, err := client.New(ctx, localAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +129,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	// 	return cli.Close()
 	// })
 
-	return &GatewayClient{Client: cli, conf: c.conf}, nil
+	return &GatewayClient{Client: cli, buildkitInDocker: true}, nil
 }
 
 type FrontendRequest struct {

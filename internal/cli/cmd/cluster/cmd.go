@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/providers/nscloud"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
 func NewClusterCmd() *cobra.Command {
@@ -54,7 +54,7 @@ func newCreateCmd() *cobra.Command {
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := nscloud.CreateAndWaitCluster(ctx, *machineType, *ephemeral, "manually created", *features)
+		cluster, err := api.CreateAndWaitCluster(ctx, *machineType, *ephemeral, "manually created", *features)
 		if err != nil {
 			return err
 		}
@@ -82,7 +82,7 @@ func newListCmd() *cobra.Command {
 	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusters, err := nscloud.ListClusters(ctx)
+		clusters, err := api.ListClusters(ctx)
 		if err != nil {
 			return err
 		}
@@ -157,16 +157,16 @@ func newPortForwardCmd() *cobra.Command {
 	return cmd
 }
 
-func selectCluster(ctx context.Context, args []string) (*nscloud.KubernetesCluster, error) {
+func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
 	if len(args) > 0 {
-		response, err := nscloud.GetCluster(ctx, args[0])
+		response, err := api.GetCluster(ctx, args[0])
 		if err != nil {
 			return nil, err
 		}
 		return response.Cluster, nil
 	}
 
-	clusters, err := nscloud.ListClusters(ctx)
+	clusters, err := api.ListClusters(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -189,14 +189,14 @@ func selectCluster(ctx context.Context, args []string) (*nscloud.KubernetesClust
 	return &d, nil
 }
 
-type cluster nscloud.KubernetesCluster
+type cluster api.KubernetesCluster
 
-func (d cluster) Cluster() nscloud.KubernetesCluster { return nscloud.KubernetesCluster(d) }
-func (d cluster) Title() string                      { return d.ClusterId }
-func (d cluster) Description() string                { return formatDescription(nscloud.KubernetesCluster(d)) }
-func (d cluster) FilterValue() string                { return d.ClusterId }
+func (d cluster) Cluster() api.KubernetesCluster { return api.KubernetesCluster(d) }
+func (d cluster) Title() string                  { return d.ClusterId }
+func (d cluster) Description() string            { return formatDescription(api.KubernetesCluster(d)) }
+func (d cluster) FilterValue() string            { return d.ClusterId }
 
-func formatDescription(cluster nscloud.KubernetesCluster) string {
+func formatDescription(cluster api.KubernetesCluster) string {
 	cpu := "<unknown>"
 	ram := "<unknown>"
 
@@ -213,7 +213,7 @@ func formatDescription(cluster nscloud.KubernetesCluster) string {
 		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
 }
 
-func ssh(ctx context.Context, cluster *nscloud.KubernetesCluster, args []string) error {
+func ssh(ctx context.Context, cluster *api.KubernetesCluster, args []string) error {
 	lst, err := fnnet.ListenPort(ctx, "127.0.0.1", 0, 0)
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func ssh(ctx context.Context, cluster *nscloud.KubernetesCluster, args []string)
 	return localexec.RunInteractive(ctx, cmd)
 }
 
-func portForward(ctx context.Context, cluster *nscloud.KubernetesCluster, targetPort int) error {
+func portForward(ctx context.Context, cluster *api.KubernetesCluster, targetPort int) error {
 	lst, err := fnnet.ListenPort(ctx, "127.0.0.1", 0, targetPort)
 	if err != nil {
 		return err
@@ -282,7 +282,7 @@ func portForward(ctx context.Context, cluster *nscloud.KubernetesCluster, target
 		go func() {
 			defer conn.Close()
 
-			proxyConn, err := nscloud.DialPort(ctx, cluster, targetPort)
+			proxyConn, err := api.DialPort(ctx, cluster, targetPort)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 				return

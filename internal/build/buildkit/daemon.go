@@ -21,10 +21,10 @@ import (
 
 const DefaultContainerName = "fn-buildkitd"
 
-func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, error) {
+func EnsureBuildkitd(ctx context.Context, containerName string) (string, error) {
 	vendoredVersion, err := Version()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	var spec = install.PersistentSpec{
@@ -40,12 +40,10 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (*Instance, erro
 	}
 
 	if err := spec.Ensure(ctx, console.TypedOutput(ctx, "docker", console.CatOutputTool)); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &Instance{
-		Addr: makeAddr(spec.ContainerName),
-	}, nil
+	return makeAddr(spec.ContainerName), nil
 }
 
 func RemoveBuildkitd(ctx context.Context) error {
@@ -90,15 +88,4 @@ func waitForBuildkit(ctx context.Context, containerName string) error {
 			return err
 		}, backoff.WithContext(backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 10), ctx))
 	})
-}
-
-func setupBuildkit(ctx context.Context, conf *Overrides) (*Instance, error) {
-	if conf.BuildkitAddr != "" {
-		// XXX no version check is performed.
-		return &Instance{
-			Addr: conf.BuildkitAddr,
-		}, nil
-	}
-
-	return EnsureBuildkitd(ctx, conf.ContainerName)
 }

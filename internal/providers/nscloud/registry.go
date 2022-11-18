@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -30,6 +31,8 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 const loginEndpoint = "login.namespace.so/token"
 
 type nscloudRegistry struct{ clusterID string }
+
+const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nscloud.dev"
 
 func RegisterRegistry() {
 	registry.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
@@ -51,7 +54,7 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 		compute.Inputs().Str("repository", repository).Str("clusterID", r.clusterID),
 		compute.Output{},
 		func(ctx context.Context, _ compute.Resolved) (oci.AllocatedRepository, error) {
-			cluster, err := GetCluster(ctx, r.clusterID)
+			cluster, err := api.GetCluster(ctx, r.clusterID)
 			if err != nil {
 				return oci.AllocatedRepository{}, err
 			}
