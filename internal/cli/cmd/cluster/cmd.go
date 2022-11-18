@@ -51,9 +51,10 @@ func newCreateCmd() *cobra.Command {
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
+	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := nscloud.CreateAndWaitCluster(ctx, *machineType, *ephemeral, "manually created")
+		cluster, err := nscloud.CreateAndWaitCluster(ctx, *machineType, *ephemeral, "manually created", *features)
 		if err != nil {
 			return err
 		}

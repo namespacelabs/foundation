@@ -136,12 +136,13 @@ type CreateClusterResult struct {
 	Deadline  *time.Time
 }
 
-func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purpose string) (*KubernetesCluster, error) {
+func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purpose string, features []string) (*KubernetesCluster, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*KubernetesCluster, error) {
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         ephemeral,
 			DocumentedPurpose: purpose,
 			MachineType:       machineType,
+			Feature:           features,
 		}
 
 		if !environment.IsRunningInCI() {
@@ -193,8 +194,8 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 	})
 }
 
-func CreateAndWaitCluster(ctx context.Context, machineType string, ephemeral bool, purpose string) (*CreateClusterResult, error) {
-	cluster, err := CreateCluster(ctx, machineType, ephemeral, purpose)
+func CreateAndWaitCluster(ctx context.Context, machineType string, ephemeral bool, purpose string, features []string) (*CreateClusterResult, error) {
+	cluster, err := CreateCluster(ctx, machineType, ephemeral, purpose, features)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +349,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, srv cfg.Configuration, 
 	}
 
 	ephemeral := true
-	result, err := CreateAndWaitCluster(ctx, "", ephemeral, purpose)
+	result, err := CreateAndWaitCluster(ctx, "", ephemeral, purpose, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -492,6 +493,7 @@ type CreateKubernetesClusterRequest struct {
 	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
 	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
 	MachineType       string   `json:"machine_type,omitempty"`
+	Feature           []string `json:"feature,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {
@@ -505,17 +507,19 @@ type WaitKubernetesClusterRequest struct {
 }
 
 type CreateKubernetesClusterResponse struct {
-	Status    string             `json:"status,omitempty"`
-	ClusterId string             `json:"cluster_id,omitempty"`
-	Cluster   *KubernetesCluster `json:"cluster,omitempty"`
-	Registry  *ImageRegistry     `json:"registry,omitempty"`
-	Deadline  string             `json:"deadline,omitempty"`
+	Status       string             `json:"status,omitempty"`
+	ClusterId    string             `json:"cluster_id,omitempty"`
+	Cluster      *KubernetesCluster `json:"cluster,omitempty"`
+	Registry     *ImageRegistry     `json:"registry,omitempty"`
+	BuildCluster *BuildCluster      `json:"build_cluster,omitempty"`
+	Deadline     string             `json:"deadline,omitempty"`
 }
 
 type GetKubernetesClusterResponse struct {
-	Cluster  *KubernetesCluster `json:"cluster,omitempty"`
-	Registry *ImageRegistry     `json:"registry,omitempty"`
-	Deadline string             `json:"deadline,omitempty"`
+	Cluster      *KubernetesCluster `json:"cluster,omitempty"`
+	Registry     *ImageRegistry     `json:"registry,omitempty"`
+	BuildCluster *BuildCluster      `json:"build_cluster,omitempty"`
+	Deadline     string             `json:"deadline,omitempty"`
 }
 
 type StartCreateKubernetesClusterResponse struct {
@@ -570,4 +574,12 @@ type DestroyKubernetesClusterRequest struct {
 type LabelEntry struct {
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
+}
+
+type BuildCluster struct {
+	Colocated *BuildCluster_ColocatedPort `json:"colocated,omitempty"`
+}
+
+type BuildCluster_ColocatedPort struct {
+	TargetPort int32 `json:"target_port,omitempty"`
 }

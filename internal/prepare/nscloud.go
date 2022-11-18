@@ -18,13 +18,13 @@ import (
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
 
-func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral bool) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
+func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral bool, features []string) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
 	return compute.Map(
 		tasks.Action("prepare.nscloud.new-cluster"),
-		compute.Inputs().Proto("env", env.Environment()).Indigestible("foobar", "foobar"),
+		compute.Inputs().Proto("env", env.Environment()).Str("machineType", machineType).Strs("features", features).Indigestible("ephemeral", ephemeral),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
-			cfg, err := nscloud.CreateAndWaitCluster(ctx, machineType, ephemeral, env.Environment().Name)
+			cfg, err := nscloud.CreateAndWaitCluster(ctx, machineType, ephemeral, env.Environment().Name, features)
 			if err != nil {
 				return nil, err
 			}

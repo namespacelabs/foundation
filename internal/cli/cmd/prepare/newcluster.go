@@ -23,9 +23,10 @@ func newNewClusterCmd() *cobra.Command {
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
+	features := cmd.Flags().StringSlice("features", nil, "A set of features to create the cluster with.")
 
 	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error) {
-		return prepare.PrepareCluster(env, prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral)), nil
+		return prepare.PrepareCluster(env, prepare.PrepareNewNamespaceCluster(env, *machineType, *ephemeral, *features)), nil
 	})
 
 	return cmd
