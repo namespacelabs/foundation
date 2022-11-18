@@ -249,7 +249,8 @@ func (k3d K3D) StopNode(ctx context.Context, nodeName string) error {
 }
 
 func (k3d K3D) do(ctx context.Context, args ...string) error {
-	return k3d.doWithStdoutStderr(ctx, console.Output(ctx, "k3d"), console.Output(ctx, "k3d"), args...)
+	// Pipe stdout to a named debug as we typically only care about errors from k3d invocations.
+	return k3d.doWithStdoutStderr(ctx, console.NamedDebug(ctx, "k3d"), console.Output(ctx, "k3d"), args...)
 }
 
 func (k3d K3D) doWithStdoutStderr(ctx context.Context, stdout io.Writer, stderr io.Writer, args ...string) error {
