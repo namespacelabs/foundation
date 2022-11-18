@@ -23,4 +23,6 @@ message Test {
     // Integration that needs to be applied to this test. May be nil.
     // Shouldn't be used outside of workspace.FinalizePackage.
     Integration integration = 5;
+
+    repeated string tag = 7;
 }

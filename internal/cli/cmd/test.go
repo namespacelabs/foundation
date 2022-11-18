@@ -40,7 +40,7 @@ func NewTestCmd() *cobra.Command {
 		env                     cfg.Context
 		locs                    fncobra.Locations
 		testOpts                testing.TestOpts
-		includeServers          bool
+		allTests                bool
 		parallel                bool
 		parallelWork            bool = true
 		forceOutputProgress     bool
@@ -59,7 +59,7 @@ func NewTestCmd() *cobra.Command {
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
 			flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
-			flags.BoolVar(&includeServers, "include_servers", includeServers, "If true, also include generated server startup-tests.")
+			flags.BoolVar(&allTests, "all", allTests, "If true, runs all tests regardless of tag (e.g. it will also include generated tests).")
 			flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
 			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
 			flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
@@ -69,6 +69,10 @@ func NewTestCmd() *cobra.Command {
 
 			_ = flags.MarkHidden("rocket_ship")
 			_ = flags.MarkHidden("force_output_progress")
+
+			// Deprecated.
+			flags.Bool("include_servers", false, "Does nothing.")
+			_ = flags.MarkHidden("include_servers")
 		}).
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
@@ -84,7 +88,6 @@ func NewTestCmd() *cobra.Command {
 			// This PackageLoader instance is only used to resolve package references from the command line arguments.
 			packageRefPl := parsing.NewPackageLoader(env)
 
-			includeStartupTests := includeServers || locs.UserSpecified
 			testRefs := []*schema.PackageRef{}
 			for _, l := range locs.Locs {
 				pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
@@ -93,7 +96,7 @@ func NewTestCmd() *cobra.Command {
 				}
 
 				for _, t := range pp.Tests {
-					if includeStartupTests || t.Driver.PackageName != parsing.StartupTestBinary {
+					if allTests || !slices.Contains(t.Tag, "generated") {
 						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
 					}
 				}

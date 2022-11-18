@@ -68,5 +68,6 @@ func createServerStartupTest(ctx context.Context, pl pkggraph.PackageLoader, pkg
 			pkgName.String(),
 		},
 		Driver: startupTest.Binaries[0],
+		Tag:    []string{"generated"},
 	}, nil
 }
