@@ -6,9 +6,11 @@ package prepare
 
 import (
 	"context"
+	"fmt"
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -31,6 +33,9 @@ func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registr
 			if registry != nil {
 				confs = append(confs, registry)
 			}
+
+			fmt.Fprintf(console.Stdout(ctx), "[✓] Configure Namespace to use existing Kubernetes context %q.\n", contextName)
+
 			return devhost.MakeConfiguration(confs...)
 		})
 }

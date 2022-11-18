@@ -6,8 +6,10 @@ package prepare
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/schema"
@@ -31,6 +33,8 @@ func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral b
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Fprintf(console.Stdout(ctx), "[✓] Create Kubernetes cluster in Namespace Cloud.\n")
 
 			return c, nil
 		})
