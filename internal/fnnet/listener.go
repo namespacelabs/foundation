@@ -13,7 +13,7 @@ import (
 func ListenPort(ctx context.Context, localAddr string, localPort, containerPort int) (net.Listener, error) {
 	var cfg net.ListenConfig
 
-	if localPort == 0 {
+	if localPort == 0 && containerPort != 0 {
 		// First we try to listen on a local port that matches the container port.
 		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, containerPort))
 		if err == nil {

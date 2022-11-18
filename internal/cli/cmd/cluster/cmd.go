@@ -21,6 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 )
@@ -35,6 +37,7 @@ func NewClusterCmd() *cobra.Command {
 	cmd.AddCommand(newCreateCmd())
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newSshCmd())
+	cmd.AddCommand(newPortForwardCmd())
 
 	return cmd
 }
@@ -109,40 +112,76 @@ func newSshCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		if len(args) > 0 {
-			cluster, err := nscloud.GetCluster(ctx, args[0])
-			if err != nil {
-				return err
-			}
-
-			return ssh(ctx, *cluster, args[1:])
-		}
-
-		clusters, err := nscloud.ListClusters(ctx)
+		cluster, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
 
-		var cls []cluster
-		for _, cl := range clusters.Clusters {
-			cls = append(cls, cluster(cl))
-		}
-
-		cl, err := tui.Select(ctx, "Which cluster would you like to connect to?", cls)
-		if err != nil {
-			return err
-		}
-
-		if cl == nil {
+		if cluster == nil {
 			return nil
 		}
 
-		cluster := cl.(cluster)
-
-		return ssh(ctx, cluster.Cluster(), nil)
+		return ssh(ctx, cluster, nil)
 	})
 
 	return cmd
+}
+
+func newPortForwardCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "port-forward {cluster-id}",
+		Short: "Opens a local port which connects to the cluster.",
+		Args:  cobra.MaximumNArgs(1),
+	}
+
+	port := cmd.Flags().Int("target_port", 0, "Which port to forward to.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *port == 0 {
+			return fnerrors.New("--target_port is required")
+		}
+
+		cluster, err := selectCluster(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		if cluster == nil {
+			return nil
+		}
+
+		return portForward(ctx, cluster, *port)
+	})
+
+	return cmd
+}
+
+func selectCluster(ctx context.Context, args []string) (*nscloud.KubernetesCluster, error) {
+	if len(args) > 0 {
+		return nscloud.GetCluster(ctx, args[0])
+	}
+
+	clusters, err := nscloud.ListClusters(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var cls []cluster
+	for _, cl := range clusters.Clusters {
+		cls = append(cls, cluster(cl))
+	}
+
+	cl, err := tui.Select(ctx, "Which cluster would you like to connect to?", cls)
+	if err != nil {
+		return nil, err
+	}
+
+	if cl == nil {
+		return nil, nil
+	}
+
+	d := cl.(cluster).Cluster()
+	return &d, nil
 }
 
 type cluster nscloud.KubernetesCluster
@@ -169,8 +208,8 @@ func formatDescription(cluster nscloud.KubernetesCluster) string {
 		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
 }
 
-func ssh(ctx context.Context, cluster nscloud.KubernetesCluster, args []string) error {
-	lst, err := net.Listen("tcp", "127.0.0.1:0")
+func ssh(ctx context.Context, cluster *nscloud.KubernetesCluster, args []string) error {
+	lst, err := fnnet.ListenPort(ctx, "127.0.0.1", 0, 0)
 	if err != nil {
 		return err
 	}
@@ -216,4 +255,39 @@ func ssh(ctx context.Context, cluster nscloud.KubernetesCluster, args []string) 
 
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	return localexec.RunInteractive(ctx, cmd)
+}
+
+func portForward(ctx context.Context, cluster *nscloud.KubernetesCluster, targetPort int) error {
+	lst, err := fnnet.ListenPort(ctx, "127.0.0.1", 0, targetPort)
+	if err != nil {
+		return err
+	}
+
+	localPort := lst.Addr().(*net.TCPAddr).Port
+	fmt.Fprintf(console.Stdout(ctx), "Listening on 127.0.0.1:%d\n", localPort)
+
+	for {
+		conn, err := lst.Accept()
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "New connection from %v\n", conn.RemoteAddr())
+
+		go func() {
+			defer conn.Close()
+
+			proxyConn, err := nscloud.DialPort(ctx, cluster, targetPort)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+				return
+			}
+
+			go func() {
+				_, _ = io.Copy(conn, proxyConn)
+			}()
+
+			_, _ = io.Copy(proxyConn, conn)
+		}()
+	}
 }
