@@ -38,6 +38,7 @@ func NewClusterCmd() *cobra.Command {
 	cmd.AddCommand(newListCmd())
 	cmd.AddCommand(newSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
+	cmd.AddCommand(newDestroyCmd())
 
 	return cmd
 }
@@ -152,6 +153,41 @@ func newPortForwardCmd() *cobra.Command {
 		}
 
 		return portForward(ctx, cluster, *port)
+	})
+
+	return cmd
+}
+
+func newDestroyCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "destroy {cluster-id}",
+		Short: "Destroys an existing cluster.",
+		Args:  cobra.MaximumNArgs(1),
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		cluster, err := selectCluster(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		if cluster == nil {
+			return nil
+		}
+
+		result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
+			fmt.Sprintf(`This is a destructive action.
+
+Type %q for it to be removed.`, cluster.ClusterId), "")
+		if err != nil {
+			return err
+		}
+
+		if result != cluster.ClusterId {
+			return context.Canceled
+		}
+
+		return api.DestroyCluster(ctx, cluster.ClusterId)
 	})
 
 	return cmd
