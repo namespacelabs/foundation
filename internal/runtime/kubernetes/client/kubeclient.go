@@ -55,7 +55,8 @@ func RegisterConfigurationProvider(name string, p ProviderFunc) {
 }
 
 type configResult struct {
-	ClientConfig clientcmd.ClientConfig
+	ClientConfig        clientcmd.ClientConfig
+	ConfigurationSource string // If set, kubeconfig was loaded from this file.
 	ClusterConfiguration
 }
 
@@ -91,16 +92,23 @@ func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*
 		return nil, fnerrors.New("hostEnv.Kubeconfig is required")
 	}
 
-	kubeconfig, err := dirs.ExpandHome(c.GetKubeconfig())
+	existing, err := LoadExistingConfiguration(c.GetKubeconfig(), c.GetContext())
 	if err != nil {
 		return nil, err
 	}
 
-	return &configResult{
-		ClientConfig: clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig},
-			&clientcmd.ConfigOverrides{CurrentContext: c.GetContext()}),
-	}, nil
+	return &configResult{ClientConfig: existing, ConfigurationSource: c.GetKubeconfig()}, nil
+}
+
+func LoadExistingConfiguration(kubeConfig, contextName string) (clientcmd.ClientConfig, error) {
+	kubeconfig, err := dirs.ExpandHome(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfig},
+		&clientcmd.ConfigOverrides{CurrentContext: contextName}), nil
 }
 
 func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configResult) (*rest.Config, error) {
@@ -111,7 +119,11 @@ func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configRes
 
 	restcfg, err := computed.ClientConfig.ClientConfig()
 	if err != nil {
-		return nil, err
+		if computed.ConfigurationSource != "" {
+			return nil, fnerrors.New("failed to load existing configuration from %q: %w", computed.ConfigurationSource, err)
+		}
+
+		return nil, fnerrors.New("failed to load kubernetes configuration: %w", err)
 	}
 
 	if computed.TokenProvider != nil {

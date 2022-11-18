@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -86,11 +87,19 @@ func newExistingCmd() *cobra.Command {
 			}
 		}
 
+		cfg, err := client.LoadExistingConfiguration(*kubeConfig, *contextName)
+		if err != nil {
+			return fnerrors.New("failed to load existing configuration: %w", err)
+		}
+
+		if _, err := cfg.ClientConfig(); err != nil {
+			return fnerrors.New("failed to load existing configuration from %q: %w (you can change which kubeconfig is used via --kube_config)", *kubeConfig, err)
+		}
+
 		insecureLabel := ""
 		if *insecure {
 			insecureLabel = fmt.Sprintf(" insecure=%v", *insecure)
 		}
-
 		fmt.Fprintf(console.Stdout(ctx), "Setting up existing cluster configured at context %q (registry %q%s)...\n", *contextName, *registryAddr, insecureLabel)
 
 		k8sconfig := prepare.PrepareExistingK8s(env, *kubeConfig, *contextName, &registry.Registry{
