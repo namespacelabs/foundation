@@ -45,10 +45,14 @@ func Output(ctx context.Context, name string) io.Writer {
 }
 
 func Debug(ctx context.Context) io.Writer {
+	return NamedDebug(ctx, "debug")
+}
+
+func NamedDebug(ctx context.Context, name string) io.Writer {
 	if DebugToConsole {
-		return TypedOutput(ctx, "debug", common.CatOutputDebug)
+		return TypedOutput(ctx, name, common.CatOutputDebug)
 	} else {
-		return tasks.Attachments(ctx).Output(tasks.Output(string(common.CatOutputDebug), "text/plain"), common.CatOutputDebug)
+		return tasks.Attachments(ctx).Output(tasks.Output(name, "text/plain"), common.CatOutputDebug)
 	}
 }
 

@@ -190,8 +190,8 @@ func forwardsLogs(ctx context.Context, maxLogLevel int32, log *protolog.Log) {
 		for _, line := range l.Lines {
 			outputType := common.CatOutputType(l.Cat)
 			if outputType == common.CatOutputDebug {
-				// Call console.Debug to respect DebugToConsole
-				fmt.Fprintln(console.Debug(ctx), string(line))
+				// Call console.NamedDebug to respect DebugToConsole
+				fmt.Fprintln(console.NamedDebug(ctx, l.Name), string(line))
 			} else {
 				fmt.Fprintln(console.TypedOutput(ctx, l.Name, outputType), string(line))
 			}
