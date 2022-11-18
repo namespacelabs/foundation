@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -119,13 +120,13 @@ func MakeServiceAnnotations(endpoint *schema.Endpoint) (map[string]string, error
 	var grpcServices []string
 	for _, p := range endpoint.ServiceMetadata {
 		if p.Protocol == schema.ClearTextGrpcProtocol || p.Protocol == schema.GrpcProtocol {
-			if p.Details == nil {
+			if p.Details == nil || p.Details.MessageIs(&schema.GrpcExportAllServices{}) {
 				continue
 			}
 
 			grpc := &schema.GrpcExportService{}
 			if err := p.Details.UnmarshalTo(grpc); err != nil {
-				return nil, err
+				return nil, fnerrors.New("failed to unserialize grpc configuration: %w", err)
 			}
 
 			grpcServices = append(grpcServices, grpc.ProtoTypename)

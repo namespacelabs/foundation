@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-//nolint directives: stylecheck:sa1019
+// nolint directives: stylecheck:sa1019
 package storage
 
 import (
@@ -80,6 +80,7 @@ func convertGrpcService(s *fnschema.IngressFragment_IngressGrpcService) *storage
 		Method:      s.Method,
 		Port:        convertPort(s.Port),
 		BackendTls:  s.BackendTls,
+		AllServices: s.AllServices,
 	}
 }
 

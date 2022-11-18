@@ -244,6 +244,10 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
 			}
 
+			if p.GrpcService == "" && !p.AllServices {
+				return nil, nil, fnerrors.InternalError("%s")
+			}
+
 			backend := applynetworkingv1.IngressBackend().
 				WithService(applynetworkingv1.IngressServiceBackend().
 					WithName(p.Service).

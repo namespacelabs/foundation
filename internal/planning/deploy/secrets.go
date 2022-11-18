@@ -117,11 +117,11 @@ func loadSecrets(ctx context.Context, env cfg.Context, sources ...secretSource) 
 			labels := make([]string, len(missing))
 
 			for k, secretRef := range missing {
-				labels[k] = fmt.Sprintf("  # Description: %s\n  # Server: %s\n  ns secrets set --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
+				labels[k] = fmt.Sprintf("\n  # Description: %s\n  # Server: %s\n  ns secrets set --secret %s", missingSpecs[k].Description, missingServer[k], secretRef.Canonical())
 			}
 
 			return nil, fnerrors.UsageError(
-				fmt.Sprintf("Please run:\n\n%s", strings.Join(labels, "\n")),
+				fmt.Sprintf("Please run:\n%s", strings.Join(labels, "\n")),
 				"There are secrets required which have not been specified")
 
 		}

@@ -5,8 +5,11 @@
 package cuefrontendopaque
 
 import (
+	"strings"
+
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/anypb"
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -27,9 +30,11 @@ type cueIngress struct {
 	HttpRoutes     map[string][]string `json:"httpRoutes"`
 }
 
+var knownKinds = []string{"tcp", schema.ClearTextGrpcProtocol, schema.GrpcProtocol, schema.HttpProtocol}
+
 func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, error) {
-	if svc.Kind != "http" && svc.Kind != "tcp" {
-		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.NewWithLocation(loc, "service kind is not supported: %s", svc.Kind)
+	if !slices.Contains(knownKinds, svc.Kind) {
+		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.NewWithLocation(loc, "service kind is not supported: %s (support %v)", svc.Kind, strings.Join(knownKinds, ", "))
 	}
 
 	var endpointType schema.Endpoint_Type
@@ -50,9 +55,16 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 	var details *anypb.Any
 	if len(urlMap.Entry) > 0 {
 		details = &anypb.Any{}
-		err := details.MarshalFrom(urlMap)
-		if err != nil {
+		if err := details.MarshalFrom(urlMap); err != nil {
 			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, err
+		}
+	}
+
+	// For the time being, having a grpc service implies exporting all GRPC services.
+	if svc.Kind == schema.GrpcProtocol || svc.Kind == schema.ClearTextGrpcProtocol {
+		details = &anypb.Any{}
+		if err := details.MarshalFrom(&schema.GrpcExportAllServices{}); err != nil {
+			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, fnerrors.New("failed to serialize grpc configuration: %w", err)
 		}
 	}
 

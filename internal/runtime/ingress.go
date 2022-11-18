@@ -65,6 +65,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 
 		var paths []*schema.IngressFragment_IngressHttpPath
 		var grpc []*schema.IngressFragment_IngressGrpcService
+		var clearTextGrpcCount int
 
 		switch *protocol {
 		case schema.HttpProtocol:
@@ -98,27 +99,48 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 
 		case schema.GrpcProtocol, schema.ClearTextGrpcProtocol:
 			for _, details := range protocolDetails {
-				p := &schema.GrpcExportService{}
-				if err := details.UnmarshalTo(p); err != nil {
-					return nil, err
+				msg, err := details.UnmarshalNew()
+				if err != nil {
+					return nil, fnerrors.InternalError("failed to unserialize grpc configuration: %w", err)
 				}
-				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
-					GrpcService: p.ProtoTypename,
-					Owner:       endpoint.EndpointOwner,
-					Service:     endpoint.AllocatedName,
-					Port:        endpoint.Port,
-					Method:      p.Method,
-					BackendTls:  *protocol == schema.GrpcProtocol,
-				})
 
-				// XXX security rethink this.
-				grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
-					GrpcService: "grpc.reflection.v1alpha.ServerReflection",
-					Owner:       endpoint.EndpointOwner,
-					Service:     endpoint.AllocatedName,
-					Port:        endpoint.Port,
-					BackendTls:  *protocol == schema.GrpcProtocol,
-				})
+				if *protocol == schema.ClearTextGrpcProtocol {
+					clearTextGrpcCount++
+				}
+
+				switch p := msg.(type) {
+				case *schema.GrpcExportService:
+					grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
+						GrpcService: p.ProtoTypename,
+						Owner:       endpoint.EndpointOwner,
+						Service:     endpoint.AllocatedName,
+						Port:        endpoint.Port,
+						Method:      p.Method,
+						BackendTls:  *protocol == schema.GrpcProtocol,
+					})
+
+					if p.ServerReflectionIncluded {
+						grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
+							GrpcService: "grpc.reflection.v1alpha.ServerReflection",
+							Owner:       endpoint.EndpointOwner,
+							Service:     endpoint.AllocatedName,
+							Port:        endpoint.Port,
+							BackendTls:  *protocol == schema.GrpcProtocol,
+						})
+					}
+
+				case *schema.GrpcExportAllServices:
+					grpc = append(grpc, &schema.IngressFragment_IngressGrpcService{
+						AllServices: true,
+						Owner:       endpoint.EndpointOwner,
+						Service:     endpoint.AllocatedName,
+						Port:        endpoint.Port,
+						BackendTls:  *protocol == schema.GrpcProtocol,
+					})
+
+				default:
+					return nil, fnerrors.InternalError("unsupported grpc configuration: %v", p.ProtoReflect().Descriptor().FullName())
+				}
 			}
 		}
 
@@ -138,7 +160,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			ServiceName:             endpoint.ServiceName,
 			Key:                     endpoint.AllocatedName,
 			Alias:                   endpoint.ServiceName,
-			TlsInclusterTermination: len(grpc) > 0,
+			TlsInclusterTermination: clearTextGrpcCount > 0,
 		})
 		if err != nil {
 			return nil, err

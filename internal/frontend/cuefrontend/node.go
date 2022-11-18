@@ -492,9 +492,10 @@ func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggr
 	}
 
 	node.ExportService = append(node.ExportService, &schema.GrpcExportService{
-		ProtoTypename: export.Service.Typename,
-		Proto:         export.Service.Sources,
-		Method:        export.Methods,
+		ProtoTypename:            export.Service.Typename,
+		Proto:                    export.Service.Sources,
+		Method:                   export.Methods,
+		ServerReflectionIncluded: true, // XXX security: evaluate whether this makes sense.
 	})
 
 	if out.Services == nil {

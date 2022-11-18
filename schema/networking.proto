@@ -77,6 +77,7 @@ message IngressFragment {
         repeated string method       = 5;  // If not set, forward all methods.
         Endpoint.Port   port         = 4;
         bool            backend_tls  = 6;
+        bool            all_services = 7;  // If set, all paths are forwarded.
     }
 }
 

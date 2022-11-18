@@ -168,4 +168,12 @@ message GrpcExportService {
 
     // A subset of methods this implementation supports. If empty, the implementation supports all methods.
     repeated string method = 3;
+
+    bool server_reflection_included = 4;
+}
+
+// Used as Endpoint metadata to signal that all forwarding should be setup for
+// any service available in the port.
+message GrpcExportAllServices {
+    // No options.
 }
