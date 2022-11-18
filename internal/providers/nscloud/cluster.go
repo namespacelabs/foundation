@@ -408,7 +408,7 @@ func (d *cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
 func (d *cluster) Planner(env cfg.Context) runtime.Planner {
 	base := kubernetes.NewPlanner(env, d.cluster.SystemInfo)
 
-	return planner{Planner: base, cluster: d, config: d.config, env: env.Environment(), workspace: env.Workspace().Proto()}
+	return planner{Planner: base, config: d.config}
 }
 
 func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error) {
@@ -440,11 +440,8 @@ func (d *cluster) PreparedClient() client.Prepared {
 }
 
 type planner struct {
-	kubernetes.Planner
-	cluster   *cluster
-	config    *KubernetesCluster
-	env       *schema.Environment
-	workspace *schema.Workspace
+	runtime.Planner
+	config *KubernetesCluster
 }
 
 func (d planner) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNaming, error) {
@@ -465,6 +462,11 @@ type clusterNamespace struct {
 }
 
 var _ kubedef.KubeClusterNamespace = clusterNamespace{}
+
+func (cr clusterNamespace) Planner() runtime.Planner {
+	base := cr.ClusterNamespace.Planner()
+	return planner{Planner: base, config: cr.Config}
+}
 
 func (cr clusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
 	return cr.deleteCluster(ctx)

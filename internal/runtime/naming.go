@@ -37,7 +37,6 @@ func ComputeNaming(ctx context.Context, ws string, env cfg.Context, cluster Plan
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "computed naming: %+v\n", result)
-
 	return result, nil
 }
 

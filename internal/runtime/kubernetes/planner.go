@@ -33,10 +33,6 @@ func NewPlanner(env cfg.Context, fetchSystemInfo func(context.Context) (*kubedef
 	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env)}
 }
 
-func (r Planner) Planner() runtime.Planner {
-	return r
-}
-
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
 	return planDeployment(ctx, r.target, d)
 }
