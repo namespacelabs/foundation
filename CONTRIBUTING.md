@@ -93,8 +93,11 @@ NOTE: all commits end up in an automatically generated changelog. Commits that i
 
 ### MacOS Notarization
 
-Note: currently the notarization is not required. Namespace binaries are downloaded by Homebrew and `nsboot`
-and these tools do not set the quarantine flag (see [SO](https://stackoverflow.com/questions/67446317/why-are-executables-installed-with-homebrew-trusted-on-macos), verified on a fresh macOS install by Kirill).
+Note: currently the notarization is not required. Namespace binaries are
+downloaded by Homebrew and `nsboot` and these tools do not set the quarantine
+flag (see
+[SO](https://stackoverflow.com/questions/67446317/why-are-executables-installed-with-homebrew-trusted-on-macos),
+verified on a fresh macOS install by Kirill).
 
 If needed, notarization is to be done in MacOSX, and requires XCode, and
 [gon](https://github.com/mitchellh/gon#installation). Currently Hugo is the only person to perform notarization
@@ -129,6 +132,32 @@ different arguments. To bootstrap, create `.vscode/launch.json` and add the foll
   ]
 }
 ```
+
+### Making changes to `internal/runtime` and orchestrator code
+
+Part of `ns` is deployed into the target cluster, to orchestrate changes on
+behalf of the user. Historically, all orchestration was done by `ns`, so the
+orchestration code is still built into `ns`.
+
+As you're doing changes to `internal/runtime` or any "execution op" that is used
+as part of deployment, you may find that your changes are not reflected as part
+of your debugging session.
+
+This is because:
+
+(a) That code by default runs inside of the cluster, not within `ns`.
+
+(b) By default `ns` install a prebuilt orchestrator, rather than deploying one with your changes.
+
+You can modify this behavior using one of:
+
+- `--use_orchestrator=false` asks `ns` to not use the in-cluster orchestrator, but
+defer instead to the orchestration that is built into itself (this will be
+eventually removed).
+
+- `--use_pinned_orchestrator=false` asks `ns` to build an orchestrator from
+  foundation's codebase, rather than deploying one from a prebuilt. This
+  guarantees that it includes any changes you're making.
 
 ### Protos
 
