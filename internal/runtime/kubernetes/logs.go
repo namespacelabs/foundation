@@ -111,6 +111,7 @@ func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, namespace, pod
 				callback(runtime.ContainerLogLine{
 					Timestamp: time.Now(),
 					Event:     runtime.ContainerLogLineEvent_Resuming,
+					ResumeErr: err,
 				})
 
 				break

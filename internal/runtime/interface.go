@@ -81,6 +81,7 @@ type ContainerLogLine struct {
 	MissingTimestamp bool
 	LogLine          []byte
 	Event            ContainerLogLineEvent
+	ResumeErr        error
 }
 
 type ContainerLogLineEvent string

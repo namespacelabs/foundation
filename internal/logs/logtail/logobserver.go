@@ -230,7 +230,7 @@ func Listen(ctx context.Context, control io.Writer, env cfg.Context, server runt
 					fmt.Fprintf(w, "%s\n", cll.LogLine)
 
 				case runtime.ContainerLogLineEvent_Resuming:
-					fmt.Fprintf(control, ">>> (log tail disconnected) resuming logging...\n")
+					fmt.Fprintf(control, ">>> resuming logging (disconnected with: %v)...\n", cll.ResumeErr)
 				}
 			})
 		})
