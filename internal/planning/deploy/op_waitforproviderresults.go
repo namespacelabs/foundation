@@ -81,7 +81,7 @@ func register_OpWaitForProviderResults() {
 				main := containers[0]
 
 				var out bytes.Buffer
-				if err := cluster.Cluster().FetchLogsTo(ctx, &out, main.Reference, runtime.FetchLogsOpts{}); err != nil {
+				if err := cluster.Cluster().FetchLogsTo(ctx, main.Reference, runtime.FetchLogsOpts{}, runtime.WriteToWriter(&out)); err != nil {
 					return nil, fnerrors.InternalError("failed to retrieve output of provider invocation: %w", err)
 				}
 

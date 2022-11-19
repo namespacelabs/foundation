@@ -61,7 +61,7 @@ func NewLogsCmd() *cobra.Command {
 					return fnerrors.New("expected a single container, got %d", len(containers))
 				}
 
-				return rt.Cluster().FetchLogsTo(ctx, console.Stdout(ctx), containers[0], runtime.FetchLogsOpts{})
+				return rt.Cluster().FetchLogsTo(ctx, containers[0], runtime.FetchLogsOpts{}, runtime.WriteToWriter(console.Stdout(ctx)))
 			}
 
 			event := &observers.StackUpdateEvent{
@@ -80,7 +80,7 @@ func NewLogsCmd() *cobra.Command {
 			return keyboard.Handle(ctx, keyboard.HandleOpts{
 				Provider: observer,
 				Handler: func(ctx context.Context) error {
-					return logtail.Listen(ctx, server.SealedContext(), server.Proto(), nil)
+					return logtail.Listen(ctx, console.Stderr(ctx), server.SealedContext(), server.Proto(), nil)
 				},
 			})
 		})

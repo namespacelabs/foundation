@@ -32,7 +32,7 @@ func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID stri
 
 		for _, ref := range refs {
 			if ref.Kind == runtimepb.ContainerKind_PRIMARY {
-				return cluster.Cluster().FetchLogsTo(ctx, wsWriter, ref, runtime.FetchLogsOpts{Follow: true})
+				return cluster.Cluster().FetchLogsTo(ctx, ref, runtime.FetchLogsOpts{Follow: true}, runtime.WriteToWriter(wsWriter))
 			}
 		}
 

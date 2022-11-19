@@ -35,7 +35,7 @@ func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts 
 	}
 
 	if err := spawnAndWaitPod(ctx, r.cli, ns, name, spec, true); err != nil {
-		if logsErr := fetchPodLogs(ctx, r.cli, console.TypedOutput(ctx, name, console.CatOutputTool), ns, name, "", runtime.FetchLogsOpts{}); logsErr != nil {
+		if logsErr := fetchPodLogs(ctx, r.cli, ns, name, "", runtime.FetchLogsOpts{}, runtime.WriteToWriter(console.TypedOutput(ctx, name, console.CatOutputTool))); logsErr != nil {
 			fmt.Fprintf(console.Errors(ctx), "Failed to fetch failed container logs: %v\n", logsErr)
 		}
 		return err

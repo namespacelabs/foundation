@@ -172,8 +172,8 @@ func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtimepb.ContainerR
 	return d.cluster.FetchDiagnostics(ctx, cr)
 }
 
-func (d *cluster) FetchLogsTo(ctx context.Context, w io.Writer, cr *runtimepb.ContainerReference, opts runtime.FetchLogsOpts) error {
-	return d.cluster.FetchLogsTo(ctx, w, cr, opts)
+func (d *cluster) FetchLogsTo(ctx context.Context, cr *runtimepb.ContainerReference, opts runtime.FetchLogsOpts, callback func(runtime.ContainerLogLine)) error {
+	return d.cluster.FetchLogsTo(ctx, cr, opts, callback)
 }
 
 func (d *cluster) AttachTerminal(ctx context.Context, container *runtimepb.ContainerReference, io runtime.TerminalIO) error {

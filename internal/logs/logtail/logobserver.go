@@ -110,7 +110,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 						env, err := l.LoadEnvironment(newEnv)
 						if err == nil {
 							var containerCount atomic.Int32
-							err = Listen(ctxWithCancel, env, server, func(ev runtime.ObserveEvent) io.Writer {
+							err = Listen(ctxWithCancel, out, env, server, func(ev runtime.ObserveEvent) io.Writer {
 								return &writerWithHeader{
 									onStart: func(w io.Writer) {
 										once.Do(func() {
@@ -174,7 +174,7 @@ func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control 
 }
 
 // Listen blocks fetching logs from a container.
-func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable, writerFactory func(ev runtime.ObserveEvent) io.Writer) error {
+func Listen(ctx context.Context, control io.Writer, env cfg.Context, server runtime.Deployable, writerFactory func(ev runtime.ObserveEvent) io.Writer) error {
 	// TODO simplify runtime creation.
 	rt, err := runtime.NamespaceFor(ctx, env)
 	if err != nil {
@@ -221,9 +221,17 @@ func Listen(ctx context.Context, env cfg.Context, server runtime.Deployable, wri
 				return nil
 			}
 
-			return rt.Cluster().FetchLogsTo(ctx, w, ev.ContainerReference, runtime.FetchLogsOpts{
+			return rt.Cluster().FetchLogsTo(ctx, ev.ContainerReference, runtime.FetchLogsOpts{
 				TailLines: 30,
 				Follow:    true,
+			}, func(cll runtime.ContainerLogLine) {
+				switch cll.Event {
+				case runtime.ContainerLogLineEvent_LogLine:
+					fmt.Fprintf(w, "%s\n", cll.LogLine)
+
+				case runtime.ContainerLogLineEvent_Resuming:
+					fmt.Fprintf(control, ">>> (log tail disconnected) resuming logging...\n")
+				}
 			})
 		})
 

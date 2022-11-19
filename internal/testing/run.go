@@ -137,7 +137,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 			}
 
 			for _, container := range containers {
-				if err := cluster.Cluster().FetchLogsTo(ctx, testLog, container.Reference, runtime.FetchLogsOpts{}); err != nil {
+				if err := cluster.Cluster().FetchLogsTo(ctx, container.Reference, runtime.FetchLogsOpts{}, runtime.WriteToWriter(testLog)); err != nil {
 					if errors.Is(err, context.Canceled) {
 						return err
 					}
@@ -260,7 +260,7 @@ func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespa
 				mu.Unlock()
 
 				ex.Go(func(ctx context.Context) error {
-					err := rt.Cluster().FetchLogsTo(ctx, w, ctr, runtime.FetchLogsOpts{IncludeTimestamps: true})
+					err := rt.Cluster().FetchLogsTo(ctx, ctr, runtime.FetchLogsOpts{}, runtime.WriteToWriterWithTimestamps(w))
 					if errors.Is(err, context.Canceled) {
 						return nil
 					}

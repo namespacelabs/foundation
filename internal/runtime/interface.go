@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -56,7 +57,7 @@ type Cluster interface {
 	FetchDiagnostics(context.Context, *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error)
 
 	// Fetch logs of a specific container reference.
-	FetchLogsTo(ctx context.Context, destination io.Writer, container *runtimepb.ContainerReference, opts FetchLogsOpts) error
+	FetchLogsTo(ctx context.Context, container *runtimepb.ContainerReference, opts FetchLogsOpts, callback func(ContainerLogLine)) error
 
 	// Attaches to a running container.
 	AttachTerminal(ctx context.Context, container *runtimepb.ContainerReference, io TerminalIO) error
@@ -73,6 +74,41 @@ type Cluster interface {
 	// environment. If wait is true, waits until the target resources have been
 	// removed. Returns true if resources were deleted.
 	DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error)
+}
+
+type ContainerLogLine struct {
+	Timestamp        time.Time
+	MissingTimestamp bool
+	LogLine          []byte
+	Event            ContainerLogLineEvent
+}
+
+type ContainerLogLineEvent string
+
+const (
+	ContainerLogLineEvent_LogLine   ContainerLogLineEvent = "ns.logline"
+	ContainerLogLineEvent_Connected ContainerLogLineEvent = "ns.connected"
+	ContainerLogLineEvent_Resuming  ContainerLogLineEvent = "ns.resuming"
+)
+
+func WriteToWriter(w io.Writer) func(ContainerLogLine) {
+	return func(cll ContainerLogLine) {
+		if cll.Event == ContainerLogLineEvent_LogLine {
+			fmt.Fprintf(w, "%s\n", cll.LogLine)
+		}
+	}
+}
+
+func WriteToWriterWithTimestamps(w io.Writer) func(ContainerLogLine) {
+	return func(cll ContainerLogLine) {
+		if cll.Event == ContainerLogLineEvent_LogLine {
+			if cll.MissingTimestamp {
+				fmt.Fprintf(w, "? %s\n", cll.LogLine)
+			} else {
+				fmt.Fprintf(w, "%s %s\n", cll.Timestamp.Format(time.RFC3339Nano), cll.LogLine)
+			}
+		}
+	}
 }
 
 // A planner is capable of generating namespace-specific deployment plans. It
@@ -275,10 +311,9 @@ type SidecarRunOpts struct {
 }
 
 type FetchLogsOpts struct {
-	TailLines         int // Only used if it's a positive value.
-	Follow            bool
-	FetchLastFailure  bool
-	IncludeTimestamps bool
+	TailLines        int // Only used if it's a positive value.
+	Follow           bool
+	FetchLastFailure bool
 }
 
 type ObserveOpts struct {
