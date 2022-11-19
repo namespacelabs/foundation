@@ -6,6 +6,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -34,6 +35,21 @@ type CheckerFunc func(context.Context) error
 
 func (c CheckerFunc) Check(ctx context.Context) error { return c(ctx) }
 func (c CheckerFunc) isManual() bool                  { return false }
+
+var shutdownStarted = atomic.NewBool(false)
+
+func init() {
+	registerReadiness("shutdown-requested", CheckerFunc(func(ctx context.Context) error {
+		if shutdownStarted.Load() {
+			return errors.New("shutdown requested")
+		}
+		return nil
+	}))
+}
+
+func MarkShutdownStarted() {
+	shutdownStarted.Store(true)
+}
 
 type memoizingChecker struct {
 	checker   Checker

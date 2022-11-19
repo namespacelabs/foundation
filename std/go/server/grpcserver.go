@@ -9,9 +9,13 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -24,6 +28,7 @@ import (
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
 	gogrpc "namespacelabs.dev/foundation/std/go/grpc"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
@@ -37,6 +42,11 @@ var (
 	httpPort       = flag.Int("http_port", 0, "Port to listen HTTP on.")
 )
 
+const (
+	developmentDrainTimeout = 5 * time.Second
+	productionDrainTimeout  = 30 * time.Second
+)
+
 func ListenPort() int { return *port }
 
 func InitializationDone() {
@@ -44,12 +54,48 @@ func InitializationDone() {
 }
 
 func Listen(ctx context.Context, registerServices func(Server)) error {
+	go func() {
+		sigint := make(chan os.Signal, 1)
+
+		signal.Notify(sigint, os.Interrupt)
+		signal.Notify(sigint, syscall.SIGTERM)
+
+		r2 := <-sigint
+
+		log.Printf("got %v", r2)
+
+		// XXX support more graceful shutdown. Although
+		// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
+		// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
+		// you should NOT do is close your listening socket. If you win the
+		// race, you will receive traffic and reject it.""
+
+		// So we start failing readiness, so we're removed from the serving set.
+		// Then we wait for a bit for traffic to drain out. And then we leave.
+
+		core.MarkShutdownStarted()
+
+		if core.EnvIs(schema.Environment_DEVELOPMENT) {
+			// In development, we drain quickly.
+			time.Sleep(developmentDrainTimeout)
+		} else {
+			time.Sleep(productionDrainTimeout)
+		}
+
+		if r2 == syscall.SIGTERM {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
+	}()
+
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *listenHostname, *port))
 	if err != nil {
 		return err
 	}
 
 	m := cmux.New(lis)
+
 	httpL := m.Match(cmux.HTTP1())
 	anyL := m.Match(cmux.Any())
 
@@ -71,7 +117,6 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 		opts = append(opts, grpc.Creds(transportCreds))
 	}
 
-	// XXX serving keys.
 	grpcServer := grpc.NewServer(opts...)
 
 	// Enable tooling to query which gRPC services, etc are exported by this server.
