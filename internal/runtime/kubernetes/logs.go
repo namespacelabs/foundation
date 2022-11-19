@@ -7,6 +7,7 @@ package kubernetes
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"time"
 
@@ -64,7 +65,6 @@ func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, namespace, pod
 
 		for {
 			n, err := content.Read(chunk)
-
 			if n > 0 {
 				buf.Write(chunk[:n])
 
@@ -99,21 +99,23 @@ func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, namespace, pod
 				}
 			}
 
-			if err == io.EOF {
-				break
+			if err == io.EOF || errors.Is(err, context.Canceled) {
+				return nil
 			} else if err != nil {
-				return fnerrors.InternalError("log streaming failed: %w", err)
+				if !logOpts.Follow {
+					return fnerrors.InternalError("log streaming failed: %w", err)
+				}
+
+				// Got an unexpected error, lets try to resume.
+
+				callback(runtime.ContainerLogLine{
+					Timestamp: time.Now(),
+					Event:     runtime.ContainerLogLineEvent_Resuming,
+				})
+
+				break
 			}
 		}
-
-		if !logOpts.Follow {
-			return nil
-		}
-
-		callback(runtime.ContainerLogLine{
-			Timestamp: time.Now(),
-			Event:     runtime.ContainerLogLineEvent_Resuming,
-		})
 
 		// When resuming, don't re-tail.
 		logOpts.TailLines = nil
