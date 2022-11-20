@@ -70,6 +70,11 @@ func (fsn *fsEvents) StartWatching(ctx context.Context) (EventsAndErrors, error)
 		return nil, fnerrors.New("fs notify common root is /, would watch too many files")
 	}
 
+	root, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve root symlink %s: %w", root, err)
+	}
+
 	fmt.Fprintf(console.Debug(ctx), "fsevents: common root for %v is %q\n", dirs.Strings(), root)
 
 	dev, err := fsevents.DeviceForPath(root)
