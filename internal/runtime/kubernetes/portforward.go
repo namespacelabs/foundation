@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
+	"namespacelabs.dev/foundation/schema"
 )
 
 type PodResolver interface {
@@ -64,11 +65,20 @@ func (u *Cluster) RawForwardPort(ctx context.Context, desc, ns string, podLabels
 	return closerCallback(cancel), nil
 }
 
-func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, containerPort int) (net.Conn, error) {
+func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[string]string, port *schema.Endpoint_Port) (net.Conn, error) {
 	pod, err := kubeobserver.ResolvePod(ctx, u.cli, ns, podLabels)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "resolving port %v\n", port)
+
+	containerPort, err := resolveContainerPort(pod, port)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "resolved port %v -> %d\n", port, containerPort)
 
 	config, restClient, err := client.MakeGroupVersionBasedClientAndConfig(ctx, u.RESTConfig(), v1.SchemeGroupVersion)
 	if err != nil {
@@ -84,6 +94,40 @@ func (u *Cluster) RawDialServer(ctx context.Context, ns string, podLabels map[st
 	}
 
 	return createConnection(ctx, streamConn, pod, 0, containerPort)
+}
+
+func resolveContainerPort(pod v1.Pod, port *schema.Endpoint_Port) (int, error) {
+	if port.Name != "" && port.ContainerPort != 0 {
+		return 0, fnerrors.BadInputError("port name and container port may not both be set: name=%q, port=%d", port.Name, port.ContainerPort)
+	}
+
+	if port.ContainerPort < 0 {
+		return 0, fnerrors.BadInputError("invalid port number: %d", port.ContainerPort)
+	}
+
+	if port.ContainerPort != 0 {
+		return int(port.ContainerPort), nil
+	}
+
+	var resolved int
+	for _, c := range pod.Spec.Containers {
+		for _, p := range c.Ports {
+			if p.Name != port.Name {
+				continue
+			}
+
+			if resolved == 0 {
+				resolved = int(p.ContainerPort)
+				continue
+			}
+
+			if resolved != int(p.ContainerPort) {
+				return 0, fnerrors.InternalError("found conflicting specs for port %q in pod %q: %d != %d", port.Name, pod.Name, resolved, p.ContainerPort)
+			}
+		}
+	}
+
+	return resolved, nil
 }
 
 func (r *Cluster) StartAndBlockPortFwd(ctx context.Context, args StartAndBlockPortFwdArgs) error {

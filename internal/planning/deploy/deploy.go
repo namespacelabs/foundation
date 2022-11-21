@@ -776,6 +776,8 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 		return fnerrors.InternalError("%s: missing from the stack", srv.PackageName())
 	}
 
+	out.MainContainer.AllocatedPorts = append(out.MainContainer.AllocatedPorts, stackEntry.AllocatedPorts...)
+
 	merged, err := startup.ComputeConfig(ctx, srv.SealedContext(), serverStartupPlan, stackEntry.ParsedDeps, inputs)
 	if err != nil {
 		return err

@@ -8,11 +8,9 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
@@ -77,22 +75,5 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		}
 	}
 
-	var endpoint *schema.Endpoint
-	for _, e := range computed.ComputedStack.Endpoints {
-		if !serverPkg.Equals(e.ServerOwner) {
-			continue
-		}
-
-		for _, m := range e.ServiceMetadata {
-			if m.Kind == proto.OrchestrationService_ServiceDesc.ServiceName {
-				endpoint = e
-			}
-		}
-	}
-
-	if endpoint == nil {
-		return nil, fnerrors.InternalError("orchestration service not found: %+v", computed.ComputedStack.Endpoints)
-	}
-
-	return &RemoteOrchestrator{cluster: boundCluster, server: focus.Proto(), endpoint: endpoint}, nil
+	return &RemoteOrchestrator{cluster: boundCluster, server: focus.Proto()}, nil
 }

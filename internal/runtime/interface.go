@@ -174,7 +174,7 @@ type ClusterNamespace interface {
 
 	// Dials a TCP port to one of the replicas of the target server. The
 	// lifecycle of the connection is bound to the specified context.
-	DialServer(ctx context.Context, server Deployable, containerPort int32) (net.Conn, error)
+	DialServer(ctx context.Context, server Deployable, port *schema.Endpoint_Port) (net.Conn, error)
 
 	// Observes lifecyle events of the specified server. Unless OneShot is set,
 	// Observe runs until the context is cancelled.
@@ -293,6 +293,7 @@ type ContainerRunOpts struct {
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
 	Mounts             []*schema.Mount
+	AllocatedPorts     []*schema.Endpoint_Port
 }
 
 type ContainerStatus struct {

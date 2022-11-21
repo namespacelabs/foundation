@@ -46,6 +46,7 @@ type PlannedServer struct {
 	ParsedDeps    []*ParsedNode
 	Resources     []pkggraph.ResourceInstance
 
+	AllocatedPorts    []*schema.Endpoint_Port
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
 }
@@ -269,6 +270,7 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 			return err
 		}
 
+		ps.AllocatedPorts = allocatedPorts.Ports
 		ps.Endpoints = endpoints
 		ps.InternalEndpoints = internal
 

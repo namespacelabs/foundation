@@ -344,12 +344,8 @@ func (r *ClusterNamespace) ForwardPort(ctx context.Context, server runtime.Deplo
 	return r.cluster.RawForwardPort(ctx, server.GetPackageRef().GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
 }
 
-func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deployable, containerPort int32) (net.Conn, error) {
-	if containerPort <= 0 {
-		return nil, fnerrors.BadInputError("invalid port number: %d", containerPort)
-	}
-
-	return r.cluster.RawDialServer(ctx, r.target.namespace, kubedef.SelectById(server), int(containerPort))
+func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deployable, port *schema.Endpoint_Port) (net.Conn, error) {
+	return r.cluster.RawDialServer(ctx, r.target.namespace, kubedef.SelectById(server), port)
 }
 
 func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtimepb.ContainerReference, error) {

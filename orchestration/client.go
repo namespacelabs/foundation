@@ -34,13 +34,13 @@ import (
 )
 
 const (
+	portName    = "server-port"
 	connTimeout = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
 type RemoteOrchestrator struct {
-	cluster  runtime.ClusterNamespace
-	server   runtime.Deployable
-	endpoint *schema.Endpoint
+	cluster runtime.ClusterNamespace
+	server  runtime.Deployable
 }
 
 func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, error) {
@@ -53,7 +53,13 @@ func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, err
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			patchedContext := compute.AttachOrch(tasks.WithSink(ctx, sink), orch)
 
-			return c.cluster.DialServer(patchedContext, c.server, c.endpoint.Port.ContainerPort)
+			conn, err := c.cluster.DialServer(patchedContext, c.server, &schema.Endpoint_Port{Name: portName})
+			if err != nil {
+				fmt.Fprintf(console.Debug(patchedContext), "failed to dial orchestrator: %v\n", err)
+				return nil, err
+			}
+
+			return conn, nil
 		}),
 	)
 }

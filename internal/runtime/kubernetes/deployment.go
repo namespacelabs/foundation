@@ -169,6 +169,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		WithCommand(deployable.MainContainer.Command...).
 		WithSecurityContext(secCtx)
 
+	for _, port := range deployable.MainContainer.AllocatedPorts {
+		mainContainer.WithPorts(applycorev1.ContainerPort().WithName(port.Name).WithContainerPort(port.ContainerPort))
+	}
+
 	switch deployable.Attachable {
 	case runtime.AttachableKind_WITH_STDIN_ONLY:
 		mainContainer = mainContainer.WithStdin(true).WithStdinOnce(true)

@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -104,7 +105,9 @@ func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			patchedContext := compute.AttachOrch(tasks.WithSink(ctx, sink), orch)
 
-			return do.cluster.DialServer(patchedContext, do.server, do.fileSyncPort)
+			return do.cluster.DialServer(patchedContext, do.server, &schema.Endpoint_Port{
+				ContainerPort: do.fileSyncPort,
+			})
 		}),
 	)
 	if err != nil {
