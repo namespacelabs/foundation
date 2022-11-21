@@ -131,7 +131,6 @@ func (vc *versionChecker) updateLatest() {
 	ctx, cancel := context.WithTimeout(vc.serverCtx, fetchLatestTimeout)
 	defer cancel()
 
-	fetchedAt := time.Now()
 	res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
 	if err != nil {
 		log.Printf("failed to fetch latest orch version from API server: %v\n", err)
@@ -141,7 +140,7 @@ func (vc *versionChecker) updateLatest() {
 	vc.mu.Lock()
 	defer vc.mu.Unlock()
 
-	vc.fetchedAt = fetchedAt
+	vc.fetchedAt = time.Now()
 	vc.pinned = nil
 	for _, p := range res.Prebuilt {
 		vc.pinned = append(vc.pinned, &schema.Workspace_BinaryDigest{
