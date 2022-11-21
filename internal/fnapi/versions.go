@@ -53,6 +53,28 @@ func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRe
 	return &resp, nil
 }
 
+type GetLatestPrebuiltRequest struct {
+	PackageName string `json:"package_name,omitempty"`
+}
+
+type GetLatestPrebuiltResponse struct {
+	Repository string `json:"repository,omitempty"`
+	Digest     string `json:"digest,omitempty"`
+}
+
+func GetLatestPrebuilt(ctx context.Context, pkg schema.PackageName) (*GetLatestPrebuiltResponse, error) {
+	req := GetLatestPrebuiltRequest{
+		PackageName: pkg.String(),
+	}
+
+	var resp GetLatestPrebuiltResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestPrebuilt", &req, DecodeJSONResponse(&resp)); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 type GetLatestPrebuiltsRequest struct {
 	PackageName []string `json:"package_name,omitempty"`
 }

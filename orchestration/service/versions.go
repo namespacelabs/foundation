@@ -23,17 +23,23 @@ import (
 )
 
 const (
-	serverId                          = "0fomj22adbua2u0ug3og"
-	serverPkg      schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
-	serverName                        = "orchestration-api-server"
-	updateInterval                    = 30 * time.Minute
+	serverId                      = "0fomj22adbua2u0ug3og"
+	serverPkg  schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
+	serverName                    = "orchestration-api-server"
+
+	backgroundUpdateInterval = 30 * time.Minute
+	fetchLatestTimeout       = 30 * time.Second // can be generous, since we don't block in this.
+	cacheTimeout             = time.Minute
 )
 
 type versionChecker struct {
+	serverCtx context.Context
+
 	current *proto.GetOrchestratorVersionResponse_Version
 
-	mu     sync.Mutex
-	latest *proto.GetOrchestratorVersionResponse_Version
+	mu        sync.Mutex
+	latest    *proto.GetOrchestratorVersionResponse_Version
+	fetchedAt time.Time
 }
 
 func newVersionChecker(ctx context.Context) *versionChecker {
@@ -42,19 +48,35 @@ func newVersionChecker(ctx context.Context) *versionChecker {
 		log.Fatalf("unable to compute current version: %v", err)
 	}
 
-	vc := &versionChecker{current: current}
+	vc := &versionChecker{
+		serverCtx: ctx,
+		current:   current,
+	}
 
 	go func() {
 		for {
-			if err := vc.updateLatest(ctx); err != nil {
+			if err := vc.updateLatest(); err != nil {
 				log.Printf("failed to fetch latest orch version: %v", err)
 			}
 
-			time.Sleep(updateInterval)
+			time.Sleep(backgroundUpdateInterval)
 		}
 	}()
 
 	return vc
+}
+
+func (vc *versionChecker) GetOrchestratorVersion() *proto.GetOrchestratorVersionResponse {
+	vc.mu.Lock()
+	defer vc.mu.Unlock()
+
+	// shedule a non-blocking update so that future calls get the latest version.
+	go vc.updateLatest()
+
+	return &proto.GetOrchestratorVersionResponse{
+		Current: vc.current,
+		Latest:  vc.latest,
+	}
 }
 
 func getCurrentVersion(ctx context.Context) (*proto.GetOrchestratorVersionResponse_Version, error) {
@@ -101,40 +123,35 @@ func getCurrentVersion(ctx context.Context) (*proto.GetOrchestratorVersionRespon
 	return nil, fmt.Errorf("did not find any running orchestrator pod")
 }
 
-func (vc *versionChecker) GetOrchestratorVersion() *proto.GetOrchestratorVersionResponse {
-	vc.mu.Lock()
-	defer vc.mu.Unlock()
-
-	return &proto.GetOrchestratorVersionResponse{
-		Current: vc.current,
-		Latest:  vc.latest,
+func (vc *versionChecker) updateLatest() error {
+	if !vc.shouldUpdate() {
+		return nil
 	}
-}
 
-func (vc *versionChecker) updateLatest(ctx context.Context) error {
-	res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg)
+	ctx, cancel := context.WithTimeout(vc.serverCtx, fetchLatestTimeout)
+	defer cancel()
+
+	fetchedAt := time.Now()
+	res, err := fnapi.GetLatestPrebuilt(ctx, serverPkg)
 	if err != nil {
 		return err
 	}
 
-	var latest *proto.GetOrchestratorVersionResponse_Version
-	for _, prebuilt := range res.Prebuilt {
-		if prebuilt.PackageName == string(serverPkg) {
-			latest = &proto.GetOrchestratorVersionResponse_Version{
-				Repository: prebuilt.Repository,
-				Digest:     prebuilt.Digest,
-			}
-			break
-		}
-	}
-
-	if latest == nil {
-		return fmt.Errorf("did not receive prebuilt for package %s", serverPkg)
-	}
-
 	vc.mu.Lock()
 	defer vc.mu.Unlock()
 
-	vc.latest = latest
+	vc.fetchedAt = fetchedAt
+	vc.latest = &proto.GetOrchestratorVersionResponse_Version{
+		Repository: res.Repository,
+		Digest:     res.Digest,
+	}
+
 	return nil
+}
+
+func (vc *versionChecker) shouldUpdate() bool {
+	vc.mu.Lock()
+	defer vc.mu.Unlock()
+
+	return time.Since(vc.fetchedAt) > cacheTimeout
 }
