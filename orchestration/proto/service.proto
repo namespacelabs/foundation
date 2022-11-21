@@ -39,7 +39,9 @@ message DeploymentStatusResponse {
     reserved 1, 3;
 }
 
-message GetOrchestratorVersionRequest {}
+message GetOrchestratorVersionRequest {
+    bool skip_cache = 1;
+}
 
 message GetOrchestratorVersionResponse {
     foundation.schema.Workspace.BinaryDigest current         = 1;

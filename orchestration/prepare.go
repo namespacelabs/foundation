@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/orchestration/proto"
+	"namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -26,23 +27,19 @@ import (
 )
 
 const (
-	orchestratorStateKey                    = "foundation.orchestration"
-	serverId                                = "0fomj22adbua2u0ug3og"
-	serverName                              = "orchestration-api-server"
-	serverPkg            schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
-	toolPkg              schema.PackageName = "namespacelabs.dev/foundation/orchestration/server/tool"
+	orchestratorStateKey = "foundation.orchestration"
 )
 
 var (
 	UseOrchestrator              = true
-	UsePinnedOrchestrator        = true
+	UseHeadOrchestrator          = false
+	SkipVersionCache             = false
 	RenderOrchestratorDeployment = false
-	ForceOrchestratorDeployment  = false
 
 	server = &runtimepb.Deployable{
-		PackageName:     serverPkg.String(),
-		Id:              serverId,
-		Name:            serverName,
+		PackageName:     constants.ServerPkg.String(),
+		Id:              constants.ServerId,
+		Name:            constants.ServerName,
 		DeployableClass: string(schema.DeployableClass_STATEFUL),
 	}
 )
@@ -83,7 +80,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 }
 
 func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetOrchestratorVersionResponse, boundCluster runtime.ClusterNamespace, wait bool) error {
-	if versions.Current != nil && !ForceOrchestratorDeployment {
+	if versions.Current != nil {
 		for _, p := range versions.Pinned {
 			if p.PackageName == versions.Current.PackageName &&
 				p.Repository == versions.Current.Repository &&
@@ -94,7 +91,7 @@ func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetO
 		}
 	}
 
-	focus, err := planning.RequireServer(ctx, env, schema.PackageName(serverPkg))
+	focus, err := planning.RequireServer(ctx, env, constants.ServerPkg)
 	if err != nil {
 		return err
 	}
@@ -126,7 +123,7 @@ func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetO
 }
 
 func getVersions(ctx context.Context, env cfg.Configuration, cluster runtime.Cluster) (*proto.GetOrchestratorVersionResponse, error) {
-	if !UsePinnedOrchestrator {
+	if UseHeadOrchestrator {
 		return &proto.GetOrchestratorVersionResponse{}, nil
 	}
 
@@ -137,7 +134,7 @@ func getVersions(ctx context.Context, env cfg.Configuration, cluster runtime.Clu
 	}
 
 	// Fallback path: No orchestrator deployed - fetch pinned version directly.
-	prebuilts, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
+	prebuilts, err := fnapi.GetLatestPrebuilts(ctx, constants.ServerPkg, constants.ToolPkg)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +150,7 @@ func getVersions(ctx context.Context, env cfg.Configuration, cluster runtime.Clu
 
 	return res, nil
 }
+
 func getVersionsFromOrchestrator(ctx context.Context, targetEnv cfg.Configuration, cluster runtime.Cluster) (*proto.GetOrchestratorVersionResponse, error) {
 	env, err := MakeOrchestratorContext(ctx, targetEnv)
 	if err != nil {
@@ -180,5 +178,7 @@ func getVersionsFromOrchestrator(ctx context.Context, targetEnv cfg.Configuratio
 		return nil, err
 	}
 
-	return proto.NewOrchestrationServiceClient(rpc).GetOrchestratorVersion(ctx, &proto.GetOrchestratorVersionRequest{})
+	return proto.NewOrchestrationServiceClient(rpc).GetOrchestratorVersion(ctx, &proto.GetOrchestratorVersionRequest{
+		SkipCache: SkipVersionCache,
+	})
 }

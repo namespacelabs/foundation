@@ -63,7 +63,7 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 }
 
 func (svc *Service) GetOrchestratorVersion(ctx context.Context, req *proto.GetOrchestratorVersionRequest) (*proto.GetOrchestratorVersionResponse, error) {
-	return svc.versionChecker.GetOrchestratorVersion(), nil
+	return svc.versionChecker.GetOrchestratorVersion(req.SkipCache)
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
