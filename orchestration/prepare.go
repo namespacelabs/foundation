@@ -29,7 +29,7 @@ import (
 
 const (
 	orchestratorStateKey = "foundation.orchestration"
-	orchDialTimeout      = 500 * time.Millisecond
+	orchDialTimeout      = 5 * time.Second
 )
 
 var (
