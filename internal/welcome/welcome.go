@@ -46,7 +46,7 @@ func WelcomeMessage(firstRun bool) string {
 
 	if firstRun {
 		// Add this to make clear that this large help won't be printed on every command.
-		b.WriteString("It appears this is your first run of `ns`. Let us provice some help on how to interact with it:\n")
+		b.WriteString("It appears this is your first run of `ns`. Let us provide some help on how to interact with it:\n")
 	}
 
 	// TODO add more content.
