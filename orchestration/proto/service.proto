@@ -12,6 +12,7 @@ import "universe/aws/configuration/aws.proto";
 import "internal/fnapi/userauth.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
+import "schema/workspace.proto";
 import "std/tasks/protolog/log.proto";
 
 message DeployRequest {
@@ -41,13 +42,8 @@ message DeploymentStatusResponse {
 message GetOrchestratorVersionRequest {}
 
 message GetOrchestratorVersionResponse {
-    Version current = 1;
-    Version latest  = 2;
-
-    message Version {
-        string repository = 1;
-        string digest     = 2;
-    }
+    foundation.schema.Workspace.BinaryDigest current         = 1;
+    repeated foundation.schema.Workspace.BinaryDigest pinned = 2;
 }
 
 service OrchestrationService {

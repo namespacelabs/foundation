@@ -25,6 +25,7 @@ import (
 const (
 	serverId                      = "0fomj22adbua2u0ug3og"
 	serverPkg  schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
+	toolPkg    schema.PackageName = "namespacelabs.dev/foundation/orchestration/server/tool"
 	serverName                    = "orchestration-api-server"
 
 	backgroundUpdateInterval = 30 * time.Minute
@@ -35,10 +36,10 @@ const (
 type versionChecker struct {
 	serverCtx context.Context
 
-	current *proto.GetOrchestratorVersionResponse_Version
+	current *schema.Workspace_BinaryDigest
 
 	mu        sync.Mutex
-	latest    *proto.GetOrchestratorVersionResponse_Version
+	pinned    []*schema.Workspace_BinaryDigest
 	fetchedAt time.Time
 }
 
@@ -75,11 +76,11 @@ func (vc *versionChecker) GetOrchestratorVersion() *proto.GetOrchestratorVersion
 
 	return &proto.GetOrchestratorVersionResponse{
 		Current: vc.current,
-		Latest:  vc.latest,
+		Pinned:  vc.pinned,
 	}
 }
 
-func getCurrentVersion(ctx context.Context) (*proto.GetOrchestratorVersionResponse_Version, error) {
+func getCurrentVersion(ctx context.Context) (*schema.Workspace_BinaryDigest, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create incluster config: %w", err)
@@ -110,9 +111,10 @@ func getCurrentVersion(ctx context.Context) (*proto.GetOrchestratorVersionRespon
 					return nil, fmt.Errorf("failed to parse image ID: %w", err)
 				}
 
-				return &proto.GetOrchestratorVersionResponse_Version{
-					Repository: parsed.Repository,
-					Digest:     parsed.Digest,
+				return &schema.Workspace_BinaryDigest{
+					PackageName: serverPkg.String(),
+					Repository:  parsed.Repository,
+					Digest:      parsed.Digest,
 				}, nil
 			}
 		}
@@ -132,7 +134,7 @@ func (vc *versionChecker) updateLatest() error {
 	defer cancel()
 
 	fetchedAt := time.Now()
-	res, err := fnapi.GetLatestPrebuilt(ctx, serverPkg)
+	res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
 	if err != nil {
 		return err
 	}
@@ -141,9 +143,13 @@ func (vc *versionChecker) updateLatest() error {
 	defer vc.mu.Unlock()
 
 	vc.fetchedAt = fetchedAt
-	vc.latest = &proto.GetOrchestratorVersionResponse_Version{
-		Repository: res.Repository,
-		Digest:     res.Digest,
+	vc.pinned = nil
+	for _, p := range res.Prebuilt {
+		vc.pinned = append(vc.pinned, &schema.Workspace_BinaryDigest{
+			PackageName: p.PackageName,
+			Repository:  p.Repository,
+			Digest:      p.Digest,
+		})
 	}
 
 	return nil
