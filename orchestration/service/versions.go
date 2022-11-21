@@ -56,9 +56,7 @@ func newVersionChecker(ctx context.Context) *versionChecker {
 
 	go func() {
 		for {
-			if err := vc.updateLatest(); err != nil {
-				log.Printf("failed to fetch latest orch version: %v", err)
-			}
+			vc.updateLatest()
 
 			time.Sleep(backgroundUpdateInterval)
 		}
@@ -125,9 +123,9 @@ func getCurrentVersion(ctx context.Context) (*schema.Workspace_BinaryDigest, err
 	return nil, fmt.Errorf("did not find any running orchestrator pod")
 }
 
-func (vc *versionChecker) updateLatest() error {
+func (vc *versionChecker) updateLatest() {
 	if !vc.shouldUpdate() {
-		return nil
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(vc.serverCtx, fetchLatestTimeout)
@@ -136,7 +134,8 @@ func (vc *versionChecker) updateLatest() error {
 	fetchedAt := time.Now()
 	res, err := fnapi.GetLatestPrebuilts(ctx, serverPkg, toolPkg)
 	if err != nil {
-		return err
+		log.Printf("failed to fetch latest orch version from API server: %v\n", err)
+		return
 	}
 
 	vc.mu.Lock()
@@ -151,8 +150,6 @@ func (vc *versionChecker) updateLatest() error {
 			Digest:      p.Digest,
 		})
 	}
-
-	return nil
 }
 
 func (vc *versionChecker) shouldUpdate() bool {
