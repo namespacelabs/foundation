@@ -83,7 +83,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 }
 
 func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetOrchestratorVersionResponse, boundCluster runtime.ClusterNamespace, wait bool) error {
-	if versions.Current != nil {
+	if versions.Current != nil && !ForceOrchestratorDeployment {
 		for _, p := range versions.Pinned {
 			if p.PackageName == versions.Current.PackageName &&
 				p.Repository == versions.Current.Repository &&
