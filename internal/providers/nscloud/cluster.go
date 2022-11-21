@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -42,10 +43,6 @@ func RegisterClusterProvider() {
 			&PrebuiltCluster{ClusterId: cluster.ClusterId},
 		}
 
-		if cluster.UseBuildCluster {
-
-		}
-
 		return messages, nil
 	}, "foundation.providers.nscloud.config.Cluster")
 }
@@ -65,7 +62,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 
 	var p client.ClusterConfiguration
 	p.Ephemeral = conf.Ephemeral
-	p.Config = *client.MakeApiConfig(&client.StaticConfig{
+	p.Config = *kubeclient.MakeApiConfig(&kubeclient.StaticConfig{
 		EndpointAddress:          cluster.EndpointAddress,
 		CertificateAuthorityData: cluster.CertificateAuthorityData,
 		ClientCertificateData:    cluster.ClientCertificateData,

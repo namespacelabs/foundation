@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -84,7 +85,7 @@ func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*
 
 	if c.StaticConfig != nil {
 		return &configResult{
-			ClientConfig: clientcmd.NewDefaultClientConfig(*MakeApiConfig(c.StaticConfig), nil),
+			ClientConfig: clientcmd.NewDefaultClientConfig(*kubeclient.MakeApiConfig(c.StaticConfig), nil),
 		}, nil
 	}
 
