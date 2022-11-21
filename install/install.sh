@@ -109,24 +109,23 @@ do_install() {
   echo
   echo "Namespace was successfully installed to ${bin_dir}/ns"
   echo
+  echo "Note: ns collects usage telemetry. This data helps us build a better "
+  echo "platform for you. You can learn more at https://namespace.so/telemetry."
+  echo
 
-  if ! $dry_run; then
-    if command -v ns >/dev/null; then
-      echo "Check out our examples at https://namespace.so/docs#examples to get started."
-      echo
-    else
-      case $SHELL in
-	      /bin/zsh) shell_profile=".zshrc" ;;
-	      *) shell_profile=".bashrc" ;;
-      esac
-      echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
-	    echo "  export NS_ROOT=\"$ns_root\""
-	    echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
-            echo
-            echo "Check out our examples at https://namespace.so/docs#examples to get started."
-            echo
-	  fi
-  fi
+  case $SHELL in
+    /bin/zsh) shell_profile=".zshrc" ;;
+    *) shell_profile=".bashrc" ;;
+  esac
+  echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
+  echo "  export NS_ROOT=\"$ns_root\""
+  echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
+  echo
+  echo "Or simply run ${bin_dir}/ns"
+
+  echo
+  echo "Check out our examples at https://namespace.so/docs#examples to get started."
+  echo
 }
 
 do_install "$@"
