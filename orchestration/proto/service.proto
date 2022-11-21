@@ -12,6 +12,7 @@ import "universe/aws/configuration/aws.proto";
 import "internal/fnapi/userauth.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
+import "schema/workspace.proto";
 import "std/tasks/protolog/log.proto";
 
 message DeployRequest {
@@ -38,7 +39,17 @@ message DeploymentStatusResponse {
     reserved 1, 3;
 }
 
+message GetOrchestratorVersionRequest {
+    bool skip_cache = 1;
+}
+
+message GetOrchestratorVersionResponse {
+    foundation.schema.Workspace.BinaryDigest current         = 1;
+    repeated foundation.schema.Workspace.BinaryDigest pinned = 2;
+}
+
 service OrchestrationService {
     rpc Deploy(DeployRequest) returns (DeployResponse);
     rpc DeploymentStatus(DeploymentStatusRequest) returns (stream DeploymentStatusResponse);
+    rpc GetOrchestratorVersion(GetOrchestratorVersionRequest) returns (GetOrchestratorVersionResponse);
 }
