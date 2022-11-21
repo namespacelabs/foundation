@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -427,8 +428,8 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 			return nil, false, fnerrors.InternalError("rel failed: %v", err)
 		}
 
-		// Ignore changes to files which are not valid paths for example includes ..
-		if !fs.ValidPath(rel) {
+		// Observed a change that is not within the destination we're observing. We'll ignore it.
+		if strings.HasPrefix(rel, "../") {
 			fmt.Fprintf(debugLogger, "ignored change: %s\n", rel)
 			continue
 		}
