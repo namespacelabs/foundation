@@ -25,11 +25,15 @@ func (loc Location) Rel(rel ...string) string {
 	return filepath.Join(append([]string{loc.RelPath}, rel...)...)
 }
 
-func (loc Location) AsPackageName() schema.PackageName {
+func (loc Location) String() string {
 	if loc.RelPath == "." {
-		return schema.PackageName(loc.ModuleName)
+		return loc.ModuleName
 	}
-	return schema.PackageName(filepath.Join(loc.ModuleName, loc.RelPath))
+	return filepath.Join(loc.ModuleName, loc.RelPath)
+}
+
+func (loc Location) AsPackageName() schema.PackageName {
+	return schema.PackageName(loc.String())
 }
 
 // Implements the fnerrors.Location interface.
