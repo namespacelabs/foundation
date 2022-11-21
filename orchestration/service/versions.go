@@ -22,7 +22,6 @@ import (
 const (
 	backgroundUpdateInterval = 30 * time.Minute
 	fetchLatestTimeout       = 2 * time.Second
-	cacheTimeout             = time.Minute
 )
 
 type versionChecker struct {
