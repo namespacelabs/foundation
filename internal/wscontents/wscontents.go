@@ -427,6 +427,12 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 			return nil, false, fnerrors.InternalError("rel failed: %v", err)
 		}
 
+		// Ignore changes to files which are not valid paths for example includes ..
+		if !fs.ValidPath(rel) {
+			fmt.Fprintf(debugLogger, "ignored change: %s\n", rel)
+			continue
+		}
+
 		action, err := checkChanges(ctx, snapshot, os.DirFS(absPath), rel)
 		if err != nil {
 			return nil, false, fnerrors.InternalError("failed to check changes: %v", err)
