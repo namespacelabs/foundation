@@ -87,18 +87,27 @@ func NewTestCmd() *cobra.Command {
 
 			// This PackageLoader instance is only used to resolve package references from the command line arguments.
 			packageRefPl := parsing.NewPackageLoader(env)
-
+			owner := schema.MakePackageName(locs.Root.ModuleName())
 			testRefs := []*schema.PackageRef{}
 			for _, l := range locs.Locs {
-				pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
+				pr, err := schema.ParsePackageRef(owner, l.String())
 				if err != nil {
 					return err
 				}
-
-				for _, t := range pp.Tests {
-					if allTests || !slices.Contains(t.Tag, "generated") {
-						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
+				// is the location contains name of a specific test?
+				if pr.GetName() == "" {
+					pp, err := packageRefPl.LoadByName(ctx, pr.AsPackageName())
+					if err != nil {
+						return err
 					}
+
+					for _, t := range pp.Tests {
+						if allTests || !slices.Contains(t.Tag, "generated") {
+							testRefs = append(testRefs, schema.MakePackageRef(pr.AsPackageName(), t.Name))
+						}
+					}
+				} else {
+					testRefs = append(testRefs, pr)
 				}
 			}
 
