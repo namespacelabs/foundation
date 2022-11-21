@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -28,6 +29,7 @@ import (
 
 const (
 	orchestratorStateKey = "foundation.orchestration"
+	orchDialTimeout      = 500 * time.Millisecond
 )
 
 var (
@@ -152,6 +154,9 @@ func getVersions(ctx context.Context, env cfg.Configuration, cluster runtime.Clu
 }
 
 func getVersionsFromOrchestrator(ctx context.Context, targetEnv cfg.Configuration, cluster runtime.Cluster) (*proto.GetOrchestratorVersionResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, orchDialTimeout)
+	defer cancel()
+
 	env, err := MakeOrchestratorContext(ctx, targetEnv)
 	if err != nil {
 		return nil, err
