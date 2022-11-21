@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/pprof"
 
 	"github.com/google/go-containerregistry/pkg/logs"
@@ -510,7 +511,7 @@ func SetupViper() {
 	viper.SetDefault("enable_tracing", false)
 	_ = viper.BindEnv("enable_tracing")
 
-	viper.SetDefault("enable_telemetry", true)
+	viper.SetDefault("telemetry", true)
 
 	viper.SetDefault("enable_autoupdate", true)
 	_ = viper.BindEnv("enable_autoupdate")
@@ -530,7 +531,7 @@ func SetupViper() {
 
 func ensureFnConfig() {
 	if fnDir, err := dirs.Config(); err == nil {
-		p := fmt.Sprintf("%s/config.json", fnDir)
+		p := filepath.Join(fnDir, "config.json")
 		if _, err := os.Stat(p); err == nil {
 			// Already exists.
 			return

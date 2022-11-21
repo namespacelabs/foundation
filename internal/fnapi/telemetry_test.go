@@ -90,7 +90,7 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 	reset := setupEnv(t)
 	defer reset()
 
-	viper.Set("enable_telemetry", false)
+	viper.Set("telemetry", false)
 
 	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
 	tel.useTelemetry = true
@@ -223,7 +223,7 @@ func setupEnv(t *testing.T) func() {
 	t.Setenv("DO_NOT_TRACK", "")
 	t.Setenv("CI", "")
 
-	viper.Set("enable_telemetry", true)
+	viper.Set("telemetry", true)
 
 	return func() { viper.Reset() }
 }

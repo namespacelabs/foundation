@@ -87,7 +87,7 @@ func (tel *Telemetry) Enable() {
 
 func (tel *Telemetry) IsTelemetryEnabled() bool {
 	doNotTrack := os.Getenv("DO_NOT_TRACK")
-	enableTelemetry := viper.GetBool("enable_telemetry")
+	enableTelemetry := viper.GetBool("telemetry")
 	return !environment.IsRunningInCI() && tel.useTelemetry && doNotTrack == "" && enableTelemetry
 }
 

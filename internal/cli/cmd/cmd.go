@@ -47,6 +47,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(create.NewCreateCmd(RunCommand))
 	root.AddCommand(NewUpdateNSCmd())
 	root.AddCommand(NewGenerateCmd())
+	root.AddCommand(NewConfigCmd())
 }
 
 // Programmatically trigger an `ns` command.
