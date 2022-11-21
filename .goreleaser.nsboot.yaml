@@ -56,6 +56,11 @@ brews:
     name: ns
     description: "Developer platform with a unified experience from development to production."
     homepage: "https://namespacelabs.com/"
+    caveats: |
+      Note: Note: ns collects usage telemetry. This data helps us build a better
+      platform for you. You can learn more at https://namespace.so/telemetry.
+
+      Check out our examples at https://namespace.so/docs#examples to get started.
     # Point to the publicly-accessible S3 builds instead of GitHub releases (which are in a private repo).
     url_template: "https://get.namespace.so/packages/{{.ProjectName}}/v{{.Version}}/{{.ArtifactName}}"
     install: |
