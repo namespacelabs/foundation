@@ -133,7 +133,7 @@ func getVersions(ctx context.Context, env cfg.Configuration, cluster runtime.Clu
 	if res, err := getVersionsFromOrchestrator(ctx, env, cluster); err == nil {
 		return res, nil
 	} else {
-		fmt.Fprintf(console.Debug(ctx), "failed to fetch version from orchestrator: %v\nFalling back to pinned version.", err)
+		fmt.Fprintf(console.Debug(ctx), "failed to fetch version from orchestrator: %v\nFalling back to pinned version.\n", err)
 	}
 
 	// Fallback path: No orchestrator deployed - fetch pinned version directly.
