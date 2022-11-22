@@ -85,7 +85,6 @@ func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetO
 	if versions.Current != nil {
 		for _, p := range versions.Pinned {
 			if p.PackageName == versions.Current.PackageName &&
-				p.Repository == versions.Current.Repository &&
 				p.Digest == versions.Current.Digest {
 				// Current orchestrator already runs the pinned version.
 				return nil
