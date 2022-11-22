@@ -35,8 +35,9 @@ import (
 )
 
 var (
-	AlsoDeployIngress       = true
-	PushPrebuiltsToRegistry = true
+	AlsoDeployIngress        = true
+	PushPrebuiltsToRegistry  = true
+	MirrorPrebuiltToRegistry = true
 )
 
 type ResolvedServerImages struct {
@@ -554,10 +555,23 @@ type imagePoster struct {
 }
 
 func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry registry.Manager, p build.Plan) (imagePoster, error) {
-	if imgid, ok := build.IsPrebuilt(p.Spec); ok && !PushPrebuiltsToRegistry {
-		return imagePoster{
-			ImageID: build.Prebuilt(imgid),
-		}, nil
+	if imgid, ok := build.IsPrebuilt(p.Spec); ok {
+		if !PushPrebuiltsToRegistry {
+			return imagePoster{
+				ImageID: build.Prebuilt(imgid),
+			}, nil
+		}
+
+		if MirrorPrebuiltToRegistry {
+			name := registry.AllocateName(p.SourcePackage.String())
+			r := oci.Prebuilt(imgid, build.PrebuiltResolveOpts())
+			return imagePoster{
+				ImageID:     oci.PublishResolvable(name, r, p),
+				SourceImage: r,
+			}, nil
+		}
+
+		// Else, we'll create a minimal prebuilt image with only the platforms required for this deployment.
 	}
 
 	name := registry.AllocateName(p.SourcePackage.String())
