@@ -84,11 +84,16 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetOrchestratorVersionResponse, boundCluster runtime.ClusterNamespace, wait bool) error {
 	if versions.Current != nil {
 		for _, p := range versions.Pinned {
-			if p.PackageName == versions.Current.PackageName &&
-				p.Digest == versions.Current.Digest {
-				// Current orchestrator already runs the pinned version.
+			if p.PackageName != versions.Current.PackageName {
+				continue
+			}
+
+			if p.Digest == versions.Current.Digest {
+				fmt.Fprintf(console.Debug(ctx), "Current orchestrator already runs the pinned version.\n")
 				return nil
 			}
+
+			fmt.Fprintf(console.Debug(ctx), "Updating orchestrator from %s to %s.\n", versions.Current.Digest, p.Digest)
 		}
 	}
 

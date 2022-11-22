@@ -118,7 +118,7 @@ func PrebuiltImageID(ctx context.Context, loc pkggraph.Location, cfg cfg.Configu
 
 	if conf, ok := prebuiltsConfType.CheckGet(cfg); ok {
 		prebuilts = append(prebuilts, conf.PrebuiltBinary...)
-		fmt.Fprintf(console.Debug(ctx), "Adding %d prebuilts from planning configuration.", len(conf.PrebuiltBinary))
+		fmt.Fprintf(console.Debug(ctx), "Adding %d prebuilts from planning configuration.\n", len(conf.PrebuiltBinary))
 	}
 
 	var selected *oci.ImageID
