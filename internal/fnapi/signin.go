@@ -6,15 +6,19 @@ package fnapi
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
+const baseUrl = "https://login.namespace.so/login/cli"
+
 type StartLoginRequest struct{}
 
 type StartLoginResponse struct {
-	LoginId string `json:"login_id"`
+	LoginId  string `json:"login_id"`
+	LoginUrl string `json:"login_url"`
 }
 
 type CompleteLoginRequest struct {
@@ -41,13 +45,22 @@ type GetSessionTokenResponse struct {
 	Expiration time.Time `json:"expiration"`
 }
 
+// Returns the URL which the user should open.
 func StartLogin(ctx context.Context) (string, error) {
 	req := StartLoginRequest{}
 
 	resp := &StartLoginResponse{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(resp))
 
-	return resp.LoginId, err
+	if err != nil {
+		return "", err
+	}
+
+	if resp.LoginUrl != "" {
+		return resp.LoginUrl, nil
+	}
+
+	return fmt.Sprintf("%s?id=%s", baseUrl, resp.LoginId), nil
 }
 
 func CompleteLogin(ctx context.Context, id string, ephemeralCliId string) (*UserAuth, error) {
