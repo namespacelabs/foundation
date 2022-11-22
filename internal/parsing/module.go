@@ -67,7 +67,7 @@ func ModuleHead(ctx context.Context, resolved *ResolvedPackage) (*schema.Workspa
 		cmd.Stderr = console.Output(ctx, "git")
 
 		if err := cmd.Run(); err != nil {
-			return nil, fnerrors.InvocationError("%s: failed to `git ls-remote`: %w", resolved.Repository, err)
+			return nil, fnerrors.InvocationError("git", "%s: failed to `git ls-remote`: %w", resolved.Repository, err)
 		}
 
 		gitout := strings.TrimSpace(out.String())
@@ -78,7 +78,7 @@ func ModuleHead(ctx context.Context, resolved *ResolvedPackage) (*schema.Workspa
 			return dep, nil
 		}
 
-		return nil, fnerrors.InvocationError("%s: failed to resolve HEAD", resolved.Repository)
+		return nil, fnerrors.InvocationError("git", "%s: failed to resolve HEAD", resolved.Repository)
 	})
 }
 

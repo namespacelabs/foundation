@@ -116,7 +116,7 @@ func (m *makeRepository) Compute(ctx context.Context, deps compute.Resolved) (st
 		if errors.As(err, &e) {
 			// If the repository already exists, that's all good.
 		} else {
-			return "", fnerrors.InvocationError("%s: failed to create ECR repository: %w", m.repository, err)
+			return "", fnerrors.InvocationError("aws/ecr", "%s: failed to create ECR repository: %w", m.repository, err)
 		}
 	}
 

@@ -140,7 +140,7 @@ func registerCreate() {
 				return nil
 			}); err != nil {
 				if !errors.IsNotFound(err) {
-					return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
+					return nil, fnerrors.InvocationError("kubernetes", "%s: failed to create: %w", d.Description, err)
 				}
 			}
 

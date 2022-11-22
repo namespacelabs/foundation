@@ -192,7 +192,7 @@ func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, e
 
 				return nil
 			}); err != nil {
-				return fnerrors.InvocationError("cluster never became ready (last status was %q, cluster id: %s): %w", lastStatus, clusterId, err)
+				return fnerrors.InvocationError("nscloud", "cluster never became ready (last status was %q, cluster id: %s): %w", lastStatus, clusterId, err)
 			}
 		}
 
