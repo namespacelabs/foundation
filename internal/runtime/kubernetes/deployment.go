@@ -734,11 +734,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	tmpl = tmpl.WithSpec(spec)
 
-	// Only mutate `annotations` after all other uses above.
-	if deployable.ConfigImage != nil {
-		annotations[kubedef.K8sConfigImage] = deployable.ConfigImage.RepoAndDigest()
-	}
-
 	if createServiceAccount {
 		annotations := map[string]string{}
 		for _, ann := range serviceAccountAnnotations {
@@ -778,7 +773,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		switch deployable.Class {
 		case schema.DeployableClass_STATELESS:
 			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server Deployment %s", deployable.Name))
-			ensure.Resource = appsv1.
+			deployment := appsv1.
 				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
@@ -787,10 +782,17 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
+			if deployable.ConfigImage != nil {
+				deployment.WithAnnotations(map[string]string{
+					kubedef.K8sConfigImage: deployable.ConfigImage.RepoAndDigest(),
+				})
+			}
+
+			ensure.Resource = deployment
 
 		case schema.DeployableClass_STATEFUL:
 			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server StatefulSet %s", deployable.Name))
-			ensure.Resource = appsv1.
+			statefulSet := appsv1.
 				StatefulSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
@@ -799,6 +801,13 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
+			if deployable.ConfigImage != nil {
+				statefulSet.WithAnnotations(map[string]string{
+					kubedef.K8sConfigImage: deployable.ConfigImage.RepoAndDigest(),
+				})
+			}
+
+			ensure.Resource = statefulSet
 
 		default:
 			return fnerrors.InternalError("%s: unsupported deployable class", deployable.Class)

@@ -130,7 +130,7 @@ func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[de
 		fmt.Fprintf(out, "%s\n", resolved.Binary.Repository)
 		fmt.Fprintf(out, "    %s %s\n", spaces("Binary:"), resolved.Binary.Digest)
 
-		if resolved.Config.String() != "" {
+		if resolved.Config != nil {
 			fmt.Fprintf(out, "    %s %s\n", style.Header.Apply("Config:"), resolved.Config.Repository)
 			fmt.Fprintf(out, "    %s %s\n", spaces("Config:"), resolved.Config.Digest)
 		}

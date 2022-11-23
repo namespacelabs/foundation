@@ -45,7 +45,7 @@ type ResolvedServerImages struct {
 	Binary         oci.ImageID
 	BinaryImage    compute.Computable[oci.ResolvableImage]
 	PrebuiltBinary bool
-	Config         oci.ImageID
+	Config         *oci.ImageID
 	Sidecars       []ResolvedBinary
 }
 
@@ -711,7 +711,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 				}
 
 				if v, ok := compute.GetDep(deps, srv.Config, "config"); ok {
-					result.Config = v.Value
+					result.Config = &v.Value
 				}
 
 				sidecarIndex := 0
@@ -751,9 +751,7 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 	out.MainContainer.Mounts = append(out.MainContainer.Mounts, proto.MainContainer.Mount...)
 
 	out.MainContainer.Image = imgs.Binary
-	if imgs.Config.Repository != "" {
-		out.ConfigImage = &imgs.Config
-	}
+	out.ConfigImage = imgs.Config
 
 	if err := integrations.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err
