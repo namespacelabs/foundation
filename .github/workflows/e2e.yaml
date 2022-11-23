@@ -162,9 +162,6 @@ jobs:
         # Consider using secrets.GITHUB_TOKEN
         run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
 
-      - name: Prepare build environment
-        run: /tmp/ns prepare new-cluster --with_build_cluster
-
       - name: Run tests
         run: |
           /tmp/ns test \
@@ -173,6 +170,7 @@ jobs:
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
+            --testing_use_namespace_cloud_build \
             --parallel \
             --all
 
@@ -236,9 +234,6 @@ jobs:
         # Consider using secrets.GITHUB_TOKEN
         run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
 
-      - name: Prepare build environment
-        run: cd external-repo && /tmp/ns prepare new-cluster --with_build_cluster --log_actions
-
       - name: Run tests
         run: |
           cd external-repo; \
@@ -254,6 +249,7 @@ jobs:
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
+            --testing_use_namespace_cloud_build \
             --parallel
 
       - uses: k0kubun/action-slack@v2.0.0
