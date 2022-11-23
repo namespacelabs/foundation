@@ -189,7 +189,7 @@ func locationsAndPackageRefsFromArgs(ctx context.Context, mainModuleName string,
 			}
 		} else {
 			if isRef {
-				pr, err := schema.StrictParsePackageRef(rel)
+				pr, err := schema.StrictParsePackageRef(filepath.Join(moduleName, rel))
 				if err != nil {
 					return nil, nil, err
 				}
