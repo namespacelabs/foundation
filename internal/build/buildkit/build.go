@@ -101,9 +101,17 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
 		}
 
-		cli, err := client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			return api.DialPort(ctx, cluster.Cluster, int(c.conf.HostedBuildCluster.TargetPort))
-		}))
+		connect := func() (*client.Client, error) {
+			return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+				return api.DialPort(ctx, cluster.Cluster, int(c.conf.HostedBuildCluster.TargetPort))
+			}))
+		}
+
+		if err := waitForBuildkit(ctx, connect); err != nil {
+			return nil, err
+		}
+
+		cli, err := connect()
 		if err != nil {
 			return nil, err
 		}

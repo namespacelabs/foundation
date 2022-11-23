@@ -28,11 +28,15 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (string, error) 
 	}
 
 	var spec = install.PersistentSpec{
-		Name:             "buildkit",
-		ContainerName:    containerName,
-		Version:          vendoredVersion,
-		Image:            "moby/buildkit",
-		WaitUntilRunning: waitForBuildkit,
+		Name:          "buildkit",
+		ContainerName: containerName,
+		Version:       vendoredVersion,
+		Image:         "moby/buildkit",
+		WaitUntilRunning: func(ctx context.Context, containerName string) error {
+			return waitForBuildkit(ctx, func() (*buildkit.Client, error) {
+				return buildkit.New(ctx, makeAddr(containerName))
+			})
+		},
 		Volumes: map[string]string{
 			containerName: "/var/lib/buildkit",
 		},
@@ -74,10 +78,10 @@ func makeAddr(containerName string) string {
 	return fmt.Sprintf("docker-container://%s", containerName)
 }
 
-func waitForBuildkit(ctx context.Context, containerName string) error {
+func waitForBuildkit(ctx context.Context, connect func() (*buildkit.Client, error)) error {
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
 		return backoff.Retry(func() error {
-			c, err := buildkit.New(ctx, makeAddr(containerName))
+			c, err := connect()
 			if err != nil {
 				return err
 			}
