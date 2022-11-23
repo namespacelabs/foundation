@@ -268,7 +268,16 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 		})
 	}
 
-	_, err := kubeobserver.WatchPods(ctx, r.cluster.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {
+	pods, err := r.cluster.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv))})
+	if err != nil {
+		return err
+	}
+
+	if len(pods.Items) == 0 {
+		return fnerrors.New("%s: no pods to observe", srv.GetName())
+	}
+
+	_, err = kubeobserver.WatchPods(ctx, r.cluster.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {
 		instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
 
 		t := untrackContainer

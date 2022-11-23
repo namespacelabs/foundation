@@ -32,7 +32,7 @@ func WatchPods[V any](ctx context.Context, cli *k8s.Clientset, namespace string,
 	for {
 		w, err := cli.CoreV1().Pods(namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(labels)})
 		if err != nil {
-			return empty, fnerrors.InternalError("kubernetes: failed while waiting for pod: %w", err)
+			return empty, fnerrors.InvocationError("kubernetes", "failed while waiting for pod: %w", err)
 		}
 
 		defer w.Stop()
