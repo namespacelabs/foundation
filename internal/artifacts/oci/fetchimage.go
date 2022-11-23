@@ -183,7 +183,7 @@ func (r *fetchDescriptor) Compute(ctx context.Context, deps compute.Resolved) (*
 	digest := compute.MustGetDepValue(deps, r.imageID.ImageID(), "resolved")
 	d, err := fetchRemoteDescriptor(ctx, digest.ImageRef(), r.opts)
 	if err != nil {
-		return nil, fnerrors.InvocationError("registry", "failed to fetch descriptor: %w", err)
+		return nil, fnerrors.InvocationError("kubernetes", "failed to fetch descriptor: %w", err)
 	}
 
 	res := &RawDescriptor{

@@ -59,13 +59,13 @@ type serializedMessage[V proto.Message] struct {
 var _ json.Marshaler = &serializedMessage[proto.Message]{}
 var _ json.Unmarshaler = &serializedMessage[proto.Message]{}
 
-func newDeployer() deployer {
+func newDeployer() *deployer {
 	statusDir := filepath.Join(os.Getenv("NSDATA"), "status")
 	if err := os.MkdirAll(statusDir, 0700|os.ModeDir); err != nil {
-		panic(fmt.Sprintf("unable to create dir %s: %v", statusDir, err))
+		log.Fatalf("unable to create dir %s: %v", statusDir, err)
 	}
 
-	return deployer{
+	return &deployer{
 		statusDir: statusDir,
 		leaser:    newLeaser(),
 	}

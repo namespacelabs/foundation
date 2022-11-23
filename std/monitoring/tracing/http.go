@@ -17,6 +17,10 @@ type HttpClientProvider struct {
 	provider trace.TracerProvider
 }
 
+func (hp HttpClientProvider) New() *http.Client {
+	return hp.Wrap(&http.Client{})
+}
+
 func (hp HttpClientProvider) Wrap(client *http.Client) *http.Client {
 	client.Transport = otelhttp.NewTransport(client.Transport,
 		otelhttp.WithTracerProvider(hp.provider),

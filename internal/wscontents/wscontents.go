@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -425,6 +426,12 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 		rel, err := filepath.Rel(absPath, p)
 		if err != nil {
 			return nil, false, fnerrors.InternalError("rel failed: %v", err)
+		}
+
+		// Observed a change that is not within the destination we're observing. We'll ignore it.
+		if strings.HasPrefix(rel, "../") {
+			fmt.Fprintf(debugLogger, "ignored change: %s\n", rel)
+			continue
 		}
 
 		action, err := checkChanges(ctx, snapshot, os.DirFS(absPath), rel)

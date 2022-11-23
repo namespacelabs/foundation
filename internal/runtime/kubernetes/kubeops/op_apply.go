@@ -151,7 +151,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 			return prepReq.Do(ctx).Into(&res)
 		}}); err != nil {
-		return nil, fnerrors.InvocationError("%s: failed to apply: %w", desc, err)
+		return nil, fnerrors.InvocationError("kubernetes", "%s: failed to apply: %w", desc, err)
 	}
 
 	if err := checkResetCRDCache(ctx, cluster, obj.GroupVersionKind()); err != nil {

@@ -63,7 +63,7 @@ jobs:
         if: failure() && github.event_name == 'push'
 
   run_deploy:
-    name: Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
+    name: Test deployment to Kubernetes os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
     needs: build_fn
     strategy:
       matrix:
@@ -124,31 +124,16 @@ jobs:
             internal/testdata/server/gogrpc
 
   run_e2e_tests:
-    name: cross-repo e2e tests
+    name: e2e tests
     needs: build_fn
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        regenerate_fn_generate: [false, true]
-        repo: [examples]
-        include:
-          - repo: examples
-            root_path: examples
     runs-on: ${{ matrix.os }}
-    env:
-      GOPRIVATE: namespacelabs.dev/*
-      NSL_GH_SERVICE: ${{ secrets.NSL_GH_SERVICE }}
     timeout-minutes: 30
     steps:
-      - name: configure git
-        run: git config --global url.https://$NSL_GH_SERVICE@github.com/.insteadOf https://github.com/
-
-      - name: checkout dependant repo
+      - name: Check out
         uses: actions/checkout@v3
-        with:
-          repository: namespacelabs/${{ matrix.repo }}
-          path: ${{ matrix.repo }}
-          token: ${{ secrets.NSL_GH_SERVICE }}
 
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
@@ -174,24 +159,93 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: cd ${{ matrix.root_path }} && /tmp/ns prepare local
-
-      - name: Run ns generate on a clean slate
-        if: ${{ matrix.regenerate_fn_generate }}
-        run: |
-          cd ${{ matrix.root_path }} ; \
-          find . -regex '.*\.fn\.cue' -exec rm {} \; ; \
-          find . -regex '.*\.fn\.go' -exec rm {} \; ; \
-
-      - name: Generate code that is not submitted to the repository
-        run: cd ${{ matrix.root_path }} && /tmp/ns generate
+        run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
+      - name: Login
+        run: echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/foundation
+
       - name: Run tests
         run: |
-          cd ${{ matrix.root_path }}; \
+          /tmp/ns test \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --use_prebuilts=true \
+            --golang_use_buildkit=false \
+            --testing_use_namespace_cloud \
+            --rocket_ship \
+            --include_servers
+
+      - uses: k0kubun/action-slack@v2.0.0
+        with:
+          payload: |
+            {
+              "attachments": [{
+                "title": "${{ job.status }}: ${{ github.workflow }}",
+                "title_link": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}/checks",
+                "text": "${{ github.repository }}@${{ github.ref }}: <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
+                "fields": [{ "value": ${{ toJson(github.event.head_commit.message) }}, "short": false }],
+                "footer": "${{ github.event.head_commit.committer.name }} at ${{ github.event.head_commit.timestamp }}",
+                "color": "danger"
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: failure() && github.event_name == 'push'
+
+  run_cross_repo_tests:
+    name: cross-repo e2e tests
+    needs: build_fn
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+        repo: [examples]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - name: checkout dependant repo
+        uses: actions/checkout@v3
+        with:
+          repository: namespacelabs/${{ matrix.repo }}
+          path: external-repo
+
+      # Required by buildkit gha cache.
+      - name: Expose GitHub Runtime
+        uses: crazy-max/ghaction-github-runtime@v2
+
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-fnrun-
+
+      - name: Download Foundation
+        uses: actions/download-artifact@v3
+        with:
+          name: ns-${{ runner.os }}
+
+      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
+      - name: Make Foundation executable
+        run: chmod +x ns && mv ns /tmp/ns
+
+      - name: Prepare development environment
+        run: cd external-repo && /tmp/ns prepare local
+
+      - name: Print kubectl cluster-info
+        run: kubectl cluster-info
+
+      - name: Login
+        run: echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
+
+      - name: Run tests
+        run: |
+          cd external-repo; \
           /tmp/ns test \
             nextjs/01-simple/server \
             multitier/01-simple/frontend \
@@ -203,6 +257,8 @@ jobs:
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
             --golang_use_buildkit=false \
+            --testing_use_namespace_cloud \
+            --rocket_ship \
             --include_servers
 
       - uses: k0kubun/action-slack@v2.0.0

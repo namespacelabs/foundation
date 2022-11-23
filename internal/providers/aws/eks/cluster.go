@@ -223,7 +223,7 @@ func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved
 		}
 
 		if out.Cluster == nil {
-			return fnerrors.InvocationError("eks", "api didn't return a cluster description as expected")
+			return fnerrors.InvocationError("aws/eks", "api didn't return a cluster description as expected")
 		}
 
 		output = *out
@@ -235,7 +235,7 @@ func (cd *cachedDescribeCluster) Compute(ctx context.Context, _ compute.Resolved
 		providers, err := cd.session.iam.ListOpenIDConnectProviders(ctx, &iam.ListOpenIDConnectProvidersInput{})
 		if err != nil {
 			return auth.CheckNeedsLoginOr(cd.session.sesh, err, func(err error) error {
-				return fnerrors.InvocationError("eks", "failed to list OpenID Connect providers: %w", err)
+				return fnerrors.InvocationError("aws/eks", "failed to list OpenID Connect providers: %w", err)
 			})
 		}
 

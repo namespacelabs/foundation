@@ -16,12 +16,12 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeparser"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -140,7 +140,7 @@ func registerCreate() {
 				return nil
 			}); err != nil {
 				if !errors.IsNotFound(err) {
-					return nil, fnerrors.InvocationError("%s: failed to create: %w", d.Description, err)
+					return nil, fnerrors.InvocationError("kubernetes", "%s: failed to create: %w", d.Description, err)
 				}
 			}
 

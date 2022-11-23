@@ -151,6 +151,6 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	case http.StatusUnauthorized:
 		return ErrRelogin
 	default:
-		return fnerrors.InvocationError("namesace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
+		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
 }
