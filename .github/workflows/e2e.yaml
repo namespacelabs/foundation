@@ -63,7 +63,7 @@ jobs:
         if: failure() && github.event_name == 'push'
 
   run_deploy:
-    name: Kubernetes e2e test os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
+    name: Test deployment to Kubernetes os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
     needs: build_fn
     strategy:
       matrix:
@@ -106,7 +106,10 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: /tmp/ns prepare local
+        run: |
+          pwd
+          ls
+          /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
@@ -156,7 +159,10 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: /tmp/ns prepare local
+        run: |
+          pwd
+          ls
+          /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
