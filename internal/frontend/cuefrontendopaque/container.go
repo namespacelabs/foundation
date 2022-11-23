@@ -43,8 +43,10 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 	out := &parsedCueContainer{
 		container: &schema.SidecarContainer{
 			Name: name,
-			Args: bits.Args.Parsed(),
-			Env:  envVars,
+			BinaryConfig: &schema.BinaryConfig{
+				Args: bits.Args.Parsed(),
+				Env:  envVars,
+			},
 		},
 	}
 

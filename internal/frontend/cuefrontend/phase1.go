@@ -134,7 +134,9 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 				Owner:     owner.String(),
 				Name:      data.Name,
 				BinaryRef: binRef,
-				Args:      data.Args.Parsed(),
+				BinaryConfig: &schema.BinaryConfig{
+					Args: data.Args.Parsed(),
+				},
 			})
 		}
 
@@ -161,7 +163,9 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			Owner:     owner.String(),
 			Name:      name,
 			BinaryRef: binRef,
-			Args:      data.Args.Parsed(),
+			BinaryConfig: &schema.BinaryConfig{
+				Args: data.Args.Parsed(),
+			},
 		})
 	}
 

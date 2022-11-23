@@ -787,7 +787,7 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 		out.MainContainer.Command = merged.Command
 	}
 	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
-	out.MainContainer.Env = append(out.MainContainer.Env, srv.Proto().MainContainer.Env...)
+	out.MainContainer.Env = append(out.MainContainer.Env, srv.Proto().MainContainer.BinaryConfig.Env...)
 	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
 
 	return nil
@@ -821,14 +821,14 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved Res
 			BinaryRef: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
 				Image:      sidecarBinary.Binary,
-				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.Args...),
+				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.BinaryConfig.Args...),
 				Command:    sidecarBinary.BinaryConfig.GetCommand(),
 				WorkingDir: sidecarBinary.BinaryConfig.GetWorkingDir(),
 			},
 		}
 
 		mergeEnv(&opts.ContainerRunOpts.Env, sidecarBinary.BinaryConfig.GetEnv())
-		mergeEnv(&opts.ContainerRunOpts.Env, container.Env)
+		mergeEnv(&opts.ContainerRunOpts.Env, container.BinaryConfig.Env)
 
 		*out = append(*out, opts)
 	}

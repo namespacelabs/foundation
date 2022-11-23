@@ -46,7 +46,9 @@ func TestAllocateMessage(t *testing.T) {
 						"package_name": "foobar"
 					},
 					"name": "sidecar",
-					"args": ["a", "b"]
+					"binary_config": {
+					  "args": ["a", "b"]
+					}
 				}
 			}`,
 			Expected: &schema.Server{
@@ -56,7 +58,9 @@ func TestAllocateMessage(t *testing.T) {
 						PackageName: "foobar",
 					},
 					Name: "sidecar",
-					Args: []string{"a", "b"},
+					BinaryConfig: &schema.BinaryConfig{
+						Args: []string{"a", "b"},
+					},
 				},
 			},
 		},

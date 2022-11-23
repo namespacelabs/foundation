@@ -14,17 +14,18 @@ import "schema/volume.proto";
 
 // TODO: rename to "Container".
 message SidecarContainer {
+    reserved 2, 6;
+
     string owner = 5;  // Package name.
 
     // Deprecated, use binary_ref
     string     binary     = 1;
     PackageRef binary_ref = 4;
 
-    string          name = 3;
-    repeated string args = 2;
+    string name = 3;
 
-    repeated BinaryConfig.EnvEntry env   = 6;
-    repeated Mount                 mount = 7;
+    repeated Mount mount         = 7;
+    BinaryConfig   binary_config = 8;
 }
 
 message ContainerExtension {

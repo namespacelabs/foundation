@@ -78,7 +78,9 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	var outBinaries []*schema.Binary
 
 	out := &schema.Server{
-		MainContainer: &schema.SidecarContainer{},
+		MainContainer: &schema.SidecarContainer{
+			BinaryConfig: &schema.BinaryConfig{},
+		},
 	}
 	out.Id = bits.ID
 	out.Name = bits.Name
@@ -132,15 +134,16 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	out.Import = bits.Import
 	out.RunByDefault = runByDefault(bits)
 
+	binaryConfig := out.MainContainer.BinaryConfig
 	for k, v := range bits.StaticEnv {
-		out.MainContainer.Env = append(out.MainContainer.Env, &schema.BinaryConfig_EnvEntry{
+		binaryConfig.Env = append(binaryConfig.Env, &schema.BinaryConfig_EnvEntry{
 			Name: k, Value: v,
 		})
 	}
-	sort.Slice(out.MainContainer.Env, func(i, j int) bool {
-		x, y := out.MainContainer.Env[i].Name, out.MainContainer.Env[j].Name
+	sort.Slice(binaryConfig.Env, func(i, j int) bool {
+		x, y := binaryConfig.Env[i].Name, binaryConfig.Env[j].Name
 		if x == y {
-			return strings.Compare(out.MainContainer.Env[i].Value, out.MainContainer.Env[j].Value) < 0
+			return strings.Compare(binaryConfig.Env[i].Value, binaryConfig.Env[j].Value) < 0
 		}
 		return strings.Compare(x, y) < 0
 	})

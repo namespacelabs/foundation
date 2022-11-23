@@ -40,7 +40,9 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	}
 
 	out := &schema.Server{
-		MainContainer: &schema.SidecarContainer{},
+		MainContainer: &schema.SidecarContainer{
+			BinaryConfig: &schema.BinaryConfig{},
+		},
 	}
 	out.Name = bits.Name
 	out.Framework = schema.Framework_OPAQUE
@@ -82,9 +84,10 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		Args: bits.Args.Parsed(),
 		Env:  envVars,
 	}
-
+	out.MainContainer.BinaryConfig.Args = bits.Args.Parsed()
+	out.MainContainer.BinaryConfig.Env = envVars
 	if bits.Command != "" {
-		out.MainContainer.Command = []string{bits.Command}
+		out.MainContainer.BinaryConfig.Command = []string{bits.Command}
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
