@@ -165,7 +165,8 @@ jobs:
         run: kubectl cluster-info
 
       - name: Login
-        run: echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/foundation
+        # Consider using secrets.GITHUB_TOKEN
+        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
 
       - name: Run tests
         run: |
@@ -241,7 +242,8 @@ jobs:
         run: kubectl cluster-info
 
       - name: Login
-        run: echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
+        # Consider using secrets.GITHUB_TOKEN
+        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
 
       - name: Run tests
         run: |
