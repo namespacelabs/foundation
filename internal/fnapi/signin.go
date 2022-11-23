@@ -46,21 +46,22 @@ type GetSessionTokenResponse struct {
 }
 
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context) (string, error) {
+func StartLogin(ctx context.Context) (*StartLoginResponse, error) {
 	req := StartLoginRequest{}
 
 	resp := &StartLoginResponse{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(resp))
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	if resp.LoginUrl != "" {
-		return resp.LoginUrl, nil
+	if resp.LoginUrl == "" {
+		// backwards compatibility.
+		resp.LoginUrl = fmt.Sprintf("%s?id=%s", baseUrl, resp.LoginId)
 	}
 
-	return fmt.Sprintf("%s?id=%s", baseUrl, resp.LoginId), nil
+	return resp, nil
 }
 
 func CompleteLogin(ctx context.Context, id string, ephemeralCliId string) (*UserAuth, error) {

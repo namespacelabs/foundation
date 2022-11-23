@@ -20,8 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
-const baseUrl = "https://login.namespace.so/login/cli"
-
 func NewLoginCmd() *cobra.Command {
 	var (
 		readFromEnvVar string
@@ -50,19 +48,19 @@ func NewLoginCmd() *cobra.Command {
 				id, exists := os.LookupEnv("nslogintoken")
 				if !exists {
 					var err error
-					id, err = fnapi.StartLogin(ctx)
+					res, err := fnapi.StartLogin(ctx)
 					if err != nil {
 						return nil
 					}
 
+					id = res.LoginId
+
 					fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
 
-					loginUrl := fmt.Sprintf("%s?id=%s", baseUrl, id)
-
-					if openURL(loginUrl) {
-						fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", loginUrl)
+					if openURL(res.LoginUrl) {
+						fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", res.LoginUrl)
 					} else {
-						fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", loginUrl)
+						fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
 					}
 				} else {
 					fmt.Fprintf(stdout, "Login pre-approved with a single-use token.\n")
