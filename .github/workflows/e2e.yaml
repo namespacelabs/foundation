@@ -166,6 +166,7 @@ jobs:
 
       - name: Run tests
         run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/foundation \
           /tmp/ns test \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
