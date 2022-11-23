@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"cuelang.org/go/cue"
-	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
@@ -33,12 +32,6 @@ type cueWithPackageName struct {
 
 type cueStack struct {
 	Append []cueWithPackageName `json:"append"`
-}
-
-type cueNaming struct {
-	DomainName           map[string][]string `json:"domainName"`
-	TLSManagedDomainName map[string][]string `json:"tlsManagedDomainName"`
-	WithOrg              string              `json:"withOrg"`
 }
 
 type cueContainer struct {
@@ -108,35 +101,10 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 	}
 
 	if naming := lookupTransition(vv, "naming"); naming.Exists() {
-		var data cueNaming
-		if err := naming.Val.Decode(&data); err != nil {
+		pdata.Naming, err = ParseNaming(naming)
+		if err != nil {
 			return pdata, err
 		}
-
-		pdata.Naming = &schema.Naming{
-			WithOrg: data.WithOrg,
-		}
-
-		for k, v := range data.DomainName {
-			for _, fqdn := range v {
-				pdata.Naming.AdditionalUserSpecified = append(pdata.Naming.AdditionalUserSpecified, &schema.Naming_AdditionalDomainName{
-					AllocatedName: k,
-					Fqdn:          fqdn,
-				})
-			}
-		}
-
-		for k, v := range data.TLSManagedDomainName {
-			for _, fqdn := range v {
-				pdata.Naming.AdditionalTlsManaged = append(pdata.Naming.AdditionalTlsManaged, &schema.Naming_AdditionalDomainName{
-					AllocatedName: k,
-					Fqdn:          fqdn,
-				})
-			}
-		}
-
-		slices.SortFunc(pdata.Naming.AdditionalUserSpecified, sortAdditional)
-		slices.SortFunc(pdata.Naming.AdditionalTlsManaged, sortAdditional)
 	}
 
 	return pdata, nil

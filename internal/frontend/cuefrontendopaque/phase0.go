@@ -190,6 +190,13 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 			initContainers: parsedInitContainers,
 		}
 
+		if naming := server.LookupPath("unstable_naming"); naming.Exists() {
+			phase1plan.naming, err = cuefrontend.ParseNaming(naming)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		parsedPkg.Parsed = phase1plan
 	}
 
