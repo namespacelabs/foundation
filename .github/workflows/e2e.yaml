@@ -158,8 +158,8 @@ jobs:
       - name: Make Foundation executable
         run: chmod +x ns && mv ns /tmp/ns
 
-      - name: Prepare development environment
-        run: /tmp/ns prepare local
+      - name: Prepare build environment
+        run: /tmp/ns prepare new-cluster
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
@@ -174,7 +174,7 @@ jobs:
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
-            --golang_use_buildkit=false \
+            --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --rocket_ship \
             --include_servers
@@ -235,8 +235,8 @@ jobs:
       - name: Make Foundation executable
         run: chmod +x ns && mv ns /tmp/ns
 
-      - name: Prepare development environment
-        run: cd external-repo && /tmp/ns prepare local
+      - name: Prepare build environment
+        run: cd external-repo && /tmp/ns prepare new-cluster
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
@@ -258,7 +258,7 @@ jobs:
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
-            --golang_use_buildkit=false \
+            --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --rocket_ship \
             --include_servers
