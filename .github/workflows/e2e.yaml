@@ -158,15 +158,15 @@ jobs:
       - name: Make Foundation executable
         run: chmod +x ns && mv ns /tmp/ns
 
+      - name: Login
+        # Consider using secrets.GITHUB_TOKEN
+        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
+
       - name: Prepare build environment
         run: /tmp/ns prepare new-cluster
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
-
-      - name: Login
-        # Consider using secrets.GITHUB_TOKEN
-        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
 
       - name: Run tests
         run: |
@@ -235,15 +235,15 @@ jobs:
       - name: Make Foundation executable
         run: chmod +x ns && mv ns /tmp/ns
 
+      - name: Login
+        # Consider using secrets.GITHUB_TOKEN
+        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
+
       - name: Prepare build environment
         run: cd external-repo && /tmp/ns prepare new-cluster
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
-
-      - name: Login
-        # Consider using secrets.GITHUB_TOKEN
-        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
 
       - name: Run tests
         run: |
