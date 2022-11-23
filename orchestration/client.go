@@ -121,13 +121,6 @@ func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
 		return nil, err
 	}
 
-	res, err := fnapi.GetSessionToken(ctx, string(auth.Opaque), time.Hour)
-	if err != nil {
-		return nil, err
-	}
-
-	auth.Opaque = []byte(res.Token)
-
 	return auth, nil
 }
 

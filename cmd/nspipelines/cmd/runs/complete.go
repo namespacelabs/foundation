@@ -82,7 +82,7 @@ func newCompleteCmd() *cobra.Command {
 					Payload: chunk,
 				}
 				if i == 0 {
-					req.OpaqueUserAuth = userAuth.Opaque
+					req.OpaqueUserAuth = userAuth.InternalOpaque
 					req.RunId = run.RunId
 					req.PayloadFormat = "application/vnd.namespace.run+pb-zstd"
 					req.PayloadLength = len(bytes)
@@ -115,7 +115,7 @@ func newCompleteCmd() *cobra.Command {
 
 		fmt.Fprintf(os.Stdout, "[debug] marking run %q as completed...\n", runID)
 		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
-			&CompleteRunRequest{OpaqueUserAuth: userAuth.Opaque, RunId: runID}, nil); err != nil {
+			&CompleteRunRequest{OpaqueUserAuth: userAuth.InternalOpaque, RunId: runID}, nil); err != nil {
 			return err
 		}
 

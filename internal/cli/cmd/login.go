@@ -23,6 +23,7 @@ import (
 func NewLoginCmd() *cobra.Command {
 	var (
 		readFromEnvVar string
+		kind           string
 	)
 
 	cmd := &cobra.Command{
@@ -42,13 +43,11 @@ func NewLoginCmd() *cobra.Command {
 						return err
 					}
 				}
-			}
-
-			if auth == nil {
+			} else {
 				id, exists := os.LookupEnv("nslogintoken")
 				if !exists {
 					var err error
-					res, err := fnapi.StartLogin(ctx)
+					res, err := fnapi.StartLogin(ctx, kind)
 					if err != nil {
 						return nil
 					}
@@ -67,7 +66,7 @@ func NewLoginCmd() *cobra.Command {
 				}
 
 				var err error
-				auth, err = fnapi.CompleteLogin(ctx, id, fnapi.TelemetryOn(ctx).GetClientID())
+				auth, err = fnapi.CompleteLogin(ctx, id, kind, fnapi.TelemetryOn(ctx).GetClientID())
 				if err != nil {
 					return err
 				}
@@ -86,6 +85,9 @@ func NewLoginCmd() *cobra.Command {
 
 	// This flags is used from Gitpod.
 	cmd.Flags().StringVar(&readFromEnvVar, "read_from_env_var", "", "If true, try reading the auth data as JSON from this environment variable.")
+	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
+
+	_ = cmd.Flags().MarkHidden("kind")
 
 	cmd.AddCommand(NewRobotLogin("robot"))
 

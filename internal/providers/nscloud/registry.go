@@ -6,7 +6,6 @@ package nscloud
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -108,7 +107,13 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return nil, err
 	}
 
-	req.Header.Add("X-Namespace-Token", base64.RawStdEncoding.EncodeToString(user.Opaque))
+	tok, err := user.GenerateToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("X-Namespace-Token", tok)
+	req.Header.Add("Authorization", "Bearer "+tok)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

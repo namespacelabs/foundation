@@ -6,6 +6,7 @@ package kubernetes
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	corev1 "k8s.io/api/core/v1"
@@ -66,12 +67,12 @@ func (r *Cluster) lowLevelAttachTerm(ctx context.Context, cli *kubernetes.Client
 	if rio.Stdin == os.Stdin {
 		restore, err := termios.MakeRaw(os.Stdin.Fd())
 		if err != nil {
-			return fnerrors.InternalError("kubernetes/terminal: failed to set stdin to raw: %w", err)
+			fmt.Fprintf(console.Warnings(ctx), "kubernetes/terminal: failed to set stdin to raw: %v\n", err)
+		} else {
+			defer func() {
+				_ = restore()
+			}()
 		}
-
-		defer func() {
-			_ = restore()
-		}()
 
 		done := console.EnterInputMode(ctx, "Press enter, if you don't see any output.\n")
 		defer done()

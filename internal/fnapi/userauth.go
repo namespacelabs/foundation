@@ -6,17 +6,40 @@ package fnapi
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 var ErrRelogin = errors.New("not logged in, please run `ns login`")
 
 const userAuthJson = "auth.json"
+
+type UserAuth struct {
+	Username       string `json:"username,omitempty"`
+	Org            string `json:"org,omitempty"` // The organization this user is acting as. Only really relevant for robot accounts which authenticate against a repository.
+	InternalOpaque []byte `json:"opaque,omitempty"`
+
+	Clerk *clerk.State `json:"clerk,omitempty"`
+}
+
+func (user UserAuth) GenerateToken(ctx context.Context) (string, error) {
+	if user.Clerk != nil {
+		jwt, err := clerk.JWT(ctx, user.Clerk)
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("jwt:%s", jwt), nil
+	}
+
+	return base64.RawStdEncoding.EncodeToString(user.InternalOpaque), nil
+}
 
 func LoginAsRobotAndStore(ctx context.Context, repository, accessToken string) (string, error) {
 	userAuth, err := RobotLogin(ctx, repository, accessToken)

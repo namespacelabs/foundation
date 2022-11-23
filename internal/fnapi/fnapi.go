@@ -7,7 +7,6 @@ package fnapi
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -70,7 +69,12 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 				return err
 			}
 		} else {
-			headers.Add("Authorization", "Bearer "+base64.RawStdEncoding.EncodeToString(user.Opaque))
+			tok, err := user.GenerateToken(ctx)
+			if err != nil {
+				return err
+			}
+
+			headers.Add("Authorization", "Bearer "+tok)
 
 			if c.PreAuthenticateRequest != nil {
 				if err := c.PreAuthenticateRequest(user, &request); err != nil {

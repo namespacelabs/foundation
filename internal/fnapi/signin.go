@@ -9,12 +9,15 @@ import (
 	"fmt"
 	"time"
 
+	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 const baseUrl = "https://login.namespace.so/login/cli"
 
-type StartLoginRequest struct{}
+type StartLoginRequest struct {
+	Kind string `json:"kind"`
+}
 
 type StartLoginResponse struct {
 	LoginId  string `json:"login_id"`
@@ -46,13 +49,11 @@ type GetSessionTokenResponse struct {
 }
 
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context) (*StartLoginResponse, error) {
-	req := StartLoginRequest{}
+func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
+	req := StartLoginRequest{Kind: kind}
 
-	resp := &StartLoginResponse{}
-	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(resp))
-
-	if err != nil {
+	var resp StartLoginResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
@@ -61,10 +62,27 @@ func StartLogin(ctx context.Context) (*StartLoginResponse, error) {
 		resp.LoginUrl = fmt.Sprintf("%s?id=%s", baseUrl, resp.LoginId)
 	}
 
-	return resp, nil
+	return &resp, nil
 }
 
-func CompleteLogin(ctx context.Context, id string, ephemeralCliId string) (*UserAuth, error) {
+func CompleteLogin(ctx context.Context, id, kind string, ephemeralCliId string) (*UserAuth, error) {
+	if kind == "clerk" {
+		t, err := completeClerkLogin(ctx, id, ephemeralCliId)
+		if err != nil {
+			return nil, err
+		}
+
+		n, err := clerk.Login(ctx, t.Ticket)
+		if err != nil {
+			return nil, err
+		}
+
+		return &UserAuth{
+			Username: n.Email,
+			Clerk:    n,
+		}, nil
+	}
+
 	req := CompleteLoginRequest{
 		LoginId:        id,
 		EphemeralCliId: ephemeralCliId,
@@ -73,6 +91,31 @@ func CompleteLogin(ctx context.Context, id string, ephemeralCliId string) (*User
 	method := "nsl.signin.SigninService/CompleteLogin"
 
 	var resp []UserAuth
+	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
+	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
+		return nil, err
+	}
+
+	if len(resp) != 1 {
+		return nil, fnerrors.InternalError("expected exactly one response (got %d)", len(resp))
+	}
+
+	return &resp[0], nil
+}
+
+type CompleteClerkLoginResponse struct {
+	Ticket string `json:"ticket,omitempty"`
+}
+
+func completeClerkLogin(ctx context.Context, id string, ephemeralCliId string) (*CompleteClerkLoginResponse, error) {
+	req := CompleteLoginRequest{
+		LoginId:        id,
+		EphemeralCliId: ephemeralCliId,
+	}
+
+	method := "nsl.signin.SigninService/CompleteClerkLogin"
+
+	var resp []CompleteClerkLoginResponse
 	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
 	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
@@ -104,16 +147,4 @@ func RobotLogin(ctx context.Context, repository, accessToken string) (*UserAuth,
 	userAuth := &UserAuth{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/RobotLogin", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
-}
-
-func GetSessionToken(ctx context.Context, userData string, duration time.Duration) (*GetSessionTokenResponse, error) {
-	req := GetSessionTokenRequest{
-		UserData:        userData,
-		DurationSeconds: uint32(duration.Seconds()),
-	}
-
-	resp := &GetSessionTokenResponse{}
-	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/GetSessionToken", req, DecodeJSONResponse(resp))
-
-	return resp, err
 }

@@ -150,7 +150,7 @@ func newNewCmd() *cobra.Command {
 		}
 
 		req := &NewRunRequest{
-			OpaqueUserAuth: userAuth.Opaque,
+			OpaqueUserAuth: userAuth.InternalOpaque,
 		}
 
 		if *parentRunIDPath != "" {

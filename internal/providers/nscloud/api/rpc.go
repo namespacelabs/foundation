@@ -29,8 +29,7 @@ var (
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *CreateKubernetesClusterRequest) error {
-			rt.OpaqueUserAuth = user.Opaque
-			return nil
+			return fillIn(user, &rt.OpaqueUserAuth)
 		},
 	}
 
@@ -38,8 +37,7 @@ var (
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/GetKubernetesCluster",
 		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *GetKubernetesClusterRequest) error {
-			rt.OpaqueUserAuth = user.Opaque
-			return nil
+			return fillIn(user, &rt.OpaqueUserAuth)
 		},
 	}
 
@@ -47,26 +45,23 @@ var (
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/WaitKubernetesCluster",
 		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *WaitKubernetesClusterRequest) error {
-			rt.OpaqueUserAuth = user.Opaque
-			return nil
+			return fillIn(user, &rt.OpaqueUserAuth)
 		},
 	}
 
 	listKubernetesClusters = fnapi.Call[ListKubernetesClustersRequest]{
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/ListKubernetesClusters",
-		PreAuthenticateRequest: func(ua *fnapi.UserAuth, rt *ListKubernetesClustersRequest) error {
-			rt.OpaqueUserAuth = ua.Opaque
-			return nil
+		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *ListKubernetesClustersRequest) error {
+			return fillIn(user, &rt.OpaqueUserAuth)
 		},
 	}
 
 	destroyKubernetesCluster = fnapi.Call[DestroyKubernetesClusterRequest]{
 		Endpoint: machineEndpoint,
 		Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
-		PreAuthenticateRequest: func(ua *fnapi.UserAuth, rt *DestroyKubernetesClusterRequest) error {
-			rt.OpaqueUserAuth = ua.Opaque
-			return nil
+		PreAuthenticateRequest: func(user *fnapi.UserAuth, rt *DestroyKubernetesClusterRequest) error {
+			return fillIn(user, &rt.OpaqueUserAuth)
 		},
 	}
 )
@@ -263,4 +258,11 @@ func reparse(obj interface{}, target interface{}) error {
 	}
 
 	return json.Unmarshal(b, target)
+}
+
+func fillIn(userAuth *fnapi.UserAuth, target *[]byte) error {
+	if userAuth.InternalOpaque != nil {
+		*target = userAuth.InternalOpaque
+	}
+	return nil
 }
