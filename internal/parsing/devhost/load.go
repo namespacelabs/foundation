@@ -133,47 +133,59 @@ func MakeConfiguration(messages ...proto.Message) (*schema.DevHost_ConfigureEnvi
 	return c, nil
 }
 
-func Update(devHost *schema.DevHost, confs ...*schema.DevHost_ConfigureEnvironment) (*schema.DevHost, bool) {
-	copy := protos.Clone(devHost)
-
-	var totalChangeCount int
+func HasChanges(devHost *schema.DevHost, confs ...*schema.DevHost_ConfigureEnvironment) bool {
 	for _, conf := range confs {
 		var previous *schema.DevHost_ConfigureEnvironment
-		for _, existing := range copy.Configure {
-			if existing.Name == conf.Name && existing.Purpose == conf.Purpose && existing.Runtime == conf.Runtime {
+		for _, existing := range devHost.Configure {
+			if existing.Name == conf.Name {
 				previous = existing
 				break
 			}
 		}
 
 		if previous == nil {
-			copy.Configure = append(copy.Configure, conf)
-			totalChangeCount++
-			continue
+			return true
+		}
+
+		oldConfMap := map[string]*anypb.Any{}
+		for _, oldConf := range previous.Configuration {
+			// Someone might have edited it manually to have duplicate entries.
+			if _, ok := oldConfMap[oldConf.TypeUrl]; ok {
+				return true
+			}
+
+			oldConfMap[oldConf.TypeUrl] = oldConf
+		}
+
+		if len(oldConfMap) != len(conf.Configuration) {
+			return true
 		}
 
 		for _, newConf := range conf.Configuration {
-			var found bool
-
-			for _, existing := range previous.Configuration {
-				if existing.TypeUrl == newConf.TypeUrl {
-					if !bytes.Equal(existing.Value, newConf.Value) {
-						existing.Value = newConf.Value
-						totalChangeCount++
-					}
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				previous.Configuration = append(previous.Configuration, newConf)
-				totalChangeCount++
+			oldConf, ok := oldConfMap[newConf.TypeUrl]
+			if !ok || !bytes.Equal(oldConf.Value, newConf.Value) {
+				return true
 			}
 		}
 	}
 
-	return copy, totalChangeCount > 0
+	return false
+}
+
+func Update(devHost *schema.DevHost, confs ...*schema.DevHost_ConfigureEnvironment) (*schema.DevHost, bool) {
+	copy := protos.Clone(devHost)
+
+	for _, conf := range confs {
+		filteredConfigure := []*schema.DevHost_ConfigureEnvironment{}
+		for _, existing := range copy.Configure {
+			if existing.Name != conf.Name {
+				filteredConfigure = append(filteredConfigure, existing)
+			}
+		}
+		copy.Configure = append(filteredConfigure, conf)
+	}
+
+	return copy, HasChanges(devHost, confs...)
 }
 
 func RewriteWith(ctx context.Context, fsys fnfs.ReadWriteFS, filename string, devhost *schema.DevHost) error {
