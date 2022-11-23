@@ -237,7 +237,7 @@ jobs:
         run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
 
       - name: Prepare build environment
-        run: cd external-repo && /tmp/ns prepare new-cluster --with_build_cluster
+        run: cd external-repo && /tmp/ns prepare new-cluster --with_build_cluster --log_actions
 
       - name: Run tests
         run: |
