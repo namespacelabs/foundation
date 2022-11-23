@@ -52,13 +52,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.Workspac
 
 		if err != nil {
 			if os.IsNotExist(err) {
-				wd, werr := parsing.RawModuleAt(ctx, dir)
-				if werr != nil {
-					if os.IsNotExist(werr) {
-						return nil, fnerrors.New("%s: failed to load workspace", dir)
-					}
-				}
-				return wd, werr
+				return nil, fnerrors.New("a workspace definition (ns-workspace.cue) is missing")
 			}
 
 			return nil, err
