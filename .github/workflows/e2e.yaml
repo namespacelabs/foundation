@@ -106,10 +106,7 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: |
-          pwd
-          ls
-          /tmp/ns prepare local
+        run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
@@ -135,6 +132,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
         uses: crazy-max/ghaction-github-runtime@v2
@@ -159,10 +159,7 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: |
-          pwd
-          ls
-          /tmp/ns prepare local
+        run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
