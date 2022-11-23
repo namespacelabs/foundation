@@ -152,12 +152,15 @@ func (d *cluster) Class() runtime.Class {
 }
 
 func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
-	bound, err := d.cluster.Bind(ctx, env)
+	planner, err := d.Planner(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
-	return clusterNamespace{ClusterNamespace: bound.(*kubernetes.ClusterNamespace), Config: d.config}, nil
+	return clusterNamespace{
+		ClusterNamespace: kubernetes.NewClusterNamespaceWithPlanner(env, d.cluster, planner),
+		Config:           d.config,
+	}, nil
 }
 
 func (d *cluster) Planner(ctx context.Context, env cfg.Context) (runtime.Planner, error) {

@@ -135,26 +135,11 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      # Required by buildkit gha cache.
-      - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v2
-
-      - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnrun-
-
       - name: Download Foundation
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
 
-      # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
       - name: Make Foundation executable
         run: chmod +x ns && mv ns /tmp/ns
 
@@ -165,8 +150,6 @@ jobs:
       - name: Run tests
         run: |
           /tmp/ns test \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \

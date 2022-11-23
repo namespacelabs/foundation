@@ -82,7 +82,11 @@ func (u *Cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNam
 		return nil, err
 	}
 
-	return &ClusterNamespace{cluster: u, target: newTarget(env), planner: planner}, nil
+	return NewClusterNamespaceWithPlanner(env, u, planner), nil
+}
+
+func NewClusterNamespaceWithPlanner(env cfg.Context, u *Cluster, planner runtime.Planner) *ClusterNamespace {
+	return &ClusterNamespace{cluster: u, target: newTarget(env), planner: planner}
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
