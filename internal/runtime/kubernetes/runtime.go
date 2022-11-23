@@ -84,8 +84,9 @@ func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg cfg.Configurat
 	return ConnectToCluster(ctx, cfg)
 }
 
-func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg cfg.Configuration, purpose string) (runtime.Cluster, error) {
-	return ConnectToCluster(ctx, cfg)
+func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg cfg.Configuration, purpose string) (runtime.Cluster, cfg.Configuration, error) {
+	cluster, err := ConnectToCluster(ctx, cfg)
+	return cluster, cfg, err
 }
 
 func newTarget(env cfg.Context) clusterTarget {

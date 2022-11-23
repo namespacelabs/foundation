@@ -96,18 +96,19 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 	return d.ensureCluster(ctx, cfg, cluster.Cluster)
 }
 
-func (d runtimeClass) EnsureCluster(ctx context.Context, srv cfg.Configuration, purpose string) (runtime.Cluster, error) {
-	if _, ok := clusterConfigType.CheckGet(srv); ok {
-		return d.AttachToCluster(ctx, srv)
+func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuration, purpose string) (runtime.Cluster, cfg.Configuration, error) {
+	if _, ok := clusterConfigType.CheckGet(config); ok {
+		cluster, err := d.AttachToCluster(ctx, config)
+		return cluster, config, err
 	}
 
 	ephemeral := true
 	result, err := api.CreateAndWaitCluster(ctx, "", ephemeral, purpose, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	srv = srv.Derive(srv.EnvKey(), func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
+	config = config.Derive(config.EnvKey(), func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
 		// Prepend to ensure that the prebuilt cluster is returned first.
 		previous.Configuration = append(protos.WrapAnysOrDie(
 			&PrebuiltCluster{ClusterId: result.ClusterId, Ephemeral: ephemeral},
@@ -115,7 +116,8 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, srv cfg.Configuration, 
 		return previous
 	})
 
-	return d.ensureCluster(ctx, srv, result.Cluster)
+	cluster, err := d.ensureCluster(ctx, config, result.Cluster)
+	return cluster, config, err
 }
 
 func (d runtimeClass) ensureCluster(ctx context.Context, cfg cfg.Configuration, kc *api.KubernetesCluster) (runtime.Cluster, error) {

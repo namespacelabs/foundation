@@ -39,7 +39,7 @@ type Class interface {
 
 	// Attaches to an existing cluster (if not is specified in the
 	// configuration), or creates a new cluster as needed.
-	EnsureCluster(context.Context, cfg.Configuration, string) (Cluster, error)
+	EnsureCluster(context.Context, cfg.Configuration, string) (Cluster, cfg.Configuration, error)
 }
 
 // A cluster represents a cluster where Namespace is capable of deployment one

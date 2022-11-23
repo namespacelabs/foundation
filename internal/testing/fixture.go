@@ -76,10 +76,13 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	purpose := fmt.Sprintf("Test cluster for %s", testPkg.Location)
 
 	// This can block for a non-trivial amount of time.
-	cluster, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
+	cluster, config, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
 	if err != nil {
 		return nil, fnerrors.AttachLocation(testPkg.Location, err)
 	}
+
+	// TODO refactor nscloud wiring so that EnsureCluster does not modify the configuration.
+	env = cfg.MakeUnverifiedContext(config, env.Environment())
 
 	planner := cluster.Planner(env)
 	platforms, err := planner.TargetPlatforms(ctx)
