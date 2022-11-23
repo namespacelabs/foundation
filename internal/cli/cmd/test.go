@@ -74,7 +74,7 @@ func NewTestCmd() *cobra.Command {
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, RequirePackageRef: true})).
+			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, SupportPackageRef: true})).
 		Do(func(originalCtx context.Context) error {
 			ctx := prepareContext(originalCtx, parallelWork, rocketShip)
 
@@ -86,22 +86,21 @@ func NewTestCmd() *cobra.Command {
 			packageRefPl := parsing.NewPackageLoader(env)
 
 			testRefs := []*schema.PackageRef{}
-			for _, pr := range locs.Refs {
-				// is the location contains name of a specific test?
-				if pr.GetName() == "" {
-					pp, err := packageRefPl.LoadByName(ctx, pr.AsPackageName())
-					if err != nil {
-						return err
-					}
-
-					for _, t := range pp.Tests {
-						if allTests || !slices.Contains(t.Tag, "generated") {
-							testRefs = append(testRefs, schema.MakePackageRef(pr.AsPackageName(), t.Name))
-						}
-					}
-				} else {
-					testRefs = append(testRefs, pr)
+			for _, l := range locs.Locs {
+				pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
+				if err != nil {
+					return err
 				}
+
+				for _, t := range pp.Tests {
+					if allTests || !slices.Contains(t.Tag, "generated") {
+						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
+					}
+				}
+			}
+			// add package refernces
+			for _, pr := range locs.Refs {
+				testRefs = append(testRefs, pr)
 			}
 
 			if len(testRefs) == 0 {
