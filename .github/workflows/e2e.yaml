@@ -165,9 +165,6 @@ jobs:
       - name: Prepare build environment
         run: /tmp/ns prepare new-cluster
 
-      - name: Print kubectl cluster-info
-        run: kubectl cluster-info
-
       - name: Run tests
         run: |
           /tmp/ns test \
@@ -241,9 +238,6 @@ jobs:
 
       - name: Prepare build environment
         run: cd external-repo && /tmp/ns prepare new-cluster
-
-      - name: Print kubectl cluster-info
-        run: kubectl cluster-info
 
       - name: Run tests
         run: |
