@@ -42,8 +42,8 @@ type ParseLocationsOpts struct {
 	RequireSingle bool
 	// If true, and no locations are specified, then "workspace.ListSchemas" result is used.
 	ReturnAllIfNoneSpecified bool
-	// If true, locations parsed as package references
-	RequirePackageRef bool
+	// If true, package reference added to Refs
+	SupportPackageRef bool
 }
 
 func ParseLocations(locsOut *Locations, env *cfg.Context, opts ...ParseLocationsOpts) *LocationsParser {
@@ -63,8 +63,8 @@ func MergeParseLocationOpts(opts []ParseLocationsOpts) ParseLocationsOpts {
 		if opt.RequireSingle {
 			merged.RequireSingle = true
 		}
-		if opt.RequirePackageRef {
-			merged.RequirePackageRef = true
+		if opt.SupportPackageRef {
+			merged.SupportPackageRef = true
 		}
 	}
 	return merged
@@ -116,6 +116,8 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 	}
 
 	var locs []fnfs.Location
+	var refs []*schema.PackageRef
+
 	if opts.ReturnAllIfNoneSpecified && len(args) == 0 {
 		schemaList, err := schemaList()
 		if err != nil {
@@ -125,7 +127,7 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 		locs = schemaList.Locations
 	} else {
 		var err error
-		locs, err = locationsFromArgs(ctx, root.Workspace().ModuleName(), root.Workspace().Proto().AllReferencedModules(), relCwd, args, schemaList)
+		locs, refs, err = locationsAndPackageRefsFromArgs(ctx, root.Workspace().ModuleName(), root.Workspace().Proto().AllReferencedModules(), relCwd, args, schemaList, opts)
 		if err != nil {
 			return nil, err
 		}
@@ -133,19 +135,6 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 
 	if opts.RequireSingle && len(locs) != 1 {
 		return nil, fnerrors.New("expected exactly one package")
-	}
-
-	// convert location to package reference if it is required
-	var refs []*schema.PackageRef
-	if opts.RequirePackageRef {
-		for _, l := range locs {
-			ref, err := schema.StrictParsePackageRef(l.String())
-			if err != nil {
-				return nil, fnerrors.New("cannot parse location as package reference: %s", l.String())
-			}
-			refs = append(refs, ref)
-		}
-
 	}
 
 	return &Locations{
@@ -156,18 +145,23 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 	}, nil
 }
 
-func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames []string, cwd string, args []string, listSchemas func() (parsing.SchemaList, error)) ([]fnfs.Location, error) {
+func locationsAndPackageRefsFromArgs(ctx context.Context, mainModuleName string, moduleNames []string, cwd string, args []string, listSchemas func() (parsing.SchemaList, error), opts ParseLocationsOpts) ([]fnfs.Location, []*schema.PackageRef, error) {
 	var locations []fnfs.Location
+	var refs []*schema.PackageRef
 	for _, arg := range args {
 		if filepath.IsAbs(arg) {
-			return nil, fnerrors.New("absolute paths are not supported: %s", arg)
+			return nil, nil, fnerrors.New("absolute paths are not supported: %s", arg)
 		}
 
 		origArg := arg
 		expando := false
+		isRef := false
 		if strings.HasSuffix(arg, "/...") {
 			expando = true
 			arg = strings.TrimSuffix(arg, "/...")
+		}
+		if opts.SupportPackageRef && strings.Contains(arg, ":") {
+			isRef = true
 		}
 
 		moduleName, rel := matchModule(moduleNames, arg)
@@ -176,16 +170,16 @@ func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames [
 			rel = filepath.Join(cwd, arg)
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "location parsing: %s -> moduleName: %q rel: %q expando: %v\n", origArg, moduleName, rel, expando)
+		fmt.Fprintf(console.Debug(ctx), "location parsing: %s -> moduleName: %q rel: %q expando: %v isRef: %v\n", origArg, moduleName, rel, expando, isRef)
 
 		if strings.HasPrefix(rel, "..") {
-			return nil, fnerrors.New("can't refer to packages outside of the module root: %s", rel)
+			return nil, nil, fnerrors.New("can't refer to packages outside of the module root: %s", rel)
 		}
 
 		if expando {
 			schemas, err := listSchemas()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			for _, p := range schemas.Locations {
@@ -194,16 +188,25 @@ func locationsFromArgs(ctx context.Context, mainModuleName string, moduleNames [
 				}
 			}
 		} else {
-			fsloc := fnfs.Location{
-				ModuleName: moduleName,
-				RelPath:    rel,
+			if isRef {
+				pr, err := schema.StrictParsePackageRef(rel)
+				if err != nil {
+					return nil, nil, err
+				}
+				refs = append(refs, pr)
+			} else {
+				fsloc := fnfs.Location{
+					ModuleName: moduleName,
+					RelPath:    rel,
+				}
+
+				locations = append(locations, fsloc)
 			}
 
-			locations = append(locations, fsloc)
 		}
 	}
 
-	return locations, nil
+	return locations, refs, nil
 }
 
 func matchModule(moduleNames []string, arg string) (string, string) {
