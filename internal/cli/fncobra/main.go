@@ -339,6 +339,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, tool invocations will use buildkit whenever possible.")
 	rootCmd.PersistentFlags().BoolVar(&testing.UseNamespaceCloud, "testing_use_namespace_cloud", testing.UseNamespaceCloud,
 		"If set to true, allocate cluster for tests on demand.")
+	rootCmd.PersistentFlags().BoolVar(&testing.UseNamespaceBuildCluster, "testing_use_namespace_cloud_build", testing.UseNamespaceBuildCluster,
+		"If set to true, allocate a build cluster for tests.")
 	rootCmd.PersistentFlags().BoolVar(&runtime.WorkInProgressUseShortAlias, "runtime_wip_use_short_alias", runtime.WorkInProgressUseShortAlias,
 		"If set to true, uses the new ingress name allocator.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.UseOrchestrator, "use_orchestrator", orchestration.UseOrchestrator,

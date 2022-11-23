@@ -9,12 +9,11 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -43,22 +42,12 @@ func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral, 
 
 			if withBuild {
 				eg.Go(func(ctx context.Context) error {
-					cfg, err := api.CreateAndWaitCluster(ctx, "16x32", false, "build machine", []string{"BUILD_CLUSTER"})
+					msg, err := nscloud.EnsureBuildCluster(ctx)
 					if err != nil {
 						return err
 					}
 
-					if cfg.BuildCluster != nil {
-						buildMessages = append(buildMessages, &buildkit.Overrides{
-							HostedBuildCluster: &buildkit.HostedBuildCluster{
-								ClusterId:  cfg.BuildCluster.Colocated.ClusterId,
-								TargetPort: cfg.BuildCluster.Colocated.TargetPort,
-							},
-						})
-					} else {
-						return fnerrors.InternalError("expected build machine")
-					}
-
+					buildMessages = append(buildMessages, msg)
 					return nil
 				})
 			}

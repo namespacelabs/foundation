@@ -7,7 +7,9 @@ package testing
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -15,10 +17,11 @@ import (
 )
 
 var (
-	UseNamespaceCloud = false
+	UseNamespaceCloud        = false
+	UseNamespaceBuildCluster = false
 )
 
-func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) cfg.Context {
+func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) (cfg.Context, error) {
 	testInv := ids.NewRandomBase32ID(8)
 	testEnv := &schema.Environment{
 		Name:      "test-" + testInv,
@@ -27,7 +30,18 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) cfg.
 		Ephemeral: ephemeral,
 	}
 
+	var messages []*anypb.Any
+	if UseNamespaceBuildCluster {
+		msg, err := nscloud.EnsureBuildCluster(ctx)
+		if err != nil {
+			return nil, err
+		}
+		messages = append(messages, protos.WrapAnyOrDie(msg))
+	}
+
 	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
+		previous.Configuration = append(previous.Configuration, messages...)
+
 		if UseNamespaceCloud {
 			// Prepend as this configuration should take precedence.
 			previous.Configuration = append(protos.WrapAnysOrDie(
@@ -38,5 +52,5 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) cfg.
 		return previous
 	})
 
-	return cfg.MakeUnverifiedContext(newCfg, testEnv)
+	return cfg.MakeUnverifiedContext(newCfg, testEnv), nil
 }

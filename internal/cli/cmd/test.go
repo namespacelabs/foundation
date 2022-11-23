@@ -121,7 +121,11 @@ func NewTestCmd() *cobra.Command {
 					testRef := testRef // Capture testRef.
 
 					eg.Go(func(ctx context.Context) error {
-						buildEnv := testing.PrepareEnv(ctx, env, ephemeral)
+						buildEnv, err := testing.PrepareEnv(ctx, env, ephemeral)
+						if err != nil {
+							return err
+						}
+
 						pl := parsing.NewPackageLoader(buildEnv)
 
 						status := style.Header.Apply("BUILDING")
