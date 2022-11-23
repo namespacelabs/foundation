@@ -174,7 +174,7 @@ jobs:
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --rocket_ship \
-            --include_servers
+            --all
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
@@ -254,8 +254,7 @@ jobs:
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
-            --rocket_ship \
-            --include_servers
+            --rocket_ship
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
