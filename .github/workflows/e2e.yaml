@@ -199,12 +199,15 @@ jobs:
       matrix:
         os: [ubuntu-20.04]
         repo: [examples]
-        include:
-          - repo: examples
-            root_path: examples
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
+      - name: checkout dependant repo
+        uses: actions/checkout@v3
+        with:
+          repository: namespacelabs/${{ matrix.repo }}
+          path: external-repo
+
       # Required by buildkit gha cache.
       - name: Expose GitHub Runtime
         uses: crazy-max/ghaction-github-runtime@v2
@@ -229,14 +232,14 @@ jobs:
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
-        run: cd ${{ matrix.root_path }} && /tmp/ns prepare local
+        run: cd external-repo && /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
       - name: Run tests
         run: |
-          cd ${{ matrix.root_path }}; \
+          cd external-repo; \
           /tmp/ns test \
             nextjs/01-simple/server \
             multitier/01-simple/frontend \
