@@ -218,11 +218,6 @@ type clusterNamespace struct {
 
 var _ kubedef.KubeClusterNamespace = clusterNamespace{}
 
-func (cr clusterNamespace) Planner() runtime.Planner {
-	base := cr.ClusterNamespace.Planner()
-	return planner{Planner: base, config: cr.Config}
-}
-
 func (cr clusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
 	return cr.deleteCluster(ctx)
 }
