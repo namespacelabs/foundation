@@ -18,11 +18,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
 type Locations struct {
 	Locs []fnfs.Location
+	Refs []*schema.PackageRef
 	Root *parsing.Root
 	// Whether the user explicitly specified a list of locations.
 	// If true, "All" can be not empty if "DefaultToAllWhenEmpty" is true
@@ -40,6 +42,8 @@ type ParseLocationsOpts struct {
 	RequireSingle bool
 	// If true, and no locations are specified, then "workspace.ListSchemas" result is used.
 	ReturnAllIfNoneSpecified bool
+	// If true, locations parsed as package references
+	RequirePackageRef bool
 }
 
 func ParseLocations(locsOut *Locations, env *cfg.Context, opts ...ParseLocationsOpts) *LocationsParser {
@@ -58,6 +62,9 @@ func MergeParseLocationOpts(opts []ParseLocationsOpts) ParseLocationsOpts {
 		}
 		if opt.RequireSingle {
 			merged.RequireSingle = true
+		}
+		if opt.RequirePackageRef {
+			merged.RequirePackageRef = true
 		}
 	}
 	return merged
@@ -128,9 +135,23 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 		return nil, fnerrors.New("expected exactly one package")
 	}
 
+	// convert location to package reference if it is required
+	var refs []*schema.PackageRef
+	if opts.RequirePackageRef {
+		for _, l := range locs {
+			ref, err := schema.StrictParsePackageRef(l.String())
+			if err != nil {
+				return nil, fnerrors.New("cannot parse location as package reference: %s", l.String())
+			}
+			refs = append(refs, ref)
+		}
+
+	}
+
 	return &Locations{
 		Root:          root,
 		Locs:          locs,
+		Refs:          refs,
 		UserSpecified: len(args) > 0,
 	}, nil
 }

@@ -77,7 +77,7 @@ func NewTestCmd() *cobra.Command {
 		With(
 			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
 			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
+			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, RequirePackageRef: true})).
 		Do(func(originalCtx context.Context) error {
 			ctx := prepareContext(originalCtx, parallelWork, rocketShip)
 
@@ -87,13 +87,9 @@ func NewTestCmd() *cobra.Command {
 
 			// This PackageLoader instance is only used to resolve package references from the command line arguments.
 			packageRefPl := parsing.NewPackageLoader(env)
-			owner := schema.MakePackageName(locs.Root.ModuleName())
+
 			testRefs := []*schema.PackageRef{}
-			for _, l := range locs.Locs {
-				pr, err := schema.ParsePackageRef(owner, l.String())
-				if err != nil {
-					return err
-				}
+			for _, pr := range locs.Refs {
 				// is the location contains name of a specific test?
 				if pr.GetName() == "" {
 					pp, err := packageRefPl.LoadByName(ctx, pr.AsPackageName())
