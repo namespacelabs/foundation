@@ -99,9 +99,7 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 			// add package refernces
-			for _, pr := range locs.Refs {
-				testRefs = append(testRefs, pr)
-			}
+			testRefs = append(testRefs, locs.Refs...)
 
 			if len(testRefs) == 0 {
 				return noTestsError(ctx, allTests, locs)
