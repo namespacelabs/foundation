@@ -42,7 +42,7 @@ func PlannerFor(ctx context.Context, env cfg.Context) (Planner, error) {
 		return nil, err
 	}
 
-	return cluster.Planner(env), nil
+	return cluster.Planner(ctx, env)
 }
 
 func NamespaceFor(ctx context.Context, env cfg.Context) (ClusterNamespace, error) {

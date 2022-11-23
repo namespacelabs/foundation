@@ -300,16 +300,13 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	return nil, fnerrors.NewWithLocation(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 
-func EnsureImage(ctx context.Context, env pkggraph.SealedContext, prepared *Prepared) (oci.ImageID, error) {
+func EnsureImage(ctx context.Context, env pkggraph.SealedContext, registry registry.Manager, prepared *Prepared) (oci.ImageID, error) {
 	img, err := prepared.Image(ctx, env)
 	if err != nil {
 		return oci.ImageID{}, err
 	}
 
-	name, err := registry.RawAllocateName(ctx, env.Configuration(), prepared.Name)
-	if err != nil {
-		return oci.ImageID{}, err
-	}
+	name := registry.AllocateName(prepared.Name)
 
 	return compute.GetValue(ctx, oci.PublishResolvable(name, img, prepared.Plan))
 }

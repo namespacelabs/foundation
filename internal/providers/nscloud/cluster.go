@@ -96,16 +96,16 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 	return d.ensureCluster(ctx, cfg, cluster.Cluster)
 }
 
-func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuration, purpose string) (runtime.Cluster, cfg.Configuration, error) {
+func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuration, purpose string) (runtime.Cluster, error) {
 	if _, ok := clusterConfigType.CheckGet(config); ok {
 		cluster, err := d.AttachToCluster(ctx, config)
-		return cluster, config, err
+		return cluster, err
 	}
 
 	ephemeral := true
 	result, err := api.CreateAndWaitCluster(ctx, "", ephemeral, purpose, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	config = config.Derive(config.EnvKey(), func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
@@ -116,8 +116,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuratio
 		return previous
 	})
 
-	cluster, err := d.ensureCluster(ctx, config, result.Cluster)
-	return cluster, config, err
+	return d.ensureCluster(ctx, config, result.Cluster)
 }
 
 func (d runtimeClass) ensureCluster(ctx context.Context, cfg cfg.Configuration, kc *api.KubernetesCluster) (runtime.Cluster, error) {
@@ -161,10 +160,10 @@ func (d *cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
 	return clusterNamespace{ClusterNamespace: bound.(*kubernetes.ClusterNamespace), Config: d.config}, nil
 }
 
-func (d *cluster) Planner(env cfg.Context) runtime.Planner {
-	base := kubernetes.NewPlanner(env, d.cluster.SystemInfo)
+func (d *cluster) Planner(ctx context.Context, env cfg.Context) (runtime.Planner, error) {
+	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{d.config.ClusterId}, d.cluster.SystemInfo)
 
-	return planner{Planner: base, config: d.config}
+	return planner{Planner: base, config: d.config}, nil
 }
 
 func (d *cluster) FetchDiagnostics(ctx context.Context, cr *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error) {

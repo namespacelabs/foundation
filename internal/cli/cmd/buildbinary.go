@@ -61,7 +61,12 @@ func NewBuildBinaryCmd() *cobra.Command {
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&cmdLocs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
 		Do(func(ctx context.Context) error {
-			return buildLocations(ctx, env, cmdLocs, baseRepository, buildOpts)
+			registry, err := registry.GetRegistry(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			return buildLocations(ctx, env, registry, cmdLocs, baseRepository, buildOpts)
 		})
 }
 
@@ -73,7 +78,7 @@ type buildOpts struct {
 
 const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 
-func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
+func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := parsing.NewPackageLoader(env)
 
 	var pkgs []*pkggraph.Package
@@ -132,11 +137,7 @@ func buildLocations(ctx context.Context, env cfg.Context, locs fncobra.Locations
 					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
 				}, false, nil)
 			} else {
-				var err error
-				tag, err = registry.AllocateName(ctx, env, pkg.PackageName())
-				if err != nil {
-					return err
-				}
+				tag = reg.AllocateName(pkg.PackageName().String())
 			}
 
 			var img compute.Computable[oci.ImageID]

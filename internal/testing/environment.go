@@ -7,7 +7,6 @@ package testing
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -32,7 +31,6 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) cfg.
 		if UseNamespaceCloud {
 			// Prepend as this configuration should take precedence.
 			previous.Configuration = append(protos.WrapAnysOrDie(
-				&registry.Provider{Provider: "nscloud"},
 				&client.HostEnv{Provider: "nscloud"},
 			), previous.Configuration...)
 		}

@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -37,17 +36,16 @@ const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
 	var (
-		env                     cfg.Context
-		locs                    fncobra.Locations
-		testOpts                testing.TestOpts
-		allTests                bool
-		parallel                bool
-		parallelWork            bool = true
-		forceOutputProgress     bool
-		rocketShip              bool
-		ephemeral               bool = true
-		explain                 bool
-		uploadResultsToRegistry bool
+		env                 cfg.Context
+		locs                fncobra.Locations
+		testOpts            testing.TestOpts
+		allTests            bool
+		parallel            bool
+		parallelWork        bool = true
+		forceOutputProgress bool
+		rocketShip          bool
+		ephemeral           bool = true
+		explain             bool
 	)
 
 	return fncobra.
@@ -65,7 +63,6 @@ func NewTestCmd() *cobra.Command {
 			flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
 			flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
 			flags.BoolVar(&forceOutputProgress, "force_output_progress", forceOutputProgress, "If set to true, always output progress, regardless of whether parallel is set.")
-			flags.BoolVar(&uploadResultsToRegistry, "upload_results_to_registry", uploadResultsToRegistry, "If set to true, uploads the test results to the configured registry.")
 
 			_ = flags.MarkHidden("rocket_ship")
 			_ = flags.MarkHidden("force_output_progress")
@@ -113,7 +110,6 @@ func NewTestCmd() *cobra.Command {
 			testOpts.OutputProgress = !parallel || forceOutputProgress
 
 			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testRefs))
-			testResults := make([]compute.Computable[oci.ImageID], len(testRefs))
 			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testRefs))}
 			incompatible := make([]*enverr.IncompatibleEnvironmentErr, len(testRefs))
 
@@ -148,13 +144,6 @@ func NewTestCmd() *cobra.Command {
 
 						if parallel || parallelWork {
 							parallelTests[k] = testComp
-
-							if uploadResultsToRegistry {
-								testResults[k], err = testing.UploadResults(ctx, buildEnv, testRef.AsPackageName(), testComp)
-								if err != nil {
-									return fnerrors.InternalError("failed to allocate image tag: %w", err)
-								}
-							}
 						} else {
 							if explain {
 								return compute.Explain(ctx, console.Stdout(ctx), testComp)
@@ -168,20 +157,6 @@ func NewTestCmd() *cobra.Command {
 							runs.Run[k] = &storage.TestRuns_Run{
 								TestSummary: testResults.Value.TestBundleSummary,
 								TestResults: testResults.Value.Bundle,
-							}
-
-							if uploadResultsToRegistry {
-								img, err := testing.UploadResults(ctx, buildEnv, testRef.AsPackageName(), testComp)
-								if err != nil {
-									return fnerrors.InternalError("failed to allocate image tag: %w", err)
-								}
-
-								res, err := compute.GetValue(ctx, img)
-								if err != nil {
-									return err
-								}
-
-								runs.Run[k].TestBundleId = res.ImageRef()
 							}
 
 							printResult(out, style, testRef, runs.Run[k], false)
@@ -203,18 +178,6 @@ func NewTestCmd() *cobra.Command {
 					return compute.Explain(ctx, console.Stdout(ctx), runTests)
 				}
 
-				var resultImages []oci.ImageID
-				if uploadResultsToRegistry {
-					results, err := compute.GetValue(ctx, compute.Collect(tasks.Action("test.upload-results"), testResults...))
-					if err != nil {
-						return err
-					}
-
-					for _, r := range results {
-						resultImages = append(resultImages, r.Value)
-					}
-				}
-
 				results, err := compute.GetValue(ctx, runTests)
 				if err != nil {
 					return err
@@ -225,9 +188,6 @@ func NewTestCmd() *cobra.Command {
 						runs.Run[k] = &storage.TestRuns_Run{
 							TestSummary: res.Value.TestBundleSummary,
 							TestResults: res.Value.Bundle,
-						}
-						if uploadResultsToRegistry {
-							runs.Run[k].TestBundleId = resultImages[k].ImageRef()
 						}
 					} else {
 						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{

@@ -7,25 +7,19 @@ package testing
 import (
 	"context"
 	"fmt"
-	"io/fs"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
-	"namespacelabs.dev/foundation/internal/codegen/protos/resolver"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
-	"namespacelabs.dev/foundation/internal/planning/config"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/eval"
-	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
@@ -76,15 +70,16 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	purpose := fmt.Sprintf("Test cluster for %s", testPkg.Location)
 
 	// This can block for a non-trivial amount of time.
-	cluster, config, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
+	cluster, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
 	if err != nil {
 		return nil, fnerrors.AttachLocation(testPkg.Location, err)
 	}
 
-	// TODO refactor nscloud wiring so that EnsureCluster does not modify the configuration.
-	env = cfg.MakeUnverifiedContext(config, env.Environment())
+	planner, err := cluster.Planner(ctx, env)
+	if err != nil {
+		return nil, err
+	}
 
-	planner := cluster.Planner(env)
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -116,10 +111,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	testBinTag, err := registry.AllocateName(ctx, env, driverLoc.PackageName)
-	if err != nil {
-		return nil, err
-	}
+	registry := planner.Registry()
 
 	sutServers := stack.Focus.PackageNamesAsString()
 	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
@@ -142,6 +134,8 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	if err != nil {
 		return nil, err
 	}
+
+	testBinTag := registry.AllocateName(driverLoc.PackageName.String())
 
 	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin, testBin.Plan))
 	if err != nil {
@@ -234,74 +228,6 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 				Packages:          packages,
 			}, nil
 		}), nil
-}
-
-func UploadResults(ctx context.Context, env cfg.Context, testPkg schema.PackageName, storedResults compute.Computable[StoredTestResults]) (compute.Computable[oci.ImageID], error) {
-	tag, err := registry.AllocateName(ctx, env, testPkg)
-	if err != nil {
-		return nil, err
-	}
-
-	toFS := compute.Map(tasks.Action("test.serialize-results"),
-		compute.Inputs().
-			Computable("storedResults", storedResults),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-			results := compute.MustGetDepValue(deps, storedResults, "storedResults")
-			bundle := results.Bundle
-			tostore := protos.Clone(results.TestBundleSummary)
-
-			// We only add timestamps in the transformation step, as it would
-			// otherwise break the ability to cache test results.
-
-			var fsys memfs.FS
-
-			if bundle.TestLog != nil {
-				tostore.TestLog = &storage.LogRef{
-					PackageName:   bundle.TestLog.PackageName,
-					ContainerName: bundle.TestLog.ContainerName,
-					LogFile:       "test.log",
-					LogSize:       uint64(len(bundle.TestLog.Output)),
-				}
-				fsys.Add("test.log", bundle.TestLog.Output)
-			}
-
-			for _, s := range bundle.ServerLog {
-				x, err := schema.DigestOf(s.PackageName, s.ContainerName)
-				if err != nil {
-					return nil, err
-				}
-
-				logFile := fmt.Sprintf("server/%s.log", x.Hex)
-				fsys.Add(logFile, s.Output)
-
-				tostore.ServerLog = append(tostore.ServerLog, &storage.LogRef{
-					PackageName:   s.PackageName,
-					ContainerName: s.ContainerName,
-					ContainerKind: s.ContainerKind,
-					LogFile:       logFile,
-					LogSize:       uint64(len(s.Output)),
-				})
-			}
-
-			messages, err := protos.SerializeOpts{JSON: true, Resolver: resolver.NewResolver(ctx, results.Packages)}.Serialize(tostore)
-			if err != nil {
-				return nil, fnerrors.InternalError("failed to marshal results: %w", err)
-			}
-
-			fsys.Add("testbundle.json", messages[0].JSON)
-			fsys.Add("testbundle.binarypb", messages[0].Binary)
-
-			// Produce an image that can be rehydrated.
-			if err := (config.DehydrateOpts{}).DehydrateTo(ctx, bundle.DeployPlan.Environment, bundle.DeployPlan.Stack,
-				bundle.DeployPlan.IngressFragment, bundle.ComputedConfigurations, &fsys); err != nil {
-				return nil, err
-			}
-
-			return &fsys, nil
-		})
-
-	return oci.PublishImage(tag, oci.MakeImageFromScratch("test-results", oci.MakeLayer("test-results", toFS))).ImageID(), nil
 }
 
 func loadSUT(ctx context.Context, env cfg.Context, pl *parsing.PackageLoader, test *schema.Test) (*planning.Stack, error) {

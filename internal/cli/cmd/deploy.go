@@ -83,10 +83,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			reg, err := registry.GetRegistry(ctx, env)
-			if err != nil {
-				return err
-			}
+			reg := cluster.Planner().Registry()
 
 			// When uploading a plan, any server and container images should be
 			// pushed to the same repository, so they're accessible by the plan.

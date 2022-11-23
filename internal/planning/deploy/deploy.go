@@ -78,26 +78,16 @@ func (pd PreparedDeployable) PackageRef() *schema.PackageRef {
 }
 
 func PrepareDeployServers(ctx context.Context, env cfg.Context, planner runtime.Planner, focus ...planning.Server) (compute.Computable[*Plan], error) {
-	reg, err := registry.GetRegistry(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
 	stack, err := planning.ComputeStack(ctx, focus, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
 
-	return PrepareDeployStackToRegistry(ctx, env, planner, reg, stack)
+	return PrepareDeployStackToRegistry(ctx, env, planner, planner.Registry(), stack)
 }
 
 func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, prepared ...PreparedDeployable) (compute.Computable[*Plan], error) {
-	reg, err := registry.GetRegistry(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
-	return PrepareDeployStackToRegistry(ctx, env, planner, reg, stack, prepared...)
+	return PrepareDeployStackToRegistry(ctx, env, planner, planner.Registry(), stack, prepared...)
 }
 
 func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...PreparedDeployable) (compute.Computable[*Plan], error) {
@@ -654,11 +644,6 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 }
 
 func ComputeStackAndImages(ctx context.Context, env cfg.Context, planner runtime.Planner, servers planning.Servers) (*planning.Stack, []compute.Computable[ResolvedServerImages], error) {
-	reg, err := registry.GetRegistry(ctx, env)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
@@ -671,7 +656,7 @@ func ComputeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
-	_, images, err := computeStackAndImages(ctx, env, planner, reg, stack, def, makeBuildAssets(ingressFragments))
+	_, images, err := computeStackAndImages(ctx, env, planner, planner.Registry(), stack, def, makeBuildAssets(ingressFragments))
 	return stack, images, err
 }
 

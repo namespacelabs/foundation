@@ -11,7 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -67,7 +66,6 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 		case binaryPackage != "":
-
 			binaryRef, err := schema.ParsePackageRef(loc.AsPackageName(), binaryPackage)
 			if err != nil {
 				return err
@@ -85,16 +83,13 @@ func NewDebugShellCmd() *cobra.Command {
 				return err
 			}
 
-			imageID, err = binary.EnsureImage(ctx, sealedCtx, prepared)
+			imageID, err = binary.EnsureImage(ctx, sealedCtx, cluster.Planner().Registry(), prepared)
 			if err != nil {
 				return err
 			}
 
 		default:
-			tag, err := registry.AllocateName(ctx, env, schema.PackageName(env.Workspace().ModuleName()+"/debug"))
-			if err != nil {
-				return err
-			}
+			tag := cluster.Planner().Registry().AllocateName(env.Workspace().ModuleName() + "/debug")
 
 			sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
 

@@ -48,10 +48,12 @@ func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSta
 		// XXX handle opts.NoNetworking
 		var err error
 		imgid, err = tasks.Return(ctx, tasks.Action("kubernetes.invocation.push-image"), func(ctx context.Context) (oci.ImageID, error) {
-			name, err := registry.RawAllocateName(ctx, k.configuration, opts.ImageName)
+			reg, err := registry.GetRegistryFromConfig(ctx, "", k.configuration)
 			if err != nil {
 				return oci.ImageID{}, err
 			}
+
+			name := reg.AllocateName(opts.ImageName)
 
 			resolvedName, err := compute.GetValue(ctx, name)
 			if err != nil {

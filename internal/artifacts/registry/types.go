@@ -96,24 +96,6 @@ func StaticName(parent Manager, imageID oci.ImageID, insecure bool, keychain oci
 		})
 }
 
-func AllocateName(ctx context.Context, env cfg.Context, pkg schema.PackageName) (compute.Computable[oci.AllocatedRepository], error) {
-	registry, err := GetRegistry(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
-	return registry.AllocateName(pkg.String()), nil
-}
-
-func RawAllocateName(ctx context.Context, ck cfg.Configuration, repo string) (compute.Computable[oci.AllocatedRepository], error) {
-	registry, err := GetRegistryFromConfig(ctx, "", ck)
-	if err != nil {
-		return nil, err
-	}
-
-	return registry.AllocateName(repo), nil
-}
-
 func Precomputed(tag oci.AllocatedRepository) compute.Computable[oci.AllocatedRepository] {
 	return precomputedTag{tag: tag}
 }

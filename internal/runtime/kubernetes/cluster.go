@@ -64,8 +64,8 @@ func (u *Cluster) Class() runtime.Class {
 	return kubernetesClass{}
 }
 
-func (u *Cluster) Planner(env cfg.Context) runtime.Planner {
-	return NewPlanner(env, u.SystemInfo)
+func (u *Cluster) Planner(ctx context.Context, env cfg.Context) (runtime.Planner, error) {
+	return NewPlanner(ctx, env, u.SystemInfo)
 }
 
 func (u *Cluster) RESTConfig() *rest.Config {

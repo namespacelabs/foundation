@@ -33,6 +33,7 @@ type Rehydrated struct {
 
 func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*Rehydrated, error) {
 	return tasks.Return(ctx, tasks.Action("rehydrate").Scope(srv.PackageName()).Str("ref", imageID), func(ctx context.Context) (*Rehydrated, error) {
+		// XXX get a cluster's registry instead.
 		reg, err := registry.GetRegistry(ctx, srv.SealedContext())
 		if err != nil {
 			return nil, err

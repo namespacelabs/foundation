@@ -14,6 +14,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
@@ -39,7 +40,7 @@ type Class interface {
 
 	// Attaches to an existing cluster (if not is specified in the
 	// configuration), or creates a new cluster as needed.
-	EnsureCluster(context.Context, cfg.Configuration, string) (Cluster, cfg.Configuration, error)
+	EnsureCluster(context.Context, cfg.Configuration, string) (Cluster, error)
 }
 
 // A cluster represents a cluster where Namespace is capable of deployment one
@@ -47,7 +48,7 @@ type Class interface {
 type Cluster interface {
 	// Returns a Planner implementation which emits deployment plans that target
 	// a namespace within this cluster.
-	Planner(cfg.Context) Planner
+	Planner(context.Context, cfg.Context) (Planner, error)
 
 	// Returns a namespace'd cluster -- one for a particular application use,
 	// bound to the workspace identified by the cfg.Context.
@@ -140,6 +141,9 @@ type Planner interface {
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
+
+	// The registry we should upload to.
+	Registry() registry.Manager
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application

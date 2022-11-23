@@ -38,7 +38,7 @@ func RegisterRegistry() {
 	registry.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
 		conf, ok := clusterConfigType.CheckGet(ck)
 		if !ok || conf.ClusterId == "" {
-			return nil, fnerrors.InternalError("missing configuration")
+			return nil, fnerrors.InternalError("missing registry configuration")
 		}
 
 		return nscloudRegistry{conf.ClusterId}, nil

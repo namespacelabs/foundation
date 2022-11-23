@@ -12,6 +12,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -25,12 +26,22 @@ import (
 type Planner struct {
 	fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
 	target          clusterTarget
+	registry        registry.Manager
 }
 
 var _ runtime.Planner = Planner{}
 
-func NewPlanner(env cfg.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
-	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env)}
+func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) (Planner, error) {
+	registry, err := registry.GetRegistry(ctx, env)
+	if err != nil {
+		return Planner{}, err
+	}
+
+	return NewPlannerWithRegistry(env, registry, fetchSystemInfo), nil
+}
+
+func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
+	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env), registry: registry}
 }
 
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
@@ -68,6 +79,10 @@ func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) 
 	}
 
 	return parsePlatforms(systemInfo.NodePlatform)
+}
+
+func (r Planner) Registry() registry.Manager {
+	return r.registry
 }
 
 func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
