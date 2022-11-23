@@ -144,7 +144,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		tel := fnapi.TelemetryOn(ctx)
 
 		// XXX move id management out of telemetry, it's used for other purposes too.
-		if tel.IsFirstRun() {
+		if tel.IsFirstRun() && !environment.IsRunningInCI() {
 			// First NS run - print a welcome message.
 			welcome.PrintWelcome(ctx, true /* firstRun */)
 		}
