@@ -164,9 +164,11 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
+      - name: Login
+        run: echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/foundation
+
       - name: Run tests
         run: |
-          echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/foundation \
           /tmp/ns test \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
@@ -237,6 +239,9 @@ jobs:
 
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
+
+      - name: Login
+        run: echo ${{ secrets.GITHUB_TOKEN }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
 
       - name: Run tests
         run: |
