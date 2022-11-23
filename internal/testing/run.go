@@ -81,7 +81,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 
 	env := test.SealedContext
-	cluster, err := test.Cluster.Bind(test.SealedContext)
+	cluster, err := test.Cluster.Bind(ctx, test.SealedContext)
 	if err != nil {
 		return nil, err
 	}

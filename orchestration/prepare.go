@@ -69,7 +69,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		return nil, err
 	}
 
-	boundCluster, err := cluster.Bind(env)
+	boundCluster, err := cluster.Bind(ctx, env)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func getVersionsFromOrchestrator(ctx context.Context, targetEnv cfg.Configuratio
 		return nil, err
 	}
 
-	boundCluster, err := cluster.Bind(env)
+	boundCluster, err := cluster.Bind(ctx, env)
 	if err != nil {
 		return nil, err
 	}

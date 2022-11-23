@@ -11,6 +11,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/tcache"
@@ -76,8 +77,13 @@ func (u *Cluster) PreparedClient() client.Prepared {
 	return u.computedClient
 }
 
-func (u *Cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
-	return &ClusterNamespace{cluster: u, target: newTarget(env)}, nil
+func (u *Cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
+	registry, err := registry.GetRegistry(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClusterNamespace{cluster: u, target: newTarget(env), registry: registry}, nil
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {

@@ -52,7 +52,7 @@ type Cluster interface {
 
 	// Returns a namespace'd cluster -- one for a particular application use,
 	// bound to the workspace identified by the cfg.Context.
-	Bind(cfg.Context) (ClusterNamespace, error)
+	Bind(context.Context, cfg.Context) (ClusterNamespace, error)
 
 	// Fetch diagnostics of a particular container reference.
 	FetchDiagnostics(context.Context, *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error)

@@ -151,8 +151,8 @@ func (d *cluster) Class() runtime.Class {
 	return runtimeClass{}
 }
 
-func (d *cluster) Bind(env cfg.Context) (runtime.ClusterNamespace, error) {
-	bound, err := d.cluster.Bind(env)
+func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
+	bound, err := d.cluster.Bind(ctx, env)
 	if err != nil {
 		return nil, err
 	}
