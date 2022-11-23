@@ -18,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -32,9 +31,9 @@ import (
 )
 
 type ClusterNamespace struct {
-	cluster  *Cluster
-	target   clusterTarget
-	registry registry.Manager
+	cluster *Cluster
+	target  clusterTarget
+	planner runtime.Planner
 }
 
 type clusterTarget struct {
@@ -70,7 +69,7 @@ func (cn *ClusterNamespace) Cluster() runtime.Cluster {
 }
 
 func (cn *ClusterNamespace) Planner() runtime.Planner {
-	return Planner{fetchSystemInfo: cn.cluster.SystemInfo, target: cn.target, registry: cn.registry}
+	return cn.planner
 }
 
 func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
