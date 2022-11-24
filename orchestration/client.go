@@ -6,6 +6,7 @@ package orchestration
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -134,8 +136,24 @@ func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, pla
 		return "", err
 	}
 
-	if req.Auth, err = getUserAuth(ctx); err != nil {
+	auth, err := getUserAuth(ctx)
+	if err != nil {
 		return "", err
+	}
+
+	if auth != nil {
+		authData, err := json.Marshal(auth)
+		if err != nil {
+			return "", fnerrors.InternalError("failed to marshal auth data: %w", err)
+		}
+
+		req.SerializedAuth = authData
+		// Backwards compatible.
+		req.Auth = &proto.InternalUserAuth{
+			Username: auth.Username,
+			Org:      auth.Org,
+			Opaque:   auth.InternalOpaque,
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)

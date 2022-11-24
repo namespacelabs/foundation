@@ -56,16 +56,20 @@ func StoreUser(ctx context.Context, userAuth *UserAuth) (string, error) {
 		return "", err
 	}
 
+	return userAuth.Username, StoreMarshalledUser(ctx, userAuthData)
+}
+
+func StoreMarshalledUser(ctx context.Context, userAuthData []byte) error {
 	configDir, err := dirs.Ensure(dirs.Config())
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if err := os.WriteFile(filepath.Join(configDir, userAuthJson), userAuthData, 0600); err != nil {
-		return "", err
+		return err
 	}
 
-	return userAuth.Username, nil
+	return nil
 }
 
 func LoadUser() (*UserAuth, error) {

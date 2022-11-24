@@ -9,18 +9,24 @@ package nsl.orchestration;
 option go_package = "namespacelabs.dev/foundation/orchestration/proto";
 
 import "universe/aws/configuration/aws.proto";
-import "internal/fnapi/userauth.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
 import "schema/workspace.proto";
 import "std/tasks/protolog/log.proto";
 
 message DeployRequest {
-    foundation.schema.DeployPlan                        plan = 1;
-    foundation.universe.aws.configuration.Configuration aws  = 4;
-    nsl.internal.fnapi.UserAuth                         auth = 5;  // Time-limited Namespace session.
+    foundation.schema.DeployPlan                        plan            = 1;
+    foundation.universe.aws.configuration.Configuration aws             = 4;
+    InternalUserAuth                                    auth            = 5;  // Time-limited Namespace session.
+    bytes                                               serialized_auth = 6;
 
     reserved 2, 3;
+}
+
+message InternalUserAuth {
+    string username = 1;
+    string org      = 2;
+    bytes  opaque   = 3;
 }
 
 message DeployResponse {

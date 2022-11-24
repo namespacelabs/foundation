@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
@@ -35,8 +36,18 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 	log.Printf("new Deploy request for %d focus servers: %s\n", len(req.Plan.FocusServer), strings.Join(req.Plan.FocusServer, ","))
 	now := time.Now()
 
-	if req.Auth != nil {
-		if _, err := fnapi.StoreUser(ctx, req.Auth); err != nil {
+	// XXX orchestrator should not write files; rather should inject authentication into session.
+	if serialized := req.GetSerializedAuth(); serialized != nil {
+		if err := fnapi.StoreMarshalledUser(ctx, req.GetSerializedAuth()); err != nil {
+			return nil, err
+		}
+	} else if req.Auth != nil {
+		data, err := json.Marshal(req.Auth)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := fnapi.StoreMarshalledUser(ctx, data); err != nil {
 			return nil, err
 		}
 	}
