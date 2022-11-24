@@ -16,6 +16,7 @@ type EditableWorkspaceData interface {
 
 	WithSetDependency(...*schema.Workspace_Dependency) WorkspaceData
 	WithReplacedDependencies([]*schema.Workspace_Dependency) WorkspaceData
+	WithSetEnvironment(...*schema.Workspace_EnvironmentSpec) WorkspaceData
 }
 
 type WorkspaceData interface {
