@@ -7,6 +7,7 @@ package prepare
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/parsing/module"
@@ -31,7 +33,11 @@ var deprecatedConfigs = []string{
 	"type.googleapis.com/foundation.build.buildkit.Configuration",
 }
 
-var envRef string
+var (
+	envRef        string
+	isCreateEnv   bool              = false
+	createEnvArgs map[string]string = map[string]string{}
+)
 
 func NewPrepareCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
@@ -55,7 +61,9 @@ func NewPrepareCmd() *cobra.Command {
 	rootCmd.AddCommand(newExistingCmd())
 	rootCmd.AddCommand(newNewClusterCmd())
 
-	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access (as defined in the workspace).")
+	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access.")
+	rootCmd.PersistentFlags().BoolVar(&isCreateEnv, "create-env", isCreateEnv, "Create the environment with a defined parameters and writes it into the workspace file if it is not exists yet.")
+	rootCmd.PersistentFlags().StringToStringVar(&createEnvArgs, "create-env-args", createEnvArgs, "--create-env arguments")
 
 	return rootCmd
 }
@@ -66,9 +74,77 @@ func downloadPrebuilts(env cfg.Context) compute.Computable[[]oci.ResolvableImage
 	return prepare.DownloadPrebuilts(env, prebuilts)
 }
 
+func parseCreateEnvArgs(args map[string]string) (*schema.Workspace_EnvironmentSpec, error) {
+	purposeRef, ok := args["purpose"]
+	if !ok {
+		purposeRef = "DEVELOPMENT"
+	}
+	purpose, ok := schema.Environment_Purpose_value[strings.ToUpper(purposeRef)]
+	if !ok || purpose == 0 {
+		return nil, fnerrors.New("no such environment purpose %q", purposeRef)
+	}
+	runtime, ok := args["runtime"]
+	if !ok {
+		runtime = "kubernetes"
+	}
+	labelList := args["labels"]
+	var labels []*schema.Label
+	if len(labelList) > 0 {
+		for _, l := range strings.Split(labelList, ",") {
+			l = strings.TrimSpace(l)
+			keyVal := strings.SplitN(l, "=", 2)
+			if len(keyVal) != 2 {
+				return nil, fnerrors.New("invalid label %q", l)
+			}
+			key := strings.TrimSpace(keyVal[0])
+			val := strings.TrimSpace(keyVal[1])
+			labels = append(labels, &schema.Label{Name: key, Value: val})
+		}
+
+		slices.SortFunc(labels, func(a, b *schema.Label) bool {
+			if a.GetName() == b.GetName() {
+				return strings.Compare(a.GetValue(), b.GetValue()) < 0
+			}
+			return strings.Compare(a.GetName(), b.GetName()) < 0
+		})
+	}
+
+	env := &schema.Workspace_EnvironmentSpec{
+		Name:    envRef,
+		Runtime: runtime,
+		Purpose: schema.Environment_Purpose(purpose),
+		Labels:  labels,
+	}
+
+	return env, nil
+}
+
+func updateWorkspaceEnvironment(ctx context.Context, envRef string, createEnvArgs map[string]string) error {
+	root, err := module.FindRoot(ctx, ".")
+	if err != nil {
+		return err
+	}
+
+	newEnv, err := parseCreateEnvArgs(createEnvArgs)
+	if err != nil {
+		return err
+	}
+
+	ws := root.EditableWorkspace().WithSetEnvironment(newEnv)
+	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.ReadWriteFS(), ws.DefinitionFile(), func(w io.Writer) error {
+		return ws.FormatTo(w)
+	})
+}
+
 func runPrepare(prepare func(context.Context, cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error)) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		return fncobra.RunE(func(ctx context.Context, args []string) error {
+			if isCreateEnv {
+				err := updateWorkspaceEnvironment(ctx, envRef, createEnvArgs)
+				if err != nil {
+					return err
+				}
+			}
 			root, err := module.FindRoot(ctx, ".")
 			if err != nil {
 				return err
