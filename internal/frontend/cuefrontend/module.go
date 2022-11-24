@@ -218,6 +218,90 @@ func (r workspaceData) FormatTo(w io.Writer) error {
 	return err
 }
 
+func (r workspaceData) WithSetEnvironment(envs ...*schema.Workspace_EnvironmentSpec) pkggraph.WorkspaceData {
+	var add []*schema.Workspace_EnvironmentSpec
+
+	for _, env := range envs {
+		found := false
+		for _, x := range r.parsed.EnvSpec {
+			if x.Name == env.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			add = append(add, env)
+		}
+	}
+	return r.updateEnvironments(add, nil, nil)
+}
+
+func (r workspaceData) updateEnvironments(add, update []*schema.Workspace_EnvironmentSpec, remove []string) workspaceData {
+	syntax := r.structLit()
+	hasEnvBlock := false
+	for _, decl := range syntax.Elts {
+		switch z := decl.(type) {
+		case *ast.Field:
+			if lbl, _, _ := ast.LabelName(z.Label); lbl == "environment" {
+				switch st := z.Value.(type) {
+				case *ast.StructLit:
+					hasEnvBlock = true
+					for _, add := range add {
+						st.Elts = append(st.Elts, makeEnv(add))
+					}
+				}
+			}
+		}
+	}
+
+	if !hasEnvBlock && len(add) > 0 {
+		var d []interface{}
+		for _, add := range add {
+			d = append(d, makeEnv(add))
+		}
+
+		syntax.Elts = append(syntax.Elts, &ast.Field{
+			Label: ast.NewIdent("environment"),
+			Value: ast.NewStruct(d...),
+		})
+	}
+	copy := r
+	copy.source = r.source.Context().BuildExpr(syntax)
+
+	return copy
+}
+
+func makeEnv(v *schema.Workspace_EnvironmentSpec) *ast.Field {
+	values := []interface{}{
+		&ast.Field{
+			Label: ast.NewIdent("runtime"),
+			Value: ast.NewString(v.Runtime),
+		},
+		&ast.Field{
+			Label: ast.NewIdent("purpose"),
+			Value: ast.NewString(v.Purpose.String()),
+		},
+	}
+	if len(v.Labels) > 0 {
+		var labelValues []interface{}
+		for _, lv := range v.Labels {
+			labelValues = append(labelValues, &ast.Field{
+				Label: ast.NewIdent(lv.Name),
+				Value: ast.NewString(lv.Value),
+			})
+		}
+		labels := &ast.Field{
+			Label: ast.NewIdent("labels"),
+			Value: ast.NewStruct(labelValues...),
+		}
+		values = append(values, labels)
+	}
+	return &ast.Field{
+		Label: ast.NewIdent(v.Name),
+		Value: ast.NewStruct(values...),
+	}
+}
+
 func (r workspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) pkggraph.WorkspaceData {
 	var add, update []*schema.Workspace_Dependency
 
