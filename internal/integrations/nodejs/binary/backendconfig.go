@@ -37,7 +37,7 @@ func generateBackendsConfig(ctx context.Context, loc pkggraph.Location, backends
 				Managed: "placeholder",
 			}
 		} else {
-			backendDef, err := resolveBackend(loc, backend.Service, fragments, opts)
+			backendDef, err := resolveBackend(loc, backend, fragments, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -96,16 +96,22 @@ func GenerateBackendConfFromMap(ctx context.Context, backends map[string]*Backen
 	return b.Bytes(), nil
 }
 
-func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragments []*schema.IngressFragment, opts *BackendsOpts) (*BackendDefinition, error) {
+func resolveBackend(loc pkggraph.Location, backend *schema.NodejsBuild_Backend, fragments []*schema.IngressFragment, opts *BackendsOpts) (*BackendDefinition, error) {
 	var matching []*schema.IngressFragment
 
 	for _, fragment := range fragments {
-		if fragment.GetOwner() != serviceRef.PackageName {
+		if fragment.GetOwner() != backend.Service.PackageName {
 			continue
 		}
 
-		if fragment.GetEndpoint().GetServiceName() != serviceRef.Name {
+		if fragment.GetEndpoint().GetServiceName() != backend.Service.Name {
 			continue
+		}
+
+		if backend.Manager != "" {
+			if fragment.GetManager() != backend.Manager {
+				continue
+			}
 		}
 
 		matching = append(matching, fragment)
@@ -114,8 +120,9 @@ func resolveBackend(loc pkggraph.Location, serviceRef *schema.PackageRef, fragme
 	if len(matching) == 0 {
 		var matches []string
 		for _, r := range [][2]string{
-			{"endpoint_owner", serviceRef.PackageName},
-			{"service_name", serviceRef.Name},
+			{"endpoint_owner", backend.Service.PackageName},
+			{"service_name", backend.Service.Name},
+			{"manager", backend.Manager},
 		} {
 			if r[1] != "" {
 				matches = append(matches, fmt.Sprintf("%s=%q", r[0], r[1]))

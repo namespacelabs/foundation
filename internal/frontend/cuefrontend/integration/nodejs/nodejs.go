@@ -39,10 +39,6 @@ type cueIntegrationNodejs struct {
 	Build cueIntegrationNodejsBuild `json:"build"`
 
 	Pkg string `json:"pkg"`
-
-	// Name -> package name.
-	// The ingress urls for backends are injected into the built image as a JS file.
-	Backends map[string]string `json:"backends"`
 }
 
 type cueIntegrationNodejsBuild struct {
@@ -76,15 +72,28 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 		scripts = append(scripts, s)
 	}
 
-	backends, err := ParseBackends(loc, bits.Backends)
-	if err != nil {
-		return nil, err
+	out := &schema.NodejsBuild{
+		Pkg:        bits.Pkg,
+		NodePkgMgr: pkgMgr,
 	}
 
-	out := &schema.NodejsBuild{
-		Pkg:                     bits.Pkg,
-		NodePkgMgr:              pkgMgr,
-		InternalDoNotUseBackend: backends,
+	if v != nil {
+		if b := v.LookupPath("backends"); b.Exists() {
+			it, err := b.Val.Fields()
+			if err != nil {
+				return nil, err
+			}
+
+			for it.Next() {
+				val := &fncue.CueV{Val: it.Value()}
+				backend, err := parseBackend(loc, it.Label(), val)
+				if err != nil {
+					return nil, err
+				}
+
+				out.InternalDoNotUseBackend = append(out.InternalDoNotUseBackend, backend)
+			}
+		}
 	}
 
 	if opaque.UseDevBuild(env) {
@@ -136,19 +145,38 @@ func detectPkgMgr(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggra
 	return schema.NodejsBuild_PKG_MGR_UNKNOWN, fnerrors.NewWithLocation(loc, "no package manager detected")
 }
 
-func ParseBackends(loc pkggraph.Location, src map[string]string) ([]*schema.NodejsBuild_Backend, error) {
-	backends := []*schema.NodejsBuild_Backend{}
-	for k, v := range src {
-		serviceRef, err := schema.ParsePackageRef(loc.PackageName, v)
-		if err != nil {
-			return nil, err
-		}
+// Full form of the backend definition.
+type cueNodejsBackend struct {
+	Service string `json:"service"`
+	Manager string `json:"internalDoNotUseManager"`
+}
 
-		backends = append(backends, &schema.NodejsBuild_Backend{
-			Name:    k,
-			Service: serviceRef,
-		})
+// The ingress urls for backends are injected into the built image as a JS file.
+func parseBackend(loc pkggraph.Location, name string, v *fncue.CueV) (*schema.NodejsBuild_Backend, error) {
+	backend := &schema.NodejsBuild_Backend{
+		Name: name,
 	}
 
-	return backends, nil
+	var rawServiceRef string
+	if str, err := v.Val.String(); err == nil {
+		rawServiceRef = str
+	} else {
+		var bits cueNodejsBackend
+		if v != nil {
+			if err := v.Val.Decode(&bits); err != nil {
+				return nil, err
+			}
+		}
+
+		rawServiceRef = bits.Service
+		backend.Manager = bits.Manager
+	}
+
+	var err error
+	backend.Service, err = schema.ParsePackageRef(loc.PackageName, rawServiceRef)
+	if err != nil {
+		return nil, err
+	}
+
+	return backend, nil
 }

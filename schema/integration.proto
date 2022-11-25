@@ -83,6 +83,9 @@ message NodejsBuild {
         string name = 1;
 
         PackageRef service = 2;
+
+        // For internal use. Needed to connect to transcoded gRPC endpoints.
+        string manager = 3;
     }
 }
 
