@@ -18,10 +18,14 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+type UnwrapCluster interface {
+	KubernetesCluster() *Cluster
+}
+
 type Cluster struct {
 	cli            *k8s.Clientset
 	computedClient client.Prepared
-	config         cfg.Configuration
+	Configuration  cfg.Configuration
 
 	FetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
 
@@ -55,7 +59,7 @@ func ConnectToCluster(ctx context.Context, config cfg.Configuration) (*Cluster, 
 	return &Cluster{
 		cli:             cli.Clientset,
 		computedClient:  *cli,
-		config:          config,
+		Configuration:   config,
 		FetchSystemInfo: deferredSystemInfo.Get,
 	}, nil
 }
@@ -72,6 +76,8 @@ func (u *Cluster) RESTConfig() *rest.Config {
 	return u.computedClient.RESTConfig
 }
 
+func (u *Cluster) KubernetesCluster() *Cluster { return u }
+
 func (u *Cluster) PreparedClient() client.Prepared {
 	return u.computedClient
 }
@@ -82,15 +88,15 @@ func (u *Cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNam
 		return nil, err
 	}
 
-	return NewClusterNamespaceWithPlanner(env, u, planner), nil
-}
-
-func NewClusterNamespaceWithPlanner(env cfg.Context, u *Cluster, planner runtime.Planner) *ClusterNamespace {
-	return &ClusterNamespace{cluster: u, target: newTarget(env), planner: planner}
+	return NewClusterNamespaceWithPlanner(env, u, u, planner), nil
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
-	return r.ClusterAttachedState.EnsureState(ctx, key, r.config, r, nil)
+	return r.ClusterAttachedState.EnsureState(ctx, key, r.Configuration, r, nil)
+}
+
+func NewClusterNamespaceWithPlanner(env cfg.Context, parent runtime.Cluster, u *Cluster, planner runtime.Planner) *ClusterNamespace {
+	return &ClusterNamespace{parent: parent, underlying: u, target: newTarget(env), planner: planner}
 }
 
 func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config cfg.Configuration, cluster runtime.Cluster, key *string) (any, error) {

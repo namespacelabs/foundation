@@ -31,9 +31,10 @@ import (
 )
 
 type ClusterNamespace struct {
-	cluster *Cluster
-	target  clusterTarget
-	planner runtime.Planner
+	parent     runtime.Cluster
+	underlying *Cluster
+	target     clusterTarget
+	planner    runtime.Planner
 }
 
 type clusterTarget struct {
@@ -58,14 +59,14 @@ func ConnectToNamespace(ctx context.Context, env cfg.Context) (*ClusterNamespace
 
 func (r *ClusterNamespace) KubeConfig() kubedef.KubeConfig {
 	return kubedef.KubeConfig{
-		Context:     r.cluster.computedClient.HostEnv.GetContext(),
+		Context:     r.underlying.computedClient.HostEnv.GetContext(),
 		Environment: r.target.env,
 		Namespace:   r.target.namespace,
 	}
 }
 
 func (cn *ClusterNamespace) Cluster() runtime.Cluster {
-	return cn.cluster
+	return cn.parent
 }
 
 func (cn *ClusterNamespace) Planner() runtime.Planner {
@@ -73,12 +74,12 @@ func (cn *ClusterNamespace) Planner() runtime.Planner {
 }
 
 func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {
-	systemInfo, err := r.cluster.SystemInfo(ctx)
+	systemInfo, err := r.underlying.SystemInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	events, err := r.cluster.cli.CoreV1().Events(r.target.namespace).List(ctx, metav1.ListOptions{})
+	events, err := r.underlying.cli.CoreV1().Events(r.target.namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fnerrors.New("kubernetes: failed to obtain event list: %w", err)
 	}
@@ -109,7 +110,7 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 		return err
 	}
 
-	return r.cluster.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
+	return r.underlying.lowLevelAttachTerm(ctx, cli, pod.Namespace, pod.Name, rio, "exec", &corev1.PodExecOptions{
 		Command: cmd,
 		Stdin:   rio.Stdin != nil,
 		Stdout:  rio.Stdout != nil,
@@ -135,7 +136,7 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 
 			switch srv.GetDeployableClass() {
 			case string(schema.DeployableClass_STATELESS):
-				deployment, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+				deployment, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -147,7 +148,7 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 				return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
 
 			case string(schema.DeployableClass_STATEFUL):
-				deployment, err := r.cluster.cli.AppsV1().StatefulSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+				deployment, err := r.underlying.cli.AppsV1().StatefulSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
 				if err != nil {
 					return false, err
 				}
@@ -169,7 +170,7 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 }
 
 func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
-	if !client.IsInclusterClient(r.cluster.cli) {
+	if !client.IsInclusterClient(r.underlying.cli) {
 		// Emitting this debug message as only incluster deployments know how to determine service readiness.
 		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
 
@@ -179,7 +180,7 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 	}
 
 	// TODO only check services that are required
-	services, err := r.cluster.cli.CoreV1().Services(r.target.namespace).List(ctx, metav1.ListOptions{
+	services, err := r.underlying.cli.CoreV1().Services(r.target.namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
 	})
 	if err != nil {
@@ -204,7 +205,7 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 }
 
 func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
-	pod, err := r.cluster.cli.CoreV1().Pods(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+	pod, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -269,7 +270,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 		})
 	}
 
-	pods, err := r.cluster.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv))})
+	pods, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv))})
 	if err != nil {
 		return err
 	}
@@ -278,7 +279,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 		return fnerrors.New("%s: no pods to observe", srv.GetName())
 	}
 
-	_, err = kubeobserver.WatchPods(ctx, r.cluster.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {
+	_, err = kubeobserver.WatchPods(ctx, r.underlying.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {
 		instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
 
 		t := untrackContainer
@@ -314,7 +315,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 		return nil, fnerrors.InternalError("WaitForTermination: only support one-shot deployments")
 	}
 
-	cli := r.cluster.cli
+	cli := r.underlying.cli
 	namespace := r.target.namespace
 	podName := kubedef.MakeDeploymentId(object)
 
@@ -351,15 +352,15 @@ func (r *ClusterNamespace) ForwardPort(ctx context.Context, server runtime.Deplo
 		return nil, fnerrors.BadInputError("invalid port number: %d", containerPort)
 	}
 
-	return r.cluster.RawForwardPort(ctx, server.GetPackageRef().GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
+	return r.underlying.RawForwardPort(ctx, server.GetPackageRef().GetPackageName(), r.target.namespace, kubedef.SelectById(server), int(containerPort), localAddrs, callback)
 }
 
 func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deployable, port *schema.Endpoint_Port) (net.Conn, error) {
-	return r.cluster.RawDialServer(ctx, r.target.namespace, kubedef.SelectById(server), port)
+	return r.underlying.RawDialServer(ctx, r.target.namespace, kubedef.SelectById(server), port)
 }
 
 func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtimepb.ContainerReference, error) {
-	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.cluster.cli, r.target.namespace, object,
+	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.underlying.cli, r.target.namespace, object,
 		func(pod corev1.Pod) ([]*runtimepb.ContainerReference, bool, error) {
 			if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
 				return nil, false, nil
@@ -386,7 +387,7 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server run
 	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageRef().GetPackageName())),
 		func(ctx context.Context) (oci.ImageID, error) {
 			// XXX need a StatefulSet variant.
-			d, err := r.cluster.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
+			d, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
 			if err != nil {
 				// XXX better error messages.
 				return oci.ImageID{}, err
@@ -412,11 +413,11 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server run
 func (r *ClusterNamespace) StartTerminal(ctx context.Context, server runtime.Deployable, rio runtime.TerminalIO, command string, rest ...string) error {
 	cmd := append([]string{command}, rest...)
 
-	return r.startTerminal(ctx, r.cluster.cli, server, rio, cmd)
+	return r.startTerminal(ctx, r.underlying.cli, server, rio, cmd)
 }
 
 func (r *ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bool, error) {
-	return DeleteAllRecursively(ctx, r.cluster.cli, wait, nil, r.target.namespace)
+	return DeleteAllRecursively(ctx, r.underlying.cli, wait, nil, r.target.namespace)
 }
 
 func (r *ClusterNamespace) DeleteDeployable(ctx context.Context, deployable runtime.Deployable) error {
@@ -424,13 +425,13 @@ func (r *ClusterNamespace) DeleteDeployable(ctx context.Context, deployable runt
 
 	switch deployable.GetDeployableClass() {
 	case string(schema.DeployableClass_ONESHOT), string(schema.DeployableClass_MANUAL):
-		return r.cluster.cli.CoreV1().Pods(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
+		return r.underlying.cli.CoreV1().Pods(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
 	case string(schema.DeployableClass_STATEFUL):
-		return r.cluster.cli.AppsV1().StatefulSets(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
+		return r.underlying.cli.AppsV1().StatefulSets(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
 	case string(schema.DeployableClass_STATELESS):
-		return r.cluster.cli.AppsV1().Deployments(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
+		return r.underlying.cli.AppsV1().Deployments(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
 	default:
 		return fnerrors.InternalError("%s: unsupported deployable class", deployable.GetDeployableClass())

@@ -146,6 +146,11 @@ type cluster struct {
 
 var _ runtime.Cluster = &cluster{}
 var _ kubedef.KubeCluster = &cluster{}
+var _ kubernetes.UnwrapCluster = &cluster{}
+
+func (d *cluster) KubernetesCluster() *kubernetes.Cluster {
+	return d.cluster
+}
 
 func (d *cluster) Class() runtime.Class {
 	return runtimeClass{}
@@ -158,7 +163,7 @@ func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNam
 	}
 
 	return clusterNamespace{
-		ClusterNamespace: kubernetes.NewClusterNamespaceWithPlanner(env, d.cluster, planner),
+		ClusterNamespace: kubernetes.NewClusterNamespaceWithPlanner(env, d, d.cluster, planner),
 		Config:           d.config,
 	}, nil
 }
@@ -186,7 +191,9 @@ func (d *cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 }
 
 func (d *cluster) EnsureState(ctx context.Context, key string) (any, error) {
-	return d.cluster.EnsureState(ctx, key)
+	// It's important that we don't defer to d.cluster.EnsureState() as it would
+	// then pass `d.cluster` as `runtime.Cluster`, rather than `d`.
+	return d.cluster.ClusterAttachedState.EnsureState(ctx, key, d.cluster.Configuration, d, nil)
 }
 
 func (d *cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {

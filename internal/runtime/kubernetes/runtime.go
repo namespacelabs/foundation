@@ -65,10 +65,12 @@ func Register() {
 	})
 
 	runtime.RegisterPrepare(RestmapperStateKey, func(ctx context.Context, _ cfg.Configuration, cluster runtime.Cluster) (any, error) {
-		kube, ok := cluster.(*Cluster)
+		unwrap, ok := cluster.(UnwrapCluster)
 		if !ok {
 			return nil, fnerrors.InternalError("expected kubernetes cluster")
 		}
+
+		kube := unwrap.KubernetesCluster()
 
 		return client.NewRESTMapper(kube.RESTConfig(), kube.computedClient.Configuration.Ephemeral)
 	})
