@@ -148,8 +148,10 @@ jobs:
         run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
 
       - name: Run tests
+        # Consider removing --also_report_start_events
         run: |
           /tmp/ns test \
+            --also_report_start_events \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --tools_invocation_can_use_buildkit \

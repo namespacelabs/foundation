@@ -37,7 +37,10 @@ func computeDefaultConfig() []*ThrottleConfiguration {
 		{Labels: map[string]string{"action": "go.build.binary"}, Capacity: 3},
 	}
 
-	if !environment.IsRunningInCI() {
+	if environment.IsRunningInCI() {
+		// Mitigation attempt for "connection reset by peer" issues in Github actions.
+		confs = append(confs, &ThrottleConfiguration{Labels: map[string]string{"action": "nscloud.get"}, Capacity: 3})
+	} else {
 		// This is for presentation purposes alone; so users don't see a bunch of waiting provision.invoke.
 		confs = append(confs, &ThrottleConfiguration{Labels: map[string]string{"action": "provision.invoke"}, Capacity: 3})
 	}
