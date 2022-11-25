@@ -152,6 +152,7 @@ jobs:
           /tmp/ns test \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
+            --tools_invocation_can_use_buildkit \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel \
@@ -190,20 +191,6 @@ jobs:
           repository: namespacelabs/${{ matrix.repo }}
           path: external-repo
 
-      # Required by buildkit gha cache.
-      - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v2
-
-      - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnrun-
-
       - name: Download Foundation
         uses: actions/download-artifact@v3
         with:
@@ -215,7 +202,7 @@ jobs:
 
       - name: Login
         # Consider using secrets.GITHUB_TOKEN
-        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
+        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
 
       - name: Run tests
         run: |
@@ -227,10 +214,9 @@ jobs:
             multitier/02-withsecrets/apibackend \
             golang/01-simple/server \
             golang/02-withsecrets/server \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
+            --tools_invocation_can_use_buildkit \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel
