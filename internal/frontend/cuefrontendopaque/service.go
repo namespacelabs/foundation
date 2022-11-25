@@ -5,6 +5,7 @@
 package cuefrontendopaque
 
 import (
+	"encoding/json"
 	"strings"
 
 	"golang.org/x/exp/maps"
@@ -26,8 +27,32 @@ type cueService struct {
 }
 
 type cueIngress struct {
-	InternetFacing bool                `json:"internetFacing"`
-	HttpRoutes     map[string][]string `json:"httpRoutes"`
+	Enabled bool
+	Details CueIngressDetails
+}
+
+type CueIngressDetails struct {
+	HttpRoutes map[string][]string `json:"httpRoutes"`
+}
+
+var _ json.Unmarshaler = &cueIngress{}
+
+func (i *cueIngress) UnmarshalJSON(contents []byte) error {
+	if contents == nil {
+		return nil
+	}
+
+	if string(contents) == "true" {
+		i.Enabled = true
+		return nil
+	}
+
+	if json.Unmarshal(contents, &i.Details) == nil {
+		i.Enabled = true
+		return nil
+	}
+
+	return fnerrors.InternalError("ingress: expected 'true', or a full ingress definition")
 }
 
 var knownKinds = []string{"tcp", schema.ClearTextGrpcProtocol, schema.GrpcProtocol, schema.HttpProtocol}
@@ -38,14 +63,14 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 	}
 
 	var endpointType schema.Endpoint_Type
-	if svc.Ingress.InternetFacing {
+	if svc.Ingress.Enabled {
 		endpointType = schema.Endpoint_INTERNET_FACING
 	} else {
 		endpointType = schema.Endpoint_PRIVATE
 	}
 
 	urlMap := &schema.HttpUrlMap{}
-	for _, routes := range svc.Ingress.HttpRoutes {
+	for _, routes := range svc.Ingress.Details.HttpRoutes {
 		for _, route := range routes {
 			urlMap.Entry = append(urlMap.Entry, &schema.HttpUrlMap_Entry{
 				PathPrefix: route,

@@ -67,7 +67,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 			out.Service = append(out.Service, parsed)
 		}
 
-		if endpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.HttpRoutes) > 0 {
+		if endpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.Details.HttpRoutes) > 0 {
 			return nil, nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
 		}
 	}
