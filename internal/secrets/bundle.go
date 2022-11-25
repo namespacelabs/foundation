@@ -191,6 +191,29 @@ func (b *Bundle) EnsureReader(pubkey string) error {
 	return nil
 }
 
+func (b *Bundle) SetReaders(pubkeys []string) error {
+	if len(pubkeys) == 0 {
+		return fnerrors.New("can't reset the readers to an empty list")
+	}
+
+	var keys []*age.X25519Recipient
+
+	for _, pubkey := range pubkeys {
+		xid, err := age.ParseX25519Recipient(pubkey)
+		if err != nil {
+			return fnerrors.BadInputError("bad receipient %q: %w", pubkey, err)
+		}
+		keys = append(keys, xid)
+	}
+
+	b.m.Reader = nil
+	for _, xid := range keys {
+		b.m.Reader = append(b.m.Reader, &Manifest_Reader{PublicKey: xid.String()})
+	}
+
+	return nil
+}
+
 func (b *Bundle) regen() {
 	b.m.Definition = nil
 	for _, enc := range b.values {

@@ -33,6 +33,7 @@ func NewSecretsCmd() *cobra.Command {
 	cmd.AddCommand(newDeleteCmd())
 	cmd.AddCommand(newRevealCmd())
 	cmd.AddCommand(newAddReaderCmd())
+	cmd.AddCommand(newSetReadersCmd())
 
 	return cmd
 }
