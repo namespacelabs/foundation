@@ -115,7 +115,7 @@ func resolveBackend(fragments []*schema.IngressFragment) genFunc {
 				}
 			}
 
-			return nil, fnerrors.NewWithLocation(loc, "no ingress matches %s, perhaps you're missing `ingress: internetFacing: true`",
+			return nil, fnerrors.NewWithLocation(loc, "no ingress matches %s, perhaps you're missing `ingress: true`",
 				strings.Join(matches, " "))
 		}
 
