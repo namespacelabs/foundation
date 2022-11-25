@@ -5,10 +5,10 @@
 package cuefrontendopaque
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
-	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -22,8 +22,59 @@ type cueService struct {
 	Port    int        `json:"port"`
 	Ingress cueIngress `json:"ingress"`
 
-	ReadinessProbe map[string]string            `json:"probe"`  // `probe: http: "/"`
-	Probes         map[string]map[string]string `json:"probes"` // `probes: readiness: http: "/"`
+	ReadinessProbe *cueProbe            `json:"probe"`  // `probe: http: "/"`
+	Probes         map[string]*cueProbe `json:"probes"` // `probes: readiness: http: "/"`
+}
+
+type cueProbe struct {
+	Http *cueHttpProbe `json:"http"`
+	Exec *cueExecProbe `json:"exec"`
+}
+
+type cueHttpProbe struct {
+	Path string
+}
+
+var _ json.Unmarshaler = &cueHttpProbe{}
+
+func (h *cueHttpProbe) UnmarshalJSON(data []byte) error {
+	d := json.NewDecoder(bytes.NewReader(data))
+	tok, err := d.Token()
+	if err != nil {
+		return err
+	}
+
+	if str, ok := tok.(string); ok {
+		h.Path = str
+		return nil
+	}
+
+	return fnerrors.BadInputError("failed to parse http probe, unexpected token %v", tok)
+}
+
+type cueExecProbe struct {
+	Command []string
+}
+
+var _ json.Unmarshaler = &cueExecProbe{}
+
+func (e *cueExecProbe) UnmarshalJSON(data []byte) error {
+	d := json.NewDecoder(bytes.NewReader(data))
+	tok, err := d.Token()
+	if err != nil {
+		return err
+	}
+
+	if str, ok := tok.(string); ok {
+		e.Command = []string{str}
+		return nil
+	}
+
+	if tok == json.Delim('[') {
+		return json.Unmarshal(data, &e.Command)
+	}
+
+	return fnerrors.BadInputError("failed to parse exec probe, unexpected token %v", tok)
 }
 
 type cueIngress struct {
@@ -135,18 +186,27 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 	return parsed, endpointType, nil
 }
 
-func parseProbe(kind string, data map[string]string) (*schema.ServiceMetadata, error) {
-	for _, key := range maps.Keys(data) {
-		if key == "http" {
-			httpmd := &schema.HttpExportedService{Path: data[key]}
-			serializedHttpmd, err := anypb.New(httpmd)
-			if err != nil {
-				return nil, fnerrors.InternalError("failed to serialize ServiceMetadata")
-			}
-			return &schema.ServiceMetadata{Kind: kind, Details: serializedHttpmd}, nil
-		} else {
-			return nil, fnerrors.BadInputError("%s: unsupported probe type", key)
+func parseProbe(kind string, probe *cueProbe) (*schema.ServiceMetadata, error) {
+	if probe.Http != nil && probe.Exec != nil {
+		return nil, fnerrors.BadInputError("probe: `http` and `exec` may not be both set")
+	}
+
+	switch {
+	case probe.Http != nil:
+		md, err := anypb.New(&schema.HttpExportedService{Path: probe.Http.Path})
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize HttpExportedService")
 		}
+
+		return &schema.ServiceMetadata{Kind: kind, Details: md}, nil
+
+	case probe.Exec != nil:
+		md, err := anypb.New(&schema.ExecProbe{Command: probe.Exec.Command})
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize ExecProbe")
+		}
+
+		return &schema.ServiceMetadata{Kind: kind, Details: md}, nil
 	}
 
 	return nil, nil

@@ -7,19 +7,14 @@ package main
 import (
 	"fmt"
 	"log"
-	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/go-redis/redis/v8"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	redisclass "namespacelabs.dev/foundation/library/database/redis"
 )
 
-const (
-	providerPkg = "namespacelabs.dev/foundation/library/oss/redis"
-	connBackoff = 500 * time.Millisecond
-)
+const providerPkg = "namespacelabs.dev/foundation/library/oss/redis"
 
 func main() {
 	intent := &redisclass.DatabaseIntent{}
@@ -43,9 +38,7 @@ func main() {
 		DB:       int(instance.Database),
 	})
 
-	if err := backoff.Retry(func() error {
-		return client.Ping(ctx).Err()
-	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx)); err != nil {
+	if err := client.Ping(ctx).Err(); err != nil {
 		log.Fatalf("redis database never became ready: %v", err)
 	}
 

@@ -117,20 +117,51 @@ func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bo
 }
 
 func toProbe(port *schema.Endpoint_Port, md *schema.ServiceMetadata) (*kubedef.ContainerExtension_Probe, error) {
-	exported := &schema.HttpExportedService{}
-	if err := md.Details.UnmarshalTo(exported); err != nil {
-		return nil, fnerrors.InternalError("expected a HttpExportedService: %w", err)
+	http := &schema.HttpExportedService{}
+	exec := &schema.ExecProbe{}
+
+	switch {
+	case md.Details.MessageIs(http):
+		if err := md.Details.UnmarshalTo(http); err != nil {
+			return nil, fnerrors.InternalError("expected a HttpExportedService: %w", err)
+		}
+
+		return &kubedef.ContainerExtension_Probe{
+			Kind: md.Kind,
+			Http: &kubedef.ContainerExtension_Probe_Http{
+				Path:          http.GetPath(),
+				ContainerPort: port.GetContainerPort(),
+			}}, nil
+
+	case md.Details.MessageIs(exec):
+		if err := md.Details.UnmarshalTo(exec); err != nil {
+			return nil, fnerrors.InternalError("expected a ExecProbe: %w", err)
+		}
+
+		return &kubedef.ContainerExtension_Probe{Kind: md.Kind, Exec: exec}, nil
+
+	default:
+		return nil, fnerrors.InternalError("unsupported probe type: %s", md.Details.TypeUrl)
 	}
 
-	return &kubedef.ContainerExtension_Probe{Path: exported.GetPath(), ContainerPort: port.GetContainerPort(), Kind: md.Kind}, nil
 }
 
-func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf, probe *kubedef.ContainerExtension_Probe) *applycorev1.ProbeApplyConfiguration {
-	return p.WithHTTPGet(applycorev1.HTTPGetAction().WithPath(probe.GetPath()).
-		WithPort(intstr.FromInt(int(probe.GetContainerPort())))).
-		WithPeriodSeconds(probevalues.dashnessPeriod).
+func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf, probe *kubedef.ContainerExtension_Probe) (*applycorev1.ProbeApplyConfiguration, error) {
+	p = p.WithPeriodSeconds(probevalues.dashnessPeriod).
 		WithFailureThreshold(probevalues.failureThreshold).
 		WithTimeoutSeconds(probevalues.probeTimeout)
+
+	switch {
+	case probe.Http != nil:
+		return p.WithHTTPGet(applycorev1.HTTPGetAction().WithPath(probe.Http.GetPath()).
+			WithPort(intstr.FromInt(int(probe.Http.GetContainerPort())))), nil
+
+	case probe.Exec != nil:
+		return p.WithExec(applycorev1.ExecAction().WithCommand(probe.Exec.Command...)), nil
+
+	default:
+		return nil, fnerrors.InternalError("unknown probe type for %q", probe.Kind)
+	}
 }
 
 type deployOpts struct {
@@ -323,7 +354,17 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				}
 			}
 
-			probes = append(probes, containerExt.Probe...)
+			for _, probe := range containerExt.Probe {
+				if probe.Http == nil && probe.Path != "" {
+					// backwards compatibility with stale provisioning tools.
+					probe.Http = &kubedef.ContainerExtension_Probe_Http{
+						Path:          probe.Path,
+						ContainerPort: probe.ContainerPort,
+					}
+				}
+
+				probes = append(probes, probe)
+			}
 
 			// Deprecated path.
 			for _, initContainer := range containerExt.InitContainer {
@@ -373,15 +414,21 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	}
 
 	if readinessProbe != nil {
-		mainContainer = mainContainer.WithReadinessProbe(
-			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.readinessInitialDelay),
-				probevalues, readinessProbe))
+		probe, err := toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.readinessInitialDelay),
+			probevalues, readinessProbe)
+		if err != nil {
+			return err
+		}
+		mainContainer = mainContainer.WithReadinessProbe(probe)
 	}
 
 	if livenessProbe != nil {
-		mainContainer = mainContainer.WithLivenessProbe(
-			toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.livenessInitialDelay),
-				probevalues, livenessProbe))
+		probe, err := toK8sProbe(applycorev1.Probe().WithInitialDelaySeconds(probevalues.livenessInitialDelay),
+			probevalues, livenessProbe)
+		if err != nil {
+			return err
+		}
+		mainContainer = mainContainer.WithLivenessProbe(probe)
 	}
 
 	// XXX Think through this, should it also be hashed + immutable?

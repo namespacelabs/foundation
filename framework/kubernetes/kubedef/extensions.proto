@@ -9,6 +9,7 @@ package foundation.runtime.kubernetes.kubedef;
 option go_package = "namespacelabs.dev/foundation/framework/kubernetes/kubedef";
 
 import "schema/binary.proto";
+import "schema/networking.proto";
 import "schema/package.proto";
 
 message SpecExtension {
@@ -93,9 +94,19 @@ message ContainerExtension {
     }
 
     message Probe {
-        string kind           = 1;
-        string path           = 2;
-        int32  container_port = 3;
+        string                      kind = 1;
+        Http                        http = 4;
+        foundation.schema.ExecProbe exec = 5;
+
+        message Http {
+            string path           = 1;
+            int32  container_port = 2;
+        }
+
+        // Deprecated, use `http.path` instead.
+        string path = 2;
+        // Deprecated, use `http.container_port` instead.
+        int32 container_port = 3;
     }
 }
 

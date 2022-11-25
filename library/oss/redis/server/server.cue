@@ -8,6 +8,8 @@ server: {
 	services: "redis": {
 		port: 6379
 		kind: "tcp"
+
+		probe: exec: ["redis-cli", "ping"]
 	}
 
 	// TODO configure a generated password with --requirepass

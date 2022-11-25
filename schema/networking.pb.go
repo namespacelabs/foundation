@@ -663,6 +663,53 @@ func (x *HttpExportedService) GetPath() string {
 	return ""
 }
 
+type ExecProbe struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Command []string `protobuf:"bytes,1,rep,name=command,proto3" json:"command,omitempty"`
+}
+
+func (x *ExecProbe) Reset() {
+	*x = ExecProbe{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_networking_proto_msgTypes[9]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *ExecProbe) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExecProbe) ProtoMessage() {}
+
+func (x *ExecProbe) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_networking_proto_msgTypes[9]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExecProbe.ProtoReflect.Descriptor instead.
+func (*ExecProbe) Descriptor() ([]byte, []int) {
+	return file_schema_networking_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ExecProbe) GetCommand() []string {
+	if x != nil {
+		return x.Command
+	}
+	return nil
+}
+
 type Endpoint_Port struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -675,7 +722,7 @@ type Endpoint_Port struct {
 func (x *Endpoint_Port) Reset() {
 	*x = Endpoint_Port{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_networking_proto_msgTypes[9]
+		mi := &file_schema_networking_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -688,7 +735,7 @@ func (x *Endpoint_Port) String() string {
 func (*Endpoint_Port) ProtoMessage() {}
 
 func (x *Endpoint_Port) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_networking_proto_msgTypes[9]
+	mi := &file_schema_networking_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -733,7 +780,7 @@ type IngressFragment_IngressHttpPath struct {
 func (x *IngressFragment_IngressHttpPath) Reset() {
 	*x = IngressFragment_IngressHttpPath{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_networking_proto_msgTypes[10]
+		mi := &file_schema_networking_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -746,7 +793,7 @@ func (x *IngressFragment_IngressHttpPath) String() string {
 func (*IngressFragment_IngressHttpPath) ProtoMessage() {}
 
 func (x *IngressFragment_IngressHttpPath) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_networking_proto_msgTypes[10]
+	mi := &file_schema_networking_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -814,7 +861,7 @@ type IngressFragment_IngressGrpcService struct {
 func (x *IngressFragment_IngressGrpcService) Reset() {
 	*x = IngressFragment_IngressGrpcService{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_networking_proto_msgTypes[11]
+		mi := &file_schema_networking_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -827,7 +874,7 @@ func (x *IngressFragment_IngressGrpcService) String() string {
 func (*IngressFragment_IngressGrpcService) ProtoMessage() {}
 
 func (x *IngressFragment_IngressGrpcService) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_networking_proto_msgTypes[11]
+	mi := &file_schema_networking_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -904,7 +951,7 @@ type HttpUrlMap_Entry struct {
 func (x *HttpUrlMap_Entry) Reset() {
 	*x = HttpUrlMap_Entry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_networking_proto_msgTypes[12]
+		mi := &file_schema_networking_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -917,7 +964,7 @@ func (x *HttpUrlMap_Entry) String() string {
 func (*HttpUrlMap_Entry) ProtoMessage() {}
 
 func (x *HttpUrlMap_Entry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_networking_proto_msgTypes[12]
+	mi := &file_schema_networking_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1096,10 +1143,12 @@ var file_schema_networking_proto_rawDesc = []byte{
 	0x70, 0x74, 0x6f, 0x72, 0x53, 0x65, 0x74, 0x22, 0x29, 0x0a, 0x13, 0x48, 0x74, 0x74, 0x70, 0x45,
 	0x78, 0x70, 0x6f, 0x72, 0x74, 0x65, 0x64, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x12,
 	0x0a, 0x04, 0x70, 0x61, 0x74, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x70, 0x61,
-	0x74, 0x68, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c,
-	0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
-	0x33,
+	0x74, 0x68, 0x22, 0x25, 0x0a, 0x09, 0x45, 0x78, 0x65, 0x63, 0x50, 0x72, 0x6f, 0x62, 0x65, 0x12,
+	0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09,
+	0x52, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d,
+	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66,
+	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1115,7 +1164,7 @@ func file_schema_networking_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_networking_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_schema_networking_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_schema_networking_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_schema_networking_proto_goTypes = []interface{}{
 	(Endpoint_Type)(0),                         // 0: foundation.schema.Endpoint.Type
 	(*Endpoint)(nil),                           // 1: foundation.schema.Endpoint
@@ -1127,33 +1176,34 @@ var file_schema_networking_proto_goTypes = []interface{}{
 	(*HttpUrlMap)(nil),                         // 7: foundation.schema.HttpUrlMap
 	(*GrpcHttpTranscoding)(nil),                // 8: foundation.schema.GrpcHttpTranscoding
 	(*HttpExportedService)(nil),                // 9: foundation.schema.HttpExportedService
-	(*Endpoint_Port)(nil),                      // 10: foundation.schema.Endpoint.Port
-	(*IngressFragment_IngressHttpPath)(nil),    // 11: foundation.schema.IngressFragment.IngressHttpPath
-	(*IngressFragment_IngressGrpcService)(nil), // 12: foundation.schema.IngressFragment.IngressGrpcService
-	(*HttpUrlMap_Entry)(nil),                   // 13: foundation.schema.HttpUrlMap.Entry
-	(*Domain)(nil),                             // 14: foundation.schema.Domain
-	(*Certificate)(nil),                        // 15: foundation.schema.Certificate
-	(*anypb.Any)(nil),                          // 16: google.protobuf.Any
-	(*descriptorpb.FileDescriptorSet)(nil),     // 17: google.protobuf.FileDescriptorSet
+	(*ExecProbe)(nil),                          // 10: foundation.schema.ExecProbe
+	(*Endpoint_Port)(nil),                      // 11: foundation.schema.Endpoint.Port
+	(*IngressFragment_IngressHttpPath)(nil),    // 12: foundation.schema.IngressFragment.IngressHttpPath
+	(*IngressFragment_IngressGrpcService)(nil), // 13: foundation.schema.IngressFragment.IngressGrpcService
+	(*HttpUrlMap_Entry)(nil),                   // 14: foundation.schema.HttpUrlMap.Entry
+	(*Domain)(nil),                             // 15: foundation.schema.Domain
+	(*Certificate)(nil),                        // 16: foundation.schema.Certificate
+	(*anypb.Any)(nil),                          // 17: google.protobuf.Any
+	(*descriptorpb.FileDescriptorSet)(nil),     // 18: google.protobuf.FileDescriptorSet
 }
 var file_schema_networking_proto_depIdxs = []int32{
 	0,  // 0: foundation.schema.Endpoint.type:type_name -> foundation.schema.Endpoint.Type
-	10, // 1: foundation.schema.Endpoint.port:type_name -> foundation.schema.Endpoint.Port
+	11, // 1: foundation.schema.Endpoint.port:type_name -> foundation.schema.Endpoint.Port
 	6,  // 2: foundation.schema.Endpoint.service_metadata:type_name -> foundation.schema.ServiceMetadata
-	10, // 3: foundation.schema.InternalEndpoint.port:type_name -> foundation.schema.Endpoint.Port
+	11, // 3: foundation.schema.InternalEndpoint.port:type_name -> foundation.schema.Endpoint.Port
 	6,  // 4: foundation.schema.InternalEndpoint.service_metadata:type_name -> foundation.schema.ServiceMetadata
-	14, // 5: foundation.schema.IngressFragment.domain:type_name -> foundation.schema.Domain
-	15, // 6: foundation.schema.IngressFragment.domain_certificate:type_name -> foundation.schema.Certificate
+	15, // 5: foundation.schema.IngressFragment.domain:type_name -> foundation.schema.Domain
+	16, // 6: foundation.schema.IngressFragment.domain_certificate:type_name -> foundation.schema.Certificate
 	1,  // 7: foundation.schema.IngressFragment.endpoint:type_name -> foundation.schema.Endpoint
-	11, // 8: foundation.schema.IngressFragment.http_path:type_name -> foundation.schema.IngressFragment.IngressHttpPath
-	12, // 9: foundation.schema.IngressFragment.grpc_service:type_name -> foundation.schema.IngressFragment.IngressGrpcService
-	16, // 10: foundation.schema.IngressFragment.extension:type_name -> google.protobuf.Any
+	12, // 8: foundation.schema.IngressFragment.http_path:type_name -> foundation.schema.IngressFragment.IngressHttpPath
+	13, // 9: foundation.schema.IngressFragment.grpc_service:type_name -> foundation.schema.IngressFragment.IngressGrpcService
+	17, // 10: foundation.schema.IngressFragment.extension:type_name -> google.protobuf.Any
 	3,  // 11: foundation.schema.IngressFragmentList.ingress_fragment:type_name -> foundation.schema.IngressFragment
-	16, // 12: foundation.schema.ServiceMetadata.details:type_name -> google.protobuf.Any
-	13, // 13: foundation.schema.HttpUrlMap.entry:type_name -> foundation.schema.HttpUrlMap.Entry
-	17, // 14: foundation.schema.GrpcHttpTranscoding.file_descriptor_set:type_name -> google.protobuf.FileDescriptorSet
-	10, // 15: foundation.schema.IngressFragment.IngressHttpPath.port:type_name -> foundation.schema.Endpoint.Port
-	10, // 16: foundation.schema.IngressFragment.IngressGrpcService.port:type_name -> foundation.schema.Endpoint.Port
+	17, // 12: foundation.schema.ServiceMetadata.details:type_name -> google.protobuf.Any
+	14, // 13: foundation.schema.HttpUrlMap.entry:type_name -> foundation.schema.HttpUrlMap.Entry
+	18, // 14: foundation.schema.GrpcHttpTranscoding.file_descriptor_set:type_name -> google.protobuf.FileDescriptorSet
+	11, // 15: foundation.schema.IngressFragment.IngressHttpPath.port:type_name -> foundation.schema.Endpoint.Port
+	11, // 16: foundation.schema.IngressFragment.IngressGrpcService.port:type_name -> foundation.schema.Endpoint.Port
 	17, // [17:17] is the sub-list for method output_type
 	17, // [17:17] is the sub-list for method input_type
 	17, // [17:17] is the sub-list for extension type_name
@@ -1277,7 +1327,7 @@ func file_schema_networking_proto_init() {
 			}
 		}
 		file_schema_networking_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Endpoint_Port); i {
+			switch v := v.(*ExecProbe); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1289,7 +1339,7 @@ func file_schema_networking_proto_init() {
 			}
 		}
 		file_schema_networking_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*IngressFragment_IngressHttpPath); i {
+			switch v := v.(*Endpoint_Port); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1301,7 +1351,7 @@ func file_schema_networking_proto_init() {
 			}
 		}
 		file_schema_networking_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*IngressFragment_IngressGrpcService); i {
+			switch v := v.(*IngressFragment_IngressHttpPath); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1313,6 +1363,18 @@ func file_schema_networking_proto_init() {
 			}
 		}
 		file_schema_networking_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*IngressFragment_IngressGrpcService); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_networking_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*HttpUrlMap_Entry); i {
 			case 0:
 				return &v.state
@@ -1331,7 +1393,7 @@ func file_schema_networking_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_networking_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   13,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

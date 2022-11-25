@@ -189,7 +189,12 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 			}},
 			Probe: []*kubedef.ContainerExtension_Probe{
 				// The controller's readyz will only become ready when it can connect to the http listener.
-				{Kind: runtime.FnServiceReadyz, Path: "/readyz", ContainerPort: int32(*probePort)},
+				{Kind: runtime.FnServiceReadyz,
+					Http: &kubedef.ContainerExtension_Probe_Http{
+						Path:          "/readyz",
+						ContainerPort: int32(*probePort),
+					},
+				},
 			},
 		},
 	})
