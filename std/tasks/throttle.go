@@ -39,7 +39,9 @@ func computeDefaultConfig() []*ThrottleConfiguration {
 
 	if environment.IsRunningInCI() {
 		// Mitigation attempt for "connection reset by peer" issues in Github actions.
-		confs = append(confs, &ThrottleConfiguration{Labels: map[string]string{"action": "nscloud.get"}, Capacity: 3})
+		for _, action := range []string{"nscloud.cluster-create", "nscloud.allocate-repository"} {
+			confs = append(confs, &ThrottleConfiguration{Labels: map[string]string{"action": action}, Capacity: 3})
+		}
 	} else {
 		// This is for presentation purposes alone; so users don't see a bunch of waiting provision.invoke.
 		confs = append(confs, &ThrottleConfiguration{Labels: map[string]string{"action": "provision.invoke"}, Capacity: 3})
