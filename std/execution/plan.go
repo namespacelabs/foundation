@@ -179,16 +179,13 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event) 
 
 		fmt.Fprintf(console.Debug(ctx), "executing %q (%s)\n", typeUrl, n.invocation.Description)
 
-		invCtx := ctx
 		inputs, err := prepareInputs(outputs, n.invocation)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
 
-		if len(inputs) > 0 {
-			invCtx = injectValues(invCtx, InputsInjection.With(inputs))
-		}
+		invCtx := injectValues(ctx, InputsInjection.With(inputs))
 
 		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed, ch)
 		if err != nil {
