@@ -74,7 +74,7 @@ func RegisterCreateSecret() {
 					create.UserSpecifiedName: bundleBytes,
 				}
 			} else {
-				resource, err := execution.Value[*types.Resource](d, "value")
+				resource, err := execution.ComputedValue[*types.Resource](d, "value")
 				if err != nil {
 					return nil, fnerrors.New("%s: failed to retrieve value: %w", d.Description, err)
 				}

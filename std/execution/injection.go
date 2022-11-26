@@ -69,3 +69,17 @@ type InjectionInstance struct {
 	key   string
 	value any
 }
+
+type MakeInjectionInstance interface {
+	MakeInjection() []InjectionInstance
+}
+
+func (ij InjectionInstance) MakeInjection() []InjectionInstance {
+	return []InjectionInstance{ij}
+}
+
+type MakeInjectionInstanceFunc func() []InjectionInstance
+
+func (m MakeInjectionInstanceFunc) MakeInjection() []InjectionInstance {
+	return m()
+}

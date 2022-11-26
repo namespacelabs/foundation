@@ -116,11 +116,13 @@ func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetO
 	defer cancel()
 
 	if wait {
-		if err := execution.Execute(ctx, env, "orchestrator.deploy", computed.Deployer, deploy.MaybeRenderBlock(env, boundCluster, RenderOrchestratorDeployment), runtime.InjectCluster(boundCluster)...); err != nil {
+		if err := execution.Execute(ctx, "orchestrator.deploy", computed.Deployer,
+			deploy.MaybeRenderBlock(env, boundCluster, RenderOrchestratorDeployment),
+			execution.FromContext(env), runtime.InjectCluster(boundCluster)); err != nil {
 			return err
 		}
 	} else {
-		if err := execution.RawExecute(ctx, env, "orchestrator.deploy", computed.Deployer, runtime.InjectCluster(boundCluster)...); err != nil {
+		if err := execution.RawExecute(ctx, "orchestrator.deploy", computed.Deployer, execution.FromContext(env), runtime.InjectCluster(boundCluster)); err != nil {
 			return err
 		}
 	}

@@ -12,6 +12,8 @@ import (
 var ClusterInjection = execution.Define[Cluster]("ns.runtime.cluster")
 var ClusterNamespaceInjection = execution.Define[ClusterNamespace]("ns.runtime.cluster-namespace")
 
-func InjectCluster(ns ClusterNamespace) []execution.InjectionInstance {
-	return []execution.InjectionInstance{ClusterInjection.With(ns.Cluster()), ClusterNamespaceInjection.With(ns)}
+func InjectCluster(ns ClusterNamespace) execution.MakeInjectionInstance {
+	return execution.MakeInjectionInstanceFunc(func() []execution.InjectionInstance {
+		return []execution.InjectionInstance{ClusterInjection.With(ns.Cluster()), ClusterNamespaceInjection.With(ns)}
+	})
 }

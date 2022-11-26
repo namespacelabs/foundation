@@ -34,7 +34,8 @@ func ForLocationsGenProto(ctx context.Context, out pkggraph.MutableModule, env c
 				g.Add(defs...)
 			}
 		}
-		if err := execution.Execute(ctx, env, "workspace.generate.phase.node", g, nil,
+		if err := execution.Execute(ctx, "workspace.generate.phase.node", g, nil,
+			execution.FromContext(env),
 			pkggraph.MutableModuleInjection.With(out),
 			pkggraph.PackageLoaderInjection.With(pl.Seal()),
 		); err != nil {
@@ -86,7 +87,8 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env cf
 		}
 	}
 
-	return execution.Execute(ctx, env, "workspace.generate.phase.code", g, nil,
+	return execution.Execute(ctx, "workspace.generate.phase.code", g, nil,
+		execution.FromContext(env),
 		pkggraph.MutableModuleInjection.With(out),
 		pkggraph.PackageLoaderInjection.With(pl.Seal()),
 	)

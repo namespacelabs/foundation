@@ -28,9 +28,10 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 		p := execution.NewPlan(plan.Program.Invocation...)
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return execution.Execute(ctx, env, "deployment.execute", p,
+		return execution.Execute(ctx, "deployment.execute", p,
 			deploy.MaybeRenderBlock(env, cluster, outputProgress),
-			runtime.InjectCluster(cluster)...)
+			execution.FromContext(env),
+			runtime.InjectCluster(cluster))
 	}
 
 	return tasks.Action("orchestrator.deploy").Scope(schema.PackageNames(plan.FocusServer...)...).

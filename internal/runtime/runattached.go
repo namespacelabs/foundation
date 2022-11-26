@@ -32,7 +32,7 @@ func RunAttached(ctx context.Context, config cfg.Context, cluster ClusterNamespa
 
 	g := execution.NewPlan(plan.Definitions...)
 	// ResolveContainers will wait until the deployable is running, so we don't rely on the waiters returned by Execute.
-	if err := execution.Execute(ctx, config, "deployable.run-attached", g, nil, InjectCluster(cluster)...); err != nil {
+	if err := execution.Execute(ctx, "deployable.run-attached", g, nil, execution.FromContext(config), InjectCluster(cluster)); err != nil {
 		return fnerrors.New("failed to deploy: %w", err)
 	}
 

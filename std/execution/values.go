@@ -9,7 +9,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func Value[M proto.Message](inv *schema.SerializedInvocation, name string) (M, error) {
+func ComputedValue[M proto.Message](inv *schema.SerializedInvocation, name string) (M, error) {
 	var empty M
 
 	for _, x := range inv.Computed {

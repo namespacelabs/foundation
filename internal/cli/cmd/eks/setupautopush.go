@@ -82,7 +82,7 @@ func newSetupAutopushCmd() *cobra.Command {
 		if dryRun {
 			fmt.Fprintf(stdout, "Not making changes to the cluster, as --dry_run=true.\n\n")
 		} else {
-			if err := execution.Execute(ctx, env, "eks.autopush.apply", p, nil, runtime.ClusterInjection.With(cluster)); err != nil {
+			if err := execution.Execute(ctx, "eks.autopush.apply", p, nil, execution.FromContext(env), runtime.ClusterInjection.With(cluster)); err != nil {
 				return err
 			}
 		}

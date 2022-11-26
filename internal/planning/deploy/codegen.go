@@ -95,7 +95,8 @@ func codegenServer(ctx context.Context, srv planning.Server) error {
 
 	r := execution.NewPlan(codegen...)
 
-	return execution.Execute(ctx, srv.SealedContext(), "workspace.codegen", r, nil,
+	return execution.Execute(ctx, "workspace.codegen", r, nil,
+		execution.FromContext(srv.SealedContext()),
 		pkggraph.MutableModuleInjection.With(srv.Module()),
 		pkggraph.PackageLoaderInjection.With(srv.SealedContext()),
 	)
