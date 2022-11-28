@@ -257,6 +257,8 @@ type DeployableSpec struct {
 
 	Endpoints         []*schema.Endpoint         // Owned by this deployable.
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
+
+	Probes []*schema.Probe
 }
 
 type PlannedResource struct {

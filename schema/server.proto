@@ -12,6 +12,7 @@ import "google/protobuf/any.proto";
 import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
+import "schema/probe.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/volume.proto";
@@ -27,7 +28,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 38
+// Next ID: 39
 message Server {
     reserved 9, 13, 17, 19, 27, 28, 30, 32, 34;
 
@@ -93,6 +94,8 @@ message Server {
     ResourcePack resource_pack = 35;
 
     ServerPermissions permissions = 37;
+
+    repeated Probe probe = 38;
 
     message ServiceSpec {
         string                   name     = 1;

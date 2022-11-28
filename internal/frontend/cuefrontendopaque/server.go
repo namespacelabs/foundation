@@ -29,6 +29,9 @@ type cueServer struct {
 	Services map[string]cueService `json:"services"`
 
 	Permissions *cuePermissions `json:"unstable_permissions,omitempty"`
+
+	ReadinessProbe *cueProbe           `json:"probe"`  // `probe: exec: "foo-cmd"`
+	Probes         map[string]cueProbe `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
 }
 
 type cuePermissions struct {
@@ -46,10 +49,10 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 
 	out := &schema.Server{
 		MainContainer: &schema.SidecarContainer{},
+		Name:          bits.Name,
+		Framework:     schema.Framework_OPAQUE,
+		RunByDefault:  true,
 	}
-	out.Name = bits.Name
-	out.Framework = schema.Framework_OPAQUE
-	out.RunByDefault = true
 
 	switch bits.Class {
 	case "stateless", "", string(schema.DeployableClass_STATELESS):
@@ -61,8 +64,9 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}
 
+	var serviceProbes []*schema.Probe
 	for name, svc := range bits.Services {
-		parsed, endpointType, err := parseService(loc, name, svc)
+		parsed, endpointType, probes, err := parseService(loc, name, svc)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -76,16 +80,23 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		if endpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.Details.HttpRoutes) > 0 {
 			return nil, nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
 		}
+
+		serviceProbes = append(serviceProbes, probes...)
 	}
 
-	envVars, err := bits.Env.Parsed(loc.PackageName)
+	var err error
+	out.Probe, err = parseProbes(loc, serviceProbes, bits)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	startupPlan := &schema.StartupPlan{
 		Args: bits.Args.Parsed(),
-		Env:  envVars,
+	}
+
+	startupPlan.Env, err = bits.Env.Parsed(loc.PackageName)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {

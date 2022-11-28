@@ -119,37 +119,7 @@ func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bo
 	return "", false
 }
 
-func toProbe(port *schema.Endpoint_Port, md *schema.ServiceMetadata) (*kubedef.ContainerExtension_Probe, error) {
-	http := &schema.HttpExportedService{}
-	exec := &schema.ExecProbe{}
-
-	switch {
-	case md.Details.MessageIs(http):
-		if err := md.Details.UnmarshalTo(http); err != nil {
-			return nil, fnerrors.InternalError("expected a HttpExportedService: %w", err)
-		}
-
-		return &kubedef.ContainerExtension_Probe{
-			Kind: md.Kind,
-			Http: &kubedef.ContainerExtension_Probe_Http{
-				Path:          http.GetPath(),
-				ContainerPort: port.GetContainerPort(),
-			}}, nil
-
-	case md.Details.MessageIs(exec):
-		if err := md.Details.UnmarshalTo(exec); err != nil {
-			return nil, fnerrors.InternalError("expected a ExecProbe: %w", err)
-		}
-
-		return &kubedef.ContainerExtension_Probe{Kind: md.Kind, Exec: exec}, nil
-
-	default:
-		return nil, fnerrors.InternalError("unsupported probe type: %s", md.Details.TypeUrl)
-	}
-
-}
-
-func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf, probe *kubedef.ContainerExtension_Probe) (*applycorev1.ProbeApplyConfiguration, error) {
+func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf, probe *schema.Probe) (*applycorev1.ProbeApplyConfiguration, error) {
 	p = p.WithPeriodSeconds(probevalues.dashnessPeriod).
 		WithFailureThreshold(probevalues.failureThreshold).
 		WithTimeoutSeconds(probevalues.probeTimeout)
@@ -213,33 +183,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	case runtime.AttachableKind_WITH_TTY:
 		mainContainer = mainContainer.WithStdin(true).WithStdinOnce(true).WithTTY(true)
-	}
-
-	var probes []*kubedef.ContainerExtension_Probe
-	for _, external := range deployable.Endpoints {
-		for _, md := range external.ServiceMetadata {
-			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
-				probe, err := toProbe(external.GetPort(), md)
-				if err != nil {
-					return err
-				}
-
-				probes = append(probes, probe)
-			}
-		}
-	}
-
-	for _, internal := range deployable.InternalEndpoints {
-		for _, md := range internal.ServiceMetadata {
-			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
-				probe, err := toProbe(internal.GetPort(), md)
-				if err != nil {
-					return err
-				}
-
-				probes = append(probes, probe)
-			}
-		}
 	}
 
 	mainEnv := slices.Clone(deployable.MainContainer.Env)
@@ -313,6 +256,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	var specifiedSec *kubedef.SpecExtension_SecurityContext
 
+	probes := deployable.Probes
 	for _, input := range deployable.Extensions {
 		specExt := &kubedef.SpecExtension{}
 		containerExt := &kubedef.ContainerExtension{}
@@ -401,17 +345,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				}
 			}
 
-			for _, probe := range containerExt.Probe {
-				if probe.Http == nil && probe.Path != "" {
-					// backwards compatibility with stale provisioning tools.
-					probe.Http = &kubedef.ContainerExtension_Probe_Http{
-						Path:          probe.Path,
-						ContainerPort: probe.ContainerPort,
-					}
-				}
-
-				probes = append(probes, probe)
-			}
+			probes = append(probes, containerExt.Probe...)
 
 			// Deprecated path.
 			for _, initContainer := range containerExt.InitContainer {
@@ -437,7 +371,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	var readinessProbe, livenessProbe *kubedef.ContainerExtension_Probe
+	var readinessProbe, livenessProbe *schema.Probe
 	for _, probe := range probes {
 		switch probe.Kind {
 		case runtime.FnServiceLivez:

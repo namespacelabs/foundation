@@ -821,6 +821,8 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 	out.MainContainer.Image = imgs.Binary
 	out.ConfigImage = imgs.Config
 
+	out.Probes = proto.Probe
+
 	if err := integrations.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err
 	}

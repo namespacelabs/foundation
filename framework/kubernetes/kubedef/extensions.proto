@@ -9,8 +9,8 @@ package foundation.runtime.kubernetes.kubedef;
 option go_package = "namespacelabs.dev/foundation/framework/kubernetes/kubedef";
 
 import "schema/binary.proto";
-import "schema/networking.proto";
 import "schema/package.proto";
+import "schema/probe.proto";
 
 message SpecExtension {
     // XXX ideally we'd use Kubernetes protos here.
@@ -58,7 +58,7 @@ message SpecExtension {
     }
 }
 
-// Next ID: 7
+// Next ID: 8
 message ContainerExtension {
     repeated VolumeMount volume_mount          = 1;
     repeated schema.BinaryConfig.EnvEntry env  = 2;
@@ -69,7 +69,7 @@ message ContainerExtension {
     // Deprecated, use `InitContainerExtension`.
     repeated InitContainer init_container = 3;
 
-    repeated Probe probe = 6;
+    repeated foundation.schema.Probe probe = 7;
 
     message VolumeMount {
         string name          = 1;
@@ -93,21 +93,7 @@ message ContainerExtension {
         repeated string arg          = 2;
     }
 
-    message Probe {
-        string                      kind = 1;
-        Http                        http = 4;
-        foundation.schema.ExecProbe exec = 5;
-
-        message Http {
-            string path           = 1;
-            int32  container_port = 2;
-        }
-
-        // Deprecated, use `http.path` instead.
-        string path = 2;
-        // Deprecated, use `http.container_port` instead.
-        int32 container_port = 3;
-    }
+    reserved 6;
 }
 
 message InitContainerExtension {
