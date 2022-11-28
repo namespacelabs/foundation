@@ -468,6 +468,14 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 			}
 		}
 
+		// Backwards compatibility (e.g. readiness checks for Go application framework use service metadata)
+		// TODO refactor.
+		probes, err := httpProbes(run.Endpoints, run.InternalEndpoints)
+		if err != nil {
+			return runtime.DeploymentSpec{}, err
+		}
+		run.Probes = append(run.Probes, probes...)
+
 		var allEnv []*schema.BinaryConfig_EnvEntry
 		allEnv = append(allEnv, deployable.MainContainer.Env...)
 		for _, container := range deployable.Sidecars {
@@ -522,6 +530,45 @@ func validateServiceRef(ref *schema.ServiceRef, stack *planning.Stack) error {
 	return fnerrors.UsageError(
 		fmt.Sprintf("Try adding %q to you server's `requires` block.", ref.ServerRef.AsPackageName()),
 		"invalid service reference: server %q is missing in the deployment stack", ref.ServerRef.AsPackageName())
+}
+
+type endpoint interface {
+	GetServiceMetadata() []*schema.ServiceMetadata
+	GetPort() *schema.Endpoint_Port
+}
+
+func httpProbes(endpoints []*schema.Endpoint, internalEndpoints []*schema.InternalEndpoint) ([]*schema.Probe, error) {
+	var probes []*schema.Probe
+
+	var es []endpoint
+	for _, e := range endpoints {
+		es = append(es, e)
+	}
+	for _, ie := range internalEndpoints {
+		es = append(es, ie)
+	}
+
+	for _, e := range es {
+		for _, md := range e.GetServiceMetadata() {
+			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
+				http := &schema.HttpExportedService{}
+
+				if err := md.Details.UnmarshalTo(http); err != nil {
+					return nil, fnerrors.InternalError("expected a HttpExportedService: %w", err)
+				}
+
+				probes = append(probes, &schema.Probe{
+					Kind: md.Kind,
+					Http: &schema.Probe_Http{
+						ContainerPort: e.GetPort().ContainerPort,
+						Path:          http.Path,
+					},
+				})
+			}
+		}
+	}
+
+	return probes, nil
 }
 
 func extendContainer(target *runtime.ContainerRunOpts, cext *schema.ContainerExtension) {
