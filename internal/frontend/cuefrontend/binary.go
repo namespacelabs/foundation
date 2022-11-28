@@ -38,7 +38,6 @@ type cueImageBuildPlan struct {
 	GoPackage                string                             `json:"go_package,omitempty"`
 	GoBuild                  *schema.ImageBuildPlan_GoBuild     `json:"go_build,omitempty"`
 	Dockerfile               string                             `json:"dockerfile,omitempty"`
-	WebBuild                 string                             `json:"web_build,omitempty"`
 	LlbPlan                  *cueImageBuildPlan_LLBPlan         `json:"llb_plan,omitempty"`
 	NixFlake                 string                             `json:"nix_flake,omitempty"`
 	Deprecated_SnapshotFiles []string                           `json:"snapshot_files,omitempty"` // Use `files` instead.
@@ -156,11 +155,6 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	if bp.Dockerfile != "" {
 		plan.Dockerfile = bp.Dockerfile
 		set = append(set, "dockerfile")
-	}
-
-	if bp.WebBuild != "" {
-		plan.WebBuild = bp.WebBuild
-		set = append(set, "web_build")
 	}
 
 	if bp.NodejsBuild != nil {

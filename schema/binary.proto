@@ -28,14 +28,13 @@ message Binary {
 
 // Next ID: 14
 message ImageBuildPlan {
-    reserved 9;
+    reserved 3, 9;
 
     string description = 12;  // A human-readable description of what's being built. Optional.
 
     string            go_package          = 1;  // Use go binary builder.
     GoBuild           go_build            = 7;  // Use go binary builder.
     string            dockerfile          = 2;  // Use Dockerfile builder.
-    string            web_build           = 3;  // Use Web build (temporary).
     LLBPlan           llb_plan            = 4;  // Build binary which itself produces LLB.
     string            nix_flake           = 5;  // Build a docker image from a nix flake.
     repeated string   snapshot_files      = 6;  // Add all referenced files, and directories, recursively visiting their children.

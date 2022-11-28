@@ -50,9 +50,7 @@ import (
 	nodebinary "namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
 	nodeopaqueintegration "namespacelabs.dev/foundation/internal/integrations/nodejs/opaqueintegration"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
-	"namespacelabs.dev/foundation/internal/integrations/web"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/nodejs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
@@ -171,7 +169,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		filewatcher.SetupFileWatcher()
 
 		binary.BuildGo = golang.GoBuilder
-		binary.BuildWeb = web.WebBuilder
 		binary.BuildLLBGen = genbinary.LLBBinary
 		binary.BuildAlpine = genbinary.BuildAlpine
 		binary.BuildNix = genbinary.NixImageBuilder
@@ -217,7 +214,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Languages.
 		golang.Register()
-		web.Register()
 		opaque.Register()
 		nodeopaqueintegration.Register()
 
@@ -332,7 +328,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If true, servers in tests are deployed as pods instead of deployments.")
 	rootCmd.PersistentFlags().BoolVar(&compute.ExplainIndentValues, "compute_explain_indent_values", compute.ExplainIndentValues,
 		"If true, values output by --explain are indented.")
-	rootCmd.PersistentFlags().BoolVar(&nodejs.UseNativeNode, "nodejs_use_native_node", nodejs.UseNativeNode, "If true, invokes a locally installed node.")
 	rootCmd.PersistentFlags().IntVar(&tools.LowLevelToolsProtocolVersion, "lowlevel_tools_protocol_version", tools.LowLevelToolsProtocolVersion,
 		"The protocol version to use with invocation tools.")
 	rootCmd.PersistentFlags().BoolVar(&tools.InvocationCanUseBuildkit, "tools_invocation_can_use_buildkit", tools.InvocationCanUseBuildkit,

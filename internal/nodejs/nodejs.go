@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
+	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
@@ -43,13 +44,9 @@ func RunNodejs(ctx context.Context, env cfg.Context, relPath string, command str
 		return err
 	}
 
-	// TODO: generate a prebuilt
-	nodeImageState, err := prepareNodejsBaseWithYarn(ctx, nodeImageName, p)
-	if err != nil {
-		return err
-	}
+	nodeImageState := llbutil.Image(nodeImageName, p)
 
-	nodejsImage, err := buildkit.BuildImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs+yarn: %s", nodeImageName), nodeImageState)
+	nodejsImage, err := buildkit.BuildImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs: %s", nodeImageName), nodeImageState)
 	if err != nil {
 		return err
 	}
@@ -65,10 +62,10 @@ func RunNodejs(ctx context.Context, env cfg.Context, relPath string, command str
 		defer done()
 		io = rtypes.IO{Stdin: os.Stdin, Stdout: os.Stdout, Stderr: os.Stderr}
 	} else if opts.Scope != "" {
-		stdout := console.Output(ctx, console.MakeConsoleName(opts.Scope.String(), "yarn", ""))
+		stdout := console.Output(ctx, console.MakeConsoleName(opts.Scope.String(), "nodejs", ""))
 		io = rtypes.IO{Stdout: stdout, Stderr: stdout}
 	} else {
-		stdout := console.Output(ctx, "yarn")
+		stdout := console.Output(ctx, "nodejs")
 		io = rtypes.IO{Stdout: stdout, Stderr: stdout}
 	}
 

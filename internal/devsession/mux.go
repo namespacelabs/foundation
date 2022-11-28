@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package web
+package devsession
 
 import (
 	"bytes"
@@ -23,14 +23,14 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-// ServeFS returns a Computable[*mux.Router]. If `spa` is true (i.e. single page app),
+// serveFS returns a Computable[*mux.Router]. If `spa` is true (i.e. single page app),
 // and an index.html is present, it is served on all paths (except the ones for which)
 // real files exist.
-func ServeFS(image compute.Computable[oci.Image], pathPrefix string, spa bool) compute.Computable[*mux.Router] {
-	return &serveFS{image: image, spa: spa, pathPrefix: pathPrefix}
+func serveFS(image compute.Computable[oci.Image], pathPrefix string, spa bool) compute.Computable[*mux.Router] {
+	return &fsServing{image: image, spa: spa, pathPrefix: pathPrefix}
 }
 
-type serveFS struct {
+type fsServing struct {
 	image      compute.Computable[oci.Image]
 	spa        bool
 	pathPrefix string
@@ -38,11 +38,11 @@ type serveFS struct {
 	compute.LocalScoped[*mux.Router]
 }
 
-func (m *serveFS) Action() *tasks.ActionEvent { return tasks.Action("web.mux") }
-func (m *serveFS) Inputs() *compute.In {
+func (m *fsServing) Action() *tasks.ActionEvent { return tasks.Action("web.mux") }
+func (m *fsServing) Inputs() *compute.In {
 	return compute.Inputs().Computable("image", m.image).Bool("spa", m.spa)
 }
-func (m *serveFS) Compute(ctx context.Context, deps compute.Resolved) (*mux.Router, error) {
+func (m *fsServing) Compute(ctx context.Context, deps compute.Resolved) (*mux.Router, error) {
 	image, _ := compute.GetDep(deps, m.image, "image")
 
 	fsys := tarfs.FS{

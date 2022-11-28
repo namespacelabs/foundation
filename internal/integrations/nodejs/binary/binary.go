@@ -69,7 +69,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 		platform = buildkit.HostPlatform()
 	}
 
-	devImage, err := createBaseImageAndInstallYarn(ctx, platform, src, fsys.FS(), "development", packageManagerState)
+	devImage, err := createBaseImageAndInstallPackageManager(ctx, platform, src, fsys.FS(), "development", packageManagerState)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -89,7 +89,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 		var prodImage llb.State
 		if prodCfg.InstallDeps {
-			prodImage, err = createBaseImageAndInstallYarn(ctx, platform, src, fsys.FS(), "production", packageManagerState)
+			prodImage, err = createBaseImageAndInstallPackageManager(ctx, platform, src, fsys.FS(), "production", packageManagerState)
 			if err != nil {
 				return llb.State{}, nil, err
 			}
@@ -181,7 +181,7 @@ func copySrcForInstall(ctx context.Context, base llb.State, src llb.State, fsys 
 	return base, nil
 }
 
-func createBaseImageAndInstallYarn(ctx context.Context, platform specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
+func createBaseImageAndInstallPackageManager(ctx context.Context, platform specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
 	nodeImage, err := pins.CheckDefault("node")
 	if err != nil {
 		return llb.State{}, err
