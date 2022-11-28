@@ -89,10 +89,11 @@ func parseProbes(loc pkggraph.Location, base []*schema.Probe, server cueServer) 
 			if proto.Equal(probe, existing) {
 				continue
 			}
+
 			return nil, fnerrors.AttachLocation(loc, fnerrors.BadInputError("found conflicting probe definitions for %q (%v vs %v)", probe.Kind, probe, existing))
-		} else {
-			index[probe.Kind] = probe
 		}
+
+		index[probe.Kind] = probe
 	}
 
 	return probes, nil
