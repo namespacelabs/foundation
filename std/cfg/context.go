@@ -50,25 +50,8 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Workspace_EnvironmentSpec {
 	base := workspace.EnvSpec
 	if base == nil {
-		base = []*schema.Workspace_EnvironmentSpec{
-			{
-				Name:    "dev",
-				Runtime: "kubernetes", // XXX
-				Purpose: schema.Environment_DEVELOPMENT,
-			},
-			{
-				Name:    "staging",
-				Runtime: "kubernetes",
-				Purpose: schema.Environment_PRODUCTION,
-			},
-			{
-				Name:    "prod",
-				Runtime: "kubernetes",
-				Purpose: schema.Environment_PRODUCTION,
-			},
-		}
+		base = DefaultWorkspaceEnvironmets
 	}
-
 	return append(slices.Clone(devHost.LocalEnv), base...)
 }
 
