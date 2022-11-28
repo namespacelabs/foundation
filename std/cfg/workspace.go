@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	DefaultWorkspaceEnvironmets []*schema.Workspace_EnvironmentSpec = []*schema.Workspace_EnvironmentSpec{
+	DefaultWorkspaceEnvironments = []*schema.Workspace_EnvironmentSpec{
 		{
 			Name:    "dev",
 			Runtime: "kubernetes",

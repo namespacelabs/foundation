@@ -50,7 +50,7 @@ func LoadContext(parent RootContext, name string) (Context, error) {
 func EnvsOrDefault(devHost *schema.DevHost, workspace *schema.Workspace) []*schema.Workspace_EnvironmentSpec {
 	base := workspace.EnvSpec
 	if base == nil {
-		base = DefaultWorkspaceEnvironmets
+		base = DefaultWorkspaceEnvironments
 	}
 	return append(slices.Clone(devHost.LocalEnv), base...)
 }

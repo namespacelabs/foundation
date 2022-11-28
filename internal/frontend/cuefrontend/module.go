@@ -86,14 +86,14 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 	}, nil
 }
 
-func (moduleLoader) NewModule(ctx context.Context, dir, workspaceFile string, w *schema.Workspace) (pkggraph.WorkspaceData, error) {
+func (moduleLoader) NewModule(ctx context.Context, dir string, w *schema.Workspace) (pkggraph.WorkspaceData, error) {
 	val, err := decodeWorkspace(w)
 	if err != nil {
 		return nil, err
 	}
 	return workspaceData{
 		absPath:        dir,
-		definitionFile: workspaceFile,
+		definitionFile: WorkspaceFile,
 		data:           nil,
 		parsed:         w,
 		source:         val,

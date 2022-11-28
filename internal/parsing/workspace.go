@@ -22,7 +22,7 @@ const (
 var ModuleLoader interface {
 	FindModuleRoot(string) (string, error)
 	ModuleAt(context.Context, string) (pkggraph.WorkspaceData, error)
-	NewModule(context.Context, string, string, *schema.Workspace) (pkggraph.WorkspaceData, error)
+	NewModule(context.Context, string, *schema.Workspace) (pkggraph.WorkspaceData, error)
 }
 
 func FindModuleRoot(dir string) (string, error) {
@@ -49,8 +49,8 @@ func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (pkggraph.Wor
 	return ws, nil
 }
 
-func NewModule(ctx context.Context, dir, workspaceFile string, w *schema.Workspace) (pkggraph.WorkspaceData, error) {
-	return ModuleLoader.NewModule(ctx, dir, workspaceFile, w)
+func NewModule(ctx context.Context, dir string, w *schema.Workspace) (pkggraph.WorkspaceData, error) {
+	return ModuleLoader.NewModule(ctx, dir, w)
 }
 
 func RawFindModuleRoot(dir string, names ...string) (string, error) {

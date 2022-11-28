@@ -55,25 +55,22 @@ func newModInitCmd() *cobra.Command {
 			fmt.Println("Creating initial workspace.")
 			w := &schema.Workspace{
 				ModuleName: args[0],
-				EnvSpec:    cfg.DefaultWorkspaceEnvironmets,
+				EnvSpec:    cfg.DefaultWorkspaceEnvironments,
 				Foundation: &schema.Workspace_FoundationRequirements{
 					MinimumApi: versions.MinimumAPIVersion,
 				},
 			}
-			mod, err := parsing.NewModule(ctx, dir, cuefrontend.WorkspaceFile, w)
+			mod, err := parsing.NewModule(ctx, dir, w)
 			if err != nil {
 				return err
 			}
-			root := parsing.NewRoot(mod, mod)
-			err = fnfs.WriteWorkspaceFile(ctx, nil, root.ReadWriteFS(), mod.DefinitionFile(), func(w io.Writer) error {
+			if err = fnfs.WriteWorkspaceFile(ctx, nil, fnfs.ReadWriteLocalFS(dir), mod.DefinitionFile(), func(w io.Writer) error {
 				return mod.FormatTo(w)
-			})
-			if err != nil {
+			}); err != nil {
 				return err
 			}
 			fmt.Println("Running 'ns mod tidy' command to finalize the workspace.")
-			RunCommand(ctx, []string{"mod", "tidy"})
-			return nil
+			return RunCommand(ctx, []string{"mod", "tidy"})
 		}),
 	}
 	return cmd
