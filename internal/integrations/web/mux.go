@@ -26,13 +26,14 @@ import (
 // ServeFS returns a Computable[*mux.Router]. If `spa` is true (i.e. single page app),
 // and an index.html is present, it is served on all paths (except the ones for which)
 // real files exist.
-func ServeFS(image compute.Computable[oci.Image], spa bool) compute.Computable[*mux.Router] {
-	return &serveFS{image: image, spa: spa}
+func ServeFS(image compute.Computable[oci.Image], pathPrefix string, spa bool) compute.Computable[*mux.Router] {
+	return &serveFS{image: image, spa: spa, pathPrefix: pathPrefix}
 }
 
 type serveFS struct {
-	image compute.Computable[oci.Image]
-	spa   bool
+	image      compute.Computable[oci.Image]
+	spa        bool
+	pathPrefix string
 
 	compute.LocalScoped[*mux.Router]
 }
@@ -50,14 +51,16 @@ func (m *serveFS) Compute(ctx context.Context, deps compute.Resolved) (*mux.Rout
 		},
 	}
 
-	return MuxFromFS(ctx, fsys, image.Digest, image.Completed, m.spa)
+	return muxFromFS(ctx, fsys, image.Digest, image.Completed, m.spa, m.pathPrefix)
 }
 
-func MuxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, spa bool) (*mux.Router, error) {
+func muxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, spa bool, pathPrefix string) (*mux.Router, error) {
 	r := mux.NewRouter()
 
 	if err := fnfs.VisitFiles(ctx, fsys, func(path string, blob bytestream.ByteStream, _ fs.DirEntry) error {
 		var route *mux.Route
+
+		path = path[len(pathPrefix):]
 
 		if path == "index.html" {
 			if spa {

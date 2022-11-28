@@ -19,11 +19,11 @@ const (
 	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devui"
 
 	baseRepository = "us-docker.pkg.dev/foundation-344819/prebuilts"
-	prebuilt       = "sha256:6633691965452e4e01a54a3ff5d7ec3afbe68d01faf629453313414a252183e6"
+	prebuilt       = "sha256:448baeb723f3beab132f0917292d9687297ed94e5e75a75d041d842d539d1c14"
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {
 	image := oci.ImageP(fmt.Sprintf("%s/%s@%s", baseRepository, WebPackage, prebuilt), nil, oci.ResolveOpts{PublicImage: true})
 
-	return compute.GetValue(ctx, web.ServeFS(image, true))
+	return compute.GetValue(ctx, web.ServeFS(image, "app/dist/" /* pathPrefix */, true /* spa */))
 }
