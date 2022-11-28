@@ -19,7 +19,7 @@ type buildTarget struct {
 }
 
 type buildConfiguration struct {
-	*buildTarget
+	buildTarget     *buildTarget
 	source          schema.PackageName
 	label           string
 	workspace       Workspace
@@ -81,7 +81,12 @@ func CopyConfiguration(b Configuration) *buildConfiguration {
 
 func (c *buildTarget) TargetPlatform() *specs.Platform                          { return c.target }
 func (c *buildTarget) PublishName() compute.Computable[oci.AllocatedRepository] { return c.name }
-func (d *buildConfiguration) SourcePackage() schema.PackageName                 { return d.source }
-func (d *buildConfiguration) SourceLabel() string                               { return d.label }
-func (d *buildConfiguration) PrefersBuildkit() bool                             { return d.prefersBuildkit }
-func (d *buildConfiguration) Workspace() Workspace                              { return d.workspace }
+
+func (d *buildConfiguration) TargetPlatform() *specs.Platform { return d.buildTarget.target }
+func (d *buildConfiguration) PublishName() compute.Computable[oci.AllocatedRepository] {
+	return d.buildTarget.name
+}
+func (d *buildConfiguration) SourcePackage() schema.PackageName { return d.source }
+func (d *buildConfiguration) SourceLabel() string               { return d.label }
+func (d *buildConfiguration) PrefersBuildkit() bool             { return d.prefersBuildkit }
+func (d *buildConfiguration) Workspace() Workspace              { return d.workspace }

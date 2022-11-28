@@ -70,8 +70,8 @@ func prefix(p, label string) string {
 func prepareImage(ctx context.Context, env pkggraph.SealedContext, plan build.Plan) (compute.Computable[oci.ResolvableImage], error) {
 	if plan.Spec.PlatformIndependent() {
 		img, err := plan.Spec.BuildImage(ctx, env, build.NewBuildTarget(nil).
-			WithWorkspace(plan.Workspace).
 			WithTargetName(plan.PublishName).
+			WithWorkspace(plan.Workspace).
 			WithSourcePackage(plan.SourcePackage).
 			WithSourceLabel(plan.SourceLabel))
 		if err != nil {
