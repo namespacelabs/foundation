@@ -2,8 +2,6 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-import { Chrome, Navbar } from "@namespacelabs.dev/webui-components/chrome/Chrome";
-import { Logo } from "@namespacelabs.dev/webui-components/logo/Logo";
 import { useEffect } from "react";
 import { useRoute } from "wouter";
 import classes from "./app.module.css";
@@ -20,6 +18,8 @@ import Panel from "../ui/panel/Panel";
 import { ItemRow, ItemSpacer } from "../ui/sidebar/Sidebar";
 import TerminalTabs from "../ui/termchrome/TerminalTabs";
 import Terminal from "../ui/terminal/Terminal";
+import { Chrome, Navbar } from "../components/chrome/Chrome";
+import { Logo } from "../components/logo/Logo";
 
 export default function App() {
 	let [match, params] = useRoute("/terminal/:id");
