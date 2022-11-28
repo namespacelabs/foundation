@@ -410,7 +410,7 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 			}
 		}
 
-		for _, ie := range stack.Proto().InternalEndpoint {
+		for _, ie := range stack.InternalEndpoints {
 			if srv.PackageName().Equals(ie.ServerOwner) {
 				run.InternalEndpoints = append(run.InternalEndpoints, ie)
 			}
