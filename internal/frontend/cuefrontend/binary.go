@@ -44,6 +44,7 @@ type cueImageBuildPlan struct {
 	Deprecated_SnapshotFiles []string                           `json:"snapshot_files,omitempty"` // Use `files` instead.
 	Files                    []string                           `json:"files,omitempty"`
 	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
+	NodejsBuild              *schema.NodejsBuild                `json:"nodejs_build,omitempty"`
 }
 
 type cueImageBuildPlan_LLBPlan struct {
@@ -160,6 +161,11 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	if bp.WebBuild != "" {
 		plan.WebBuild = bp.WebBuild
 		set = append(set, "web_build")
+	}
+
+	if bp.NodejsBuild != nil {
+		plan.NodejsBuild = bp.NodejsBuild
+		set = append(set, "nodejs_build")
 	}
 
 	if bp.LlbPlan != nil {
