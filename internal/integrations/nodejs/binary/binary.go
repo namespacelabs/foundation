@@ -61,7 +61,15 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	}
 	src := buildkit.MakeLocalState(local)
 
-	devImage, err := createBaseImageAndInstallYarn(ctx, *conf.TargetPlatform(), src, fsys.FS(), "development", packageManagerState)
+	var platform specs.Platform
+	if conf.TargetPlatform() != nil {
+		platform = *conf.TargetPlatform()
+	} else {
+		// Happens for Web builds where the output is platform-independent.
+		platform = buildkit.HostPlatform()
+	}
+
+	devImage, err := createBaseImageAndInstallYarn(ctx, platform, src, fsys.FS(), "development", packageManagerState)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -81,7 +89,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 
 		var prodImage llb.State
 		if prodCfg.InstallDeps {
-			prodImage, err = createBaseImageAndInstallYarn(ctx, *conf.TargetPlatform(), src, fsys.FS(), "production", packageManagerState)
+			prodImage, err = createBaseImageAndInstallYarn(ctx, platform, src, fsys.FS(), "production", packageManagerState)
 			if err != nil {
 				return llb.State{}, nil, err
 			}

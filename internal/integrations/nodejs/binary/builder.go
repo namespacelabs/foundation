@@ -41,7 +41,12 @@ type buildNodeJS struct {
 	isFocus bool
 }
 
-func (buildNodeJS) PlatformIndependent() bool { return false }
+func (bnj buildNodeJS) PlatformIndependent() bool {
+	// Heuristics: prod builds with an output dir are for Web, thus platform-independent.
+	// This is only important for the DevUI prebuilt as for the regular Prod builds the result
+	// image contains "nginx" which is platform-dependent.
+	return !opaque.UseDevBuild(bnj.env) && bnj.config.Prod.BuildOutDir != ""
+}
 
 func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	n := nodeJsBinary{
