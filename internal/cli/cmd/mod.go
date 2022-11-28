@@ -7,12 +7,21 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/findroot"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
+	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewModCmd() *cobra.Command {
@@ -22,9 +31,48 @@ func NewModCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(NewTidyCmd())
+	cmd.AddCommand(newModInitCmd())
 	cmd.AddCommand(newModDownloadCmd())
 	cmd.AddCommand(newModGetCmd())
 
+	return cmd
+}
+
+func newModInitCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "init [module-path]",
+		Short: "Initialize the module workspace with default values.",
+		Args:  cobra.MinimumNArgs(1),
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			dir, err := filepath.Abs(".")
+			if err != nil {
+				return err
+			}
+			if findroot.LookForFile(cuefrontend.WorkspaceFile, cuefrontend.LegacyWorkspaceFile)(dir) {
+				return fnerrors.New("workspace file aready exists.")
+			}
+			fmt.Println("Creating initial workspace.")
+			w := &schema.Workspace{
+				ModuleName: args[0],
+				EnvSpec:    cfg.DefaultWorkspaceEnvironments,
+				Foundation: &schema.Workspace_FoundationRequirements{
+					MinimumApi: versions.MinimumAPIVersion,
+				},
+			}
+			mod, err := parsing.NewModule(ctx, dir, w)
+			if err != nil {
+				return err
+			}
+			if err = fnfs.WriteWorkspaceFile(ctx, nil, fnfs.ReadWriteLocalFS(dir), mod.DefinitionFile(), func(w io.Writer) error {
+				return mod.FormatTo(w)
+			}); err != nil {
+				return err
+			}
+			fmt.Println("Running 'ns mod tidy' command to finalize the workspace.")
+			return RunCommand(ctx, []string{"mod", "tidy"})
+		}),
+	}
 	return cmd
 }
 

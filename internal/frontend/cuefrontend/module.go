@@ -14,6 +14,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/ast"
+	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/format"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -52,7 +53,7 @@ func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.Workspac
 
 		if err != nil {
 			if os.IsNotExist(err) {
-				return nil, fnerrors.New("a workspace definition (ns-workspace.cue) is missing")
+				return nil, fnerrors.New("a workspace definition (ns-workspace.cue) is missing. You can use 'ns mod init' to create a default one.")
 			}
 
 			return nil, err
@@ -83,6 +84,43 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 		parsed:         w,
 		source:         p.Val,
 	}, nil
+}
+
+func (moduleLoader) NewModule(ctx context.Context, dir string, w *schema.Workspace) (pkggraph.WorkspaceData, error) {
+	val, err := decodeWorkspace(w)
+	if err != nil {
+		return nil, err
+	}
+	return workspaceData{
+		absPath:        dir,
+		definitionFile: WorkspaceFile,
+		data:           nil,
+		parsed:         w,
+		source:         val,
+	}, nil
+}
+
+func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
+	var m cueModule = cueModule{}
+	if w != nil {
+		envs := make(map[string]cueEnvironment)
+		for _, e := range w.EnvSpec {
+			envs[e.Name] = cueEnvironment{
+				Runtime: e.Runtime,
+				Purpose: e.Purpose.String(),
+			}
+		}
+		m = cueModule{
+			ModuleName:   w.ModuleName,
+			Environments: envs,
+			Foundation: &cueModuleFoundation{
+				MinimumAPI: int(w.Foundation.MinimumApi),
+			},
+		}
+	}
+	ctx := cuecontext.New()
+	val := ctx.Encode(m)
+	return val, nil
 }
 
 func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {

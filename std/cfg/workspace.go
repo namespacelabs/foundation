@@ -11,6 +11,26 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+var (
+	DefaultWorkspaceEnvironments = []*schema.Workspace_EnvironmentSpec{
+		{
+			Name:    "dev",
+			Runtime: "kubernetes",
+			Purpose: schema.Environment_DEVELOPMENT,
+		},
+		{
+			Name:    "staging",
+			Runtime: "kubernetes",
+			Purpose: schema.Environment_PRODUCTION,
+		},
+		{
+			Name:    "prod",
+			Runtime: "kubernetes",
+			Purpose: schema.Environment_PRODUCTION,
+		},
+	}
+)
+
 type Workspace interface {
 	fnerrors.Location
 
