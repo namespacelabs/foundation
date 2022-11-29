@@ -124,7 +124,7 @@ func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, namespace, pod
 }
 
 func makeOrReuse(buf []byte, n int) []byte {
-	if len(buf) < n {
+	if len(buf) >= n {
 		return buf[:n]
 	}
 	return make([]byte, n)
