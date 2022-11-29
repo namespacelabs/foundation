@@ -205,7 +205,7 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed, ch)
 
 		if running != nil {
-			running.Done(err)
+			_ = running.Done(err)
 		}
 
 		if err != nil {
