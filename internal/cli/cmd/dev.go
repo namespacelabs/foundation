@@ -24,8 +24,9 @@ import (
 	"namespacelabs.dev/foundation/internal/devsession"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/integrations/web"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/logs/logtail"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
 	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/schema"
@@ -112,7 +113,7 @@ func NewDevCmd() *cobra.Command {
 						if devWebServer {
 							localPort := lis.Addr().(*net.TCPAddr).Port
 							webPort := localPort + 1
-							proxyTarget, err := web.StartDevServer(ctx, env, devsession.WebPackage, localPort, webPort)
+							proxyTarget, err := startDevServer(ctx, env, devsession.WebPackage, localPort, webPort)
 							if err != nil {
 								return err
 							}
@@ -183,4 +184,29 @@ func startListener(specified string) (net.Listener, error) {
 
 		return l, nil
 	}
+}
+
+func startDevServer(ctx context.Context, env cfg.Context, pkg schema.PackageName, mainPort, webPort int) (string, error) {
+	host := "127.0.0.1"
+	hostPort := fmt.Sprintf("%s:%d", host, webPort)
+
+	loc, err := parsing.NewPackageLoader(env).Resolve(ctx, pkg)
+	if err != nil {
+		return "", err
+	}
+
+	go func() {
+		var cmd localexec.Command
+		cmd.Label = "vite"
+		cmd.Command = "node_modules/vite/bin/vite.js"
+		cmd.Args = []string{"--clearScreen=false", "--host=" + host, fmt.Sprintf("--port=%d", webPort)}
+		cmd.Dir = loc.Abs()
+		cmd.AdditionalEnv = []string{fmt.Sprintf("CMD_DEV_PORT=%d", mainPort)}
+		cmd.Persistent = true
+		if err := cmd.Run(ctx); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "vite failed: %v\n", err)
+		}
+	}()
+
+	return hostPort, nil
 }

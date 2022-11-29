@@ -31,7 +31,6 @@ var (
 )
 
 var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
-var BuildWeb func(pkggraph.Location) build.Spec
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
@@ -236,13 +235,6 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 
 	if src.NodejsBuild != nil {
 		return BuildNodejs(env, loc, src.NodejsBuild, assets, opts.IsFocus)
-	}
-
-	if wb := src.WebBuild; wb != "" {
-		if wb != "." {
-			return nil, fnerrors.NewWithLocation(loc, "web_build: must be set to `.`")
-		}
-		return BuildWeb(loc), nil
 	}
 
 	if llb := src.LlbPlan; llb != nil {

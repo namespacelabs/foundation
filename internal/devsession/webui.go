@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/integrations/web"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -25,5 +24,5 @@ const (
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {
 	image := oci.ImageP(fmt.Sprintf("%s/%s@%s", baseRepository, WebPackage, prebuilt), nil, oci.ResolveOpts{PublicImage: true})
 
-	return compute.GetValue(ctx, web.ServeFS(image, "app/dist/" /* pathPrefix */, true /* spa */))
+	return compute.GetValue(ctx, serveFS(image, "app/dist/" /* pathPrefix */, true /* spa */))
 }
