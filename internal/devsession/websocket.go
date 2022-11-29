@@ -19,6 +19,17 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+func isCloseError(err error) bool {
+	// We check the error message, because poll.ErrNetClosing is not exported :(
+	// https://cs.opensource.google/go/go/+/master:src/internal/poll/fd.go;l=31
+	if strings.Contains(err.Error(), "use of closed network connection") {
+		return true
+	}
+
+	_, ok := err.(*websocket.CloseError)
+	return ok
+}
+
 func readerLoop(ctx context.Context, ws *websocket.Conn, f func([]byte) error) {
 	ws.SetReadLimit(4096)
 
@@ -26,9 +37,8 @@ func readerLoop(ctx context.Context, ws *websocket.Conn, f func([]byte) error) {
 		t, msg, err := ws.ReadMessage()
 
 		if err != nil {
-			// Not reporting CloseError's.
 			// Closing the websocket may happen for various reasons and it is not an exception.
-			if _, ok := err.(*websocket.CloseError); !ok {
+			if !isCloseError(err) {
 				fmt.Fprintf(console.Errors(ctx), "(%s) websocket: read message failed: %v\n", ws.RemoteAddr(), err)
 			}
 			break
