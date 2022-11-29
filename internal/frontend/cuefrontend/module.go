@@ -101,23 +101,60 @@ func (moduleLoader) NewModule(ctx context.Context, dir string, w *schema.Workspa
 }
 
 func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
-	var m cueModule = cueModule{}
-	if w != nil {
-		envs := make(map[string]cueEnvironment)
-		for _, e := range w.EnvSpec {
-			envs[e.Name] = cueEnvironment{
+	m := cueModule{
+		ModuleName: w.GetModuleName(),
+	}
+
+	if req := w.GetFoundation(); req != nil {
+		m.Foundation = &cueModuleFoundation{
+			MinimumAPI:   int(req.MinimumApi),
+			ToolsVersion: int(req.ToolsVersion),
+		}
+	}
+
+	if len(w.GetReplace()) > 0 {
+		m.Replaces = make(map[string]string)
+
+		for _, r := range w.GetReplace() {
+			m.Replaces[r.ModuleName] = r.Path
+		}
+	}
+
+	if len(w.GetDep()) > 0 {
+		m.Dependencies = make(map[string]cueModuleVersion)
+
+		for _, d := range w.GetDep() {
+			m.Dependencies[d.ModuleName] = cueModuleVersion{
+				Version: d.Version,
+			}
+		}
+	}
+
+	if w.GetPrebuiltBaseRepository() != "" {
+		m.Prebuilts = &cueWorkspacePrebuilts{
+			BaseRepository: w.GetPrebuiltBaseRepository(),
+		}
+
+		for _, pb := range w.GetPrebuiltBinary() {
+			if pb.Repository != "" && pb.Repository != w.GetPrebuiltBaseRepository() {
+				return cue.Value{}, fnerrors.InternalError("prebuilt %q: custom prebuilt repository not supported", pb.PackageName)
+			}
+
+			m.Prebuilts.Digests[pb.PackageName] = pb.Digest
+		}
+	}
+
+	if len(w.GetEnvSpec()) > 0 {
+		m.Environments = make(map[string]cueEnvironment)
+
+		for _, e := range w.GetEnvSpec() {
+			m.Environments[e.Name] = cueEnvironment{
 				Runtime: e.Runtime,
 				Purpose: e.Purpose.String(),
 			}
 		}
-		m = cueModule{
-			ModuleName:   w.ModuleName,
-			Environments: envs,
-			Foundation: &cueModuleFoundation{
-				MinimumAPI: int(w.Foundation.MinimumApi),
-			},
-		}
 	}
+
 	ctx := cuecontext.New()
 	val := ctx.Encode(m)
 	return val, nil
