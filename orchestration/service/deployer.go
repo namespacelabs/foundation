@@ -165,7 +165,7 @@ func (d *deployer) execute(ctx context.Context, out *eventFile, plan *execution.
 		defer releaseLease()
 	}
 
-	return execution.Execute(ctx, env, "deployment.execute", plan, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
+	return execution.Execute(ctx, "deployment.execute", plan, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
 		ch := make(chan *orchestration.Event)
 		errCh := make(chan error)
 
@@ -178,7 +178,7 @@ func (d *deployer) execute(ctx context.Context, out *eventFile, plan *execution.
 		return ch, func(_ context.Context) error {
 			return <-errCh // Wait for the logging go-routine to return.
 		}
-	}, runtime.InjectCluster(cluster)...)
+	}, execution.FromContext(env), runtime.InjectCluster(cluster))
 }
 
 func (d *deployer) Status(ctx context.Context, id string, loglevel int32, notify func(*orchpb.DeploymentStatusResponse) error) error {

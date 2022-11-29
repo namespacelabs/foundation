@@ -7,7 +7,8 @@ package execution
 import "google.golang.org/protobuf/proto"
 
 type Input struct {
-	Message proto.Message
+	Message  proto.Message
+	Instance any
 }
 
 type Inputs map[string]Input

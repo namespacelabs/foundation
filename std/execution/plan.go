@@ -31,6 +31,7 @@ type HandleResult struct {
 type Output struct {
 	InstanceID string
 	Message    proto.Message
+	Instance   any
 }
 
 // A plan collects a set of invocations which can then be executed as a batch.
@@ -147,11 +148,12 @@ func Serialize(g *Plan) *schema.SerializedProgram {
 }
 
 type recordedOutput struct {
-	Message proto.Message
-	Used    bool
+	Message  proto.Message
+	Instance any
+	Used     bool
 }
 
-func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event) ([]Waiter, error) {
+func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, opts ExecuteOpts) ([]Waiter, error) {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -181,22 +183,51 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event) 
 
 		inputs, err := prepareInputs(outputs, n.invocation)
 		if err != nil {
-			errs = append(errs, err)
+			if opts.ContinueOnErrors {
+				errs = append(errs, err)
+			} else {
+				return nil, err
+			}
 			continue
 		}
 
 		invCtx := injectValues(ctx, InputsInjection.With(inputs))
 
+		var running *tasks.RunningAction
+		if opts.WrapWithActions {
+			action := tasks.Action("execute.step").Arg("typeUrl", typeUrl)
+			if n.invocation.Description != "" {
+				action = action.HumanReadablef(n.invocation.Description)
+			}
+			running = action.Start(invCtx)
+		}
+
 		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed, ch)
+
+		if running != nil {
+			running.Done(err)
+		}
+
 		if err != nil {
-			errs = append(errs, fnerrors.InternalError("failed to run %q: %w", typeUrl, err))
+			wrappedErr := fnerrors.InternalError("failed to run %q: %w", typeUrl, err)
+			if opts.ContinueOnErrors {
+				errs = append(errs, wrappedErr)
+			} else {
+				return nil, wrappedErr
+			}
 		} else if res != nil {
 			for _, output := range res.Outputs {
 				if _, ok := outputs[output.InstanceID]; ok {
-					errs = append(errs, fnerrors.InternalError("duplicate result key: %q", output.InstanceID))
+					wrappedErr := fnerrors.InternalError("duplicate result key: %q", output.InstanceID)
+					if opts.ContinueOnErrors {
+						errs = append(errs, wrappedErr)
+					} else {
+						return nil, wrappedErr
+					}
 				} else {
 					outputs[output.InstanceID] = &recordedOutput{
-						Message: output.Message,
+						Message:  output.Message,
+						Instance: output.Instance,
 					}
 				}
 			}
@@ -233,7 +264,8 @@ func prepareInputs(outputs map[string]*recordedOutput, def *schema.SerializedInv
 			missing = append(missing, required)
 		} else {
 			out[required] = Input{
-				Message: output.Message,
+				Message:  output.Message,
+				Instance: output.Instance,
 			}
 			output.Used = true
 		}

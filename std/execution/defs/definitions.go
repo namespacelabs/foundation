@@ -13,16 +13,22 @@ import (
 type DefList struct {
 	descriptions []string
 	impls        []proto.Message
-	scopes       []schema.PackageList
+	transformers [][]func(*schema.SerializedInvocation)
 }
 
 func (d *DefList) Add(description string, impl proto.Message, scope ...schema.PackageName) {
-	d.descriptions = append(d.descriptions, description)
-	d.impls = append(d.impls, impl)
-
 	var sl schema.PackageList
 	sl.AddMultiple(scope...)
-	d.scopes = append(d.scopes, sl)
+
+	d.AddExt(description, impl, func(di *schema.SerializedInvocation) {
+		di.Scope = sl.PackageNamesAsString()
+	})
+}
+
+func (d *DefList) AddExt(description string, impl proto.Message, transformers ...func(*schema.SerializedInvocation)) {
+	d.descriptions = append(d.descriptions, description)
+	d.impls = append(d.impls, impl)
+	d.transformers = append(d.transformers, transformers)
 }
 
 func (d *DefList) Serialize() ([]*schema.SerializedInvocation, error) {
@@ -32,13 +38,46 @@ func (d *DefList) Serialize() ([]*schema.SerializedInvocation, error) {
 		if err != nil {
 			return nil, err
 		}
-		defs = append(defs, &schema.SerializedInvocation{
+		di := &schema.SerializedInvocation{
 			Description: d.descriptions[k],
 			Impl:        serialized,
-			Scope:       d.scopes[k].PackageNamesAsString(),
-		})
+		}
+		for _, transformer := range d.transformers[k] {
+			transformer(di)
+		}
+		defs = append(defs, di)
 	}
 	return defs, nil
+}
+
+func Category(name string) func(*schema.SerializedInvocation) {
+	return func(di *schema.SerializedInvocation) {
+		if di.Order == nil {
+			di.Order = &schema.ScheduleOrder{
+				SchedCategory: []string{name},
+			}
+		} else {
+			di.Order.SchedCategory = append(di.Order.SchedCategory, name)
+		}
+	}
+}
+
+func DependsOn(name string) func(*schema.SerializedInvocation) {
+	return func(di *schema.SerializedInvocation) {
+		if di.Order == nil {
+			di.Order = &schema.ScheduleOrder{
+				SchedAfterCategory: []string{name},
+			}
+		} else {
+			di.Order.SchedAfterCategory = append(di.Order.SchedAfterCategory, name)
+		}
+	}
+}
+
+func Consumes(name string) func(*schema.SerializedInvocation) {
+	return func(di *schema.SerializedInvocation) {
+		di.RequiredOutput = append(di.RequiredOutput, name)
+	}
 }
 
 func Make[V MakeDefinition](ops ...V) ([]*schema.SerializedInvocation, error) {

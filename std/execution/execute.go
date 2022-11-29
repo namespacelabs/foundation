@@ -13,7 +13,16 @@ import (
 
 type WaitHandler func(context.Context) (chan *orchestration.Event, func(context.Context) error)
 
+type ExecuteOpts struct {
+	ContinueOnErrors bool
+	WrapWithActions  bool
+}
+
 func Execute(ctx context.Context, actionName string, g *Plan, channelHandler WaitHandler, injected ...MakeInjectionInstance) error {
+	return ExecuteExt(ctx, actionName, g, channelHandler, ExecuteOpts{ContinueOnErrors: true}, injected...)
+}
+
+func ExecuteExt(ctx context.Context, actionName string, g *Plan, channelHandler WaitHandler, opts ExecuteOpts, injected ...MakeInjectionInstance) error {
 	var ch chan *orchestration.Event
 	var cleanup func(context.Context) error
 
@@ -21,7 +30,7 @@ func Execute(ctx context.Context, actionName string, g *Plan, channelHandler Wai
 		ch, cleanup = channelHandler(ctx)
 	}
 
-	waiters, err := rawExecute(ctx, actionName, g, ch, injected...)
+	waiters, err := rawExecute(ctx, actionName, g, ch, opts, injected...)
 	if err == nil {
 		err = waitMultiple(ctx, waiters, ch)
 	} else {
@@ -42,11 +51,11 @@ func Execute(ctx context.Context, actionName string, g *Plan, channelHandler Wai
 
 // Don't use this method if you don't have a use-case for it, use Execute.
 func RawExecute(ctx context.Context, actionName string, g *Plan, injected ...MakeInjectionInstance) error {
-	_, err := rawExecute(ctx, actionName, g, nil, injected...)
+	_, err := rawExecute(ctx, actionName, g, nil, ExecuteOpts{ContinueOnErrors: true}, injected...)
 	return err
 }
 
-func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orchestration.Event, injected ...MakeInjectionInstance) ([]Waiter, error) {
+func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orchestration.Event, opts ExecuteOpts, injected ...MakeInjectionInstance) ([]Waiter, error) {
 	var values []InjectionInstance
 	for _, make := range injected {
 		values = append(values, make.MakeInjection()...)
@@ -58,6 +67,6 @@ func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orches
 			return nil, err
 		}
 
-		return compiled.apply(ctx, ch)
+		return compiled.apply(ctx, ch, opts)
 	})
 }
