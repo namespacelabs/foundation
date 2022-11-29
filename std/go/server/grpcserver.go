@@ -40,6 +40,8 @@ var (
 	listenHostname = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
 	port           = flag.Int("port", 0, "Port to listen on.")
 	httpPort       = flag.Int("http_port", 0, "Port to listen HTTP on.")
+
+	handleSIGTERM = false
 )
 
 const (
@@ -54,40 +56,42 @@ func InitializationDone() {
 }
 
 func Listen(ctx context.Context, registerServices func(Server)) error {
-	go func() {
-		sigint := make(chan os.Signal, 1)
+	if handleSIGTERM {
+		go func() {
+			sigint := make(chan os.Signal, 1)
 
-		signal.Notify(sigint, os.Interrupt)
-		signal.Notify(sigint, syscall.SIGTERM)
+			signal.Notify(sigint, os.Interrupt)
+			signal.Notify(sigint, syscall.SIGTERM)
 
-		r2 := <-sigint
+			r2 := <-sigint
 
-		log.Printf("got %v", r2)
+			log.Printf("got %v", r2)
 
-		// XXX support more graceful shutdown. Although
-		// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
-		// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
-		// you should NOT do is close your listening socket. If you win the
-		// race, you will receive traffic and reject it.""
+			// XXX support more graceful shutdown. Although
+			// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
+			// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
+			// you should NOT do is close your listening socket. If you win the
+			// race, you will receive traffic and reject it.""
 
-		// So we start failing readiness, so we're removed from the serving set.
-		// Then we wait for a bit for traffic to drain out. And then we leave.
+			// So we start failing readiness, so we're removed from the serving set.
+			// Then we wait for a bit for traffic to drain out. And then we leave.
 
-		core.MarkShutdownStarted()
+			core.MarkShutdownStarted()
 
-		if core.EnvIs(schema.Environment_DEVELOPMENT) {
-			// In development, we drain quickly.
-			time.Sleep(developmentDrainTimeout)
-		} else {
-			time.Sleep(productionDrainTimeout)
-		}
+			if core.EnvIs(schema.Environment_DEVELOPMENT) {
+				// In development, we drain quickly.
+				time.Sleep(developmentDrainTimeout)
+			} else {
+				time.Sleep(productionDrainTimeout)
+			}
 
-		if r2 == syscall.SIGTERM {
-			os.Exit(0)
-		} else {
-			os.Exit(1)
-		}
-	}()
+			if r2 == syscall.SIGTERM {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
+		}()
+	}
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *listenHostname, *port))
 	if err != nil {
