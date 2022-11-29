@@ -26,6 +26,6 @@ func EnsureBuildCluster(ctx context.Context) (*buildkit.Overrides, error) {
 			},
 		}, nil
 	} else {
-		return nil, fnerrors.InternalError("expected build machine")
+		return nil, fnerrors.InternalError("%s: expected build machine", cfg.ClusterId)
 	}
 }
