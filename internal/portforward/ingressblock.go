@@ -232,7 +232,7 @@ func (pi *PortForward) toNetworkPlan() *storage.NetworkPlan {
 	}
 
 	if wantsIngressForward(pi.Env, pi.fragments) {
-		incomplete = len(pi.ingressState.users) == 0 || pi.ingressState.localPort == 0
+		incomplete = incomplete || (len(pi.ingressState.users) == 0 || pi.ingressState.localPort == 0)
 	}
 
 	if len(pi.ingressState.users) > 0 {
