@@ -1,14 +1,9 @@
 server: {
 	name: "myserver"
 
-	integration: web: service: "webapi"
-
-	services: webapi: {
+	integration: web: {
 		// Default Vite port
-		port: 5173
-		kind: "http"
-
-		ingress: true
+		devPort: 5173
 	}
 }
 

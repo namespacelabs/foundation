@@ -22,9 +22,7 @@ func (i *Parser) Url() string      { return "namespace.so/from-web" }
 func (i *Parser) Shortcut() string { return "web" }
 
 type cueIntegrationWeb struct {
-	// The service that corresponds to this web integration.
-	// Needed to get the port for prod serving.
-	Service string `json:"service"`
+	DevPort int32 `json:"devPort"`
 }
 
 func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
@@ -59,12 +57,12 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 		}
 	}
 
-	if bits.Service == "" {
-		return nil, fnerrors.NewWithLocation(loc, "web integration requires a service name")
+	if bits.DevPort == 0 {
+		return nil, fnerrors.NewWithLocation(loc, "web integration requires `devPort`")
 	}
 
 	return &schema.WebIntegration{
 		Nodejs:  nodejsBuild,
-		Service: bits.Service,
+		DevPort: bits.DevPort,
 	}, nil
 }

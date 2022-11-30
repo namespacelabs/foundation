@@ -39,21 +39,27 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 		}
 	}
 
-	var port int32
-	for _, s := range append(pkg.Server.Service, pkg.Server.Ingress...) {
-		if s.Name == data.Service {
-			port = s.Port.ContainerPort
-			break
-		}
+	if len(pkg.Server.Ingress) > 0 || len(pkg.Server.Service) > 0 {
+		return fnerrors.NewWithLocation(pkg.Location, "web servers can't have services")
 	}
 
-	if port == 0 {
-		return fnerrors.NewWithLocation(pkg.Location, "web integration: couldn't find service %q", data.Service)
-	}
+	// Generating a public service for the frontend.
+	// Use-case for private Web servers is unclear, we can add a field in the syntax later if needed.
+	servicePort := data.DevPort
+	pkg.Server.Ingress = append(pkg.Server.Ingress, &schema.Server_ServiceSpec{
+		Name: pkg.Server.Name,
+		Port: &schema.Endpoint_Port{
+			Name:          pkg.Server.Name,
+			ContainerPort: servicePort,
+		},
+		Metadata: []*schema.ServiceMetadata{{
+			Protocol: "http",
+		}},
+	})
 
 	binaryRef, err := api.GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, pkg.Server.Name, &schema.WebBuild{
 		Nodejs: data.Nodejs,
-		Port:   port,
+		Port:   servicePort,
 	})
 	if err != nil {
 		return err

@@ -92,9 +92,7 @@ message NodejsBuild {
 message WebIntegration {
     NodejsBuild nodejs = 1;
 
-    // The service that corresponds to this web integration.
-    // Needed to get the port for prod serving.
-    string service = 3;
+    int32 dev_port = 4;
 }
 
 message WebBuild {
