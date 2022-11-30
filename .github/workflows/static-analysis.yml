@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [linux, darwin]
+        goos: [linux] # Not running darwin due to it requiring the C integration.
         goarch: [amd64, arm64]
 
     steps:
