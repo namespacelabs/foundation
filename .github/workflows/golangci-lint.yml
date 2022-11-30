@@ -14,12 +14,15 @@ jobs:
     name: lint
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/setup-go@v2
-      - uses: actions/checkout@v2
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+      - uses: actions/setup-go@v3
         with:
-          version: v1.45.2
+          go-version: "1.19"
+          cache: true
+      - uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
           only-new-issues: true
           args: --timeout=10m
       - uses: k0kubun/action-slack@v2.0.0
