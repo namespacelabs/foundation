@@ -15,5 +15,5 @@ type phase2plan struct {
 }
 
 func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info pkggraph.StartupInputs, allocs []pkggraph.ValueWithPath) (*schema.StartupPlan, error) {
-	return nil, nil
+	return &schema.StartupPlan{}, nil
 }

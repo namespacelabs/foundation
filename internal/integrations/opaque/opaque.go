@@ -87,10 +87,14 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server,
 
 		config := binary.Config
 		if config != nil {
-			run.WorkingDir = config.WorkingDir
-			run.Command = config.Command
-			run.Args = config.Args
-			run.Env = config.Env
+			if config.WorkingDir != "" {
+				run.WorkingDir = config.WorkingDir
+			}
+			if config.Command != nil {
+				run.Command = config.Command
+			}
+			run.Args = append(run.Args, config.Args...)
+			run.Env = append(run.Env, config.Env...)
 		}
 
 		filesyncConfig, err := getFilesyncWorkspacePath(server)

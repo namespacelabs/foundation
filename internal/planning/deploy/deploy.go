@@ -750,6 +750,11 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 	out.Volumes = append(out.Volumes, proto.Volume...)
 	out.MainContainer.Mounts = append(out.MainContainer.Mounts, proto.MainContainer.Mount...)
 
+	out.MainContainer.Env = proto.MainContainer.BinaryConfig.Env
+	out.MainContainer.Args = proto.MainContainer.BinaryConfig.Args
+	out.MainContainer.Command = proto.MainContainer.BinaryConfig.Command
+	out.MainContainer.WorkingDir = proto.MainContainer.BinaryConfig.WorkingDir
+
 	out.MainContainer.Image = imgs.Binary
 	out.ConfigImage = imgs.Config
 
@@ -787,7 +792,6 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 		out.MainContainer.Command = merged.Command
 	}
 	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
-	out.MainContainer.Env = append(out.MainContainer.Env, srv.Proto().MainContainer.BinaryConfig.Env...)
 	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
 
 	return nil
@@ -821,14 +825,14 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved Res
 			BinaryRef: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
 				Image:      sidecarBinary.Binary,
-				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.BinaryConfig.Args...),
+				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.BinaryConfig.GetArgs()...),
 				Command:    sidecarBinary.BinaryConfig.GetCommand(),
 				WorkingDir: sidecarBinary.BinaryConfig.GetWorkingDir(),
 			},
 		}
 
 		mergeEnv(&opts.ContainerRunOpts.Env, sidecarBinary.BinaryConfig.GetEnv())
-		mergeEnv(&opts.ContainerRunOpts.Env, container.BinaryConfig.Env)
+		mergeEnv(&opts.ContainerRunOpts.Env, container.BinaryConfig.GetEnv())
 
 		*out = append(*out, opts)
 	}
