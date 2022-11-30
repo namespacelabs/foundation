@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -111,15 +112,15 @@ func NewTestCmd() *cobra.Command {
 			testOpts.ParentRunID = storedrun.ParentID
 			testOpts.OutputProgress = !parallel || forceOutputProgress
 
-			parallelTests := make([]compute.Computable[testing.StoredTestResults], len(testRefs))
-			runs := &storage.TestRuns{Run: make([]*storage.TestRuns_Run, len(testRefs))}
-			incompatible := make([]*enverr.IncompatibleEnvironmentErr, len(testRefs))
+			var mu sync.Mutex // Protects the slices below.
+			var pending []compute.Computable[testing.StoredTestResults]
+			var incompatible []incompatibleTest
+			var completed []*storage.TestRuns_Run
 
 			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
 				eg := executor.New(ctx, "test")
 
-				for k, testRef := range testRefs {
-					k := k             // Capture k.
+				for _, testRef := range testRefs {
 					testRef := testRef // Capture testRef.
 
 					eg.Go(func(ctx context.Context) error {
@@ -137,7 +138,13 @@ func NewTestCmd() *cobra.Command {
 						if err != nil {
 							var inc enverr.IncompatibleEnvironmentErr
 							if errors.As(err, &inc) {
-								incompatible[k] = &inc
+								mu.Lock()
+								incompatible = append(incompatible, incompatibleTest{
+									Ref: testRef,
+									Err: &inc,
+								})
+								mu.Unlock()
+
 								if !parallel && !parallelWork {
 									printIncompatible(out, style, testRef)
 								}
@@ -149,7 +156,9 @@ func NewTestCmd() *cobra.Command {
 						}
 
 						if parallel || parallelWork {
-							parallelTests[k] = testComp
+							mu.Lock()
+							pending = append(pending, testComp)
+							mu.Unlock()
 						} else {
 							if explain {
 								return compute.Explain(ctx, console.Stdout(ctx), testComp)
@@ -160,12 +169,16 @@ func NewTestCmd() *cobra.Command {
 								return err
 							}
 
-							runs.Run[k] = &storage.TestRuns_Run{
+							run := &storage.TestRuns_Run{
 								TestSummary: testResults.Value.TestBundleSummary,
 								TestResults: testResults.Value.Bundle,
 							}
 
-							printResult(out, style, testRef, runs.Run[k], false)
+							mu.Lock()
+							completed = append(completed, run)
+							mu.Unlock()
+
+							printResult(out, style, testRef, run, false)
 						}
 
 						return nil
@@ -177,8 +190,8 @@ func NewTestCmd() *cobra.Command {
 				return err
 			}
 
-			if len(parallelTests) > 0 {
-				runTests := compute.Collect(tasks.Action("test.all-tests"), parallelTests...)
+			if len(pending) > 0 {
+				runTests := compute.Collect(tasks.Action("test.all-tests"), pending...)
 
 				if explain {
 					return compute.Explain(ctx, console.Stdout(ctx), runTests)
@@ -189,60 +202,40 @@ func NewTestCmd() *cobra.Command {
 					return err
 				}
 
-				for k, res := range results {
-					if res.Set {
-						runs.Run[k] = &storage.TestRuns_Run{
-							TestSummary: res.Value.TestBundleSummary,
-							TestResults: res.Value.Bundle,
-						}
-					} else {
-						runs.IncompatibleTest = append(runs.IncompatibleTest, &storage.TestRuns_IncompatibleTest{
-							TestPackage:       testRefs[k].AsPackageName().String(),
-							TestName:          testRefs[k].Name,
-							ServerPackage:     incompatible[k].ServerPackageName.String(),
-							RequirementOwner:  incompatible[k].RequirementOwner.String(),
-							RequiredLabel:     incompatible[k].RequiredLabel,
-							IncompatibleLabel: incompatible[k].IncompatibleLabel,
-						})
-					}
+				for _, res := range results {
+					completed = append(completed, &storage.TestRuns_Run{
+						TestSummary: res.Value.TestBundleSummary,
+						TestResults: res.Value.Bundle,
+					})
 				}
+			}
 
-				sortedRuns := slices.Clone(runs.Run)
-				// Sorting after processing results since the indices need to be synchronized with other slices.
-				slices.SortFunc(sortedRuns, func(a, b *storage.TestRuns_Run) bool {
-					return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
-				})
+			// Sorting after processing results since the indices need to be synchronized with other slices.
+			slices.SortFunc(completed, func(a, b *storage.TestRuns_Run) bool {
+				return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
+			})
 
+			if len(pending) > 0 {
 				fmt.Fprintln(out)
 
-				for _, res := range sortedRuns {
+				for _, res := range completed {
 					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestSummary.TestPackage), res.TestSummary.TestName)
 					printResult(out, style, pkgRef, res, true)
 				}
 
-				for _, res := range runs.IncompatibleTest {
-					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestPackage), res.TestName)
-					printIncompatible(out, style, pkgRef)
+				for _, res := range incompatible {
+					printIncompatible(out, style, res.Ref)
 				}
 			}
 
 			var failed []string
-			for _, run := range runs.Run {
-				if run != nil {
-					if !run.GetTestSummary().GetResult().Success {
-						failed = append(failed, run.GetTestSummary().GetTestPackage())
-					}
+			for _, run := range completed {
+				if !run.GetTestSummary().GetResult().Success {
+					failed = append(failed, run.GetTestSummary().GetTestPackage())
 				}
 			}
 
-			var withoutNils []*storage.TestRuns_Run
-			for _, run := range runs.Run {
-				if run != nil {
-					withoutNils = append(withoutNils, run)
-				}
-			}
-			runs.Run = withoutNils
-
+			runs := &storage.TestRuns{Run: completed}
 			storedrun.Attach(runs)
 
 			if len(failed) > 0 {
@@ -269,6 +262,11 @@ func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.
 	}
 
 	return ctx
+}
+
+type incompatibleTest struct {
+	Ref *schema.PackageRef
+	Err *enverr.IncompatibleEnvironmentErr
 }
 
 func printResult(out io.Writer, style colors.Style, testRef *schema.PackageRef, res *storage.TestRuns_Run, printResults bool) {
