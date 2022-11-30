@@ -100,7 +100,7 @@ func (tx tracingTx) Query(ctx context.Context, sql string, arguments ...interfac
 }
 
 func (tx tracingTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	return queryRow(ctx, tx.t, tx.base, "tx.QueryRow", sql, args)
+	return queryRow(ctx, tx.t, tx.base, "tx.QueryRow", sql, args...)
 }
 
 func (tx tracingTx) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
