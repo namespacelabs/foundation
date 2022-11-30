@@ -82,10 +82,16 @@ func ProtosForNode(pkg *pkggraph.Package) ([]*schema.SerializedInvocation, error
 	return allDefs, nil
 }
 
-func ForNodeForLanguage(pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
+func ForNodeForLanguage(ctx context.Context, pkg *pkggraph.Package, available []*schema.Node) ([]*schema.SerializedInvocation, error) {
 	var allDefs []*schema.SerializedInvocation
 	for _, fmwk := range pkg.Node().CodegeneratedFrameworks() {
-		defs, err := integrations.IntegrationFor(fmwk).GenerateNode(pkg, available)
+		integration := integrations.IntegrationFor(fmwk)
+		if integration == nil {
+			fmt.Fprintf(console.Warnings(ctx), "%s: refers to unregistered framework %v\n", pkg.PackageName(), fmwk)
+			continue
+		}
+
+		defs, err := integration.GenerateNode(pkg, available)
 		if err != nil {
 			return nil, err
 		}

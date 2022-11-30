@@ -84,7 +84,7 @@ func codegenServer(ctx context.Context, srv planning.Server) error {
 		return nil
 	}
 
-	codegen, err := genpackage.ForServerAndDeps(srv)
+	codegen, err := genpackage.ForServerAndDeps(ctx, srv)
 	if err != nil {
 		return err
 	}

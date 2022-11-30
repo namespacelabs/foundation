@@ -77,7 +77,7 @@ func ForLocationsGenCode(ctx context.Context, out pkggraph.MutableModule, env cf
 				continue
 			}
 
-			defs, err := ForNodeForLanguage(pkg, sealed.Proto.Node)
+			defs, err := ForNodeForLanguage(ctx, pkg, sealed.Proto.Node)
 			if err != nil {
 				onError(fnerrors.CodegenError{PackageName: loc.AsPackageName().String(), What: "generate node", Err: err})
 				return err
