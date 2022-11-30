@@ -47,15 +47,11 @@ func (db DB) Query(ctx context.Context, sql string, arguments ...interface{}) (p
 }
 
 func (db DB) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, db.t, "tx.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
+	return returnWithSpan(ctx, db.t, "db.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
 		return db.base.QueryFunc(ctx, sql, args, scans, f)
 	})
 }
 
 func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	rows, _ := db.Query(ctx, sql, args...)
-	// This relies on an implementation detail: both pgx.Rows also implement the
-	// `pgx.Row` interface, and that a `pgx.Rows` carries an error. Refer to
-	// pgx's source code for details.
-	return rows.(pgx.Row)
+	return queryRow(ctx, db.t, db.base, "db.QueryRow", sql, args)
 }

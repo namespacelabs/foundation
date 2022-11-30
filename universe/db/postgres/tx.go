@@ -100,11 +100,7 @@ func (tx tracingTx) Query(ctx context.Context, sql string, arguments ...interfac
 }
 
 func (tx tracingTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	rows, _ := tx.Query(ctx, sql, args...)
-	// This relies on an implementation detail: both pgx.Rows also implement the
-	// `pgx.Row` interface, and that a `pgx.Rows` carries an error. Refer to
-	// pgx's source code for details.
-	return rows.(pgx.Row)
+	return queryRow(ctx, tx.t, tx.base, "tx.QueryRow", sql, args)
 }
 
 func (tx tracingTx) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
