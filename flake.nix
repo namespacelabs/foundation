@@ -26,7 +26,6 @@
             crane
 
             pre-commit
-            golangci-lint
 
             goreleaser
 
