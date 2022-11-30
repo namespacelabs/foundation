@@ -29,7 +29,10 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 
 const loginEndpoint = "login.namespace.so/token"
 
-type nscloudRegistry struct{ clusterID string }
+type nscloudRegistry struct {
+	clusterID string
+	registry  *api.ImageRegistry
+}
 
 const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nscloud.dev"
 
@@ -40,7 +43,7 @@ func RegisterRegistry() {
 			return nil, fnerrors.InternalError("missing registry configuration")
 		}
 
-		return nscloudRegistry{conf.ClusterId}, nil
+		return nscloudRegistry{clusterID: conf.ClusterId}, nil
 	})
 
 	oci.RegisterDomainKeychain(registryAddr, DefaultKeychain, oci.Keychain_UseAlways)
@@ -53,12 +56,12 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 		compute.Inputs().Str("repository", repository).Str("clusterID", r.clusterID),
 		compute.Output{},
 		func(ctx context.Context, _ compute.Resolved) (oci.AllocatedRepository, error) {
-			cluster, err := api.GetCluster(ctx, r.clusterID)
+			registry, err := r.fetchRegistry(ctx)
 			if err != nil {
 				return oci.AllocatedRepository{}, err
 			}
 
-			url := cluster.Registry.EndpointAddress
+			url := registry.EndpointAddress
 			if url == "" {
 				return oci.AllocatedRepository{}, fnerrors.InternalError("%s: cluster is missing registry", r.clusterID)
 			}
@@ -79,6 +82,19 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 				},
 			}, nil
 		})
+}
+
+func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry, error) {
+	if r.registry != nil {
+		return r.registry, nil
+	}
+
+	resp, err := api.GetCluster(ctx, r.clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Registry, nil
 }
 
 func (r nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedRepository, error) {

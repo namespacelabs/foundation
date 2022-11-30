@@ -98,7 +98,7 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 		return nil, err
 	}
 
-	return d.ensureCluster(ctx, cfg, cluster.Cluster)
+	return d.ensureCluster(ctx, cfg, cluster.Cluster, cluster.Registry)
 }
 
 func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuration, purpose string) (runtime.Cluster, error) {
@@ -121,10 +121,10 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuratio
 		return previous
 	})
 
-	return d.ensureCluster(ctx, config, result.Cluster)
+	return d.ensureCluster(ctx, config, result.Cluster, result.Registry)
 }
 
-func (d runtimeClass) ensureCluster(ctx context.Context, cfg cfg.Configuration, kc *api.KubernetesCluster) (runtime.Cluster, error) {
+func (d runtimeClass) ensureCluster(ctx context.Context, cfg cfg.Configuration, kc *api.KubernetesCluster, registry *api.ImageRegistry) (runtime.Cluster, error) {
 	// XXX This is confusing. We can call NewCluster because the runtime class
 	// and cluster providers are registered with the same provider key. We
 	// should instead create the cluster here, when the CreateCluster intent is
@@ -141,12 +141,13 @@ func (d runtimeClass) ensureCluster(ctx context.Context, cfg cfg.Configuration, 
 		}, nil
 	}
 
-	return &cluster{cluster: unbound, config: kc}, nil
+	return &cluster{cluster: unbound, config: kc, registry: registry}, nil
 }
 
 type cluster struct {
-	cluster *kubernetes.Cluster
-	config  *api.KubernetesCluster
+	cluster  *kubernetes.Cluster
+	config   *api.KubernetesCluster
+	registry *api.ImageRegistry
 }
 
 var _ runtime.Cluster = &cluster{}
@@ -174,7 +175,7 @@ func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNam
 }
 
 func (d *cluster) Planner(ctx context.Context, env cfg.Context) (runtime.Planner, error) {
-	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{d.config.ClusterId}, d.cluster.SystemInfo)
+	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: d.registry, clusterID: d.config.ClusterId}, d.cluster.SystemInfo)
 
 	return planner{Planner: base, config: d.config}, nil
 }
