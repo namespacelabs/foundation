@@ -37,7 +37,7 @@ import (
 var (
 	AlsoDeployIngress        = true
 	PushPrebuiltsToRegistry  = true
-	MirrorPrebuiltToRegistry = true
+	MirrorPrebuiltToRegistry = false
 )
 
 type ResolvedServerImages struct {
