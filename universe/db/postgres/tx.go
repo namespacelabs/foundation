@@ -21,7 +21,7 @@ func ReturnFromTx[T any](ctx context.Context, db *DB, f func(context.Context, pg
 		return empty, err
 	}
 
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	value, err := f(ctx, tracingTx{base: tx, t: db.t})
 	if err != nil {
