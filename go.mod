@@ -108,6 +108,7 @@ require (
 	google.golang.org/protobuf v1.28.1
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.9.0
+	honnef.co/go/tools v0.2.1
 	k8s.io/api v0.25.3
 	k8s.io/apiextensions-apiserver v0.25.3
 	k8s.io/apimachinery v0.25.3
