@@ -18,13 +18,18 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/chisel/share/cnet"
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/internal/localexec"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/sdk/host"
+	"namespacelabs.dev/foundation/internal/sdk/kubectl"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewClusterCmd() *cobra.Command {
@@ -39,6 +44,7 @@ func NewClusterCmd() *cobra.Command {
 	cmd.AddCommand(newSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
+	cmd.AddCommand(newKubectlCmd())
 
 	return cmd
 }
@@ -114,7 +120,7 @@ func newSshCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := selectCluster(ctx, args)
+		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -143,7 +149,7 @@ func newPortForwardCmd() *cobra.Command {
 			return fnerrors.New("--target_port is required")
 		}
 
-		cluster, err := selectCluster(ctx, args)
+		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -166,7 +172,7 @@ func newDestroyCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := selectCluster(ctx, args)
+		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -193,18 +199,53 @@ Type %q for it to be removed.`, cluster.ClusterId), "")
 	return cmd
 }
 
-func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
+func newKubectlCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "kubectl -- ...",
+		Short: "Run kubectl on the target cluster.",
+	}
+
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
+		cluster, args, err := selectCluster(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		if cluster == nil {
+			return nil
+		}
+
+		cfg, err := tools.WriteRawKubeconfig(ctx, nscloud.MakeConfig(cluster), false)
+		if err != nil {
+			return err
+		}
+
+		defer cfg.Cleanup()
+
+		cmdLine := append(cfg.BaseArgs(), args...)
+
+		kubectlBin, err := kubectl.EnsureSDK(ctx, host.HostPlatform())
+		if err != nil {
+			return fnerrors.New("failed to download Kubernetes SDK: %w", err)
+		}
+
+		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
+		return localexec.RunInteractive(ctx, kubectl)
+	})
+}
+
+func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
 	if len(args) > 0 {
 		response, err := api.GetCluster(ctx, args[0])
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		return response.Cluster, nil
+		return response.Cluster, args[1:], nil
 	}
 
 	clusters, err := api.ListClusters(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var cls []cluster
@@ -214,15 +255,15 @@ func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, 
 
 	cl, err := tui.Select(ctx, "Which cluster would you like to connect to?", cls)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if cl == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	d := cl.(cluster).Cluster()
-	return &d, nil
+	return &d, nil, nil
 }
 
 type cluster api.KubernetesCluster

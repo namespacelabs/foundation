@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	k8sapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
@@ -47,6 +48,15 @@ func RegisterClusterProvider() {
 	}, "foundation.providers.nscloud.config.Cluster")
 }
 
+func MakeConfig(cluster *api.KubernetesCluster) k8sapi.Config {
+	return *kubeclient.MakeApiConfig(&kubeclient.StaticConfig{
+		EndpointAddress:          cluster.EndpointAddress,
+		CertificateAuthorityData: cluster.CertificateAuthorityData,
+		ClientCertificateData:    cluster.ClientCertificateData,
+		ClientKeyData:            cluster.ClientKeyData,
+	})
+}
+
 func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterConfiguration, error) {
 	conf, ok := clusterConfigType.CheckGet(cfg)
 	if !ok {
@@ -62,12 +72,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 
 	var p client.ClusterConfiguration
 	p.Ephemeral = conf.Ephemeral
-	p.Config = *kubeclient.MakeApiConfig(&kubeclient.StaticConfig{
-		EndpointAddress:          cluster.EndpointAddress,
-		CertificateAuthorityData: cluster.CertificateAuthorityData,
-		ClientCertificateData:    cluster.ClientCertificateData,
-		ClientKeyData:            cluster.ClientKeyData,
-	})
+	p.Config = MakeConfig(cluster)
 	for _, lbl := range cluster.Label {
 		p.Labels = append(p.Labels, &schema.Label{Name: lbl.Name, Value: lbl.Value})
 	}

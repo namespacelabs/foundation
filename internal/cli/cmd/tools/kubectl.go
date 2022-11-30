@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -79,6 +80,17 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Ku
 		return nil, fnerrors.New("failed to generate kubeconfig: %w", err)
 	}
 
+	c, err := WriteRawKubeconfig(ctx, rawConfig, keepConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Namespace = k8sconfig.Namespace
+	c.Context = k8sconfig.Context
+	return c, nil
+}
+
+func WriteRawKubeconfig(ctx context.Context, rawConfig clientcmdapi.Config, keepConfig bool) (*Kubeconfig, error) {
 	configBytes, err := clientcmd.Write(rawConfig)
 	if err != nil {
 		return nil, fnerrors.New("failed to serialize kubeconfig: %w", err)
@@ -99,8 +111,6 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Ku
 
 	return &Kubeconfig{
 		Kubeconfig: tmpFile.Name(),
-		Namespace:  k8sconfig.Namespace,
-		Context:    k8sconfig.Context,
 		keepConfig: keepConfig,
 	}, nil
 }
@@ -108,7 +118,10 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Ku
 func (kc *Kubeconfig) BaseArgs() []string {
 	baseArgs := []string{
 		"--kubeconfig=" + kc.Kubeconfig,
-		"-n", kc.Namespace,
+	}
+
+	if kc.Namespace != "" {
+		baseArgs = append(baseArgs, "-n", kc.Namespace)
 	}
 
 	if kc.Context != "" {
