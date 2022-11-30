@@ -17,11 +17,10 @@ import "schema/resource.proto";
 import "schema/volume.proto";
 
 enum Framework {
-    reserved 3;
+    reserved 2, 3;
 
     FRAMEWORK_UNSPECIFIED = 0;
     GO                    = 1;
-    WEB                   = 2;
     // Only for servers
     OPAQUE        = 4;
     OPAQUE_NODEJS = 5;

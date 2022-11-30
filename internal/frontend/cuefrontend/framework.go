@@ -14,8 +14,6 @@ func parseFramework(loc pkggraph.Location, str string) (schema.Framework, error)
 	switch str {
 	case "GO", "GO_GRPC":
 		return schema.Framework_GO, nil
-	case "WEB":
-		return schema.Framework_WEB, nil
 	case "OPAQUE":
 		return schema.Framework_OPAQUE, nil
 	}

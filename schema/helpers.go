@@ -188,9 +188,6 @@ func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {
 	if p.Go != nil {
 		fmwksSet[Framework_GO] = true
 	}
-	if p.Web != nil {
-		fmwksSet[Framework_WEB] = true
-	}
 	return fmwksSet
 }
 

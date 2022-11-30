@@ -61,23 +61,17 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 				}
 			}
 
-			isNameUsed := *fmwk == schema.Framework_WEB
-
-			if !isNameUsed {
-				if name == "" {
-					name, err = tui.Ask(ctx, "How would you like to name your service?",
-						"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
-						serviceName(targetPkg.Location))
-					if err != nil {
-						return err
-					}
+			if name == "" {
+				name, err = tui.Ask(ctx, "How would you like to name your service?",
+					"A service's name should not contain private information, as it is used in various debugging references.\n\nIf a service exposes internet-facing handlers, then the service's name may also be part of public-facing endpoints.",
+					serviceName(targetPkg.Location))
+				if err != nil {
+					return err
 				}
+			}
 
-				if name == "" {
-					return context.Canceled
-				}
-			} else {
-				name = ""
+			if name == "" {
+				return context.Canceled
 			}
 
 			if *fmwk == schema.Framework_GO {
@@ -100,11 +94,6 @@ func newServiceCmd(runCommand func(ctx context.Context, args []string) error) *c
 			case schema.Framework_GO:
 				goOpts := scaffold.GenGoServiceOpts{Name: name}
 				if err := scaffold.CreateGoServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, goOpts); err != nil {
-					return err
-				}
-			case schema.Framework_WEB:
-				webOpts := scaffold.GenWebServiceOpts{}
-				if err := scaffold.CreateWebServiceScaffold(ctx, targetPkg.Root.ReadWriteFS(), targetPkg.Location, webOpts); err != nil {
 					return err
 				}
 			}
