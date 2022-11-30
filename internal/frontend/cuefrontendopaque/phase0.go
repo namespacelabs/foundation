@@ -123,14 +123,14 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	var validators []func() error
 
 	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
+		parsedSrv, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "parsing server failed: %w", err)
 		}
 
-		// Defer validating the startup plan until the rest of the package is loaded.
+		// Defer validating the binary config until the rest of the package is loaded.
 		validators = append(validators, func() error {
-			return validateStartupPlan(ctx, ft.loader, parsedPkg, startupPlan)
+			return validateServerBinaryConfig(ctx, ft.loader, parsedPkg, parsedPkg.Server.MainContainer.BinaryConfig)
 		})
 
 		parsedSrv.Volume = append(parsedSrv.Volume, parsedPkg.Volumes...)
@@ -185,7 +185,6 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 
 		phase1plan := &phase1plan{
-			startupPlan:    startupPlan,
 			sidecars:       parsedSidecars,
 			initContainers: parsedInitContainers,
 		}

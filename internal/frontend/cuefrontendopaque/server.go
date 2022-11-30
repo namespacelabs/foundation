@@ -31,12 +31,12 @@ type cueServer struct {
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
-func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
+func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, error) {
 	loc := pkg.Location
 
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	out := &schema.Server{
@@ -55,13 +55,13 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
 		out.IsStateful = true
 	default:
-		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
+		return nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}
 
 	for name, svc := range bits.Services {
 		parsed, endpointType, err := parseService(loc, name, svc)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if endpointType == schema.Endpoint_INTERNET_FACING {
@@ -71,19 +71,15 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		}
 
 		if endpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.Details.HttpRoutes) > 0 {
-			return nil, nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
+			return nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
 		}
 	}
 
 	envVars, err := bits.Env.Parsed(loc.PackageName)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	startupPlan := &schema.StartupPlan{
-		Args: bits.Args.Parsed(),
-		Env:  envVars,
-	}
 	out.MainContainer.BinaryConfig.Args = bits.Args.Parsed()
 	out.MainContainer.BinaryConfig.Env = envVars
 	if bits.Command != "" {
@@ -93,7 +89,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		parsedMounts, volumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
-			return nil, nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
 		}
 
 		out.Volume = append(out.Volume, volumes...)
@@ -103,12 +99,12 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	if resources := v.LookupPath("resources"); resources.Exists() {
 		resourceList, err := cuefrontend.ParseResourceList(resources)
 		if err != nil {
-			return nil, nil, fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)
 		}
 
 		pack, err := resourceList.ToPack(ctx, env, pl, pkg)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		out.ResourcePack = pack
@@ -120,7 +116,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	if requires := v.LookupPath("requires"); requires.Exists() {
 		declaredStack, err := parseRequires(ctx, pl, loc, requires)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if len(declaredStack) > 0 && out.ResourcePack == nil {
@@ -132,24 +128,24 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		}
 
 		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageRef(pkg.PackageName(), out.Name), declaredStack, out.ResourcePack); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	for _, env := range startupPlan.Env {
+	for _, env := range out.MainContainer.BinaryConfig.Env {
 		if env.FromServiceEndpoint != nil {
 			dep := env.FromServiceEndpoint.ServerRef.AsPackageName()
 			if _, ok := stack[dep]; !ok {
 				// TODO reconcider if we want to implicitly add the dependency NSL-357
-				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
+				return nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
 			}
 		}
 	}
 
-	return out, startupPlan, nil
+	return out, nil
 }
 
-func validateStartupPlan(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, startupPlan *schema.StartupPlan) error {
+func validateServerBinaryConfig(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, startupPlan *schema.BinaryConfig) error {
 	return validateEnvironment(ctx, pl, pkg, startupPlan.Env)
 }
 
