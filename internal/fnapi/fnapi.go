@@ -21,11 +21,16 @@ import (
 	"namespacelabs.dev/foundation/internal/versions"
 )
 
-var EndpointAddress = "https://api.namespacelabs.net"
+var (
+	EndpointAddress = "https://api.namespacelabs.net"
+	AdminMode       = false
+)
 
 func SetupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&EndpointAddress, "fnapi_endpoint", EndpointAddress, "The fnapi endpoint address.")
 	_ = flags.MarkHidden("fnapi_endpoint")
+	flags.BoolVar(&AdminMode, "fnapi_admin", AdminMode, "Whether to enable admin mode.")
+	_ = flags.MarkHidden("fnapi_admin")
 }
 
 // A nil handle indicates that the caller wants to discard the response.
@@ -57,6 +62,10 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 
 	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.APIVersion))
+
+	if AdminMode {
+		headers.Add("NS-API-Mode", "admin")
+	}
 }
 
 func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {
