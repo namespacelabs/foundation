@@ -91,7 +91,7 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-        run: "staticcheck -- $(go list ./... | grep -v tempfork)"
+        run: "staticcheck ./..."
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
