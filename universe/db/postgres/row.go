@@ -35,6 +35,8 @@ func (d deferredRow) Scan(target ...any) error {
 			return err
 		}
 
+		defer rows.Close()
+
 		for rows.Next() {
 			return rows.Scan(target...)
 		}
