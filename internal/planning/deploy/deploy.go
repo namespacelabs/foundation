@@ -447,8 +447,14 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 		}
 
 		for _, env := range allEnv {
-			if env.FromSecretRef != nil {
+			switch {
+			case env.FromSecretRef != nil:
 				secretRefs = append(secretRefs, env.FromSecretRef)
+
+			case env.FromServiceEndpoint != nil:
+				if err := validateServiceRef(env.FromServiceEndpoint, stack); err != nil {
+					return runtime.DeploymentSpec{}, fnerrors.AttachLocation(srv.Location, err)
+				}
 			}
 		}
 
@@ -465,6 +471,26 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 		Specs:   serverRuns,
 		Secrets: *grounded,
 	}, nil
+}
+
+func validateServiceRef(ref *schema.ServiceRef, stack *planning.Stack) error {
+	// TODO speed this up.
+	for _, e := range stack.Proto().EndpointsBy(ref.ServerRef.AsPackageName()) {
+		if e.ServiceName == ref.ServiceName {
+			return nil
+		}
+	}
+
+	// No corresponding endpoint found - check if the server is present in the stack.
+	for _, srv := range stack.Servers {
+		if srv.Package.PackageName() == ref.ServerRef.AsPackageName() {
+			return fnerrors.New("invalid service reference: service %q is not defined for server %q", ref.ServiceName, ref.ServerRef.AsPackageName())
+		}
+	}
+
+	return fnerrors.UsageError(
+		fmt.Sprintf("Try adding %q to you server's `requires` block.", ref.ServerRef.AsPackageName()),
+		"invalid service reference: server %q is missing in the deployment stack", ref.ServerRef.AsPackageName())
 }
 
 func extendContainer(target *runtime.ContainerRunOpts, cext *schema.ContainerExtension) {
