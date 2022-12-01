@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
+	"namespacelabs.dev/foundation/internal/cli/cmd/mod"
 	"namespacelabs.dev/foundation/internal/cli/cmd/prepare"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
@@ -27,13 +28,13 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewDevCmd())
 	root.AddCommand(NewBuildBinaryCmd())
 	root.AddCommand(NewCacheCmd())
-	root.AddCommand(NewTidyCmd())
+	root.AddCommand(mod.NewModCmd(RunCommand))
+	root.AddCommand(mod.NewTidyCmd()) // register `ns tidy` as an alias for `ns mod tidy`
 	root.AddCommand(NewLogsCmd())
 	root.AddCommand(NewLoginCmd())
 	root.AddCommand(NewKeysCmd())
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
-	root.AddCommand(NewModCmd())
 	root.AddCommand(sdk.NewSdkCmd())
 	root.AddCommand(NewVersionCmd())
 	root.AddCommand(NewAttachCmd())

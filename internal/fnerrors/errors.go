@@ -72,7 +72,7 @@ func InternalError(format string, args ...interface{}) error {
 	return makeError(Kind_INTERNAL, format, args...)
 }
 
-// Unexpected error produced by a component external to namespace.
+// Unexpected error produced by a component external to Namespace.
 func ExternalError(format string, args ...interface{}) error {
 	return makeError(Kind_EXTERNAL, format, args...)
 }

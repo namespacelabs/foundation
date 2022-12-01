@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCreateCmd(runCommand func(ctx context.Context, args []string) error) *cobra.Command {
+func NewCreateCmd(runCommand func(context.Context, []string) error) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Creates a new extension, service, server or workspace (also from a starter template).",
