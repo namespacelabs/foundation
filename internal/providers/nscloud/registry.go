@@ -49,7 +49,12 @@ func RegisterRegistry() {
 	oci.RegisterDomainKeychain(registryAddr, DefaultKeychain, oci.Keychain_UseAlways)
 }
 
-func (r nscloudRegistry) IsInsecure() bool { return false }
+func (r nscloudRegistry) Access() oci.RegistryAccess {
+	return oci.RegistryAccess{
+		InsecureRegistry: false,
+		Keychain:         defaultKeychain{},
+	}
+}
 
 func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	return compute.Map(tasks.Action("nscloud.allocate-repository").Arg("repository", repository),
@@ -75,10 +80,8 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 			return oci.AllocatedRepository{
 				Parent: r,
 				TargetRepository: oci.TargetRepository{
-					InsecureRegistry: r.IsInsecure(),
-					ImageID:          oci.ImageID{Repository: url},
-					// We need to make sure our keychain is attached to the name.
-					Keychain: defaultKeychain{},
+					ImageID:        oci.ImageID{Repository: url},
+					RegistryAccess: r.Access(),
 				},
 			}, nil
 		})
@@ -98,7 +101,7 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 }
 
 func (r nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedRepository, error) {
-	return registry.AttachStaticKeychain(r, imgid, defaultKeychain{}), nil
+	return registry.AttachStaticKeychain(r, imgid, r.Access()), nil
 }
 
 type defaultKeychain struct{}

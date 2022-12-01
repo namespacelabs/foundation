@@ -248,7 +248,7 @@ func uploadPlanTo(ctx context.Context, targetRepo string, plan *schema.DeployPla
 
 	result := oci.PublishImage(registry.Precomputed(registry.AttachStaticKeychain(nil, oci.ImageID{
 		Repository: filepath.Join(targetRepo, "plan"),
-	}, nil)), image)
+	}, oci.RegistryAccess{})), image)
 	resultImageID, err := compute.GetValue(ctx, result.ImageID())
 	if err != nil {
 		return err

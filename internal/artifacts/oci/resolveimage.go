@@ -12,9 +12,8 @@ import (
 )
 
 type ResolveOpts struct {
-	InsecureRegistry bool
-	PublicImage      bool
-	Keychain         Keychain
+	PublicImage bool
+	RegistryAccess
 }
 
 // Resolves the image tag into a digest. If one is already specified, this is a no-op.

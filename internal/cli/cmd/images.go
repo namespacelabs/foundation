@@ -50,7 +50,7 @@ func NewImagesCmd() *cobra.Command {
 
 			platform := docker.HostPlatform()
 
-			img, err := compute.GetValue(ctx, oci.ImageP(image, &platform, oci.ResolveOpts{InsecureRegistry: insecure}))
+			img, err := compute.GetValue(ctx, oci.ImageP(image, &platform, oci.ResolveOpts{RegistryAccess: oci.RegistryAccess{InsecureRegistry: insecure}}))
 			if err != nil {
 				return err
 			}

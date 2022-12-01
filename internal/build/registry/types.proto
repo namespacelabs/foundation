@@ -9,12 +9,24 @@ package foundation.build.registry;
 option go_package = "namespacelabs.dev/foundation/internal/build/registry";
 
 message Registry {
-    string url               = 1;
-    bool   insecure          = 2;
-    bool   use_docker_auth   = 3;  // If true, the credentials stored by Docker are used to access this repository.
-    bool   single_repository = 4;  // If true, all images are stored in a single repository, rather than creating a repository per image.
+    string            url               = 1;
+    bool              insecure          = 2;
+    bool              use_docker_auth   = 3;  // If true, the credentials stored by Docker are used to access this repository.
+    bool              single_repository = 4;  // If true, all images are stored in a single repository, rather than creating a repository per image.
+    RegistryTransport transport         = 5;
 }
 
 message Provider {
     string provider = 1;
+}
+
+message RegistryTransport {
+    SSH ssh = 1;
+
+    message SSH {
+        string user             = 1;
+        string private_key_path = 2;
+        string ssh_addr         = 3;
+        string remote_addr      = 4;
+    }
 }

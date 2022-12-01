@@ -56,7 +56,7 @@ func newImageCmd() *cobra.Command {
 						}
 					}
 				} else {
-					d, err := fetchImage(ctx, arg, oci.ResolveOpts{InsecureRegistry: insecure})
+					d, err := fetchImage(ctx, arg, oci.ResolveOpts{RegistryAccess: oci.RegistryAccess{InsecureRegistry: insecure}})
 					if err != nil {
 						return err
 					}

@@ -49,7 +49,12 @@ func repoURL(sesh aws.Config, caller *sts.GetCallerIdentityOutput) string {
 	return fmt.Sprintf("%s.dkr.ecr.%s.amazonaws.com", *caller.Account, sesh.Region)
 }
 
-func (em ecrManager) IsInsecure() bool { return false }
+func (em ecrManager) Access() oci.RegistryAccess {
+	return oci.RegistryAccess{
+		InsecureRegistry: false,
+		Keychain:         keychainSession(em),
+	}
+}
 
 func (em ecrManager) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	keychain := keychainSession(em)
@@ -73,8 +78,8 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 			return oci.AllocatedRepository{
 				Parent: em,
 				TargetRepository: oci.TargetRepository{
-					Keychain: keychain,
-					ImageID:  imgid,
+					RegistryAccess: em.Access(),
+					ImageID:        imgid,
 				},
 			}, nil
 		},
@@ -84,7 +89,7 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 func (em ecrManager) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
 	keychain := keychainSession(em)
 
-	return registry.AttachStaticKeychain(em, img, keychain), nil
+	return registry.AttachStaticKeychain(em, img, oci.RegistryAccess{Keychain: keychain}), nil
 }
 
 type makeRepository struct {

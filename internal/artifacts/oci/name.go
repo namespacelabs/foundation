@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -23,14 +24,19 @@ type AllocatedRepository struct {
 	TargetRepository
 }
 
-type TargetRepository struct {
+type RegistryAccess struct {
 	InsecureRegistry bool
 	Keychain         Keychain
+	Transport        *registry.RegistryTransport
+}
+
+type TargetRepository struct {
+	RegistryAccess
 	ImageID
 }
 
 func (t AllocatedRepository) ComputeDigest(context.Context) (schema.Digest, error) {
-	return schema.DigestOf("insecureRegistry", t.InsecureRegistry, "repository", t.Repository, "tag", t.Tag, "digest", t.Digest)
+	return schema.DigestOf("insecureRegistry", t.InsecureRegistry, "repository", t.Repository, "tag", t.Tag, "digest", t.Digest, "transport", t.Transport)
 }
 
 func defaultTag(digest v1.Hash) string {

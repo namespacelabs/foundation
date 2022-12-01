@@ -22,19 +22,23 @@ func MakeStaticRegistry(r *registry.Registry) Manager {
 	return staticRegistry{r}
 }
 
-func (sr staticRegistry) IsInsecure() bool {
-	return sr.r.Insecure
+func (sr staticRegistry) Access() oci.RegistryAccess {
+	return oci.RegistryAccess{
+		InsecureRegistry: sr.r.Insecure,
+		Keychain:         sr.keychain(),
+		Transport:        sr.r.Transport,
+	}
 }
 
 func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
 	if sr.r.SingleRepository {
-		return StaticName(sr, oci.ImageID{Repository: sr.r.Url}, sr.IsInsecure(), sr.keychain())
+		return StaticName(sr, oci.ImageID{Repository: sr.r.Url}, sr.Access())
 	}
 
-	return AllocateStaticName(sr, sr.r.Url, repository, sr.keychain())
+	return AllocateStaticName(sr, sr.r.Url, repository, sr.Access())
 }
 
-func AllocateStaticName(r Manager, url, repository string, keychain oci.Keychain) compute.Computable[oci.AllocatedRepository] {
+func AllocateStaticName(r Manager, url, repository string, access oci.RegistryAccess) compute.Computable[oci.AllocatedRepository] {
 	if strings.HasSuffix(url, "/") {
 		url += repository
 	} else {
@@ -43,11 +47,11 @@ func AllocateStaticName(r Manager, url, repository string, keychain oci.Keychain
 
 	imgid := oci.ImageID{Repository: url}
 
-	return StaticName(r, imgid, r.IsInsecure(), keychain)
+	return StaticName(r, imgid, access)
 }
 
 func (sr staticRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
-	return AttachStaticKeychain(sr, img, sr.keychain()), nil
+	return AttachStaticKeychain(sr, img, sr.Access()), nil
 }
 
 func (sr staticRegistry) keychain() oci.Keychain {
@@ -58,13 +62,12 @@ func (sr staticRegistry) keychain() oci.Keychain {
 	return nil
 }
 
-func AttachStaticKeychain(r Manager, img oci.ImageID, keychain oci.Keychain) oci.AllocatedRepository {
+func AttachStaticKeychain(r Manager, img oci.ImageID, access oci.RegistryAccess) oci.AllocatedRepository {
 	return oci.AllocatedRepository{
 		Parent: r,
 		TargetRepository: oci.TargetRepository{
-			InsecureRegistry: r.IsInsecure(),
-			ImageID:          img,
-			Keychain:         keychain,
+			RegistryAccess: access,
+			ImageID:        img,
 		},
 	}
 }

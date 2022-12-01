@@ -25,7 +25,11 @@ func pushImage(ctx context.Context, tag TargetRepository, img v1.Image, trackPro
 		return v1.Hash{}, fnerrors.InternalError("failed to parse tag: %w", err)
 	}
 
-	remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
+	remoteOpts, err := WriteRemoteOptsWithAuth(ctx, tag.RegistryAccess)
+	if err != nil {
+		return v1.Hash{}, fnerrors.InternalError("failed to construct remoteops: %w", err)
+	}
+
 	if trackProgress {
 		var rp RemoteProgress
 		tasks.Attachments(ctx).SetProgress(&rp)
@@ -50,7 +54,11 @@ func pushImageIndex(ctx context.Context, tag TargetRepository, img v1.ImageIndex
 		return err
 	}
 
-	remoteOpts := WriteRemoteOptsWithAuth(ctx, tag.Keychain)
+	remoteOpts, err := WriteRemoteOptsWithAuth(ctx, tag.RegistryAccess)
+	if err != nil {
+		return err
+	}
+
 	if trackProgress {
 		var rp RemoteProgress
 		remoteOpts = append(remoteOpts, rp.Track())

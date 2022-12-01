@@ -135,7 +135,7 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 			if baseRepository != "" {
 				tag = registry.StaticName(nil, oci.ImageID{
 					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
-				}, false, nil)
+				}, oci.RegistryAccess{})
 			} else {
 				tag = reg.AllocateName(pkg.PackageName().String())
 			}

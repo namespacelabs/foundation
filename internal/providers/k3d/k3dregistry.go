@@ -68,18 +68,18 @@ func Register() {
 	})
 }
 
-func (r *k3dRegistry) IsInsecure() bool { return true }
+func (r *k3dRegistry) Access() oci.RegistryAccess { return oci.RegistryAccess{InsecureRegistry: true} }
 
 func (r *k3dRegistry) baseUrl() string {
 	return fmt.Sprintf("%s:%s", r.ContainerName, r.PublicPort)
 }
 
 func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
-	return registry.AllocateStaticName(r, r.baseUrl(), repository, nil)
+	return registry.AllocateStaticName(r, r.baseUrl(), repository, r.Access())
 }
 
 func (r *k3dRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
-	return registry.AttachStaticKeychain(r, img, nil), nil
+	return registry.AttachStaticKeychain(r, img, r.Access()), nil
 }
 
 func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedRepository) (*buildkit.ExportToRegistryRequest, *buildkit.ExportToRegistryRequest) {
@@ -92,12 +92,12 @@ func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.A
 			return &buildkit.ExportToRegistryRequest{
 					// Connect directly to the registry via localhost.
 					Name:     fmt.Sprintf("127.0.0.1:%s%s", r.PublicPort, trimmed),
-					Insecure: r.IsInsecure(),
+					Insecure: r.Access().InsecureRegistry,
 				},
 				&buildkit.ExportToRegistryRequest{
 					// Connect directly to the registry via the default bridge.
 					Name:     fmt.Sprintf("%s:5000%s", r.ContainerIPAddress, trimmed),
-					Insecure: r.IsInsecure(),
+					Insecure: r.Access().InsecureRegistry,
 				}
 		}
 	}

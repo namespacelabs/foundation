@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -34,8 +35,7 @@ func Register(name string, make func(context.Context, cfg.Configuration) (Manage
 }
 
 type Manager interface {
-	// Returns true if calls to the registry should be made over HTTP (instead of HTTPS).
-	IsInsecure() bool
+	Access() oci.RegistryAccess
 
 	AllocateName(repository string) compute.Computable[oci.AllocatedRepository]
 	AttachKeychain(oci.ImageID) (oci.AllocatedRepository, error)
@@ -57,6 +57,18 @@ func GetRegistryFromConfig(ctx context.Context, env string, cfg cfg.Configuratio
 			r.Url = trimmed
 			r.Insecure = true
 		}
+
+		if r.Transport != nil && r.Transport.Ssh != nil {
+			if r.Transport.Ssh.RemoteAddr == "" {
+				// We pass a dummy scheme just to facilitate parsing.
+				parsed, err := url.Parse("//" + r.Url)
+				if err != nil {
+					return nil, fnerrors.New("transport.ssh: failed to compute remote address while parsing url: %w", err)
+				}
+				r.Transport.Ssh.RemoteAddr = parsed.Host
+			}
+		}
+
 		return MakeStaticRegistry(r), nil
 	}
 
@@ -77,20 +89,20 @@ func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string)
 	return nil, fnerrors.New("%q is not a known registry provider", name)
 }
 
-func StaticName(parent Manager, imageID oci.ImageID, insecure bool, keychain oci.Keychain) compute.Computable[oci.AllocatedRepository] {
+func StaticName(parent Manager, imageID oci.ImageID, access oci.RegistryAccess) compute.Computable[oci.AllocatedRepository] {
 	return compute.Map(tasks.Action("registry.allocate-tag").Arg("ref", imageID.ImageRef()), compute.Inputs().
-		Bool("insecure", insecure).
+		Bool("insecure", access.InsecureRegistry).
+		Proto("transport", access.Transport).
 		JSON("imageID", imageID).
 		Indigestible("parent", parent).
-		Indigestible("keychain", keychain),
+		Indigestible("keychain", access.Keychain),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, r compute.Resolved) (oci.AllocatedRepository, error) {
 			return oci.AllocatedRepository{
 				Parent: parent,
 				TargetRepository: oci.TargetRepository{
-					InsecureRegistry: insecure,
-					ImageID:          imageID,
-					Keychain:         keychain,
+					RegistryAccess: access,
+					ImageID:        imageID,
 				},
 			}, nil
 		})

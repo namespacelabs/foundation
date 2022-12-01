@@ -44,7 +44,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 			return nil, err
 		}
 
-		opts := oci.ResolveOpts{Keychain: allocated.Keychain, InsecureRegistry: allocated.InsecureRegistry}
+		opts := oci.ResolveOpts{RegistryAccess: allocated.RegistryAccess}
 
 		ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageID.RepoAndDigest(), opts)
 		if err != nil {

@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"namespacelabs.dev/foundation/internal/versions"
 )
 
 var (
@@ -40,8 +41,24 @@ func RegisterDomainKeychain(suffix string, keychain Keychain, purpose KeychainWh
 	staticMapping = append(staticMapping, keychainMap{suffix, keychain, purpose})
 }
 
-func WriteRemoteOptsWithAuth(ctx context.Context, keychain Keychain) []remote.Option {
-	return []remote.Option{remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, keychain, true})}
+func userAgent() remote.Option {
+	return remote.WithUserAgent(fmt.Sprintf("NamespaceCLI/%d", versions.APIVersion))
+}
+
+func WriteRemoteOptsWithAuth(ctx context.Context, access RegistryAccess) ([]remote.Option, error) {
+	options := []remote.Option{
+		remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, access.Keychain, true}),
+		userAgent(),
+	}
+
+	transportOptions, err := parseTransport(ctx, access.Transport)
+	if err != nil {
+		return nil, err
+	}
+
+	options = append(options, transportOptions...)
+
+	return options, nil
 }
 
 func ParseRefAndKeychain(ctx context.Context, imageRef string, opts ResolveOpts) (name.Reference, []remote.Option, error) {
@@ -55,7 +72,7 @@ func ParseRefAndKeychain(ctx context.Context, imageRef string, opts ResolveOpts)
 		return nil, nil, err
 	}
 
-	options := []remote.Option{remote.WithContext(ctx)}
+	options := []remote.Option{remote.WithContext(ctx), userAgent()}
 
 	if !opts.PublicImage {
 		if opts.Keychain != nil {
@@ -64,6 +81,13 @@ func ParseRefAndKeychain(ctx context.Context, imageRef string, opts ResolveOpts)
 			options = append(options, remote.WithAuthFromKeychain(defaultKeychain{ctx, false}))
 		}
 	}
+
+	transportOptions, err := parseTransport(ctx, opts.Transport)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	options = append(options, transportOptions...)
 
 	return ref, options, nil
 }
