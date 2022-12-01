@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -76,6 +77,9 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	serverResources := core.ServerResourcesFrom(ctx)
 
+	// XXX use pod name
+	instanceID := uuid.NewString()
+
 	resource, err :=
 		resource.New(ctx,
 			resource.WithSchemaURL(semconv.SchemaURL),
@@ -85,8 +89,10 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			resource.WithProcessRuntimeDescription(),
 			resource.WithAttributes(
 				semconv.ServiceNameKey.String(deps.ServerInfo.ServerName),
+				semconv.ServiceVersionKey.String(deps.ServerInfo.GetVcs().GetRevision()),
+				semconv.ServiceInstanceIDKey.String(instanceID),
+				semconv.DeploymentEnvironmentKey.String(deps.ServerInfo.EnvName),
 				attribute.String("environment", deps.ServerInfo.EnvName),
-				attribute.String("vcs.commit", deps.ServerInfo.GetVcs().GetRevision()),
 			),
 		)
 	if err != nil {
