@@ -20,7 +20,7 @@ func newFormatCmd() *cobra.Command {
 		&cobra.Command{
 			Use:     "format",
 			Aliases: []string{"fmt"},
-			Short:   "Format the workspace file is formatted.",
+			Short:   "Format the workspace file.",
 			Args:    cobra.NoArgs,
 		}).
 		Do(func(ctx context.Context) error {
