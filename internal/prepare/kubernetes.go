@@ -60,3 +60,12 @@ func instantiateKube(env cfg.Context, confs ...compute.Computable[*schema.DevHos
 			return kubernetes.ConnectToCluster(ctx, config)
 		})
 }
+
+func ConnectToExisting(env cfg.Context) compute.Computable[*kubernetes.Cluster] {
+	return compute.Map(tasks.Action("prepare.kubernetes"),
+		compute.Inputs().Indigestible("env", env),
+		compute.Output{},
+		func(ctx context.Context, r compute.Resolved) (*kubernetes.Cluster, error) {
+			return kubernetes.ConnectToCluster(ctx, env.Configuration())
+		})
+}

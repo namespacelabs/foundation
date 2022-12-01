@@ -43,6 +43,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(eks.NewEksCmd())
 	root.AddCommand(lsp.NewLSPCmd())
 	root.AddCommand(prepare.NewPrepareCmd())
+	root.AddCommand(prepare.NewPrepareIngressCmd())
 	root.AddCommand(secrets.NewSecretsCmd())
 	root.AddCommand(tools.NewToolsCmd())
 	root.AddCommand(create.NewCreateCmd(RunCommand))

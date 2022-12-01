@@ -68,6 +68,30 @@ func NewPrepareCmd() *cobra.Command {
 	return rootCmd
 }
 
+func NewPrepareIngressCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "prepare-ingress",
+		Hidden: true,
+	}
+
+	env := cmd.Flags().String("env", "dev", "The environment to prepare.")
+
+	return fncobra.With(cmd, func(ctx context.Context) error {
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
+		env, err := cfg.LoadContext(root, *env)
+		if err != nil {
+			return err
+		}
+
+		_, err = compute.GetValue(ctx, prepare.PrepareIngress(env, prepare.ConnectToExisting(env)))
+		return err
+	})
+}
+
 func downloadPrebuilts(env cfg.Context) compute.Computable[[]oci.ResolvableImage] {
 	var prebuilts = []schema.PackageName{}
 
