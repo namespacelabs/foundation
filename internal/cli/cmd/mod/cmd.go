@@ -20,6 +20,7 @@ func NewModCmd(runCommand func(context.Context, []string) error) *cobra.Command 
 	cmd.AddCommand(newInitCmd(runCommand))
 	cmd.AddCommand(newDownloadCmd())
 	cmd.AddCommand(newGetCmd())
+	cmd.AddCommand(newFormatCmd())
 
 	return cmd
 }

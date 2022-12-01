@@ -41,7 +41,7 @@ func NewTidyCmd() *cobra.Command {
 			Args:  cobra.NoArgs,
 		}).
 		With(fncobra.HardcodeEnv(&env, envRef)).
-		DoWithArgs(func(ctx context.Context, args []string) error {
+		Do(func(ctx context.Context) error {
 			// First of all, we work through all packages to make sure we have captured
 			// their dependencies locally. If we don't do this here, package parsing below
 			// will fail.

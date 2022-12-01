@@ -14,6 +14,7 @@ import (
 type EditableWorkspaceData interface {
 	FormatTo(io.Writer) error
 
+	WithModuleName(string) WorkspaceData
 	WithSetDependency(...*schema.Workspace_Dependency) WorkspaceData
 	WithReplacedDependencies([]*schema.Workspace_Dependency) WorkspaceData
 	WithSetEnvironment(...*schema.Workspace_EnvironmentSpec) WorkspaceData

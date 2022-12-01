@@ -7,6 +7,7 @@ package parsing
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -30,7 +31,8 @@ func FindModuleRoot(dir string) (string, error) {
 }
 
 type ModuleAtArgs struct {
-	SkipAPIRequirements bool
+	SkipAPIRequirements      bool
+	SkipModuleNameValidation bool
 }
 
 // Loads and validates a module at a given path.
@@ -42,6 +44,12 @@ func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (pkggraph.Wor
 
 	if !args.SkipAPIRequirements {
 		if err := validateAPIRequirements(ws.ModuleName(), ws.Proto().Foundation); err != nil {
+			return ws, err
+		}
+	}
+
+	if !args.SkipModuleNameValidation {
+		if err := validateModuleName(ws.ModuleName()); err != nil {
 			return ws, err
 		}
 	}
@@ -72,6 +80,14 @@ own codebase, then you'll need to either revert to a previous version of
 
 This version check will be removed in future non-alpha versions of
 Foundation, which establish a stable longer term supported API surface.`, foundationModule))
+	}
+
+	return nil
+}
+
+func validateModuleName(moduleName string) error {
+	if strings.ToLower(moduleName) != moduleName {
+		return fnerrors.UsageError("Please run `ns mod fmt` to canonicalize the module name.", "invalid module name %q: may not contain uppercase letters", moduleName)
 	}
 
 	return nil

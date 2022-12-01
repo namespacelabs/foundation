@@ -377,6 +377,24 @@ func makeEnv(v *schema.Workspace_EnvironmentSpec) *ast.Field {
 	}
 }
 
+func (r workspaceData) WithModuleName(name string) pkggraph.WorkspaceData {
+	syntax := r.structLit()
+
+	for _, decl := range syntax.Elts {
+		switch z := decl.(type) {
+		case *ast.Field:
+			if lbl, _, _ := ast.LabelName(z.Label); lbl == "module" {
+				z.Value = ast.NewString(name)
+			}
+		}
+	}
+
+	copy := r
+	copy.source = r.source.Context().BuildExpr(syntax)
+
+	return copy
+}
+
 func (r workspaceData) WithSetDependency(deps ...*schema.Workspace_Dependency) pkggraph.WorkspaceData {
 	var add, update []*schema.Workspace_Dependency
 
