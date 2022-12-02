@@ -39,3 +39,5 @@ dist/
 !**/.yarn/versions
 
 .vscode/launch.json
+
+user.secrets
