@@ -112,6 +112,10 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			return fnerrors.New("docker: doesn't support env.ExperimentalFromSecret")
 		}
 
+		if kv.ExperimentalFromDownwardsFieldPath != "" {
+			return fnerrors.New("docker: doesn't support env.ExperimentalFromDownwardsFieldPath")
+		}
+
 		if kv.FromSecretRef != nil {
 			return fnerrors.New("docker: doesn't support env.FromSecretRef")
 		}

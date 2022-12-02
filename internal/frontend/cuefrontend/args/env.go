@@ -20,10 +20,11 @@ type EnvMap struct {
 }
 
 type envValue struct {
-	value               string
-	fromSecret          string
-	fromServiceEndpoint string
-	fromResourceField   *resourceFieldSyntax
+	value                              string
+	fromSecret                         string
+	fromServiceEndpoint                string
+	experimentalFromDownwardsFieldPath string
+	fromResourceField                  *resourceFieldSyntax
 }
 
 var _ json.Unmarshaler = &EnvMap{}
@@ -79,6 +80,9 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				Resource:      resourceRef,
 				FieldSelector: value.fromResourceField.FieldRef,
 			}
+
+		case value.experimentalFromDownwardsFieldPath != "":
+			out.ExperimentalFromDownwardsFieldPath = value.experimentalFromDownwardsFieldPath
 		}
 		env = append(env, out)
 	}
@@ -90,7 +94,7 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 	return env, nil
 }
 
-var validKeys = []string{"fromSecret", "fromServiceEndpoint", "fromResourceField"}
+var validKeys = []string{"fromSecret", "fromServiceEndpoint", "fromResourceField", "experimentalFromDownwardsFieldPath"}
 
 func (ev *envValue) UnmarshalJSON(data []byte) error {
 	d := json.NewDecoder(bytes.NewReader(data))
@@ -126,6 +130,9 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 
 			ev.fromResourceField = &ref
 			return nil
+
+		case "experimentalFromDownwardsFieldPath":
+			ev.experimentalFromDownwardsFieldPath, err = mustString("experimentalFromDownwardsFieldPath", m[keys[0]])
 		}
 
 		return err

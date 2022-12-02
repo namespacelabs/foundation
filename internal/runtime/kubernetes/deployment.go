@@ -1048,6 +1048,11 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 				WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
 					applycorev1.SecretKeySelector().WithName(parts[0]).WithKey(parts[1])))
 
+		case kv.ExperimentalFromDownwardsFieldPath != "":
+			entry = applycorev1.EnvVar().WithName(kv.Name).
+				WithValueFrom(applycorev1.EnvVarSource().WithFieldRef(
+					applycorev1.ObjectFieldSelector().WithFieldPath(kv.ExperimentalFromDownwardsFieldPath)))
+
 		case kv.FromSecretRef != nil:
 			if out == nil {
 				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
