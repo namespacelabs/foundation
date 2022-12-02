@@ -72,10 +72,10 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 		defer t.Stop()
 
-		commited := map[string]*committedState{} // Key is resource ID.
+		committed := map[string]*committedState{} // Key is resource ID.
 
 		checkRunDiagnosis := func() {
-			for resourceID, state := range commited {
+			for resourceID, state := range committed {
 				all := []*runtimepb.ContainerUnitWaitStatus{}
 				for _, w := range state.Waiting {
 					all = append(all, w.Containers...)
@@ -184,7 +184,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 				}
 
 				if ev.Stage >= orchestration.Event_COMMITTED {
-					state, ok := commited[ev.ResourceId]
+					state, ok := committed[ev.ResourceId]
 					if !ok {
 						state = &committedState{
 							Commited: ev.Timestamp.AsTime(),
@@ -194,7 +194,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 							state.Commited = time.Now()
 						}
 
-						commited[ev.ResourceId] = state
+						committed[ev.ResourceId] = state
 					}
 
 					if ev.Ready != orchestration.Event_READY {
@@ -228,7 +228,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 							checkRunDiagnosis()
 						}
 					} else {
-						delete(commited, ev.ResourceId)
+						delete(committed, ev.ResourceId)
 					}
 				}
 
