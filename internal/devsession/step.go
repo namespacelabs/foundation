@@ -28,6 +28,11 @@ import (
 )
 
 func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, packageNames []string, session *Session, portForward *portforward.PortForward) error {
+	planner, err := runtime.PlannerFor(ctx, env)
+	if err != nil {
+		return err
+	}
+
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
 		focusServers := snapshot.RequireServers(env, serverPackages...)
@@ -47,6 +52,7 @@ func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamesp
 			serverPackages: serverPackages,
 			focusServers:   focusServers,
 			cluster:        rt,
+			planner:        planner,
 		}, nil); err != nil {
 			return err
 		}
@@ -62,6 +68,7 @@ type buildAndDeploy struct {
 	serverPackages []schema.PackageName
 	focusServers   compute.Computable[*snapshot.ServerSnapshot]
 	cluster        runtime.ClusterNamespace
+	planner        runtime.Planner
 
 	mu            sync.Mutex
 	cancelRunning func()
@@ -131,7 +138,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 		observers = append(observers, updateDeploymentStatus{do.session})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.cluster.Planner(), stack)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.planner, stack)
 		if err != nil {
 			return err
 		}

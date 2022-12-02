@@ -73,17 +73,17 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			cluster, err := runtime.NamespaceFor(ctx, env)
-			if err != nil {
-				return err
-			}
-
 			stack, err := planning.ComputeStack(ctx, servers.Servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 			if err != nil {
 				return err
 			}
 
-			reg := cluster.Planner().Registry()
+			planner, err := runtime.PlannerFor(ctx, env)
+			if err != nil {
+				return err
+			}
+
+			reg := planner.Registry()
 
 			// When uploading a plan, any server and container images should be
 			// pushed to the same repository, so they're accessible by the plan.
@@ -93,7 +93,7 @@ func NewDeployCmd() *cobra.Command {
 				})
 			}
 
-			plan, err := deploy.PrepareDeployStackToRegistry(ctx, env, cluster.Planner(), reg, stack)
+			plan, err := deploy.PrepareDeployStackToRegistry(ctx, env, planner, reg, stack)
 			if err != nil {
 				return err
 			}
@@ -118,6 +118,11 @@ func NewDeployCmd() *cobra.Command {
 			}
 
 			sealed := pkggraph.MakeSealedContext(env, servers.SealedPackages)
+
+			cluster, err := runtime.NamespaceFor(ctx, env)
+			if err != nil {
+				return err
+			}
 
 			return completeDeployment(ctx, sealed, cluster, deployPlan, deployOpts)
 		})

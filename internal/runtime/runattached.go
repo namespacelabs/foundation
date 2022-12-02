@@ -17,7 +17,12 @@ import (
 )
 
 func RunAttached(ctx context.Context, config cfg.Context, cluster ClusterNamespace, spec DeployableSpec, io TerminalIO) error {
-	plan, err := cluster.Planner().PlanDeployment(ctx, DeploymentSpec{
+	planner, err := cluster.Cluster().Planner(ctx, config)
+	if err != nil {
+		return err
+	}
+
+	plan, err := planner.PlanDeployment(ctx, DeploymentSpec{
 		Specs: []DeployableSpec{spec},
 	})
 	if err != nil {

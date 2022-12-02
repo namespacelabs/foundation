@@ -53,7 +53,7 @@ type Cluster interface {
 
 	// Returns a namespace'd cluster -- one for a particular application use,
 	// bound to the workspace identified by the cfg.Context.
-	Bind(context.Context, cfg.Context) (ClusterNamespace, error)
+	Bind(context.Context, cfg.Context) ClusterNamespace
 
 	// Fetch diagnostics of a particular container reference.
 	FetchDiagnostics(context.Context, *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error)
@@ -152,9 +152,6 @@ type Planner interface {
 type ClusterNamespace interface {
 	// Returns a reference to the cluster where this namespace exists.
 	Cluster() Cluster
-
-	// Planner returns a Planner bound to the same namespace as this ClusterNamespace.
-	Planner() Planner
 
 	// DeployedConfigImageID retrieves the image reference of the "configuration
 	// image" used to deploy the specified server. Configuration images are only

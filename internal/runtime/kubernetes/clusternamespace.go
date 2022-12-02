@@ -34,7 +34,6 @@ type ClusterNamespace struct {
 	parent     runtime.Cluster
 	underlying *Cluster
 	target     clusterTarget
-	planner    runtime.Planner
 }
 
 type clusterTarget struct {
@@ -50,10 +49,8 @@ func ConnectToNamespace(ctx context.Context, env cfg.Context) (*ClusterNamespace
 	if err != nil {
 		return nil, err
 	}
-	bound, err := cluster.Bind(ctx, env)
-	if err != nil {
-		return nil, err
-	}
+
+	bound := cluster.Bind(ctx, env)
 	return bound.(*ClusterNamespace), nil
 }
 
@@ -67,10 +64,6 @@ func (r *ClusterNamespace) KubeConfig() kubedef.KubeConfig {
 
 func (cn *ClusterNamespace) Cluster() runtime.Cluster {
 	return cn.parent
-}
-
-func (cn *ClusterNamespace) Planner() runtime.Planner {
-	return cn.planner
 }
 
 func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*storage.EnvironmentDiagnostics, error) {

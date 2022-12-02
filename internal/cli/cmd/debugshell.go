@@ -40,12 +40,12 @@ func NewDebugShellCmd() *cobra.Command {
 	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
 		var imageID oci.ImageID
 
-		cluster, err := runtime.NamespaceFor(ctx, env)
+		planner, err := runtime.PlannerFor(ctx, env)
 		if err != nil {
 			return err
 		}
 
-		platforms, err := cluster.Planner().TargetPlatforms(ctx)
+		platforms, err := planner.TargetPlatforms(ctx)
 		if err != nil {
 			return err
 		}
@@ -83,13 +83,13 @@ func NewDebugShellCmd() *cobra.Command {
 				return err
 			}
 
-			imageID, err = binary.EnsureImage(ctx, sealedCtx, cluster.Planner().Registry(), prepared)
+			imageID, err = binary.EnsureImage(ctx, sealedCtx, planner.Registry(), prepared)
 			if err != nil {
 				return err
 			}
 
 		default:
-			tag := cluster.Planner().Registry().AllocateName(env.Workspace().ModuleName() + "/debug")
+			tag := planner.Registry().AllocateName(env.Workspace().ModuleName() + "/debug")
 
 			sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
 
@@ -102,6 +102,11 @@ func NewDebugShellCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+		}
+
+		cluster, err := runtime.NamespaceFor(ctx, env)
+		if err != nil {
+			return err
 		}
 
 		return runtime.RunAttachedStdio(ctx, env, cluster, runtime.DeployableSpec{

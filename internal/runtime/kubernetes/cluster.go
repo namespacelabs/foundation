@@ -82,21 +82,16 @@ func (u *Cluster) PreparedClient() client.Prepared {
 	return u.computedClient
 }
 
-func (u *Cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
-	planner, err := u.Planner(ctx, env)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClusterNamespaceWithPlanner(env, u, u, planner), nil
+func (u *Cluster) Bind(ctx context.Context, env cfg.Context) runtime.ClusterNamespace {
+	return NewClusterNamespace(env, u, u)
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
 	return r.ClusterAttachedState.EnsureState(ctx, key, r.Configuration, r, nil)
 }
 
-func NewClusterNamespaceWithPlanner(env cfg.Context, parent runtime.Cluster, u *Cluster, planner runtime.Planner) *ClusterNamespace {
-	return &ClusterNamespace{parent: parent, underlying: u, target: newTarget(env), planner: planner}
+func NewClusterNamespace(env cfg.Context, parent runtime.Cluster, u *Cluster) *ClusterNamespace {
+	return &ClusterNamespace{parent: parent, underlying: u, target: newTarget(env)}
 }
 
 func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config cfg.Configuration, cluster runtime.Cluster, key *string) (any, error) {

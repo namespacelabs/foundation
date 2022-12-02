@@ -51,7 +51,7 @@ func NamespaceFor(ctx context.Context, env cfg.Context) (ClusterNamespace, error
 		return nil, err
 	}
 
-	return cluster.Bind(ctx, env)
+	return cluster.Bind(ctx, env), nil
 }
 
 func ClassFor(ctx context.Context, env cfg.Context) (Class, error) {

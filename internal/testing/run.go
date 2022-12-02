@@ -80,10 +80,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	d := compute.MustGetDepValue(r, test.Driver, "driver")
 
 	env := test.SealedContext
-	cluster, err := test.Cluster.Bind(ctx, test.SealedContext)
-	if err != nil {
-		return nil, err
-	}
+	cluster := test.Cluster.Bind(ctx, test.SealedContext)
 
 	defer func() {
 		if !test.SealedContext.Environment().Ephemeral {
