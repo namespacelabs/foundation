@@ -43,9 +43,8 @@ type resourcePlan struct {
 }
 
 type plannedResource struct {
-	ResourceInstanceID string
-	Instance           *anypb.Any
-	Invocations        []*schema.SerializedInvocation
+	runtime.PlannedResource
+	Invocations []*schema.SerializedInvocation
 }
 
 type serverStack interface {
@@ -66,6 +65,7 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 		Source               schema.PackageName
 		ResourceInstanceID   string
 		ResourceSource       *schema.ResourceInstance
+		ResourceClass        *schema.ResourceClass
 		Invocation           *invocation.Invocation
 		Intent               *anypb.Any
 		SerializedIntentJson []byte
@@ -162,6 +162,7 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 				Source:               schema.PackageName(resource.Source.PackageName),
 				ResourceInstanceID:   resource.ID,
 				ResourceSource:       resource.Source,
+				ResourceClass:        resource.Class.Source,
 				Invocation:           inv,
 				Intent:               resource.Intent,
 				SerializedIntentJson: resource.JSONSerializedIntent,
@@ -289,9 +290,12 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 			}
 
 			plan.PlannedResources = append(plan.PlannedResources, plannedResource{
-				ResourceInstanceID: planningInvocations[k].ResourceInstanceID,
-				Instance:           r.OutputResourceInstance,
-				Invocations:        r.Invocation,
+				PlannedResource: runtime.PlannedResource{
+					ResourceInstanceID: planningInvocations[k].ResourceInstanceID,
+					Class:              planningInvocations[k].ResourceClass,
+					Instance:           r.OutputResourceInstance,
+				},
+				Invocations: r.Invocation,
 			})
 		}
 	}
@@ -316,12 +320,14 @@ type resourceInstance struct {
 	Intent               *anypb.Any
 	JSONSerializedIntent []byte
 	Dependencies         []*resources.ResourceDependency
+	PlannedDependencies  []*resources.ResourceDependency
 	Secrets              []runtime.SecretResourceDependency
 }
 
 type ownedResourceInstances struct {
-	Dependencies []*resources.ResourceDependency
-	Secrets      []runtime.SecretResourceDependency
+	Dependencies        []*resources.ResourceDependency
+	PlannedDependencies []*resources.ResourceDependency
+	Secrets             []runtime.SecretResourceDependency
 }
 
 func (rp *resourceList) Resources() []*resourceInstance {
@@ -351,7 +357,11 @@ func (rp *resourceList) checkAddOwnedResources(ctx context.Context, owner resour
 		rp.perOwnerResources = ResourceMap{}
 	}
 
-	rp.perOwnerResources[owner.PackageRef().Canonical()] = ownedResourceInstances{instance.Dependencies, instance.Secrets}
+	rp.perOwnerResources[owner.PackageRef().Canonical()] = ownedResourceInstances{
+		instance.Dependencies,
+		instance.PlannedDependencies,
+		instance.Secrets,
+	}
 
 	return nil
 }
@@ -422,12 +432,18 @@ func (rp *resourceList) checkAddTo(ctx context.Context, sealedCtx pkggraph.Seale
 
 		if err := rp.checkAddResource(ctx, sealedCtx, scopedID, res.Spec); err != nil {
 			errs = append(errs, err)
-		} else if res.Spec.Provider.Spec.InitializedWith != nil {
-			instance.Dependencies = append(instance.Dependencies, &resources.ResourceDependency{
+		} else {
+			dep := &resources.ResourceDependency{
 				ResourceRef:        res.ResourceRef,
 				ResourceClass:      res.Spec.Class.Ref,
 				ResourceInstanceId: scopedID,
-			})
+			}
+
+			if res.Spec.Provider.Spec.InitializedWith != nil {
+				instance.Dependencies = append(instance.Dependencies, dep)
+			} else {
+				instance.PlannedDependencies = append(instance.PlannedDependencies, dep)
+			}
 		}
 	}
 

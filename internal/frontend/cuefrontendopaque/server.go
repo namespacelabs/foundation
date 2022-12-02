@@ -32,7 +32,7 @@ type cueServer struct {
 }
 
 type cuePermissions struct {
-	ClusterRoles []string `json:"clusterRole"`
+	ClusterRoles []string `json:"clusterRoles"`
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
@@ -139,6 +139,24 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 				// TODO reconcider if we want to implicitly add the dependency NSL-357
 				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
 			}
+		}
+	}
+
+	if bits.Permissions != nil {
+		out.Permissions = &schema.ServerPermissions{}
+
+		for _, clusterRole := range bits.Permissions.ClusterRoles {
+			parsed, err := cuefrontend.ParseResourceRef(ctx, pl, pkg.Location, clusterRole)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			out.Permissions.ClusterRole = append(out.Permissions.ClusterRole, parsed)
+
+			if out.ResourcePack == nil {
+				out.ResourcePack = &schema.ResourcePack{}
+			}
+			out.ResourcePack.ResourceRef = append(out.ResourcePack.ResourceRef, parsed)
 		}
 	}
 

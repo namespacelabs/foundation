@@ -296,7 +296,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan.ResourceList.perOwnerResources)
+			return planDeployment(ctx, env, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -337,10 +337,10 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, resources ResourceMap) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
-	var serverRuns []runtime.DeployableSpec
+	var serverDeployables []runtime.DeployableSpec
 	var secretSources []secretSource
 
 	moduleVCS := map[string]*runtimepb.BuildVCS{}
@@ -368,47 +368,63 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 			return runtime.DeploymentSpec{}, fnerrors.InternalError("%s: missing server build results", srv.PackageName())
 		}
 
-		var run runtime.DeployableSpec
+		var deployable runtime.DeployableSpec
 
 		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary)
 		if err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
-		run.MountRuntimeConfigPath = constants.NamespaceConfigMount
-		run.RuntimeConfig = rt
-		run.BuildVCS = moduleVCS[srv.Location.Module.ModuleName()]
-		run.Resources = resources[srv.PackageRef().Canonical()].Dependencies
-		run.SecretResources = resources[srv.PackageRef().Canonical()].Secrets
+		resources := rp.ResourceList.perOwnerResources
 
-		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &run); err != nil {
+		deployable.MountRuntimeConfigPath = constants.NamespaceConfigMount
+		deployable.RuntimeConfig = rt
+		deployable.BuildVCS = moduleVCS[srv.Location.Module.ModuleName()]
+		deployable.Resources = resources[srv.PackageRef().Canonical()].Dependencies
+		deployable.SecretResources = resources[srv.PackageRef().Canonical()].Secrets
+		deployable.Permissions = srv.Proto().Permissions
+
+		for _, x := range resources[srv.PackageRef().Canonical()].PlannedDependencies {
+			found := false
+			for _, y := range rp.PlannedResources {
+				if x.ResourceInstanceId == y.ResourceInstanceID {
+					found = true
+					deployable.PlannedResource = append(deployable.PlannedResource, y.PlannedResource)
+				}
+			}
+			if !found {
+				return runtime.DeploymentSpec{}, fnerrors.InternalError("referred to resource not found: %s", x.ResourceInstanceId)
+			}
+		}
+
+		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &deployable); err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
 		sidecars, inits := stack.Servers[k].SidecarsAndInits()
 
-		if err := prepareContainerRunOpts(sidecars, resolved, &run.Sidecars); err != nil {
+		if err := prepareContainerRunOpts(sidecars, resolved, &deployable.Sidecars); err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
-		if err := prepareContainerRunOpts(inits, resolved, &run.Inits); err != nil {
+		if err := prepareContainerRunOpts(inits, resolved, &deployable.Inits); err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
 		if sr := outputs[srv.PackageName()]; sr != nil {
-			run.Extensions = append(run.Extensions, sr.Extensions...)
+			deployable.Extensions = append(deployable.Extensions, sr.Extensions...)
 
 			for _, ext := range sr.ServerExtensions {
-				run.Volumes = append(run.Volumes, ext.Volume...)
+				deployable.Volumes = append(deployable.Volumes, ext.Volume...)
 
 				for _, cext := range ext.ExtendContainer {
 					if cext.Name == "" && cext.BinaryRef == nil {
-						extendContainer(&run.MainContainer, cext)
+						extendContainer(&deployable.MainContainer, cext)
 					} else {
-						if updatedSidecars, ok := checkExtend(run.Sidecars, cext); ok {
-							run.Sidecars = updatedSidecars
-						} else if updatedInits, ok := checkExtend(run.Inits, cext); ok {
-							run.Inits = updatedInits
+						if updatedSidecars, ok := checkExtend(deployable.Sidecars, cext); ok {
+							deployable.Sidecars = updatedSidecars
+						} else if updatedInits, ok := checkExtend(deployable.Inits, cext); ok {
+							deployable.Inits = updatedInits
 						} else {
 							return runtime.DeploymentSpec{}, fnerrors.BadInputError("%s: no such container", cext.Name)
 						}
@@ -419,17 +435,17 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 
 		for _, ie := range stack.InternalEndpoints {
 			if srv.PackageName().Equals(ie.ServerOwner) {
-				run.InternalEndpoints = append(run.InternalEndpoints, ie)
+				deployable.InternalEndpoints = append(deployable.InternalEndpoints, ie)
 			}
 		}
 
-		run.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
-		run.Focused = stack.Focus.Includes(srv.PackageName())
+		deployable.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
+		deployable.Focused = stack.Focus.Includes(srv.PackageName())
 
 		// Collect all secret references.
 		var secretRefs []*schema.PackageRef
 		// TODO collect secret refs from resources, too.
-		for _, v := range run.Volumes {
+		for _, v := range deployable.Volumes {
 			if v.Kind == constants.VolumeKindConfigurable {
 				cv := &schema.ConfigurableVolume{}
 				if err := v.Definition.UnmarshalTo(cv); err != nil {
@@ -445,11 +461,11 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 		}
 
 		var allEnv []*schema.BinaryConfig_EnvEntry
-		allEnv = append(allEnv, run.MainContainer.Env...)
-		for _, container := range run.Sidecars {
+		allEnv = append(allEnv, deployable.MainContainer.Env...)
+		for _, container := range deployable.Sidecars {
 			allEnv = append(allEnv, container.Env...)
 		}
-		for _, container := range run.Inits {
+		for _, container := range deployable.Inits {
 			allEnv = append(allEnv, container.Env...)
 		}
 
@@ -465,7 +481,7 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 			}
 		}
 
-		serverRuns = append(serverRuns, run)
+		serverDeployables = append(serverDeployables, deployable)
 		secretSources = append(secretSources, secretSource{srv.Server, secretRefs})
 	}
 
@@ -475,7 +491,7 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 	}
 
 	return runtime.DeploymentSpec{
-		Specs:   serverRuns,
+		Specs:   serverDeployables,
 		Secrets: *grounded,
 	}, nil
 }

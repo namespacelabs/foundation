@@ -15,6 +15,7 @@ import "schema/networking.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/volume.proto";
+import "schema/package.proto";
 
 enum Framework {
     reserved 2, 3;
@@ -26,7 +27,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 37
+// Next ID: 38
 message Server {
     reserved 9, 13, 17, 19, 27, 28, 30, 32, 34;
 
@@ -90,6 +91,8 @@ message Server {
     repeated Volume volume = 26;
 
     ResourcePack resource_pack = 35;
+
+    ServerPermissions permissions = 37;
 
     message ServiceSpec {
         string                   name     = 1;
@@ -156,6 +159,10 @@ message RequiredStorage {
     string persistent_id = 2;
     uint64 byte_count    = 3;
     string mount_path    = 4;
+}
+
+message ServerPermissions {
+    repeated PackageRef cluster_role = 1;
 }
 
 // Server extensions which are dynamically provided by tools.

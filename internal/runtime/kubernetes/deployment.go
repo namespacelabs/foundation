@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/golang/protobuf/proto"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	corev1 "k8s.io/api/core/v1"
@@ -26,12 +27,14 @@ import (
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/internal/support/naming"
+	"namespacelabs.dev/foundation/library/kubernetes/rbac"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	rtschema "namespacelabs.dev/foundation/schema/runtime"
@@ -263,6 +266,50 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	var serviceAccount string // May be specified by a SpecExtension.
 	var createServiceAccount bool
 	var serviceAccountAnnotations []*kubedef.SpecExtension_Annotation
+
+	if len(deployable.Permissions.GetClusterRole()) > 0 {
+		createServiceAccount = true
+		serviceAccount = kubedef.MakeDeploymentId(deployable)
+
+		for _, role := range deployable.Permissions.ClusterRole {
+			var clusterRole *runtime.PlannedResource
+			for _, res := range deployable.PlannedResource {
+				if res.ResourceInstanceID == resources.ResourceID(role) {
+					clusterRole = &res
+					// XXX check dups?
+				}
+			}
+
+			if clusterRole == nil {
+				return fnerrors.New("permissions refer to %q which is not present", role.Canonical())
+			}
+
+			const roleInstance = "library.kubernetes.rbac.ClusterRoleInstance"
+			if clusterRole.Class.GetInstanceType().GetProtoType() != roleInstance {
+				return fnerrors.New("expected resource class to be %q, got %q", roleInstance, clusterRole.Class.GetInstanceType().GetProtoType())
+			}
+
+			instance := &rbac.ClusterRoleInstance{}
+			if err := proto.Unmarshal(clusterRole.Instance.Value, instance); err != nil {
+				return fnerrors.New("failed to unmarshal instance %q: %w", roleInstance, err)
+			}
+
+			s.operations = append(s.operations, kubedef.Apply{
+				Description: fmt.Sprintf("%s: bind Cluster Role", role.Canonical()),
+				Resource: rbacv1.ClusterRoleBinding(fmt.Sprintf("binding:%s:%s", kubedef.MakeDeploymentId(deployable), instance.Name)).
+					WithLabels(labels).
+					WithAnnotations(kubedef.BaseAnnotations()).
+					WithRoleRef(rbacv1.RoleRef().
+						WithAPIGroup("rbac.authorization.k8s.io").
+						WithKind("ClusterRole").
+						WithName(instance.Name)).
+					WithSubjects(rbacv1.Subject().
+						WithKind("ServiceAccount").
+						WithNamespace(target.namespace).
+						WithName(serviceAccount)),
+			})
+		}
+	}
 
 	var specifiedSec *kubedef.SpecExtension_SecurityContext
 

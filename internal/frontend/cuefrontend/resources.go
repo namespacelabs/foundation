@@ -214,7 +214,7 @@ func (rl *ResourceList) ToPack(ctx context.Context, env *schema.Environment, pl 
 	pack := &schema.ResourcePack{}
 
 	for _, resource := range rl.Refs {
-		r, err := parseResourceRef(ctx, pl, pkg.Location, resource)
+		r, err := ParseResourceRef(ctx, pl, pkg.Location, resource)
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +234,7 @@ func (rl *ResourceList) ToPack(ctx context.Context, env *schema.Environment, pl 
 	return pack, nil
 }
 
-func parseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, ref string) (*schema.PackageRef, error) {
+func ParseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, ref string) (*schema.PackageRef, error) {
 	pkgRef, err := schema.ParsePackageRef(loc.PackageName, ref)
 	if err != nil {
 		return nil, err

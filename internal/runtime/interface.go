@@ -13,6 +13,7 @@ import (
 	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console/termios"
@@ -229,15 +230,17 @@ type DeployableSpec struct {
 	Id          string // Must not be empty.
 	Name        string // Can be empty.
 	Volumes     []*schema.Volume
+	Permissions *schema.ServerPermissions
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts
 	Inits         []SidecarRunOpts
 
-	ConfigImage   *oci.ImageID
-	RuntimeConfig *runtimepb.RuntimeConfig
-	BuildVCS      *runtimepb.BuildVCS
-	Resources     []*resources.ResourceDependency
+	ConfigImage     *oci.ImageID
+	RuntimeConfig   *runtimepb.RuntimeConfig
+	BuildVCS        *runtimepb.BuildVCS
+	Resources       []*resources.ResourceDependency
+	PlannedResource []PlannedResource
 
 	// The list of primitive std/runtime:Secret that this server deployable on.
 	// These are treated in a special way: each one of them is mounted under
@@ -255,6 +258,12 @@ type DeployableSpec struct {
 
 	Endpoints         []*schema.Endpoint         // Owned by this deployable.
 	InternalEndpoints []*schema.InternalEndpoint // Owned by this deployable.
+}
+
+type PlannedResource struct {
+	ResourceInstanceID string
+	Class              *schema.ResourceClass
+	Instance           *anypb.Any
 }
 
 type SecretResourceDependency struct {
