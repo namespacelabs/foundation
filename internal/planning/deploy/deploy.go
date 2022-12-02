@@ -86,11 +86,11 @@ func PrepareDeployServers(ctx context.Context, env cfg.Context, planner runtime.
 	return PrepareDeployStackToRegistry(ctx, env, planner, planner.Registry(), stack)
 }
 
-func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, prepared ...PreparedDeployable) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
 	return PrepareDeployStackToRegistry(ctx, env, planner, planner.Registry(), stack, prepared...)
 }
 
-func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...PreparedDeployable) (compute.Computable[*Plan], error) {
+func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
 	def, err := prepareHandlerInvocations(ctx, env, planner, stack)
 	if err != nil {
 		return nil, err
@@ -232,21 +232,24 @@ type prepareAndBuildResult struct {
 	NamespaceReference string
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets, prepared ...PreparedDeployable) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
 	packages, images, err := computeStackAndImages(ctx, env, planner, registry, stack, stackDef, buildAssets)
 	if err != nil {
 		return nil, err
 	}
+
+	preparedComp := compute.Collect(tasks.Action("deployment.prepared"), prepared...)
 
 	resourcePlan := compute.Map(
 		tasks.Action("resource.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
 			Computable("stackAndDefs", stackDef).
-			Indigestible("prepared", prepared),
+			Computable("prepared", preparedComp),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (*resourcePlan, error) {
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+			prepared := compute.MustGetDepValue(deps, preparedComp, "prepared")
 
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
@@ -256,7 +259,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			}
 
 			for _, p := range prepared {
-				if err := rp.checkAddOwnedResources(ctx, p, p.Resources); err != nil {
+				if err := rp.checkAddOwnedResources(ctx, p.Value, p.Value.Resources); err != nil {
 					return nil, err
 				}
 			}
@@ -303,15 +306,16 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		Computable("resourcePlan", resourcePlan).
 		Computable("deploymentSpec", deploymentSpec).
 		Computable("stackAndDefs", stackDef).
-		Indigestible("prepared", prepared), compute.Output{},
+		Computable("prepared", preparedComp), compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (prepareAndBuildResult, error) {
 			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
 			deploymentSpec := compute.MustGetDepValue(deps, deploymentSpec, "deploymentSpec")
+			prepared := compute.MustGetDepValue(deps, preparedComp, "prepared")
 
 			for _, d := range prepared {
-				spec := d.Template
-				spec.Resources = resourcePlan.ResourceList.perOwnerResources[d.PackageRef().Canonical()].Dependencies
-				spec.SecretResources = resourcePlan.ResourceList.perOwnerResources[d.PackageRef().Canonical()].Secrets
+				spec := d.Value.Template
+				spec.Resources = resourcePlan.ResourceList.perOwnerResources[d.Value.PackageRef().Canonical()].Dependencies
+				spec.SecretResources = resourcePlan.ResourceList.perOwnerResources[d.Value.PackageRef().Canonical()].Secrets
 
 				deploymentSpec.Specs = append(deploymentSpec.Specs, spec)
 			}

@@ -41,7 +41,7 @@ type testRun struct {
 
 	TestRef *schema.PackageRef
 
-	Driver           runtime.DeployableSpec
+	Driver           compute.Computable[deploy.PreparedDeployable]
 	Stack            *schema.Stack
 	ServersUnderTest []string // Package names.
 	Plan             compute.Computable[*deploy.Plan]
@@ -57,17 +57,15 @@ func (test *testRun) Action() *tasks.ActionEvent {
 }
 
 func (test *testRun) Inputs() *compute.In {
-	in := compute.Inputs().
+	return compute.Inputs().
 		Str("testName", test.TestRef.Name).
 		Stringer("testPkg", test.TestRef.AsPackageName()).
 		Proto("workspace", test.SealedContext.Workspace().Proto()).
 		Proto("env", test.SealedContext.Environment()).
-		Indigestible("driver", test.Driver).
+		Computable("driver", test.Driver).
 		Proto("stack", test.Stack).
 		Strs("focus", test.ServersUnderTest).
 		Computable("plan", test.Plan)
-
-	return in
 }
 
 func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
@@ -79,6 +77,7 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.
 
 func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
+	d := compute.MustGetDepValue(r, test.Driver, "driver")
 
 	env := test.SealedContext
 	cluster, err := test.Cluster.Bind(ctx, test.SealedContext)
@@ -127,7 +126,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		ex.Go(func(ctx context.Context) error {
 			defer cancelAll() // When the test is done, cancel logging.
 
-			containers, err := cluster.WaitForTermination(ctx, test.Driver)
+			containers, err := cluster.WaitForTermination(ctx, d.Template)
 			if err != nil {
 				return err
 			}

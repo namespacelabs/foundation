@@ -11,9 +11,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
-	"namespacelabs.dev/foundation/internal/build/assets"
-	"namespacelabs.dev/foundation/internal/build/binary"
-	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -21,15 +18,11 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/support/naming"
-	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/go-ids"
 )
 
 type StoredTestResults struct {
@@ -80,11 +73,6 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	platforms, err := planner.TargetPlatforms(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	stack, err := loadSUT(ctx, env, pl, testDef)
 	if err != nil {
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load fixture: %w", err)
@@ -104,80 +92,25 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	// All packages have been bound to the environment, and sealed.
 	packages := pl.Seal()
 
-	testBin, err := binary.PlanBinary(ctx, packages, env, driverLoc, testDef.Driver, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
-		Platforms: platforms,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	registry := planner.Registry()
-
-	sutServers := stack.Focus.PackageNamesAsString()
-	runtimeConfig, err := deploy.TestStackToRuntimeConfig(stack, sutServers)
-	if err != nil {
-		return nil, err
-	}
-
-	testReq := &testboot.TestRequest{
-		Endpoint:         stack.Endpoints,
-		InternalEndpoint: stack.InternalEndpoints,
-	}
-
-	testBin.Plan.Spec = buildAndAttachDataLayer{testBin.Plan.SourceLabel, testBin.Plan.Spec, makeRequestDataLayer(testReq)}
-
 	sealedCtx := pkggraph.MakeSealedContext(env, packages)
-	// We build multi-platform binaries because we don't know if the target cluster
-	// is actually multi-platform as well (although we could probably resolve it at
-	// test setup time, i.e. now).
-	bin, err := multiplatform.PrepareMultiPlatformImage(ctx, sealedCtx, testBin.Plan)
-	if err != nil {
-		return nil, err
+
+	driver := &testDriver{
+		TestRef:       testRef,
+		Location:      driverLoc,
+		Definition:    testDef.Driver,
+		Stack:         stack,
+		SealedContext: sealedCtx,
+		Planner:       planner,
+		Resources:     resources,
+		Debug:         opts.Debug,
 	}
 
-	testBinTag := registry.AllocateName(driverLoc.PackageName.String())
-
-	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin, testBin.Plan))
-	if err != nil {
-		return nil, err
-	}
-
-	container := runtime.ContainerRunOpts{
-		Image:              driverImage,
-		Command:            testBin.Command,
-		Args:               testBin.Args,
-		Env:                testBin.Env,
-		WorkingDir:         testBin.WorkingDir,
-		ReadOnlyFilesystem: true,
-	}
-
-	if opts.Debug {
-		container.Args = append(container.Args, "--debug")
-	}
-
-	pkgId := naming.StableIDN(testRef.PackageName, 8)
-
-	testDriver := deploy.PreparedDeployable{
-		Ref:       testRef,
-		SealedCtx: sealedCtx,
-		Template: runtime.DeployableSpec{
-			ErrorLocation:          testRef.AsPackageName(),
-			PackageRef:             testRef,
-			Description:            "Test Driver",
-			Class:                  schema.DeployableClass_ONESHOT,
-			Id:                     ids.NewRandomBase32ID(8),
-			Name:                   fmt.Sprintf("%s-%s", testRef.Name, pkgId),
-			MainContainer:          container,
-			RuntimeConfig:          runtimeConfig,
-			MountRuntimeConfigPath: constants.NamespaceConfigMount,
-		},
-		Resources: resources,
-	}
-
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack, testDriver)
+	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, stack, driver)
 	if err != nil {
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
 	}
+
+	sutServers := stack.Focus.PackageNamesAsString()
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		SealedContext:    sealedCtx,
@@ -186,7 +119,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,
 		Stack:            stack.Proto(),
-		Driver:           testDriver.Template,
+		Driver:           driver,
 		OutputProgress:   opts.OutputProgress,
 	}
 

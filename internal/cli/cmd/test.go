@@ -77,7 +77,7 @@ func NewTestCmd() *cobra.Command {
 			fncobra.HardcodeEnv(&env, "dev"),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, SupportPackageRef: true})).
 		Do(func(originalCtx context.Context) error {
-			ctx := prepareContext(originalCtx, parallelWork, rocketShip)
+			ctx := prepareContext(originalCtx, parallel, rocketShip)
 
 			if rocketShip {
 				parallel = true
@@ -246,13 +246,13 @@ func NewTestCmd() *cobra.Command {
 		})
 }
 
-func prepareContext(ctx context.Context, parallelWork, rocketShip bool) context.Context {
+func prepareContext(ctx context.Context, parallel, rocketShip bool) context.Context {
 	if rocketShip {
 		fmt.Fprintln(console.Stdout(ctx), "Engaging 🚀 mode; all throttling disabled.")
 		return tasks.ContextWithThrottler(ctx, console.Debug(ctx), &tasks.ThrottleConfigurations{})
 	}
 
-	if parallelWork {
+	if !parallel {
 		configs := &tasks.ThrottleConfigurations{}
 		configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, tasks.BaseDefaultConfig...)
 		configs.ThrottleConfiguration = append(configs.ThrottleConfiguration, &tasks.ThrottleConfiguration{
