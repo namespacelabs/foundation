@@ -53,8 +53,8 @@ message ResourceProvider {
     string     package_name   = 1;  // Computed, where this provider lives.
     PackageRef provides_class = 2;  // The resource this provider supports.
 
-    Invocation initialized_with = 3;  // Run this invocation to create the resource.
-    Invocation prepare_with     = 5;  // Programatically specify a set of resources.
+    Invocation initialized_with = 3;  // Run this invocation to create the resource. This yields an instantiation during the execution phase.
+    Invocation prepare_with     = 5;  // Create the resource during planning phase.
 
     repeated ResourceInput resource_input = 8;
 

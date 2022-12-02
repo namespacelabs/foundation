@@ -7,6 +7,7 @@ package provisioning
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
@@ -31,6 +32,8 @@ type ApplyOutput struct {
 	Computed []*schema.ComputedConfiguration
 	// Extend the server definition.
 	ServerExtensions []*schema.ServerExtension
+	// Output a resource instance.
+	OutputResourceInstance *anypb.Any
 }
 
 type Compilable interface {

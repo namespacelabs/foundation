@@ -321,9 +321,16 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 				return prepareAndBuildResult{}, err
 			}
 
+			var ops []*schema.SerializedInvocation
+			for _, x := range resourcePlan.PlannedResources {
+				ops = append(ops, x.Invocations...)
+			}
+			ops = append(ops, resourcePlan.ExecutionInvocations...)
+			ops = append(ops, deploymentPlan.Definitions...)
+
 			return prepareAndBuildResult{
 				HandlerResult:      compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
-				Ops:                append(resourcePlan.Invocations, deploymentPlan.Definitions...),
+				Ops:                ops,
 				Hints:              deploymentPlan.Hints,
 				NamespaceReference: deploymentPlan.NamespaceReference,
 			}, nil

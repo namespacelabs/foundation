@@ -27,6 +27,12 @@ type cueServer struct {
 	Env  *args.EnvMap        `json:"env"`
 
 	Services map[string]cueService `json:"services"`
+
+	Permissions *cuePermissions `json:"unstable_permissions,omitempty"`
+}
+
+type cuePermissions struct {
+	ClusterRoles []string `json:"clusterRole"`
 }
 
 // TODO: converge the relevant parts with parseCueContainer.

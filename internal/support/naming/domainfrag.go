@@ -16,7 +16,11 @@ var (
 )
 
 func DomainFragLike(parts ...string) string {
-	return cleanName(250, domainPartRe, ".", parts...)
+	return DomainFragLikeN(".", parts...)
+}
+
+func DomainFragLikeN(sep string, parts ...string) string {
+	return cleanName(250, domainPartRe, sep, parts...)
 }
 
 func LabelLike(parts ...string) string {

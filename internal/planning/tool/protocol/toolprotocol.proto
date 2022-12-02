@@ -14,6 +14,7 @@ import "schema/definition.proto";
 import "schema/environment.proto";
 import "schema/stack.proto";
 import "schema/server.proto";
+import "schema/resource.proto";
 import "std/types/resource.proto";
 
 message ToolRequest {
@@ -59,6 +60,7 @@ message ApplyResponse {
     repeated schema.SerializedInvocationSource invocation_source = 5;
     repeated schema.ComputedConfiguration computed               = 4;
     repeated schema.ServerExtension server_extension             = 6;
+    google.protobuf.Any             output_resource_instance     = 7;
 
     // The outcome of this tool computation is valid for as long as these
     // inputs don't change.
@@ -99,4 +101,9 @@ message Snapshot {
 
 service InvocationService {
     rpc Invoke(ToolRequest) returns (ToolResponse);
+}
+
+message ResourceInstance {
+    string                  resource_instance_id = 1;
+    schema.ResourceInstance resource_instance    = 2;
 }

@@ -219,6 +219,10 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 		switch r.event {
 		case protocol.Lifecycle_PROVISION:
+			if resp.ApplyResponse.OutputResourceInstance != nil {
+				return nil, fnerrors.InternalError("legacy provision tools can't produce outputs")
+			}
+
 			// XXX this needs revisiting as there's little to no isolation.
 			// Probably lifecycle handlers should declare which servers they
 			// apply to.

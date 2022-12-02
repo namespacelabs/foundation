@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -42,12 +43,16 @@ type InvokeProps struct {
 }
 
 func MakeInvocation(ctx context.Context, env cfg.Context, planner runtime.Planner, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+	x := makeBaseInvocation(ctx, env, r, props)
 	// Calculate injections early on to make sure that they're part of the cache key.
-	var injections []*anypb.Any
 	for _, inject := range r.Invocation.Inject {
 		provider, ok := registrations[inject.Type]
 		if !ok {
 			return nil, fnerrors.BadInputError("%s: no such provider", inject)
+		}
+
+		if stack == nil {
+			return nil, fnerrors.InternalError("no stack was provided")
 		}
 
 		input, err := provider(ctx, env, planner, stack.GetServer(focus))
@@ -55,68 +60,91 @@ func MakeInvocation(ctx context.Context, env cfg.Context, planner runtime.Planne
 			return nil, err
 		}
 
-		injections = append(injections, input)
+		x.injections = append(x.injections, input)
 	}
 
+	x.stack = stack
+	x.focus = focus
+
+	return x, nil
+}
+
+func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+	if len(r.Invocation.Inject) > 0 {
+		return nil, fnerrors.InternalError("injections are not supported in this path")
+	}
+
+	return makeBaseInvocation(ctx, env, r, props), nil
+}
+
+// The caller must ensure that injections are handled.
+func makeBaseInvocation(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps) *cacheableInvocation {
 	return &cacheableInvocation{
-		handler:    *r,
-		stack:      stack,
-		focus:      focus,
-		env:        env,
-		props:      props,
-		injections: injections,
-	}, nil
+		targetServer: r.TargetServer,
+		source:       r.Source,
+		invocation:   r.Invocation,
+		env:          env,
+		props:        props,
+	}
 }
 
 type cacheableInvocation struct {
-	env        cfg.Context // env.Proto() is used as cache key.
-	handler    Definition
-	stack      *schema.Stack
-	focus      schema.PackageName
-	props      InvokeProps
-	injections []*anypb.Any
+	env          cfg.Context        // env.Proto() is used as cache key.
+	targetServer schema.PackageName // May be unspecified. For logging purposes only.
+	source       Source             // Where the invocation was declared.
+	invocation   *invocation.Invocation
+	stack        *schema.Stack
+	focus        schema.PackageName
+	props        InvokeProps
+	injections   []*anypb.Any
 
 	compute.LocalScoped[*protocol.ToolResponse]
 }
 
 func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
-	return tasks.Action("provision.invoke").
-		Scope(inv.handler.Source.PackageName).
-		Arg("target", inv.handler.TargetServer)
+	action := tasks.Action("provision.invoke").
+		Scope(inv.source.PackageName)
+
+	if inv.targetServer != "" {
+		return action.Arg("target", inv.targetServer)
+	}
+
+	return action
 }
 
 func (inv *cacheableInvocation) Inputs() *compute.In {
-	invocation := *inv.handler.Invocation // Copy
-	invocation.Image = nil                // To make the invocation JSON serializable.
+	invocation := *inv.invocation // Copy
+	invocation.Image = nil        // To make the invocation JSON serializable.
 	invocation.PublicImageID = nil
 
 	in := compute.Inputs().
-		JSON("handler", Definition{TargetServer: inv.handler.TargetServer, Source: inv.handler.Source, Invocation: &invocation}). // Without image and PackageAbsPath.
+		JSON("invocation", invocation). // Without image and PackageAbsPath.
+		JSON("source", inv.source).
 		Proto("stack", inv.stack).
 		Stringer("focus", inv.focus).
 		Proto("env", inv.env.Environment()).
 		JSON("props", inv.props).
 		JSON("injections", inv.injections)
 
-	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && inv.handler.Invocation.PublicImageID != nil {
-		return in.JSON("publicImageID", *inv.handler.Invocation.PublicImageID)
+	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && inv.invocation.PublicImageID != nil {
+		return in.JSON("publicImageID", *inv.invocation.PublicImageID)
 	} else {
-		return in.Computable("image", inv.handler.Invocation.Image)
+		return in.Computable("image", inv.invocation.Image)
 	}
 }
 
 func (inv *cacheableInvocation) Output() compute.Output {
 	return compute.Output{
-		NotCacheable: inv.handler.Invocation.NoCache,
+		NotCacheable: inv.invocation.NoCache,
 	}
 }
 
 func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolved) (res *protocol.ToolResponse, err error) {
-	r := inv.handler
+	invocation := inv.invocation
 
 	req := &protocol.ToolRequest{
 		ApiVersion:  versions.APIVersion,
-		ToolPackage: r.Source.PackageName.String(),
+		ToolPackage: inv.source.PackageName.String(),
 		// XXX temporary.
 		Stack:         inv.stack,
 		FocusedServer: inv.focus.String(),
@@ -148,7 +176,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	// to become a source of latency, as we're not pipelining the starting of the
 	// execution with the making the snapshot contents available to the tool. It
 	// will need revisiting.
-	for _, snapshot := range r.Invocation.Snapshots {
+	for _, snapshot := range invocation.Snapshots {
 		snap := &protocol.Snapshot{Name: snapshot.Name}
 
 		if err := fnfs.VisitFiles(ctx, snapshot.Contents, func(path string, blob bytestream.ByteStream, _ fs.DirEntry) error {
@@ -170,11 +198,11 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	}
 
 	opts := rtypes.RunToolOpts{
-		ImageName: r.Invocation.ImageName,
+		ImageName: invocation.ImageName,
 		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Command:    r.Invocation.Command,
-			Args:       r.Invocation.Args,
-			WorkingDir: r.Invocation.WorkingDir,
+			Command:    invocation.Command,
+			Args:       invocation.Args,
+			WorkingDir: invocation.WorkingDir,
 		},
 		// Don't let an invocation reach out, it should be hermetic. Tools are
 		// expected to produce operations which can be inspected. And then these
@@ -182,10 +210,10 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		NoNetworking: true,
 	}
 
-	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && r.Invocation.PublicImageID != nil {
-		opts.PublicImageID = r.Invocation.PublicImageID
+	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && invocation.PublicImageID != nil {
+		opts.PublicImageID = invocation.PublicImageID
 	} else {
-		resolvable := compute.MustGetDepValue(deps, inv.handler.Invocation.Image, "image")
+		resolvable := compute.MustGetDepValue(deps, invocation.Image, "image")
 
 		hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration())
 		if err != nil {
@@ -199,7 +227,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		}
 	}
 
-	opts.SupportedToolVersion = r.Invocation.SupportedToolVersion
+	opts.SupportedToolVersion = invocation.SupportedToolVersion
 
 	if InvocationDebug {
 		opts.RunBinaryOpts.Args = append(opts.RunBinaryOpts.Args, "--debug")
@@ -208,23 +236,23 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	req.Input = append(req.Input, inv.props.ProvisionInput...)
 	req.Input = append(req.Input, inv.injections...)
 
-	invocation := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
+	x := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
 	if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
-		return invocation.InvokeOnBuildkit(ctx, inv.env.Configuration(), "foundation.provision.tool.protocol.InvocationService/Invoke",
-			r.Source.PackageName, *r.Invocation.PublicImageID, opts, req)
+		return x.InvokeOnBuildkit(ctx, inv.env.Configuration(), "foundation.provision.tool.protocol.InvocationService/Invoke",
+			inv.source.PackageName, *invocation.PublicImageID, opts, req)
 	}
 
 	count := 0
 	err = backoff.Retry(func() error {
 		count++
 
-		res, err = invocation.Invoke(ctx, inv.env.Configuration(), r.Source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
+		res, err = x.Invoke(ctx, inv.env.Configuration(), inv.source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
 
 		if errors.Is(err, &fnerrors.InvocationErr{}) {
-			fmt.Fprintf(console.Stderr(ctx), "%s: Invoking provisioning tool (%s try) encountered transient failure: %v. Will retry in %v.\n", r.Source.PackageName, humanize.Ordinal(count), err, toolBackoff)
+			fmt.Fprintf(console.Stderr(ctx), "%s: Invoking provisioning tool (%s try) encountered transient failure: %v. Will retry in %v.\n", inv.source.PackageName, humanize.Ordinal(count), err, toolBackoff)
 
 			return err
 		}

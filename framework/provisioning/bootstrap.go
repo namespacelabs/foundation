@@ -132,6 +132,7 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, handlers AllH
 
 		response.ApplyResponse.InvocationSource = out.InvocationSources
 		response.ApplyResponse.Computed = out.Computed
+		response.ApplyResponse.OutputResourceInstance = out.OutputResourceInstance
 
 	case *protocol.ToolRequest_DeleteRequest:
 		p, err := parseStackRequest(br, x.DeleteRequest.Header)

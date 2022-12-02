@@ -22,9 +22,13 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning/invocation"
+	"namespacelabs.dev/foundation/internal/planning/tool"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -33,8 +37,15 @@ import (
 type resourcePlan struct {
 	ResourceList resourceList
 
-	Invocations []*schema.SerializedInvocation
-	Secrets     []runtime.SecretResourceDependency
+	PlannedResources     []plannedResource
+	ExecutionInvocations []*schema.SerializedInvocation
+	Secrets              []runtime.SecretResourceDependency
+}
+
+type plannedResource struct {
+	ResourceInstanceID string
+	Instance           *anypb.Any
+	Invocations        []*schema.SerializedInvocation
 }
 
 type serverStack interface {
@@ -50,10 +61,25 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 
 	rlist := rp.Resources()
 
-	var invocations []*InvokeResourceProvider
+	type resourcePlanInvocation struct {
+		Env                  cfg.Context
+		Source               schema.PackageName
+		ResourceInstanceID   string
+		ResourceSource       *schema.ResourceInstance
+		Invocation           *invocation.Invocation
+		Intent               *anypb.Any
+		SerializedIntentJson []byte
+		Image                oci.ResolvableImage
+	}
+
+	var executionInvocations []*InvokeResourceProvider
+	var planningInvocations []resourcePlanInvocation
+	var planningImages []compute.Computable[oci.ResolvableImage]
 	var imageIDs []compute.Computable[oci.ImageID]
-	var ops []*schema.SerializedInvocation
-	var secrets []runtime.SecretResourceDependency
+
+	plan := &resourcePlan{
+		ResourceList: rp,
+	}
 
 	for _, resource := range rlist {
 		if resource.Provider == nil {
@@ -96,21 +122,10 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 
 				si.Impl = wrapped
 
-				ops = append(ops, si)
+				plan.ExecutionInvocations = append(plan.ExecutionInvocations, si)
 			}
 
 			continue // Nothing to do re: provider.
-		}
-
-		provider := resource.Provider.Spec
-
-		if provider.PrepareWith != nil {
-			return nil, fnerrors.InternalError("unimplemented")
-		}
-
-		initializer := provider.InitializedWith
-		if initializer.RequiresKeys || initializer.Snapshots != nil || initializer.Inject != nil {
-			return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
 		}
 
 		if len(resource.ParentContexts) == 0 {
@@ -120,55 +135,168 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 		// Any of the contexts should be valid to load the binary, as all of them refer to this resources.
 		sealedCtx := resource.ParentContexts[0]
 
-		pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, initializer.BinaryRef)
-		if err != nil {
-			return nil, err
-		}
+		provider := resource.Provider.Spec
 
-		prepared, err := binary.PlanBinary(ctx, sealedCtx, sealedCtx, pkg.Location, bin, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
-			UsePrebuilts: true,
-			Platforms:    platforms,
-		})
-		if err != nil {
-			return nil, err
-		}
+		if provider.PrepareWith != nil {
+			var errs []error
+			if len(resource.Dependencies) > 0 {
+				errs = append(errs, fnerrors.New("providers with prepareWith don't support dependencies yet"))
+			}
 
-		poster, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
-		if err != nil {
-			return nil, err
-		}
+			if len(resource.Secrets) > 0 {
+				errs = append(errs, fnerrors.New("providers with prepareWith don't support secrets yet"))
+			}
 
-		imageIDs = append(imageIDs, poster.ImageID)
-		invocations = append(invocations, &InvokeResourceProvider{
-			ResourceInstanceId:   resource.ID,
-			BinaryRef:            initializer.BinaryRef,
-			BinaryConfig:         bin.Config,
-			ResourceClass:        resource.Class.Source,
-			ResourceProvider:     provider,
-			InstanceTypeSource:   resource.Class.InstanceType.Sources,
-			SerializedIntentJson: resource.JSONSerializedIntent,
-			ResourceDependencies: resource.Dependencies,
-			SecretResources:      resource.Secrets,
-		})
+			inv, err := invocation.Make(ctx, sealedCtx, sealedCtx, nil, provider.PrepareWith)
+			if err != nil {
+				errs = append(errs, err)
+			}
+
+			if err := multierr.New(errs...); err != nil {
+				return nil, err
+			}
+
+			planningImages = append(planningImages, inv.Image)
+			planningInvocations = append(planningInvocations, resourcePlanInvocation{
+				Env:                  sealedCtx,
+				Source:               schema.PackageName(resource.Source.PackageName),
+				ResourceInstanceID:   resource.ID,
+				ResourceSource:       resource.Source,
+				Invocation:           inv,
+				Intent:               resource.Intent,
+				SerializedIntentJson: resource.JSONSerializedIntent,
+			})
+		} else if provider.InitializedWith != nil {
+			initializer := provider.InitializedWith
+			if initializer.RequiresKeys || initializer.Snapshots != nil || initializer.Inject != nil {
+				return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
+			}
+
+			pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, initializer.BinaryRef)
+			if err != nil {
+				return nil, err
+			}
+
+			prepared, err := binary.PlanBinary(ctx, sealedCtx, sealedCtx, pkg.Location, bin, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
+				UsePrebuilts: true,
+				Platforms:    platforms,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			poster, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
+			if err != nil {
+				return nil, err
+			}
+
+			imageIDs = append(imageIDs, poster.ImageID)
+			executionInvocations = append(executionInvocations, &InvokeResourceProvider{
+				ResourceInstanceId:   resource.ID,
+				BinaryRef:            initializer.BinaryRef,
+				BinaryConfig:         bin.Config,
+				ResourceClass:        resource.Class.Source,
+				ResourceProvider:     provider,
+				InstanceTypeSource:   resource.Class.InstanceType.Sources,
+				SerializedIntentJson: resource.JSONSerializedIntent,
+				ResourceDependencies: resource.Dependencies,
+				SecretResources:      resource.Secrets,
+			})
+		} else {
+			return nil, fnerrors.InternalError("%s: an initializer is missing", resource.ID)
+		}
 	}
 
-	builtImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resource-provider.build-image"), imageIDs...))
-	if err != nil {
-		return nil, err
-	}
-
-	for k, invocation := range invocations {
-		invocation.BinaryImageId = builtImages[k].Value
-
-		theseOps, err := PlanResourceProviderInvocation(ctx, planner, invocation)
+	if len(executionInvocations) > 0 {
+		builtExecutionImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.build-execution-images"), imageIDs...))
 		if err != nil {
 			return nil, err
 		}
 
-		ops = append(ops, theseOps...)
+		for k, invocation := range executionInvocations {
+			invocation.BinaryImageId = builtExecutionImages[k].Value
+
+			theseOps, err := PlanResourceProviderInvocation(ctx, planner, invocation)
+			if err != nil {
+				return nil, err
+			}
+
+			plan.ExecutionInvocations = append(plan.ExecutionInvocations, theseOps...)
+		}
 	}
 
-	return &resourcePlan{ResourceList: rp, Invocations: ops, Secrets: secrets}, nil
+	if len(planningInvocations) > 0 {
+		builtPlanningImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.build-planning-images"), planningImages...))
+		if err != nil {
+			return nil, err
+		}
+
+		for k := range planningInvocations {
+			planningInvocations[k].Image = builtPlanningImages[k].Value
+		}
+
+		var x []compute.Computable[*protocol.ToolResponse]
+		var errs []error
+		for _, planned := range planningInvocations {
+			source, err := anypb.New(&protocol.ResourceInstance{
+				ResourceInstanceId: planned.ResourceInstanceID,
+				ResourceInstance:   planned.ResourceSource,
+			})
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			inv, err := tool.MakeInvocationNoInjections(ctx, planned.Env, &tool.Definition{
+				Source:     tool.Source{PackageName: planned.Source},
+				Invocation: planned.Invocation,
+			}, tool.InvokeProps{
+				Event:          protocol.Lifecycle_PROVISION,
+				ProvisionInput: []*anypb.Any{planned.Intent, source},
+			})
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				x = append(x, inv)
+			}
+		}
+
+		if err := multierr.New(errs...); err != nil {
+			return nil, err
+		}
+
+		responses, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.invoke-providers"), x...))
+		if err != nil {
+			return nil, err
+		}
+
+		for k, raw := range responses {
+			response := raw.Value
+
+			if response.ApplyResponse == nil {
+				return nil, fnerrors.InternalError("missing apply response")
+			}
+
+			r := response.ApplyResponse
+			if len(r.ServerExtension) > 0 || len(r.Extension) > 0 {
+				return nil, fnerrors.InternalError("a resource planner can not return server extensions")
+			}
+			if len(r.InvocationSource) > 0 {
+				return nil, fnerrors.InternalError("computable invocation sources not supported in this path")
+			}
+			if len(r.Computed) > 0 {
+				return nil, fnerrors.InternalError("compute configurations not supported in this path")
+			}
+
+			plan.PlannedResources = append(plan.PlannedResources, plannedResource{
+				ResourceInstanceID: planningInvocations[k].ResourceInstanceID,
+				Instance:           r.OutputResourceInstance,
+				Invocations:        r.Invocation,
+			})
+		}
+	}
+
+	return plan, nil
 }
 
 type resourceList struct {
@@ -294,7 +422,7 @@ func (rp *resourceList) checkAddTo(ctx context.Context, sealedCtx pkggraph.Seale
 
 		if err := rp.checkAddResource(ctx, sealedCtx, scopedID, res.Spec); err != nil {
 			errs = append(errs, err)
-		} else {
+		} else if res.Spec.Provider.Spec.InitializedWith != nil {
 			instance.Dependencies = append(instance.Dependencies, &resources.ResourceDependency{
 				ResourceRef:        res.ResourceRef,
 				ResourceClass:      res.Spec.Class.Ref,

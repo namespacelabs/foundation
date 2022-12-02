@@ -9,6 +9,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
@@ -55,6 +56,29 @@ func (hs *Handlers) Handler() AllHandlers {
 
 func (hs *Handlers) ServiceHandler() protocol.InvocationServiceServer {
 	return protocolHandler{Handlers: hs.Handler()}
+}
+
+func (mh *MatchingHandlers) HandleApply(apply func(context.Context, StackRequest, *ApplyOutput) error) *HandlerRoute {
+	return mh.HandleStack(staticStackHandler{apply, nil})
+}
+
+type staticStackHandler struct {
+	apply  func(context.Context, StackRequest, *ApplyOutput) error
+	delete func(context.Context, StackRequest, *DeleteOutput) error
+}
+
+func (s staticStackHandler) Apply(ctx context.Context, req StackRequest, out *ApplyOutput) error {
+	if s.apply == nil {
+		return rpcerrors.Errorf(codes.Unimplemented, "not implemented")
+	}
+	return s.apply(ctx, req, out)
+}
+
+func (s staticStackHandler) Delete(ctx context.Context, req StackRequest, out *DeleteOutput) error {
+	if s.delete == nil {
+		return rpcerrors.Errorf(codes.Unimplemented, "not implemented")
+	}
+	return s.delete(ctx, req, out)
 }
 
 func (mh *MatchingHandlers) HandleStack(h StackHandler) *HandlerRoute {
