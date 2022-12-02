@@ -44,7 +44,7 @@ func NewWithLocation(loc Location, format string, args ...interface{}) error {
 func AttachLocation(loc Location, err error) error {
 	if userErr, ok := err.(*BaseError); ok {
 		if userErr.Location == nil {
-			return &BaseError{OriginalErr: userErr.OriginalErr, stack: userErr.stack, Location: loc}
+			return &BaseError{Kind: userErr.Kind, OriginalErr: userErr.OriginalErr, stack: userErr.stack, Location: loc}
 		} else if userErr.Location == loc {
 			return userErr
 		}

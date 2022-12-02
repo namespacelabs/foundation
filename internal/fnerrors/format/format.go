@@ -212,14 +212,6 @@ func formatDependencyFailedError(w io.Writer, err *fnerrors.DependencyFailedErro
 
 func formatUserError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) {
 	switch err.Kind {
-	case fnerrors.Kind_USER:
-		if err.Location != nil {
-			loc := opts.style.LogResult.Apply(err.Location.ErrorLocation())
-			fmt.Fprintf(w, "%s at %s\n", err.OriginalErr.Error(), loc)
-		} else {
-			fmt.Fprintf(w, "%s\n", err.OriginalErr.Error())
-		}
-
 	case fnerrors.Kind_INTERNAL, fnerrors.Kind_BADINPUT, fnerrors.Kind_BADDATA:
 		fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("internal error"), err.OriginalErr.Error())
 		fmt.Fprintln(w)
@@ -234,6 +226,15 @@ func formatUserError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) 
 
 	case fnerrors.Kind_TRANSIENT:
 		formatInvocationError(w, err, opts)
+
+	case fnerrors.Kind_USER:
+	default:
+		if err.Location != nil {
+			loc := opts.style.LogResult.Apply(err.Location.ErrorLocation())
+			fmt.Fprintf(w, "%s at %s\n", err.OriginalErr.Error(), loc)
+		} else {
+			fmt.Fprintf(w, "%s\n", err.OriginalErr.Error())
+		}
 	}
 }
 

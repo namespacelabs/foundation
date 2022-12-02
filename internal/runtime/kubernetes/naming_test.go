@@ -21,3 +21,18 @@ func TestNamespaceGenerator(t *testing.T) {
 		t.Errorf("expected=%q, got=%q", expected, x)
 	}
 }
+
+func TestServiceNames(t *testing.T) {
+	for _, name := range []string{"Invalid", "", "test_foo", "may-not-end-with-dash-",
+		"too-long-name-with-more-than-sixty-three-characters-should-be-rejected"} {
+		if validateServiceName(name) == nil {
+			t.Errorf("invalid service name %q should have been rejected", name)
+		}
+	}
+
+	for _, name := range []string{"a", "valid", "an0th3r-valid-servic3"} {
+		if err := validateServiceName(name); err != nil {
+			t.Errorf("valid service name %q was rejected: %v", name, err)
+		}
+	}
+}

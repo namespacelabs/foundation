@@ -1077,6 +1077,10 @@ func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.Dep
 			return err
 		}
 
+		if err := validateServiceName(endpoint.AllocatedName); err != nil {
+			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+		}
+
 		s.operations = append(s.operations, kubedef.Apply{
 			Description: fmt.Sprintf("Service %s:%s", deployable.Name, endpoint.ServiceName),
 			Resource: applycorev1.

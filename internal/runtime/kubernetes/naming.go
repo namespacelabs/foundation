@@ -9,12 +9,14 @@ import (
 	"regexp"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 )
 
 var (
-	validChars = regexp.MustCompile("[a-z0-9]+")
+	validChars       = regexp.MustCompile("[a-z0-9]+")
+	validServiceName = regexp.MustCompile("^[a-z]([a-z0-9-]*[a-z0-9])?$")
 )
 
 // We use namespaces to isolate deployments per workspace and environment.
@@ -28,4 +30,16 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 
 	parts = append(parts, id)
 	return strings.Join(parts, "-")
+}
+
+func validateServiceName(allocatedName string) error {
+	if len(allocatedName) > 63 {
+		return fnerrors.New("invalid service name %q: may contain at most 63 characters", allocatedName)
+	}
+
+	if !validServiceName.MatchString(allocatedName) {
+		return fnerrors.New("invalid service name %q: does not match %s", allocatedName, validServiceName)
+	}
+
+	return nil
 }
