@@ -439,10 +439,10 @@ func (rp *resourceList) checkAddTo(ctx context.Context, sealedCtx pkggraph.Seale
 				ResourceInstanceId: scopedID,
 			}
 
-			if res.Spec.Provider.Spec.InitializedWith != nil {
-				instance.Dependencies = append(instance.Dependencies, dep)
-			} else {
+			if res.Spec.Provider != nil && res.Spec.Provider.Spec.GetPrepareWith() != nil {
 				instance.PlannedDependencies = append(instance.PlannedDependencies, dep)
+			} else {
+				instance.Dependencies = append(instance.Dependencies, dep)
 			}
 		}
 	}
