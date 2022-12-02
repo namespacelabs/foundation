@@ -77,10 +77,11 @@ type ResourceInstance struct {
 }
 
 type ResourceClass struct {
-	Ref          *schema.PackageRef
-	Source       *schema.ResourceClass
-	IntentType   UserType
-	InstanceType UserType
+	Ref             *schema.PackageRef
+	Source          *schema.ResourceClass
+	DefaultProvider schema.PackageName // May be empty.
+	IntentType      UserType
+	InstanceType    UserType
 }
 
 type ResourceProvider struct {

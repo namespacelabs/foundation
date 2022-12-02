@@ -43,10 +43,11 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 		}
 
 		pp.ResourceClasses = append(pp.ResourceClasses, pkggraph.ResourceClass{
-			Ref:          &schema.PackageRef{PackageName: rc.PackageName, Name: rc.Name},
-			Source:       rc,
-			IntentType:   intentType,
-			InstanceType: InstanceType,
+			Ref:             &schema.PackageRef{PackageName: rc.PackageName, Name: rc.Name},
+			Source:          rc,
+			IntentType:      intentType,
+			InstanceType:    InstanceType,
+			DefaultProvider: schema.PackageName(rc.DefaultProvider),
 		})
 	}
 

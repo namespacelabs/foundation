@@ -41,6 +41,8 @@ message ResourceClass {
     Type intent_type   = 3;  // How is the resource defined.
     Type instance_type = 4;  // And what generated configuration is attached to each instance.
 
+    string default_provider = 5;  // If set, a resource that refers to this class and doesn't specify a provider will default to this default.
+
     message Type {
         string proto_source = 1;
         string proto_type   = 2;

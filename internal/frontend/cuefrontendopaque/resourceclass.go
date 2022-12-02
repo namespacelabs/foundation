@@ -14,11 +14,12 @@ import (
 )
 
 type cueResourceClass struct {
-	Intent   *cueResourceClassType `json:"intent"`
-	Produces *cueResourceClassType `json:"produces"`
+	Intent          *cueResourceType `json:"intent"`
+	Produces        *cueResourceType `json:"produces"`
+	DefaultProvider string           `json:"defaultProvider"`
 }
 
-type cueResourceClassType struct {
+type cueResourceType struct {
 	Type   string `json:"type"`
 	Source string `json:"source"`
 }
@@ -38,13 +39,14 @@ func parseResourceClass(ctx context.Context, loc pkggraph.Location, name string,
 	}
 
 	return &schema.ResourceClass{
-		Name:         name,
-		IntentType:   parseResourceClassType(bits.Intent),
-		InstanceType: parseResourceClassType(bits.Produces),
+		Name:            name,
+		IntentType:      parseResourceClassType(bits.Intent),
+		InstanceType:    parseResourceClassType(bits.Produces),
+		DefaultProvider: bits.DefaultProvider,
 	}, nil
 }
 
-func parseResourceClassType(t *cueResourceClassType) *schema.ResourceClass_Type {
+func parseResourceClassType(t *cueResourceType) *schema.ResourceClass_Type {
 	return &schema.ResourceClass_Type{
 		ProtoType:   t.Type,
 		ProtoSource: t.Source,
