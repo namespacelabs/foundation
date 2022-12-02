@@ -8,19 +8,14 @@ import (
 	"context"
 	"fmt"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/integration/api"
-	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-)
-
-const (
-	runtimePkg = "namespacelabs.dev/foundation/library/runtime"
 )
 
 func Register() {
@@ -104,33 +99,14 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 }
 
 func InjectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, backends []*schema.NodejsBuild_Backend) error {
+	var servers schema.PackageList
+	for _, b := range backends {
+		servers.Add(b.Service.AsPackageName())
+	}
+
 	if pkg.Server.ResourcePack == nil {
 		pkg.Server.ResourcePack = &schema.ResourcePack{}
 	}
 
-	// Must ensure that the server runtime class (ServerIntent) is loaded.
-	if _, err := pl.LoadByName(ctx, runtimePkg); err != nil {
-		return err
-	}
-
-	for _, b := range backends {
-		// Making sure that the backend package is loaded.
-		if _, err := pl.LoadByName(ctx, b.Service.AsPackageName()); err != nil {
-			return err
-		}
-
-		intent, err := anypb.New(&runtime.ServerIntent{PackageName: b.Service.PackageName})
-		if err != nil {
-			return err
-		}
-
-		pkg.Server.ResourcePack.ResourceInstance = append(pkg.Server.ResourcePack.ResourceInstance, &schema.ResourceInstance{
-			PackageName: string(pkg.PackageName()),
-			Name:        fmt.Sprintf("gen-backend-resource-%s", b.Service.Name),
-			Class:       schema.MakePackageRef(runtimePkg, "Server"),
-			Intent:      intent,
-		})
-	}
-
-	return nil
+	return parsing.AddServersAsResources(ctx, pl, pkg.Server.GetPackageRef(), servers.PackageNames(), pkg.Server.ResourcePack)
 }

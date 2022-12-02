@@ -106,8 +106,8 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.ResourcePack = pack
 	}
 
-	stack := make(map[schema.PackageName]struct{})
-	stack[pkg.PackageName()] = struct{}{}
+	var availableServers schema.PackageList
+	availableServers.Add(pkg.PackageName())
 
 	if requires := v.LookupPath("requires"); requires.Exists() {
 		declaredStack, err := parseRequires(ctx, pl, loc, requires)
@@ -119,9 +119,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 			out.ResourcePack = &schema.ResourcePack{}
 		}
 
-		for _, s := range declaredStack {
-			stack[s] = struct{}{}
-		}
+		availableServers.AddMultiple(declaredStack...)
 
 		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageRef(pkg.PackageName(), out.Name), declaredStack, out.ResourcePack); err != nil {
 			return nil, nil, err
@@ -131,7 +129,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	for _, env := range startupPlan.Env {
 		if env.FromServiceEndpoint != nil {
 			dep := env.FromServiceEndpoint.ServerRef.AsPackageName()
-			if _, ok := stack[dep]; !ok {
+			if !availableServers.Includes(dep) {
 				// TODO reconcider if we want to implicitly add the dependency NSL-357
 				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
 			}
