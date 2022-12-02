@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -32,7 +33,7 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) (cfg
 
 	var messages []*anypb.Any
 	if UseNamespaceBuildCluster {
-		msg, err := nscloud.EnsureBuildCluster(ctx)
+		msg, err := nscloud.EnsureBuildCluster(ctx, api.Endpoint)
 		if err != nil {
 			return nil, err
 		}

@@ -32,7 +32,7 @@ func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral, 
 			var mainMessages, buildMessages []proto.Message
 
 			eg.Go(func(ctx context.Context) error {
-				cfg, err := api.CreateAndWaitCluster(ctx, machineType, ephemeral, env.Environment().Name, nil)
+				cfg, err := api.CreateAndWaitCluster(ctx, api.Endpoint, machineType, ephemeral, env.Environment().Name, nil)
 				if err != nil {
 					return err
 				}
@@ -42,7 +42,7 @@ func PrepareNewNamespaceCluster(env cfg.Context, machineType string, ephemeral, 
 
 			if withBuild {
 				eg.Go(func(ctx context.Context) error {
-					msg, err := nscloud.EnsureBuildCluster(ctx)
+					msg, err := nscloud.EnsureBuildCluster(ctx, api.Endpoint)
 					if err != nil {
 						return err
 					}

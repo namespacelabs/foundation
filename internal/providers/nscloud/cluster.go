@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -27,7 +28,23 @@ import (
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
 
-var clusterConfigType = cfg.DefineConfigType[*PrebuiltCluster]()
+var rpcEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
+
+var (
+	clusterConfigType = cfg.DefineConfigType[*PrebuiltCluster]()
+)
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&rpcEndpoint, "nscloud_endpoint", rpcEndpoint, "Where to dial to when reaching nscloud.")
+	_ = flags.MarkHidden("nscloud_endpoint")
+}
+
+func Register() {
+	api.Endpoint = api.MakeAPI(rpcEndpoint)
+
+	RegisterRegistry()
+	RegisterClusterProvider()
+}
 
 func RegisterClusterProvider() {
 	client.RegisterConfigurationProvider("nscloud", provideCluster)
@@ -63,7 +80,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
 	}
 
-	wres, err := api.WaitCluster(ctx, conf.ClusterId)
+	wres, err := api.WaitCluster(ctx, api.Endpoint, conf.ClusterId)
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
@@ -93,7 +110,7 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
 	}
 
-	cluster, err := api.GetCluster(ctx, conf.ClusterId)
+	cluster, err := api.GetCluster(ctx, api.Endpoint, conf.ClusterId)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +125,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, config cfg.Configuratio
 	}
 
 	ephemeral := true
-	result, err := api.CreateAndWaitCluster(ctx, "", ephemeral, purpose, nil)
+	result, err := api.CreateAndWaitCluster(ctx, api.Endpoint, "", ephemeral, purpose, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +260,7 @@ func (cr clusterNamespace) DeleteAllRecursively(ctx context.Context, wait bool, 
 }
 
 func (cr clusterNamespace) deleteCluster(ctx context.Context) (bool, error) {
-	if err := api.DestroyCluster(ctx, cr.Config.ClusterId); err != nil {
+	if err := api.DestroyCluster(ctx, api.Endpoint, cr.Config.ClusterId); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return false, nil
 		}

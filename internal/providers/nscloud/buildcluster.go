@@ -12,8 +12,8 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func EnsureBuildCluster(ctx context.Context) (*buildkit.Overrides, error) {
-	cfg, err := api.CreateAndWaitCluster(ctx, "16x32", false, "build machine", []string{"BUILD_CLUSTER"})
+func EnsureBuildCluster(ctx context.Context, x api.API) (*buildkit.Overrides, error) {
+	cfg, err := api.CreateAndWaitCluster(ctx, x, "16x32", false, "build machine", []string{"BUILD_CLUSTER"})
 	if err != nil {
 		return nil, err
 	}

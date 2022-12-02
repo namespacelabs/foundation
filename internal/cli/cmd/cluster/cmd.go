@@ -61,7 +61,7 @@ func newCreateCmd() *cobra.Command {
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := api.CreateAndWaitCluster(ctx, *machineType, *ephemeral, "manually created", *features)
+		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, *machineType, *ephemeral, "manually created", *features)
 		if err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func newListCmd() *cobra.Command {
 	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusters, err := api.ListClusters(ctx)
+		clusters, err := api.ListClusters(ctx, api.Endpoint)
 		if err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ Type %q for it to be removed.`, cluster.ClusterId), "")
 			return context.Canceled
 		}
 
-		return api.DestroyCluster(ctx, cluster.ClusterId)
+		return api.DestroyCluster(ctx, api.Endpoint, cluster.ClusterId)
 	})
 
 	return cmd
@@ -236,14 +236,14 @@ func newKubectlCmd() *cobra.Command {
 
 func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
 	if len(args) > 0 {
-		response, err := api.GetCluster(ctx, args[0])
+		response, err := api.GetCluster(ctx, api.Endpoint, args[0])
 		if err != nil {
 			return nil, nil, err
 		}
 		return response.Cluster, args[1:], nil
 	}
 
-	clusters, err := api.ListClusters(ctx)
+	clusters, err := api.ListClusters(ctx, api.Endpoint)
 	if err != nil {
 		return nil, nil, err
 	}

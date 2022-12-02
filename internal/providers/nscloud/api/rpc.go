@@ -22,34 +22,44 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const machineEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
+type API struct {
+	StartCreateKubernetesCluster fnapi.Call[CreateKubernetesClusterRequest]
+	GetKubernetesCluster         fnapi.Call[GetKubernetesClusterRequest]
+	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
+	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
+	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
+}
 
-var (
-	startCreateKubernetesCluster = fnapi.Call[CreateKubernetesClusterRequest]{
-		Endpoint: machineEndpoint,
-		Method:   "nsl.vm.api.VMService/StartCreateKubernetesCluster",
-	}
+var Endpoint API
 
-	getKubernetesCluster = fnapi.Call[GetKubernetesClusterRequest]{
-		Endpoint: machineEndpoint,
-		Method:   "nsl.vm.api.VMService/GetKubernetesCluster",
-	}
+func MakeAPI(endpoint string) API {
+	return API{
+		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/StartCreateKubernetesCluster",
+		},
 
-	waitKubernetesCluster = fnapi.Call[WaitKubernetesClusterRequest]{
-		Endpoint: machineEndpoint,
-		Method:   "nsl.vm.api.VMService/WaitKubernetesCluster",
-	}
+		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/GetKubernetesCluster",
+		},
 
-	listKubernetesClusters = fnapi.Call[ListKubernetesClustersRequest]{
-		Endpoint: machineEndpoint,
-		Method:   "nsl.vm.api.VMService/ListKubernetesClusters",
-	}
+		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/WaitKubernetesCluster",
+		},
 
-	destroyKubernetesCluster = fnapi.Call[DestroyKubernetesClusterRequest]{
-		Endpoint: machineEndpoint,
-		Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
+		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/ListKubernetesClusters",
+		},
+
+		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
+		},
 	}
-)
+}
 
 type CreateClusterResult struct {
 	ClusterId    string
@@ -59,7 +69,7 @@ type CreateClusterResult struct {
 	Deadline     *time.Time
 }
 
-func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purpose string, features []string) (*KubernetesCluster, error) {
+func CreateCluster(ctx context.Context, api API, machineType string, ephemeral bool, purpose string, features []string) (*KubernetesCluster, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*KubernetesCluster, error) {
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         ephemeral,
@@ -85,7 +95,7 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 		}
 
 		var response StartCreateKubernetesClusterResponse
-		if err := startCreateKubernetesCluster.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.StartCreateKubernetesCluster.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
@@ -101,7 +111,7 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 
 		if ephemeral {
 			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
-				if err := DestroyCluster(ctx, response.ClusterId); err != nil {
+				if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
 					// The cluster being gone is an acceptable state (it could have
 					// been deleted by DeleteRecursively for example).
 					if status.Code(err) == codes.NotFound {
@@ -117,16 +127,16 @@ func CreateCluster(ctx context.Context, machineType string, ephemeral bool, purp
 	})
 }
 
-func CreateAndWaitCluster(ctx context.Context, machineType string, ephemeral bool, purpose string, features []string) (*CreateClusterResult, error) {
-	cluster, err := CreateCluster(ctx, machineType, ephemeral, purpose, features)
+func CreateAndWaitCluster(ctx context.Context, api API, machineType string, ephemeral bool, purpose string, features []string) (*CreateClusterResult, error) {
+	cluster, err := CreateCluster(ctx, api, machineType, ephemeral, purpose, features)
 	if err != nil {
 		return nil, err
 	}
 
-	return WaitCluster(ctx, cluster.ClusterId)
+	return WaitCluster(ctx, api, cluster.ClusterId)
 }
 
-func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, error) {
+func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
 	defer done()
 
@@ -143,7 +153,7 @@ func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, e
 			}
 
 			// We continue to wait for the cluster to become ready until we observe a READY.
-			if err := waitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, func(body io.Reader) error {
+			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, func(body io.Reader) error {
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
@@ -202,26 +212,26 @@ func WaitCluster(ctx context.Context, clusterId string) (*CreateClusterResult, e
 	return result, nil
 }
 
-func DestroyCluster(ctx context.Context, clusterId string) error {
-	return destroyKubernetesCluster.Do(ctx, DestroyKubernetesClusterRequest{
+func DestroyCluster(ctx context.Context, api API, clusterId string) error {
+	return api.DestroyKubernetesCluster.Do(ctx, DestroyKubernetesClusterRequest{
 		ClusterId: clusterId,
 	}, nil)
 }
 
-func GetCluster(ctx context.Context, clusterId string) (*GetKubernetesClusterResponse, error) {
+func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
-		if err := getKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
 	})
 }
 
-func ListClusters(ctx context.Context) (*KubernetesClusterList, error) {
+func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*KubernetesClusterList, error) {
 		var list KubernetesClusterList
-		if err := listKubernetesClusters.Do(ctx, ListKubernetesClustersRequest{}, fnapi.DecodeJSONResponse(&list)); err != nil {
+		if err := api.ListKubernetesClusters.Do(ctx, ListKubernetesClustersRequest{}, fnapi.DecodeJSONResponse(&list)); err != nil {
 			return nil, err
 		}
 

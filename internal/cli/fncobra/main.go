@@ -249,8 +249,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		eks.Register()
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain, oci.Keychain_UseOnWrites)
 		iam.RegisterGraphHandlers()
-		nscloud.RegisterRegistry()
-		nscloud.RegisterClusterProvider()
+		nscloud.Register()
 		k3dp.Register()
 
 		// Runtimes.
@@ -277,6 +276,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	tasks.SetupFlags(rootCmd.PersistentFlags())
 	consolesink.SetupFlags(rootCmd.PersistentFlags())
 	fnapi.SetupFlags(rootCmd.PersistentFlags())
+	nscloud.SetupFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
