@@ -6,6 +6,7 @@ package nscloud
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/spf13/pflag"
@@ -28,18 +29,33 @@ import (
 	"namespacelabs.dev/foundation/universe/nscloud/configuration"
 )
 
-var rpcEndpoint = "https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal.namespacelabs.nscloud.dev"
+var (
+	rpcEndpointOverride string
+	regionName          string
+)
 
 var (
 	clusterConfigType = cfg.DefineConfigType[*PrebuiltCluster]()
 )
 
 func SetupFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&rpcEndpoint, "nscloud_endpoint", rpcEndpoint, "Where to dial to when reaching nscloud.")
+	flags.StringVar(&rpcEndpointOverride, "nscloud_endpoint", "", "Where to dial to when reaching nscloud.")
 	_ = flags.MarkHidden("nscloud_endpoint")
+	flags.StringVar(&regionName, "nscloud_region", "a", "Which region to use.")
+	_ = flags.MarkHidden("nscloud_region")
 }
 
 func Register() {
+	rpcEndpoint := rpcEndpointOverride
+	if rpcEndpoint == "" {
+		regionSuffix := fmt.Sprintf("-%s", regionName)
+		if regionName == "a" {
+			regionSuffix = ""
+		}
+
+		rpcEndpoint = fmt.Sprintf("https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal%s.namespacelabs.nscloud.dev", regionSuffix)
+	}
+
 	api.Endpoint = api.MakeAPI(rpcEndpoint)
 
 	RegisterRegistry()
