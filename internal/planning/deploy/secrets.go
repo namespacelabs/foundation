@@ -70,17 +70,28 @@ func loadSecrets(ctx context.Context, env cfg.Context, sources ...secretSource) 
 				return nil, err
 			}
 
-			if _, has := workspaceSecrets[srv.Module().ModuleName()]; !has {
-				wss, err := loadWorkspaceSecrets(ctx, keyDir, srv.Module())
-				if err != nil {
-					// XXX print a warning?
-					if !errors.Is(err, keys.ErrKeyGen) {
-						return nil, err
+			for _, x := range []struct {
+				fsys       fs.FS
+				moduleName string
+			}{
+				{env.Workspace().ReadOnlyFS(), env.Workspace().ModuleName()},
+				{srv.Module().ReadOnlyFS(), srv.Module().ModuleName()},
+			} {
+				if _, ok := workspaceSecrets[srv.Module().ModuleName()]; !ok {
+					wss, err := loadWorkspaceSecrets(ctx, keyDir, x.fsys, x.moduleName)
+					if err != nil {
+						// XXX print a warning?
+						if !errors.Is(err, keys.ErrKeyGen) {
+							return nil, err
+						}
+					} else {
+						workspaceSecrets[srv.Module().ModuleName()] = wss
 					}
-				} else {
-					workspaceSecrets[srv.Module().ModuleName()] = wss
 				}
 			}
+
+			module := workspaceSecrets[env.Workspace().ModuleName()]
+			serverModule := workspaceSecrets[srv.Module().ModuleName()]
 
 			srvSecrets, err := loadServerSecrets(ctx, keyDir, srv)
 			if err != nil {
@@ -94,7 +105,7 @@ func loadSecrets(ctx context.Context, env cfg.Context, sources ...secretSource) 
 				}
 
 				if gsec.Spec.Generate == nil {
-					value, err := lookupSecret(ctx, env.Environment(), secretRef, userSecrets, srvSecrets, workspaceSecrets[srv.Module().ModuleName()])
+					value, err := lookupSecret(ctx, env.Environment(), secretRef, userSecrets, srvSecrets, module, serverModule)
 					if err != nil {
 						return nil, err
 					}
@@ -130,8 +141,8 @@ func loadSecrets(ctx context.Context, env cfg.Context, sources ...secretSource) 
 	})
 }
 
-func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, module *pkggraph.Module) (*secrets.Bundle, error) {
-	return loadSecretsFile(ctx, keyDir, module.ModuleName(), module.ReadOnlyFS(), secrets.WorkspaceBundleName)
+func loadWorkspaceSecrets(ctx context.Context, keyDir fs.FS, fsys fs.FS, moduleName string) (*secrets.Bundle, error) {
+	return loadSecretsFile(ctx, keyDir, moduleName, fsys, secrets.WorkspaceBundleName)
 }
 
 func loadSecretsFile(ctx context.Context, keyDir fs.FS, name string, fsys fs.FS, sourceFile string) (*secrets.Bundle, error) {
@@ -164,10 +175,10 @@ func loadServerSecrets(ctx context.Context, keyDir fnfs.LocalFS, srv planning.Se
 	return bundle, nil
 }
 
-func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, user, server, workspace *secrets.Bundle) (*schema.FileContents, error) {
+func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, lookup ...*secrets.Bundle) (*schema.FileContents, error) {
 	key := &secrets.ValueKey{PackageName: secretRef.PackageName, Key: secretRef.Name, EnvironmentName: env.Name}
 
-	for _, src := range []*secrets.Bundle{user, server, workspace} {
+	for _, src := range lookup {
 		if src != nil {
 			value, err := src.Lookup(ctx, key)
 			if err != nil {
