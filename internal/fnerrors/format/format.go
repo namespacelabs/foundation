@@ -227,7 +227,6 @@ func formatUserError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) 
 	case fnerrors.Kind_TRANSIENT:
 		formatInvocationError(w, err, opts)
 
-	case fnerrors.Kind_USER:
 	default:
 		if err.Location != nil {
 			loc := opts.style.LogResult.Apply(err.Location.ErrorLocation())
