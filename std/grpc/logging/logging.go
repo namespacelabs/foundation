@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
-const maxOutputToTerminal = 128
+const maxOutputToTerminal = 1024
 
 var Log = log.New(os.Stderr, "[grpclog] ", log.Ldate|log.Ltime|log.Lmicroseconds)
 
@@ -70,16 +70,47 @@ func logHeader(ctx context.Context, reqid, what, fullMethod string, req interfac
 
 	md, _ := metadata.FromIncomingContext(ctx)
 
+	delete(md, "accept-encoding")
+	delete(md, "content-type")
+
+	authority := single(md, ":authority")
+	delete(md, ":authority")
+
 	if t, ok := ctx.Deadline(); ok {
 		left := time.Until(t)
 		deadline = fmt.Sprintf("%v", left)
 	}
 
-	if req != nil {
-		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s, metadata: %+v): %s", fullMethod, reqid, peerAddr, authType, deadline, md, serializeMessage(req))
-	} else {
-		Log.Printf("%s: id=%s: request from %s (auth: %s, deadline: %s, metadata: %+v)", fullMethod, reqid, peerAddr, authType, deadline, md)
+	if realIp := single(md, "x-real-ip"); realIp != "" {
+		peerAddr = fmt.Sprintf("%s (saw %s)", realIp, peerAddr)
+
+		// XXX use conditional printing instead.
+		delete(md, "x-real-ip")
+		delete(md, "x-forwarded-for")
+		delete(md, "x-forwarded-host")
+		delete(md, "x-forwarded-port")
+		delete(md, "x-forwarded-proto")
+		delete(md, "x-forwarded-scheme")
+		delete(md, "x-scheme")
 	}
+
+	if _, ok := md["authorization"]; ok {
+		authType = fmt.Sprintf("bearer (was %s)", authType)
+		delete(md, "authorization")
+	}
+
+	if req != nil {
+		Log.Printf("%s: id=%s: request from %s to %s (auth: %s, deadline: %s, metadata: %+v): %s", fullMethod, reqid, peerAddr, authority, authType, deadline, md, serializeMessage(req))
+	} else {
+		Log.Printf("%s: id=%s: request from %s to %s (auth: %s, deadline: %s, metadata: %+v)", fullMethod, reqid, peerAddr, authority, authType, deadline, md)
+	}
+}
+
+func single(md metadata.MD, key string) string {
+	if value, ok := md[key]; ok && len(value) == 1 {
+		return value[0]
+	}
+	return ""
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
