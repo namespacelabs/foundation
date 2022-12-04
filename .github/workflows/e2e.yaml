@@ -157,9 +157,7 @@ jobs:
             --tools_invocation_can_use_buildkit \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
-            --parallel_work=false \
-            --parallel=false \
-            --all
+            --parallel
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
