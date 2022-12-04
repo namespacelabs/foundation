@@ -33,7 +33,7 @@ import (
 	"namespacelabs.dev/foundation/std/types"
 )
 
-func invokeHandlers(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
+func prepareInvokeHandlers(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
 	props, err := planner.PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
