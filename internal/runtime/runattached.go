@@ -16,15 +16,15 @@ import (
 	"namespacelabs.dev/foundation/std/execution"
 )
 
-func RunAttached(ctx context.Context, config cfg.Context, cluster ClusterNamespace, spec DeployableSpec, io TerminalIO) error {
-	planner, err := cluster.Cluster().Planner(ctx, config)
+func RunAttached(ctx context.Context, config cfg.Context, planner Planner, spec DeployableSpec, io TerminalIO) error {
+	plan, err := planner.PlanDeployment(ctx, DeploymentSpec{
+		Specs: []DeployableSpec{spec},
+	})
 	if err != nil {
 		return err
 	}
 
-	plan, err := planner.PlanDeployment(ctx, DeploymentSpec{
-		Specs: []DeployableSpec{spec},
-	})
+	cluster, err := planner.EnsureClusterNamespace(ctx)
 	if err != nil {
 		return err
 	}
@@ -60,8 +60,8 @@ func RunAttached(ctx context.Context, config cfg.Context, cluster ClusterNamespa
 	return cluster.Cluster().AttachTerminal(ctx, mainContainers[0], io)
 }
 
-func RunAttachedStdio(ctx context.Context, config cfg.Context, cluster ClusterNamespace, spec DeployableSpec) error {
-	return RunAttached(ctx, config, cluster, spec, TerminalIO{
+func RunAttachedStdio(ctx context.Context, config cfg.Context, planner Planner, spec DeployableSpec) error {
+	return RunAttached(ctx, config, planner, spec, TerminalIO{
 		TTY:    true,
 		Stdin:  os.Stdin,
 		Stdout: os.Stdout,

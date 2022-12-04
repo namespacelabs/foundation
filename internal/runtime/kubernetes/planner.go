@@ -24,14 +24,18 @@ import (
 )
 
 type Planner struct {
-	fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
+	Configuration   cfg.Configuration
+	fetchSystemInfo FetchSystemInfoFunc
+	underlying      *Cluster
 	target          clusterTarget
 	registry        registry.Manager
 }
 
 var _ runtime.Planner = Planner{}
 
-func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) (Planner, error) {
+type FetchSystemInfoFunc func(context.Context) (*kubedef.SystemInfo, error)
+
+func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo FetchSystemInfoFunc) (Planner, error) {
 	registry, err := registry.GetRegistry(ctx, env)
 	if err != nil {
 		return Planner{}, err
@@ -40,8 +44,8 @@ func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo func(conte
 	return NewPlannerWithRegistry(env, registry, fetchSystemInfo), nil
 }
 
-func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)) Planner {
-	return Planner{fetchSystemInfo: fetchSystemInfo, target: newTarget(env), registry: registry}
+func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetchSystemInfo FetchSystemInfoFunc) Planner {
+	return Planner{Configuration: env.Configuration(), fetchSystemInfo: fetchSystemInfo, target: newTarget(env), registry: registry}
 }
 
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
@@ -83,6 +87,14 @@ func (r Planner) TargetPlatforms(ctx context.Context) ([]specs.Platform, error) 
 
 func (r Planner) Registry() registry.Manager {
 	return r.registry
+}
+
+func (r Planner) EnsureClusterNamespace(ctx context.Context) (runtime.ClusterNamespace, error) {
+	return r.ClusterNamespaceFor(r.underlying, r.underlying), nil
+}
+
+func (r Planner) ClusterNamespaceFor(parent runtime.Cluster, underlying *Cluster) *ClusterNamespace {
+	return &ClusterNamespace{parent: parent, underlying: underlying, target: r.target}
 }
 
 func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {

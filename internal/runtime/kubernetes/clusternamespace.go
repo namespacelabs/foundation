@@ -50,7 +50,11 @@ func ConnectToNamespace(ctx context.Context, env cfg.Context) (*ClusterNamespace
 		return nil, err
 	}
 
-	bound := cluster.Bind(ctx, env)
+	bound, err := cluster.Bind(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
 	return bound.(*ClusterNamespace), nil
 }
 

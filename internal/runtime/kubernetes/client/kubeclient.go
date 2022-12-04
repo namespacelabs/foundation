@@ -61,6 +61,13 @@ type configResult struct {
 	ClusterConfiguration
 }
 
+func (conf ClusterConfiguration) AsResult() *configResult {
+	return &configResult{
+		ClientConfig:         clientcmd.NewDefaultClientConfig(conf.Config, nil),
+		ClusterConfiguration: conf,
+	}
+}
+
 func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*configResult, error) {
 	if c.Incluster {
 		return nil, nil
@@ -77,10 +84,7 @@ func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*
 			return nil, err
 		}
 
-		return &configResult{
-			ClientConfig:         clientcmd.NewDefaultClientConfig(result.Config, nil),
-			ClusterConfiguration: result,
-		}, nil
+		return result.AsResult(), nil
 	}
 
 	if c.StaticConfig != nil {
@@ -113,7 +117,7 @@ func LoadExistingConfiguration(kubeConfig, contextName string) (clientcmd.Client
 }
 
 func obtainRESTConfig(ctx context.Context, hostEnv *HostEnv, computed *configResult) (*rest.Config, error) {
-	if hostEnv.GetIncluster() {
+	if hostEnv != nil && hostEnv.Incluster {
 		config, err := rest.InClusterConfig()
 		return config, err
 	}
@@ -152,6 +156,10 @@ func NewClient(ctx context.Context, cfg cfg.Configuration) (*Prepared, error) {
 		return nil, err
 	}
 
+	return NewClientFromResult(ctx, hostEnv, computed)
+}
+
+func NewClientFromResult(ctx context.Context, hostEnv *HostEnv, computed *configResult) (*Prepared, error) {
 	restcfg, err := obtainRESTConfig(ctx, hostEnv, computed)
 	if err != nil {
 		return nil, err

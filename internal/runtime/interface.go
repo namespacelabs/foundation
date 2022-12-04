@@ -41,19 +41,19 @@ type Class interface {
 
 	// Attaches to an existing cluster (if not is specified in the
 	// configuration), or creates a new cluster as needed.
-	EnsureCluster(context.Context, cfg.Configuration, string) (Cluster, error)
+	EnsureCluster(context.Context, cfg.Context, string) (Cluster, error)
+
+	// Planner produces a planner for this runtime class. This may instantiate a
+	// new cluster, but will attempt to do so lazily.
+	Planner(context.Context, cfg.Context, string) (Planner, error)
 }
 
 // A cluster represents a cluster where Namespace is capable of deployment one
 // or more applications.
 type Cluster interface {
-	// Returns a Planner implementation which emits deployment plans that target
-	// a namespace within this cluster.
-	Planner(context.Context, cfg.Context) (Planner, error)
-
 	// Returns a namespace'd cluster -- one for a particular application use,
 	// bound to the workspace identified by the cfg.Context.
-	Bind(context.Context, cfg.Context) ClusterNamespace
+	Bind(context.Context, cfg.Context) (ClusterNamespace, error)
 
 	// Fetch diagnostics of a particular container reference.
 	FetchDiagnostics(context.Context, *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error)
@@ -145,6 +145,8 @@ type Planner interface {
 
 	// The registry we should upload to.
 	Registry() registry.Manager
+
+	EnsureClusterNamespace(context.Context) (ClusterNamespace, error)
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application

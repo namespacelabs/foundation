@@ -54,7 +54,7 @@ func newPsql() *cobra.Command {
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
-			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt runtime.ClusterNamespace, bind databaseBind, opts runtime.ContainerRunOpts) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt runtime.Planner, bind databaseBind, opts runtime.ContainerRunOpts) error {
 				opts.Command = []string{"psql"}
 				opts.Args = []string{
 					"-h", bind.Database.HostedAt.Address,
@@ -91,7 +91,7 @@ func newPgdump() *cobra.Command {
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
-			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt runtime.ClusterNamespace, bind databaseBind, opts runtime.ContainerRunOpts) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt runtime.Planner, bind databaseBind, opts runtime.ContainerRunOpts) error {
 				opts.Command = []string{"/bin/bash"}
 				opts.Args = []string{}
 
@@ -149,7 +149,7 @@ func newPgrestore() *cobra.Command {
 		}).
 		With(parseHydrationWithDeps(&res, &fncobra.ParseLocationsOpts{RequireSingle: true}, &hydrateOpts{rehydrateOnly: true})...).
 		Do(func(ctx context.Context) error {
-			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt runtime.ClusterNamespace, bind databaseBind, opts runtime.ContainerRunOpts) error {
+			return runPostgresCmd(ctx, database, &res, func(ctx context.Context, rt runtime.Planner, bind databaseBind, opts runtime.ContainerRunOpts) error {
 				opts.Command = []string{"psql"}
 				opts.Args = []string{
 					"-h", bind.Database.HostedAt.Address,
@@ -234,7 +234,7 @@ func (d databaseItem) Title() string       { return d.bind.Database.Name }
 func (d databaseItem) Description() string { return d.bind.PackageName }
 func (d databaseItem) FilterValue() string { return d.bind.Database.Name }
 
-func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, run func(context.Context, runtime.ClusterNamespace, databaseBind, runtime.ContainerRunOpts) error) error {
+func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, run func(context.Context, runtime.Planner, databaseBind, runtime.ContainerRunOpts) error) error {
 	config, err := determineConfiguration(res)
 	if err != nil {
 		return err
@@ -277,7 +277,7 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 		return fnerrors.BadInputError("%s: no credentials available", database)
 	}
 
-	cluster, err := runtime.NamespaceFor(ctx, res.Env)
+	planner, err := runtime.PlannerFor(ctx, res.Env)
 	if err != nil {
 		return err
 	}
@@ -301,5 +301,5 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 		ReadOnlyFilesystem: true,
 	}
 
-	return run(ctx, cluster, bind, runOpts)
+	return run(ctx, planner, bind, runOpts)
 }

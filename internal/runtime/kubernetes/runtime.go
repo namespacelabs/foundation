@@ -86,8 +86,25 @@ func (d kubernetesClass) AttachToCluster(ctx context.Context, cfg cfg.Configurat
 	return ConnectToCluster(ctx, cfg)
 }
 
-func (d kubernetesClass) EnsureCluster(ctx context.Context, cfg cfg.Configuration, purpose string) (runtime.Cluster, error) {
-	return ConnectToCluster(ctx, cfg)
+func (d kubernetesClass) EnsureCluster(ctx context.Context, env cfg.Context, purpose string) (runtime.Cluster, error) {
+	return ConnectToCluster(ctx, env.Configuration())
+}
+
+func (d kubernetesClass) Planner(ctx context.Context, cfg cfg.Context, purpose string) (runtime.Planner, error) {
+	cluster, err := ConnectToCluster(ctx, cfg.Configuration())
+	if err != nil {
+		return nil, err
+	}
+
+	planner, err := NewPlanner(ctx, cfg, func(ctx context.Context) (*kubedef.SystemInfo, error) {
+		return cluster.FetchSystemInfo(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	planner.underlying = cluster
+	return planner, nil
 }
 
 func newTarget(env cfg.Context) clusterTarget {

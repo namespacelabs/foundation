@@ -69,8 +69,8 @@ type CreateClusterResult struct {
 	Deadline     *time.Time
 }
 
-func CreateCluster(ctx context.Context, api API, machineType string, ephemeral bool, purpose string, features []string) (*KubernetesCluster, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*KubernetesCluster, error) {
+func CreateCluster(ctx context.Context, api API, machineType string, ephemeral bool, purpose string, features []string) (*StartCreateKubernetesClusterResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         ephemeral,
 			DocumentedPurpose: purpose,
@@ -123,7 +123,7 @@ func CreateCluster(ctx context.Context, api API, machineType string, ephemeral b
 			})
 		}
 
-		return response.ClusterFragment, nil
+		return &response, nil
 	})
 }
 

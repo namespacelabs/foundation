@@ -37,7 +37,7 @@ var errTestFailed = errors.New("test failed")
 
 type testRun struct {
 	SealedContext cfg.Context     // Doesn't affect the output.
-	Cluster       runtime.Cluster // Target, doesn't affect the output.
+	Planner       runtime.Planner // Target, doesn't affect the output.
 
 	TestRef *schema.PackageRef
 
@@ -80,7 +80,12 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	d := compute.MustGetDepValue(r, test.Driver, "driver")
 
 	env := test.SealedContext
-	cluster := test.Cluster.Bind(ctx, test.SealedContext)
+
+	// May take a non-trivial amount of time.
+	cluster, err := test.Planner.EnsureClusterNamespace(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	defer func() {
 		if !test.SealedContext.Environment().Ephemeral {

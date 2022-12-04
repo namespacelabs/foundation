@@ -69,7 +69,10 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		return nil, err
 	}
 
-	boundCluster := cluster.Bind(ctx, env)
+	boundCluster, err := cluster.Bind(ctx, env)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := ensureDeployment(ctx, env, versions, boundCluster, wait); err != nil {
 		return nil, err
@@ -170,7 +173,10 @@ func getVersionsFromOrchestrator(ctx context.Context, targetEnv cfg.Configuratio
 		return nil, err
 	}
 
-	boundCluster := cluster.Bind(ctx, env)
+	boundCluster, err := cluster.Bind(ctx, env)
+	if err != nil {
+		return nil, err
+	}
 
 	// Only dial once.
 	conn, err := boundCluster.DialServer(ctx, server, &schema.Endpoint_Port{Name: portName})

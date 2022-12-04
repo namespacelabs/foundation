@@ -37,12 +37,12 @@ func ClusterFor(ctx context.Context, env cfg.Context) (Cluster, error) {
 }
 
 func PlannerFor(ctx context.Context, env cfg.Context) (Planner, error) {
-	cluster, err := ClusterFor(ctx, env)
+	deferred, err := ClassFor(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
-	return cluster.Planner(ctx, env)
+	return deferred.Planner(ctx, env, "")
 }
 
 func NamespaceFor(ctx context.Context, env cfg.Context) (ClusterNamespace, error) {
@@ -51,7 +51,7 @@ func NamespaceFor(ctx context.Context, env cfg.Context) (ClusterNamespace, error
 		return nil, err
 	}
 
-	return cluster.Bind(ctx, env), nil
+	return cluster.Bind(ctx, env)
 }
 
 func ClassFor(ctx context.Context, env cfg.Context) (Class, error) {

@@ -42,6 +42,8 @@ type GetKubernetesClusterResponse struct {
 type StartCreateKubernetesClusterResponse struct {
 	ClusterId       string             `json:"cluster_id,omitempty"`
 	ClusterFragment *KubernetesCluster `json:"cluster_fragment,omitempty"`
+	Registry        *ImageRegistry     `json:"registry,omitempty"`
+	Deadline        string             `json:"deadline,omitempty"`
 }
 
 type ListKubernetesClustersRequest struct {

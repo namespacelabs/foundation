@@ -62,15 +62,10 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	purpose := fmt.Sprintf("Test cluster for %s", testPkg.Location)
 
-	// This can block for a non-trivial amount of time.
-	cluster, err := deferred.EnsureCluster(ctx, env.Configuration(), purpose)
+	// This can block for some time.
+	planner, err := deferred.Planner(ctx, env, purpose)
 	if err != nil {
 		return nil, fnerrors.AttachLocation(testPkg.Location, err)
-	}
-
-	planner, err := cluster.Planner(ctx, env)
-	if err != nil {
-		return nil, err
 	}
 
 	stack, err := loadSUT(ctx, env, pl, testDef)
@@ -114,7 +109,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		SealedContext:    sealedCtx,
-		Cluster:          cluster,
+		Planner:          planner,
 		TestRef:          testRef,
 		Plan:             deployPlan,
 		ServersUnderTest: sutServers,

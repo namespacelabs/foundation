@@ -56,20 +56,20 @@ func ConnectToCluster(ctx context.Context, config cfg.Configuration) (*Cluster, 
 		return computeSystemInfo(ctx, cli.Clientset)
 	})
 
+	return NewCluster(cli, config, deferredSystemInfo.Get), nil
+}
+
+func NewCluster(cli *client.Prepared, config cfg.Configuration, fetchSystem FetchSystemInfoFunc) *Cluster {
 	return &Cluster{
 		cli:             cli.Clientset,
 		computedClient:  *cli,
 		Configuration:   config,
-		FetchSystemInfo: deferredSystemInfo.Get,
-	}, nil
+		FetchSystemInfo: fetchSystem,
+	}
 }
 
 func (u *Cluster) Class() runtime.Class {
 	return kubernetesClass{}
-}
-
-func (u *Cluster) Planner(ctx context.Context, env cfg.Context) (runtime.Planner, error) {
-	return NewPlanner(ctx, env, u.SystemInfo)
 }
 
 func (u *Cluster) RESTConfig() *rest.Config {
@@ -82,8 +82,8 @@ func (u *Cluster) PreparedClient() client.Prepared {
 	return u.computedClient
 }
 
-func (u *Cluster) Bind(ctx context.Context, env cfg.Context) runtime.ClusterNamespace {
-	return NewClusterNamespace(env, u, u)
+func (u *Cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
+	return NewClusterNamespace(env, u, u), nil
 }
 
 func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
