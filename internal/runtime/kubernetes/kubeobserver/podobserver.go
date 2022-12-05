@@ -82,7 +82,7 @@ func (p *PodObserver) start(ctx context.Context) {
 			}
 
 			if !retry {
-				fmt.Fprintf(console.Errors(ctx), "kube/podresolver: %s: failed: %v.\n", kubedef.SerializeSelector(p.labels), err)
+				fmt.Fprintf(console.Debug(ctx), "kube/podresolver: %s: failed: %v.\n", kubedef.SerializeSelector(p.labels), err)
 				return
 			}
 
