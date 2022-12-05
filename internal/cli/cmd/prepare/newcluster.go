@@ -8,8 +8,13 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -30,4 +35,42 @@ func newNewClusterCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func newNewBuildClusterCmd() *cobra.Command {
+	return fncobra.Cmd(
+		&cobra.Command{
+			Use:    "new-build-cluster",
+			Args:   cobra.NoArgs,
+			Hidden: true,
+		}).Do(func(ctx context.Context) error {
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
+		env, err := cfg.LoadContext(root, envRef)
+		if err != nil {
+			return err
+		}
+
+		msg, err := nscloud.EnsureBuildCluster(ctx, api.Endpoint)
+		if err != nil {
+			return err
+		}
+
+		c, err := devhost.MakeConfiguration(msg)
+		if err != nil {
+			return err
+		}
+		c.Name = env.Environment().Name
+
+		updated, was := devhost.Update(root.LoadedDevHost, c)
+		if !was {
+			return nil
+		}
+
+		return devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, updated)
+	})
+
 }

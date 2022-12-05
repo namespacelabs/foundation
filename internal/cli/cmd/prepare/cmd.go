@@ -60,6 +60,7 @@ func NewPrepareCmd() *cobra.Command {
 	rootCmd.AddCommand(newLocalCmd())
 	rootCmd.AddCommand(newExistingCmd())
 	rootCmd.AddCommand(newNewClusterCmd())
+	rootCmd.AddCommand(newNewBuildClusterCmd())
 
 	rootCmd.PersistentFlags().StringVar(&envRef, "env", "dev", "The environment to access.")
 	rootCmd.PersistentFlags().BoolVar(&isCreateEnv, "create_env", isCreateEnv, "Create the environment with a defined parameters and writes it into the workspace file if it is not exists yet.")
