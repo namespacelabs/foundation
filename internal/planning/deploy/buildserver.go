@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
 	"namespacelabs.dev/foundation/internal/integrations"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -37,7 +37,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 				return build.Plan{}, err
 			}
 
-			tasks.Attachments(ctx).AddResult("platforms", devhost.FormatPlatforms(platforms))
+			tasks.Attachments(ctx).AddResult("platforms", platform.FormatPlatforms(platforms))
 
 			var ws build.Workspace
 			if RunCodegen {

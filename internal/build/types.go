@@ -12,7 +12,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -79,7 +79,7 @@ type BuildPlatformsVar struct{}
 func (BuildPlatformsVar) String() string {
 	var p []string
 	for _, plat := range platformOverride {
-		p = append(p, devhost.FormatPlatform(plat))
+		p = append(p, platform.FormatPlatform(plat))
 	}
 	return strings.Join(p, ",")
 }
@@ -89,7 +89,7 @@ func (BuildPlatformsVar) Set(s string) error {
 
 	var ps []specs.Platform
 	for _, p := range platformParts {
-		parsed, err := devhost.ParsePlatform(p)
+		parsed, err := platform.ParsePlatform(p)
 		if err != nil {
 			return err
 		}

@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -50,7 +50,7 @@ type reqToImage struct {
 
 func (l *reqToImage) Action() *tasks.ActionEvent {
 	ev := tasks.Action("buildkit.build-image").
-		Arg("platform", devhost.FormatPlatform(l.targetPlatform))
+		Arg("platform", platform.FormatPlatform(l.targetPlatform))
 
 	if l.sourceLabel != "" {
 		ev = ev.HumanReadablef(fmt.Sprintf("Build: %s", l.sourceLabel))

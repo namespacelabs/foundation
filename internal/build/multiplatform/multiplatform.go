@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -40,7 +40,7 @@ func PrepareMultiPlatformImage(ctx context.Context, env pkggraph.SealedContext, 
 
 			var platforms []string
 			for _, plat := range p.Platforms {
-				platforms = append(platforms, devhost.FormatPlatform(plat))
+				platforms = append(platforms, platform.FormatPlatform(plat))
 			}
 
 			storedrun.Attach(&storage.Build{
@@ -88,7 +88,7 @@ func prepareImage(ctx context.Context, env pkggraph.SealedContext, plan build.Pl
 	// Sort platforms, so we yield a stable image order.
 	platforms = slices.Clone(platforms)
 	slices.SortFunc(platforms, func(a, b specs.Platform) bool {
-		return strings.Compare(devhost.FormatPlatform(a), devhost.FormatPlatform(b)) < 0
+		return strings.Compare(platform.FormatPlatform(a), platform.FormatPlatform(b)) < 0
 	})
 
 	r, err := prepareMultiPlatformPlan(ctx, plan, platforms)
@@ -140,7 +140,7 @@ func prepareMultiPlatformPlan(ctx context.Context, plan build.Plan, platforms []
 	for _, plat := range platforms {
 		label := plan.SourceLabel
 		if len(platforms) > 1 {
-			label += fmt.Sprintf(" (%s)", devhost.FormatPlatform(plat))
+			label += fmt.Sprintf(" (%s)", platform.FormatPlatform(plat))
 		}
 
 		platformIndex = append(platformIndex, len(requests))

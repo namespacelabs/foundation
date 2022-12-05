@@ -10,7 +10,7 @@ import (
 	"os"
 
 	"github.com/moby/buildkit/client/llb"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 		log.Fatal("TARGET_PLATFORM is missing")
 	}
 
-	platform, err := devhost.ParsePlatform(targetPlatform)
+	platform, err := platform.ParsePlatform(targetPlatform)
 	if err != nil {
 		log.Fatal(err)
 	}

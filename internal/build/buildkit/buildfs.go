@@ -11,7 +11,7 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -39,7 +39,7 @@ type reqToFS struct {
 
 func (l *reqToFS) Action() *tasks.ActionEvent {
 	ev := tasks.Action("buildkit.build-fs").
-		Arg("platform", devhost.FormatPlatform(l.targetPlatform))
+		Arg("platform", platform.FormatPlatform(l.targetPlatform))
 
 	if l.sourcePackage != "" {
 		return ev.Scope(l.sourcePackage)

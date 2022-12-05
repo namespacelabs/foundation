@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/integration/api"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -42,7 +43,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		}
 	}
 
-	if pp.Server != nil && pp.Server.RunByDefault {
+	if pp.Server != nil && pp.Server.RunByDefault && hasReadinessProbe(pp.Server) {
 		test, err := createServerStartupTest(ctx, pl, pp.PackageName())
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(pp.Location, "creating server startup test: %w", err)
@@ -77,4 +78,16 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	return pp, nil
+}
+
+func hasReadinessProbe(server *schema.Server) bool {
+	for _, probe := range server.Probe {
+		if probe.Kind == runtime.FnServiceReadyz {
+			return true
+		}
+	}
+
+	// This ignores Namespace-generated readiness checks (e.g. for Go application framework)
+	// TODO refactor their modeling.
+	return false
 }

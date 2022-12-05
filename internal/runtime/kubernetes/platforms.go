@@ -9,7 +9,7 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 )
 
 var (
@@ -33,7 +33,7 @@ func (r *Cluster) UnmatchedTargetPlatforms(ctx context.Context) ([]specs.Platfor
 func parsePlatforms(plats []string) ([]specs.Platform, error) {
 	var ret []specs.Platform
 	for _, p := range plats {
-		parsed, err := devhost.ParsePlatform(p)
+		parsed, err := platform.ParsePlatform(p)
 		if err != nil {
 			return nil, err
 		}

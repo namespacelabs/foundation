@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/host"
@@ -145,7 +145,7 @@ func (c *compilation) Action() *tasks.ActionEvent {
 		Arg("binary", c.binary.BinaryName).
 		Arg("module_path", c.binary.GoModulePath).
 		Arg("source_path", c.binary.SourcePath).
-		Arg("platform", devhost.FormatPlatform(c.platform))
+		Arg("platform", platform.FormatPlatform(c.platform))
 }
 
 func (c *compilation) Inputs() *compute.In {

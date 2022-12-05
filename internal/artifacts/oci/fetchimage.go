@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -58,7 +58,7 @@ type fetchImage struct {
 func (r *fetchImage) Action() *tasks.ActionEvent {
 	action := tasks.Action("oci.pull-image")
 	if r.platform != nil {
-		action = action.Arg("platform", devhost.FormatPlatform(*r.platform))
+		action = action.Arg("platform", platform.FormatPlatform(*r.platform))
 	}
 	return action
 }

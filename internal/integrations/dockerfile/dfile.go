@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -124,7 +124,7 @@ func makeDockerOpts(platforms []specs.Platform) map[string]string {
 func formatPlatforms(ps []specs.Platform) string {
 	strs := make([]string, len(ps))
 	for k, p := range ps {
-		strs[k] = devhost.FormatPlatform(p)
+		strs[k] = platform.FormatPlatform(p)
 	}
 	return strings.Join(strs, ",")
 }

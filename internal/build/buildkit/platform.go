@@ -6,11 +6,11 @@ package buildkit
 
 import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 )
 
 func HostPlatform() specs.Platform {
-	p := devhost.RuntimePlatform()
+	p := platform.RuntimePlatform()
 	p.OS = "linux" // We always run on linux.
 	return p
 }

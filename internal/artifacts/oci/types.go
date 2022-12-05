@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -156,5 +156,5 @@ func imageForPlatform(manifest *v1.IndexManifest, p *specs.Platform, fetch image
 		}
 	}
 
-	return nil, fnerrors.BadInputError("no image matches requested platform %q", devhost.FormatPlatform(*p))
+	return nil, fnerrors.BadInputError("no image matches requested platform %q", platform.FormatPlatform(*p))
 }

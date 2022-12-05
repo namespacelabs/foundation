@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/parsing/module"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
@@ -238,9 +238,9 @@ func newSdkVerifyCmd(selectedSdkList func() []sdk) *cobra.Command {
 			in := compute.Inputs()
 			for _, sdk := range selectedSdkList() {
 				for _, p := range platforms {
-					newIn, err := sdk.make(ctx, fmt.Sprintf("%s-%s", sdk.name, devhost.FormatPlatform(p)), in, p)
+					newIn, err := sdk.make(ctx, fmt.Sprintf("%s-%s", sdk.name, platform.FormatPlatform(p)), in, p)
 					if err != nil {
-						fmt.Fprintf(console.Warnings(ctx), "Skipped %q (%s): %v\n", sdk.name, devhost.FormatPlatform(p), err)
+						fmt.Fprintf(console.Warnings(ctx), "Skipped %q (%s): %v\n", sdk.name, platform.FormatPlatform(p), err)
 					} else {
 						in = newIn
 					}

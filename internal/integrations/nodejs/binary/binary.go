@@ -24,7 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -181,13 +181,13 @@ func copySrcForInstall(ctx context.Context, base llb.State, src llb.State, fsys 
 	return base, nil
 }
 
-func createBaseImageAndInstallPackageManager(ctx context.Context, platform specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
+func createBaseImageAndInstallPackageManager(ctx context.Context, p specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
 	nodeImage, err := pins.CheckDefault("node")
 	if err != nil {
 		return llb.State{}, err
 	}
 
-	baseImage := llbutil.Image(nodeImage, platform).
+	baseImage := llbutil.Image(nodeImage, p).
 		AddEnv("NODE_ENV", nodeEnv).
 		File(llb.Mkdir(AppRootPath, 0644))
 
@@ -200,7 +200,7 @@ func createBaseImageAndInstallPackageManager(ctx context.Context, platform specs
 		return llb.State{}, err
 	}
 
-	plfrm := strings.ReplaceAll(devhost.FormatPlatform(platform), "/", "-")
+	plfrm := strings.ReplaceAll(platform.FormatPlatform(p), "/", "-")
 
 	pkgMgrInstall := baseImage.
 		Run(

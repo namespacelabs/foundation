@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
@@ -49,7 +49,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 	action := tasks.Action("binary.llbgen").Scope(l.packageName)
 
 	if conf.TargetPlatform() != nil {
-		action = action.Arg("platform", devhost.FormatPlatform(*conf.TargetPlatform()))
+		action = action.Arg("platform", platform.FormatPlatform(*conf.TargetPlatform()))
 	}
 
 	return compute.Map(action, compute.Inputs().Computable("bin", bin).JSON("platform", conf.TargetPlatform()), compute.Output{},
@@ -58,7 +58,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 
 			var targetPlatform string
 			if conf.TargetPlatform() != nil {
-				targetPlatform = devhost.FormatPlatform(*conf.TargetPlatform())
+				targetPlatform = platform.FormatPlatform(*conf.TargetPlatform())
 			}
 
 			var serializedLLB bytes.Buffer

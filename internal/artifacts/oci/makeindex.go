@@ -15,7 +15,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -40,7 +40,7 @@ func (al *makeImageIndex) Inputs() *compute.In {
 	in := compute.Inputs()
 	for k, d := range al.images {
 		in = in.Computable(fmt.Sprintf("image%d", k), d.Image.Image())
-		platforms = append(platforms, devhost.FormatPlatform(d.Platform))
+		platforms = append(platforms, platform.FormatPlatform(d.Platform))
 	}
 	return in.Strs("platforms", platforms)
 }
@@ -50,7 +50,7 @@ func (al *makeImageIndex) Action() *tasks.ActionEvent {
 	var platforms []string
 	for _, d := range al.images {
 		u.Add(d.Image.Description())
-		platforms = append(platforms, devhost.FormatPlatform(d.Platform))
+		platforms = append(platforms, platform.FormatPlatform(d.Platform))
 	}
 	return tasks.Action("oci.make-image-index").Arg("refs", u.Strings()).Arg("platforms", platforms)
 }

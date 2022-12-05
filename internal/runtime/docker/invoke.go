@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
@@ -69,7 +69,7 @@ func (r ToolRuntime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, o
 }
 
 func HostPlatform() specs.Platform {
-	p := devhost.RuntimePlatform()
+	p := platform.RuntimePlatform()
 	p.OS = "linux" // We always run on linux.
 	return p
 }
