@@ -470,11 +470,11 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 
 		// Backwards compatibility (e.g. readiness checks for Go application framework use service metadata)
 		// TODO refactor.
-		probes, err := httpProbes(run.Endpoints, run.InternalEndpoints)
+		probes, err := httpProbes(deployable.Endpoints, deployable.InternalEndpoints)
 		if err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
-		run.Probes = append(run.Probes, probes...)
+		deployable.Probes = append(deployable.Probes, probes...)
 
 		var allEnv []*schema.BinaryConfig_EnvEntry
 		allEnv = append(allEnv, deployable.MainContainer.Env...)
