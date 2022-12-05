@@ -81,10 +81,11 @@ func getAwsConf(ctx context.Context, env cfg.Context) (*awsconf.Configuration, e
 	if err != nil {
 		return nil, err
 	}
-	if creds.CanExpire {
+	if creds.SessionToken != "" {
 		if creds.Expired() {
 			return nil, fmt.Errorf("aws credentials expired")
 		}
+
 		return &awsconf.Configuration{
 			Region: cfg.Region,
 			Static: &awsconf.Credentials{
