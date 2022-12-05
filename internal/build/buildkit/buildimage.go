@@ -109,5 +109,5 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		}
 	}
 
-	return l.solve(ctx, c, deps, nil, exportToImage())
+	return l.solve(ctx, c, deps, nil, exportToImage(c.ClientOpts()))
 }

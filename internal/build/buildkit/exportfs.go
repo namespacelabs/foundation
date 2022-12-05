@@ -44,6 +44,6 @@ func (e *exportFS) Exports() []client.ExportEntry {
 	}}
 }
 
-func (e *exportFS) Provide(context.Context, *client.SolveResponse) (fs.FS, error) {
+func (e *exportFS) Provide(context.Context, *client.SolveResponse, clientOpts) (fs.FS, error) {
 	return fnfs.Local(e.outputDir), nil
 }

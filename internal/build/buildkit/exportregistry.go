@@ -59,11 +59,12 @@ func (e *exportRegistry) Exports() []client.ExportEntry {
 			"push-by-digest":    "true",
 			"registry.insecure": fmt.Sprintf("%v", e.target.Insecure),
 			"buildinfo":         "false", // Remove build info to keep reproducibility.
+			KeySourceDateEpoch:  "0",
 		},
 	}}
 }
 
-func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse) (oci.Image, error) {
+func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse, opts clientOpts) (oci.Image, error) {
 	digest, ok := res.ExporterResponse[exptypes.ExporterImageDigestKey]
 	if !ok {
 		return nil, fnerrors.New("digest is missing from result")
@@ -79,6 +80,10 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse)
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.SupportsCanonicalBuilds {
+		return img, nil
 	}
 
 	return canonical(ctx, img)

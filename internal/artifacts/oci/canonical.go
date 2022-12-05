@@ -34,7 +34,17 @@ func WithCanonicalManifest(ctx context.Context, img Image) (Image, error) {
 		cfg.Config.Hostname = ""
 		cfg.DockerVersion = ""
 
-		return mutate.ConfigFile(img, cfg)
+		resulting, err := mutate.ConfigFile(img, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		resultingDigest, err := resulting.Digest()
+		if err == nil {
+			tasks.Attachments(ctx).AddResult("transformed", resultingDigest)
+		}
+
+		return resulting, err
 	})
 }
 
@@ -44,16 +54,22 @@ func Canonical(ctx context.Context, original Image) (Image, error) {
 		return nil, err
 	}
 
+	AttachDigestToAction(ctx, img)
+	return img, nil
+}
+
+func AttachDigestToAction(ctx context.Context, img Image) {
 	digest, err := img.Digest()
 	if err != nil {
-		return nil, err
+		tasks.Attachments(ctx).AddResult("digest", "<failed>")
+	} else {
+		tasks.Attachments(ctx).AddResult("digest", digest)
 	}
 
 	cfgName, err := img.ConfigName()
 	if err != nil {
-		return nil, err
+		tasks.Attachments(ctx).AddResult("config", "<failed>")
+	} else {
+		tasks.Attachments(ctx).AddResult("config", cfgName)
 	}
-
-	tasks.Attachments(ctx).AddResult("digest", digest).AddResult("config", cfgName)
-	return img, nil
 }

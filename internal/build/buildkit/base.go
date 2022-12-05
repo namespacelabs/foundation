@@ -252,7 +252,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 
 	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exported: %v\n", sid, solveRes.ExporterResponse)
 
-	return exp.Provide(ctx, solveRes)
+	return exp.Provide(ctx, solveRes, c.ClientOpts())
 }
 
 func Unwrap(c compute.Computable[oci.Image]) (llb.State, []LocalContents, bool) {

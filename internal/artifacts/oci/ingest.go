@@ -17,7 +17,7 @@ import (
 )
 
 func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool) (Image, error) {
-	img, err := tarball.Image(func() (io.ReadCloser, error) {
+	return tarball.Image(func() (io.ReadCloser, error) {
 		f, err := fsys.Open(path)
 		if err != nil {
 			return nil, err
@@ -42,11 +42,6 @@ func IngestFromFS(ctx context.Context, fsys fs.FS, path string, compressed bool)
 
 		return andClose{gr, progress}, nil
 	}, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return Canonical(ctx, img)
 }
 
 type andClose struct {

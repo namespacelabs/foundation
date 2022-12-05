@@ -13,6 +13,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/docker/cli/cli/config"
+	moby_buildkit_v1 "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/session"
@@ -21,6 +23,7 @@ import (
 	"github.com/moby/buildkit/session/secrets/secretsprovider"
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/mod/semver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
@@ -48,11 +51,16 @@ type GatewayClient struct {
 	*client.Client
 
 	buildkitInDocker bool
+	clientOpts       clientOpts
 }
 
-func (cli *GatewayClient) UsesDocker() bool {
-	return cli.buildkitInDocker
+type clientOpts struct {
+	SupportsOCILayoutExport bool
+	SupportsCanonicalBuilds bool
 }
+
+func (cli *GatewayClient) UsesDocker() bool       { return cli.buildkitInDocker }
+func (cli *GatewayClient) ClientOpts() clientOpts { return cli.clientOpts }
 
 type clientInstance struct {
 	conf *Overrides
@@ -129,6 +137,21 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		return nil, err
 	}
 
+	var opts clientOpts
+
+	response, err := cli.ControlClient().Info(ctx, &moby_buildkit_v1.InfoRequest{})
+	if err == nil {
+		x, _ := json.MarshalIndent(response.GetBuildkitVersion(), "", "  ")
+		fmt.Fprintf(console.Debug(ctx), "buildkit: version: %v\n", string(x))
+
+		if semver.Compare(response.BuildkitVersion.GetVersion(), "v0.11.0-rc1") >= 0 {
+			opts.SupportsCanonicalBuilds = true
+			opts.SupportsOCILayoutExport = false // Some casual testing seems to indicate that this is actually slower.
+		}
+	} else {
+		fmt.Fprintf(console.Debug(ctx), "buildkit: Info failed: %v\n", err)
+	}
+
 	// When disconnecting often get:
 	//
 	// WARN[0012] commandConn.CloseWrite: commandconn: failed to wait: signal: terminated
@@ -137,7 +160,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	// 	return cli.Close()
 	// })
 
-	return &GatewayClient{Client: cli, buildkitInDocker: true}, nil
+	return &GatewayClient{Client: cli, buildkitInDocker: true, clientOpts: opts}, nil
 }
 
 type FrontendRequest struct {
@@ -213,7 +236,8 @@ func prepareSession(ctx context.Context, keychain oci.Keychain) ([]session.Attac
 			attachables = append(attachables, keychainWrapper{ctx: ctx, errorLogger: console.Output(ctx, "buildkit-auth"), keychain: keychain})
 		}
 	} else {
-		attachables = append(attachables, authprovider.NewDockerAuthProvider(console.Stderr(ctx)))
+		dockerConfig := config.LoadDefaultConfigFile(console.Stderr(ctx))
+		attachables = append(attachables, authprovider.NewDockerAuthProvider(dockerConfig))
 	}
 
 	// XXX make this configurable; eg at the devhost side.
