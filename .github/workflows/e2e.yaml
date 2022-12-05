@@ -10,6 +10,7 @@ on:
 permissions:
   packages: read
   contents: read
+  id-token: write # This is required for requesting the JWT
 
 jobs:
   build_fn:
