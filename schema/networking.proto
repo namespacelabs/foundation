@@ -113,7 +113,3 @@ message GrpcHttpTranscoding {
 message HttpExportedService {
     string path = 1;
 }
-
-message ExecProbe {
-    repeated string command = 1;
-}
