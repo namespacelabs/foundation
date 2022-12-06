@@ -231,6 +231,10 @@ jobs:
       - name: Deploy staging
         run: |
           /tmp/ns deploy --env=staging \
+            internal/testdata/server/gogrpc \
+            internal/testdata/integrations/dockerfile/complex \
+            internal/testdata/integrations/golang \
+            internal/testdata/integrations/nodejs/yarn \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --tools_invocation_can_use_buildkit \
