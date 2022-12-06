@@ -66,7 +66,7 @@ func (l *reqToImage) Action() *tasks.ActionEvent {
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.
-	c, err := compute.GetValue(ctx, connectToClient(l.config, l.targetPlatform))
+	c, err := compute.GetValue(ctx, MakeClient(l.config, l.targetPlatform))
 	if err != nil {
 		return nil, err
 	}

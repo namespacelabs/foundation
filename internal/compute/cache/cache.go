@@ -35,7 +35,7 @@ type CacheInfo interface {
 
 type Cache interface {
 	Bytes(context.Context, schema.Digest) ([]byte, error)
-	Blob(schema.Digest) (io.ReadCloser, error) // XXX No context is required here to make it simpler for Compressed() to call Blob().
+	Blob(schema.Digest) (ReaderAtCloser, error) // XXX No context is required here to make it simpler for Compressed() to call Blob().
 	Stat(context.Context, schema.Digest) (CacheInfo, error)
 
 	WriteBlob(context.Context, schema.Digest, io.ReadCloser) error
@@ -43,6 +43,11 @@ type Cache interface {
 
 	LoadEntry(context.Context, schema.Digest) (CachedOutput, bool, error)
 	StoreEntry(context.Context, []schema.Digest, CachedOutput) error
+}
+
+type ReaderAtCloser interface {
+	io.ReaderAt
+	io.ReadCloser
 }
 
 type CachedOutput struct {
@@ -102,7 +107,7 @@ func (c *localCache) Stat(ctx context.Context, h schema.Digest) (CacheInfo, erro
 	return os.Stat(c.blobPath(h))
 }
 
-func (c *localCache) Blob(h schema.Digest) (io.ReadCloser, error) {
+func (c *localCache) Blob(h schema.Digest) (ReaderAtCloser, error) {
 	if h.Algorithm == "" || h.Hex == "" {
 		return nil, fnerrors.InternalError("digest not set")
 	}

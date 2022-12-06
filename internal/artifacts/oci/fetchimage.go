@@ -133,6 +133,25 @@ func cacheAndReturn(ctx context.Context, d ImageID, opts ResolveOpts) (Image, er
 	return lazyLoadFromCache(ctx, compute.Cache(ctx), h)
 }
 
+func EnsureCached(ctx context.Context, img Image) (Image, error) {
+	if cached, ok := img.(*cachedImage); ok {
+		return cached, nil
+	}
+
+	digest, err := img.Digest()
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks.Return(ctx, tasks.Action("oci.ensure-cached").Arg("ref", digest), func(ctx context.Context) (Image, error) {
+		if err := writeImage(ctx, compute.Cache(ctx), img); err != nil {
+			return nil, fnerrors.InternalError("failed to store image: %w", err)
+		}
+
+		return lazyLoadFromCache(ctx, compute.Cache(ctx), digest)
+	})
+}
+
 func fetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (Image, error) {
 	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), opts)
 	if err != nil {

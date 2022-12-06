@@ -17,7 +17,7 @@ var NoCache Cache = noCache{}
 type noCache struct{}
 
 func (noCache) Bytes(context.Context, schema.Digest) ([]byte, error)   { return nil, os.ErrNotExist }
-func (noCache) Blob(schema.Digest) (io.ReadCloser, error)              { return nil, os.ErrNotExist }
+func (noCache) Blob(schema.Digest) (ReaderAtCloser, error)             { return nil, os.ErrNotExist }
 func (noCache) Stat(context.Context, schema.Digest) (CacheInfo, error) { return nil, os.ErrNotExist }
 
 func (noCache) WriteBlob(context.Context, schema.Digest, io.ReadCloser) error { return nil }

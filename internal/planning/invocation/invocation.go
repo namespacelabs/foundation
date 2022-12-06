@@ -14,7 +14,6 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -31,7 +30,6 @@ import (
 type Invocation struct {
 	ImageName            string
 	Image                compute.Computable[oci.ResolvableImage]
-	PublicImageID        *oci.ImageID
 	SupportedToolVersion int
 	Command              []string
 	Args                 []string
@@ -98,11 +96,6 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 		Image:      image,
 		NoCache:    with.NoCache,
 		Inject:     with.Inject,
-	}
-
-	if prebuilt, is := build.IsPrebuilt(prepared.Plan.Spec); is {
-		// The assumption at the moment is that all prebuilts are public.
-		invocation.PublicImageID = &prebuilt
 	}
 
 	if v := pkg.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {

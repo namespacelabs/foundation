@@ -8,6 +8,7 @@ import (
 	"context"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -18,7 +19,6 @@ var MakeAlternativeRuntime func(cfg.Configuration) Runtime
 type Runtime interface {
 	RunWithOpts(context.Context, rtypes.RunToolOpts, func()) error
 	HostPlatform(context.Context) (specs.Platform, error)
-	CanConsumePublicImages() bool // Whether this runtime implementation can use an ImageID directly if one is available.
 }
 
 func Run(ctx context.Context, conf cfg.Configuration, opts rtypes.RunToolOpts) error {
@@ -30,11 +30,11 @@ func RunWithOpts(ctx context.Context, conf cfg.Configuration, opts rtypes.RunToo
 }
 
 func HostPlatform(ctx context.Context, conf cfg.Configuration) (specs.Platform, error) {
-	return impl(conf).HostPlatform(ctx)
-}
+	if CanUseBuildkit(conf) {
+		return buildkit.HostPlatform(), nil
+	}
 
-func CanConsumePublicImages(conf cfg.Configuration) bool {
-	return impl(conf).CanConsumePublicImages()
+	return impl(conf).HostPlatform(ctx)
 }
 
 func impl(conf cfg.Configuration) Runtime {

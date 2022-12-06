@@ -55,6 +55,7 @@ type GatewayClient struct {
 }
 
 type clientOpts struct {
+	SupportsOCILayoutInput  bool
 	SupportsOCILayoutExport bool
 	SupportsCanonicalBuilds bool
 }
@@ -70,7 +71,7 @@ type clientInstance struct {
 
 var OverridesConfigType = cfg.DefineConfigType[*Overrides]()
 
-func connectToClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*GatewayClient] {
+func MakeClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*GatewayClient] {
 	conf, _ := OverridesConfigType.CheckGetForPlatform(config, targetPlatform)
 
 	if conf.BuildkitAddr == "" && conf.HostedBuildCluster == nil && conf.ContainerName == "" {
@@ -97,7 +98,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, err
 		}
 
-		return &GatewayClient{Client: cli}, nil
+		return newClient(ctx, cli, false)
 	}
 
 	if c.conf.HostedBuildCluster != nil {
@@ -124,7 +125,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, err
 		}
 
-		return &GatewayClient{Client: cli}, nil
+		return newClient(ctx, cli, false)
 	}
 
 	localAddr, err := EnsureBuildkitd(ctx, c.conf.ContainerName)
@@ -137,21 +138,6 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		return nil, err
 	}
 
-	var opts clientOpts
-
-	response, err := cli.ControlClient().Info(ctx, &moby_buildkit_v1.InfoRequest{})
-	if err == nil {
-		x, _ := json.MarshalIndent(response.GetBuildkitVersion(), "", "  ")
-		fmt.Fprintf(console.Debug(ctx), "buildkit: version: %v\n", string(x))
-
-		if semver.Compare(response.BuildkitVersion.GetVersion(), "v0.11.0-rc1") >= 0 {
-			opts.SupportsCanonicalBuilds = true
-			opts.SupportsOCILayoutExport = false // Some casual testing seems to indicate that this is actually slower.
-		}
-	} else {
-		fmt.Fprintf(console.Debug(ctx), "buildkit: Info failed: %v\n", err)
-	}
-
 	// When disconnecting often get:
 	//
 	// WARN[0012] commandConn.CloseWrite: commandconn: failed to wait: signal: terminated
@@ -160,7 +146,27 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	// 	return cli.Close()
 	// })
 
-	return &GatewayClient{Client: cli, buildkitInDocker: true, clientOpts: opts}, nil
+	return newClient(ctx, cli, true)
+}
+
+func newClient(ctx context.Context, cli *client.Client, docker bool) (*GatewayClient, error) {
+	var opts clientOpts
+
+	response, err := cli.ControlClient().Info(ctx, &moby_buildkit_v1.InfoRequest{})
+	if err == nil {
+		x, _ := json.MarshalIndent(response.GetBuildkitVersion(), "", "  ")
+		fmt.Fprintf(console.Debug(ctx), "buildkit: version: %v\n", string(x))
+
+		if semver.Compare(response.BuildkitVersion.GetVersion(), "v0.11.0-rc1") >= 0 {
+			opts.SupportsOCILayoutInput = true
+			opts.SupportsCanonicalBuilds = true
+			opts.SupportsOCILayoutExport = false // Some casual testing seems to indicate that this is actually slower.
+		}
+	} else {
+		fmt.Fprintf(console.Debug(ctx), "buildkit: Info failed: %v\n", err)
+	}
+
+	return &GatewayClient{Client: cli, buildkitInDocker: docker, clientOpts: opts}, nil
 }
 
 type FrontendRequest struct {

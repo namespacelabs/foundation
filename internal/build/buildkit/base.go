@@ -11,6 +11,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/containerd/containerd/content"
 	"github.com/dustin/go-humanize"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
@@ -221,6 +222,10 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 
 			solveOpt.LocalDirs[local.Abs()] = filepath.Join(local.Module.Abs(), local.Path)
 		}
+	}
+
+	solveOpt.OCIStores = map[string]content.Store{
+		"cache": &cacheStore{compute.Cache(ctx)},
 	}
 
 	fillInCaching(&solveOpt)

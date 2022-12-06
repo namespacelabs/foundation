@@ -40,42 +40,37 @@ func (k Runtime) RunWithOpts(ctx context.Context, opts rtypes.RunToolOpts, onSta
 	}
 
 	var imgid oci.ImageID
-	if opts.PublicImageID == nil {
-		if opts.ImageName == "" {
-			return fnerrors.New("ImageName is required")
-		}
+	if opts.ImageName == "" {
+		return fnerrors.New("ImageName is required")
+	}
 
-		// XXX handle opts.NoNetworking
-		var err error
-		imgid, err = tasks.Return(ctx, tasks.Action("kubernetes.invocation.push-image"), func(ctx context.Context) (oci.ImageID, error) {
-			reg, err := registry.GetRegistryFromConfig(ctx, "", k.configuration)
-			if err != nil {
-				return oci.ImageID{}, err
-			}
-
-			name := reg.AllocateName(opts.ImageName)
-
-			resolvedName, err := compute.GetValue(ctx, name)
-			if err != nil {
-				return oci.ImageID{}, err
-			}
-
-			tasks.Attachments(ctx).AddResult("ref", resolvedName.ImageID.ImageRef())
-
-			// XXX this ideally would have done by the parent, so we'd have parallelism.
-			digest, err := oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName.TargetRepository, true)
-			if err != nil {
-				return oci.ImageID{}, err
-			}
-
-			return resolvedName.WithDigest(digest), nil
-		})
+	// XXX handle opts.NoNetworking
+	var err error
+	imgid, err = tasks.Return(ctx, tasks.Action("kubernetes.invocation.push-image"), func(ctx context.Context) (oci.ImageID, error) {
+		reg, err := registry.GetRegistryFromConfig(ctx, "", k.configuration)
 		if err != nil {
-			return err
+			return oci.ImageID{}, err
 		}
 
-	} else {
-		imgid = *opts.PublicImageID
+		name := reg.AllocateName(opts.ImageName)
+
+		resolvedName, err := compute.GetValue(ctx, name)
+		if err != nil {
+			return oci.ImageID{}, err
+		}
+
+		tasks.Attachments(ctx).AddResult("ref", resolvedName.ImageID.ImageRef())
+
+		// XXX this ideally would have done by the parent, so we'd have parallelism.
+		digest, err := oci.RawAsResolvable(opts.Image).Push(ctx, resolvedName.TargetRepository, true)
+		if err != nil {
+			return oci.ImageID{}, err
+		}
+
+		return resolvedName.WithDigest(digest), nil
+	})
+	if err != nil {
+		return err
 	}
 
 	// XXX use more meaningful names.

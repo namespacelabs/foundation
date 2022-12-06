@@ -115,22 +115,16 @@ func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
 func (inv *cacheableInvocation) Inputs() *compute.In {
 	invocation := *inv.invocation // Copy
 	invocation.Image = nil        // To make the invocation JSON serializable.
-	invocation.PublicImageID = nil
 
-	in := compute.Inputs().
+	return compute.Inputs().
 		JSON("invocation", invocation). // Without image and PackageAbsPath.
 		JSON("source", inv.source).
 		Proto("stack", inv.stack).
 		Stringer("focus", inv.focus).
 		Proto("env", inv.env.Environment()).
 		JSON("props", inv.props).
-		JSON("injections", inv.injections)
-
-	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && inv.invocation.PublicImageID != nil {
-		return in.JSON("publicImageID", *inv.invocation.PublicImageID)
-	} else {
-		return in.Computable("image", inv.invocation.Image)
-	}
+		JSON("injections", inv.injections).
+		Computable("image", inv.invocation.Image)
 }
 
 func (inv *cacheableInvocation) Output() compute.Output {
@@ -210,21 +204,17 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		NoNetworking: true,
 	}
 
-	if (tools.InvocationCanUseBuildkit || tools.CanConsumePublicImages(inv.env.Configuration())) && invocation.PublicImageID != nil {
-		opts.PublicImageID = invocation.PublicImageID
+	resolvable := compute.MustGetDepValue(deps, invocation.Image, "image")
+
+	hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration())
+	if err != nil {
+		return nil, err
+	}
+
+	if image, err := resolvable.ImageForPlatform(hostPlatform); err == nil {
+		opts.Image = image
 	} else {
-		resolvable := compute.MustGetDepValue(deps, invocation.Image, "image")
-
-		hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration())
-		if err != nil {
-			return nil, err
-		}
-
-		if image, err := resolvable.ImageForPlatform(hostPlatform); err == nil {
-			opts.Image = image
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 
 	opts.SupportedToolVersion = invocation.SupportedToolVersion
@@ -238,9 +228,9 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 
 	x := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
-	if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
+	if tools.CanUseBuildkit(inv.env.Configuration()) {
 		return x.InvokeOnBuildkit(ctx, inv.env.Configuration(), "foundation.provision.tool.protocol.InvocationService/Invoke",
-			inv.source.PackageName, *invocation.PublicImageID, opts, req)
+			inv.source.PackageName, opts.Image, opts, req)
 	}
 
 	count := 0

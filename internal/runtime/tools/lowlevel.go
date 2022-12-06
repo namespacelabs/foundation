@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/moby/buildkit/client/llb"
+	"github.com/opencontainers/go-digest"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,7 +28,6 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/grpcstdio"
-	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
@@ -48,6 +48,10 @@ type ResolveMethodFunc[Req, Resp proto.Message] func(*grpc.ClientConn) func(cont
 type LowLevelInvokeOptions[Req, Resp proto.Message] struct {
 	RedactRequest  func(proto.Message) proto.Message
 	RedactResponse func(proto.Message) proto.Message
+}
+
+func CanUseBuildkit(env cfg.Configuration) bool {
+	return InvocationCanUseBuildkit
 }
 
 func attachToAction(ctx context.Context, name string, msg proto.Message, redactMessage func(proto.Message) proto.Message) {
@@ -154,12 +158,27 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf cfg.
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, conf cfg.Configuration, method string, pkg schema.PackageName, imageID oci.ImageID, opts rtypes.RunToolOpts, req Req) (Resp, error) {
-	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("ref", imageID.ImageRef()).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, conf cfg.Configuration, method string, pkg schema.PackageName, image oci.Image, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
+		resp := protos.NewFromType[Resp]()
+
+		image, err := oci.EnsureCached(ctx, image)
+		if err != nil {
+			return resp, err
+		}
+
+		d, err := image.Digest()
+		if err != nil {
+			return resp, err
+		}
+
+		tasks.Attachments(ctx).AddResult("ref", d.String())
+
 		p := buildkit.HostPlatform()
-		base := llbutil.Image(imageID.RepoAndDigest(), p)
+
+		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
 
 		args := append(slices.Clone(opts.Command), opts.Args...)
 		args = append(args, "--inline_invocation="+method)
@@ -173,8 +192,6 @@ func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context,
 
 		run := base.Run(runOpts...)
 
-		resp := protos.NewFromType[Resp]()
-
 		requestBytes, err := proto.Marshal(req)
 		if err != nil {
 			return resp, err
@@ -184,6 +201,15 @@ func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context,
 
 		run.AddMount("/request", requestState, llb.Readonly)
 		out := run.AddMount("/out", llb.Scratch())
+
+		c, err := compute.GetValue(ctx, buildkit.MakeClient(conf, p))
+		if err != nil {
+			return resp, err
+		}
+
+		if !c.ClientOpts().SupportsCanonicalBuilds {
+			return resp, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
+		}
 
 		output, err := buildkit.BuildFilesystem(ctx, conf, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
 		if err != nil {

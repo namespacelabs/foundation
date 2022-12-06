@@ -7,11 +7,12 @@ package tools
 import (
 	"context"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
@@ -29,23 +30,22 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 		invocation: inv,
 	}
 
-	if imgid, ok := build.IsPrebuilt(prepared.Plan.Spec); ok && InvocationCanUseBuildkit {
-		it.imageID = imgid
-	} else {
-		image, err := prepared.Image(ctx, env)
-		if err != nil {
-			return nil, err
-		}
-
-		it.image = compute.Transform("return image", image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
-			hostPlatform, err := HostPlatform(ctx, env.Configuration())
-			if err != nil {
-				return nil, err
-			}
-
-			return r.ImageForPlatform(hostPlatform)
-		})
+	hostPlatform, err := HostPlatform(ctx, env.Configuration())
+	if err != nil {
+		return nil, err
 	}
+
+	plan := prepared.Plan
+	plan.Platforms = []specs.Platform{hostPlatform}
+
+	image, err := multiplatform.PrepareMultiPlatformImage(ctx, env, plan)
+	if err != nil {
+		return nil, err
+	}
+
+	it.image = compute.Transform("return image", image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
+		return r.ImageForPlatform(hostPlatform)
+	})
 
 	return it, nil
 }
@@ -53,7 +53,6 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 type invokeTool struct {
 	conf       cfg.Configuration // Does not affect the output.
 	invocation *types.DeferredInvocation
-	imageID    oci.ImageID // Use buildkit to invoke instead of the tools runtime.
 	image      compute.Computable[oci.Image]
 
 	compute.LocalScoped[*protocol.InvokeResponse]
@@ -66,11 +65,7 @@ func (inv *invokeTool) Action() *tasks.ActionEvent {
 
 func (inv *invokeTool) Inputs() *compute.In {
 	in := compute.Inputs().Proto("invocation", inv.invocation)
-	if inv.image != nil {
-		return in.Computable("image", inv.image)
-	} else {
-		return in.JSON("imageID", inv.imageID)
-	}
+	return in.Computable("image", inv.image)
 }
 
 func (inv *invokeTool) Output() compute.Output {
@@ -110,14 +105,14 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	var resp *protocol.ToolResponse
 	var err error
 
-	if inv.image != nil {
-		run.Image = compute.MustGetDepValue(r, inv.image, "image")
+	run.Image = compute.MustGetDepValue(r, inv.image, "image")
 
+	if CanUseBuildkit(inv.conf) {
+		resp, err = invoke.InvokeOnBuildkit(ctx, inv.conf, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), run.Image, run, req)
+	} else {
 		resp, err = invoke.Invoke(ctx, inv.conf, inv.invocation.BinaryRef.AsPackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke
 		})
-	} else {
-		resp, err = invoke.InvokeOnBuildkit(ctx, inv.conf, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), inv.imageID, run, req)
 	}
 
 	if err != nil {

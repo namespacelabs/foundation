@@ -354,23 +354,19 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				// XXX security prepare invocations have network access.
 			}
 
-			if (tools.CanConsumePublicImages(server.SealedContext().Configuration()) || tools.InvocationCanUseBuildkit) && inv.PublicImageID != nil {
-				opts.PublicImageID = inv.PublicImageID
-			} else {
-				image, err := compute.GetValue(ctx, inv.Image)
-				if err != nil {
-					return nil, err
-				}
+			image, err := compute.GetValue(ctx, inv.Image)
+			if err != nil {
+				return nil, err
+			}
 
-				hostPlatform, err := tools.HostPlatform(ctx, server.SealedContext().Configuration())
-				if err != nil {
-					return nil, err
-				}
+			hostPlatform, err := tools.HostPlatform(ctx, server.SealedContext().Configuration())
+			if err != nil {
+				return nil, err
+			}
 
-				opts.Image, err = image.ImageForPlatform(hostPlatform)
-				if err != nil {
-					return nil, err
-				}
+			opts.Image, err = image.ImageForPlatform(hostPlatform)
+			if err != nil {
+				return nil, err
 			}
 
 			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
@@ -383,9 +379,9 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 
 			var resp *protocol.PrepareResponse
 
-			if tools.InvocationCanUseBuildkit && opts.PublicImageID != nil {
+			if tools.CanUseBuildkit(server.SealedContext().Configuration()) {
 				resp, err = invoke.InvokeOnBuildkit(ctx, server.SealedContext().Configuration(), "foundation.provision.tool.protocol.PrepareService/Prepare",
-					node.PackageName(), *opts.PublicImageID, opts, req)
+					node.PackageName(), opts.Image, opts, req)
 			} else {
 				resp, err = invoke.Invoke(ctx, server.SealedContext().Configuration(), node.PackageName(), opts, req,
 					func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
