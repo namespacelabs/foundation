@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build_fn:
-    name: Build Foundation
+    name: Build ns from head
     strategy:
       matrix:
         os: [ubuntu-20.04]
@@ -64,7 +64,7 @@ jobs:
         if: failure() && github.event_name == 'push'
 
   run_deploy:
-    name: Test deployment to Kubernetes os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
+    name: Test local Namespace (deploy to k3d) os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
     needs: build_fn
     strategy:
       matrix:
@@ -97,13 +97,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-fnrun-
 
-      - name: Download Foundation
+      - name: Download ns
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
 
       # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
-      - name: Make Foundation executable
+      - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare development environment
@@ -112,7 +112,7 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
-      # namespace-ci already deploys all servers with buildkit, so only testing golang_use_buildkit=false here.
+      # staging deployments already use buildkit, so only testing golang_use_buildkit=false here.
       - name: Deploy internal/testdata/server/gogrpc
         run: |
           /tmp/ns deploy \
@@ -136,12 +136,12 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Download Foundation
+      - name: Download ns
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
 
-      - name: Make Foundation executable
+      - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Login
@@ -179,7 +179,7 @@ jobs:
         if: failure() && github.event_name == 'push'
 
   deploy_staging:
-    name: deploy staging
+    name: Deploy staging
     needs:
       - build_fn
       - run_e2e_tests
@@ -193,12 +193,12 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Download Foundation
+      - name: Download ns
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
 
-      - name: Make Foundation executable
+      - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Login
@@ -269,13 +269,13 @@ jobs:
           repository: namespacelabs/${{ matrix.repo }}
           path: external-repo
 
-      - name: Download Foundation
+      - name: Download ns
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
 
       # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
-      - name: Make Foundation executable
+      - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Login
@@ -328,13 +328,13 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
-      - name: Download Foundation
+      - name: Download ns
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
 
       # ns is moved out of the workspace so we don't spend time uploading it to buildkit.
-      - name: Make Foundation executable
+      - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
       - name: Prepare first environment
