@@ -334,6 +334,12 @@ func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) e
 	return ev.RunWithOpts(ctx, RunOpts{Run: f})
 }
 
+func Return0(ctx context.Context, ev *ActionEvent, f func(context.Context) error) error {
+	return ev.RunWithOpts(ctx, RunOpts{Run: func(ctx context.Context) error {
+		return f(ctx)
+	}})
+}
+
 func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context) (V, error)) (V, error) {
 	var ret V
 	err := ev.RunWithOpts(ctx, RunOpts{Run: func(ctx context.Context) error {

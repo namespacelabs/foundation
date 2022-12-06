@@ -153,7 +153,7 @@ type recordedOutput struct {
 	Used     bool
 }
 
-func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, opts ExecuteOpts) ([]Waiter, error) {
+func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, opts ExecuteOpts) error {
 	err := tasks.Attachments(ctx).AttachSerializable("definitions.json", "fn.graph", g.definitions)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to serialize graph definition: %v", err)
@@ -161,11 +161,10 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 
 	nodes, err := topoSortNodes(ctx, g.nodes)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var errs []error
-	var waiters []Waiter
 
 	if ch != nil {
 		for _, node := range nodes {
@@ -174,6 +173,9 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 			}
 		}
 	}
+
+	ctx, done := context.WithCancel(ctx)
+	defer done()
 
 	outputs := map[string]*recordedOutput{}
 	for _, n := range nodes {
@@ -186,7 +188,7 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 			if opts.ContinueOnErrors {
 				errs = append(errs, err)
 			} else {
-				return nil, err
+				return err
 			}
 			continue
 		}
@@ -213,7 +215,7 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 			if opts.ContinueOnErrors {
 				errs = append(errs, wrappedErr)
 			} else {
-				return nil, wrappedErr
+				return wrappedErr
 			}
 		} else if res != nil {
 			for _, output := range res.Outputs {
@@ -222,7 +224,7 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 					if opts.ContinueOnErrors {
 						errs = append(errs, wrappedErr)
 					} else {
-						return nil, wrappedErr
+						return wrappedErr
 					}
 				} else {
 					outputs[output.InstanceID] = &recordedOutput{
@@ -233,7 +235,11 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 			}
 
 			if res.Waiter != nil {
-				waiters = append(waiters, res.Waiter)
+				if opts.OnWaiter != nil {
+					opts.OnWaiter(ctx, res.Waiter)
+				} else {
+					fmt.Fprintf(console.Debug(ctx), "%s: ignoring waiter\n", typeUrl)
+				}
 			}
 		}
 	}
@@ -251,7 +257,7 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 		errs = append(errs, fnerrors.InternalError("unused outputs: %v", unusedKeys))
 	}
 
-	return waiters, multierr.New(errs...)
+	return multierr.New(errs...)
 }
 
 func prepareInputs(outputs map[string]*recordedOutput, def *schema.SerializedInvocation) (Inputs, error) {

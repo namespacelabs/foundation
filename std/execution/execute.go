@@ -6,16 +6,24 @@ package execution
 
 import (
 	"context"
+	"fmt"
 
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type WaitHandler func(context.Context) (chan *orchestration.Event, func(context.Context) error)
 
+// A waiter implementation is required to close the received channel when it's done.
+type Waiter func(context.Context, chan *orchestration.Event) error
+
 type ExecuteOpts struct {
 	ContinueOnErrors bool
 	WrapWithActions  bool
+
+	OnWaiter func(context.Context, Waiter)
 }
 
 func Execute(ctx context.Context, actionName string, g *Plan, channelHandler WaitHandler, injected ...MakeInjectionInstance) error {
@@ -30,13 +38,47 @@ func ExecuteExt(ctx context.Context, actionName string, g *Plan, channelHandler 
 		ch, cleanup = channelHandler(ctx)
 	}
 
-	waiters, err := rawExecute(ctx, actionName, g, ch, opts, injected...)
-	if err == nil {
-		err = waitMultiple(ctx, waiters, ch)
-	} else {
-		if ch != nil {
-			close(ch)
+	eg := executor.New(ctx, "execute.waiters")
+
+	original := opts.OnWaiter
+	opts.OnWaiter = func(callCtx context.Context, w Waiter) {
+		if original != nil {
+			original(callCtx, w)
 		}
+
+		eg.Go(func(ctx context.Context) error {
+			childCh := make(chan *orchestration.Event)
+
+			eg.Go(func(ctx context.Context) error {
+				for {
+					select {
+					case ev, ok := <-childCh:
+						if !ok {
+							return nil
+						}
+						if ch != nil {
+							ch <- ev
+						} else {
+							fmt.Fprintf(console.Debug(ctx), "execute: dropped event\n")
+						}
+					}
+				}
+			})
+
+			return w(ctx, childCh)
+		})
+	}
+
+	err := rawExecute(ctx, actionName, g, ch, opts, injected...)
+
+	// Wait for goroutines to complete before closing the channel below.
+	waitErr := eg.Wait()
+	if err == nil {
+		err = waitErr
+	}
+
+	if ch != nil {
+		close(ch)
 	}
 
 	if cleanup != nil {
@@ -51,20 +93,19 @@ func ExecuteExt(ctx context.Context, actionName string, g *Plan, channelHandler 
 
 // Don't use this method if you don't have a use-case for it, use Execute.
 func RawExecute(ctx context.Context, actionName string, g *Plan, injected ...MakeInjectionInstance) error {
-	_, err := rawExecute(ctx, actionName, g, nil, ExecuteOpts{ContinueOnErrors: true}, injected...)
-	return err
+	return rawExecute(ctx, actionName, g, nil, ExecuteOpts{ContinueOnErrors: true}, injected...)
 }
 
-func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orchestration.Event, opts ExecuteOpts, injected ...MakeInjectionInstance) ([]Waiter, error) {
+func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orchestration.Event, opts ExecuteOpts, injected ...MakeInjectionInstance) error {
 	var values []InjectionInstance
 	for _, make := range injected {
 		values = append(values, make.MakeInjection()...)
 	}
 
-	return tasks.Return(injectValues(ctx, values...), tasks.Action(actionName).Scope(g.scope.PackageNames()...), func(ctx context.Context) ([]Waiter, error) {
+	return tasks.Return0(injectValues(ctx, values...), tasks.Action(actionName).Scope(g.scope.PackageNames()...), func(ctx context.Context) error {
 		compiled, err := compile(ctx, g.definitions)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		return compiled.apply(ctx, ch, opts)
