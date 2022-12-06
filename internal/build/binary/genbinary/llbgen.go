@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
@@ -36,10 +37,7 @@ type llbBinary struct {
 }
 
 func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	hostPlatform, err := tools.HostPlatform(ctx, env.Configuration())
-	if err != nil {
-		return nil, err
-	}
+	hostPlatform := docker.HostPlatform()
 
 	bin, err := l.bin.BuildImage(ctx, env, build.NewBuildTarget(&hostPlatform).WithWorkspace(l.module))
 	if err != nil {
@@ -86,7 +84,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 				return nil, err
 			}
 
-			return compute.GetValue(ctx, buildkit.BuildDefinitionToImage(env, conf, def))
+			return compute.GetValue(ctx, buildkit.BuildDefinitionToImage(buildkit.DeferClient(env.Configuration(), &hostPlatform), conf, def))
 		}), nil
 }
 

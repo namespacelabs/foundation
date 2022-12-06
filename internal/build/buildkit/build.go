@@ -51,17 +51,19 @@ type GatewayClient struct {
 	*client.Client
 
 	buildkitInDocker bool
-	clientOpts       clientOpts
+	clientOpts       builtkitOpts
 }
 
-type clientOpts struct {
+type builtkitOpts struct {
 	SupportsOCILayoutInput  bool
 	SupportsOCILayoutExport bool
 	SupportsCanonicalBuilds bool
+	HostPlatform            specs.Platform
 }
 
-func (cli *GatewayClient) UsesDocker() bool       { return cli.buildkitInDocker }
-func (cli *GatewayClient) ClientOpts() clientOpts { return cli.clientOpts }
+func (cli *GatewayClient) UsesDocker() bool                                     { return cli.buildkitInDocker }
+func (cli *GatewayClient) BuildkitOpts() builtkitOpts                           { return cli.clientOpts }
+func (cli *GatewayClient) MakeClient(_ context.Context) (*GatewayClient, error) { return cli, nil }
 
 type clientInstance struct {
 	conf *Overrides
@@ -71,8 +73,31 @@ type clientInstance struct {
 
 var OverridesConfigType = cfg.DefineConfigType[*Overrides]()
 
-func MakeClient(config cfg.Configuration, targetPlatform specs.Platform) compute.Computable[*GatewayClient] {
-	conf, _ := OverridesConfigType.CheckGetForPlatform(config, targetPlatform)
+func Client(ctx context.Context, config cfg.Configuration, targetPlatform *specs.Platform) (*GatewayClient, error) {
+	return compute.GetValue(ctx, MakeClient(config, targetPlatform))
+}
+
+func DeferClient(config cfg.Configuration, targetPlatform *specs.Platform) ClientFactory {
+	return deferredMakeClient{config, targetPlatform}
+}
+
+type deferredMakeClient struct {
+	config         cfg.Configuration
+	targetPlatform *specs.Platform
+}
+
+func (d deferredMakeClient) MakeClient(ctx context.Context) (*GatewayClient, error) {
+	return Client(ctx, d.config, d.targetPlatform)
+}
+
+func MakeClient(config cfg.Configuration, targetPlatform *specs.Platform) compute.Computable[*GatewayClient] {
+	var conf *Overrides
+
+	if targetPlatform != nil {
+		conf, _ = OverridesConfigType.CheckGetForPlatform(config, *targetPlatform)
+	} else {
+		conf, _ = OverridesConfigType.CheckGet(config)
+	}
 
 	if conf.BuildkitAddr == "" && conf.HostedBuildCluster == nil && conf.ContainerName == "" {
 		conf.ContainerName = DefaultContainerName
@@ -150,7 +175,30 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 }
 
 func newClient(ctx context.Context, cli *client.Client, docker bool) (*GatewayClient, error) {
-	var opts clientOpts
+	var opts builtkitOpts
+
+	workers, err := cli.ControlClient().ListWorkers(ctx, &moby_buildkit_v1.ListWorkersRequest{})
+	if err != nil {
+		return nil, fnerrors.InvocationError("buildkit", "failed to retrieve worker list: %w", err)
+	}
+
+	var hostPlatform *specs.Platform
+	for _, x := range workers.Record {
+		// We assume here that by convention the first platform is the host platform.
+		if len(x.Platforms) > 0 {
+			hostPlatform = &specs.Platform{
+				Architecture: x.Platforms[0].Architecture,
+				OS:           x.Platforms[0].OS,
+			}
+			break
+		}
+	}
+
+	if hostPlatform == nil {
+		return nil, fnerrors.InvocationError("buildkit", "no worker with platforms declared?")
+	}
+
+	opts.HostPlatform = *hostPlatform
 
 	response, err := cli.ControlClient().Info(ctx, &moby_buildkit_v1.InfoRequest{})
 	if err == nil {

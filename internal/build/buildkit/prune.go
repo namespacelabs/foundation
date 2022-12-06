@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func Prune(ctx context.Context, cfg cfg.Configuration, targetPlatform specs.Platform) error {
+func Prune(ctx context.Context, cfg cfg.Configuration, targetPlatform *specs.Platform) error {
 	return tasks.Action("buildkit.prune").Run(ctx, func(ctx context.Context) error {
 		cli, err := compute.GetValue(ctx, MakeClient(cfg, targetPlatform))
 		if err != nil {

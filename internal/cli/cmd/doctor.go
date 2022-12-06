@@ -208,12 +208,12 @@ func NewDoctorCmd() *cobra.Command {
 						if err != nil {
 							return DoctorResults_BuildkitResults{}, err
 						}
-						hostPlatform := buildkit.HostPlatform()
+						hostPlatform := docker.HostPlatform()
 						state := llb.Scratch().File(llb.Mkfile("/hello", 0644, []byte("cachehit")))
 						conf := build.NewBuildTarget(&hostPlatform).WithSourceLabel("doctor.hello-world")
 						var r DoctorResults_BuildkitResults
 						t := time.Now()
-						imageC, err := buildkit.BuildImage(ctx, env, conf, state)
+						imageC, err := buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), &hostPlatform), conf, state)
 						if err != nil {
 							return DoctorResults_BuildkitResults{}, err
 						}

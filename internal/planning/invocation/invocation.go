@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -28,6 +29,7 @@ import (
 )
 
 type Invocation struct {
+	Buildkit             buildkit.ClientFactory
 	ImageName            string
 	Image                compute.Computable[oci.ResolvableImage]
 	SupportedToolVersion int
@@ -46,15 +48,20 @@ type Snapshot struct {
 }
 
 func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
-	p, err := tools.HostPlatform(ctx, env.Configuration())
+	cli, err := buildkit.Client(ctx, env.Configuration(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return MakeForPlatforms(ctx, pl, env, serverLocRef, with, p)
+	p, err := tools.HostPlatform(ctx, env.Configuration(), cli)
+	if err != nil {
+		return nil, err
+	}
+
+	return MakeForPlatforms(ctx, cli, pl, env, serverLocRef, with, p)
 }
 
-func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
+func MakeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
 	var binRef *schema.PackageRef
 	if with.BinaryRef != nil {
 		binRef = with.BinaryRef
@@ -88,6 +95,7 @@ func MakeForPlatforms(ctx context.Context, pl pkggraph.SealedPackageLoader, env 
 	}
 
 	invocation := &Invocation{
+		Buildkit:   cli,
 		ImageName:  bin.Name,
 		Command:    prepared.Command,
 		Args:       prepared.Args,

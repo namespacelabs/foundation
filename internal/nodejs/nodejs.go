@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
@@ -34,10 +35,7 @@ type RunNodejsOpts struct {
 }
 
 func RunNodejs(ctx context.Context, env cfg.Context, relPath string, command string, opts *RunNodejsOpts) error {
-	p, err := tools.HostPlatform(ctx, env.Configuration())
-	if err != nil {
-		return err
-	}
+	p := docker.HostPlatform()
 
 	nodeImageName, err := pins.CheckDefault("node")
 	if err != nil {
@@ -46,7 +44,7 @@ func RunNodejs(ctx context.Context, env cfg.Context, relPath string, command str
 
 	nodeImageState := llbutil.Image(nodeImageName, p)
 
-	nodejsImage, err := buildkit.BuildImage(ctx, env, build.NewBuildTarget(&p).WithSourceLabel("nodejs: %s", nodeImageName), nodeImageState)
+	nodejsImage, err := buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), &p), build.NewBuildTarget(&p).WithSourceLabel("nodejs: %s", nodeImageName), nodeImageState)
 	if err != nil {
 		return err
 	}

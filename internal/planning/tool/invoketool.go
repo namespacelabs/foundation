@@ -115,6 +115,7 @@ func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
 func (inv *cacheableInvocation) Inputs() *compute.In {
 	invocation := *inv.invocation // Copy
 	invocation.Image = nil        // To make the invocation JSON serializable.
+	invocation.Buildkit = nil     // To make the invocation JSON serializable.
 
 	return compute.Inputs().
 		JSON("invocation", invocation). // Without image and PackageAbsPath.
@@ -206,7 +207,12 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 
 	resolvable := compute.MustGetDepValue(deps, invocation.Image, "image")
 
-	hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration())
+	cli, err := inv.invocation.Buildkit.MakeClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration(), cli)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +235,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	x := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
 	if tools.CanUseBuildkit(inv.env.Configuration()) {
-		return x.InvokeOnBuildkit(ctx, inv.env.Configuration(), "foundation.provision.tool.protocol.InvocationService/Invoke",
+		return x.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.InvocationService/Invoke",
 			inv.source.PackageName, opts.Image, opts, req)
 	}
 

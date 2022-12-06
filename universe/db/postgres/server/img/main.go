@@ -24,7 +24,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	def, err := makePostgresImageState(platform).Marshal(context.Background())
+	def, err := makePostgresImageState(platform).Marshal(context.Background(), llb.Platform(platform))
 	if err != nil {
 		log.Fatal(err)
 	}

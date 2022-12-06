@@ -158,7 +158,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf cfg.
 	return resp, nil
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, conf cfg.Configuration, method string, pkg schema.PackageName, image oci.Image, opts rtypes.RunToolOpts, req Req) (Resp, error) {
+func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, c *buildkit.GatewayClient, method string, pkg schema.PackageName, image oci.Image, opts rtypes.RunToolOpts, req Req) (Resp, error) {
 	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
@@ -176,7 +176,11 @@ func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context,
 
 		tasks.Attachments(ctx).AddResult("ref", d.String())
 
-		p := buildkit.HostPlatform()
+		if !c.BuildkitOpts().SupportsCanonicalBuilds {
+			return resp, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
+		}
+
+		p := c.BuildkitOpts().HostPlatform
 
 		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
 
@@ -202,16 +206,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context,
 		run.AddMount("/request", requestState, llb.Readonly)
 		out := run.AddMount("/out", llb.Scratch())
 
-		c, err := compute.GetValue(ctx, buildkit.MakeClient(conf, p))
-		if err != nil {
-			return resp, err
-		}
-
-		if !c.ClientOpts().SupportsCanonicalBuilds {
-			return resp, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
-		}
-
-		output, err := buildkit.BuildFilesystem(ctx, conf, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
+		output, err := buildkit.BuildFilesystem(ctx, c, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
 		if err != nil {
 			return resp, err
 		}

@@ -11,6 +11,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -359,7 +360,12 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				return nil, err
 			}
 
-			hostPlatform, err := tools.HostPlatform(ctx, server.SealedContext().Configuration())
+			cli, err := buildkit.Client(ctx, server.SealedContext().Configuration(), nil)
+			if err != nil {
+				return nil, err
+			}
+
+			hostPlatform, err := tools.HostPlatform(ctx, server.SealedContext().Configuration(), cli)
 			if err != nil {
 				return nil, err
 			}
@@ -380,7 +386,7 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 			var resp *protocol.PrepareResponse
 
 			if tools.CanUseBuildkit(server.SealedContext().Configuration()) {
-				resp, err = invoke.InvokeOnBuildkit(ctx, server.SealedContext().Configuration(), "foundation.provision.tool.protocol.PrepareService/Prepare",
+				resp, err = invoke.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.PrepareService/Prepare",
 					node.PackageName(), opts.Image, opts, req)
 			} else {
 				resp, err = invoke.Invoke(ctx, server.SealedContext().Configuration(), node.PackageName(), opts, req,

@@ -55,7 +55,7 @@ func newPruneCmd() *cobra.Command {
 					// XXX make platform configurable.
 					return buildkit.Prune(ctx, cfg.MakeConfigurationWith("prune", root.Workspace(), cfg.ConfigurationSlice{
 						PlatformConfiguration: root.DevHost().ConfigurePlatform,
-					}), buildkit.HostPlatform())
+					}), nil)
 				})
 			}
 

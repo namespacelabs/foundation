@@ -25,7 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	def, err := image.ImagePlanWithNodeJS(platform).Marshal(context.Background())
+	def, err := image.ImagePlanWithNodeJS(platform).Marshal(context.Background(), llb.Platform(platform))
 	if err != nil {
 		log.Fatal(err)
 	}

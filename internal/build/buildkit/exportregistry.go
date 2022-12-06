@@ -64,7 +64,7 @@ func (e *exportRegistry) Exports() []client.ExportEntry {
 	}}
 }
 
-func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse, opts clientOpts) (oci.Image, error) {
+func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse, opts builtkitOpts) (oci.Image, error) {
 	digest, ok := res.ExporterResponse[exptypes.ExporterImageDigestKey]
 	if !ok {
 		return nil, fnerrors.New("digest is missing from result")

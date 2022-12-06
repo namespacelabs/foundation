@@ -29,9 +29,11 @@ func RunWithOpts(ctx context.Context, conf cfg.Configuration, opts rtypes.RunToo
 	return impl(conf).RunWithOpts(ctx, opts, onStart)
 }
 
-func HostPlatform(ctx context.Context, conf cfg.Configuration) (specs.Platform, error) {
+func HostPlatform(ctx context.Context, conf cfg.Configuration, cli *buildkit.GatewayClient) (specs.Platform, error) {
 	if CanUseBuildkit(conf) {
-		return buildkit.HostPlatform(), nil
+		if cli != nil {
+			return cli.BuildkitOpts().HostPlatform, nil
+		}
 	}
 
 	return impl(conf).HostPlatform(ctx)

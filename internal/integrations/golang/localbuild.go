@@ -14,6 +14,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -75,7 +76,7 @@ func baseImage(ctx context.Context, env cfg.Context, target build.BuildTarget) (
 	// as the server could inadvertidely depend on these utilities. But we only do this for
 	// DEVELOPMENT, not for TESTING.
 	if env.Environment().Purpose == schema.Environment_DEVELOPMENT {
-		return production.DevelopmentImage(ctx, production.Alpine, env, target)
+		return production.DevelopmentImage(ctx, production.Alpine, buildkit.DeferClient(env.Configuration(), target.TargetPlatform()), target)
 	}
 
 	return production.ServerImage(production.Distroless, *target.TargetPlatform())

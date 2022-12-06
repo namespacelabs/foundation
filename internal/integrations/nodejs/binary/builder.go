@@ -53,12 +53,12 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		nodejsEnv: NodeEnv(env.Environment()),
 	}
 
-	state, local, err := n.LLB(ctx, bnj, conf)
+	state, local, err := n.LLB(ctx, env.Configuration(), bnj, conf)
 	if err != nil {
 		return nil, err
 	}
 
-	return buildkit.BuildImage(ctx, env, conf, state, local...)
+	return buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, state, local...)
 }
 
 func NodeEnv(env *schema.Environment) string {

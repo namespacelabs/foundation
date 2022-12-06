@@ -50,14 +50,14 @@ func (b *buildAlpine) BuildImage(ctx context.Context, env pkggraph.SealedContext
 	slices.Sort(packages)
 
 	state := llbutil.Image(image, *conf.TargetPlatform()).
-		Run(llb.Shlexf("apk add --no-cache %s", strings.Join(packages, " ")))
+		Run(llb.Shlexf("apk add --no-cache %s", strings.Join(packages, " "))).Root()
 
-	def, err := state.Marshal(ctx)
+	def, err := buildkit.MarshalForTarget(ctx, state, conf)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to marshal llb plan: %w", err)
 	}
 
-	return buildkit.BuildDefinitionToImage(env, conf, def), nil
+	return buildkit.BuildDefinitionToImage(buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, def), nil
 }
 
 func (b *buildAlpine) PlatformIndependent() bool { return false }

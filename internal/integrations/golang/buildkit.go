@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/production"
@@ -37,7 +38,11 @@ func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf
 
 	src := buildkit.MakeLocalState(local)
 
-	base := makeGoBuildBase(ctx, bin.GoVersion, buildkit.HostPlatform())
+	if conf.TargetPlatform() == nil {
+		return nil, fnerrors.InternalError("go: target platform is missing")
+	}
+
+	base := makeGoBuildBase(ctx, bin.GoVersion, *conf.TargetPlatform())
 
 	var prodBase llb.State
 
@@ -68,7 +73,7 @@ func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf
 		llbutil.PrefixSh(label, conf.TargetPlatform(), "go "+strings.Join(goBuild, " "))...).
 		AddMount("/out", prodBase)
 
-	return buildkit.BuildImage(ctx, env, conf, state, local)
+	return buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, state, local)
 }
 
 func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {

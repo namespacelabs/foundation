@@ -24,7 +24,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	def, err := makeMariaImageState(platform).Marshal(context.Background())
+	def, err := makeMariaImageState(platform).Marshal(context.Background(), llb.Platform(platform))
 	if err != nil {
 		log.Fatal(err)
 	}

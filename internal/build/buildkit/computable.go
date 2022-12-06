@@ -13,13 +13,11 @@ import (
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const (
@@ -48,14 +46,16 @@ func (l LocalContents) Abs() string {
 	return filepath.Join(l.Module.Abs(), l.Path)
 }
 
-func precomputedReq(req *FrontendRequest) compute.Computable[*FrontendRequest] {
-	return compute.Precomputed(req, digestRequest)
+func precomputedReq(req *FrontendRequest, target build.BuildTarget) compute.Computable[*FrontendRequest] {
+	return compute.Precomputed(req, func(ctx context.Context, req *FrontendRequest) (schema.Digest, error) {
+		return digestRequest(ctx, req, target)
+	})
 }
 
-func digestRequest(ctx context.Context, req *FrontendRequest) (schema.Digest, error) {
+func digestRequest(ctx context.Context, req *FrontendRequest, target build.BuildTarget) (schema.Digest, error) {
 	var kvs []keyValue
 	for k, v := range req.FrontendInputs {
-		def, err := v.Marshal(ctx)
+		def, err := MarshalForTarget(ctx, v, target)
 		if err != nil {
 			return schema.Digest{}, err
 		}
@@ -86,23 +86,19 @@ func digestRequest(ctx context.Context, req *FrontendRequest) (schema.Digest, er
 	return schema.FromHash("sha256", w), nil
 }
 
-func MakeImage(env cfg.Context, conf build.BuildTarget, req compute.Computable[*FrontendRequest], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedRepository]) compute.Computable[oci.Image] {
+type ClientFactory interface {
+	MakeClient(context.Context) (*GatewayClient, error)
+}
+
+func MakeImage(makeClient ClientFactory, conf build.BuildTarget, req compute.Computable[*FrontendRequest], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedRepository]) compute.Computable[oci.Image] {
 	base := &baseRequest[oci.Image]{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),
-		config:         env.Configuration(),
-		targetPlatform: platformOrDefault(conf.TargetPlatform()),
+		makeClient:     makeClient,
+		targetPlatform: conf.TargetPlatform(),
 		req:            req,
 		localDirs:      localDirs,
 	}
 
 	return &reqToImage{baseRequest: base, targetName: targetName}
-}
-
-func platformOrDefault(targetPlatform *specs.Platform) specs.Platform {
-	if targetPlatform == nil {
-		return HostPlatform()
-	}
-
-	return *targetPlatform
 }

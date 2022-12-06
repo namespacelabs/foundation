@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
@@ -25,12 +26,18 @@ import (
 )
 
 func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *types.DeferredInvocation, prepared *binary.Prepared) (compute.Computable[*protocol.InvokeResponse], error) {
+	c, err := buildkit.Client(ctx, env.Configuration(), nil)
+	if err != nil {
+		return nil, err
+	}
+
 	it := &invokeTool{
 		conf:       env.Configuration(),
+		buildkit:   c,
 		invocation: inv,
 	}
 
-	hostPlatform, err := HostPlatform(ctx, env.Configuration())
+	hostPlatform, err := HostPlatform(ctx, env.Configuration(), c)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +58,8 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 }
 
 type invokeTool struct {
-	conf       cfg.Configuration // Does not affect the output.
+	conf       cfg.Configuration       // Does not affect the output.
+	buildkit   *buildkit.GatewayClient // Does not affect the output.
 	invocation *types.DeferredInvocation
 	image      compute.Computable[oci.Image]
 
@@ -108,7 +116,7 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 	run.Image = compute.MustGetDepValue(r, inv.image, "image")
 
 	if CanUseBuildkit(inv.conf) {
-		resp, err = invoke.InvokeOnBuildkit(ctx, inv.conf, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), run.Image, run, req)
+		resp, err = invoke.InvokeOnBuildkit(ctx, inv.buildkit, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), run.Image, run, req)
 	} else {
 		resp, err = invoke.Invoke(ctx, inv.conf, inv.invocation.BinaryRef.AsPackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
 			return protocol.NewInvocationServiceClient(conn).Invoke

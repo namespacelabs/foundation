@@ -56,7 +56,7 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 		conf:       conf,
 	}
 
-	return buildkit.MakeImage(env, conf, generatedRequest, []buildkit.LocalContents{dockerContext(conf, df.ContextRel)}, nil), nil
+	return buildkit.MakeImage(buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, generatedRequest, []buildkit.LocalContents{dockerContext(conf, df.ContextRel)}, nil), nil
 }
 
 func (df dockerfileBuild) PlatformIndependent() bool { return false }

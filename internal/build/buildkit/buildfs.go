@@ -11,13 +11,21 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func BuildFilesystem(ctx context.Context, conf cfg.Configuration, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
-	serialized, err := state.Marshal(ctx)
+func MarshalForTarget(ctx context.Context, state llb.State, target build.BuildTarget) (*llb.Definition, error) {
+	if target.TargetPlatform() == nil {
+		return nil, fnerrors.InternalError("target platform is missing")
+	}
+
+	return state.Marshal(ctx, llb.Platform(*target.TargetPlatform()))
+}
+
+func BuildFilesystem(ctx context.Context, makeClient ClientFactory, target build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[fs.FS], error) {
+	serialized, err := MarshalForTarget(ctx, state, target)
 	if err != nil {
 		return nil, err
 	}
@@ -25,9 +33,9 @@ func BuildFilesystem(ctx context.Context, conf cfg.Configuration, target build.B
 	base := &baseRequest[fs.FS]{
 		sourceLabel:    target.SourceLabel(),
 		sourcePackage:  target.SourcePackage(),
-		config:         conf,
-		targetPlatform: platformOrDefault(target.TargetPlatform()),
-		req:            precomputedReq(&FrontendRequest{Def: serialized, OriginalState: &state}),
+		makeClient:     makeClient,
+		targetPlatform: target.TargetPlatform(),
+		req:            precomputedReq(&FrontendRequest{Def: serialized, OriginalState: &state}, target),
 		localDirs:      localDirs,
 	}
 	return &reqToFS{baseRequest: base}, nil
@@ -38,8 +46,11 @@ type reqToFS struct {
 }
 
 func (l *reqToFS) Action() *tasks.ActionEvent {
-	ev := tasks.Action("buildkit.build-fs").
-		Arg("platform", platform.FormatPlatform(l.targetPlatform))
+	ev := tasks.Action("buildkit.build-fs")
+
+	if l.targetPlatform != nil {
+		ev = ev.Arg("platform", platform.FormatPlatform(*l.targetPlatform))
+	}
 
 	if l.sourcePackage != "" {
 		return ev.Scope(l.sourcePackage)
@@ -49,7 +60,7 @@ func (l *reqToFS) Action() *tasks.ActionEvent {
 }
 
 func (l *reqToFS) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	c, err := compute.GetValue(ctx, MakeClient(l.config, l.targetPlatform))
+	c, err := l.makeClient.MakeClient(ctx)
 	if err != nil {
 		return nil, err
 	}

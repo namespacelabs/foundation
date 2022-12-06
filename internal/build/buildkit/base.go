@@ -27,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -36,8 +35,8 @@ const buildkitIntegrationVersion = 1
 type baseRequest[V any] struct {
 	sourceLabel    string             // For description purposes only, does not affect output.
 	sourcePackage  schema.PackageName // For description purposes only, does not affect output.
-	config         cfg.Configuration  // Doesn't affect the output.
-	targetPlatform specs.Platform
+	makeClient     ClientFactory      // Doesn't affect the output.
+	targetPlatform *specs.Platform    // If one is set, may be used to select the target build cluster.
 	req            compute.Computable[*FrontendRequest]
 	localDirs      []LocalContents // If set, the output is not cachable by us.
 
@@ -257,7 +256,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 
 	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exported: %v\n", sid, solveRes.ExporterResponse)
 
-	return exp.Provide(ctx, solveRes, c.ClientOpts())
+	return exp.Provide(ctx, solveRes, c.BuildkitOpts())
 }
 
 func Unwrap(c compute.Computable[oci.Image]) (llb.State, []LocalContents, bool) {

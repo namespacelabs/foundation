@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -27,17 +26,17 @@ type BuildkitAwareRegistry interface {
 	CheckExportRequest(*GatewayClient, oci.AllocatedRepository) (*ExportToRegistryRequest, *ExportToRegistryRequest)
 }
 
-func BuildDefinitionToImage(env cfg.Context, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
-	return MakeImage(env, conf, precomputedReq(&FrontendRequest{Def: def}), nil, nil)
+func BuildDefinitionToImage(makeClient ClientFactory, conf build.BuildTarget, def *llb.Definition) compute.Computable[oci.Image] {
+	return MakeImage(makeClient, conf, precomputedReq(&FrontendRequest{Def: def}, conf), nil, nil)
 }
 
-func BuildImage(ctx context.Context, env cfg.Context, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
-	serialized, err := state.Marshal(ctx)
+func BuildImage(ctx context.Context, makeClient ClientFactory, conf build.BuildTarget, state llb.State, localDirs ...LocalContents) (compute.Computable[oci.Image], error) {
+	serialized, err := MarshalForTarget(ctx, state, conf)
 	if err != nil {
 		return nil, err
 	}
 
-	return MakeImage(env, conf, precomputedReq(&FrontendRequest{Def: serialized, OriginalState: &state}), localDirs, conf.PublishName()), nil
+	return MakeImage(makeClient, conf, precomputedReq(&FrontendRequest{Def: serialized, OriginalState: &state}, conf), localDirs, conf.PublishName()), nil
 }
 
 type reqToImage struct {
@@ -49,8 +48,11 @@ type reqToImage struct {
 }
 
 func (l *reqToImage) Action() *tasks.ActionEvent {
-	ev := tasks.Action("buildkit.build-image").
-		Arg("platform", platform.FormatPlatform(l.targetPlatform))
+	ev := tasks.Action("buildkit.build-image")
+
+	if l.targetPlatform != nil {
+		ev = ev.Arg("platform", platform.FormatPlatform(*l.targetPlatform))
+	}
 
 	if l.sourceLabel != "" {
 		ev = ev.HumanReadablef(fmt.Sprintf("Build: %s", l.sourceLabel))
@@ -66,7 +68,7 @@ func (l *reqToImage) Action() *tasks.ActionEvent {
 func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Image, error) {
 	// TargetName is not added as a dependency of the `reqToImage` compute node, or
 	// our inputs are not stable.
-	c, err := compute.GetValue(ctx, MakeClient(l.config, l.targetPlatform))
+	c, err := l.makeClient.MakeClient(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -109,5 +111,5 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 		}
 	}
 
-	return l.solve(ctx, c, deps, nil, exportToImage(c.ClientOpts()))
+	return l.solve(ctx, c, deps, nil, exportToImage(c.BuildkitOpts()))
 }

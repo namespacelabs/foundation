@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 )
 
 const (
@@ -42,7 +43,7 @@ type nodeJsBinary struct {
 	nodejsEnv string
 }
 
-func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Configuration) (llb.State, []buildkit.LocalContents, error) {
+func (n nodeJsBinary) LLB(ctx context.Context, cfg cfg.Configuration, bnj buildNodeJS, conf build.Configuration) (llb.State, []buildkit.LocalContents, error) {
 	packageManagerState, err := LookupPackageManager(bnj.config.NodePkgMgr)
 	if err != nil {
 		return llb.State{}, nil, err
@@ -65,8 +66,13 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	if conf.TargetPlatform() != nil {
 		platform = *conf.TargetPlatform()
 	} else {
+		cli, err := compute.GetValue(ctx, buildkit.MakeClient(cfg, nil))
+		if err != nil {
+			return llb.State{}, nil, err
+		}
+
 		// Happens for Web builds where the output is platform-independent.
-		platform = buildkit.HostPlatform()
+		platform = cli.BuildkitOpts().HostPlatform
 	}
 
 	devImage, err := createBaseImageAndInstallPackageManager(ctx, platform, src, fsys.FS(), "development", packageManagerState)
@@ -85,10 +91,10 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 	if opaque.UseDevBuild(bnj.env) {
 		out = devImage
 	} else {
-		prodCfg := bnj.config.Prod
+		config := bnj.config.Prod
 
 		var prodImage llb.State
-		if prodCfg.InstallDeps {
+		if config.InstallDeps {
 			prodImage, err = createBaseImageAndInstallPackageManager(ctx, platform, src, fsys.FS(), "production", packageManagerState)
 			if err != nil {
 				return llb.State{}, nil, err
@@ -97,19 +103,19 @@ func (n nodeJsBinary) LLB(ctx context.Context, bnj buildNodeJS, conf build.Confi
 			prodImage = llb.Scratch()
 		}
 
-		if prodCfg.BuildScript != "" {
+		if config.BuildScript != "" {
 			devImage = devImage.
 				// Important to build in the prod mode.
 				AddEnv("NODE_ENV", "production").
 				Run(
-					llb.Shlexf("%s run %s", packageManagerState.CLI, prodCfg.BuildScript),
+					llb.Shlexf("%s run %s", packageManagerState.CLI, config.BuildScript),
 					llb.Dir(AppRootPath),
 				).Root()
 		}
 
-		pathToCopy := filepath.Join(AppRootPath, prodCfg.BuildOutDir)
+		pathToCopy := filepath.Join(AppRootPath, config.BuildOutDir)
 		destPath := pathToCopy
-		if prodCfg.BuildOutDir == "" {
+		if config.BuildOutDir == "" {
 			destPath = "."
 		}
 

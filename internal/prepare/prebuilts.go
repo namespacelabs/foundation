@@ -26,7 +26,7 @@ func DownloadPrebuilts(env cfg.Context, packages []schema.PackageName) compute.C
 		compute.Inputs().Proto("env", env.Environment()).Strs("packages", schema.Strs(packages...)),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, _ compute.Resolved) ([]oci.ResolvableImage, error) {
-			platform, err := tools.HostPlatform(ctx, env.Configuration())
+			platform, err := tools.HostPlatform(ctx, env.Configuration(), nil)
 			if err != nil {
 				return nil, err
 			}

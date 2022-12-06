@@ -25,10 +25,10 @@ const KeySourceDateEpoch = "source-date-epoch"
 type exporter[V any] interface {
 	Prepare(context.Context) error
 	Exports() []client.ExportEntry
-	Provide(context.Context, *client.SolveResponse, clientOpts) (V, error)
+	Provide(context.Context, *client.SolveResponse, builtkitOpts) (V, error)
 }
 
-func exportToImage(opts clientOpts) exporter[oci.Image] {
+func exportToImage(opts builtkitOpts) exporter[oci.Image] {
 	if opts.SupportsCanonicalBuilds {
 		return &exportOCILayout{}
 	}
@@ -69,7 +69,7 @@ func (e *exportImage) Exports() []client.ExportEntry {
 	}}
 }
 
-func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse, opts clientOpts) (oci.Image, error) {
+func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse, opts builtkitOpts) (oci.Image, error) {
 	image, err := oci.IngestFromFS(ctx, fnfs.Local(filepath.Dir(e.output.Name())), filepath.Base(e.output.Name()), false)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (e *exportOCILayout) Exports() []client.ExportEntry {
 	}}
 }
 
-func (e *exportOCILayout) Provide(ctx context.Context, _ *client.SolveResponse, _ clientOpts) (oci.Image, error) {
+func (e *exportOCILayout) Provide(ctx context.Context, _ *client.SolveResponse, _ builtkitOpts) (oci.Image, error) {
 	index, err := layout.ImageIndexFromPath(e.output)
 	if err != nil {
 		return nil, err

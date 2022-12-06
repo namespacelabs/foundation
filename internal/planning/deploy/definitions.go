@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -494,12 +495,20 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
 	}
 
-	platform, err := tools.HostPlatform(ctx, env.Configuration())
+	cli, err := buildkit.Client(ctx, env.Configuration(), nil)
+	if err != nil {
+		return nil, nil, fnerrors.InternalError("%s: failed to initialize buildkit: %w", inv.Binary, err)
+	}
+
+	platform, err := tools.HostPlatform(ctx, env.Configuration(), cli)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	prepared, err := binary.Plan(ctx, pkg, ref.Name, env, assets.AvailableBuildAssets{}, binary.BuildImageOpts{UsePrebuilts: true, Platforms: []specs.Platform{platform}})
+	prepared, err := binary.Plan(ctx, pkg, ref.Name, env, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
+		UsePrebuilts: true,
+		Platforms:    []specs.Platform{platform},
+	})
 	if err != nil {
 		return nil, nil, err
 	}
