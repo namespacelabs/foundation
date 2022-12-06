@@ -378,6 +378,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"update_orchestrator",
 		// Hidden for M0
 		"testing_use_namespace_cloud",
+		"testing_use_namespace_cloud_build",
 		"use_prebuilts",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
