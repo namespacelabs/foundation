@@ -70,7 +70,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
-	"namespacelabs.dev/foundation/internal/runtime/tools/toolsonk8s"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -92,7 +91,6 @@ import (
 var (
 	enableErrorTracing   = false
 	disableCommandBundle = false
-	useKubernetesRuntime = false
 )
 
 func DoMain(name string, registerCommands func(*cobra.Command)) {
@@ -261,15 +259,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		cfg.ValidateNoConfigTypeCollisions()
 
-		if useKubernetesRuntime {
-			rt, err := toolsonk8s.MakeRuntime(ctx)
-			if err != nil {
-				return err
-			}
-
-			tools.MakeAlternativeRuntime = func(cfg cfg.Configuration) tools.Runtime { return rt }
-		}
-
 		// Telemetry.
 		tel.RecordInvocation(ctx, cmd, args)
 		return nil
@@ -309,8 +298,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, ignores checking whether the base system is ZFS based.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
-	rootCmd.PersistentFlags().BoolVar(&useKubernetesRuntime, "run_tools_on_kubernetes", useKubernetesRuntime,
-		"If set to true, runs tools in Kubernetes, instead of Docker.")
 	rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
 	rootCmd.PersistentFlags().BoolVar(&deploy.PushPrebuiltsToRegistry, "deploy_push_prebuilts_to_registry", deploy.PushPrebuiltsToRegistry,
 		"If set to true, prebuilts are uploaded to the target registry.")

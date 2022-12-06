@@ -14,8 +14,6 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-var MakeAlternativeRuntime func(cfg.Configuration) Runtime
-
 type Runtime interface {
 	RunWithOpts(context.Context, rtypes.RunToolOpts, func()) error
 	HostPlatform(context.Context) (specs.Platform, error)
@@ -40,9 +38,5 @@ func HostPlatform(ctx context.Context, conf cfg.Configuration, cli *buildkit.Gat
 }
 
 func impl(conf cfg.Configuration) Runtime {
-	if MakeAlternativeRuntime != nil {
-		return MakeAlternativeRuntime(conf)
-	}
-
 	return docker.Impl()
 }
