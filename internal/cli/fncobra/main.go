@@ -69,7 +69,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
-	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -324,8 +323,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If true, servers in tests are deployed as pods instead of deployments.")
 	rootCmd.PersistentFlags().BoolVar(&compute.ExplainIndentValues, "compute_explain_indent_values", compute.ExplainIndentValues,
 		"If true, values output by --explain are indented.")
-	rootCmd.PersistentFlags().IntVar(&tools.LowLevelToolsProtocolVersion, "lowlevel_tools_protocol_version", tools.LowLevelToolsProtocolVersion,
-		"The protocol version to use with invocation tools.")
 	rootCmd.PersistentFlags().BoolVar(&deprecatedToolsInvocation, "tools_invocation_can_use_buildkit", false,
 		"If set to true, tool invocations will use buildkit whenever possible.")
 	rootCmd.PersistentFlags().BoolVar(&testing.UseNamespaceCloud, "testing_use_namespace_cloud", testing.UseNamespaceCloud,
