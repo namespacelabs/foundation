@@ -49,11 +49,7 @@ func Debug(ctx context.Context) io.Writer {
 }
 
 func NamedDebug(ctx context.Context, name string) io.Writer {
-	if DebugToConsole {
-		return TypedOutput(ctx, name, common.CatOutputDebug)
-	} else {
-		return tasks.Attachments(ctx).Output(tasks.Output(name, "text/plain"), common.CatOutputDebug)
-	}
+	return TypedOutput(ctx, name, common.CatOutputDebug)
 }
 
 func Warnings(ctx context.Context) io.Writer {
@@ -69,6 +65,10 @@ func ConsoleOutputName(name string) tasks.OutputName {
 }
 
 func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
+	if cat == common.CatOutputDebug && !DebugToConsole {
+		return tasks.Attachments(ctx).Output(tasks.Output(name, "text/plain"), cat)
+	}
+
 	stored := tasks.Attachments(ctx).Output(ConsoleOutputName(name), cat)
 	return consoleOutputFromCtx(ctx, name, cat, writeStored{stored})
 }

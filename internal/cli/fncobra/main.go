@@ -270,12 +270,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		}
 
 		out := logrus.New()
-		out.SetOutput(console.TypedOutput(ctx, "containerd", common.CatOutputDebug))
+		out.SetOutput(console.NamedDebug(ctx, "containerd"))
 		// Because we can have concurrent builds producing the same output; the
 		// local content store implementation will attempt to lock the ref
 		// before writing to it. And it will at times fail with
 		// codes.Unavailable as it didn't manage to acquire the lock. We need
-		// build deduping for this to go away. NSL-405
+		// to build deduping for this to go away. NSL-405
 		containerdlog.L = logrus.NewEntry(out)
 		return nil
 	})
