@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/internal/grpcstdio"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -37,7 +38,6 @@ import (
 )
 
 var LowLevelToolsProtocolVersion = 2
-var InvocationCanUseBuildkit = false
 
 const (
 	MaxInvocationDuration = 1 * time.Minute
@@ -48,10 +48,6 @@ type ResolveMethodFunc[Req, Resp proto.Message] func(*grpc.ClientConn) func(cont
 type LowLevelInvokeOptions[Req, Resp proto.Message] struct {
 	RedactRequest  func(proto.Message) proto.Message
 	RedactResponse func(proto.Message) proto.Message
-}
-
-func CanUseBuildkit(env cfg.Configuration) bool {
-	return InvocationCanUseBuildkit
 }
 
 func attachToAction(ctx context.Context, name string, msg proto.Message, redactMessage func(proto.Message) proto.Message) {
@@ -103,7 +99,7 @@ func (oo LowLevelInvokeOptions[Req, Resp]) Invoke(ctx context.Context, conf cfg.
 		eg := executor.New(ctx, fmt.Sprintf("lowlevel.invoke(%s)", pkg))
 
 		eg.Go(func(ctx context.Context) error {
-			return RunWithOpts(ctx, conf, opts, func() {
+			return docker.Runtime().RunWithOpts(ctx, opts, func() {
 				version := LowLevelToolsProtocolVersion
 				if opts.SupportedToolVersion != 0 {
 					version = opts.SupportedToolVersion

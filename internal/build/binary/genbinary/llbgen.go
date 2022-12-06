@@ -20,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
-	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -75,7 +74,9 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 				{Name: "TARGET_PLATFORM", Value: targetPlatform},
 			}
 
-			if err := tools.Run(ctx, env.Configuration(), run); err != nil {
+			// XXX use buildkit to invoke.
+
+			if err := docker.Runtime().Run(ctx, run); err != nil {
 				return nil, fnerrors.New("failed to call llbgen :%w", err)
 			}
 

@@ -135,6 +135,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	var run *storedrun.Run
 	var useTelemetry bool
 
+	var deprecatedToolsInvocation bool
+
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
@@ -261,6 +263,11 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Telemetry.
 		tel.RecordInvocation(ctx, cmd, args)
+
+		if deprecatedToolsInvocation {
+			fmt.Fprintf(console.Warnings(ctx), "Flag without effect: --tools_invocation_can_use_buildkit is now the default.\n")
+		}
+
 		return nil
 	})
 
@@ -319,7 +326,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If true, values output by --explain are indented.")
 	rootCmd.PersistentFlags().IntVar(&tools.LowLevelToolsProtocolVersion, "lowlevel_tools_protocol_version", tools.LowLevelToolsProtocolVersion,
 		"The protocol version to use with invocation tools.")
-	rootCmd.PersistentFlags().BoolVar(&tools.InvocationCanUseBuildkit, "tools_invocation_can_use_buildkit", tools.InvocationCanUseBuildkit,
+	rootCmd.PersistentFlags().BoolVar(&deprecatedToolsInvocation, "tools_invocation_can_use_buildkit", false,
 		"If set to true, tool invocations will use buildkit whenever possible.")
 	rootCmd.PersistentFlags().BoolVar(&testing.UseNamespaceCloud, "testing_use_namespace_cloud", testing.UseNamespaceCloud,
 		"If set to true, allocate cluster for tests on demand.")

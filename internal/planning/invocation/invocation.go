@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -53,15 +52,10 @@ func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context,
 		return nil, err
 	}
 
-	p, err := tools.HostPlatform(ctx, env.Configuration(), cli)
-	if err != nil {
-		return nil, err
-	}
-
-	return MakeForPlatforms(ctx, cli, pl, env, serverLocRef, with, p)
+	return makeForPlatforms(ctx, cli, pl, env, serverLocRef, with, cli.BuildkitOpts().HostPlatform)
 }
 
-func MakeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
+func makeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
 	var binRef *schema.PackageRef
 	if with.BinaryRef != nil {
 		binRef = with.BinaryRef

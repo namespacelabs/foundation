@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -365,10 +364,7 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				return nil, err
 			}
 
-			hostPlatform, err := tools.HostPlatform(ctx, server.SealedContext().Configuration(), cli)
-			if err != nil {
-				return nil, err
-			}
+			hostPlatform := cli.BuildkitOpts().HostPlatform
 
 			opts.Image, err = image.ImageForPlatform(hostPlatform)
 			if err != nil {
@@ -383,18 +379,8 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				ApiVersion: versions.APIVersion,
 			}
 
-			var resp *protocol.PrepareResponse
-
-			if tools.CanUseBuildkit(server.SealedContext().Configuration()) {
-				resp, err = invoke.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.PrepareService/Prepare",
-					node.PackageName(), opts.Image, opts, req)
-			} else {
-				resp, err = invoke.Invoke(ctx, server.SealedContext().Configuration(), node.PackageName(), opts, req,
-					func(conn *grpc.ClientConn) func(context.Context, *protocol.PrepareRequest, ...grpc.CallOption) (*protocol.PrepareResponse, error) {
-						return protocol.NewPrepareServiceClient(conn).Prepare
-					})
-			}
-
+			resp, err := invoke.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.PrepareService/Prepare",
+				node.PackageName(), opts.Image, opts, req)
 			if err != nil {
 				return nil, err
 			}

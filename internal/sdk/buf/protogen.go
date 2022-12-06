@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -30,15 +29,11 @@ func MakeProtoSrcs(ctx context.Context, conf cfg.Configuration, request map[sche
 		return nil, err
 	}
 
-	platform, err := tools.HostPlatform(ctx, conf, cli)
-	if err != nil {
-		return nil, err
-	}
-
 	keys := maps.Keys(request)
 	slices.Sort(keys)
 
-	base := State(platform)
+	hostPlatform := cli.BuildkitOpts().HostPlatform
+	base := State(hostPlatform)
 
 	out := llb.Scratch()
 	for _, fmwk := range keys {
@@ -100,5 +95,5 @@ func MakeProtoSrcs(ctx context.Context, conf cfg.Configuration, request map[sche
 		out = out.File(llb.Copy(result, ".", "."), llb.WithCustomNamef("copying %s generated sources", fmwk))
 	}
 
-	return buildkit.BuildFilesystem(ctx, cli, build.NewBuildTarget(&platform).WithSourceLabel("protobuf-codegen"), out)
+	return buildkit.BuildFilesystem(ctx, cli, build.NewBuildTarget(&hostPlatform).WithSourceLabel("protobuf-codegen"), out)
 }

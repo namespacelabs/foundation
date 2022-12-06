@@ -35,11 +35,7 @@ import (
 
 type ToolRuntime struct{}
 
-func Impl() ToolRuntime { return ToolRuntime{} }
-
-func (r ToolRuntime) CanConsumePublicImages() bool {
-	return false // This is not quite true but it's a simplification for now. // XXX support docker pull.
-}
+func Runtime() ToolRuntime { return ToolRuntime{} }
 
 func (r ToolRuntime) Run(ctx context.Context, opts rtypes.RunToolOpts) error {
 	return r.RunWithOpts(ctx, opts, nil)

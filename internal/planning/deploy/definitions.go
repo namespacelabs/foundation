@@ -500,14 +500,9 @@ func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.
 		return nil, nil, fnerrors.InternalError("%s: failed to initialize buildkit: %w", inv.Binary, err)
 	}
 
-	platform, err := tools.HostPlatform(ctx, env.Configuration(), cli)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	prepared, err := binary.Plan(ctx, pkg, ref.Name, env, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
 		UsePrebuilts: true,
-		Platforms:    []specs.Platform{platform},
+		Platforms:    []specs.Platform{cli.BuildkitOpts().HostPlatform},
 	})
 	if err != nil {
 		return nil, nil, err

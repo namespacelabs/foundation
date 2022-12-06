@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -93,12 +92,6 @@ func NewPrepareIngressCmd() *cobra.Command {
 	})
 }
 
-func downloadPrebuilts(env cfg.Context) compute.Computable[[]oci.ResolvableImage] {
-	var prebuilts = []schema.PackageName{}
-
-	return prepare.DownloadPrebuilts(env, prebuilts)
-}
-
 func parseCreateEnvArgs() (*schema.Workspace_EnvironmentSpec, error) {
 	purpose, ok := schema.Environment_Purpose_value[strings.ToUpper(createEnvPurpose)]
 	if !ok || purpose == 0 {
@@ -170,7 +163,6 @@ func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, en
 		compute.Inputs().
 			Indigestible("root", root).
 			Str("env", env.Environment().Name).
-			Computable("prebuilts", downloadPrebuilts(env)).
 			Computable("prepared", prepared),
 		compute.Output{NotCacheable: true}, func(ctx context.Context, r compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
 			results := compute.MustGetDepValue(r, prepared, "prepared")

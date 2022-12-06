@@ -9,7 +9,6 @@ import (
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
-	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
@@ -37,13 +36,8 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 		invocation: inv,
 	}
 
-	hostPlatform, err := HostPlatform(ctx, env.Configuration(), c)
-	if err != nil {
-		return nil, err
-	}
-
 	plan := prepared.Plan
-	plan.Platforms = []specs.Platform{hostPlatform}
+	plan.Platforms = []specs.Platform{c.BuildkitOpts().HostPlatform}
 
 	image, err := multiplatform.PrepareMultiPlatformImage(ctx, env, plan)
 	if err != nil {
@@ -51,7 +45,7 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 	}
 
 	it.image = compute.Transform("return image", image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
-		return r.ImageForPlatform(hostPlatform)
+		return r.ImageForPlatform(c.BuildkitOpts().HostPlatform)
 	})
 
 	return it, nil
@@ -110,19 +104,10 @@ func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protoc
 		}}
 
 	var invoke LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]
-	var resp *protocol.ToolResponse
-	var err error
 
 	run.Image = compute.MustGetDepValue(r, inv.image, "image")
 
-	if CanUseBuildkit(inv.conf) {
-		resp, err = invoke.InvokeOnBuildkit(ctx, inv.buildkit, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), run.Image, run, req)
-	} else {
-		resp, err = invoke.Invoke(ctx, inv.conf, inv.invocation.BinaryRef.AsPackageName(), run, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
-			return protocol.NewInvocationServiceClient(conn).Invoke
-		})
-	}
-
+	resp, err := invoke.InvokeOnBuildkit(ctx, inv.buildkit, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), run.Image, run, req)
 	if err != nil {
 		return nil, err
 	}

@@ -6,19 +6,13 @@ package tool
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io/fs"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
-	"github.com/dustin/go-humanize"
-	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/planning/invocation"
@@ -212,12 +206,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		return nil, err
 	}
 
-	hostPlatform, err := tools.HostPlatform(ctx, inv.env.Configuration(), cli)
-	if err != nil {
-		return nil, err
-	}
-
-	if image, err := resolvable.ImageForPlatform(hostPlatform); err == nil {
+	if image, err := resolvable.ImageForPlatform(cli.BuildkitOpts().HostPlatform); err == nil {
 		opts.Image = image
 	} else {
 		return nil, err
@@ -234,30 +223,8 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 
 	x := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
 
-	if tools.CanUseBuildkit(inv.env.Configuration()) {
-		return x.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.InvocationService/Invoke",
-			inv.source.PackageName, opts.Image, opts, req)
-	}
-
-	count := 0
-	err = backoff.Retry(func() error {
-		count++
-
-		res, err = x.Invoke(ctx, inv.env.Configuration(), inv.source.PackageName, opts, req, func(conn *grpc.ClientConn) func(context.Context, *protocol.ToolRequest, ...grpc.CallOption) (*protocol.ToolResponse, error) {
-			return protocol.NewInvocationServiceClient(conn).Invoke
-		})
-
-		if errors.Is(err, &fnerrors.InvocationErr{}) {
-			fmt.Fprintf(console.Stderr(ctx), "%s: Invoking provisioning tool (%s try) encountered transient failure: %v. Will retry in %v.\n", inv.source.PackageName, humanize.Ordinal(count), err, toolBackoff)
-
-			return err
-		}
-
-		// Only retry invocation errors
-		return backoff.Permanent(err)
-	}, backoff.WithContext(backoff.NewConstantBackOff(toolBackoff), ctx))
-
-	return res, err
+	return x.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.InvocationService/Invoke",
+		inv.source.PackageName, opts.Image, opts, req)
 }
 
 func redactMessage(req proto.Message) proto.Message {

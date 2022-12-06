@@ -177,7 +177,7 @@ func NewDoctorCmd() *cobra.Command {
 				var r DoctorResults_DockerRun
 				r.ImageLatency = time.Since(t)
 				t = time.Now()
-				err = docker.Impl().Run(ctx, rtypes.RunToolOpts{
+				err = docker.Runtime().Run(ctx, rtypes.RunToolOpts{
 					RunBinaryOpts: rtypes.RunBinaryOpts{
 						Image: image,
 					},

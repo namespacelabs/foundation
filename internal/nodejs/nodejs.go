@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
-	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -69,7 +68,7 @@ func RunNodejs(ctx context.Context, env cfg.Context, relPath string, command str
 
 	abs := env.Workspace().LoadedFrom().AbsPath
 
-	return tools.Run(ctx, env.Configuration(), rtypes.RunToolOpts{
+	return docker.Runtime().Run(ctx, rtypes.RunToolOpts{
 		IO:          io,
 		AllocateTTY: opts.IsInteractive,
 		Mounts: append(opts.Mounts, &rtypes.LocalMapping{
