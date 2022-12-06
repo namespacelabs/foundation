@@ -90,7 +90,7 @@ func (cs *cacheStore) Abort(ctx context.Context, ref string) error {
 }
 
 func (cs *cacheStore) Writer(ctx context.Context, opts ...content.WriterOpt) (content.Writer, error) {
-	return nil, rpcerrors.Errorf(codes.Unavailable, "writer: writes not supported")
+	return nil, rpcerrors.Errorf(codes.Unimplemented, "writer: writes not supported")
 }
 
 type storeReader struct {

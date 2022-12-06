@@ -13,7 +13,9 @@ import (
 	"path/filepath"
 	"runtime/pprof"
 
+	containerdlog "github.com/containerd/containerd/log"
 	"github.com/google/go-containerregistry/pkg/logs"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -267,6 +269,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 			fmt.Fprintf(console.Warnings(ctx), "Flag without effect: --tools_invocation_can_use_buildkit is now the default.\n")
 		}
 
+		out := logrus.New()
+		out.SetOutput(console.TypedOutput(ctx, "containerd", common.CatOutputDebug))
+		// Because we can have concurrent builds producing the same output; the
+		// local content store implementation will attempt to lock the ref
+		// before writing to it. And it will at times fail with
+		// codes.Unavailable as it didn't manage to acquire the lock. We need
+		// build deduping for this to go away. NSL-405
+		containerdlog.L = logrus.NewEntry(out)
 		return nil
 	})
 
