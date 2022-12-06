@@ -33,7 +33,10 @@ func MakeProtoSrcs(ctx context.Context, conf cfg.Configuration, request map[sche
 	slices.Sort(keys)
 
 	hostPlatform := cli.BuildkitOpts().HostPlatform
-	base := State(hostPlatform)
+	base, err := State(ctx, hostPlatform)
+	if err != nil {
+		return nil, err
+	}
 
 	out := llb.Scratch()
 	for _, fmwk := range keys {

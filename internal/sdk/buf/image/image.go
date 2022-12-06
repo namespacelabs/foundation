@@ -5,6 +5,7 @@
 package image
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -39,9 +40,10 @@ type bufDef struct {
 	Prebuilt string `json:"prebuilt"`
 }
 
-func Prebuilt(target specs.Platform) llb.State {
+func Prebuilt(ctx context.Context, target specs.Platform) (llb.State, error) {
 	versions := loadVersions()
-	return llbutil.Image(versions.Buf.Prebuilt, target)
+
+	return llbutil.Prebuilt(ctx, versions.Buf.Prebuilt, target)
 }
 
 func baseCopies(platform specs.Platform) []llb.StateOption {

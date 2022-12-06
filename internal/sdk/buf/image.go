@@ -5,16 +5,18 @@
 package buf
 
 import (
+	"context"
+
 	"github.com/moby/buildkit/client/llb"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/sdk/buf/image"
 )
 
-func State(target specs.Platform) llb.State {
+func State(ctx context.Context, target specs.Platform) (llb.State, error) {
 	if binary.UsePrebuilts {
-		return image.Prebuilt(target)
+		return image.Prebuilt(ctx, target)
 	}
 
-	return image.ImagePlanWithNodeJS(target)
+	return image.ImagePlanWithNodeJS(target), nil
 }

@@ -5,9 +5,39 @@
 package llbutil
 
 import (
+	"context"
+
 	"github.com/moby/buildkit/client/llb"
+	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/compute"
 )
+
+var useOCILayout = false
+
+func Prebuilt(ctx context.Context, ref string, platform specs.Platform) (llb.State, error) {
+	if !useOCILayout {
+		return Image(ref, platform), nil
+	}
+
+	image, err := compute.GetValue(ctx, oci.ImageP(ref, &platform, oci.ResolveOpts{PublicImage: true}))
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	cachedImage, err := oci.EnsureCached(ctx, image)
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	d, err := cachedImage.Digest()
+	if err != nil {
+		return llb.State{}, err
+	}
+
+	return llb.OCILayout("cache", digest.Digest(d.String())), nil
+}
 
 func Image(image string, platform specs.Platform) llb.State {
 	return llb.Image(image, llb.ResolveModeDefault, llb.Platform(platform), ImageName(image, &platform))
