@@ -13,6 +13,8 @@ server: {
 			kind: "http"
 
 			ingress: true
+
+			probe: http: "/"
 		}
 	}
 }
