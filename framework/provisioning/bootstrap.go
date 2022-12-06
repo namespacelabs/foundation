@@ -65,7 +65,7 @@ func (p Request) PackageOwner() string {
 }
 
 func Handle(h *Handlers) {
-	if err := RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+	if err := HandleInvocation(context.Background(), func(sr grpc.ServiceRegistrar) {
 		protocol.RegisterInvocationServiceServer(sr, h.ServiceHandler())
 	}); err != nil {
 		log.Fatal(err)

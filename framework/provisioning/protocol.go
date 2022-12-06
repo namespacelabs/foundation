@@ -19,7 +19,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/compression"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/grpcstdio"
 )
 
 const (
@@ -36,7 +35,7 @@ var (
 	inlineInvocationOutput     = flag.String("inline_invocation_output", "", "If set, writes the result to the path instead of os.Stdout.")
 )
 
-func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error {
+func HandleInvocation(ctx context.Context, register func(grpc.ServiceRegistrar)) error {
 	go func() {
 		if *debug {
 			log.Printf("Setup kill-switch: %v", maximumWallclockTime)
@@ -48,54 +47,40 @@ func RunServer(ctx context.Context, register func(grpc.ServiceRegistrar)) error 
 
 	flag.Parse()
 
-	if *inlineInvocation != "" {
-		var reg inlineRegistrar
-		register(&reg)
-		m := strings.Split(*inlineInvocation, "/")
-		if len(m) != 2 {
-			log.Fatal("bad invocation specification")
+	if *inlineInvocation == "" {
+		log.Fatal("--inline_invocation is missing")
+	}
+
+	var reg inlineRegistrar
+	register(&reg)
+	m := strings.Split(*inlineInvocation, "/")
+	if len(m) != 2 {
+		log.Fatal("bad invocation specification")
+	}
+
+	for _, sr := range reg.registrations {
+		if sr.ServiceDesc.ServiceName != m[0] {
+			continue
 		}
 
-		for _, sr := range reg.registrations {
-			if sr.ServiceDesc.ServiceName != m[0] {
-				continue
-			}
-
-			for _, x := range sr.ServiceDesc.Methods {
-				if x.MethodName == m[1] {
-					result, err := x.Handler(sr.Impl, context.Background(), decodeInput, nil)
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					if err := marshalOutput(result); err != nil {
-						log.Fatal(err)
-					}
-
-					os.Exit(0)
+		for _, x := range sr.ServiceDesc.Methods {
+			if x.MethodName == m[1] {
+				result, err := x.Handler(sr.Impl, context.Background(), decodeInput, nil)
+				if err != nil {
+					log.Fatal(err)
 				}
+
+				if err := marshalOutput(result); err != nil {
+					log.Fatal(err)
+				}
+
+				os.Exit(0)
 			}
 		}
-
-		log.Fatalf("%s: don't know how to handle this method", *inlineInvocation)
 	}
 
-	s := grpc.NewServer()
-
-	x, err := grpcstdio.NewSession(ctx, os.Stdin, os.Stdout, grpcstdio.WithCloseNotifier(func(_ *grpcstdio.Stream) {
-		// After we're done replying, shutdown the server, and then the binary.
-		// But we can't stop the server from this callback, as we're called with
-		// grpcstdio locks held, and terminating the server will need to call
-		// Close on open connections, which would lead to a deadlock.
-		go s.Stop()
-	}))
-	if err != nil {
-		return err
-	}
-
-	register(s)
-
-	return s.Serve(x.Listener())
+	log.Fatalf("%s: don't know how to handle this method", *inlineInvocation)
+	return nil
 }
 
 func decodeInput(target interface{}) error {

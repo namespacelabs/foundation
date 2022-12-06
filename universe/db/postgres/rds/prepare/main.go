@@ -47,7 +47,7 @@ const (
 )
 
 func main() {
-	if err := provisioning.RunServer(context.Background(), func(sr grpc.ServiceRegistrar) {
+	if err := provisioning.HandleInvocation(context.Background(), func(sr grpc.ServiceRegistrar) {
 		h := provisioning.NewHandlers()
 		h.Any().HandleStack(provisionHook{})
 
