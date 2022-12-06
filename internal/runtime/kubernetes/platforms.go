@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	UseNodePlatformsForProduction = false
+	UseNodePlatformsForProduction = true
 	ProductionPlatforms           = []string{"linux/amd64", "linux/arm64"}
 )
 
