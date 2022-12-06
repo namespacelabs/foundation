@@ -41,7 +41,7 @@ type Generated struct {
 }
 
 var (
-	validIdRe           = regexp.MustCompile("^[a-z][0123456789abcdefghijklmnopqrstuvwyxz]{7,15}$")
+	validIdRe           = regexp.MustCompile("^[0123456789abcdefghijklmnopqrstuvwyxz]{8,24}$")
 	validNameRe         = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9-_]{0,31}$")
 	reservedSecretNames = map[string]struct{}{"server": {}}
 )
@@ -77,7 +77,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 						} else if _, ok := reservedSecretNames[secret.Generate.UniqueId]; ok {
 							return nil, fnerrors.New("bad unique secret id: %q (is a reserved word)", secret.Generate.UniqueId)
 						} else if !validIdRe.MatchString(secret.Generate.UniqueId) {
-							return nil, fnerrors.New("bad unique secret id: %q (must be alphanumeric, between 8 and 16 characters)", secret.Generate.UniqueId)
+							return nil, fnerrors.New("bad unique secret id: %q (must be alphanumeric, between 8 and 24 characters)", secret.Generate.UniqueId)
 						}
 						generated = append(generated, secret)
 					} else {
