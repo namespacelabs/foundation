@@ -14,6 +14,7 @@ extension: fn.#Extension & {
 		password: secrets.#Exports.Secret & {
 			name: "postgres-password-file"
 			generate: {
+				uniqueId:        "2cmo5ocirf1k00h7idj0"
 				randomByteCount: 32
 				format:          "FORMAT_BASE32"
 			}

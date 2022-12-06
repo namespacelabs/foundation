@@ -115,9 +115,7 @@ func Collect(server *schema.Server) (*Collection, error) {
 			}
 
 			if len(generated) > 0 {
-				byUniqueID := map[string][]*Secret{}
 				for _, sec := range generated {
-					byUniqueID[sec.Generate.UniqueId] = append(byUniqueID[sec.Generate.UniqueId], sec)
 					id := strings.Join([]string{sec.Name, sec.Generate.UniqueId}, "-")
 					path := filepath.Join(ScopedMountPath, strings.ReplaceAll(instance.InstanceOwner, "/", "-"), id)
 
