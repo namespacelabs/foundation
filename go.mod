@@ -27,7 +27,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.22.2-0.20221103165531-2d10416631fa
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.5.0
-	github.com/containerd/containerd v1.6.10
+	github.com/containerd/containerd v1.6.12
 	github.com/containerd/stargz-snapshotter/estargz v0.13.0
 	github.com/creack/pty v1.1.11
 	github.com/docker/cli v20.10.21+incompatible
