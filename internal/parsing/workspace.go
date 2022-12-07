@@ -66,12 +66,13 @@ func RawFindModuleRoot(dir string, names ...string) (string, error) {
 }
 
 func validateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRequirements) error {
-	if w.GetMinimumApi() > versions.APIVersion {
-		return fnerrors.DoesNotMeetVersionRequirements(moduleName, w.GetMinimumApi(), versions.APIVersion)
+	apiVersion := int32(versions.Builtin().APIVersion)
+	if w.GetMinimumApi() > apiVersion {
+		return fnerrors.DoesNotMeetVersionRequirements(moduleName, w.GetMinimumApi(), apiVersion)
 	}
 
 	// Check that the foundation repo dep uses an API compatible with the current CLI.
-	if moduleName == foundationModule && w.GetMinimumApi() > 0 && w.GetMinimumApi() < versions.MinimumAPIVersion {
+	if moduleName == foundationModule && w.GetMinimumApi() > 0 && w.GetMinimumApi() < int32(versions.Builtin().MinimumAPIVersion) {
 		return fnerrors.New(fmt.Sprintf(`Unfortunately, this version of Foundation is too recent to be used with the
 current repository. If you're testing out an existing repository that uses
 Foundation, try fetching a newer version of the repository. If this is your

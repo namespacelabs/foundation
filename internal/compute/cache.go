@@ -167,7 +167,7 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 			entry := cache.CachedOutput{
 				Digest:       result,
 				Timestamp:    ts,
-				CacheVersion: versions.CacheVersion,
+				CacheVersion: versions.Builtin().CacheVersion,
 			}
 
 			entry.Debug.Serial = inputs.serial

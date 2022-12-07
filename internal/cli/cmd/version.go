@@ -82,8 +82,8 @@ func CollectVersionInfo() (*VersionInfo, error) {
 		Binary:         v,
 		GOOS:           runtime.GOOS,
 		GOARCH:         runtime.GOARCH,
-		APIVersion:     versions.APIVersion,
-		CacheVersion:   versions.CacheVersion,
+		APIVersion:     versions.Builtin().APIVersion,
+		CacheVersion:   versions.Builtin().CacheVersion,
 		ToolAPIVersion: versions.ToolAPIVersion,
 	}, nil
 }

@@ -376,7 +376,7 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 			req := &protocol.PrepareRequest{
 				Env:        server.SealedContext().Environment(),
 				Server:     server.Proto(),
-				ApiVersion: versions.APIVersion,
+				ApiVersion: int32(versions.Builtin().APIVersion),
 			}
 
 			resp, err := invoke.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.PrepareService/Prepare",

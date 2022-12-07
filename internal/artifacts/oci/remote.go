@@ -42,7 +42,7 @@ func RegisterDomainKeychain(suffix string, keychain Keychain, purpose KeychainWh
 }
 
 func userAgent() remote.Option {
-	return remote.WithUserAgent(fmt.Sprintf("NamespaceCLI/%d", versions.APIVersion))
+	return remote.WithUserAgent(fmt.Sprintf("NamespaceCLI/%d", versions.Builtin().APIVersion))
 }
 
 func WriteRemoteOptsWithAuth(ctx context.Context, access RegistryAccess) ([]remote.Option, error) {

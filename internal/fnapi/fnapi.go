@@ -61,7 +61,7 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 		headers.Add("NS-Client-ID", tel.GetClientID())
 	}
 
-	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.APIVersion))
+	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.Builtin().APIVersion))
 
 	if AdminMode {
 		headers.Add("NS-API-Mode", "admin")

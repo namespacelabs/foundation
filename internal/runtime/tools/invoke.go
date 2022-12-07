@@ -76,7 +76,7 @@ func (inv *invokeTool) Output() compute.Output {
 
 func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	req := &protocol.ToolRequest{
-		ApiVersion:  versions.APIVersion,
+		ApiVersion:  int32(versions.Builtin().APIVersion),
 		ToolPackage: inv.invocation.BinaryRef.AsPackageName().String(),
 		RequestType: &protocol.ToolRequest_InvokeRequest{
 			InvokeRequest: &protocol.InvokeRequest{},

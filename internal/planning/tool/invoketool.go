@@ -129,7 +129,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 	invocation := inv.invocation
 
 	req := &protocol.ToolRequest{
-		ApiVersion:  versions.APIVersion,
+		ApiVersion:  int32(versions.Builtin().APIVersion),
 		ToolPackage: inv.source.PackageName.String(),
 		// XXX temporary.
 		Stack:         inv.stack,

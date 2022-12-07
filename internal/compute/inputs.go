@@ -168,7 +168,7 @@ func (c *computedInputs) Finalize(resolved map[string]ResultWithTimestamp[any]) 
 func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest) (schema.Digest, error) {
 	h := sha256.New()
 
-	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", versions.CacheVersion, pkgPath, typeName, serial); err != nil {
+	if _, err := fmt.Fprintf(h, "$V:%d\nPkgPath:%s\nType:%s\nVersion:%d\nInputs{\n", versions.Builtin().CacheVersion, pkgPath, typeName, serial); err != nil {
 		return schema.Digest{}, err
 	}
 
