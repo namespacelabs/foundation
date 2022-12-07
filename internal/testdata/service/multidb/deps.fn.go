@@ -10,15 +10,13 @@ import (
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/universe/db/maria/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	incluster1 "namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
-	Maria    *sql.DB
-	Postgres *postgres.DB
-	Rds      *postgres.DB
+	Maria *sql.DB
+	Rds   *postgres.DB
 }
 
 // Verify that WireService is present and has the appropriate type.
@@ -43,16 +41,6 @@ func makeDeps__2q8a4u(ctx context.Context, di core.Dependencies) (_ interface{},
 	if err := di.Instantiate(ctx, incluster.Provider__r7qsle, func(ctx context.Context, v interface{}) (err error) {
 		// name: "mariadblist"
 		if deps.Maria, err = incluster.ProvideDatabase(ctx, core.MustUnwrapProto("CgttYXJpYWRibGlzdA==", &incluster.Database{}).(*incluster.Database), v.(incluster.ExtensionDeps)); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	if err := di.Instantiate(ctx, incluster1.Provider__udoubi, func(ctx context.Context, v interface{}) (err error) {
-		// name: "postgreslist"
-		if deps.Postgres, err = incluster1.ProvideDatabase(ctx, core.MustUnwrapProto("Cgxwb3N0Z3Jlc2xpc3Q=", &incluster1.Database{}).(*incluster1.Database), v.(incluster1.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil

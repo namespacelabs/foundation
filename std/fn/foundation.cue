@@ -75,6 +75,8 @@ _#Node: {
 	}
 
 	exportHttp?: [...#HttpPath]
+
+	resources: {...}
 }
 
 #HttpPath: {

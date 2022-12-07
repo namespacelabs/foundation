@@ -408,6 +408,24 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		return strings.Compare(node.Instantiate[i].Name, node.Instantiate[j].Name) < 0
 	})
 
+	if r := v.LookupPath("resources"); r.Exists() {
+		if kind != schema.Node_SERVICE {
+			return fnerrors.NewWithLocation(loc, "resources are not allowed on extensions")
+		}
+
+		resourceList, err := ParseResourceList(r)
+		if err != nil {
+			return fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)
+		}
+
+		pack, err := resourceList.ToPack(ctx, env, pl, out)
+		if err != nil {
+			return err
+		}
+
+		node.ResourcePack = pack
+	}
+
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:

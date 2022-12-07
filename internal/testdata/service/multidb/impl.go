@@ -11,21 +11,24 @@ import (
 	"log"
 	"time"
 
+	"github.com/jackc/pgx/v4"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"namespacelabs.dev/foundation/std/go/server"
+	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/testdata/service/proto"
-	"namespacelabs.dev/foundation/universe/db/postgres"
+	"namespacelabs.dev/foundation/library/database/postgres"
+	"namespacelabs.dev/foundation/std/go/server"
+	oldpostgres "namespacelabs.dev/foundation/universe/db/postgres"
 )
 
 type Service struct {
 	maria    *sql.DB
-	postgres *postgres.DB
-	rds      *postgres.DB
+	postgres *pgx.Conn
+	rds      *oldpostgres.DB
 }
 
 const timeout = 2 * time.Second
 
-func addPostgres(ctx context.Context, db *postgres.DB, item string) error {
+func addOldPostgres(ctx context.Context, db *oldpostgres.DB, item string) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -36,12 +39,20 @@ func addPostgres(ctx context.Context, db *postgres.DB, item string) error {
 func (svc *Service) AddRds(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
 	log.Printf("new AddRds request: %+v\n", req)
 
-	if err := addPostgres(ctx, svc.rds, req.Item); err != nil {
+	if err := addOldPostgres(ctx, svc.rds, req.Item); err != nil {
 		log.Fatalf("failed to add list item: %v", err)
 	}
 
 	response := &emptypb.Empty{}
 	return response, nil
+}
+
+func addPostgres(ctx context.Context, conn *pgx.Conn, item string) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	_, err := conn.Exec(ctx, "INSERT INTO list (Item) VALUES ($1);", item)
+	return err
 }
 
 func (svc *Service) AddPostgres(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
@@ -74,11 +85,34 @@ func (svc *Service) AddMaria(ctx context.Context, req *proto.AddRequest) (*empty
 	return response, nil
 }
 
-func listPostgres(ctx context.Context, db *postgres.DB) ([]string, error) {
+func listOldPostgres(ctx context.Context, db *oldpostgres.DB) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	rows, err := db.Query(ctx, "SELECT Item FROM list;")
+	if err != nil {
+		return nil, fmt.Errorf("failed read list: %w", err)
+	}
+	defer rows.Close()
+
+	var res []string
+	for rows.Next() {
+		var item string
+		err = rows.Scan(&item)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, item)
+	}
+
+	return res, nil
+}
+
+func listPostgres(ctx context.Context, conn *pgx.Conn) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	rows, err := conn.Query(ctx, "SELECT Item FROM list;")
 	if err != nil {
 		return nil, fmt.Errorf("failed read list: %w", err)
 	}
@@ -125,7 +159,7 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResp
 
 	var list []string
 
-	rdslist, err := listPostgres(ctx, svc.rds)
+	rdslist, err := listOldPostgres(ctx, svc.rds)
 	if err != nil {
 		log.Fatalf("failed to read list: %v", err)
 	}
@@ -149,9 +183,37 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResp
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{
-		maria:    deps.Maria,
-		postgres: deps.Postgres,
-		rds:      deps.Rds,
+		maria: deps.Maria,
+		rds:   deps.Rds,
+	}
+	var err error
+	svc.postgres, err = wirePostgres()
+	if err != nil {
+		log.Fatalf("failed to wire postgres: %v", err)
 	}
 	proto.RegisterMultiDbListServiceServer(srv, svc)
+}
+
+// Important: server package name, not service.
+const postgresDbRef = "namespacelabs.dev/foundation/internal/testdata/server/multidb:postgres"
+
+func wirePostgres() (*pgx.Conn, error) {
+	ctx := context.Background()
+
+	resources, err := resources.LoadResources()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db := &postgres.DatabaseInstance{}
+	if err := resources.Unmarshal(postgresDbRef, db); err != nil {
+		log.Fatal(err)
+	}
+
+	conn, err := pgx.Connect(ctx, fmt.Sprintf("postgres://postgres:%s@%s/%s", db.Cluster.Password, db.Cluster.Url, db.Name))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return conn, nil
 }
