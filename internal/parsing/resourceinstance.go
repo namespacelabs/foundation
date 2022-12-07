@@ -217,6 +217,10 @@ func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner
 
 		name := naming.StableIDN(fmt.Sprintf("%s->%s", owner.Canonical(), s.String()), 8)
 
+		if _, err := pl.LoadByName(ctx, schema.PackageName(s.String())); err != nil {
+			return err
+		}
+
 		pack.ResourceInstance = append(pack.ResourceInstance, &schema.ResourceInstance{
 			PackageName: owner.PackageName,
 			Name:        name,
