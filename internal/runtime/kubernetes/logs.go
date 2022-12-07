@@ -12,6 +12,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -36,8 +37,19 @@ func fetchPodLogs(ctx context.Context, cli *kubernetes.Clientset, namespace, pod
 	logOpts := &corev1.PodLogOptions{
 		Follow:     opts.Follow,
 		Container:  containerName,
-		Previous:   opts.FetchLastFailure,
 		Timestamps: true,
+	}
+
+	if opts.FetchLastFailure {
+		// Consider adding the restart policy to ContainerPodReference to avoid this call.
+		pod, err := cli.CoreV1().Pods(namespace).Get(ctx, podName, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if pod.Spec.RestartPolicy != corev1.RestartPolicyNever {
+			logOpts.Previous = true
+		}
 	}
 
 	if opts.TailLines > 0 {
