@@ -7,6 +7,7 @@ providers: {
 			"cluster": "namespacelabs.dev/foundation/library/database/postgres:Cluster"
 		}
 	}
+
 	"namespacelabs.dev/foundation/library/database/postgres:Cluster": {
 		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/postgres/prepare/cluster"
 

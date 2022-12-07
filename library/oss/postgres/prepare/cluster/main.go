@@ -16,15 +16,14 @@ import (
 const providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
 
 func main() {
-	intent := &postgres.ClusterIntent{}
-	_, r := provider.MustPrepare(intent)
+	_, p := provider.MustPrepare[*postgres.ClusterIntent]()
 
-	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:server", providerPkg), "postgres")
+	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:server", providerPkg), "postgres")
 	if err != nil {
 		log.Fatalf("failed to get Postgres server endpoint: %v", err)
 	}
 
-	password, err := resources.ReadSecret(r, fmt.Sprintf("%s:password", providerPkg))
+	password, err := resources.ReadSecret(p.Resources, fmt.Sprintf("%s:password", providerPkg))
 	if err != nil {
 		log.Fatalf("failed to read Postgres password: %v", err)
 	}
@@ -34,5 +33,5 @@ func main() {
 		Password: string(password),
 	}
 
-	provider.EmitResult(instance)
+	p.EmitResult(instance)
 }

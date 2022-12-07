@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/utils/strings/slices"
+	"namespacelabs.dev/foundation/framework/resources/provider"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	protos2 "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -40,7 +41,16 @@ type InvokeResourceProvider struct {
 }
 
 func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
-	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
+	providerCtx := provider.ProviderContext{
+		ProtocolVersion: "1",
+	}
+
+	ctxBytes, err := json.Marshal(providerCtx)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to serialize provider context: %w", err)
+	}
+
+	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson), fmt.Sprintf("--provider_context=%s", ctxBytes))
 
 	spec := runtime.DeployableSpec{
 		// ErrorLocation: resource.ProviderPackage.Location,

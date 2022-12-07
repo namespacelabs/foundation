@@ -26,17 +26,16 @@ const (
 )
 
 func main() {
-	intent := &s3.BucketIntent{}
-	ctx, r := provider.MustPrepare(intent)
+	ctx, p := provider.MustPrepare[*s3.BucketIntent]()
 
-	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:server", providerPkg), "api")
+	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:server", providerPkg), "api")
 	if err != nil {
 		log.Fatalf("failed to get localstack server: %v", err)
 	}
 
 	instance := &s3.BucketInstance{
-		Region:          intent.Region,
-		BucketName:      intent.BucketName,
+		Region:          p.Intent.Region,
+		BucketName:      p.Intent.BucketName,
 		AccessKey:       accessKey,
 		SecretAccessKey: secretAccessKey,
 		Url:             fmt.Sprintf("http://%s", endpoint),
@@ -59,5 +58,5 @@ func main() {
 		log.Fatalf("failed to create bucket: %v", err)
 	}
 
-	provider.EmitResult(instance)
+	p.EmitResult(instance)
 }

@@ -7,11 +7,13 @@ package deploy
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"namespacelabs.dev/foundation/framework/resources/provider"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -25,7 +27,10 @@ import (
 
 var GarbageCollectProviders = true
 
-var resultHeader = []byte("namespace.provision.result:")
+var (
+	resultHeader  = []byte("namespace.provision.result:")
+	messageHeader = []byte("namespace.provision.message:")
+)
 
 func register_OpWaitForProviderResults() {
 	execution.RegisterFuncs(execution.Funcs[*internalres.OpWaitForProviderResults]{
@@ -98,26 +103,46 @@ func register_OpWaitForProviderResults() {
 
 				tasks.Attachments(ctx).Attach(tasks.Output("invocation-output.log", "text/plain"), out.Bytes())
 
-				// The protocol is that a provision tool must emit a line `namespace.provision.result: json`
+				// The protocol is that a provision tool must emit a line `namespace.provision.message: json` (or message.provision.result previously).
 				lines := bytes.Split(out.Bytes(), []byte("\n"))
 
 				var resultMessage proto.Message
-				for _, line := range lines {
-					if !bytes.HasPrefix(line, resultHeader) {
-						continue
-					}
 
+				setMessage := func(serialized []byte) error {
 					if resultMessage != nil {
-						return nil, fnerrors.ExternalError("invocation produced multiple results")
+						return fnerrors.ExternalError("invocation produced multiple results")
 					}
 
 					parsedMessage := dynamicpb.NewMessage(msgdesc).Interface()
-					original := bytes.TrimPrefix(line, resultHeader)
-					if err := protojson.Unmarshal(original, parsedMessage); err != nil {
-						return nil, fnerrors.ExternalError("failed to unmarshal provision result: %w", err)
+					if err := protojson.Unmarshal(serialized, parsedMessage); err != nil {
+						return fnerrors.ExternalError("failed to unmarshal provider result: %w", err)
 					}
 
 					resultMessage = parsedMessage
+					return nil
+				}
+
+				for _, line := range lines {
+					switch {
+					case bytes.HasPrefix(line, resultHeader):
+						original := bytes.TrimPrefix(line, resultHeader)
+						if err := setMessage(original); err != nil {
+							return nil, err
+						}
+
+					case bytes.HasPrefix(line, messageHeader):
+						var msg provider.Message
+						original := bytes.TrimPrefix(line, messageHeader)
+						if err := json.Unmarshal(original, &msg); err != nil {
+							return nil, fnerrors.ExternalError("failed to unmarshal provider message: %w", err)
+						}
+
+						if msg.SerializedInstanceJSON != nil {
+							if err := setMessage([]byte(*msg.SerializedInstanceJSON)); err != nil {
+								return nil, err
+							}
+						}
+					}
 				}
 
 				if resultMessage == nil {

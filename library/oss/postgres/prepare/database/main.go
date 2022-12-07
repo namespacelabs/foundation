@@ -23,32 +23,31 @@ const (
 )
 
 func main() {
-	intent := &postgres.DatabaseIntent{}
-	ctx, r := provider.MustPrepare(intent)
+	ctx, p := provider.MustPrepare[*postgres.DatabaseIntent]()
 
 	cluster := &postgres.ClusterInstance{}
-	if err := r.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
+	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
 		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
 
-	conn, err := ensureDatabase(ctx, cluster, intent.Name)
+	conn, err := ensureDatabase(ctx, cluster, p.Intent.Name)
 	if err != nil {
-		log.Fatalf("unable to create database %q: %v", intent.Name, err)
+		log.Fatalf("unable to create database %q: %v", p.Intent.Name, err)
 	}
 	defer conn.Close(ctx)
 
-	for _, schema := range intent.Schema {
+	for _, schema := range p.Intent.Schema {
 		if _, err = conn.Exec(ctx, string(schema.Contents)); err != nil {
 			log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
 		}
 	}
 
 	instance := &postgres.DatabaseInstance{
-		Name:    intent.Name,
+		Name:    p.Intent.Name,
 		Cluster: cluster,
 	}
 
-	provider.EmitResult(instance)
+	p.EmitResult(instance)
 }
 
 func ensureDatabase(ctx context.Context, cluster *postgres.ClusterInstance, name string) (*pgx.Conn, error) {

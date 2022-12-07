@@ -19,10 +19,9 @@ import (
 const providerPkg = "namespacelabs.dev/foundation/library/oss/minio"
 
 func main() {
-	intent := &s3.BucketIntent{}
-	ctx, resources := provider.MustPrepare(intent)
+	ctx, p := provider.MustPrepare[*s3.BucketIntent]()
 
-	instance, err := prepareInstance(resources, intent)
+	instance, err := prepareInstance(p.Resources, p.Intent)
 	if err != nil {
 		log.Fatalf("failed to create instance: %v", err)
 	}
@@ -44,7 +43,7 @@ func main() {
 		log.Fatalf("failed to create bucket: %v", err)
 	}
 
-	provider.EmitResult(instance)
+	p.EmitResult(instance)
 }
 
 func prepareInstance(r *resources.Parsed, intent *s3.BucketIntent) (*s3.BucketInstance, error) {

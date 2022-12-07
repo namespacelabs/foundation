@@ -17,16 +17,15 @@ import (
 const providerPkg = "namespacelabs.dev/foundation/library/oss/redis"
 
 func main() {
-	intent := &redisclass.DatabaseIntent{}
-	ctx, r := provider.MustPrepare(intent)
+	ctx, p := provider.MustPrepare[*redisclass.DatabaseIntent]()
 
-	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:redisServer", providerPkg), "redis")
+	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:redisServer", providerPkg), "redis")
 	if err != nil {
 		log.Fatalf("failed to get redis server endpoint: %v", err)
 	}
 
 	instance := &redisclass.DatabaseInstance{
-		Database: intent.Database,
+		Database: p.Intent.Database,
 		Url:      endpoint,
 		Password: "", // TODO model password as a generated secret
 	}
@@ -42,5 +41,5 @@ func main() {
 		log.Fatalf("redis database never became ready: %v", err)
 	}
 
-	provider.EmitResult(instance)
+	p.EmitResult(instance)
 }
