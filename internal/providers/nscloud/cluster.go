@@ -31,6 +31,7 @@ import (
 var (
 	rpcEndpointOverride string
 	regionName          string
+	defaultMachineType  string
 )
 
 var (
@@ -42,6 +43,8 @@ func SetupFlags(flags *pflag.FlagSet) {
 	_ = flags.MarkHidden("nscloud_endpoint")
 	flags.StringVar(&regionName, "nscloud_region", "a", "Which region to use.")
 	_ = flags.MarkHidden("nscloud_region")
+	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
+	_ = flags.MarkHidden("nscloud_default_machine_type")
 }
 
 func Register() {
@@ -145,7 +148,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	}
 
 	ephemeral := env.Environment().Ephemeral
-	response, err := api.CreateCluster(ctx, api.Endpoint, "", ephemeral, purpose, nil)
+	response, err := api.CreateCluster(ctx, api.Endpoint, defaultMachineType, ephemeral, purpose, nil)
 	if err != nil {
 		return nil, err
 	}
