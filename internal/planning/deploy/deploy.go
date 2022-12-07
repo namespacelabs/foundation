@@ -83,14 +83,10 @@ func PrepareDeployServers(ctx context.Context, env cfg.Context, planner runtime.
 		return nil, err
 	}
 
-	return PrepareDeployStackToRegistry(ctx, env, planner, planner.Registry(), stack)
+	return PrepareDeployStack(ctx, env, planner, planner.Registry(), stack)
 }
 
-func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
-	return PrepareDeployStackToRegistry(ctx, env, planner, planner.Registry(), stack, prepared...)
-}
-
-func PrepareDeployStackToRegistry(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
 	def, err := prepareHandlerInvocations(ctx, env, planner, stack)
 	if err != nil {
 		return nil, err

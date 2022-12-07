@@ -93,7 +93,7 @@ func NewDeployCmd() *cobra.Command {
 				})
 			}
 
-			plan, err := deploy.PrepareDeployStackToRegistry(ctx, env, planner, reg, stack)
+			plan, err := deploy.PrepareDeployStack(ctx, env, planner, reg, stack)
 			if err != nil {
 				return err
 			}

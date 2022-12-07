@@ -138,7 +138,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 		observers = append(observers, updateDeploymentStatus{do.session})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.planner, stack)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.planner, do.planner.Registry(), stack)
 		if err != nil {
 			return err
 		}
