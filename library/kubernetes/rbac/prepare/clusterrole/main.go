@@ -19,8 +19,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type tool struct{}
-
 func main() {
 	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})

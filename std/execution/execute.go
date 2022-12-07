@@ -50,19 +50,16 @@ func ExecuteExt(ctx context.Context, actionName string, g *Plan, channelHandler 
 			childCh := make(chan *orchestration.Event)
 
 			eg.Go(func(ctx context.Context) error {
-				for {
-					select {
-					case ev, ok := <-childCh:
-						if !ok {
-							return nil
-						}
-						if ch != nil {
-							ch <- ev
-						} else {
-							fmt.Fprintf(console.Debug(ctx), "execute: dropped event\n")
-						}
+				for ev := range childCh {
+					if ch != nil {
+						ch <- ev
+					} else {
+						fmt.Fprintf(console.Debug(ctx), "execute: dropped event\n")
 					}
+
 				}
+
+				return nil
 			})
 
 			return w(ctx, childCh)

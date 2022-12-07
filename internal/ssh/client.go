@@ -8,8 +8,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 
 	"golang.org/x/crypto/ssh"
@@ -84,7 +84,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 }
 
 func parsePrivateKey(keyPath string) (ssh.Signer, error) {
-	buff, err := ioutil.ReadFile(keyPath)
+	buff, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, err
 	}

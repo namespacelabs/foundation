@@ -7,7 +7,6 @@ package tool
 import (
 	"context"
 	"io/fs"
-	"time"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -28,8 +27,6 @@ import (
 )
 
 var InvocationDebug = false
-
-const toolBackoff = 500 * time.Millisecond
 
 type InvokeProps struct {
 	Event          protocol.Lifecycle
