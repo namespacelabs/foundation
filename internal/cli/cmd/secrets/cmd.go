@@ -25,7 +25,7 @@ import (
 func NewSecretsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "secrets",
-		Short: "Manage secrets for a given server.",
+		Short: "Manage secrets for the current workspace or a given server.",
 	}
 
 	cmd.AddCommand(newInfoCmd())

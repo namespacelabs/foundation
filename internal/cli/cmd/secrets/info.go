@@ -15,7 +15,7 @@ import (
 func newInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "info [server]",
-		Short: "Describes the contents of the specified server's secrets archive.",
+		Short: "Describes the contents of a secrets bundle.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 
