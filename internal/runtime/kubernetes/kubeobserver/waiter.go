@@ -67,6 +67,7 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 
 	// TODO remove fallback when CLI always sets package ref.
 	if deployable != nil && ev.Scope == "" {
+		// nolint directives: stylecheck:sa1019
 		ev.Scope = deployable.GetPackageName()
 	}
 
