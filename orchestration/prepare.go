@@ -107,7 +107,7 @@ func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetO
 		return err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, planner, focus)
+	plan, err := deploy.PrepareDeployServers(ctx, env, focus.SealedContext(), planner, focus)
 	if err != nil {
 		return err
 	}

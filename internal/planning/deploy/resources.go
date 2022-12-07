@@ -52,7 +52,7 @@ type serverStack interface {
 	GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bool)
 }
 
-func planResources(ctx context.Context, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -217,7 +217,7 @@ func planResources(ctx context.Context, planner runtime.Planner, registry regist
 		for k, invocation := range executionInvocations {
 			invocation.BinaryImageId = builtExecutionImages[k].Value
 
-			theseOps, err := PlanResourceProviderInvocation(ctx, planner, invocation)
+			theseOps, err := PlanResourceProviderInvocation(ctx, modules, planner, invocation)
 			if err != nil {
 				return nil, err
 			}

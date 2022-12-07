@@ -102,6 +102,10 @@ start:
 	return servers, nil
 }
 
+func (snap *ServerSnapshot) Modules() pkggraph.Modules {
+	return snap.sealed
+}
+
 func (snap *ServerSnapshot) Env() pkggraph.Context {
 	return pkggraph.MakeSealedContext(snap.env, snap.sealed)
 }

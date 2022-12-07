@@ -7,8 +7,8 @@ package versions
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"io/fs"
-	"os"
 	"sync"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -68,7 +68,7 @@ func LoadAt(fsys fs.FS, path string) (InternalVersions, error) {
 func LoadAtOrDefaults(fsys fs.FS, path string) (InternalVersions, error) {
 	v, err := LoadAt(fsys, path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return LastNonJSONVersion(), nil
 		}
 		return InternalVersions{}, err

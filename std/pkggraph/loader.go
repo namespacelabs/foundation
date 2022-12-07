@@ -19,9 +19,13 @@ type PackageLoader interface {
 	LoadByName(ctx context.Context, packageName schema.PackageName) (*Package, error)
 }
 
+type Modules interface {
+	Modules() []*Module
+}
+
 type SealedPackageLoader interface {
 	PackageLoader
+	Modules
 
-	Modules() []*Module
 	Packages() []*Package
 }

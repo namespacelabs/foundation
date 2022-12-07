@@ -19,13 +19,17 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
+
+const version_introducedProviderContext = 45
 
 type InvokeResourceProvider struct {
 	ResourceInstanceId   string
@@ -40,17 +44,26 @@ type InvokeResourceProvider struct {
 	SecretResources      []runtime.SecretResourceDependency
 }
 
-func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
-	providerCtx := provider.ProviderContext{
-		ProtocolVersion: "1",
-	}
+func PlanResourceProviderInvocation(ctx context.Context, modules pkggraph.Modules, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
+	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
 
-	ctxBytes, err := json.Marshal(providerCtx)
+	versions, err := foundationVersion(ctx, modules)
 	if err != nil {
-		return nil, fnerrors.InternalError("failed to serialize provider context: %w", err)
+		return nil, fnerrors.InternalError("failed to determine foundation version: %w", err)
 	}
 
-	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson), fmt.Sprintf("--provider_context=%s", ctxBytes))
+	if versions.APIVersion >= version_introducedProviderContext {
+		providerCtx := provider.ProviderContext{
+			ProtocolVersion: "1",
+		}
+
+		ctxBytes, err := json.Marshal(providerCtx)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize provider context: %w", err)
+		}
+
+		args = append(args, fmt.Sprintf("--provider_context=%s", ctxBytes))
+	}
 
 	spec := runtime.DeployableSpec{
 		// ErrorLocation: resource.ProviderPackage.Location,
@@ -102,6 +115,16 @@ func PlanResourceProviderInvocation(ctx context.Context, planner runtime.Planner
 	})
 
 	return ops, nil
+}
+
+func foundationVersion(ctx context.Context, modules pkggraph.Modules) (versions.InternalVersions, error) {
+	for _, module := range modules.Modules() {
+		if module.ModuleName() == "namespacelabs.dev/foundation" {
+			return versions.LoadAtOrDefaults(module.ReadOnlyFS(), "internal/versions/versions.json")
+		}
+	}
+
+	return versions.LastNonJSONVersion(), nil
 }
 
 type RawJSONObject map[string]any

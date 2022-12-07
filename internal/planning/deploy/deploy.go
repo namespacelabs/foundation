@@ -77,16 +77,16 @@ func (pd PreparedDeployable) PackageRef() *schema.PackageRef {
 	return pd.Ref
 }
 
-func PrepareDeployServers(ctx context.Context, env cfg.Context, planner runtime.Planner, focus ...planning.Server) (compute.Computable[*Plan], error) {
+func PrepareDeployServers(ctx context.Context, env cfg.Context, modules pkggraph.Modules, planner runtime.Planner, focus ...planning.Server) (compute.Computable[*Plan], error) {
 	stack, err := planning.ComputeStack(ctx, focus, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
 
-	return PrepareDeployStack(ctx, env, planner, planner.Registry(), stack)
+	return PrepareDeployStack(ctx, env, modules, planner, planner.Registry(), stack)
 }
 
-func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
+func PrepareDeployStack(ctx context.Context, env cfg.Context, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[*Plan], error) {
 	def, err := prepareHandlerInvocations(ctx, env, planner, stack)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Pl
 
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, planner, registry, stack, def, makeBuildAssets(ingressFragments), prepared...)
+	prepare, err := prepareBuildAndDeployment(ctx, env, modules, planner, registry, stack, def, makeBuildAssets(ingressFragments), prepared...)
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ type prepareAndBuildResult struct {
 	NamespaceReference string
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
 	packages, images, err := computeStackAndImages(ctx, env, planner, registry, stack, serverImagesOpts{
 		def:         stackDef,
 		buildAssets: buildAssets,
@@ -244,6 +244,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		tasks.Action("resource.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
+			Indigestible("modules", modules).
 			Computable("stackAndDefs", stackDef).
 			Computable("prepared", preparedComp),
 		compute.Output{},
@@ -264,7 +265,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 				}
 			}
 
-			return planResources(ctx, planner, registry, stackAndDefs.Stack, rp)
+			return planResources(ctx, modules, planner, registry, stackAndDefs.Stack, rp)
 		})
 
 	imageInputs := compute.Inputs().Indigestible("packages", packages)
