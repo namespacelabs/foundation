@@ -148,7 +148,6 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 					sealed.Proto.Server.ResourcePack = &schema.ResourcePack{}
 				}
 
-				// Merging resources from all services into the server.
 				sealed.Proto.Server.ResourcePack.ResourceInstance = append(sealed.Proto.Server.ResourcePack.ResourceInstance, node.ResourcePack.ResourceInstance...)
 				sealed.Proto.Server.ResourcePack.ResourceRef = append(sealed.Proto.Server.ResourcePack.ResourceRef, node.ResourcePack.ResourceRef...)
 			}

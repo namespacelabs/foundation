@@ -194,8 +194,7 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	proto.RegisterMultiDbListServiceServer(srv, svc)
 }
 
-// Important: server package name, not service.
-const postgresDbRef = "namespacelabs.dev/foundation/internal/testdata/server/multidb:postgres"
+const postgresDbRef = "namespacelabs.dev/foundation/internal/testdata/service/multidb:postgres"
 
 func wirePostgres() (*pgx.Conn, error) {
 	ctx := context.Background()

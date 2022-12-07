@@ -82,10 +82,11 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 	}
 
 	instance := &schema.ResourceInstance{
-		Name:       name,
-		Class:      classRef,
-		Provider:   provider,
-		IntentFrom: intentFrom,
+		PackageName: pkg.PackageName().String(),
+		Name:        name,
+		Class:       classRef,
+		Provider:    provider,
+		IntentFrom:  intentFrom,
 	}
 
 	rawIntent := src.RawIntent

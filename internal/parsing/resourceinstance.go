@@ -37,8 +37,6 @@ func IsSecretResource(ref packageRefLike) bool {
 }
 
 func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
-	instance.PackageName = string(loc.PackageName)
-
 	if instance.IntentFrom != nil {
 		if _, _, err := pkggraph.LoadBinary(ctx, pl, instance.IntentFrom.BinaryRef); err != nil {
 			return nil, err

@@ -218,9 +218,13 @@ func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoade
 		return canonicalizeClassInstanceFieldRef(ctx, pl, loc, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
 	} else {
 		// Maybe it's an inline resource?
-		for _, r := range targetPkg.Server.GetResourcePack().GetResourceInstance() {
-			if r.Name == resource.Name {
-				return canonicalizeClassInstanceFieldRef(ctx, pl, loc, r.Class, field.GetFieldSelector())
+		// XXX rethink how scoped resource instances should work.
+
+		for _, pack := range []*schema.ResourcePack{targetPkg.Extension.GetResourcePack(), targetPkg.Service.GetResourcePack(), targetPkg.Server.GetResourcePack()} {
+			for _, r := range pack.GetResourceInstance() {
+				if r.Name == resource.Name && r.PackageName == resource.PackageName {
+					return canonicalizeClassInstanceFieldRef(ctx, pl, loc, r.Class, field.GetFieldSelector())
+				}
 			}
 		}
 
