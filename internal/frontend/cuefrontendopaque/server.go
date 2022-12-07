@@ -146,7 +146,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	for _, env := range startupPlan.Env {
 		if env.FromServiceEndpoint != nil {
 			dep := env.FromServiceEndpoint.ServerRef.AsPackageName()
-			if !availableServers.Includes(dep) {
+			if !availableServers.Has(dep) {
 				// TODO reconcider if we want to implicitly add the dependency NSL-357
 				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
 			}

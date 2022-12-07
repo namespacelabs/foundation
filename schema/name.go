@@ -55,7 +55,7 @@ func (pl PackageList) PackageNamesAsString() []string {
 	return pl.l.Strings()
 }
 
-func (pl PackageList) Includes(pkg PackageName) bool {
+func (pl PackageList) Has(pkg PackageName) bool {
 	return pl.l.Has(pkg.String())
 }
 

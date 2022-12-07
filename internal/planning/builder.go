@@ -90,11 +90,11 @@ func (stack *stackBuilder) buildStack(focusPackages ...schema.PackageName) *Stac
 }
 
 func order(foci schema.PackageList, a, b schema.PackageName) bool {
-	if foci.Includes(a) {
-		if !foci.Includes(b) {
+	if foci.Has(a) {
+		if !foci.Has(b) {
 			return true
 		}
-	} else if foci.Includes(b) {
+	} else if foci.Has(b) {
 		return false
 	}
 

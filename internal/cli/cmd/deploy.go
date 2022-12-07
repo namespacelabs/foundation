@@ -107,7 +107,7 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), stack.Proto(), computed, servers.Servers.Packages().PackageNamesAsString())
+			deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), stack.Proto(), computed, servers.Servers.Packages())
 
 			if serializePath != "" {
 				return protos.WriteFile(serializePath, deployPlan)

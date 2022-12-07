@@ -448,7 +448,7 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 		}
 
 		deployable.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
-		deployable.Focused = stack.Focus.Includes(srv.PackageName())
+		deployable.Focused = stack.Focus.Has(srv.PackageName())
 
 		// Collect all secret references.
 		var secretRefs []*schema.PackageRef
@@ -618,13 +618,13 @@ func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.P
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, opts.buildAssets, srv.Server, stack.Focus.Includes(srv.PackageName()))
+			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, opts.buildAssets, srv.Server, stack.Focus.Has(srv.PackageName()))
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := MakeBuildPlan(ctx, planner, srv.Server, stack.Focus.Includes(srv.PackageName()), spec)
+		p, err := MakeBuildPlan(ctx, planner, srv.Server, stack.Focus.Has(srv.PackageName()), spec)
 		if err != nil {
 			return nil, err
 		}
@@ -642,7 +642,7 @@ func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.P
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
 		pctx := srv.Server.SealedContext()
-		if stack.Focus.Includes(srv.PackageName()) && !pctx.Environment().Ephemeral && opts.def != nil && opts.wantConfig {
+		if stack.Focus.Has(srv.PackageName()) && !pctx.Environment().Ephemeral && opts.def != nil && opts.wantConfig {
 			configImage := prepareConfigImage(ctx, env, planner, srv.Server, stack, opts.computedOnly())
 			name := registry.AllocateName(srv.PackageName().String())
 			images.Config = oci.PublishImage(name, configImage).ImageID()

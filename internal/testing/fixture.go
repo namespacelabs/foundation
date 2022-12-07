@@ -105,7 +105,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
 	}
 
-	sutServers := stack.Focus.PackageNamesAsString()
+	sutServers := stack.Focus
 
 	var results compute.Computable[*storage.TestResultBundle] = &testRun{
 		SealedContext:    sealedCtx,
@@ -125,7 +125,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 			Computable("results", results).
 			JSON("opts", opts).
 			Proto("testDef", testDef).
-			Strs("sut", sutServers).
+			Strs("sut", sutServers.PackageNamesAsString()).
 			Proto("createdTs", createdTs),
 		compute.Output{NotCacheable: true},
 		func(ctx context.Context, deps compute.Resolved) (*storage.TestBundle, error) {
@@ -135,7 +135,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 				TestPackage:      testDef.PackageName,
 				TestName:         testDef.Name,
 				Result:           bundle.Result,
-				ServersUnderTest: sutServers,
+				ServersUnderTest: sutServers.PackageNamesAsString(),
 				Created:          createdTs,
 				Completed:        timestamppb.Now(),
 				EnvDiagnostics:   bundle.EnvDiagnostics,

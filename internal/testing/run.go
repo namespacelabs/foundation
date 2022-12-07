@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/morikuni/aec"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -43,7 +42,7 @@ type testRun struct {
 
 	Driver           compute.Computable[deploy.PreparedDeployable]
 	Stack            *schema.Stack
-	ServersUnderTest []string // Package names.
+	ServersUnderTest schema.PackageList
 	Plan             compute.Computable[*deploy.Plan]
 	OutputProgress   bool
 
@@ -64,7 +63,7 @@ func (test *testRun) Inputs() *compute.In {
 		Proto("env", test.SealedContext.Environment()).
 		Computable("driver", test.Driver).
 		Proto("stack", test.Stack).
-		Strs("focus", test.ServersUnderTest).
+		Strs("focus", test.ServersUnderTest.PackageNamesAsString()).
 		Computable("plan", test.Plan)
 }
 
@@ -207,7 +206,7 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	return bundle, nil
 }
 
-func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, testRef *schema.PackageRef, stack *schema.Stack, focus []string, printLogs bool) (*storage.TestResultBundle, error) {
+func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespace, testRef *schema.PackageRef, stack *schema.Stack, focus schema.PackageList, printLogs bool) (*storage.TestResultBundle, error) {
 	ex := executor.New(ctx, "test.collect-logs")
 
 	type serverLog struct {
@@ -241,7 +240,7 @@ func collectLogs(ctx context.Context, env cfg.Context, rt runtime.ClusterNamespa
 				ctr := ctr // Close on ctr.
 
 				var extraOutput []io.Writer
-				if printLogs && slices.Contains(focus, srv.PackageName) {
+				if printLogs && focus.Has(schema.PackageName(srv.PackageName)) {
 					name := srv.Name
 					if len(containers) > 0 {
 						name = ctr.HumanReference
