@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package cuefrontendopaque
+package cuefrontend
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -45,7 +44,7 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	}
 
 	if resources := v.LookupPath("resources"); resources.Exists() {
-		resourceList, err := cuefrontend.ParseResourceList(resources)
+		resourceList, err := ParseResourceList(resources)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(pkg.Location, "parsing resources failed: %w", err)
 		}

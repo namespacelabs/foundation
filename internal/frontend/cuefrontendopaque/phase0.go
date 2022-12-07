@@ -38,86 +38,9 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, err
 	}
 
-	parsedPkg := &pkggraph.Package{
-		Location: loc,
-	}
-
-	if tests := v.LookupPath("tests"); tests.Exists() {
-		parsedTests, err := parseTests(ctx, ft.env, ft.loader, parsedPkg, tests)
-		if err != nil {
-			return nil, err
-		}
-
-		parsedPkg.Tests = append(parsedPkg.Tests, parsedTests...)
-	}
-
-	if r := v.LookupPath("resourceClasses"); r.Exists() {
-		it, err := r.Val.Fields()
-		if err != nil {
-			return nil, err
-		}
-
-		for it.Next() {
-			val := &fncue.CueV{Val: it.Value()}
-			parsedRc, err := parseResourceClass(ctx, loc, it.Label(), val)
-			if err != nil {
-				return nil, err
-			}
-
-			parsedPkg.ResourceClassSpecs = append(parsedPkg.ResourceClassSpecs, parsedRc)
-		}
-	}
-
-	if r := v.LookupPath("providers"); r.Exists() {
-		it, err := r.Val.Fields()
-		if err != nil {
-			return nil, err
-		}
-
-		for it.Next() {
-			val := &fncue.CueV{Val: it.Value()}
-
-			parsedProvider, err := parseResourceProvider(ctx, ft.env, ft.loader, parsedPkg, it.Label(), val)
-			if err != nil {
-				return nil, err
-			}
-
-			parsedPkg.ResourceProvidersSpecs = append(parsedPkg.ResourceProvidersSpecs, parsedProvider)
-		}
-	}
-
-	if r := v.LookupPath("resources"); r.Exists() {
-		it, err := r.Val.Fields()
-		if err != nil {
-			return nil, err
-		}
-
-		for it.Next() {
-			val := &fncue.CueV{Val: it.Value()}
-			parsedResource, err := cuefrontend.ParseResourceInstanceFromCue(ctx, ft.env, ft.loader, parsedPkg, it.Label(), val)
-			if err != nil {
-				return nil, err
-			}
-
-			parsedPkg.ResourceInstanceSpecs = append(parsedPkg.ResourceInstanceSpecs, parsedResource)
-		}
-	}
-
-	if volumes := v.LookupPath("volumes"); volumes.Exists() {
-		parsedVolumes, err := cuefrontend.ParseVolumes(ctx, ft.loader, loc, volumes)
-		if err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
-		}
-		parsedPkg.Volumes = append(parsedPkg.Volumes, parsedVolumes...)
-	}
-
-	if secrets := v.LookupPath("secrets"); secrets.Exists() {
-		secretSpecs, err := parseSecrets(ctx, secrets)
-		if err != nil {
-			return nil, err
-		}
-
-		parsedPkg.Secrets = append(parsedPkg.Secrets, secretSpecs...)
+	parsedPkg, err := cuefrontend.ParsePackage(ctx, ft.env, ft.loader, v, loc)
+	if err != nil {
+		return nil, err
 	}
 
 	var validators []func() error

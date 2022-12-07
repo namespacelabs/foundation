@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type cueTest struct {
+type cueTestOld struct {
 	Name    string     `json:"name"`
 	Binary  *cueBinary `json:"binary"`
 	Driver  *cueBinary `json:"driver"`
@@ -24,13 +24,14 @@ type cueFixture struct {
 	ServersUnderTest []string `json:"serversUnderTest"`
 }
 
-func parseCueTest(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, error) {
+// Old syntax
+func parsecueTestOld(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
 	}
 
-	test := cueTest{}
+	test := cueTestOld{}
 	if err := v.Val.Decode(&test); err != nil {
 		return nil, err
 	}

@@ -68,11 +68,13 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 
 	v := &partial.CueV
 
-	parsed := &pkggraph.Package{
-		Location:       loc,
-		PackageSources: partial.Package.Snapshot,
-		Parsed:         phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left},
+	parsed, err := ParsePackage(ctx, ft.env, ft.loader, v, loc)
+	if err != nil {
+		return nil, err
 	}
+
+	parsed.PackageSources = partial.Package.Snapshot
+	parsed.Parsed = phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left}
 
 	var count int
 	if extension := v.LookupPath("extension"); extension.Exists() {
@@ -111,7 +113,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	}
 
 	if test := v.LookupPath("test"); test.Exists() {
-		parsedTest, err := parseCueTest(ctx, loc, v, test)
+		parsedTest, err := parsecueTestOld(ctx, loc, v, test)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "parsing test: %w", err)
 		}
@@ -141,14 +143,14 @@ func isNewSyntax(partial *fncue.Partial) bool {
 		return false
 	}
 
-	// Detecting the simplified syntax to define opaque servers.
-	for _, path := range []string{"server", "resources", "resourceClasses", "providers", "volumes", "secrets", "tests"} {
+	// Detecting the old syntax.
+	for _, path := range []string{"service", "extension", "binary", "test"} {
 		if partial.CueV.LookupPath(path).Exists() {
-			return true
+			return false
 		}
 	}
 
-	return false
+	return true
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (parsing.PackageType, error) {

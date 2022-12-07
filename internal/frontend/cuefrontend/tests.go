@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package cuefrontendopaque
+package cuefrontend
 
 import (
 	"context"
@@ -25,6 +25,7 @@ type cueTest struct {
 	Env     *args.EnvMap        `json:"env"`
 }
 
+// New syntax
 func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) ([]*schema.Test, error) {
 	it, err := v.Val.Fields()
 	if err != nil {
