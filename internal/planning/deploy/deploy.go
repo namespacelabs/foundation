@@ -288,6 +288,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 		tasks.Action("server.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
+			Indigestible("modules", modules).
 			Proto("env", env.Environment()).
 			Computable("resourcePlan", resourcePlan).
 			Computable("images", imageIDs).
@@ -300,7 +301,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
+			return planDeployment(ctx, env, modules, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -342,11 +343,11 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, modules pkggraph.Modules, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverDeployables []runtime.DeployableSpec
-	var secretSources []secretSource
+	var secretUsers []secretUser
 
 	moduleVCS := map[string]*runtimepb.BuildVCS{}
 	var errs []error
@@ -495,10 +496,18 @@ func planDeployment(ctx context.Context, env cfg.Context, planner runtime.Planne
 		}
 
 		serverDeployables = append(serverDeployables, deployable)
-		secretSources = append(secretSources, secretSource{srv.Server, secretRefs})
+		secretUsers = append(secretUsers, secretUser{srv.Server, secretRefs})
 	}
 
-	grounded, err := loadSecrets(ctx, env, secretSources...)
+	localSecrets, err := newLocalSecrets(modules)
+	if err != nil {
+		return runtime.DeploymentSpec{}, err
+	}
+
+	grounded, err := loadSecrets(ctx, localSecrets, SecretsContext{
+		WorkspaceModuleName: env.Workspace().ModuleName(),
+		Environment:         env.Environment(),
+	}, secretUsers...)
 	if err != nil {
 		return runtime.DeploymentSpec{}, err
 	}
