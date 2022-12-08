@@ -13,7 +13,9 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/runtime"
+	orchconstants "namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 )
 
 type tool struct{}
@@ -74,6 +76,25 @@ func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisi
 		With: &kubedef.SpecExtension{
 			ServiceAccount: serviceAccount,
 		},
+	})
+
+	out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
+		Volume: []*schema.Volume{{
+			Owner: orchconstants.ToolPkg.String(),
+			Kind:  constants.VolumeKindEphemeral,
+			Name:  "orch-empty-dir",
+		}},
+		ExtendContainer: []*schema.ContainerExtension{{
+			Mount: []*schema.Mount{{
+				Owner: orchconstants.ToolPkg.String(),
+				Path:  "/namespace/orchestration",
+				VolumeRef: &schema.PackageRef{
+					PackageName: orchconstants.ToolPkg.String(),
+					Name:        "orch-empty-dir",
+				},
+				Readonly: false,
+			}},
+		}},
 	})
 
 	return nil

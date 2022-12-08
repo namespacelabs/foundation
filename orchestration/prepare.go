@@ -42,7 +42,7 @@ var (
 		PackageName:     constants.ServerPkg.String(),
 		Id:              constants.ServerId,
 		Name:            constants.ServerName,
-		DeployableClass: string(schema.DeployableClass_STATEFUL),
+		DeployableClass: string(schema.DeployableClass_STATELESS), // Not always true!! We need pinned orch deployment plans.
 	}
 )
 
@@ -100,6 +100,18 @@ func ensureDeployment(ctx context.Context, env cfg.Context, versions *proto.GetO
 	focus, err := planning.RequireServer(ctx, env, constants.ServerPkg)
 	if err != nil {
 		return err
+	}
+
+	if !focus.Proto().IsStateful {
+		// Clean up old stateful versions of orchestrator if they exist.
+		if err := boundCluster.DeleteDeployable(ctx, &runtimepb.Deployable{
+			PackageName:     constants.ServerPkg.String(),
+			Id:              constants.ServerId,
+			Name:            constants.ServerName,
+			DeployableClass: string(schema.DeployableClass_STATEFUL),
+		}); err != nil {
+			return err
+		}
 	}
 
 	planner, err := runtime.PlannerFor(ctx, env)
