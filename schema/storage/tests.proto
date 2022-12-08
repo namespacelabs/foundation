@@ -16,7 +16,7 @@ import "schema/environment.proto";
 import "schema/storage/logs.proto";
 import "schema/storage/diagnostics.proto";
 
-// Next ID: 11
+// Next ID: 12
 message TestBundle {
     string          parent_run_id      = 9;
     string          test_package       = 6;
@@ -25,6 +25,7 @@ message TestBundle {
     repeated string servers_under_test = 8;
 
     google.protobuf.Timestamp created   = 4;
+    google.protobuf.Timestamp started   = 11;
     google.protobuf.Timestamp completed = 5;  // Regardless of success or failure.
 
     LogRef          test_log   = 2;
@@ -38,9 +39,9 @@ message TestRuns {
     repeated IncompatibleTest incompatible_test = 2;
 
     message Run {
-        string           test_bundle_id = 1;
-        TestBundle       test_summary   = 2;  // XXX replace with test_results.
-        TestResultBundle test_results   = 3;
+        reserved 1;
+        TestBundle       test_summary = 2;  // XXX replace with test_results.
+        TestResultBundle test_results = 3;
     }
 
     message IncompatibleTest {
@@ -59,7 +60,7 @@ message TestResult {
     string error_message = 3;
 }
 
-// Next ID: 7
+// Next ID: 9
 message TestResultBundle {
     TestResult                               result                  = 1;
     foundation.schema.DeployPlan             deploy_plan             = 4;
@@ -67,6 +68,8 @@ message TestResultBundle {
     InlineLog                                test_log                = 2;
     repeated InlineLog                       server_log              = 3;
     EnvironmentDiagnostics                   env_diagnostics         = 6;
+    google.protobuf.Timestamp                started                 = 7;
+    google.protobuf.Timestamp                completed               = 8;  // Regardless of success or failure.
 
     message InlineLog {
         string                                  package_name   = 1;

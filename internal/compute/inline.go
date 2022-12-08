@@ -22,7 +22,7 @@ func Transform[From, To any](desc string, from Computable[From], compute func(co
 	newAction := from.Action().Clone(func(original string) string {
 		return fmt.Sprintf("%s: %s", original, desc)
 	})
-	return Map(newAction, Inputs().Computable("from", from), Output{
+	return Map(newAction, Inputs().Computable("from", from).Indigestible("transform doesnt trust closures", "true"), Output{
 		NotCacheable: true, // There's no value in retaining these intermediary artifacts.
 	}, func(ctx context.Context, r Resolved) (To, error) {
 		return compute(ctx, MustGetDepValue(r, from, "from"))

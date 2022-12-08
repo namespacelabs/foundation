@@ -120,27 +120,19 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	createdTs := timestamppb.Now()
 
-	testBundle := compute.Map(tasks.Action("test.to-bundle"),
-		compute.Inputs().
-			Computable("results", results).
-			JSON("opts", opts).
-			Proto("testDef", testDef).
-			Strs("sut", sutServers.PackageNamesAsString()).
-			Proto("createdTs", createdTs),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (*storage.TestBundle, error) {
-			bundle := compute.MustGetDepValue(deps, results, "results")
-			return &storage.TestBundle{
-				ParentRunId:      opts.ParentRunID,
-				TestPackage:      testDef.PackageName,
-				TestName:         testDef.Name,
-				Result:           bundle.Result,
-				ServersUnderTest: sutServers.PackageNamesAsString(),
-				Created:          createdTs,
-				Completed:        timestamppb.Now(),
-				EnvDiagnostics:   bundle.EnvDiagnostics,
-			}, nil
-		})
+	testBundle := compute.Transform("to-bundle", results, func(ctx context.Context, bundle *storage.TestResultBundle) (*storage.TestBundle, error) {
+		return &storage.TestBundle{
+			ParentRunId:      opts.ParentRunID,
+			TestPackage:      testDef.PackageName,
+			TestName:         testDef.Name,
+			Result:           bundle.Result,
+			ServersUnderTest: sutServers.PackageNamesAsString(),
+			Created:          createdTs,
+			Started:          bundle.Started,
+			Completed:        bundle.Completed,
+			EnvDiagnostics:   bundle.EnvDiagnostics,
+		}, nil
+	})
 
 	return compute.Map(tasks.Action("test.make-results"),
 		compute.Inputs().

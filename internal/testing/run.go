@@ -14,6 +14,7 @@ import (
 
 	"github.com/morikuni/aec"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -75,6 +76,8 @@ func (test *testRun) Compute(ctx context.Context, r compute.Resolved) (*storage.
 }
 
 func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.TestResultBundle, error) {
+	started := time.Now()
+
 	p := compute.MustGetDepValue(r, test.Plan, "plan")
 	d := compute.MustGetDepValue(r, test.Driver, "driver")
 
@@ -165,6 +168,8 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 		waitErr = ex.Wait()
 	}
 
+	completed := time.Now()
+
 	testResults := &storage.TestResult{}
 	if waitErr == nil {
 		testResults.Success = true
@@ -194,6 +199,9 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 	bundle.ComputedConfigurations = p.Computed
 	// Clear the hints, no point storing those.
 	bundle.DeployPlan.Hints = nil
+
+	bundle.Started = timestamppb.New(started)
+	bundle.Completed = timestamppb.New(completed)
 
 	bundle.Result = testResults
 	if testLogBuf != nil {

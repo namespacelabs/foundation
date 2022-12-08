@@ -291,8 +291,10 @@ func printResult(out io.Writer, style colors.Style, testRef *schema.PackageRef, 
 	}
 
 	var suffix string
-	if res.TestBundleId != "" {
-		suffix = fmt.Sprintf(" %s", style.Comment.Apply(res.TestBundleId))
+	if res.TestSummary.GetCreated() != nil && res.TestSummary.GetStarted() != nil && res.TestSummary.GetCompleted() != nil {
+		suffix = style.Comment.Apply(fmt.Sprintf(" (waited %v, took %v)",
+			res.TestSummary.Started.AsTime().Sub(res.TestSummary.Created.AsTime()),
+			res.TestSummary.Completed.AsTime().Sub(res.TestSummary.Started.AsTime())))
 	}
 
 	fmt.Fprintf(out, "%s: Test %s%s\n", testRef.Canonical(), status, suffix)
