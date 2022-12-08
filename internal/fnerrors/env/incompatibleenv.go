@@ -24,6 +24,13 @@ func (err IncompatibleEnvironmentErr) Error() string {
 			err.Env.Name, err.RequirementOwner, err.ServerPackageName, err.IncompatibleLabel.Name, err.IncompatibleLabel.Value)
 	}
 
-	return fmt.Sprintf("environment %q is incompatible with %q (included by %s), it requires %s=%q",
-		err.Env.Name, err.RequirementOwner, err.ServerPackageName, err.RequiredLabel.Name, err.RequiredLabel.Value)
+	var req string
+	if err.RequiredLabel.Value == "" {
+		req = fmt.Sprintf("%q", err.RequiredLabel.Name)
+	} else {
+		req = fmt.Sprintf("%s=%q", err.RequiredLabel.Name, err.RequiredLabel.Value)
+	}
+
+	return fmt.Sprintf("environment %q is incompatible with %q (included by %s), it requires %s",
+		err.Env.Name, err.RequirementOwner, err.ServerPackageName, req)
 }

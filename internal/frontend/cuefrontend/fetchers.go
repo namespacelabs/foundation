@@ -219,14 +219,20 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 }
 
 type cueEnv struct {
-	Name      string `json:"name"`
-	Runtime   string `json:"runtime"`
-	Purpose   string `json:"purpose"`
-	Ephemeral bool   `json:"ephemeral"`
+	Name      string            `json:"name"`
+	Runtime   string            `json:"runtime"`
+	Purpose   string            `json:"purpose"`
+	Ephemeral bool              `json:"ephemeral"`
+	Labels    map[string]string `json:"labels"`
 }
 
 func FetchEnv(env *schema.Environment) FetcherFunc {
+	labels := map[string]string{}
+	for _, lbl := range env.Labels {
+		labels[lbl.Name] = lbl.Value
+	}
+
 	return func(context.Context, cue.Value) (interface{}, error) {
-		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral}, nil
+		return cueEnv{Name: env.Name, Runtime: env.Runtime, Purpose: env.Purpose.String(), Ephemeral: env.Ephemeral, Labels: labels}, nil
 	}
 }

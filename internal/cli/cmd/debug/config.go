@@ -7,11 +7,11 @@ package debug
 import (
 	"context"
 	"encoding/json"
-	"os"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/startup"
@@ -76,7 +76,7 @@ func newComputeConfigCmd() *cobra.Command {
 				return err
 			}
 
-			j := json.NewEncoder(os.Stdout)
+			j := json.NewEncoder(console.Stdout(ctx))
 			j.SetIndent("", "  ")
 			return j.Encode(c)
 		})

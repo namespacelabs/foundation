@@ -191,16 +191,6 @@ func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {
 	return fmwksSet
 }
 
-func (env *Environment) HasLabel(lbl *Label) bool {
-	for _, x := range env.GetLabels() {
-		if x.Name == lbl.Name {
-			return x.Value == lbl.Value
-		}
-	}
-
-	return false
-}
-
 // All modules referenced in the workspace file, including the main module.
 func (ws *Workspace) AllReferencedModules() []string {
 	modules := []string{ws.ModuleName}

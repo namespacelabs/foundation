@@ -34,13 +34,19 @@ type cueInjectedScope struct {
 }
 
 // Variables that always available for the user in CUE files, without explicit importing.
-func InjectedScope(env *schema.Environment) interface{} {
+func InjectedScope(env *schema.Environment) *cueInjectedScope {
+	labels := map[string]string{}
+	for _, lbl := range env.Labels {
+		labels[lbl.Name] = lbl.Value
+	}
+
 	return &cueInjectedScope{
 		Env: &cueEnv{
 			Name:      env.Name,
 			Runtime:   env.Runtime,
 			Purpose:   env.Purpose.String(),
 			Ephemeral: env.Ephemeral,
+			Labels:    labels,
 		},
 	}
 }

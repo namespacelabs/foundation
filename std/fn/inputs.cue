@@ -65,6 +65,7 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	runtime:   string
 	purpose:   "DEVELOPMENT" | "TESTING" | "PRODUCTION"
 	ephemeral: bool
+	labels: [string]: string
 }
 
 #FromFile: {
