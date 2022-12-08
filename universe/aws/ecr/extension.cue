@@ -32,8 +32,6 @@ extension: fn.#Extension & {
 	]
 }
 
-$env: inputs.#Environment
-
 configure: fn.#Configure & {
 	with: binary: "namespacelabs.dev/foundation/universe/aws/ecr/configure"
 }

@@ -28,8 +28,6 @@ extension: fn.#Extension & {
 	}
 }
 
-$env: inputs.#Environment
-
 $localstackServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/universe/development/localstack"
 }
@@ -48,8 +46,9 @@ configure: fn.#Configure & {
 			append: [$localstackServer]
 		}
 	}
+
 	startup: {
-		if $env.purpose == "DEVELOPMENT" || $env.purpose == "TESTING" {
+		if ($env.purpose == "DEVELOPMENT" || $env.purpose == "TESTING") && ($localstackServer.$addressMap.api != _|_) {
 			args: {
 				localstack_endpoint: "http://\($localstackServer.$addressMap.api)"
 			}

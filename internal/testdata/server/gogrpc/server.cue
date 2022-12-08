@@ -18,7 +18,6 @@ server: fn.#Server & {
 	]
 }
 
-$env:      inputs.#Environment
 configure: fn.#Configure & {
 	naming: {
 		if $env.purpose != "TESTING" {

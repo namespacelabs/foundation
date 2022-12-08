@@ -9,7 +9,6 @@ extension: fn.#Extension & {
 	]
 }
 
-$env:        inputs.#Environment
 $promServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/std/monitoring/prometheus/server"
 }

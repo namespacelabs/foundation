@@ -15,18 +15,17 @@ extension: fn.#Extension & {
 	}
 }
 
-$env:          inputs.#Environment
 $jaegerServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/std/monitoring/jaeger"
 }
 
 configure: fn.#Configure & {
-	if $env.runtime == "kubernetes" {
-		stack: {
-			append: [$jaegerServer]
-		}
+	stack: {
+		append: [$jaegerServer]
+	}
 
-		startup: {
+	startup: {
+		if $jaegerServer.$addressMap.collector != _|_ {
 			args: {
 				jaeger_collector_endpoint: "http://\($jaegerServer.$addressMap.collector)/api/traces"
 			}

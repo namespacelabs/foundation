@@ -33,6 +33,14 @@ type cueInjectedScope struct {
 	Env *cueEnv `json:"$env"`
 }
 
+type cueEnv struct {
+	Name      string            `json:"name"`
+	Runtime   string            `json:"runtime"`
+	Purpose   string            `json:"purpose"`
+	Ephemeral bool              `json:"ephemeral"`
+	Labels    map[string]string `json:"labels"`
+}
+
 // Variables that always available for the user in CUE files, without explicit importing.
 func InjectedScope(env *schema.Environment) *cueInjectedScope {
 	labels := map[string]string{}

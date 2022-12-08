@@ -59,15 +59,6 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	serverPath: string
 }
 
-#Environment: {
-	@fn(input=env)
-	name:      string
-	runtime:   string
-	purpose:   "DEVELOPMENT" | "TESTING" | "PRODUCTION"
-	ephemeral: bool
-	labels: [string]: string
-}
-
 #FromFile: {
 	@fn(input=resource)
 	fntypes.#Resource

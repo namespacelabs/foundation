@@ -5,7 +5,6 @@ import (
 
 extension: fn.#Extension & {}
 
-$env:           inputs.#Environment
 $grafanaServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/std/monitoring/grafana/server"
 }

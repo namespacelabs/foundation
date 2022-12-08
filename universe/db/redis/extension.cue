@@ -28,8 +28,6 @@ extension: fn.#Extension & {
 	}
 }
 
-$env: inputs.#Environment
-
 $redisServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/library/oss/redis/server"
 }

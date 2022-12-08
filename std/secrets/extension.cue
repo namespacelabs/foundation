@@ -18,7 +18,6 @@ extension: fn.#Extension & {
 	}
 }
 
-$env:       inputs.#Environment
 $workspace: inputs.#Workspace
 $tool:      inputs.#Package & "namespacelabs.dev/foundation/std/secrets/kubernetes"
 
