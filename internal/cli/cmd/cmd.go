@@ -46,6 +46,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(prepare.NewPrepareIngressCmd())
 	root.AddCommand(secrets.NewSecretsCmd())
 	root.AddCommand(tools.NewToolsCmd())
+	root.AddCommand(tools.NewKubeCtlCmd(true))
 	root.AddCommand(create.NewCreateCmd(RunCommand))
 	root.AddCommand(NewUpdateNSCmd())
 	root.AddCommand(NewGenerateCmd())

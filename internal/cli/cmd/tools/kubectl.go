@@ -25,10 +25,11 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-func newKubeCtlCmd() *cobra.Command {
+func NewKubeCtlCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "kubectl -- ...",
-		Short: "Run kubectl, configured for the specified environment.",
+		Use:    "kubectl -- ...",
+		Short:  "Run kubectl, configured for the specified environment.",
+		Hidden: hidden,
 	}
 
 	keepConfig := cmd.Flags().Bool("keep_config", false, "If set to true, does not delete the generated configuration.")
