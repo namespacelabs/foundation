@@ -6,9 +6,7 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
@@ -22,8 +20,7 @@ import (
 
 func NewLoginCmd() *cobra.Command {
 	var (
-		readFromEnvVar string
-		kind           string
+		kind string
 	)
 
 	cmd := &cobra.Command{
@@ -32,44 +29,23 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			res, err := fnapi.StartLogin(ctx, kind)
+			if err != nil {
+				return nil
+			}
+
 			stdout := console.Stdout(ctx)
+			fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
 
-			var auth *fnapi.UserAuth
-
-			if readFromEnvVar != "" {
-				if nsAuthJson := os.Getenv(readFromEnvVar); nsAuthJson != "" {
-					auth = &fnapi.UserAuth{}
-					if err := json.Unmarshal([]byte(nsAuthJson), auth); err != nil {
-						return err
-					}
-				}
+			if openURL(res.LoginUrl) {
+				fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", res.LoginUrl)
 			} else {
-				id, exists := os.LookupEnv("nslogintoken")
-				if !exists {
-					var err error
-					res, err := fnapi.StartLogin(ctx, kind)
-					if err != nil {
-						return nil
-					}
+				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
+			}
 
-					id = res.LoginId
-
-					fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
-
-					if openURL(res.LoginUrl) {
-						fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", res.LoginUrl)
-					} else {
-						fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
-					}
-				} else {
-					fmt.Fprintf(stdout, "Login pre-approved with a single-use token.\n")
-				}
-
-				var err error
-				auth, err = fnapi.CompleteLogin(ctx, id, kind, fnapi.TelemetryOn(ctx).GetClientID())
-				if err != nil {
-					return err
-				}
+			auth, err := fnapi.CompleteLogin(ctx, res.LoginId, kind, fnapi.TelemetryOn(ctx).GetClientID())
+			if err != nil {
+				return err
 			}
 
 			username, err := fnapi.StoreUser(ctx, auth)
@@ -83,8 +59,6 @@ func NewLoginCmd() *cobra.Command {
 		}),
 	}
 
-	// This flags is used from Gitpod.
-	cmd.Flags().StringVar(&readFromEnvVar, "read_from_env_var", "", "If true, try reading the auth data as JSON from this environment variable.")
 	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
 
 	_ = cmd.Flags().MarkHidden("kind")
