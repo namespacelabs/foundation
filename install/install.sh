@@ -87,12 +87,12 @@ do_install() {
   ns_root="$NS_ROOT"
   if [ -z $ns_root ]; then
     case "$os" in
-      darwin) ns_root="$HOME/Library/Application\ Support/ns" ;;
+      darwin) ns_root="$HOME/Library/Application Support/ns" ;;
       linux) ns_root="$HOME/.ns" ;;
     esac
   fi
 
-  bin_dir="$ns_root/bin"
+  bin_dir="$(printf %q "$ns_root")/bin"
   temp_tar="$(mktemp)"
 
   if [ ! -d "$bin_dir" ]; then
