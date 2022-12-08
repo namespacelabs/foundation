@@ -69,8 +69,10 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		}
 	}
 
+	// It's important that resource instances be parsed _after_ providers, as
+	// resources can refer to providers in the same package.
 	for _, r := range pp.ResourceInstanceSpecs {
-		if parsed, err := loadResourceInstance(ctx, pl, pp.Location, r); err != nil {
+		if parsed, err := loadResourceInstance(ctx, pl, pp, r); err != nil {
 			return nil, err
 		} else {
 			pp.Resources = append(pp.Resources, *parsed)

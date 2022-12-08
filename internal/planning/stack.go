@@ -253,7 +253,7 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
-		resources, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package.Location, server.Proto().GetResourcePack())
+		resources, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package, server.Proto().GetResourcePack())
 		if err != nil {
 			return err
 		}

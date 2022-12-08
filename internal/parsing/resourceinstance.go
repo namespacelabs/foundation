@@ -36,7 +36,9 @@ func IsSecretResource(ref packageRefLike) bool {
 	return isRuntimeResource(ref) && ref.GetName() == "Secret"
 }
 
-func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
+func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
+	loc := pkg.Location
+
 	if instance.IntentFrom != nil {
 		if _, _, err := pkggraph.LoadBinary(ctx, pl, instance.IntentFrom.BinaryRef); err != nil {
 			return nil, err
@@ -65,9 +67,20 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, loc pk
 	}
 
 	if provider != "" {
-		providerPkg, err := pl.LoadByName(ctx, provider)
-		if err != nil {
-			return nil, err
+		var providerPkg *pkggraph.Package
+
+		// Is this a resource that references a provider in the same package?
+		if provider == loc.PackageName {
+			providerPkg = pkg
+			if pkg == nil {
+				return nil, fnerrors.InternalError("resource references %q as the provider but no provider package was specified", provider)
+			}
+		} else {
+			loadedPkg, err := pl.LoadByName(ctx, provider)
+			if err != nil {
+				return nil, err
+			}
+			providerPkg = loadedPkg
 		}
 
 		provider := providerPkg.LookupResourceProvider(instance.Class)
@@ -175,7 +188,7 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owne
 	return msg, nil
 }
 
-func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
+func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
 	var resources []pkggraph.ResourceInstance
 
 	for _, resource := range pack.GetResourceRef() {
@@ -193,7 +206,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 	}
 
 	for _, resource := range pack.GetResourceInstance() {
-		instance, err := loadResourceInstance(ctx, pl, loc, resource)
+		instance, err := loadResourceInstance(ctx, pl, pkg, resource)
 		if err != nil {
 			return nil, err
 		}

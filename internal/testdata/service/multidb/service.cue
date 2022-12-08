@@ -23,7 +23,7 @@ service: fn.#Service & {
 			}
 
 			resources: {
-				"cluster": ":postgresCluster"
+				"cluster": "namespacelabs.dev/foundation/library/oss/postgres:colocated"
 			}
 		}
 	}
@@ -46,13 +46,4 @@ service: fn.#Service & {
 	exportService:        $proto.services.MultiDbListService
 	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
-}
-
-resources: {
-	postgresCluster: {
-		class:    "namespacelabs.dev/foundation/library/database/postgres:Cluster"
-		provider: "namespacelabs.dev/foundation/library/oss/postgres"
-
-		intent: {}
-	}
 }
