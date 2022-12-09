@@ -92,7 +92,11 @@ do_install() {
     esac
   fi
 
-  bin_dir="$(printf %q "$ns_root")/bin"
+  case "$os" in
+    darwin) bin_dir="$(printf %q "$ns_root")/bin" ;;
+    linux) bin_dir="$ns_root/bin" ;;
+  esac
+
   temp_tar="$(mktemp)"
 
   if [ ! -d "$bin_dir" ]; then
