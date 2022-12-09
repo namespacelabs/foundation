@@ -39,7 +39,7 @@ _#Node: {
 		required?: [string]: string
 	}
 
-	resources: {...}
+	resources?: {...}
 }
 
 #Extension: {
