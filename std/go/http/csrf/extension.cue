@@ -1,15 +1,24 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/std/secrets"
 )
 
 extension: fn.#Extension & {
 	hasInitializerIn: "GO"
 
-	instantiate: token: secrets.#Exports.Secret & {
-		name: "http-csrf-token"
+	resources: {
+		"token-secret-resource": {
+			kind: "namespacelabs.dev/foundation/library/runtime:Secret"
+			input: ref: ":token-secret"
+		}
+	}
+}
+
+secrets: {
+	"token-secret": {
+		description: "A generated secret, for testing purposes."
 		generate: {
+			uniqueId:        "http-csrf-token"
 			randomByteCount: 32
 			format:          "FORMAT_BASE64"
 		}
