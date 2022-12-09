@@ -57,7 +57,6 @@ type CachedOutput struct {
 	InputDigests map[string]string
 
 	Debug struct {
-		Serial                int64
 		PackagePath, Typename string
 	}
 }

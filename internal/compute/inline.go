@@ -18,6 +18,16 @@ func Map[V any](action *tasks.ActionEvent, inputs *In, output Output,
 	return &inline[V]{action: action, inputs: inputs, output: output, compute: compute}
 }
 
+func Inline[To any](action *tasks.ActionEvent, compute func(context.Context) (To, error)) Computable[To] {
+	return &inline[To]{
+		action: action,
+		inputs: Inputs().Indigestible("inline is not cacheable", "true"),
+		output: Output{},
+		compute: func(ctx context.Context, _ Resolved) (To, error) {
+			return compute(ctx)
+		}}
+}
+
 func Transform[From, To any](desc string, from Computable[From], compute func(context.Context, From) (To, error)) Computable[To] {
 	newAction := from.Action().Clone(func(original string) string {
 		return fmt.Sprintf("%s: %s", original, desc)

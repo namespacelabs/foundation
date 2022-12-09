@@ -170,7 +170,6 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 				CacheVersion: versions.Builtin().CacheVersion,
 			}
 
-			entry.Debug.Serial = inputs.serial
 			entry.Debug.PackagePath = inputs.pkgPath
 			entry.Debug.Typename = inputs.typeName
 

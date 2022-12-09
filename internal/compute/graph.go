@@ -548,6 +548,8 @@ func GetValue[V any](ctx context.Context, c Computable[V]) (V, error) {
 func addInputsToSpan(ctx context.Context, in *In, inputs *computedInputs, shouldCache bool) {
 	span := trace.SpanFromContext(ctx)
 
+	span.SetAttributes(attribute.Bool("fn.input.cacheable", in.cacheable))
+
 	for _, input := range in.ins {
 		span.SetAttributes(attribute.Bool(fmt.Sprintf("fn.input.%s.undetermined", input.Name), input.Undetermined))
 	}

@@ -19,14 +19,14 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func Inputs() *In { return &In{} }
-
 type In struct {
 	ins         []keyValue
 	marshallers []keyMarshal
-	serial      int64
+	cacheable   bool
 	named       rawComputable // Set by Named(). If set, short-circuits node computation and waits for this input.
 }
+
+func Inputs() *In { return &In{cacheable: true} }
 
 type keyValue struct {
 	Name         string
@@ -84,11 +84,6 @@ func (in *In) Bool(key string, v bool) *In {
 	return in
 }
 
-func (in *In) CacheRev(v int) *In {
-	in.ins = append(in.ins, keyValue{Name: "fn.cache-rev", Value: v})
-	return in
-}
-
 // An unusable input (marking the corresponding Computable having non-computable inputs).
 // We accept a variable to help with code search; but it is otherwise unused.
 func (in *In) Indigestible(key string, value interface{}) *In {
@@ -101,8 +96,8 @@ func (in *In) Marshal(key string, marshaller func(context.Context, io.Writer) er
 	return in
 }
 
-func (in *In) Version(serial int64) *In {
-	in.serial = serial
+func (in *In) NonCacheable() *In {
+	in.cacheable = false
 	return in
 }
 
@@ -188,7 +183,6 @@ func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest
 func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputable bool) (*computedInputs, error) {
 	typ := reflect.TypeOf(c)
 	res := &computedInputs{
-		serial:   in.serial,
 		pkgPath:  typ.PkgPath(),
 		typeName: typ.String(),
 	}

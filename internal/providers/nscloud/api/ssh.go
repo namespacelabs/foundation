@@ -52,21 +52,6 @@ func fetchGithubSshKeys(ctx context.Context, username string) ([]string, error) 
 	return keys, nil
 }
 
-type sshKeys struct {
-	username string
-
-	compute.DoScoped[[]string]
-}
-
-var _ compute.Computable[[]string] = &sshKeys{}
-
-func (s *sshKeys) Action() *tasks.ActionEvent { return tasks.Action("github.fetch-public-ssh-keys") }
-func (s *sshKeys) Inputs() *compute.In        { return compute.Inputs().Str("username", s.username) }
-func (s *sshKeys) Output() compute.Output     { return compute.Output{NotCacheable: true} }
-func (s *sshKeys) Compute(ctx context.Context, _ compute.Resolved) ([]string, error) {
-	return fetchGithubSshKeys(ctx, s.username)
-}
-
 func UserSSHKeys() (compute.Computable[[]string], error) {
 	user, err := fnapi.LoadUser()
 	if err != nil {
@@ -75,7 +60,7 @@ func UserSSHKeys() (compute.Computable[[]string], error) {
 
 	if user.Clerk != nil {
 		if user.Clerk.GithubUsername != "" {
-			return &sshKeys{username: user.Clerk.GithubUsername}, nil
+			return deferFetchSSHKeys(user.Clerk.GithubUsername), nil
 		}
 
 		return nil, nil
@@ -85,5 +70,11 @@ func UserSSHKeys() (compute.Computable[[]string], error) {
 		return nil, nil
 	}
 
-	return &sshKeys{username: user.Username}, nil
+	return deferFetchSSHKeys(user.Username), nil
+}
+
+func deferFetchSSHKeys(username string) compute.Computable[[]string] {
+	return compute.Inline(tasks.Action("github.fetch-public-ssh-keys").Arg("username", username), func(ctx context.Context) ([]string, error) {
+		return fetchGithubSshKeys(ctx, username)
+	})
 }
