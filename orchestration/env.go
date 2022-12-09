@@ -40,6 +40,11 @@ func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration, prebui
 
 		// TODO - this can't be empty, since std/runtime/kubernetes/extension.cue checks it.
 		Purpose: schema.Environment_PRODUCTION,
+
+		Labels: []*schema.Label{{
+			Name:  "namespace.so/environment-scope",
+			Value: "admin",
+		}},
 	}
 
 	newCfg := conf.Derive(kubedef.AdminNamespace, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
