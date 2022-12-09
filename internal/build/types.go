@@ -56,7 +56,9 @@ type Workspace interface {
 
 	// ChangeTrigger returns an observable which will get a new value whenever a
 	// path under `rel` is modified, and the filter function doesn't reject.
-	// Excludes is a list of excluded files, in buildkit format.
+	// Excludes is a list of excluded files, in buildkit format. Implementations
+	// are REQUIRED to depend on ChangeTrigger if they rely on the contents of
+	// the workspace.
 	ChangeTrigger(rel string, excludes []string) compute.Computable[any]
 }
 

@@ -183,7 +183,6 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 		solveOpt.LocalDirs = map[string]string{}
 		for _, local := range l.localDirs {
 			if !PreDigestLocalInputs {
-
 				if SkipExpectedMaxWorkspaceSizeCheck {
 					continue
 				}
