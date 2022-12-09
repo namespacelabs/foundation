@@ -409,10 +409,6 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	})
 
 	if r := v.LookupPath("resources"); r.Exists() {
-		if kind != schema.Node_SERVICE {
-			return fnerrors.NewWithLocation(loc, "resources are not allowed on extensions")
-		}
-
 		resourceList, err := ParseResourceList(r)
 		if err != nil {
 			return fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)

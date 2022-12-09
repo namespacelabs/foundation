@@ -38,6 +38,8 @@ _#Node: {
 	environment?: {
 		required?: [string]: string
 	}
+
+	resources: {...}
 }
 
 #Extension: {
@@ -75,8 +77,6 @@ _#Node: {
 	}
 
 	exportHttp?: [...#HttpPath]
-
-	resources: {...}
 }
 
 #HttpPath: {
