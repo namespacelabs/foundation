@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/console"
@@ -157,6 +158,7 @@ func register_OpWaitForProviderResults() {
 						Category:   "Resources deployed",
 						Ready:      orchpb.Event_READY,
 						Stage:      orchpb.Event_DONE,
+						Timestamp:  timestamppb.Now(),
 					}
 				}
 

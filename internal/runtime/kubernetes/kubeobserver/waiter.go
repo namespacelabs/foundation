@@ -187,6 +187,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 
 			ev.Ready = orchestration.Event_NOT_READY
 			ev.Stage = orchestration.Event_WAITING
+			ev.Timestamp = timestamppb.Now()
 			if observedGeneration > w.ExpectedGen {
 				ev.Ready = orchestration.Event_READY
 				ev.Stage = orchestration.Event_DONE

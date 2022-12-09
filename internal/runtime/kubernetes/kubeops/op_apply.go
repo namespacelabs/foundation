@@ -244,6 +244,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 							ev.Stage = orchestration.Event_WAITING
 							ev.ImplMetadata = meta
 							ev.WaitStatus = append(ev.WaitStatus, kobs.PodStatusToWaitStatus(obj.GetNamespace(), obj.GetName(), ps))
+							ev.Timestamp = timestamppb.Now()
 
 							var done bool
 							if ps.Phase == v1.PodFailed || ps.Phase == v1.PodSucceeded {
@@ -253,12 +254,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 								ev.Ready = orchestration.Event_READY
 								ev.Stage = orchestration.Event_RUNNING
 							} else {
-								cond, isReady := kobs.MatchPodCondition(ps, v1.PodReady)
-								if isReady {
-									if !cond.LastTransitionTime.IsZero() {
-										ev.Timestamp = timestamppb.New(cond.LastTransitionTime.Time)
-									}
-
+								if _, isReady := kobs.MatchPodCondition(ps, v1.PodReady); isReady {
 									done = true
 								}
 							}

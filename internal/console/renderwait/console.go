@@ -21,6 +21,8 @@ import (
 	"namespacelabs.dev/foundation/schema/orchestration"
 )
 
+const minWaitTime = 1 * time.Millisecond
+
 type consRenderer struct {
 	ch        chan *orchestration.Event
 	done      chan struct{}
@@ -29,13 +31,15 @@ type consRenderer struct {
 }
 
 type blockState struct {
-	Category              string
-	Title                 string
-	Stage                 orchestration.Event_Stage
-	AlreadyExisted        bool
-	Start, Committed, End time.Time
-	WaitStatus            []*orchestration.Event_WaitStatus
-	WaitDetails           string
+	Category       string
+	Title          string
+	Stage          orchestration.Event_Stage
+	AlreadyExisted bool
+	StartTime      time.Time
+	CommittedTime  time.Time
+	EndTime        time.Time
+	WaitStatus     []*orchestration.Event_WaitStatus
+	WaitDetails    string
 }
 
 func (rwb consRenderer) Ch() chan *orchestration.Event { return rwb.ch }
@@ -93,20 +97,20 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				}
 
 				resourceState[ev.ResourceId] = &blockState{
-					Category: ev.Category,
-					Title:    title,
-					Stage:    stage,
-					Start:    timestamp,
+					Category:  ev.Category,
+					Title:     title,
+					Stage:     stage,
+					StartTime: timestamp,
 				}
 			}
 
 			resourceState[ev.ResourceId].AlreadyExisted = ev.AlreadyExisted
 
-			if stage >= orchestration.Event_COMMITTED && resourceState[ev.ResourceId].Committed.IsZero() {
-				resourceState[ev.ResourceId].Committed = timestamp
+			if stage >= orchestration.Event_COMMITTED && resourceState[ev.ResourceId].CommittedTime.IsZero() {
+				resourceState[ev.ResourceId].CommittedTime = timestamp
 			}
-			if stage >= orchestration.Event_DONE && resourceState[ev.ResourceId].End.IsZero() {
-				resourceState[ev.ResourceId].End = timestamp
+			if stage >= orchestration.Event_DONE && resourceState[ev.ResourceId].EndTime.IsZero() {
+				resourceState[ev.ResourceId].EndTime = timestamp
 			}
 
 			resourceState[ev.ResourceId].Stage = stage
@@ -163,8 +167,8 @@ func render(m map[string]*blockState, ids []string, flush bool) string {
 				took = "(no update required)"
 			} else if blk.Stage == orchestration.Event_DONE {
 				ready = true
-				took = fmt.Sprintf("took %v", timefmt.Format(blk.End.Sub(blk.Committed)))
-				if d := blk.Committed.Sub(blk.Start); d >= 1*time.Millisecond {
+				took = fmt.Sprintf("took %v", timefmt.Format(blk.EndTime.Sub(blk.CommittedTime)))
+				if d := blk.CommittedTime.Sub(blk.StartTime); d >= minWaitTime {
 					took += fmt.Sprintf(" (waited %v)", timefmt.Format(d))
 				}
 			} else if blk.Stage == orchestration.Event_RUNNING {
