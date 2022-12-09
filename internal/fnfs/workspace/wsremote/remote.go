@@ -29,39 +29,39 @@ type Sink interface {
 
 // Returns a wscontents.Versioned which will produce a local snapshot as expected
 // but forwards all filesystem events (e.g. changes, removals) to the specified sink.
-func ObserveAndPush(absPath, rel string, sink Sink) compute.Computable[wscontents.Versioned] {
-	return &observePath{absPath: absPath, rel: rel, sink: sink}
+func ObserveAndPush(absPath string, sink Sink, extraInputs ...compute.UntypedComputable) compute.Computable[any] {
+	return &observePath{absPath: absPath, sink: sink, extraInputs: extraInputs}
 }
 
 type observePath struct {
-	absPath string
-	rel     string
+	absPath     string
+	sink        Sink
+	extraInputs []compute.UntypedComputable
 
-	sink Sink
-
-	compute.DoScoped[wscontents.Versioned]
+	compute.LocalScoped[any]
 }
 
 func (op *observePath) Action() *tasks.ActionEvent {
 	return tasks.Action("web.contents.observe")
 }
+
 func (op *observePath) Inputs() *compute.In {
-	return compute.Inputs().Str("absPath", op.absPath).Str("rel", op.rel)
+	in := compute.Inputs().Str("absPath", op.absPath).Indigestible("not cacheable", "true")
+	for k, extra := range op.extraInputs {
+		in = in.Computable(fmt.Sprintf("extra:%d", k), extra)
+	}
+	return in
 }
-func (op *observePath) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
-}
-func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (wscontents.Versioned, error) {
-	absPath := filepath.Join(op.absPath, op.rel)
 
-	fmt.Fprintf(console.Debug(ctx), "wsremote: starting w/ snapshotting %q\n", absPath)
+func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (any, error) {
+	fmt.Fprintf(console.Debug(ctx), "wsremote: starting w/ snapshotting %q\n", op.absPath)
 
-	snapshot, err := wscontents.SnapshotDirectory(ctx, absPath)
+	snapshot, err := wscontents.SnapshotDirectory(ctx, op.absPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return localObserver{absPath: absPath, snapshot: snapshot, sink: op.sink}, nil
+	return localObserver{absPath: op.absPath, snapshot: snapshot, sink: op.sink}, nil
 }
 
 type localObserver struct {
@@ -76,7 +76,7 @@ func (lo localObserver) ComputeDigest(ctx context.Context) (schema.Digest, error
 	return digestfs.Digest(ctx, lo.snapshot)
 }
 
-func (lo localObserver) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], bool)) (func(), error) {
+func (lo localObserver) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], compute.ObserveNote)) (func(), error) {
 	// XXX we're doing polling for correctness; this needs to use filewatcher.
 
 	// This observer is special; if we know that the scheduler wants to observe
@@ -87,11 +87,14 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 	last := lo.snapshot
 
 	go func() {
+		t := time.NewTicker(time.Second)
+		defer t.Stop()
+
 		for {
 			select {
 			case <-closeCh:
 				return
-			case <-time.After(time.Second):
+			case <-t.C:
 				newSnapshot, deposited, err := checkSnapshot(ctx, last, lo.absPath, lo.sink)
 				if err != nil {
 					fmt.Fprintf(console.Errors(ctx), "FileSync failed while snapshotting %q: %v\n", lo.absPath, err)
@@ -103,10 +106,10 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 						Completed: time.Now(),
 					}
 					r.Value = localObserver{absPath: lo.absPath, snapshot: newSnapshot, sink: lo.sink}
-					onChange(r, false)
-				} else {
-					last = newSnapshot
+					onChange(r, compute.ObserveContinuing)
 				}
+
+				last = newSnapshot
 			}
 		}
 	}()

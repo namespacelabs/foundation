@@ -18,13 +18,13 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/production"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -50,6 +50,10 @@ func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Works
 		platform:     *target.TargetPlatform(),
 		workspaceAbs: workspace.Abs(),
 		trigger:      workspace.ChangeTrigger(bin.GoModulePath),
+	}
+
+	if bin.UnsafeCacheable {
+		comp.localfs = memfs.DeferSnapshot(workspace.ReadOnlyFS(bin.GoModulePath), memfs.SnapshotOpts{})
 	}
 
 	layers := []oci.NamedLayer{
@@ -136,8 +140,8 @@ func goarm(platform specs.Platform) (string, error) {
 type compilation struct {
 	workspaceAbs string // Does not by itself affect the output.
 	sdk          compute.Computable[golang.LocalSDK]
-	trigger      compute.Computable[compute.Versioned]    // We depend on `trigger` so we trigger a re-build on workspace changes.
-	localfs      compute.Computable[wscontents.Versioned] // If specified, this becomes a stable build.
+	trigger      compute.Computable[any]   // We depend on `trigger` so we trigger a re-build on workspace changes.
+	localfs      compute.Computable[fs.FS] // If specified, this becomes a stable build.
 	binary       GoBinary
 	platform     specs.Platform
 
@@ -156,7 +160,6 @@ func (c *compilation) Inputs() *compute.In {
 	in := compute.Inputs().
 		JSON("binary", c.binary).
 		JSON("platform", c.platform).
-		Computable("trigger", c.trigger).
 		Computable("sdk", c.sdk)
 
 	if c.trigger != nil {

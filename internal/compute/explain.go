@@ -25,7 +25,7 @@ type likeNamed interface {
 	hasUnwrap
 }
 
-func Explain(ctx context.Context, w io.Writer, c rawComputable) error {
+func Explain(ctx context.Context, w io.Writer, c UntypedComputable) error {
 	var b bytes.Buffer
 	if err := explain(ctx, &b, c, ""); err != nil {
 		return err
@@ -34,7 +34,7 @@ func Explain(ctx context.Context, w io.Writer, c rawComputable) error {
 	return err
 }
 
-func explain(ctx context.Context, w io.Writer, c rawComputable, indent string) error {
+func explain(ctx context.Context, w io.Writer, c UntypedComputable, indent string) error {
 	if named, ok := c.(likeNamed); ok {
 		name, label := tasks.NameOf(named.Action())
 		if label != "" {
@@ -73,7 +73,7 @@ func explain(ctx context.Context, w io.Writer, c rawComputable, indent string) e
 			fmt.Fprint(w, "⭕ ")
 		}
 
-		if child, ok := in.Value.(rawComputable); ok {
+		if child, ok := in.Value.(UntypedComputable); ok {
 			if err := explain(ctx, w, child, indent+"  "); err != nil {
 				return err
 			}

@@ -23,7 +23,7 @@ type In struct {
 	ins         []keyValue
 	marshallers []keyMarshal
 	cacheable   bool
-	named       rawComputable // Set by Named(). If set, short-circuits node computation and waits for this input.
+	named       UntypedComputable // Set by Named(). If set, short-circuits node computation and waits for this input.
 }
 
 func Inputs() *In { return &In{cacheable: true} }
@@ -39,7 +39,7 @@ type keyMarshal struct {
 	Marshal func(context.Context, io.Writer) error
 }
 
-func (in *In) Computable(key string, c rawComputable) *In {
+func (in *In) Computable(key string, c UntypedComputable) *In {
 	in.ins = append(in.ins, keyValue{Name: key, Value: c})
 	return in
 }
@@ -124,7 +124,7 @@ type computedInputs struct {
 	pkgPath          string
 	typeName         string
 	digests          []keyDigest
-	computable       map[string]rawComputable
+	computable       map[string]UntypedComputable
 	nonDeterministic bool // Even waiting for dependencies won't really lead to a deterministic digest.
 
 	Digest            schema.Digest // Only set if all inputs are known recursively over all dependencies.
@@ -180,7 +180,7 @@ func digestWithInputs(pkgPath, typeName string, serial int64, inputs []keyDigest
 	return schema.FromHash("sha256", h), nil
 }
 
-func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputable bool) (*computedInputs, error) {
+func (in *In) computeDigest(ctx context.Context, c UntypedComputable, processComputable bool) (*computedInputs, error) {
 	typ := reflect.TypeOf(c)
 	res := &computedInputs{
 		pkgPath:  typ.PkgPath(),
@@ -188,12 +188,12 @@ func (in *In) computeDigest(ctx context.Context, c rawComputable, processComputa
 	}
 
 	if processComputable {
-		res.computable = map[string]rawComputable{}
+		res.computable = map[string]UntypedComputable{}
 	}
 
 	unsetCount := 0
 	for _, kv := range in.ins {
-		depc, isComputable := kv.Value.(rawComputable)
+		depc, isComputable := kv.Value.(UntypedComputable)
 		if processComputable && isComputable {
 			res.computable[kv.Name] = depc
 		}

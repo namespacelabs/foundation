@@ -69,7 +69,7 @@ var errNoResult = errors.New("no result")
 
 func NoResult[V any]() (Result[V], error) { return Result[V]{}, errNoResult }
 
-func startComputing(ctx context.Context, g *Orch, c rawComputable) *Promise[any] {
+func startComputing(ctx context.Context, g *Orch, c UntypedComputable) *Promise[any] {
 	if g == nil {
 		// We panic because this is unexpected.
 		panic("no graph in context")
@@ -128,7 +128,7 @@ func startComputingWithOpts(ctx context.Context, g *Orch, opts computeInstance) 
 		return p
 	} else {
 		if opts.IsGlobal {
-			panic("global node that doesn't have stable inputs: " + reflect.TypeOf(opts.Computable).String())
+			panic(fmt.Sprintf("%s: global node that doesn't have stable inputs", reflect.TypeOf(opts.Computable).String()))
 		}
 	}
 
@@ -335,7 +335,7 @@ func checkCache(ctx context.Context, g *Orch, opts computeInstance, cacheable *c
 	return cacheHit{}
 }
 
-func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]rawComputable) (map[string]ResultWithTimestamp[any], error) {
+func waitDeps(ctx context.Context, g *Orch, desc string, computable map[string]UntypedComputable) (map[string]ResultWithTimestamp[any], error) {
 	if len(computable) == 0 {
 		return nil, nil
 	}
@@ -573,7 +573,7 @@ func addOutputsToSpan(ctx context.Context, results map[string]ResultWithTimestam
 	}
 }
 
-func verifyCacheHits(ctx context.Context, c rawComputable, hits []cacheHit, d schema.Digest) {
+func verifyCacheHits(ctx context.Context, c UntypedComputable, hits []cacheHit, d schema.Digest) {
 	for _, hit := range hits {
 		if hit.Hit && hit.OutputDigest != d {
 			console.WriteJSON(console.Errors(ctx),

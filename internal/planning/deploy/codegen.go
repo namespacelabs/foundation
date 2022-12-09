@@ -8,10 +8,26 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/tasks"
 )
+
+type codegenTrigger struct {
+	srv planning.Server
+
+	compute.LocalScoped[any]
+}
+
+func (c *codegenTrigger) Action() *tasks.ActionEvent { return tasks.Action("codegen") }
+func (c *codegenTrigger) Inputs() *compute.In {
+	return compute.Inputs().Indigestible("not cacheable", "true")
+}
+func (c *codegenTrigger) Compute(ctx context.Context, _ compute.Resolved) (any, error) {
+	return "codegen", codegenServer(ctx, c.srv)
+}
 
 func codegenServer(ctx context.Context, srv planning.Server) error {
 	// XXX we should be able to disable codegen for pure builds.

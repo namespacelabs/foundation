@@ -114,7 +114,7 @@ func (snap *ServerSnapshot) Equals(rhs *ServerSnapshot) bool {
 	return false // XXX optimization.
 }
 
-func (snap *ServerSnapshot) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], bool)) (func(), error) {
+func (snap *ServerSnapshot) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], compute.ObserveNote)) (func(), error) {
 	obs := obsState{onChange: onChange}
 	if err := obs.prepare(ctx, snap); err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (snap *ServerSnapshot) Observe(ctx context.Context, onChange func(compute.R
 
 type obsState struct {
 	cancelWatcher func()
-	onChange      func(compute.ResultWithTimestamp[any], bool)
+	onChange      func(compute.ResultWithTimestamp[any], compute.ObserveNote)
 }
 
 func (p *obsState) prepare(ctx context.Context, snapshot *ServerSnapshot) error {
@@ -139,7 +139,7 @@ func (p *obsState) prepare(ctx context.Context, snapshot *ServerSnapshot) error 
 		}
 		r.Value = newSnapshot
 
-		p.onChange(r, false)
+		p.onChange(r, compute.ObserveContinuing)
 
 		if err := p.prepare(ctx, newSnapshot); err != nil {
 			compute.Stop(ctx, err)

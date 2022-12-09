@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -120,7 +119,7 @@ func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 	fmt.Fprintf(do.log, " Connected to FileSync (for hot reload), took %v.\n\n", time.Since(t))
 }
 
-func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, fe []*wscontents.FileEvent) (bool, error) {
+func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, events []*wscontents.FileEvent) (bool, error) {
 	do.mu.Lock()
 	defer do.mu.Unlock()
 
@@ -128,19 +127,19 @@ func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signatur
 		return false, nil
 	}
 
-	var paths uniquestrings.List
-	for _, r := range fe {
-		paths.Add(r.Path)
+	var labels []string
+	for _, ev := range events {
+		labels = append(labels, fmt.Sprintf("%s %s", ev.Event, ev.Path))
 	}
 
-	fmt.Fprintf(do.log, "FileSync event: %s, paths: %s\n", s, strings.Join(paths.Strings(), ", "))
+	fmt.Fprintf(do.log, "FileSync event: %s\n", strings.Join(labels, ", "))
 
 	newCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	if _, err := wsremote.NewFileSyncServiceClient(do.conn).Push(newCtx, &wsremote.PushRequest{
 		Signature: s,
-		FileEvent: fe,
+		FileEvent: events,
 	}); err != nil {
 		return false, err
 	}

@@ -26,16 +26,16 @@ type Computable[V any] interface {
 	Output() Output // Optional.
 	Compute(context.Context, Resolved) (V, error)
 
-	rawComputable
+	UntypedComputable
 }
 
-type rawComputable interface {
+type UntypedComputable interface {
 	Action() *tasks.ActionEvent
 	Inputs() *In
 	Output() Output // Optional.
 
 	// Implementations of Computable must embed one of `LocalScoped`, `DoScoped` or `PrecomputeScoped`.
-	prepareCompute(rawComputable) computeInstance
+	prepareCompute(UntypedComputable) computeInstance
 }
 
 type computeInstance struct {
@@ -43,7 +43,7 @@ type computeInstance struct {
 	IsGlobal      bool
 	IsPrecomputed bool
 	State         *embeddedState
-	Computable    rawComputable
+	Computable    UntypedComputable
 	OutputType    interface{}
 	Compute       func(context.Context, Resolved) (any, error)
 }
@@ -65,17 +65,17 @@ type DoScoped[V any] struct{}
 // immediately.
 type PrecomputeScoped[V any] struct{}
 
-func (c *LocalScoped[V]) prepareCompute(rc rawComputable) computeInstance {
+func (c *LocalScoped[V]) prepareCompute(rc UntypedComputable) computeInstance {
 	opts := prepareInstance[V](rc, false, false)
 	opts.State = &c.embeddedState
 	return opts
 }
 
-func (c DoScoped[V]) prepareCompute(rc rawComputable) computeInstance {
+func (c DoScoped[V]) prepareCompute(rc UntypedComputable) computeInstance {
 	return prepareInstance[V](rc, true, false)
 }
 
-func (c PrecomputeScoped[V]) prepareCompute(rc rawComputable) computeInstance {
+func (c PrecomputeScoped[V]) prepareCompute(rc UntypedComputable) computeInstance {
 	return prepareInstance[V](rc, false, true)
 }
 
@@ -98,7 +98,7 @@ func (es *embeddedState) ensureUniqueID() string {
 	return es.uniqueID
 }
 
-func prepareInstance[V any](rc rawComputable, global, precomputed bool) computeInstance {
+func prepareInstance[V any](rc UntypedComputable, global, precomputed bool) computeInstance {
 	var t *V // Capture the type.
 
 	typed := rc.(Computable[V])
@@ -140,7 +140,7 @@ func (opts computeInstance) NewInstance() interface{} {
 }
 
 type hasUnwrap interface {
-	Unwrap() rawComputable
+	Unwrap() UntypedComputable
 }
 
 func Unwrap(c any) (any, bool) {

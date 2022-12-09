@@ -26,7 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 )
@@ -58,7 +57,13 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}
 	} else if len(l.localDirs) > 0 {
-		return in.Indigestible("localDirs", "not cacheable")
+		in = in.Indigestible("localDirs", "not cacheable")
+	}
+
+	for k, local := range l.localDirs {
+		if trigger := local.Module.ChangeTrigger(local.Path); trigger != nil {
+			in = in.Computable(fmt.Sprintf("trigger:%d", k), trigger)
+		}
 	}
 
 	return in
@@ -176,12 +181,8 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 
 	if len(l.localDirs) > 0 {
 		solveOpt.LocalDirs = map[string]string{}
-		for k, local := range l.localDirs {
+		for _, local := range l.localDirs {
 			if !PreDigestLocalInputs {
-				ws, ok := compute.GetDepWithType[wscontents.Versioned](deps, fmt.Sprintf("local%d:contents", k))
-				if !ok {
-					return res, fnerrors.InternalError("expected local contents to have been computed")
-				}
 
 				if SkipExpectedMaxWorkspaceSizeCheck {
 					continue
@@ -192,7 +193,8 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 					return res, err
 				}
 
-				w, err := reportWorkspaceSize(ctx, ws.Value.FS(), matcher)
+				ws := local.Module.ReadOnlyFS(local.Path)
+				w, err := reportWorkspaceSize(ctx, ws, matcher)
 				if err != nil {
 					return res, err
 				}

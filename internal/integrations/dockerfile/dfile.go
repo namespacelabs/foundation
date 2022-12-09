@@ -73,9 +73,6 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 		dockerfile: string(dfcontents),
 		conf:       conf,
 		excludes:   excludes,
-		// Setting up an handle that changes whenever the underlying workspace changes.
-		// Also importantly we scope observe changes to ContextRel.
-		trigger: conf.Workspace().ChangeTrigger(df.ContextRel),
 	}
 
 	return buildkit.MakeImage(
@@ -90,7 +87,6 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 func (df dockerfileBuild) PlatformIndependent() bool { return false }
 
 type generateRequest struct {
-	trigger                compute.Computable[compute.Versioned] // Used as an input so we trigger new requests on changes to the Dockerfile.
 	contextRel, dockerfile string
 	conf                   build.Configuration
 	excludes               []string
@@ -106,14 +102,10 @@ func (g *generateRequest) Action() *tasks.ActionEvent {
 		LogLevel(1)
 }
 func (g *generateRequest) Inputs() *compute.In {
-	in := compute.Inputs().
+	return compute.Inputs().
 		Str("contextRel", g.contextRel).
 		Str("dockerfile", g.dockerfile).
 		Indigestible("conf", g.conf)
-	if g.trigger != nil {
-		in = in.Computable("trigger", g.trigger)
-	}
-	return in
 }
 func (g *generateRequest) Output() compute.Output { return compute.Output{NotCacheable: true} }
 func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*buildkit.FrontendRequest, error) {

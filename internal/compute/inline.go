@@ -151,7 +151,7 @@ func (in *named[V]) Compute(ctx context.Context, deps Resolved) (V, error) {
 	return MustGetDepValue(deps, in.c, name), nil
 }
 
-func (in *named[V]) Unwrap() rawComputable { return in.c }
+func (in *named[V]) Unwrap() UntypedComputable { return in.c }
 
 func Error[V any](err error) Computable[V] {
 	return precomputed[V]{err: err}

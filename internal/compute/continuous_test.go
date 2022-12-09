@@ -174,7 +174,7 @@ var _ Versioned = testValue{}
 
 func (av testValue) Int() int { return av.v }
 
-func (av testValue) Observe(ctx context.Context, f func(ResultWithTimestamp[any], bool)) (func(), error) {
+func (av testValue) Observe(ctx context.Context, f func(ResultWithTimestamp[any], ObserveNote)) (func(), error) {
 	cancel := make(chan struct{})
 
 	go func() {
@@ -186,7 +186,7 @@ func (av testValue) Observe(ctx context.Context, f func(ResultWithTimestamp[any]
 				var rwt ResultWithTimestamp[any]
 				rwt.Value = testValue{v: v}
 				rwt.Completed = time.Now()
-				f(rwt, false)
+				f(rwt, ObserveContinuing)
 			}
 		}
 	}()

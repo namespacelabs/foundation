@@ -15,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/git"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/runtime"
 )
@@ -51,17 +50,13 @@ func (mod *Module) ErrorLocation() string {
 	return mod.absPath
 }
 
-func (mod *Module) Abs() string        { return mod.absPath }
-func (mod *Module) ModuleName() string { return mod.Workspace.ModuleName }
+func (mod *Module) Abs() string                                      { return mod.absPath }
+func (mod *Module) ModuleName() string                               { return mod.Workspace.ModuleName }
+func (mod *Module) Version() string                                  { return mod.version }
+func (mod *Module) ChangeTrigger(rel string) compute.Computable[any] { return nil }
 
 // An external module is downloaded from a remote location and stored in the cache. It always has a version.
 func (mod *Module) IsExternal() bool { return mod.version != "" }
-
-func (mod *Module) Version() string { return mod.version }
-
-func (mod *Module) ChangeTrigger(rel string) compute.Computable[compute.Versioned] {
-	return wscontents.ChangeTrigger(mod.absPath, rel)
-}
 
 func (mod *Module) ReadOnlyFS(rel ...string) fs.FS {
 	return fnfs.Local(mod.absPath, rel...)

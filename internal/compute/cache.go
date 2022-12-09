@@ -208,7 +208,7 @@ func cacheableFor(outputType interface{}) *cacheable {
 	return nil
 }
 
-func verifyComputedDigest(ctx context.Context, c rawComputable, cacheable *cacheable, v interface{}, outputDigest schema.Digest) {
+func verifyComputedDigest(ctx context.Context, c UntypedComputable, cacheable *cacheable, v interface{}, outputDigest schema.Digest) {
 	types := fmt.Sprintf("cacheableType=%s type=%s", typeStr(cacheable), typeStr(c))
 
 	computed, err := cacheable.ComputeDigest(ctx, v)

@@ -56,7 +56,7 @@ type Workspace interface {
 
 	// ChangeTrigger returns an observable which will get a new value whenever a
 	// path under `rel` is modified, and the filter function doesn't reject.
-	ChangeTrigger(rel string) compute.Computable[compute.Versioned]
+	ChangeTrigger(rel string) compute.Computable[any]
 }
 
 type BuildTarget interface {

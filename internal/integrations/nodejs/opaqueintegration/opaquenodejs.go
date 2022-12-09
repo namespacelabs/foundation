@@ -36,6 +36,10 @@ func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, sr
 }
 
 func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
+	if remote == nil {
+		return nil
+	}
+
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
 		return &integrations.HotReloadOpts{
 			// "ModuleName" and "Rel" are empty because we have only one module in the image and

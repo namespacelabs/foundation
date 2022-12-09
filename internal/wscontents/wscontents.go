@@ -268,7 +268,7 @@ func (vp *versioned) ComputeDigest(ctx context.Context) (schema.Digest, error) {
 	return digestfs.Digest(ctx, vp.fs)
 }
 
-func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], bool)) (func(), error) {
+func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], compute.ObserveNote)) (func(), error) {
 	if !vp.observeChanges {
 		return nil, nil
 	}
@@ -342,7 +342,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 				errLogger:      vp.errLogger,
 				observeChanges: vp.observeChanges,
 			}
-			onChange(r, false)
+			onChange(r, compute.ObserveContinuing)
 		}
 
 		for range bufferCh {

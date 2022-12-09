@@ -22,6 +22,13 @@ import (
 // returned as an error by any function.
 var ErrDoneSinking = errors.New("done sinking")
 
+type ObserveNote string
+
+const (
+	ObserveContinuing ObserveNote = "observe.continuing"
+	ObserveDone       ObserveNote = "observe.done"
+)
+
 type Sinkable interface {
 	Inputs() *In
 	Updated(context.Context, Resolved) error
@@ -29,7 +36,7 @@ type Sinkable interface {
 }
 
 type Versioned interface {
-	Observe(context.Context, func(ResultWithTimestamp[any], bool)) (func(), error)
+	Observe(context.Context, func(ResultWithTimestamp[any], ObserveNote)) (func(), error)
 }
 
 type continuousKey string
@@ -100,7 +107,7 @@ type sinkInvocation struct {
 func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.Context, Resolved) error) {
 	var requiredKeys []string
 	for _, kv := range in.ins {
-		if _, isComputable := kv.Value.(rawComputable); isComputable {
+		if _, isComputable := kv.Value.(UntypedComputable); isComputable {
 			requiredKeys = append(requiredKeys, kv.Name)
 		}
 	}
@@ -128,7 +135,7 @@ func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.
 	}
 
 	for _, kv := range in.ins {
-		c, isComputable := kv.Value.(rawComputable)
+		c, isComputable := kv.Value.(UntypedComputable)
 		if !isComputable {
 			continue
 		}
@@ -241,7 +248,7 @@ func hasAllKeys(m map[string]ResultWithTimestamp[any], keys []string) bool {
 
 type rebuiltFunc func(string, ResultWithTimestamp[any]) bool
 
-func (g *sinkInvocation) ensureObserver(c rawComputable, instance computeInstance, instanceKey string, obskey string, rebuilt rebuiltFunc) {
+func (g *sinkInvocation) ensureObserver(c UntypedComputable, instance computeInstance, instanceKey string, obskey string, rebuilt rebuiltFunc) {
 	g.eg.Go(func(ctx context.Context) error {
 		inputs, err := c.Inputs().computeDigest(ctx, c, true)
 		if err != nil {
@@ -251,7 +258,7 @@ func (g *sinkInvocation) ensureObserver(c rawComputable, instance computeInstanc
 		globalKey := inputs.Digest.String()
 		if !inputs.Digest.IsSet() {
 			if instanceKey == "" {
-				panic("global node that doesn't have stable inputs")
+				panic(fmt.Sprintf("%s: global node that doesn't have stable inputs", reflect.TypeOf(c).String()))
 			}
 			globalKey = instanceKey
 		}
@@ -292,7 +299,7 @@ func (g *sinkInvocation) ensureObserver(c rawComputable, instance computeInstanc
 	})
 }
 
-func (g *sinkInvocation) newObserver(c rawComputable, key string, rebuilt rebuiltFunc) *observable {
+func (g *sinkInvocation) newObserver(c UntypedComputable, key string, rebuilt rebuiltFunc) *observable {
 	obs := &observable{inv: g, computable: c.prepareCompute(c)}
 	obs.observers = append(obs.observers, onResult{
 		ID: ids.NewRandomBase62ID(8),
@@ -423,11 +430,11 @@ func (o *observable) newValue(ctx context.Context, latest ResultWithTimestamp[an
 	broadcast()
 }
 
-func (o *observable) newVersion(result ResultWithTimestamp[any], last bool) {
+func (o *observable) newVersion(result ResultWithTimestamp[any], node ObserveNote) {
 	o.mu.Lock()
 	// XXX new versions are not cached.
 	broadcast := o.doUpdate(result)
-	if last {
+	if node == ObserveDone {
 		o.listenerCancel = nil
 	}
 	o.mu.Unlock()

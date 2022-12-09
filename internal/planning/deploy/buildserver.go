@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -45,60 +44,25 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v focused=%v external=%v\n",
 				server.PackageName(), wsremote.Ctx(ctx) != nil, focused, server.Module().IsExternal())
 
-			if r := wsremote.Ctx(ctx); r != nil && focused && !server.Module().IsExternal() {
-				opts := integrations.IntegrationFor(server.Framework()).PrepareHotReload(ctx, r, server)
-				fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
-					server.PackageName(), server.Framework(), opts != nil)
-				if opts != nil {
-					ws = hotreload.NewHotReloadModule(ws, *opts)
-				}
+			observeChanges := focused && !server.Module().IsExternal()
+
+			opts := integrations.IntegrationFor(server.Framework()).PrepareHotReload(ctx, wsremote.Ctx(ctx), server)
+			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
+				server.PackageName(), server.Framework(), opts != nil)
+
+			if opts == nil {
+				opts = &integrations.HotReloadOpts{}
 			}
 
-			plan := build.Plan{
+			return build.Plan{
 				SourceLabel:   fmt.Sprintf("Server %s", server.PackageName()),
 				SourcePackage: server.PackageName(),
 				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
-				Workspace:     ws,
+				Workspace:     hotreload.NewDevModule(ws, observeChanges, *opts, &codegenTrigger{srv: server}),
 				Platforms:     platforms,
-			}
-
-			if RunCodegen {
-				plan.Spec = runCodegen{spec, server}
-			} else {
-				plan.Spec = spec
-			}
-
-			return plan, nil
+			}, nil
 		})
-}
-
-type runCodegen struct {
-	spec build.Spec
-	srv  planning.Server
-}
-
-var _ build.Spec = runCodegen{}
-
-func (rc runCodegen) BuildImage(ctx context.Context, sealedCtx pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	image, err := rc.spec.BuildImage(ctx, sealedCtx, conf)
-	if err != nil {
-		return nil, err
-	}
-
-	return compute.Inline(tasks.Action("server.build"), func(ctx context.Context) (oci.Image, error) {
-		// It's important to run codegen _before_ any of the image dependencies
-		// run, to make sure they observe an up-to-date workspace.
-		if err := codegenServer(ctx, rc.srv); err != nil {
-			return nil, err
-		}
-
-		return compute.GetValue(ctx, image)
-	}), nil
-}
-
-func (rc runCodegen) PlatformIndependent() bool {
-	return rc.spec.PlatformIndependent()
 }
 
 type prepareServerConfig struct {

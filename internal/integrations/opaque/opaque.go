@@ -140,6 +140,10 @@ func (OpaqueIntegration) DevelopmentPackages() []schema.PackageName {
 }
 
 func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
+	if remote == nil {
+		return nil
+	}
+
 	filesyncConfig, err := getFilesyncWorkspacePath(srv)
 	if err != nil {
 		// Shouldn't happen because getFilesyncWorkspacePath() is already called in PrepareDev().
