@@ -136,14 +136,12 @@ func makeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggr
 				return nil, fnerrors.NewWithLocation(serverLoc, "%s: must be a file, not a directory", v.FromWorkspace)
 			}
 
-			v, err := compute.GetValue(ctx, serverLoc.Module.Snapshot(v.FromWorkspace))
+			fsys, err = memfs.Snapshot(serverLoc.Module.ReadOnlyFS(v.FromWorkspace), memfs.SnapshotOpts{})
 			if err != nil {
 				return nil, fnerrors.NewWithLocation(serverLoc, "failed to read contents: %v", err)
 			}
-
-			fsys = v.FS()
 		} else {
-			contents, err := fs.ReadFile(serverLoc.Module.ReadWriteFS(), v.FromWorkspace)
+			contents, err := fs.ReadFile(serverLoc.Module.ReadOnlyFS(), v.FromWorkspace)
 			if err != nil {
 				return nil, fnerrors.NewWithLocation(serverLoc, "failed to read file contents: %v", err)
 			}

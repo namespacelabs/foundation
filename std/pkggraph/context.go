@@ -16,11 +16,6 @@ type SealedContext interface {
 	SealedPackageLoader
 }
 
-type ContextWithMutableModule interface {
-	Context
-	MutableModule
-}
-
 type sealedCtx struct {
 	cfg.Context
 	SealedPackageLoader

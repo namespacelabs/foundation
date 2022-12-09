@@ -58,9 +58,6 @@ func (mod *Module) ModuleName() string { return mod.Workspace.ModuleName }
 func (mod *Module) IsExternal() bool { return mod.version != "" }
 
 func (mod *Module) Version() string { return mod.version }
-func (mod *Module) Snapshot(rel string) compute.Computable[wscontents.Versioned] {
-	return wscontents.Observe(mod.absPath, rel, !mod.IsExternal())
-}
 
 func (mod *Module) ChangeTrigger(rel string) compute.Computable[compute.Versioned] {
 	return wscontents.ChangeTrigger(mod.absPath, rel)
