@@ -43,7 +43,7 @@ func NewLoginCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
 			}
 
-			auth, err := fnapi.CompleteLogin(ctx, res.LoginId, kind, fnapi.TelemetryOn(ctx).GetClientID())
+			auth, err := fnapi.CompleteLogin(ctx, res.LoginId, res.Kind, fnapi.TelemetryOn(ctx).GetClientID())
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,6 @@ func NewLoginCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
-
 	_ = cmd.Flags().MarkHidden("kind")
 
 	cmd.AddCommand(NewRobotLogin("robot"))

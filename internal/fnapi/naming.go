@@ -21,10 +21,9 @@ type IssueRequest struct {
 }
 
 type NameRequest struct {
-	FQDN      string `json:"fqdn,omitempty"`
-	Subdomain string `json:"subdomain,omitempty"`
-	NoTLS     bool   `json:"noTls"`
-	Org       string `json:"org,omitempty"`
+	FQDN  string `json:"fqdn,omitempty"`
+	NoTLS bool   `json:"noTls"`
+	Org   string `json:"org,omitempty"`
 }
 
 type IssueResponse struct {
@@ -71,10 +70,9 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 
 		req := IssueRequest{
 			NameRequest: NameRequest{
-				FQDN:      opts.FQDN,
-				Subdomain: opts.Subdomain,
-				NoTLS:     opts.NoTLS,
-				Org:       opts.Org,
+				FQDN:  opts.FQDN,
+				NoTLS: opts.NoTLS,
+				Org:   opts.Org,
 			},
 		}
 

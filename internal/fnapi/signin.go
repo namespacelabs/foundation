@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/clerk"
@@ -22,6 +21,7 @@ type StartLoginRequest struct {
 type StartLoginResponse struct {
 	LoginId  string `json:"login_id"`
 	LoginUrl string `json:"login_url"`
+	Kind     string `json:"kind"`
 }
 
 type CompleteLoginRequest struct {
@@ -58,8 +58,7 @@ func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
 	}
 
 	if resp.LoginUrl == "" {
-		// backwards compatibility.
-		resp.LoginUrl = fmt.Sprintf("%s?id=%s", baseUrl, resp.LoginId)
+		return nil, fnerrors.InternalError("bad login response")
 	}
 
 	return &resp, nil

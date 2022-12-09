@@ -15,7 +15,6 @@ import (
 )
 
 func newFormatCmd() *cobra.Command {
-
 	return fncobra.Cmd(
 		&cobra.Command{
 			Use:     "format",

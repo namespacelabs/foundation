@@ -6,7 +6,6 @@ package runtime
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"namespacelabs.dev/foundation/internal/console"
@@ -76,24 +75,9 @@ func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planne
 		return &schema.ComputedNaming{}, nil
 	}
 
-	userAuth, err := fnapi.LoadUser()
-	if err != nil {
-		if errors.Is(err, fnapi.ErrRelogin) {
-			return nil, errLogin
-		}
-
-		return nil, err
-	}
-
-	org := userAuth.Org
+	org := source.GetWithOrg()
 	if org == "" {
-		org = userAuth.Username
-	}
-
-	if env.Purpose == schema.Environment_PRODUCTION {
-		if orgOverride := source.GetWithOrg(); orgOverride != "" {
-			org = orgOverride
-		}
+		return &schema.ComputedNaming{}, nil
 	}
 
 	return &schema.ComputedNaming{
