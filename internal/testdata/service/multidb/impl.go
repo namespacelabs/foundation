@@ -6,7 +6,6 @@ package multidb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"time"
@@ -21,7 +20,6 @@ import (
 )
 
 type Service struct {
-	maria    *sql.DB
 	postgres *pgx.Conn
 	rds      *oldpostgres.DB
 }
@@ -59,25 +57,6 @@ func (svc *Service) AddPostgres(ctx context.Context, req *proto.AddRequest) (*em
 	log.Printf("new AddPostgres request: %+v\n", req)
 
 	if err := addPostgres(ctx, svc.postgres, req.Item); err != nil {
-		log.Fatalf("failed to add list item: %v", err)
-	}
-
-	response := &emptypb.Empty{}
-	return response, nil
-}
-
-func addMaria(ctx context.Context, db *sql.DB, item string) error {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	_, err := db.ExecContext(ctx, "INSERT INTO list (Item) VALUES (?);", item)
-	return err
-}
-
-func (svc *Service) AddMaria(ctx context.Context, req *proto.AddRequest) (*emptypb.Empty, error) {
-	log.Printf("new AddMaria request: %+v\n", req)
-
-	if err := addMaria(ctx, svc.maria, req.Item); err != nil {
 		log.Fatalf("failed to add list item: %v", err)
 	}
 
@@ -131,29 +110,6 @@ func listPostgres(ctx context.Context, conn *pgx.Conn) ([]string, error) {
 	return res, nil
 }
 
-func listMaria(ctx context.Context, db *sql.DB) ([]string, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	rows, err := db.QueryContext(ctx, "SELECT Item FROM list;")
-	if err != nil {
-		return nil, fmt.Errorf("failed read list: %w", err)
-	}
-	defer rows.Close()
-
-	var res []string
-	for rows.Next() {
-		var item string
-		err = rows.Scan(&item)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, item)
-	}
-
-	return res, nil
-}
-
 func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResponse, error) {
 	log.Print("new List request\n")
 
@@ -171,20 +127,13 @@ func (svc *Service) List(ctx context.Context, _ *emptypb.Empty) (*proto.ListResp
 	}
 	list = append(list, pglist...)
 
-	marialist, err := listMaria(ctx, svc.maria)
-	if err != nil {
-		log.Fatalf("failed to read list: %v", err)
-	}
-	list = append(list, marialist...)
-
 	response := &proto.ListResponse{Item: list}
 	return response, nil
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	svc := &Service{
-		maria: deps.Maria,
-		rds:   deps.Rds,
+		rds: deps.Rds,
 	}
 	var err error
 	svc.postgres, err = wirePostgres()

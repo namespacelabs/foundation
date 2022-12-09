@@ -25,7 +25,6 @@ const _ = grpc.SupportPackageIsVersion7
 type MultiDbListServiceClient interface {
 	AddRds(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	AddPostgres(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	AddMaria(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Merges from all dbs.
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error)
 }
@@ -56,15 +55,6 @@ func (c *multiDbListServiceClient) AddPostgres(ctx context.Context, in *AddReque
 	return out, nil
 }
 
-func (c *multiDbListServiceClient) AddMaria(ctx context.Context, in *AddRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/internal.testdata.service.proto.MultiDbListService/AddMaria", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *multiDbListServiceClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResponse, error) {
 	out := new(ListResponse)
 	err := c.cc.Invoke(ctx, "/internal.testdata.service.proto.MultiDbListService/List", in, out, opts...)
@@ -80,7 +70,6 @@ func (c *multiDbListServiceClient) List(ctx context.Context, in *emptypb.Empty, 
 type MultiDbListServiceServer interface {
 	AddRds(context.Context, *AddRequest) (*emptypb.Empty, error)
 	AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error)
-	AddMaria(context.Context, *AddRequest) (*emptypb.Empty, error)
 	// Merges from all dbs.
 	List(context.Context, *emptypb.Empty) (*ListResponse, error)
 }
@@ -94,9 +83,6 @@ func (UnimplementedMultiDbListServiceServer) AddRds(context.Context, *AddRequest
 }
 func (UnimplementedMultiDbListServiceServer) AddPostgres(context.Context, *AddRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddPostgres not implemented")
-}
-func (UnimplementedMultiDbListServiceServer) AddMaria(context.Context, *AddRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddMaria not implemented")
 }
 func (UnimplementedMultiDbListServiceServer) List(context.Context, *emptypb.Empty) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -149,24 +135,6 @@ func _MultiDbListService_AddPostgres_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MultiDbListService_AddMaria_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MultiDbListServiceServer).AddMaria(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/internal.testdata.service.proto.MultiDbListService/AddMaria",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MultiDbListServiceServer).AddMaria(ctx, req.(*AddRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MultiDbListService_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -199,10 +167,6 @@ var MultiDbListService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddPostgres",
 			Handler:    _MultiDbListService_AddPostgres_Handler,
-		},
-		{
-			MethodName: "AddMaria",
-			Handler:    _MultiDbListService_AddMaria_Handler,
 		},
 		{
 			MethodName: "List",

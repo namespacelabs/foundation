@@ -14,7 +14,6 @@ import "internal/testdata/service/proto/list.proto";
 service MultiDbListService {
     rpc AddRds(AddRequest) returns (google.protobuf.Empty);
     rpc AddPostgres(AddRequest) returns (google.protobuf.Empty);
-    rpc AddMaria(AddRequest) returns (google.protobuf.Empty);
     // Merges from all dbs.
     rpc List(google.protobuf.Empty) returns (ListResponse);
 }

@@ -31,9 +31,6 @@ func main() {
 		if _, err = cli.AddPostgres(ctx, &proto.AddRequest{Item: "postgres-item"}); err != nil {
 			return err
 		}
-		if _, err = cli.AddMaria(ctx, &proto.AddRequest{Item: "maria-item"}); err != nil {
-			return err
-		}
 
 		resp, err := cli.List(ctx, &emptypb.Empty{})
 		if err != nil {
@@ -42,7 +39,7 @@ func main() {
 
 		sort.Strings(resp.Item)
 
-		expected := []string{"maria-item", "postgres-item", "rds-item"}
+		expected := []string{"postgres-item", "rds-item"}
 		if len(expected) != len(resp.Item) {
 			return fmt.Errorf("wrong list length: expected %d elements but got %d", len(expected), len(resp.Item))
 		}
