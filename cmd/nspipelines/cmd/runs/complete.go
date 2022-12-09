@@ -38,11 +38,6 @@ func newCompleteCmd() *cobra.Command {
 	storedRun := flags.String("stored_run_path", "", "Path to a file with a stored run's contents.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
-		userAuth, err := fnapi.LoadUser()
-		if err != nil {
-			return err
-		}
-
 		var runID string
 		if *storedRun != "" {
 			run, marshalled, err := protos.ReadFileAndBytes[*storage.UndifferentiatedRun](*storedRun)
@@ -82,7 +77,6 @@ func newCompleteCmd() *cobra.Command {
 					Payload: chunk,
 				}
 				if i == 0 {
-					req.OpaqueUserAuth = userAuth.InternalOpaque
 					req.RunId = run.RunId
 					req.PayloadFormat = "application/vnd.namespace.run+pb-zstd"
 					req.PayloadLength = len(bytes)
@@ -91,7 +85,7 @@ func newCompleteCmd() *cobra.Command {
 			}
 
 			fmt.Fprintf(os.Stdout, "[debug] Uploading %d chunks to %s\n", len(bytes), storageService)
-			if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSectionStream", storageService), reqs, nil); err != nil {
+			if err := fnapi.AuthenticatedCall(ctx, storageEndpoint, fmt.Sprintf("%s/UploadSectionStream", storageService), reqs, nil); err != nil {
 				return err
 			}
 		}
@@ -114,8 +108,8 @@ func newCompleteCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(os.Stdout, "[debug] marking run %q as completed...\n", runID)
-		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
-			&CompleteRunRequest{OpaqueUserAuth: userAuth.InternalOpaque, RunId: runID}, nil); err != nil {
+		if err := fnapi.AuthenticatedCall(ctx, storageEndpoint, fmt.Sprintf("%s/CompleteRun", storageService),
+			&CompleteRunRequest{RunId: runID}, nil); err != nil {
 			return err
 		}
 
@@ -128,14 +122,12 @@ func newCompleteCmd() *cobra.Command {
 }
 
 type UploadSectionRunRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
-	RunId          string `json:"run_id,omitempty"`
-	PayloadFormat  string `json:"payload_format,omitempty"`
-	PayloadLength  int    `json:"payload_length,omitempty"`
-	Payload        []byte `json:"payload,omitempty"`
+	RunId         string `json:"run_id,omitempty"`
+	PayloadFormat string `json:"payload_format,omitempty"`
+	PayloadLength int    `json:"payload_length,omitempty"`
+	Payload       []byte `json:"payload,omitempty"`
 }
 
 type CompleteRunRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
-	RunId          string `json:"run_id,omitempty"`
+	RunId string `json:"run_id,omitempty"`
 }

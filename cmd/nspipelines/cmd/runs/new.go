@@ -53,11 +53,6 @@ func newNewCmd() *cobra.Command {
 	_ = cmd.MarkFlagRequired("output_run_id_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
-		userAuth, err := fnapi.LoadUser()
-		if err != nil {
-			return err
-		}
-
 		var attachments []proto.Message
 
 		if v, err := version.Current(); err == nil {
@@ -149,9 +144,7 @@ func newNewCmd() *cobra.Command {
 			})
 		}
 
-		req := &NewRunRequest{
-			OpaqueUserAuth: userAuth.InternalOpaque,
-		}
+		req := &NewRunRequest{}
 
 		if *parentRunIDPath != "" {
 			r, err := storedrun.LoadStoredID(*parentRunIDPath)
@@ -175,7 +168,7 @@ func newNewCmd() *cobra.Command {
 		}
 
 		var resp storedrun.StoredRunID
-		if err := fnapi.AnonymousCall(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, fnapi.DecodeJSONResponse(&resp)); err != nil {
+		if err := fnapi.AuthenticatedCall(ctx, storageEndpoint, fmt.Sprintf("%s/NewRun", storageService), req, fnapi.DecodeJSONResponse(&resp)); err != nil {
 			return err
 		}
 
@@ -210,7 +203,6 @@ func parseBranch(ref string) string {
 }
 
 type NewRunRequest struct {
-	OpaqueUserAuth   []byte                      `json:"opaque_user_auth,omitempty"`
 	ParentRunId      string                      `json:"parent_run_id,omitempty"`
 	Attachment       []*anypb.Any                `json:"attachment,omitempty"`
 	ManualAttachment []*NewRunRequest_Attachment `json:"manual_attachment,omitempty"`

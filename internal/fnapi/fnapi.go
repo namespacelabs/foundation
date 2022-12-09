@@ -42,6 +42,13 @@ func AnonymousCall(ctx context.Context, endpoint string, method string, req inte
 	}.Do(ctx, req, handle)
 }
 
+func AuthenticatedCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
+	return Call[any]{
+		Endpoint: endpoint,
+		Method:   method,
+	}.Do(ctx, req, handle)
+}
+
 type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
