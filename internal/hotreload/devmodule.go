@@ -39,6 +39,7 @@ func NewDevModule(module build.Workspace, observeChanges, digestMode bool, opts 
 
 func (w devModule) ModuleName() string             { return w.module.ModuleName() }
 func (w devModule) Abs() string                    { return w.module.Abs() }
+func (w devModule) IsExternal() bool               { return w.module.IsExternal() }
 func (w devModule) ReadOnlyFS(rel ...string) fs.FS { return w.module.ReadOnlyFS(rel...) }
 
 func (w devModule) ChangeTrigger(rel string, excludes []string) compute.Computable[any] {

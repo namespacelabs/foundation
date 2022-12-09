@@ -52,7 +52,7 @@ func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Works
 		trigger:      workspace.ChangeTrigger(bin.GoModulePath, nil),
 	}
 
-	if bin.UnsafeCacheable {
+	if bin.UnsafeCacheable || workspace.IsExternal() {
 		comp.localfs = memfs.DeferSnapshot(workspace.ReadOnlyFS(bin.GoModulePath), memfs.SnapshotOpts{})
 	}
 

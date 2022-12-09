@@ -52,6 +52,7 @@ func (p Plan) GetSourcePackageRef() *schema.PackageRef {
 type Workspace interface {
 	ModuleName() string
 	Abs() string
+	IsExternal() bool
 	ReadOnlyFS(rel ...string) fs.FS
 
 	// ChangeTrigger returns an observable which will get a new value whenever a
