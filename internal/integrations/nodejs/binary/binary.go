@@ -49,15 +49,9 @@ func (n nodeJsBinary) LLB(ctx context.Context, cfg cfg.Configuration, bnj buildN
 		return llb.State{}, nil, err
 	}
 
-	fsys, err := compute.GetValue(ctx, conf.Workspace().Snapshot(bnj.loc.Rel(), false))
-	if err != nil {
-		return llb.State{}, nil, err
-	}
-
 	local := buildkit.LocalContents{
 		Module:          conf.Workspace(),
 		Path:            bnj.loc.Rel(),
-		ObserveChanges:  bnj.isFocus,
 		ExcludePatterns: NodejsExclude,
 	}
 	src := buildkit.MakeLocalState(local)
@@ -75,7 +69,9 @@ func (n nodeJsBinary) LLB(ctx context.Context, cfg cfg.Configuration, bnj buildN
 		platform = cli.BuildkitOpts().HostPlatform
 	}
 
-	devImage, err := createBaseImageAndInstallPackageManager(ctx, platform, src, fsys.FS(), "development", packageManagerState)
+	sub := conf.Workspace().ReadOnlyFS(bnj.loc.Rel())
+
+	devImage, err := createBaseImage(ctx, platform, src, sub, "development", packageManagerState)
 	if err != nil {
 		return llb.State{}, nil, err
 	}
@@ -95,7 +91,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, cfg cfg.Configuration, bnj buildN
 
 		var prodImage llb.State
 		if config.InstallDeps {
-			prodImage, err = createBaseImageAndInstallPackageManager(ctx, platform, src, fsys.FS(), "production", packageManagerState)
+			prodImage, err = createBaseImage(ctx, platform, src, sub, "production", packageManagerState)
 			if err != nil {
 				return llb.State{}, nil, err
 			}
@@ -156,7 +152,7 @@ func maybeGenerateBackendsJs(ctx context.Context, base llb.State, bnj buildNodeJ
 	var fsys memfs.FS
 	fsys.Add(backendsConfigFn, bytes)
 
-	return llbutil.WriteFS(ctx, &fsys, base, AppRootPath)
+	return llbutil.Reforge(ctx, &fsys, base, AppRootPath)
 }
 
 // Copies package.json and other files from "src" that are needed for the "install" call.
@@ -187,7 +183,7 @@ func copySrcForInstall(ctx context.Context, base llb.State, src llb.State, fsys 
 	return base, nil
 }
 
-func createBaseImageAndInstallPackageManager(ctx context.Context, p specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
+func createBaseImage(ctx context.Context, p specs.Platform, src llb.State, fsys fs.FS, nodeEnv string, packageManagerState *PackageManager) (llb.State, error) {
 	nodeImage, err := pins.CheckDefault("node")
 	if err != nil {
 		return llb.State{}, err

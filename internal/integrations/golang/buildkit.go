@@ -31,9 +31,8 @@ var (
 
 func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	local := buildkit.LocalContents{
-		Module:         conf.Workspace(),
-		Path:           bin.GoModulePath,
-		ObserveChanges: bin.isFocus,
+		Module: conf.Workspace(),
+		Path:   bin.GoModulePath,
 	}
 
 	src := buildkit.MakeLocalState(local)

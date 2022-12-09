@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	maxExpectedWorkspaceSize uint64 = 32 * 1024 * 1024 // 32MB should be enough for everyone.
+	maxExpectedWorkspaceSize uint64 = 32 * 1024 * 1024 // 32MB should be enough for everyone (famous last words).
 )
 
 var SkipExpectedMaxWorkspaceSizeCheck = false
@@ -30,11 +30,8 @@ var SkipExpectedMaxWorkspaceSizeCheck = false
 var PreDigestLocalInputs = environment.IsRunningInCI()
 
 type LocalContents struct {
-	Module         build.Workspace
-	Path           string
-	ObserveChanges bool
-	// For Web we apply special handling temporarily: not including the root tsconfig.json as it belongs to Node.js
-	TemporaryIsWeb bool
+	Module build.Workspace
+	Path   string
 
 	// If set, only files matching these patterns will be included in the state.
 	IncludePatterns []string

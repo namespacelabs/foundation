@@ -20,22 +20,25 @@ type hotReloadModule struct {
 	sink   wsremote.Sink
 }
 
-func NewHotReloadModule(module build.Workspace, opts *integrations.HotReloadOpts) build.Workspace {
+func NewHotReloadModule(module build.Workspace, opts integrations.HotReloadOpts) build.Workspace {
 	return hotReloadModule{
 		module: module,
 		sink:   observerSink{opts.Sink, opts.EventProcessor},
 	}
 }
 
-func (w hotReloadModule) ModuleName() string { return w.module.ModuleName() }
-func (w hotReloadModule) Abs() string        { return w.module.Abs() }
-func (w hotReloadModule) ReadOnlyFS() fs.FS  { return w.module.ReadOnlyFS() }
-func (w hotReloadModule) Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
-	if observeChanges {
-		return wsremote.ObserveAndPush(w.module.Abs(), rel, w.sink)
-	}
+func (w hotReloadModule) ModuleName() string             { return w.module.ModuleName() }
+func (w hotReloadModule) Abs() string                    { return w.module.Abs() }
+func (w hotReloadModule) ReadOnlyFS(rel ...string) fs.FS { return w.module.ReadOnlyFS(rel...) }
 
-	return w.module.Snapshot(rel, observeChanges)
+func (w hotReloadModule) Snapshot(rel string) compute.Computable[wscontents.Versioned] {
+	return wsremote.ObserveAndPush(w.module.Abs(), rel, w.sink)
+}
+
+func (w hotReloadModule) ChangeTrigger(rel string) compute.Computable[compute.Versioned] {
+	return compute.Transform("change-trigger", wsremote.ObserveAndPush(w.module.Abs(), rel, w.sink), func(_ context.Context, ws wscontents.Versioned) (compute.Versioned, error) {
+		return ws, nil
+	})
 }
 
 type observerSink struct {

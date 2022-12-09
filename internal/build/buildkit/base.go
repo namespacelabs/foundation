@@ -48,11 +48,12 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		JSON("version", buildkitIntegrationVersion).
 		Computable("req", l.req)
 
+		// XXX missing handling of Include and Exclude patterns.
 	if !PreDigestLocalInputs {
 		// Local contents are added as dependencies to trigger continuous builds.
 		for k, local := range l.localDirs {
 			in = in.
-				Computable(fmt.Sprintf("local%d:contents", k), local.Module.Snapshot(local.Path, local.ObserveChanges)).
+				Computable(fmt.Sprintf("local%d:contents", k), local.Module.Snapshot(local.Path)).
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}
 	} else {
@@ -60,7 +61,7 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		// with others that may be happening concurrently.
 		for _, local := range l.localDirs {
 			in = in.Marshal(fmt.Sprintf("local-contents:%s:%s", local.Module.Abs(), local.Path), func(ctx context.Context, w io.Writer) error {
-				contents, err := compute.GetValue(ctx, local.Module.Snapshot(local.Path, local.ObserveChanges))
+				contents, err := compute.GetValue(ctx, local.Module.Snapshot(local.Path))
 				if err != nil {
 					return err
 				}

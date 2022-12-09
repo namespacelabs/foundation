@@ -269,11 +269,11 @@ func (r workspaceData) ErrorLocation() string    { return r.absPath }
 func (r workspaceData) ModuleName() string       { return r.parsed.ModuleName }
 func (r workspaceData) Proto() *schema.Workspace { return r.parsed }
 
-func (r workspaceData) AbsPath() string           { return r.absPath }
-func (r workspaceData) ReadOnlyFS() fs.FS         { return fnfs.Local(r.absPath) }
-func (r workspaceData) DefinitionFile() string    { return r.definitionFile }
-func (r workspaceData) RawData() []byte           { return r.data }
-func (r workspaceData) structLit() *ast.StructLit { return r.source.Syntax().(*ast.StructLit) }
+func (r workspaceData) AbsPath() string                { return r.absPath }
+func (r workspaceData) ReadOnlyFS(rel ...string) fs.FS { return fnfs.Local(r.absPath, rel...) }
+func (r workspaceData) DefinitionFile() string         { return r.definitionFile }
+func (r workspaceData) RawData() []byte                { return r.data }
+func (r workspaceData) structLit() *ast.StructLit      { return r.source.Syntax().(*ast.StructLit) }
 
 func (r workspaceData) LoadedFrom() *schema.Workspace_LoadedFrom {
 	return &schema.Workspace_LoadedFrom{

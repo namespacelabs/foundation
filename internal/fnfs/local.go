@@ -21,8 +21,10 @@ type LocalFS interface {
 	MkdirFS
 }
 
-func Local(path string) LocalFS {
-	return makeLocal(&local{root: path, readWrite: false})
+func Local(path string, rel ...string) LocalFS {
+	resolvedPath := filepath.Join(append([]string{path}, rel...)...)
+
+	return makeLocal(&local{root: resolvedPath, readWrite: false})
 }
 
 func ReadWriteLocalFS(path string, opts ...LocalOpt) LocalFS {

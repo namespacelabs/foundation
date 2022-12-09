@@ -24,17 +24,23 @@ type codegenWorkspace struct {
 	srv planning.Server
 }
 
-func (cw codegenWorkspace) ModuleName() string { return cw.srv.Module().ModuleName() }
-func (cw codegenWorkspace) Abs() string        { return cw.srv.Module().Abs() }
-func (cw codegenWorkspace) ReadOnlyFS() fs.FS  { return cw.srv.Module().ReadOnlyFS() }
-func (cw codegenWorkspace) Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
-	return &codegenThenSnapshot{srv: cw.srv, rel: rel, observeChanges: observeChanges}
+func (cw codegenWorkspace) ModuleName() string             { return cw.srv.Module().ModuleName() }
+func (cw codegenWorkspace) Abs() string                    { return cw.srv.Module().Abs() }
+func (cw codegenWorkspace) ReadOnlyFS(rel ...string) fs.FS { return cw.srv.Module().ReadOnlyFS(rel...) }
+func (cw codegenWorkspace) ChangeTrigger(rel string) compute.Computable[compute.Versioned] {
+	return cw.srv.Module().ChangeTrigger(rel)
+}
+func (cw codegenWorkspace) Snapshot(rel string) compute.Computable[wscontents.Versioned] {
+	if cw.srv.Module().IsExternal() {
+		return cw.srv.Module().Snapshot(rel)
+	}
+
+	return &codegenThenSnapshot{srv: cw.srv, rel: rel}
 }
 
 type codegenThenSnapshot struct {
-	srv            planning.Server
-	rel            string
-	observeChanges bool
+	srv planning.Server
+	rel string
 	compute.LocalScoped[wscontents.Versioned]
 }
 
@@ -42,7 +48,7 @@ func (cd *codegenThenSnapshot) Action() *tasks.ActionEvent {
 	return tasks.Action("workspace.codegen-and-snapshot").Scope(cd.srv.PackageName())
 }
 func (cd *codegenThenSnapshot) Inputs() *compute.In {
-	return compute.Inputs().Indigestible("srv", cd.srv).Str("rel", cd.rel).Bool("observeChanges", cd.observeChanges)
+	return compute.Inputs().Indigestible("srv", cd.srv).Str("rel", cd.rel)
 }
 func (cd *codegenThenSnapshot) Compute(ctx context.Context, _ compute.Resolved) (wscontents.Versioned, error) {
 	if err := codegenServer(ctx, cd.srv); err != nil {
@@ -52,7 +58,7 @@ func (cd *codegenThenSnapshot) Compute(ctx context.Context, _ compute.Resolved) 
 	// Codegen is only run once; if codegen is required again, then it will be triggered
 	// by a recomputation of the graph.
 
-	return wscontents.MakeVersioned(ctx, cd.srv.Module().Abs(), cd.rel, cd.observeChanges, nil)
+	return wscontents.MakeVersioned(ctx, cd.srv.Module().Abs(), cd.rel, true, nil)
 }
 
 type codegenEnv struct {

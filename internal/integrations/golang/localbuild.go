@@ -44,15 +44,16 @@ func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Works
 		return nil, err
 	}
 
+	comp := &compilation{
+		sdk:          sdk,
+		binary:       bin,
+		platform:     *target.TargetPlatform(),
+		workspaceAbs: workspace.Abs(),
+		trigger:      workspace.ChangeTrigger(bin.GoModulePath),
+	}
+
 	layers := []oci.NamedLayer{
-		// By depending on workspace.Contents we both get continued updates on changes to the workspace,
-		// but also are guaranteed to only be invoked after generation functions run.
-		oci.MakeLayer(fmt.Sprintf("go binary layer %s", bin.PackageName), &compilation{
-			sdk:       sdk,
-			workspace: workspace.Snapshot(bin.GoModulePath, bin.isFocus),
-			binary:    bin,
-			platform:  *target.TargetPlatform(),
-		}),
+		oci.MakeLayer(fmt.Sprintf("go binary layer %s", bin.PackageName), comp),
 	}
 
 	if bin.BinaryOnly {
@@ -133,10 +134,12 @@ func goarm(platform specs.Platform) (string, error) {
 }
 
 type compilation struct {
-	sdk       compute.Computable[golang.LocalSDK]
-	workspace compute.Computable[wscontents.Versioned] // We depend on `workspace` so we trigger a re-build on workspace changes.
-	binary    GoBinary
-	platform  specs.Platform
+	workspaceAbs string // Does not by itself affect the output.
+	sdk          compute.Computable[golang.LocalSDK]
+	trigger      compute.Computable[compute.Versioned]    // We depend on `trigger` so we trigger a re-build on workspace changes.
+	localfs      compute.Computable[wscontents.Versioned] // If specified, this becomes a stable build.
+	binary       GoBinary
+	platform     specs.Platform
 
 	compute.LocalScoped[fs.FS]
 }
@@ -153,16 +156,23 @@ func (c *compilation) Inputs() *compute.In {
 	in := compute.Inputs().
 		JSON("binary", c.binary).
 		JSON("platform", c.platform).
-		Computable("workspace", c.workspace).
+		Computable("trigger", c.trigger).
 		Computable("sdk", c.sdk)
-	if !c.binary.UnsafeCacheable {
-		in = in.Indigestible("localfs", nil)
+
+	if c.trigger != nil {
+		in = in.Computable("trigger", c.trigger)
 	}
+
+	if c.localfs != nil {
+		in = in.Computable("localfs", c.localfs)
+	} else {
+		in = in.Indigestible("localfs", "not available")
+	}
+
 	return in
 }
 
 func (c *compilation) Compute(ctx context.Context, deps compute.Resolved) (fs.FS, error) {
-	w := compute.MustGetDepValue(deps, c.workspace, "workspace")
 	sdk := compute.MustGetDepValue(deps, c.sdk, "sdk")
 
 	targetDir, err := dirs.CreateUserTempDir("go", "build")
@@ -170,7 +180,7 @@ func (c *compilation) Compute(ctx context.Context, deps compute.Resolved) (fs.FS
 		return nil, err
 	}
 
-	if err := compile(ctx, sdk, w.Abs(), targetDir, c.binary, c.platform); err != nil {
+	if err := compile(ctx, sdk, c.workspaceAbs, targetDir, c.binary, c.platform); err != nil {
 		return nil, err
 	}
 

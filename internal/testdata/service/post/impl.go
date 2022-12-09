@@ -9,8 +9,8 @@ import (
 	"log"
 
 	"google.golang.org/grpc/peer"
-	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/internal/testdata/service/proto"
+	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/go-ids"
 )
 

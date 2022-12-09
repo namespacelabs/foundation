@@ -50,13 +50,15 @@ func (p Plan) GetSourcePackageRef() *schema.PackageRef {
 	return schema.MakePackageSingleRef(p.SourcePackage)
 }
 
-type FilterFunc func(string) bool
-
 type Workspace interface {
 	ModuleName() string
 	Abs() string
-	ReadOnlyFS() fs.FS
-	Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned]
+	ReadOnlyFS(rel ...string) fs.FS
+	Snapshot(rel string) compute.Computable[wscontents.Versioned]
+
+	// ChangeTrigger returns an observable which will get a new value whenever a
+	// path under `rel` is modified, and the filter function doesn't reject.
+	ChangeTrigger(rel string) compute.Computable[compute.Versioned]
 }
 
 type BuildTarget interface {

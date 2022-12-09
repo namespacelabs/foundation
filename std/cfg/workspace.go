@@ -36,7 +36,7 @@ type Workspace interface {
 
 	Proto() *schema.Workspace
 	ModuleName() string
-	ReadOnlyFS() fs.FS
+	ReadOnlyFS(rel ...string) fs.FS
 	LoadedFrom() *schema.Workspace_LoadedFrom
 }
 
@@ -52,5 +52,5 @@ func MakeSyntheticWorkspace(proto *schema.Workspace, lf *schema.Workspace_Loaded
 func (w workspace) ErrorLocation() string                    { return w.proto.ModuleName }
 func (w workspace) Proto() *schema.Workspace                 { return w.proto }
 func (w workspace) ModuleName() string                       { return w.proto.ModuleName }
-func (w workspace) ReadOnlyFS() fs.FS                        { return nil }
+func (w workspace) ReadOnlyFS(rel ...string) fs.FS           { return nil }
 func (w workspace) LoadedFrom() *schema.Workspace_LoadedFrom { return w.loadedFrom }

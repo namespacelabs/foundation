@@ -34,7 +34,7 @@ var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafe
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
-var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.NodejsBuild, assets.AvailableBuildAssets, bool /* isFocus */) (build.Spec, error)
+var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.NodejsBuild, assets.AvailableBuildAssets) (build.Spec, error)
 var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
 
 var prebuiltsConfType = cfg.DefineConfigType[*Prebuilts]()
@@ -58,10 +58,7 @@ type PreparedImage struct {
 
 type BuildImageOpts struct {
 	UsePrebuilts bool
-	// Whether the server build is triggered explicitly, e.g. as a parameter of `ns dev` and not as a dependant server.
-	// Builders may use this flag to listen to the FS changes and do hot restart, for example.
-	IsFocus   bool
-	Platforms []specs.Platform
+	Platforms    []specs.Platform
 }
 
 // Returns a Prepared.
@@ -225,7 +222,6 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 		return BuildGo(loc, &schema.ImageBuildPlan_GoBuild{
 			RelPath:    goPackage,
 			BinaryName: bin.Name,
-			IsFocus:    opts.IsFocus,
 		}, false)
 	}
 
@@ -234,7 +230,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if src.NodejsBuild != nil {
-		return BuildNodejs(env, loc, src.NodejsBuild, assets, opts.IsFocus)
+		return BuildNodejs(env, loc, src.NodejsBuild, assets)
 	}
 
 	if llb := src.LlbPlan; llb != nil {
@@ -251,15 +247,11 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if nix := src.NixFlake; nix != "" {
-		fsys, err := compute.GetValue(ctx, loc.Module.Snapshot(loc.Rel(nix), false))
-		if err != nil {
-			return nil, fnerrors.AttachLocation(loc, err)
-		}
-		return BuildNix(loc.PackageName, loc.Module, fsys.FS()), nil
+		return BuildNix(loc.PackageName, loc.Module, loc.Module.ReadOnlyFS()), nil
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
-		spec, err := dockerfile.Build(loc.Rel(), dockerFile, opts.IsFocus)
+		spec, err := dockerfile.Build(loc.Rel(), dockerFile)
 		if err != nil {
 			return nil, fnerrors.AttachLocation(loc, err)
 		}

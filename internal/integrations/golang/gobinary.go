@@ -29,8 +29,6 @@ type GoBinary struct {
 
 	BinaryOnly      bool
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.
-
-	isFocus bool
 }
 
 var UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
@@ -74,7 +72,6 @@ func GoBuilder(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsaf
 
 	gobin.BinaryOnly = plan.BinaryOnly
 	gobin.BinaryName = plan.BinaryName
-	gobin.isFocus = plan.IsFocus
 	gobin.UnsafeCacheable = unsafeCacheable
 	return gobin, nil
 }

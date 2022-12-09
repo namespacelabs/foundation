@@ -18,27 +18,25 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.NodejsBuild, assets assets.AvailableBuildAssets, isFocus bool) (build.Spec, error) {
+func NodejsBuilder(env cfg.Context, loc pkggraph.Location, config *schema.NodejsBuild, assets assets.AvailableBuildAssets) (build.Spec, error) {
 	relPath := config.Pkg
 	if relPath == "" {
 		relPath = "."
 	}
 
 	return &buildNodeJS{
-		loc:     loc.Module.MakeLocation(loc.Rel(relPath)),
-		config:  config,
-		assets:  assets,
-		env:     env.Environment(),
-		isFocus: isFocus,
+		loc:    loc.Module.MakeLocation(loc.Rel(relPath)),
+		config: config,
+		assets: assets,
+		env:    env.Environment(),
 	}, nil
 }
 
 type buildNodeJS struct {
-	loc     pkggraph.Location
-	config  *schema.NodejsBuild
-	assets  assets.AvailableBuildAssets
-	env     *schema.Environment
-	isFocus bool
+	loc    pkggraph.Location
+	config *schema.NodejsBuild
+	assets assets.AvailableBuildAssets
+	env    *schema.Environment
 }
 
 func (bnj buildNodeJS) PlatformIndependent() bool {

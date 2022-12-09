@@ -15,7 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 )
 
-func WriteFS(ctx context.Context, fsys fs.FS, base llb.State, target string) (llb.State, error) {
+// Reforge emits a series of File() operations that will produce the same contents as in the provided `fsys`.
+func Reforge(ctx context.Context, fsys fs.FS, base llb.State, target string) (llb.State, error) {
 	if err := fnfs.VisitFiles(ctx, fsys, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 		info, err := de.Info()
 		if err != nil {

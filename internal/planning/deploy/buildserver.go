@@ -54,7 +54,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 				fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
 					server.PackageName(), server.Framework(), opts != nil)
 				if opts != nil {
-					ws = hotreload.NewHotReloadModule(ws, opts)
+					ws = hotreload.NewHotReloadModule(ws, *opts)
 				}
 			}
 

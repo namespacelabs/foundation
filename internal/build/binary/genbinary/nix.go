@@ -46,7 +46,7 @@ func NixImage(ctx context.Context, conf cfg.Configuration, target build.BuildTar
 	const outputImageFile = "image.tgz"
 
 	var err error
-	sourceFiles, err := llbutil.WriteFS(ctx, sources, llb.Scratch(), "/")
+	sourceFiles, err := llbutil.Reforge(ctx, sources, llb.Scratch(), "/")
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ package wscontents
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"io/fs"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/dustin/go-humanize"
 	"github.com/fsnotify/fsnotify"
 	"namespacelabs.dev/foundation/internal/bytestream"
@@ -39,46 +41,23 @@ func Observe(absPath, rel string, observeChanges bool) compute.Computable[Versio
 	return &observePath{absPath: absPath, rel: rel, observeChanges: observeChanges}
 }
 
-type computeContents struct {
-	absPath string
-	compute.DoScoped[fs.FS]
-}
-
-var _ compute.Computable[fs.FS] = &computeContents{}
-
-func (cc *computeContents) Action() *tasks.ActionEvent {
-	return tasks.Action("module.contents.load").Arg("absPath", cc.absPath)
-}
-func (cc *computeContents) Inputs() *compute.In {
-	return compute.Inputs().Str("absPath", cc.absPath)
-}
-func (cc *computeContents) Output() compute.Output {
-	return compute.Output{NotCacheable: true}
-}
-func (cc *computeContents) Compute(ctx context.Context, _ compute.Resolved) (fs.FS, error) {
-	inmem, err := SnapshotContents(ctx, cc.absPath, ".")
-	if err != nil {
-		return nil, err
-	}
-
-	return &contentFS{absPath: cc.absPath, fs: inmem}, nil
-}
-
-func SnapshotContents(ctx context.Context, modulePath, rel string) (*memfs.FS, error) {
+func snapshotContents(ctx context.Context, modulePath, rel string, digestMode bool) (*memfs.FS, error) {
 	return tasks.Return(ctx, tasks.Action("module.contents.snapshot").Arg("absPath", modulePath).Arg("rel", rel), func(ctx context.Context) (*memfs.FS, error) {
 		if err := verifyDir(modulePath); err != nil {
 			return nil, err
 		}
 
-		fsys, err := SnapshotDirectory(ctx, filepath.Join(modulePath, rel))
+		fsys, err := snapshotDirectory(ctx, filepath.Join(modulePath, rel), digestMode)
 		if err != nil {
-			return nil, err
+			return nil, fnerrors.InternalError("snapshot failed: %v", err)
 		}
 
 		att := tasks.Attachments(ctx)
 		att.AddResult("fs.stats", fsys.Stats())
-		if ts, err := fsys.TotalSize(ctx); err == nil {
-			att.AddResult("fs.totalSize", humanize.Bytes(ts))
+		if !digestMode {
+			if ts, err := fsys.TotalSize(ctx); err == nil {
+				att.AddResult("fs.totalSize", humanize.Bytes(ts))
+			}
 		}
 
 		return fsys, nil
@@ -99,14 +78,14 @@ func verifyDir(path string) error {
 }
 
 func SnapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
-	fsys, err := snapshotDirectory(ctx, absPath)
+	fsys, err := snapshotDirectory(ctx, absPath, false)
 	if err != nil {
 		return nil, fnerrors.InternalError("snapshot failed: %v", err)
 	}
 	return fsys, nil
 }
 
-func snapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
+func snapshotDirectory(ctx context.Context, absPath string, digest bool) (*memfs.FS, error) {
 	if err := verifyDir(absPath); err != nil {
 		return nil, err
 	}
@@ -137,13 +116,13 @@ func snapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
 			return err
 		}
 
-		f, err := os.Open(osPathname)
+		contents, err := os.Open(osPathname)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer contents.Close()
 
-		st, err := f.Stat()
+		st, err := contents.Stat()
 		if err != nil {
 			return err
 		}
@@ -153,13 +132,23 @@ func snapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
 			return nil
 		}
 
-		d, err := inmem.OpenWrite(rel, st.Mode().Perm())
+		target, err := inmem.OpenWrite(rel, st.Mode().Perm())
 		if err != nil {
 			return err
 		}
 
-		_, err = io.Copy(d, f)
-		err2 := d.Close()
+		// In digest mode, we store a digest of the file as the file contents.
+		if digest {
+			var digest []byte
+			digest, err = digestfile(contents)
+			if err == nil {
+				_, err = target.Write(digest)
+			}
+		} else {
+			_, err = io.Copy(target, contents)
+		}
+
+		err2 := target.Close()
 
 		if err != nil {
 			return err
@@ -216,7 +205,11 @@ func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (Version
 
 // onNewSnapshot is guaranteed to never be called concurrently.
 func MakeVersioned(ctx context.Context, moduleAbsPath, rel string, observeChanges bool, onNewSnapshot OnNewSnapshopFunc) (Versioned, error) {
-	snapshot, err := SnapshotContents(ctx, moduleAbsPath, rel)
+	return makeVersioned(ctx, moduleAbsPath, rel, observeChanges, false, onNewSnapshot)
+}
+
+func makeVersioned(ctx context.Context, moduleAbsPath, rel string, observeChanges, digestMode bool, onNewSnapshot OnNewSnapshopFunc) (Versioned, error) {
+	snapshot, err := snapshotContents(ctx, moduleAbsPath, rel, digestMode)
 	if err != nil {
 		return nil, err
 	}
@@ -236,6 +229,7 @@ func MakeVersioned(ctx context.Context, moduleAbsPath, rel string, observeChange
 		errLogger:      console.Output(ctx, "file-observer"),
 		onNewSnapshot:  onNewSnapshot,
 		observeChanges: observeChanges,
+		digestMode:     digestMode,
 	}, nil
 }
 
@@ -254,6 +248,7 @@ type versioned struct {
 	revision       uint64
 	errLogger      io.Writer
 	observeChanges bool
+	digestMode     bool
 
 	// If available, is called on the updated snapshot before sending an update.
 	onNewSnapshot OnNewSnapshopFunc
@@ -322,7 +317,7 @@ func (vp *versioned) Observe(ctx context.Context, onChange func(compute.ResultWi
 	bufferCh := make(chan []fsnotify.Event)
 	go func() {
 		for buffer := range bufferCh {
-			newFsys, deliver, err := handleEvents(ctx, console.Debug(ctx), vp.errLogger, vp.absPath, fsys, vp.onNewSnapshot, buffer)
+			newFsys, deliver, err := handleEvents(ctx, console.Debug(ctx), vp.errLogger, vp.absPath, fsys, vp.digestMode, vp.onNewSnapshot, buffer)
 			if err != nil {
 				compute.Stop(ctx, err)
 				break
@@ -407,7 +402,7 @@ func AggregateFSEvents(watcher filewatcher.EventsAndErrors, debugLogger, errLogg
 	}
 }
 
-func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPath string, snapshot fnfs.ReadWriteFS, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
+func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPath string, snapshot fnfs.ReadWriteFS, digestMode bool, onNewSnapshot OnNewSnapshopFunc, buffer []fsnotify.Event) (fnfs.ReadWriteFS, bool, error) {
 	// Coalesce multiple changes.
 	var dirtyPaths uniquestrings.List
 	for _, ev := range buffer {
@@ -434,7 +429,7 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 			continue
 		}
 
-		action, err := checkChanges(ctx, snapshot, os.DirFS(absPath), rel)
+		action, err := checkChanges(ctx, snapshot, os.DirFS(absPath), rel, digestMode)
 		if err != nil {
 			return nil, false, fnerrors.InternalError("failed to check changes: %v", err)
 		}
@@ -478,7 +473,7 @@ func handleEvents(ctx context.Context, debugLogger, userVisible io.Writer, absPa
 	return onNewSnapshot(ctx, snapshot, actions)
 }
 
-func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*FileEvent, error) {
+func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string, digestMode bool) (*FileEvent, error) {
 	f, err := ws.Open(path)
 	if os.IsNotExist(err) {
 		if _, err := fs.Stat(snapshot, path); os.IsNotExist(err) {
@@ -514,7 +509,13 @@ func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*
 		return nil, fnerrors.New("%s: inconsistent event, is a directory in the local workspace but not in the snapshot", path)
 	}
 
-	contents, err := io.ReadAll(f)
+	var contents []byte
+	if digestMode {
+		contents, err = digestfile(f)
+	} else {
+		contents, err = io.ReadAll(f)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -526,5 +527,16 @@ func checkChanges(ctx context.Context, snapshot fs.FS, ws fs.FS, path string) (*
 		return nil, nil
 	}
 
-	return &FileEvent{Event: FileEvent_WRITE, Path: path, NewContents: contents, Mode: uint32(st.Mode().Perm())}, nil
+	ev := &FileEvent{Event: FileEvent_WRITE, Path: path, Mode: uint32(st.Mode().Perm())}
+	if !digestMode {
+		ev.NewContents = contents
+	}
+
+	return ev, nil
+}
+
+func digestfile(contents io.Reader) ([]byte, error) {
+	h := xxhash.New()
+	_, err := io.Copy(h, contents)
+	return []byte(hex.EncodeToString(h.Sum(nil))), err
 }

@@ -47,7 +47,7 @@ func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.Availab
 	}
 
 	prep, err := binary.Plan(ctx, pkg, binRef.GetName(), server.SealedContext(), assets,
-		binary.BuildImageOpts{UsePrebuilts: true, IsFocus: isFocus})
+		binary.BuildImageOpts{UsePrebuilts: true})
 	if err != nil {
 		return nil, err
 	}

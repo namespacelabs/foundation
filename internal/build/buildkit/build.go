@@ -230,10 +230,6 @@ func MakeLocalExcludes(src LocalContents) []string {
 	excludePatterns = append(excludePatterns, dirs.BasePatternsToExclude...)
 	excludePatterns = append(excludePatterns, devhost.HostOnlyFiles()...)
 	excludePatterns = append(excludePatterns, src.ExcludePatterns...)
-	if src.TemporaryIsWeb {
-		// Not including the root tsconfig.json as it belongs to Node.js
-		excludePatterns = append(excludePatterns, "tsconfig.json")
-	}
 
 	return excludePatterns
 }

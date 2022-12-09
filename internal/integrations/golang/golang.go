@@ -93,7 +93,6 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 		GoVersion:    ext.GoVersion,
 		SourcePath:   server.Location.Rel(),
 		BinaryName:   "server",
-		isFocus:      isFocus,
 	}
 
 	return bin, nil
