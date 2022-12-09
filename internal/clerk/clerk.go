@@ -20,12 +20,26 @@ type clerkResponse struct {
 	Response struct {
 		Identifier string `json:"identifier"`
 	} `json:"response"`
+	Client struct {
+		Sessions []struct {
+			User struct {
+				ExternalAccounts []struct {
+					Provider     string `json:"provider"`
+					Username     string `json:"username"`
+					Verification struct {
+						Status string `json:"status"`
+					}
+				} `json:"external_accounts"`
+			} `json:"user"`
+		} `json:"sessions"`
+	} `json:"client"`
 }
 
 type State struct {
-	Email       string `json:"email,omitempty"`
-	Name        string `json:"name,omitempty"`
-	ClerkClient string `json:"clerk_client,omitempty"`
+	Email          string `json:"email,omitempty"`
+	Name           string `json:"name,omitempty"`
+	ClerkClient    string `json:"clerk_client,omitempty"`
+	GithubUsername string `json:"github_username,omitempty"`
 }
 
 func Login(ctx context.Context, ticket string) (*State, error) {
@@ -69,10 +83,20 @@ func Login(ctx context.Context, ticket string) (*State, error) {
 		return nil, fnerrors.InvocationError("login", "bad response: %w", err)
 	}
 
-	return &State{
+	state := &State{
 		Email:       x.Response.Identifier,
 		ClerkClient: client.Value,
-	}, nil
+	}
+
+	for _, session := range x.Client.Sessions {
+		for _, external := range session.User.ExternalAccounts {
+			if external.Provider == "oauth_github" && external.Verification.Status == "verified" {
+				state.GithubUsername = external.Username
+			}
+		}
+	}
+
+	return state, nil
 }
 
 type jwtResponse struct {

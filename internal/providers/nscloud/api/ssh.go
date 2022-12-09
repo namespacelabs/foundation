@@ -73,6 +73,14 @@ func UserSSHKeys() (compute.Computable[[]string], error) {
 		return nil, err
 	}
 
+	if user.Clerk != nil {
+		if user.Clerk.GithubUsername != "" {
+			return &sshKeys{username: user.Clerk.GithubUsername}, nil
+		}
+
+		return nil, nil
+	}
+
 	if strings.HasSuffix(user.Username, "[bot]") {
 		return nil, nil
 	}
