@@ -8,10 +8,12 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/csrf"
 	"github.com/gorilla/mux"
+	"namespacelabs.dev/foundation/framework/resources"
 )
 
 var protect mux.MiddlewareFunc
@@ -24,8 +26,12 @@ func Protect(h http.HandlerFunc) http.Handler {
 	return protect(h)
 }
 
-func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	key, err := base64.RawStdEncoding.DecodeString(string(deps.Token.MustValue()))
+func Prepare(ctx context.Context) error {
+	token, err := readSecretToken()
+	if err != nil {
+		return fmt.Errorf("failed to read secret token: %w", err)
+	}
+	key, err := base64.RawStdEncoding.DecodeString(string(token))
 	if err != nil {
 		return fmt.Errorf("failed to decode key: %v", err)
 	}
@@ -35,4 +41,15 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	protect = csrf.Protect(key)
 	return nil
+}
+
+const secretTokenRef = "namespacelabs.dev/foundation/std/go/http/csrf:token-secret-resource"
+
+func readSecretToken() ([]byte, error) {
+	rs, err := resources.LoadResources()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return resources.ReadSecret(rs, secretTokenRef)
 }

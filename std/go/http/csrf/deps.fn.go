@@ -6,43 +6,17 @@ package csrf
 import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/secrets"
 )
-
-// Dependencies that are instantiated once for the lifetime of the extension.
-type ExtensionDeps struct {
-	Token *secrets.Value
-}
 
 var (
 	Package__hfr5jb = &core.Package{
 		PackageName: "namespacelabs.dev/foundation/std/go/http/csrf",
 	}
 
-	Provider__hfr5jb = core.Provider{
-		Package:     Package__hfr5jb,
-		Instantiate: makeDeps__hfr5jb,
-	}
-
 	Initializers__hfr5jb = []*core.Initializer{
 		{
 			Package: Package__hfr5jb,
-			Do: func(ctx context.Context, di core.Dependencies) error {
-				return di.Instantiate(ctx, Provider__hfr5jb, func(ctx context.Context, v interface{}) error {
-					return Prepare(ctx, v.(ExtensionDeps))
-				})
-			},
+			Do:      func(ctx context.Context, di core.Dependencies) error { return Prepare(ctx) },
 		},
 	}
 )
-
-func makeDeps__hfr5jb(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
-	var deps ExtensionDeps
-
-	// name: "http-csrf-token"
-	if deps.Token, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg9odHRwLWNzcmYtdG9rZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
-
-	return deps, nil
-}
