@@ -245,7 +245,12 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 }
 
 func uploadPlanTo(ctx context.Context, targetRepo string, plan *schema.DeployPlan) error {
-	messages, err := protos.SerializeOpts{TextProto: true}.Serialize(plan)
+	any, err := anypb.New(plan)
+	if err != nil {
+		return err
+	}
+
+	messages, err := protos.SerializeOpts{TextProto: true}.Serialize(any)
 	if err != nil {
 		return err
 	}
