@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/planning/render"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
@@ -110,7 +111,12 @@ func NewDeployCmd() *cobra.Command {
 			deployPlan := deploy.Serialize(env.Workspace().Proto(), env.Environment(), stack.Proto(), computed, servers.Servers.Packages())
 
 			if serializePath != "" {
-				return protos.WriteFile(serializePath, deployPlan)
+				any, err := anypb.New(deployPlan)
+				if err != nil {
+					return err
+				}
+
+				return protos.WriteFile(serializePath, any)
 			}
 
 			if uploadTo != "" {

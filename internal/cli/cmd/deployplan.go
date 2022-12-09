@@ -13,6 +13,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -86,8 +87,13 @@ func loadPlan(ctx context.Context, image bool, path string) (*schema.DeployPlan,
 		return nil, fnerrors.New("failed to load %q: %w", path, err)
 	}
 
+	any := &anypb.Any{}
+	if err := proto.Unmarshal(raw, any); err != nil {
+		return nil, fnerrors.New("failed to unmarshal %q: %w", path, err)
+	}
+
 	plan := &schema.DeployPlan{}
-	if err := proto.Unmarshal(raw, plan); err != nil {
+	if err := any.UnmarshalTo(plan); err != nil {
 		return nil, fnerrors.New("failed to unmarshal %q: %w", path, err)
 	}
 
