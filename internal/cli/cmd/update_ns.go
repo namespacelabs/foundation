@@ -16,8 +16,8 @@ func NewUpdateNSCmd() *cobra.Command {
 	// This command is installed in the ns binary as a placeholder for the
 	// one implemented in nsboot. This makes it show up in `ns help`.
 	cmd := &cobra.Command{
-		Use:     "self-update",
-		Short:   "Checks and downloads updates for the ns command.",
+		Use:     "upgrade",
+		Short:   "Updates ns to the latest version.",
 		Aliases: []string{"update-ns"},
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

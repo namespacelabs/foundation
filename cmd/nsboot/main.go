@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -44,13 +45,7 @@ func main() {
 		},
 	}
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "update-ns",
-		Short: "Checks and downloads updates for the ns command.",
-		RunE: fncobra.RunEWithStarter(func(ctx context.Context, _ []string) error {
-			return nsboot.ForceUpdate(ctx)
-		}, nil),
-	})
+	rootCmd.AddCommand(cmd.NewUpdateNSCmd())
 
 	rootCmd.Flags().ParseErrorsWhitelist.UnknownFlags = true
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
