@@ -11,7 +11,6 @@ func NewGithubCmd() *cobra.Command {
 		Use: "github",
 	}
 
-	cmd.AddCommand(newAccessTokenCmd())
 	cmd.AddCommand(newUpdateStatusCmd())
 	cmd.AddCommand(newPullRequestCmd())
 
