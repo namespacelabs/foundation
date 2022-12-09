@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -29,12 +31,20 @@ type versionChecker struct {
 
 	current *schema.Workspace_BinaryDigest
 
-	mu     sync.Mutex
-	pinned []*schema.Workspace_BinaryDigest
+	mu       sync.Mutex
+	pinned   []*schema.Workspace_BinaryDigest
+	versions *proto.GetOrchestratorVersionResponse_Versions
+	plan     *schema.DeployPlan
 }
 
 func newVersionChecker(ctx context.Context) *versionChecker {
-	current, err := getCurrentVersion(ctx)
+	current, err := getCurrentDigest(ctx)
+	if err != nil {
+		log.Fatalf("unable to compute current version: %v", err)
+	}
+
+	version := os.Getenv("ORCH_VERSION")
+	curr, err := strconv.ParseInt(version, 10, 32)
 	if err != nil {
 		log.Fatalf("unable to compute current version: %v", err)
 	}
@@ -42,6 +52,9 @@ func newVersionChecker(ctx context.Context) *versionChecker {
 	vc := &versionChecker{
 		serverCtx: ctx,
 		current:   current,
+		versions: &proto.GetOrchestratorVersionResponse_Versions{
+			Current: int32(curr),
+		},
 	}
 
 	go func() {
@@ -67,12 +80,14 @@ func (vc *versionChecker) GetOrchestratorVersion(skipCache bool) (*proto.GetOrch
 	vc.mu.Lock()
 	defer vc.mu.Unlock()
 	return &proto.GetOrchestratorVersionResponse{
-		Current: vc.current,
-		Pinned:  vc.pinned,
+		Current:  vc.current,
+		Pinned:   vc.pinned,
+		Versions: vc.versions,
+		Plan:     vc.plan,
 	}, nil
 }
 
-func getCurrentVersion(ctx context.Context) (*schema.Workspace_BinaryDigest, error) {
+func getCurrentDigest(ctx context.Context) (*schema.Workspace_BinaryDigest, error) {
 	cfg, err := runtime.LoadRuntimeConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load runtime config: %w", err)
@@ -94,16 +109,26 @@ func (vc *versionChecker) updateLatest() error {
 	ctx, cancel := context.WithTimeout(vc.serverCtx, fetchLatestTimeout)
 	defer cancel()
 
-	res, err := fnapi.GetLatestPrebuilts(ctx, constants.ServerPkg, constants.ToolPkg)
+	prebuilts, err := fnapi.GetLatestPrebuilts(ctx, constants.ServerPkg, constants.ToolPkg)
 	if err != nil {
-		return fmt.Errorf("failed to fetch latest orch version from API server: %v", err)
+		return fmt.Errorf("failed to fetch latest orch prebuilts from API server: %v", err)
+	}
+
+	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
+	if err != nil {
+		return fmt.Errorf("failed to fetch latest orch deployment plan from API server: %v", err)
+	}
+
+	plan, version, err := parsePlan(plans)
+	if err != nil {
+		return err
 	}
 
 	vc.mu.Lock()
 	defer vc.mu.Unlock()
 
 	vc.pinned = nil
-	for _, p := range res.Prebuilt {
+	for _, p := range prebuilts.Prebuilt {
 		vc.pinned = append(vc.pinned, &schema.Workspace_BinaryDigest{
 			PackageName: p.PackageName,
 			Repository:  p.Repository,
@@ -111,5 +136,25 @@ func (vc *versionChecker) updateLatest() error {
 		})
 	}
 
+	vc.versions.Latest = version
+	vc.plan = plan
+
 	return nil
+}
+
+func parsePlan(res *fnapi.GetLatestDeployPlansResponse) (*schema.DeployPlan, int32, error) {
+	for _, plan := range res.Plan {
+		if plan.PackageName != constants.ServerPkg.String() {
+			continue
+		}
+
+		deployPlan := &schema.DeployPlan{}
+		if err := plan.Plan.UnmarshalTo(deployPlan); err != nil {
+			return nil, 0, fmt.Errorf("unable to unpack deployment plan: %w", err)
+		}
+
+		return deployPlan, plan.Version, nil
+	}
+
+	return nil, 0, fmt.Errorf("did not receive any deployment plan for orchestration server")
 }

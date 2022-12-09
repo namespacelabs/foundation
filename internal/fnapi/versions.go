@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -74,6 +75,33 @@ func GetLatestPrebuilts(ctx context.Context, pkgs ...schema.PackageName) (*GetLa
 
 	var resp GetLatestPrebuiltsResponse
 	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestPrebuilts", &req, DecodeJSONResponse(&resp)); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+type GetLatestDeployPlansRequest struct {
+	PackageName []string `json:"package_name,omitempty"`
+}
+
+type GetLatestDeployPlansResponse struct {
+	Plan []*GetLatestDeployPlansResponse_Plan `json:"plan,omitempty"`
+}
+
+type GetLatestDeployPlansResponse_Plan struct {
+	PackageName string    `json:"package_name,omitempty"`
+	Plan        anypb.Any `json:"plan,omitempty"`
+	Version     int32     `json:"version,omitempty"`
+}
+
+func GetLatestDeployPlans(ctx context.Context, pkgs ...schema.PackageName) (*GetLatestDeployPlansResponse, error) {
+	req := GetLatestDeployPlansRequest{
+		PackageName: schema.Strs(pkgs...),
+	}
+
+	var resp GetLatestDeployPlansResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestDeployPlans", &req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 

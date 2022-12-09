@@ -50,8 +50,18 @@ message GetOrchestratorVersionRequest {
 }
 
 message GetOrchestratorVersionResponse {
+    // Old protocol - support old clients
     foundation.schema.Workspace.BinaryDigest current         = 1;
     repeated foundation.schema.Workspace.BinaryDigest pinned = 2;
+
+    // New protocol
+    Versions                     versions = 3;
+    foundation.schema.DeployPlan plan     = 4;
+
+    message Versions {
+        int32 current = 1;
+        int32 latest  = 2;
+    }
 }
 
 service OrchestrationService {
