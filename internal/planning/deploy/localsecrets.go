@@ -86,7 +86,7 @@ func (l *localSecrets) MissingError(missing []*schema.PackageRef, missingSpecs [
 }
 
 func (l *localSecrets) loadSecretsFor(ctx context.Context, moduleName, secretFile string) (*secrets.Bundle, error) {
-	if strings.Index(moduleName, ":") >= 0 {
+	if strings.Contains(moduleName, ":") {
 		return nil, fnerrors.InternalError("module names can't contain colons")
 	}
 

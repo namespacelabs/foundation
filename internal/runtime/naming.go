@@ -10,7 +10,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -25,9 +24,6 @@ var (
 
 	WorkInProgressUseShortAlias = false
 )
-
-var errLogin = fnerrors.UsageError("Please run `ns login` to login.",
-	"Namespace automatically manages nscloud.dev-based sub-domains and issues SSL certificates on your behalf. To use these features, you'll need to login to Namespace using your Github account.")
 
 func ComputeNaming(ctx context.Context, ws string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
 	result, err := computeNaming(ctx, ws, env, cluster, source)

@@ -12,8 +12,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-const baseUrl = "https://login.namespace.so/login/cli"
-
 type StartLoginRequest struct {
 	Kind string `json:"kind"`
 }
