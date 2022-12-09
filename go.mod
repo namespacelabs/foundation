@@ -102,10 +102,10 @@ require (
 	golang.org/x/crypto v0.2.0
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 	golang.org/x/mod v0.7.0
-	golang.org/x/net v0.2.0
+	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.2.0
-	golang.org/x/term v0.2.0
+	golang.org/x/sys v0.3.0
+	golang.org/x/term v0.3.0
 	golang.org/x/tools v0.3.0
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c
 	google.golang.org/grpc v1.50.1
@@ -113,10 +113,10 @@ require (
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.9.0
 	honnef.co/go/tools v0.3.0
-	k8s.io/api v0.25.3
+	k8s.io/api v0.25.5
 	k8s.io/apiextensions-apiserver v0.25.3
-	k8s.io/apimachinery v0.25.3
-	k8s.io/client-go v0.25.3
+	k8s.io/apimachinery v0.25.5
+	k8s.io/client-go v0.25.5
 	k8s.io/utils v0.0.0-20221012122500-cfd413dd9e85
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20220708072700-49c0a87d068b
@@ -297,7 +297,7 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20221126150942-6ab00d035af9 // indirect
 	golang.org/x/oauth2 v0.1.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.1.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
