@@ -7,14 +7,10 @@ import (
 	"context"
 	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/secrets"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	Cert           *secrets.Value
-	Gen            *secrets.Value
-	Keygen         *secrets.Value
 	ReadinessCheck core.Check
 }
 
@@ -35,21 +31,6 @@ var (
 
 func makeDeps__iij69l(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-
-	// name: "cert"
-	if deps.Cert, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgRjZXJ0", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
-
-	// name: "gen"
-	if deps.Gen, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgNnZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
-
-	// name: "keygen"
-	if deps.Keygen, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("CgZrZXlnZW4=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
 
 	if deps.ReadinessCheck, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
