@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -39,12 +40,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 
 			tasks.Attachments(ctx).AddResult("platforms", platform.FormatPlatforms(platforms))
 
-			var ws build.Workspace
-			if RunCodegen {
-				ws = codegenWorkspace{server}
-			} else {
-				ws = server.Module()
-			}
+			var ws build.Workspace = server.Module()
 
 			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v focused=%v external=%v\n",
 				server.PackageName(), wsremote.Ctx(ctx) != nil, focused, server.Module().IsExternal())
@@ -58,15 +54,51 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 				}
 			}
 
-			return build.Plan{
+			plan := build.Plan{
 				SourceLabel:   fmt.Sprintf("Server %s", server.PackageName()),
 				SourcePackage: server.PackageName(),
 				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
 				Workspace:     ws,
 				Platforms:     platforms,
-			}, nil
+			}
+
+			if RunCodegen {
+				plan.Spec = runCodegen{spec, server}
+			} else {
+				plan.Spec = spec
+			}
+
+			return plan, nil
 		})
+}
+
+type runCodegen struct {
+	spec build.Spec
+	srv  planning.Server
+}
+
+var _ build.Spec = runCodegen{}
+
+func (rc runCodegen) BuildImage(ctx context.Context, sealedCtx pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	image, err := rc.spec.BuildImage(ctx, sealedCtx, conf)
+	if err != nil {
+		return nil, err
+	}
+
+	return compute.Inline(tasks.Action("server.build"), func(ctx context.Context) (oci.Image, error) {
+		// It's important to run codegen _before_ any of the image dependencies
+		// run, to make sure they observe an up-to-date workspace.
+		if err := codegenServer(ctx, rc.srv); err != nil {
+			return nil, err
+		}
+
+		return compute.GetValue(ctx, image)
+	}), nil
+}
+
+func (rc runCodegen) PlatformIndependent() bool {
+	return rc.spec.PlatformIndependent()
 }
 
 type prepareServerConfig struct {

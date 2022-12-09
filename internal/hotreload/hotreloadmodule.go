@@ -31,10 +31,6 @@ func (w hotReloadModule) ModuleName() string             { return w.module.Modul
 func (w hotReloadModule) Abs() string                    { return w.module.Abs() }
 func (w hotReloadModule) ReadOnlyFS(rel ...string) fs.FS { return w.module.ReadOnlyFS(rel...) }
 
-func (w hotReloadModule) Snapshot(rel string) compute.Computable[wscontents.Versioned] {
-	return wsremote.ObserveAndPush(w.module.Abs(), rel, w.sink)
-}
-
 func (w hotReloadModule) ChangeTrigger(rel string) compute.Computable[compute.Versioned] {
 	return compute.Transform("change-trigger", wsremote.ObserveAndPush(w.module.Abs(), rel, w.sink), func(_ context.Context, ws wscontents.Versioned) (compute.Versioned, error) {
 		return ws, nil

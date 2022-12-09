@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -54,7 +53,6 @@ type Workspace interface {
 	ModuleName() string
 	Abs() string
 	ReadOnlyFS(rel ...string) fs.FS
-	Snapshot(rel string) compute.Computable[wscontents.Versioned]
 
 	// ChangeTrigger returns an observable which will get a new value whenever a
 	// path under `rel` is modified, and the filter function doesn't reject.
