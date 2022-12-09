@@ -123,7 +123,7 @@ func prepareGenerate(ctx context.Context, loader pkggraph.PackageLoader, importL
 
 		for _, node := range opts.Nodes {
 			if node.PackageName.Equals(init.Node.PackageName) {
-				i.Deps = Ref{
+				i.Deps = &Ref{
 					GoImportURL: node.GoImportURL,
 					Typename:    node.Typename,
 				}
@@ -251,7 +251,7 @@ type goPackage struct {
 type goInitializer struct {
 	PackageName      schema.PackageName
 	GoImportURL      string
-	Deps             Ref
+	Deps             *Ref
 	InitializeBefore []string
 	InitializeAfter  []string
 }

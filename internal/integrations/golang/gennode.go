@@ -9,7 +9,6 @@ import (
 	"strings"
 	"text/template"
 
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/support/naming"
@@ -131,11 +130,6 @@ func generateNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggra
 			scoped = append(scoped, s)
 			break
 		}
-	}
-
-	if len(initializers) > 0 && len(single.DepVars) == 0 {
-		// TODO remove with #717
-		return fnerrors.New("%s: Nodes with initializers but no dependencies are not yet supported.", loc.PackageName)
 	}
 
 	return generateGoSource(ctx, fs, loc.Rel(depsFilename), imports, serviceTmpl, nodeTmplOptions{
