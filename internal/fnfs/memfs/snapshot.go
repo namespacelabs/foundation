@@ -5,13 +5,16 @@
 package memfs
 
 import (
+	"context"
 	"io/fs"
 	"sort"
 
 	"github.com/mattn/go-zglob"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type SnapshotOpts struct {
@@ -126,6 +129,12 @@ func (m *matcher) includes(path, name string) bool {
 	}
 
 	return true
+}
+
+func DeferSnapshot(fsys fs.FS, opts SnapshotOpts) compute.Computable[fs.FS] {
+	return compute.Inline(tasks.Action("fs.snapshot"), func(ctx context.Context) (fs.FS, error) {
+		return Snapshot(fsys, opts)
+	})
 }
 
 func Snapshot(fsys fs.FS, opts SnapshotOpts) (*FS, error) {

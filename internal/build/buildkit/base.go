@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
@@ -48,33 +49,16 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		JSON("version", buildkitIntegrationVersion).
 		Computable("req", l.req)
 
-		// XXX missing handling of Include and Exclude patterns.
+	// XXX missing handling of Include and Exclude patterns.
 	if !PreDigestLocalInputs {
 		// Local contents are added as dependencies to trigger continuous builds.
 		for k, local := range l.localDirs {
 			in = in.
-				Computable(fmt.Sprintf("local%d:contents", k), local.Module.Snapshot(local.Path)).
+				Computable(fmt.Sprintf("local%d:contents", k), memfs.DeferSnapshot(local.Module.ReadOnlyFS(local.Path), memfs.SnapshotOpts{})).
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}
-	} else {
-		// We compute the digest so that the compute graph can dedup this build
-		// with others that may be happening concurrently.
-		for _, local := range l.localDirs {
-			in = in.Marshal(fmt.Sprintf("local-contents:%s:%s", local.Module.Abs(), local.Path), func(ctx context.Context, w io.Writer) error {
-				contents, err := compute.GetValue(ctx, local.Module.Snapshot(local.Path))
-				if err != nil {
-					return err
-				}
-
-				digest, err := contents.ComputeDigest(ctx)
-				if err != nil {
-					return err
-				}
-
-				fmt.Fprintf(w, "%s\n", digest)
-				return nil
-			})
-		}
+	} else if len(l.localDirs) > 0 {
+		return in.Indigestible("localDirs", "not cacheable")
 	}
 
 	return in
