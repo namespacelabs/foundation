@@ -32,6 +32,9 @@ func NewUseCmd() *cobra.Command {
 		Short: "Use is a set of dependency controlled commands which can be used to manage your resources.",
 	}
 
+	cmd.AddCommand(newPsqlOld())
+	cmd.AddCommand(newPgdumpOld())
+	cmd.AddCommand(newPgrestoreOld())
 	cmd.AddCommand(newPsql())
 	cmd.AddCommand(newPgdump())
 	cmd.AddCommand(newPgrestore())
@@ -40,13 +43,13 @@ func NewUseCmd() *cobra.Command {
 }
 
 // TODO: this, and other commands, should be dynamically discovered. See #414.
-func newPsql() *cobra.Command {
+func newPsqlOld() *cobra.Command {
 	var res hydrateResult
 	var database string
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "psql [--database <database-name>]",
+			Use:   "psqlold [--database <database-name>]",
 			Short: "Start a Postgres SQL shell for the specified server.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
@@ -75,14 +78,14 @@ func newPsql() *cobra.Command {
 }
 
 // TODO: this, and other commands, should be dynamically discovered. See #414.
-func newPgdump() *cobra.Command {
+func newPgdumpOld() *cobra.Command {
 	var res hydrateResult
 	var database string
 	var out string
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "pgdump [--database <database-name>] [--out <file>]",
+			Use:   "pgdumpold [--database <database-name>] [--out <file>]",
 			Short: "Performs a dump of the contents of an existing database.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
@@ -132,14 +135,14 @@ func newPgdump() *cobra.Command {
 }
 
 // TODO: this, and other commands, should be dynamically discovered. See #414.
-func newPgrestore() *cobra.Command {
+func newPgrestoreOld() *cobra.Command {
 	var res hydrateResult
 	var database string
 	var restore string
 
 	return fncobra.
 		Cmd(&cobra.Command{
-			Use:   "pgrestore [--database <database-name>] --restore <file>",
+			Use:   "pgrestoreold [--database <database-name>] --restore <file>",
 			Short: "Performs a restore of the contents of an existing backup.",
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
