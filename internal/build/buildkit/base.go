@@ -16,6 +16,7 @@ import (
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/solver/pb"
+	"github.com/moby/patternmatcher"
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"go.opentelemetry.io/otel/trace"
@@ -24,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
@@ -61,7 +61,7 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 	}
 
 	for k, local := range l.localDirs {
-		if trigger := local.Module.ChangeTrigger(local.Path); trigger != nil {
+		if trigger := local.Module.ChangeTrigger(local.Path, local.ExcludePatterns); trigger != nil {
 			in = in.Computable(fmt.Sprintf("trigger:%d", k), trigger)
 		}
 	}
@@ -188,7 +188,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 					continue
 				}
 
-				matcher, err := fnfs.NewMatcher(fnfs.MatcherOpts{IncludeFilesGlobs: local.IncludePatterns, ExcludeFilesGlobs: MakeLocalExcludes(local)})
+				matcher, err := patternmatcher.New(MakeLocalExcludes(local))
 				if err != nil {
 					return res, err
 				}

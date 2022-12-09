@@ -22,14 +22,16 @@ import (
 type devModule struct {
 	module         build.Workspace
 	observeChanges bool
+	digestMode     bool
 	sink           wsremote.Sink
 	extraInputs    []compute.UntypedComputable
 }
 
-func NewDevModule(module build.Workspace, observeChanges bool, opts integrations.HotReloadOpts, extraInputs ...compute.UntypedComputable) build.Workspace {
+func NewDevModule(module build.Workspace, observeChanges, digestMode bool, opts integrations.HotReloadOpts, extraInputs ...compute.UntypedComputable) build.Workspace {
 	return devModule{
 		module:         module,
 		observeChanges: observeChanges,
+		digestMode:     digestMode,
 		sink:           observerSink{opts.Sink, opts.EventProcessor},
 		extraInputs:    extraInputs,
 	}
@@ -39,7 +41,10 @@ func (w devModule) ModuleName() string             { return w.module.ModuleName(
 func (w devModule) Abs() string                    { return w.module.Abs() }
 func (w devModule) ReadOnlyFS(rel ...string) fs.FS { return w.module.ReadOnlyFS(rel...) }
 
-func (w devModule) ChangeTrigger(rel string) compute.Computable[any] {
+func (w devModule) ChangeTrigger(rel string, excludes []string) compute.Computable[any] {
+	// If observing is disabled, we still need to trigger any subsequent
+	// dependencies, as these may be related w/ for example codegeneration that
+	// needs to happen before a build.
 	if !w.observeChanges {
 		in := compute.Inputs()
 		for k, extra := range w.extraInputs {
@@ -51,7 +56,7 @@ func (w devModule) ChangeTrigger(rel string) compute.Computable[any] {
 		})
 	}
 
-	return wsremote.ObserveAndPush(filepath.Join(w.module.Abs(), rel), w.sink, w.extraInputs...)
+	return wsremote.ObserveAndPush(filepath.Join(w.module.Abs(), rel), excludes, w.sink, w.digestMode, w.extraInputs...)
 }
 
 type observerSink struct {

@@ -16,21 +16,22 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/fsnotify/fsnotify"
+	"github.com/moby/patternmatcher"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-func SnapshotDirectory(ctx context.Context, absPath string) (*memfs.FS, error) {
-	fsys, err := snapshotDirectory(ctx, absPath, false)
+func SnapshotDirectory(ctx context.Context, absPath string, matcher *patternmatcher.PatternMatcher, digest bool) (*memfs.FS, error) {
+	fsys, err := snapshotDirectory(ctx, absPath, matcher, digest)
 	if err != nil {
 		return nil, fnerrors.InternalError("snapshot failed: %v", err)
 	}
 	return fsys, nil
 }
 
-func snapshotDirectory(ctx context.Context, absPath string, digest bool) (*memfs.FS, error) {
+func snapshotDirectory(ctx context.Context, absPath string, matcher *patternmatcher.PatternMatcher, digest bool) (*memfs.FS, error) {
 	if err := verifyDir(absPath); err != nil {
 		return nil, err
 	}
@@ -39,6 +40,17 @@ func snapshotDirectory(ctx context.Context, absPath string, digest bool) (*memfs
 	if err := filepath.WalkDir(absPath, func(osPathname string, de fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+
+		if matcher != nil {
+			if matches, err := matcher.MatchesOrParentMatches(osPathname); err != nil {
+				return err
+			} else if matches {
+				if de.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
 		}
 
 		// TODO: use the exclude/include patterns passed as a config instead.

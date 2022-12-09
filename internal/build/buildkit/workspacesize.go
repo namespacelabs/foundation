@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize"
+	"github.com/moby/patternmatcher"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -26,10 +27,19 @@ type workspaceSizeReport struct {
 	TotalSize uint64
 }
 
-func reportWorkspaceSize(ctx context.Context, fsys fs.FS, matcher *fnfs.PatternMatcher) (workspaceSizeReport, error) {
+func reportWorkspaceSize(ctx context.Context, fsys fs.FS, matcher *patternmatcher.PatternMatcher) (workspaceSizeReport, error) {
 	var w workspaceSizeReport
 
-	err := fnfs.WalkDirWithMatcher(fsys, ".", matcher, func(path string, d fs.DirEntry) error {
+	err := fnfs.WalkDir(fsys, ".", func(path string, d fs.DirEntry) error {
+		if matches, err := matcher.MatchesOrParentMatches(path); err != nil {
+			return err
+		} else if matches {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
 		if !d.IsDir() {
 			fi, err := d.Info()
 			if err == nil {

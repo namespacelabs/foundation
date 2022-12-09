@@ -33,9 +33,7 @@ type LocalContents struct {
 	Module build.Workspace
 	Path   string
 
-	// If set, only files matching these patterns will be included in the state.
-	IncludePatterns []string
-	// Added to the base exclude patterns. Override include patterns: if a file matches both, it is not included.
+	// Added to the base exclude patterns.
 	ExcludePatterns []string
 }
 

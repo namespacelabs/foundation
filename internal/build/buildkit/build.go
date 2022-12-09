@@ -239,8 +239,7 @@ func MakeLocalState(src LocalContents) llb.State {
 		llb.WithCustomName(fmt.Sprintf("Workspace %s (from %s)", src.Path, src.Module.ModuleName())),
 		llb.SharedKeyHint(src.Abs()),
 		llb.LocalUniqueID(src.Abs()),
-		llb.ExcludePatterns(MakeLocalExcludes(src)),
-		llb.IncludePatterns(src.IncludePatterns))
+		llb.ExcludePatterns(MakeLocalExcludes(src)))
 }
 
 func prepareSession(ctx context.Context, keychain oci.Keychain) ([]session.Attachable, error) {

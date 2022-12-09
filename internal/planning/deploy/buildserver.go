@@ -41,12 +41,13 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 
 			var ws build.Workspace = server.Module()
 
+			remote := wsremote.Ctx(ctx)
 			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v focused=%v external=%v\n",
-				server.PackageName(), wsremote.Ctx(ctx) != nil, focused, server.Module().IsExternal())
+				server.PackageName(), remote != nil, focused, server.Module().IsExternal())
 
 			observeChanges := focused && !server.Module().IsExternal()
 
-			opts := integrations.IntegrationFor(server.Framework()).PrepareHotReload(ctx, wsremote.Ctx(ctx), server)
+			opts := integrations.IntegrationFor(server.Framework()).PrepareHotReload(ctx, remote, server)
 			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: framework=%v opts=%v\n",
 				server.PackageName(), server.Framework(), opts != nil)
 
@@ -59,7 +60,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 				SourcePackage: server.PackageName(),
 				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
-				Workspace:     hotreload.NewDevModule(ws, observeChanges, *opts, &codegenTrigger{srv: server}),
+				Workspace:     hotreload.NewDevModule(ws, observeChanges, remote != nil, *opts, &codegenTrigger{srv: server}),
 				Platforms:     platforms,
 			}, nil
 		})

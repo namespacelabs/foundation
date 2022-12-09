@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/moby/patternmatcher"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -29,13 +30,15 @@ type Sink interface {
 
 // Returns a wscontents.Versioned which will produce a local snapshot as expected
 // but forwards all filesystem events (e.g. changes, removals) to the specified sink.
-func ObserveAndPush(absPath string, sink Sink, extraInputs ...compute.UntypedComputable) compute.Computable[any] {
-	return &observePath{absPath: absPath, sink: sink, extraInputs: extraInputs}
+func ObserveAndPush(absPath string, excludes []string, sink Sink, digestMode bool, extraInputs ...compute.UntypedComputable) compute.Computable[any] {
+	return &observePath{absPath: absPath, excludes: excludes, sink: sink, digestMode: digestMode, extraInputs: extraInputs}
 }
 
 type observePath struct {
 	absPath     string
+	excludes    []string
 	sink        Sink
+	digestMode  bool
 	extraInputs []compute.UntypedComputable
 
 	compute.LocalScoped[any]
@@ -54,20 +57,27 @@ func (op *observePath) Inputs() *compute.In {
 }
 
 func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (any, error) {
-	fmt.Fprintf(console.Debug(ctx), "wsremote: starting w/ snapshotting %q\n", op.absPath)
+	fmt.Fprintf(console.Debug(ctx), "wsremote: starting w/ snapshotting %q (excludes: %v)\n", op.absPath, op.excludes)
 
-	snapshot, err := wscontents.SnapshotDirectory(ctx, op.absPath)
+	matcher, err := patternmatcher.New(op.excludes)
 	if err != nil {
 		return nil, err
 	}
 
-	return localObserver{absPath: op.absPath, snapshot: snapshot, sink: op.sink}, nil
+	snapshot, err := wscontents.SnapshotDirectory(ctx, op.absPath, matcher, op.digestMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return localObserver{absPath: op.absPath, matcher: matcher, digestMode: op.digestMode, snapshot: snapshot, sink: op.sink}, nil
 }
 
 type localObserver struct {
-	absPath  string
-	snapshot *memfs.FS
-	sink     Sink
+	absPath    string
+	matcher    *patternmatcher.PatternMatcher
+	digestMode bool
+	snapshot   *memfs.FS
+	sink       Sink
 }
 
 func (lo localObserver) Abs() string { return lo.absPath }
@@ -95,7 +105,7 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 			case <-closeCh:
 				return
 			case <-t.C:
-				newSnapshot, deposited, err := checkSnapshot(ctx, last, lo.absPath, lo.sink)
+				newSnapshot, deposited, err := checkSnapshot(ctx, last, lo.absPath, lo.matcher, lo.digestMode, lo.sink)
 				if err != nil {
 					fmt.Fprintf(console.Errors(ctx), "FileSync failed while snapshotting %q: %v\n", lo.absPath, err)
 					return
@@ -117,8 +127,8 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 	return func() { close(closeCh) }, nil
 }
 
-func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink Sink) (*memfs.FS, bool, error) {
-	newSnapshot, err := wscontents.SnapshotDirectory(ctx, absPath)
+func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, matcher *patternmatcher.PatternMatcher, digestMode bool, sink Sink) (*memfs.FS, bool, error) {
+	newSnapshot, err := wscontents.SnapshotDirectory(ctx, absPath, matcher, digestMode)
 	if err != nil {
 		return nil, false, err
 	}
@@ -160,12 +170,17 @@ func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, sink
 			return nil, false, err
 		}
 
-		events = append(events, &wscontents.FileEvent{
-			Event:       wscontents.FileEvent_WRITE,
-			Path:        filename,
-			NewContents: contents.Contents,
-			Mode:        uint32(newFilesModes[filename].FileMode.Perm()),
-		})
+		ev := &wscontents.FileEvent{
+			Event: wscontents.FileEvent_WRITE,
+			Path:  filename,
+			Mode:  uint32(newFilesModes[filename].FileMode.Perm()),
+		}
+
+		if !digestMode {
+			ev.NewContents = contents.Contents
+		}
+
+		events = append(events, ev)
 	}
 
 	// Mkdirs come first.

@@ -49,7 +49,7 @@ func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Works
 		binary:       bin,
 		platform:     *target.TargetPlatform(),
 		workspaceAbs: workspace.Abs(),
-		trigger:      workspace.ChangeTrigger(bin.GoModulePath),
+		trigger:      workspace.ChangeTrigger(bin.GoModulePath, nil),
 	}
 
 	if bin.UnsafeCacheable {
