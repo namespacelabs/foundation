@@ -25,7 +25,6 @@ func NewDebugCmd() *cobra.Command {
 	cmd.AddCommand(newDownloadCmd())
 	cmd.AddCommand(newPrepareCmd())
 	cmd.AddCommand(newDnsQuery())
-	cmd.AddCommand(newObserveFsCmd())
 	cmd.AddCommand(newDecodeProtoCmd())
 	cmd.AddCommand(newUpdateLicenseCmd())
 	cmd.AddCommand(newKubernetesCmd())
