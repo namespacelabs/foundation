@@ -25,7 +25,7 @@ type snapshotFiles struct {
 }
 
 func (m snapshotFiles) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	w := conf.Workspace().VersionedFS(m.rel, true)
+	w := conf.Workspace().Snapshot(m.rel, true)
 
 	return compute.Map(tasks.Action("binary.snapshot-files"),
 		compute.Inputs().Computable("fsys", w),

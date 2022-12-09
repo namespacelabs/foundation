@@ -49,7 +49,7 @@ func (n nodeJsBinary) LLB(ctx context.Context, cfg cfg.Configuration, bnj buildN
 		return llb.State{}, nil, err
 	}
 
-	fsys, err := compute.GetValue(ctx, conf.Workspace().VersionedFS(bnj.loc.Rel(), false))
+	fsys, err := compute.GetValue(ctx, conf.Workspace().Snapshot(bnj.loc.Rel(), false))
 	if err != nil {
 		return llb.State{}, nil, err
 	}

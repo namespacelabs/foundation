@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"context"
+	"io/fs"
 
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -25,7 +26,8 @@ type codegenWorkspace struct {
 
 func (cw codegenWorkspace) ModuleName() string { return cw.srv.Module().ModuleName() }
 func (cw codegenWorkspace) Abs() string        { return cw.srv.Module().Abs() }
-func (cw codegenWorkspace) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
+func (cw codegenWorkspace) ReadOnlyFS() fs.FS  { return cw.srv.Module().ReadOnlyFS() }
+func (cw codegenWorkspace) Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
 	return &codegenThenSnapshot{srv: cw.srv, rel: rel, observeChanges: observeChanges}
 }
 

@@ -251,7 +251,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if nix := src.NixFlake; nix != "" {
-		fsys, err := compute.GetValue(ctx, loc.Module.VersionedFS(loc.Rel(nix), false))
+		fsys, err := compute.GetValue(ctx, loc.Module.Snapshot(loc.Rel(nix), false))
 		if err != nil {
 			return nil, fnerrors.AttachLocation(loc, err)
 		}

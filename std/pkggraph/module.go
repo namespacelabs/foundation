@@ -58,7 +58,7 @@ func (mod *Module) ModuleName() string { return mod.Workspace.ModuleName }
 func (mod *Module) IsExternal() bool { return mod.version != "" }
 
 func (mod *Module) Version() string { return mod.version }
-func (mod *Module) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
+func (mod *Module) Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
 	return wscontents.Observe(mod.absPath, rel, observeChanges && !mod.IsExternal())
 }
 

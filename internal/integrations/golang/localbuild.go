@@ -49,7 +49,7 @@ func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Works
 		// but also are guaranteed to only be invoked after generation functions run.
 		oci.MakeLayer(fmt.Sprintf("go binary layer %s", bin.PackageName), &compilation{
 			sdk:       sdk,
-			workspace: workspace.VersionedFS(bin.GoModulePath, bin.isFocus),
+			workspace: workspace.Snapshot(bin.GoModulePath, bin.isFocus),
 			binary:    bin,
 			platform:  *target.TargetPlatform(),
 		}),

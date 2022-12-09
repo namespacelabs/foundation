@@ -136,7 +136,7 @@ func makeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggr
 				return nil, fnerrors.NewWithLocation(serverLoc, "%s: must be a file, not a directory", v.FromWorkspace)
 			}
 
-			v, err := compute.GetValue(ctx, serverLoc.Module.VersionedFS(v.FromWorkspace, false))
+			v, err := compute.GetValue(ctx, serverLoc.Module.Snapshot(v.FromWorkspace, false))
 			if err != nil {
 				return nil, fnerrors.NewWithLocation(serverLoc, "failed to read contents: %v", err)
 			}

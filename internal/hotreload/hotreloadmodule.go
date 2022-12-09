@@ -6,6 +6,7 @@ package hotreload
 
 import (
 	"context"
+	"io/fs"
 
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -28,12 +29,13 @@ func NewHotReloadModule(module build.Workspace, opts *integrations.HotReloadOpts
 
 func (w hotReloadModule) ModuleName() string { return w.module.ModuleName() }
 func (w hotReloadModule) Abs() string        { return w.module.Abs() }
-func (w hotReloadModule) VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
+func (w hotReloadModule) ReadOnlyFS() fs.FS  { return w.module.ReadOnlyFS() }
+func (w hotReloadModule) Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned] {
 	if observeChanges {
 		return wsremote.ObserveAndPush(w.module.Abs(), rel, w.sink)
 	}
 
-	return w.module.VersionedFS(rel, observeChanges)
+	return w.module.Snapshot(rel, observeChanges)
 }
 
 type observerSink struct {

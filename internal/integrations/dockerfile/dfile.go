@@ -5,18 +5,23 @@
 package dockerfile
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
+	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -47,16 +52,37 @@ func makeDockerfileState(sourceLabel string, contents []byte) llb.State {
 }
 
 func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
+	// There's a compromise here: we go through a non-snapshot to fetch
+	// .dockerignore, to avoid creating two snapshots.
+	dfignore, err := fs.ReadFile(conf.Workspace().ReadOnlyFS(), filepath.Join(df.ContextRel, ".dockerignore"))
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return nil, fnerrors.InternalError("failed to check if a .dockerignore exists: %w", err)
+		}
+	}
+
+	excludes, err := dockerignore.ReadAll(bytes.NewReader(dfignore))
+	if err != nil {
+		return nil, fnerrors.New("failed to parse dockerignore: %w", err)
+	}
+
 	generatedRequest := &generateRequest{
 		// Setting observeChanges to true will yield a new solve() on changes to the workspace.
 		// Also importantly we scope observe changes to ContextRel.
-		workspace:  conf.Workspace().VersionedFS(df.ContextRel, df.IsFocus),
+		workspace:  conf.Workspace().Snapshot(df.ContextRel, df.IsFocus),
 		contextRel: df.ContextRel,
 		dockerfile: df.Dockerfile,
 		conf:       conf,
+		excludes:   excludes,
 	}
 
-	return buildkit.MakeImage(buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, generatedRequest, []buildkit.LocalContents{dockerContext(conf, df.ContextRel)}, conf.PublishName()), nil
+	return buildkit.MakeImage(
+		buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()),
+		conf,
+		generatedRequest,
+		[]buildkit.LocalContents{
+			dockerContext(conf, df.ContextRel, excludes),
+		}, conf.PublishName()), nil
 }
 
 func (df dockerfileBuild) PlatformIndependent() bool { return false }
@@ -65,6 +91,7 @@ type generateRequest struct {
 	workspace              compute.Computable[wscontents.Versioned] // Used as an input so we trigger new requests on changes to the Dockerfile.
 	contextRel, dockerfile string
 	conf                   build.Configuration
+	excludes               []string
 	compute.LocalScoped[*buildkit.FrontendRequest]
 }
 
@@ -96,7 +123,7 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 		Frontend: "dockerfile.v0",
 		FrontendInputs: map[string]llb.State{
 			dockerfile.DefaultLocalNameDockerfile: makeDockerfileState(g.conf.SourceLabel(), dfcontents),
-			dockerfile.DefaultLocalNameContext:    buildkit.MakeLocalState(dockerContext(g.conf, g.contextRel)),
+			dockerfile.DefaultLocalNameContext:    buildkit.MakeLocalState(dockerContext(g.conf, g.contextRel, g.excludes)),
 		},
 	}
 
@@ -107,11 +134,12 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 	return req, nil
 }
 
-func dockerContext(conf build.Configuration, contextRel string) buildkit.LocalContents {
+func dockerContext(conf build.Configuration, contextRel string, excludes []string) buildkit.LocalContents {
 	return buildkit.LocalContents{
-		Module:         conf.Workspace(),
-		Path:           contextRel,
-		ObserveChanges: false, // We don't need to re-observe changes because changes to the workspace will already yield a new frontendReq.
+		Module:          conf.Workspace(),
+		Path:            contextRel,
+		ObserveChanges:  false, // We don't need to re-observe changes because changes to the workspace will already yield a new frontendReq.
+		ExcludePatterns: excludes,
 	}
 }
 

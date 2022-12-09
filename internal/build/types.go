@@ -6,6 +6,7 @@ package build
 
 import (
 	"context"
+	"io/fs"
 	"strings"
 	"time"
 
@@ -49,10 +50,13 @@ func (p Plan) GetSourcePackageRef() *schema.PackageRef {
 	return schema.MakePackageSingleRef(p.SourcePackage)
 }
 
+type FilterFunc func(string) bool
+
 type Workspace interface {
 	ModuleName() string
 	Abs() string
-	VersionedFS(rel string, observeChanges bool) compute.Computable[wscontents.Versioned]
+	ReadOnlyFS() fs.FS
+	Snapshot(rel string, observeChanges bool) compute.Computable[wscontents.Versioned]
 }
 
 type BuildTarget interface {
