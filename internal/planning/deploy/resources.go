@@ -456,14 +456,9 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 	var secrets []runtime.SecretResourceDependency
 	for _, dep := range inputs {
 		if parsing.IsSecretResource(dep.Spec.Class.Ref) {
-			secretIntent := &runtimepb.SecretIntent{}
-			if err := proto.Unmarshal(dep.Spec.Source.Intent.Value, secretIntent); err != nil {
+			ref := &schema.PackageRef{}
+			if err := proto.Unmarshal(dep.Spec.Source.Intent.Value, ref); err != nil {
 				return nil, nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
-			}
-
-			ref, err := schema.StrictParsePackageRef(secretIntent.Ref)
-			if err != nil {
-				return nil, nil, fnerrors.BadInputError("failed to resolve reference: %w", err)
 			}
 
 			specs, err := loadSecretSpecs(ctx, pl, ref)

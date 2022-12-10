@@ -11,8 +11,7 @@ resourceClasses: {
 	}
 	"Secret": {
 		intent: {
-			type:   "foundation.library.runtime.SecretIntent"
-			source: "./intents.proto"
+			type: "foundation.schema.PackageRef"
 		}
 		produces: {
 			type:   "foundation.library.runtime.SecretInstance"

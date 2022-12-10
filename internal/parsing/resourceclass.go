@@ -8,6 +8,7 @@ import (
 	"context"
 	"io/fs"
 
+	"google.golang.org/protobuf/reflect/protodesc"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -37,7 +38,7 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 			return err
 		}
 
-		InstanceType, err := loadUserType(parseOpts, fsys, pp.Location, rc.InstanceType)
+		instanceType, err := loadUserType(parseOpts, fsys, pp.Location, rc.InstanceType)
 		if err != nil {
 			return err
 		}
@@ -46,7 +47,7 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 			Ref:             &schema.PackageRef{PackageName: rc.PackageName, Name: rc.Name},
 			Source:          rc,
 			IntentType:      intentType,
-			InstanceType:    InstanceType,
+			InstanceType:    instanceType,
 			DefaultProvider: schema.PackageName(rc.DefaultProvider),
 		})
 	}
@@ -55,6 +56,22 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 }
 
 func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, spec *schema.ResourceClass_Type) (pkggraph.UserType, error) {
+	switch spec.ProtoType {
+	case "foundation.schema.PackageRef":
+		md := (&schema.PackageRef{}).ProtoReflect().Descriptor()
+		file := protodesc.ToFileDescriptorProto(md.ParentFile())
+
+		fds := &protos.FileDescriptorSetAndDeps{}
+		fds.File = append(fds.File, file)
+
+		files, err := protodesc.NewFiles(fds.AsFileDescriptorSet())
+		if err != nil {
+			return pkggraph.UserType{}, fnerrors.NewWithLocation(loc, "failed to generate registry files: %v", err)
+		}
+
+		return pkggraph.UserType{Descriptor: md, Sources: fds, Registry: files}, nil
+	}
+
 	fds, err := parseOpts.ParseAtLocation(fsys, loc, []string{spec.ProtoSource})
 	if err != nil {
 		return pkggraph.UserType{}, fnerrors.NewWithLocation(loc, "failed to parse proto sources %v: %v", spec.ProtoSource, err)

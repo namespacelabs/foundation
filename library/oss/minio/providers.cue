@@ -10,13 +10,13 @@ providers: {
 			}
 			// Mounts the MinIO user as a secret
 			user: {
-				class: "namespacelabs.dev/foundation/library/runtime:Secret"
-				intent: ref: "namespacelabs.dev/foundation/library/oss/minio/server:user"
+				class:  "namespacelabs.dev/foundation/library/runtime:Secret"
+				intent: "namespacelabs.dev/foundation/library/oss/minio/server:user"
 			}
 			// Mounts the MinIO password as a secret
 			password: {
-				class: "namespacelabs.dev/foundation/library/runtime:Secret"
-				intent: ref: "namespacelabs.dev/foundation/library/oss/minio/server:password"
+				class:  "namespacelabs.dev/foundation/library/runtime:Secret"
+				intent: "namespacelabs.dev/foundation/library/oss/minio/server:password"
 			}
 		}
 	}

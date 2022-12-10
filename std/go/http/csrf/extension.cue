@@ -8,8 +8,8 @@ extension: fn.#Extension & {
 
 	resources: {
 		"token-secret-resource": {
-			kind: "namespacelabs.dev/foundation/library/runtime:Secret"
-			input: ref: ":token-secret"
+			kind:  "namespacelabs.dev/foundation/library/runtime:Secret"
+			input: ":token-secret"
 		}
 	}
 }

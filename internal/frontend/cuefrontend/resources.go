@@ -177,7 +177,10 @@ func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, loc
 		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
 	}
 
-	msg, err := allocateMessage(subFsys, rc.IntentType.Descriptor, value)
+	msg, err := allocateWellKnownMessage(parseContext{
+		FS:          subFsys,
+		PackageName: loc.PackageName,
+	}, rc.IntentType.Descriptor, value)
 	if err != nil {
 		return nil, err
 	}

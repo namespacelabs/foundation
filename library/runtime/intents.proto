@@ -11,7 +11,3 @@ option go_package = "namespacelabs.dev/foundation/library/runtime";
 message ServerIntent {
     string package_name = 1;
 }
-
-message SecretIntent {
-    string ref = 1;
-}

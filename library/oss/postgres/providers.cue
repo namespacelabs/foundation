@@ -19,8 +19,8 @@ providers: {
 			}
 			// Mounts the Postgres password as a secret
 			password: {
-				class: "namespacelabs.dev/foundation/library/runtime:Secret"
-				intent: ref: "namespacelabs.dev/foundation/library/oss/postgres/server:password"
+				class:  "namespacelabs.dev/foundation/library/runtime:Secret"
+				intent: "namespacelabs.dev/foundation/library/oss/postgres/server:password"
 			}
 		}
 	}

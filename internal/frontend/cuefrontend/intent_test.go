@@ -89,7 +89,7 @@ func TestAllocateMessage(t *testing.T) {
 			},
 		},
 	} {
-		msg, err := allocateMessage(testData, test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
+		msg, err := allocateWellKnownMessage(parseContext{FS: testData}, test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
 		if err != nil {
 			t.Error(err)
 		} else {

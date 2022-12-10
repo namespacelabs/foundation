@@ -9,8 +9,8 @@ providers: {
 			}
 
 			secrets: {
-				kind: "namespacelabs.dev/foundation/library/runtime:Secret"
-				input: ref: ":key1"
+				kind:  "namespacelabs.dev/foundation/library/runtime:Secret"
+				input: ":key1"
 			}
 		}
 	}
