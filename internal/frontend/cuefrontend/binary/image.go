@@ -53,9 +53,16 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 			if err != nil {
 				return nil, err
 			}
+
 			outRef, err = schema.ParsePackageRef(pkg.PackageName(), str)
 			if err != nil {
 				return nil, fnerrors.NewWithLocation(pkg.Location, "parsing binary reference: %w", err)
+			}
+
+			if outRef.AsPackageName() != pkg.PackageName() {
+				if _, err := pl.LoadByName(ctx, outRef.AsPackageName()); err != nil {
+					return nil, err
+				}
 			}
 		} else {
 			integration, err := integrationparsing.BuildParser.ParseEntity(ctx, env, pl, pkg.Location, build)
