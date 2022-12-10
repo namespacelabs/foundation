@@ -5,8 +5,8 @@ providers: {
 		resources: {
 			// Adds the server to the stack
 			server: {
-				class: "namespacelabs.dev/foundation/library/runtime:Server"
-				intent: package_name: "namespacelabs.dev/foundation/library/oss/minio/server"
+				class:  "namespacelabs.dev/foundation/library/runtime:Server"
+				intent: "namespacelabs.dev/foundation/library/oss/minio/server"
 			}
 			// Mounts the MinIO user as a secret
 			user: {

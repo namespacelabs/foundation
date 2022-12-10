@@ -14,10 +14,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support/naming"
-	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
+
+const Version_LibraryIntentsChanged = 48
 
 type packageRefLike interface {
 	GetPackageName() string
@@ -144,17 +145,21 @@ func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owne
 	// resource class. Other type of resources could also have references to
 	// packages.
 
+	if err := pkggraph.ValidateFoundation("runtime resources", Version_LibraryIntentsChanged, pkggraph.ModuleFromLoader(ctx, pl)); err != nil {
+		return nil, err
+	}
+
 	var pkg schema.PackageName
 	var msg proto.Message
 
 	switch {
 	case IsServerResource(instance.Class):
-		intent := &runtime.ServerIntent{}
+		intent := &schema.PackageRef{}
 		if err := proto.Unmarshal(instance.Intent.Value, intent); err != nil {
 			return nil, fnerrors.InternalError("failed to unwrap Server intent")
 		}
 
-		pkg = schema.PackageName(intent.PackageName)
+		pkg = intent.AsPackageName()
 		msg = intent
 
 	case IsSecretResource(instance.Class):
@@ -211,7 +216,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph
 
 func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
 	for _, s := range servers {
-		intent, err := anypb.New(&runtime.ServerIntent{
+		intent, err := anypb.New(&schema.PackageRef{
 			PackageName: s.String(),
 		})
 		if err != nil {

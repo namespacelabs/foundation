@@ -14,8 +14,8 @@ providers: {
 		resources: {
 			// Adds the server to the stack
 			server: {
-				class: "namespacelabs.dev/foundation/library/runtime:Server"
-				intent: package_name: "namespacelabs.dev/foundation/library/oss/postgres/server"
+				class:  "namespacelabs.dev/foundation/library/runtime:Server"
+				intent: "namespacelabs.dev/foundation/library/oss/postgres/server"
 			}
 			// Mounts the Postgres password as a secret
 			password: {

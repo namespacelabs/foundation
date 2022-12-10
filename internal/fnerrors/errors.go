@@ -103,8 +103,17 @@ func NoAccessToLimitedFeature() error {
 }
 
 // This error means that Namespace does not meet the minimum version requirements.
-func DoesNotMeetVersionRequirements(what string, expected, got int32) error {
-	return &VersionError{what, expected, got}
+func NamespaceTooOld(what string, expected, got int32) error {
+	if expected == 0 && got == 0 {
+		return New("`ns` needs to be updated to use %q", what)
+	}
+
+	return New("`ns` needs to be updated to use %q, (need api version %d, got %d)", what, expected, got)
+}
+
+func NamespaceTooRecent(what string, expected, got int32) error {
+	return UsageError("Please run `ns mod get namespacelabs.dev/foundation` to update your Namespace dependency version.",
+		"Your namespacelabs.dev/foundation dependency is too old to use %q with this version of `ns` (running %d, the dependency is version %d)", what, expected, got)
 }
 
 // This error is purely for wiring and ensures that Namespace exits with an appropriate exit code.
@@ -189,19 +198,6 @@ func (e *ErrWithLogs) Error() string {
 	return e.Err.Error()
 }
 
-type VersionError struct {
-	What          string
-	Expected, Got int32
-}
-
-func (e *VersionError) Error() string {
-	if e.Expected == 0 && e.Got == 0 {
-		return fmt.Sprintf("`ns` needs to be updated to use %q", e.What)
-	}
-
-	return fmt.Sprintf("`ns` needs to be updated to use %q, (need api version %d, got %d)", e.What, e.Expected, e.Got)
-}
-
 type ExitError interface {
 	ExitCode() int
 }
@@ -242,7 +238,7 @@ func (ae *ActionError) GRPCStatus() *status.Status {
 
 func IsNamespaceError(err error) bool {
 	switch err.(type) {
-	case *BaseError, *InvocationErr, *DependencyFailedError, *VersionError, *ActionError:
+	case *BaseError, *InvocationErr, *DependencyFailedError, *ActionError:
 		return true
 	}
 	return false

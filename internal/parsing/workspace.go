@@ -68,7 +68,7 @@ func RawFindModuleRoot(dir string, names ...string) (string, error) {
 func validateAPIRequirements(moduleName string, w *schema.Workspace_FoundationRequirements) error {
 	apiVersion := int32(versions.Builtin().APIVersion)
 	if w.GetMinimumApi() > apiVersion {
-		return fnerrors.DoesNotMeetVersionRequirements(moduleName, w.GetMinimumApi(), apiVersion)
+		return fnerrors.NamespaceTooOld(moduleName, w.GetMinimumApi(), apiVersion)
 	}
 
 	// Check that the foundation repo dep uses an API compatible with the current CLI.

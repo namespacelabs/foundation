@@ -4,8 +4,8 @@ providers: {
 
 		resources: {
 			another: {
-				kind: "namespacelabs.dev/foundation/library/runtime:Server"
-				input: package_name: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple"
+				kind:  "namespacelabs.dev/foundation/library/runtime:Server"
+				input: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple"
 			}
 
 			secrets: {

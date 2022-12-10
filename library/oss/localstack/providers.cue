@@ -4,8 +4,8 @@ providers: {
 
 		resources: {
 			server: {
-				class: "namespacelabs.dev/foundation/library/runtime:Server"
-				intent: package_name: "namespacelabs.dev/foundation/library/oss/localstack/server"
+				class:  "namespacelabs.dev/foundation/library/runtime:Server"
+				intent: "namespacelabs.dev/foundation/library/oss/localstack/server"
 			}
 		}
 	}

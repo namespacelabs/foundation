@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/internal/versions"
-	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -260,7 +259,7 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 
 		ps.Resources = append(ps.Resources, resources...)
 
-		if err := discoverDeclaredServers(resources, &ps.DeclaredStack); err != nil {
+		if err := discoverDeclaredServers(server.SealedContext(), resources, &ps.DeclaredStack); err != nil {
 			return err
 		}
 
@@ -278,27 +277,31 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 	})
 }
 
-func discoverDeclaredServers(resources []pkggraph.ResourceInstance, serverList *schema.PackageList) error {
+func discoverDeclaredServers(modules pkggraph.Modules, resources []pkggraph.ResourceInstance, serverList *schema.PackageList) error {
 	for _, res := range resources {
 		switch {
 		case parsing.IsServerResource(res.Spec.Class.Ref):
-			serverIntent := &runtimepb.ServerIntent{}
+			if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(modules)); err != nil {
+				return err
+			}
+
+			serverIntent := &schema.PackageRef{}
 			if err := proto.Unmarshal(res.Spec.Source.Intent.Value, serverIntent); err != nil {
 				return fnerrors.InternalError("failed to unwrap Server")
 			}
 
-			serverList.Add(schema.PackageName(serverIntent.PackageName))
+			serverList.Add(serverIntent.AsPackageName())
 
 		case parsing.IsSecretResource(res.Spec.Class.Ref):
 			// Nothing to do.
 
 		default:
-			if err := discoverDeclaredServers(res.Spec.ResourceInputs, serverList); err != nil {
+			if err := discoverDeclaredServers(modules, res.Spec.ResourceInputs, serverList); err != nil {
 				return err
 			}
 
 			if res.Spec.Provider != nil {
-				if err := discoverDeclaredServers(res.Spec.Provider.Resources, serverList); err != nil {
+				if err := discoverDeclaredServers(modules, res.Spec.Provider.Resources, serverList); err != nil {
 					return err
 				}
 			}

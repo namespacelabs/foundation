@@ -26,7 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
-	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -89,12 +88,16 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 
 			switch {
 			case parsing.IsServerResource(resource.Class.Ref):
-				serverIntent := &runtimepb.ServerIntent{}
+				if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(modules)); err != nil {
+					return nil, err
+				}
+
+				serverIntent := &schema.PackageRef{}
 				if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
 					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 				}
 
-				target, has := stack.GetServerProto(schema.PackageName(serverIntent.PackageName))
+				target, has := stack.GetServerProto(serverIntent.AsPackageName())
 				if !has {
 					return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
 				}

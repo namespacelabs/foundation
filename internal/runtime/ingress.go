@@ -326,7 +326,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		// -> abcdef = sha256(env.name, pkggraph.Module_name)[6:]
 
 		if computed.MainModuleName == "" {
-			return nil, fnerrors.DoesNotMeetVersionRequirements("domain allocation", 0, 0)
+			return nil, fnerrors.NamespaceTooOld("domain allocation", 0, 0)
 		}
 
 		x := naming.StableIDN(fmt.Sprintf("%s:%s", env.Name, computed.MainModuleName), 6)

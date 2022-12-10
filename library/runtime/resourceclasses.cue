@@ -1,8 +1,7 @@
 resourceClasses: {
 	"Server": {
 		intent: {
-			type:   "foundation.library.runtime.ServerIntent"
-			source: "./intents.proto"
+			type: "foundation.schema.PackageRef"
 		}
 		produces: {
 			type:   "foundation.schema.runtime.Server"

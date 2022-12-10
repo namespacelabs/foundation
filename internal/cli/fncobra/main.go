@@ -454,10 +454,6 @@ func handleExitError(style colors.Style, err error) int {
 		// If we are exiting, because a sub-process failed, don't bother outputting
 		// an error again, just forward the appropriate exit code.
 		return exitError.ExitCode()
-	} else if versionError, ok := err.(*fnerrors.VersionError); ok {
-		format.Format(os.Stderr, versionError, format.WithStyle(style))
-
-		return 2
 	} else {
 		// Only print errors after calling flushLogs above, so the console driver
 		// is no longer erasing lines.
