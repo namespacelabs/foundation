@@ -30,11 +30,11 @@ func ValidateFoundation(what string, minimumVersion int, lmf LoadModuleFunc) err
 
 func ModuleFromLoader(ctx context.Context, pl PackageLoader) LoadModuleFunc {
 	return func(pn schema.PackageName) (*Module, error) {
-		fn, err := pl.LoadByName(ctx, pn)
+		fn, err := pl.Resolve(ctx, pn)
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to load module %q: %w", pn, err)
 		}
-		return fn.Location.Module, nil
+		return fn.Module, nil
 	}
 }
 
