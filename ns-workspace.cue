@@ -7,7 +7,6 @@ prebuilts: {
 	digest: {
 		"namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt":                     "sha256:5a9f9711fcd93aa2cdb5d2ee2aaa1b2fdd23b7e139ff4a39438153668b9b84ef"
 		"namespacelabs.dev/foundation/std/development/filesync/controller":                 "sha256:41ffa681aec6a70dcd5a7ebeccd94814688389a45f39810138a4d3f1ef8278da"
-		"namespacelabs.dev/foundation/std/grpc/httptranscoding/configure":                  "sha256:eae106958cb4886d5ffab9f661f758a242d31c8c02358dd96fc301a247a7328a"
 		"namespacelabs.dev/foundation/std/monitoring/grafana/tool":                         "sha256:346a38e8301ba8366659280249a16ec287a14559f2855f5e7f2d07e5e4c190f9"
 		"namespacelabs.dev/foundation/std/monitoring/prometheus/tool":                      "sha256:067f86f8231c4787fa49d70251dba1c3b25d98bcfa020d21529994896786b5eb"
 		"namespacelabs.dev/foundation/std/networking/gateway/controller":                   "sha256:11ff24b7079bd83001568570ccfac7b6118baa84f585901d54419bb7f08727a5"
