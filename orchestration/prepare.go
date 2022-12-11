@@ -140,28 +140,30 @@ func getVersions(ctx context.Context, env cfg.Configuration, cluster runtime.Clu
 		return &proto.GetOrchestratorVersionResponse{}, nil
 	}
 
-	if res, err := getVersionsFromOrchestrator(ctx, env, cluster); err == nil {
+	return tasks.Return(ctx, tasks.Action("orchestrator.fetch-version"), func(ctx context.Context) (*proto.GetOrchestratorVersionResponse, error) {
+		if res, err := getVersionsFromOrchestrator(ctx, env, cluster); err == nil {
+			return res, nil
+		} else {
+			fmt.Fprintf(console.Debug(ctx), "failed to fetch version from orchestrator: %v\nFalling back to pinned version.\n", err)
+		}
+
+		// Fallback path: No orchestrator deployed - fetch pinned version directly.
+		prebuilts, err := fnapi.GetLatestPrebuilts(ctx, constants.ServerPkg, constants.ToolPkg)
+		if err != nil {
+			return nil, err
+		}
+
+		res := &proto.GetOrchestratorVersionResponse{}
+		for _, prebuilt := range prebuilts.Prebuilt {
+			res.Pinned = append(res.Pinned, &schema.Workspace_BinaryDigest{
+				PackageName: prebuilt.PackageName,
+				Repository:  prebuilt.Repository,
+				Digest:      prebuilt.Digest,
+			})
+		}
+
 		return res, nil
-	} else {
-		fmt.Fprintf(console.Debug(ctx), "failed to fetch version from orchestrator: %v\nFalling back to pinned version.\n", err)
-	}
-
-	// Fallback path: No orchestrator deployed - fetch pinned version directly.
-	prebuilts, err := fnapi.GetLatestPrebuilts(ctx, constants.ServerPkg, constants.ToolPkg)
-	if err != nil {
-		return nil, err
-	}
-
-	res := &proto.GetOrchestratorVersionResponse{}
-	for _, prebuilt := range prebuilts.Prebuilt {
-		res.Pinned = append(res.Pinned, &schema.Workspace_BinaryDigest{
-			PackageName: prebuilt.PackageName,
-			Repository:  prebuilt.Repository,
-			Digest:      prebuilt.Digest,
-		})
-	}
-
-	return res, nil
+	})
 }
 
 func getVersionsFromOrchestrator(ctx context.Context, targetEnv cfg.Configuration, cluster runtime.Cluster) (*proto.GetOrchestratorVersionResponse, error) {

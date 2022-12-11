@@ -17,7 +17,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -182,7 +181,7 @@ func RewriteWith(ctx context.Context, fsys fnfs.ReadWriteFS, filename string, de
 		return err
 	}
 
-	if err := fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), fsys, filename, func(w io.Writer) error {
+	if err := fnfs.WriteWorkspaceFile(ctx, nil, fsys, filename, func(w io.Writer) error {
 		_, err := w.Write(serialized)
 		return err
 	}); err != nil {

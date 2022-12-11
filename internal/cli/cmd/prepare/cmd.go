@@ -156,7 +156,24 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 			rwb := renderwait.NewBlock(ctx, "prepare")
 			eg := executor.New(ctx, "prepare")
 
+			clusterStages := []prepare.ClusterStage{
+				{Pre: func(ch chan *orchestration.Event) {
+					ch <- &orchestration.Event{
+						Category:   "Preparing cluster",
+						ResourceId: "connect-to-cluster",
+						Scope:      "Connect to cluster",
+						Stage:      orchestration.Event_WAITING,
+					}
+				}},
+				prepare.Ingress(),
+				prepare.Orchestrator(),
+			}
+
 			for _, stage := range prepared {
+				stage.Pre(rwb.Ch())
+			}
+
+			for _, stage := range clusterStages {
 				stage.Pre(rwb.Ch())
 			}
 
@@ -176,23 +193,7 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 					return collectPreparesAndUpdateDevhost(ctx, root, env, merged)
 				})
 
-				clusterStages := []prepare.ClusterStage{
-					prepare.Ingress(),
-					prepare.Orchestrator(),
-				}
-
 				eg.Go(func(ctx context.Context) error {
-					rwb.Ch() <- &orchestration.Event{
-						Category:   "Preparing cluster",
-						ResourceId: "connect-to-cluster",
-						Scope:      "Connect to cluster",
-						Stage:      orchestration.Event_WAITING,
-					}
-
-					for _, stage := range clusterStages {
-						stage.Pre(rwb.Ch())
-					}
-
 					kube, err := prepare.InstantiateKube(ctx, env, merged)
 					if err != nil {
 						return err
@@ -206,6 +207,9 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 
 					for _, stage := range clusterStages {
 						stage := stage // Close stage.
+						if stage.Run == nil {
+							continue
+						}
 
 						eg.Go(func(ctx context.Context) error {
 							if err := stage.Run(ctx, env, merged, kube, rwb.Ch()); err != nil {

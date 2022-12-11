@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func Orchestrator() ClusterStage {
@@ -39,15 +40,17 @@ func Orchestrator() ClusterStage {
 }
 
 func PrepareOrchestratorInKube(ctx context.Context, env cfg.Context, devhost *schema.DevHost_ConfigureEnvironment, kube *kubernetes.Cluster) error {
-	config, err := cfg.MakeConfigurationCompat(env, env.Workspace(), &schema.DevHost{
-		Configure: []*schema.DevHost_ConfigureEnvironment{devhost}}, env.Environment())
-	if err != nil {
-		return err
-	}
+	return tasks.Action("orchestrator.prepare").Run(ctx, func(ctx context.Context) error {
+		config, err := cfg.MakeConfigurationCompat(env, env.Workspace(), &schema.DevHost{
+			Configure: []*schema.DevHost_ConfigureEnvironment{devhost}}, env.Environment())
+		if err != nil {
+			return err
+		}
 
-	if _, err := orchestration.PrepareOrchestrator(ctx, config, kube, false); err != nil {
-		return err
-	}
+		if _, err := orchestration.PrepareOrchestrator(ctx, config, kube, false); err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }
