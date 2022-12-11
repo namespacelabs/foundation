@@ -6,36 +6,38 @@ package prepare
 
 import (
 	"context"
-	"fmt"
 
-	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareIngress(env cfg.Context, kube compute.Computable[*kubernetes.Cluster]) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.ingress").HumanReadablef("Deploying the Kubernetes ingress controller"),
-		compute.Inputs().Str("kind", "ingress").Computable("runtime", kube).Proto("env", env.Environment()).Proto("workspace", env.Workspace().Proto()),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, deps compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
-			kube := compute.MustGetDepValue(deps, kube, "runtime")
-
-			if err := PrepareIngressInKube(ctx, env, kube); err != nil {
-				return nil, err
+func Ingress() ClusterStage {
+	return ClusterStage{
+		Pre: func(ch chan *orchestration.Event) {
+			ch <- &orchestration.Event{
+				ResourceId: "ingress",
+				Scope:      "Setup Ingress Controller",
+				Category:   "Preparing cluster",
+				Ready:      orchestration.Event_NOT_READY,
+				Stage:      orchestration.Event_WAITING,
 			}
-
-			fmt.Fprintln(console.Stdout(ctx), "[✓] Ensure Kubernetes ingress controller is deployed.")
-
-			// The ingress produces no unique configuration.
-			return nil, nil
-		})
+		},
+		Post: func(ch chan *orchestration.Event) {
+			ch <- &orchestration.Event{
+				ResourceId: "ingress",
+				Ready:      orchestration.Event_READY,
+				Stage:      orchestration.Event_DONE,
+			}
+		},
+		Run: func(ctx context.Context, env cfg.Context, devhost *schema.DevHost_ConfigureEnvironment, kube *kubernetes.Cluster, ch chan *orchestration.Event) error {
+			return PrepareIngressInKube(ctx, env, kube)
+		},
+	}
 }
 
 func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes.Cluster) error {

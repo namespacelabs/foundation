@@ -8,21 +8,30 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/universe/aws/configuration/eks"
 )
 
-func PrepareEksCluster(clusterName string) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.eks-cluster-config").HumanReadablef("Prepare the EKS cluster configuration"),
-		compute.Inputs().Str("clusterName", clusterName),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
-			fmt.Fprintf(console.Stdout(ctx), "[✓] Configure Namespace to use EKS cluster %q.\n", clusterName)
+func PrepareEksCluster(clusterName string) Stage {
+	return Stage{
+		Pre: func(ch chan *orchestration.Event) {
+			ch <- &orchestration.Event{
+				Category:   "AWS",
+				ResourceId: "eks-profile",
+				Scope:      fmt.Sprintf("Configure EKS Cluster %q", clusterName),
+			}
+		},
+		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
+			ch <- &orchestration.Event{
+				ResourceId: "eks-profile",
+				Ready:      orchestration.Event_READY,
+				Stage:      orchestration.Event_DONE,
+			}
+
 			return devhost.MakeConfiguration(&eks.Cluster{Name: clusterName})
-		})
+		},
+	}
 }

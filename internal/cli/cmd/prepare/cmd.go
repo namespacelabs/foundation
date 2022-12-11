@@ -14,8 +14,9 @@ import (
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/renderwait"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -23,9 +24,10 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var deprecatedConfigs = []string{
@@ -87,8 +89,12 @@ func NewPrepareIngressCmd() *cobra.Command {
 			return err
 		}
 
-		_, err = compute.GetValue(ctx, prepare.PrepareIngress(env, prepare.ConnectToExisting(env)))
-		return err
+		kube, err := kubernetes.ConnectToCluster(ctx, env.Configuration())
+		if err != nil {
+			return err
+		}
+
+		return prepare.PrepareIngressInKube(ctx, env, kube)
 	})
 }
 
@@ -123,7 +129,7 @@ func updateWorkspaceEnvironment(ctx context.Context, envRef string) error {
 	})
 }
 
-func runPrepare(prepare func(context.Context, cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error)) func(*cobra.Command, []string) error {
+func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, error)) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		return fncobra.RunE(func(ctx context.Context, args []string) error {
 			if isCreateEnv {
@@ -142,52 +148,113 @@ func runPrepare(prepare func(context.Context, cfg.Context) (compute.Computable[*
 				return err
 			}
 
-			prepared, err := prepare(ctx, env)
+			prepared, err := callback(ctx, env)
 			if err != nil {
 				return err
 			}
 
-			if err := collectPreparesAndUpdateDevhost(ctx, root, env, prepared); err != nil {
-				return err
+			rwb := renderwait.NewBlock(ctx, "prepare")
+			eg := executor.New(ctx, "prepare")
+
+			for _, stage := range prepared {
+				stage.Pre(rwb.Ch())
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "\n%s\n", successMessage(env, cmd))
+			eg.Go(func(ctx context.Context) error {
+				merged := &schema.DevHost_ConfigureEnvironment{}
+				for _, stage := range prepared {
+					conf, err := stage.Run(ctx, env, rwb.Ch())
+					if err != nil {
+						return err
+					}
+					if conf != nil {
+						merged.Configuration = append(merged.Configuration, conf.Configuration...)
+					}
+				}
+
+				eg.Go(func(ctx context.Context) error {
+					return collectPreparesAndUpdateDevhost(ctx, root, env, merged)
+				})
+
+				clusterStages := []prepare.ClusterStage{
+					prepare.Ingress(),
+					prepare.Orchestrator(),
+				}
+
+				eg.Go(func(ctx context.Context) error {
+					rwb.Ch() <- &orchestration.Event{
+						Category:   "Preparing cluster",
+						ResourceId: "connect-to-cluster",
+						Scope:      "Connect to cluster",
+						Stage:      orchestration.Event_WAITING,
+					}
+
+					for _, stage := range clusterStages {
+						stage.Pre(rwb.Ch())
+					}
+
+					kube, err := prepare.InstantiateKube(ctx, env, merged)
+					if err != nil {
+						return err
+					}
+
+					rwb.Ch() <- &orchestration.Event{
+						ResourceId: "connect-to-cluster",
+						Ready:      orchestration.Event_READY,
+						Stage:      orchestration.Event_DONE,
+					}
+
+					for _, stage := range clusterStages {
+						stage := stage // Close stage.
+
+						eg.Go(func(ctx context.Context) error {
+							if err := stage.Run(ctx, env, merged, kube, rwb.Ch()); err != nil {
+								return err
+							}
+
+							stage.Post(rwb.Ch())
+							return nil
+						})
+					}
+
+					return nil
+				})
+
+				return nil
+			})
+
+			waitErr := eg.Wait()
+			close(rwb.Ch())
+			rwbErr := rwb.Wait(ctx)
+
+			if waitErr != nil {
+				return waitErr
+			}
+
+			if rwbErr != nil {
+				return rwbErr
+			}
+
+			fmt.Fprintf(console.TypedOutput(ctx, "prepare", console.CatOutputUs), "\n%s\n", successMessage(env, cmd))
 			return nil
 		})(cmd, args)
 	}
 }
 
-func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, env cfg.Context, prepared compute.Computable[*schema.DevHost_ConfigureEnvironment]) error {
-	x := compute.Map(
-		tasks.Action("prepare"),
-		compute.Inputs().
-			Indigestible("root", root).
-			Str("env", env.Environment().Name).
-			Computable("prepared", prepared),
-		compute.Output{NotCacheable: true}, func(ctx context.Context, r compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
-			results := compute.MustGetDepValue(r, prepared, "prepared")
+func collectPreparesAndUpdateDevhost(ctx context.Context, root *parsing.Root, env cfg.Context, results *schema.DevHost_ConfigureEnvironment) error {
+	cloned := protos.Clone(results)
+	cloned.Name = env.Environment().Name
 
-			prepared := protos.Clone(results)
-			prepared.Name = env.Environment().Name
+	updateCount, err := devHostUpdates(ctx, root, cloned)
+	if err != nil {
+		return err
+	}
 
-			updateCount, err := devHostUpdates(ctx, root, prepared)
-			if err != nil {
-				return nil, err
-			}
+	if updateCount == 0 {
+		return nil
+	}
 
-			if updateCount == 0 {
-				fmt.Fprintln(console.Stdout(ctx), "Configuration is up to date, nothing to do.")
-				return nil, nil
-			}
-
-			if err := devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, root.LoadedDevHost); err != nil {
-				return nil, err
-			}
-
-			return prepared, nil
-		})
-
-	if _, err := compute.GetValue(ctx, x); err != nil {
+	if err := devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, root.LoadedDevHost); err != nil {
 		return err
 	}
 
@@ -220,15 +287,15 @@ func successMessage(env cfg.Context, cmd *cobra.Command) string {
 		purpose = fmt.Sprintf("%s using your existing environment", purpose)
 	}
 
-	b.WriteString(fmt.Sprintf("🎉 %q is now configured for %s.\n\n", env.Workspace().ModuleName(), purpose))
+	b.WriteString(fmt.Sprintf(" 🎉 %q is now configured for %s.\n\n", env.Workspace().ModuleName(), purpose))
 
 	var envParam string
 	if env.Environment().Name != "dev" {
 		envParam = fmt.Sprintf(" --env=%s", env.Environment().Name)
 	}
 
-	b.WriteString(fmt.Sprintf("You can now run servers using `ns dev%s`, tests using `ns test%s`, and more.\n", envParam, envParam))
-	b.WriteString("Find out more at https://namespace.so/docs.")
+	b.WriteString(fmt.Sprintf(" You can now run servers using `ns dev%s`, tests using `ns test%s`, and more.\n", envParam, envParam))
+	b.WriteString("\n Find out more at https://namespace.so/docs.")
 
 	return b.String()
 }

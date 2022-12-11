@@ -8,9 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/prepare"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -24,11 +22,11 @@ func newEksCmd() *cobra.Command {
 		Use:   "eks --cluster={cluster-name} --env={staging|prod} --aws_profile={profile}",
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
 		Args:  cobra.NoArgs,
-		RunE: runPrepare(func(ctx context.Context, env cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error) {
-			return prepare.PrepareCluster(env,
+		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
+			return []prepare.Stage{
 				prepare.PrepareAWSProfile(awsProfile),
 				prepare.PrepareEksCluster(clusterName),
-			), nil
+			}, nil
 		}),
 	}
 

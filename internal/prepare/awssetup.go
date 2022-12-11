@@ -8,20 +8,24 @@ import (
 	"context"
 	"fmt"
 
-	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/schema/orchestration"
+	"namespacelabs.dev/foundation/std/cfg"
 	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
 )
 
-func PrepareAWSProfile(profileName string) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.aws-profile").HumanReadablef("Attaching AWS profile to Namespace's configuration"),
-		compute.Inputs().Str("profileName", profileName),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
+func PrepareAWSProfile(profileName string) Stage {
+	return Stage{
+		Pre: func(ch chan *orchestration.Event) {
+			ch <- &orchestration.Event{
+				Category:   "AWS",
+				ResourceId: "aws-profile",
+				Scope:      fmt.Sprintf("Configure AWS profile %q", profileName),
+			}
+		},
+
+		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 			hostEnv := &awsconf.Configuration{
 				Profile: profileName,
 			}
@@ -30,8 +34,13 @@ func PrepareAWSProfile(profileName string) compute.Computable[*schema.DevHost_Co
 				return nil, err
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "[✓] Configure Namespace to use AWS profile %q.\n", profileName)
+			ch <- &orchestration.Event{
+				ResourceId: "aws-profile",
+				Ready:      orchestration.Event_READY,
+				Stage:      orchestration.Event_DONE,
+			}
 
 			return c, nil
-		})
+		},
+	}
 }

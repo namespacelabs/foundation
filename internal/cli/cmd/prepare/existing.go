@@ -12,12 +12,10 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/build/registry"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -34,7 +32,7 @@ func newExistingCmd() *cobra.Command {
 	useDockerCredentials := cmd.Flags().Bool("use_docker_creds", false, "If set to true, uses Docker's credentials when accessing the registry.")
 	singleRepository := cmd.Flags().Bool("use_single_repository", false, "If set to true, collapse all images onto a single repository under the configured registry (rather than a repository per image).")
 
-	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error) {
+	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 		if *contextName == "" {
 			return nil, fnerrors.New("--context is required; it's the name of an existing kubernetes context")
 		}
@@ -92,14 +90,12 @@ func newExistingCmd() *cobra.Command {
 		}
 		fmt.Fprintf(console.Stdout(ctx), "Setting up existing cluster configured at context %q (registry %q%s)...\n", *contextName, *registryAddr, insecureLabel)
 
-		k8sconfig := prepare.PrepareExistingK8s(env, *kubeConfig, *contextName, &registry.Registry{
+		return []prepare.Stage{prepare.PrepareExistingK8s(env, *kubeConfig, *contextName, &registry.Registry{
 			Url:              *registryAddr,
 			Insecure:         *insecure,
 			UseDockerAuth:    *useDockerCredentials,
 			SingleRepository: *singleRepository,
-		})
-
-		return prepare.PrepareCluster(env, k8sconfig), nil
+		})}, nil
 	})
 
 	return cmd

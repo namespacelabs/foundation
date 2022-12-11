@@ -9,21 +9,16 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry proto.Message) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.existing-k8s").HumanReadablef("Prepare a host-configured Kubernetes instance"),
-		compute.Inputs().Indigestible("env", env),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
+func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry proto.Message) Stage {
+	return Stage{
+		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 			var confs []proto.Message
 			hostEnv := &client.HostEnv{
 				Kubeconfig: kubeConfig,
@@ -34,8 +29,15 @@ func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registr
 				confs = append(confs, registry)
 			}
 
-			fmt.Fprintf(console.Stdout(ctx), "[✓] Configure Namespace to use existing Kubernetes context %q.\n", contextName)
+			ch <- &orchestration.Event{
+				Category:   "Cluster",
+				ResourceId: "existing",
+				Scope:      fmt.Sprintf("Configure existing context %q", contextName),
+				Ready:      orchestration.Event_READY,
+				Stage:      orchestration.Event_DONE,
+			}
 
 			return devhost.MakeConfiguration(confs...)
-		})
+		},
+	}
 }

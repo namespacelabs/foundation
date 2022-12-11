@@ -13,8 +13,6 @@ import (
 	"github.com/docker/go-connections/nat"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/build/registry"
-	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
@@ -23,18 +21,38 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const registryName = "k3d-ns-registry.nslocal.host"
 
-func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.DevHost_ConfigureEnvironment] {
-	return compute.Map(
-		tasks.Action("prepare.k3d").HumanReadablef("Preparing a local Kubernetes cluster (k3s running in Docker)"),
-		compute.Inputs().Str("clusterName", clusterName).Indigestible("env", env),
-		compute.Output{NotCacheable: true},
-		func(ctx context.Context, _ compute.Resolved) (*schema.DevHost_ConfigureEnvironment, error) {
+func K3D(clusterName string) Stage {
+	return Stage{
+		Pre: func(ch chan *orchestration.Event) {
+			ch <- &orchestration.Event{
+				Category:   "Local workstation",
+				ResourceId: "docker-checker",
+				Scope:      "Validate Docker version",
+			}
+
+			ch <- &orchestration.Event{
+				Category:   "Local workstation",
+				ResourceId: "k3s-cluster",
+				Scope:      "Kubernetes cluster in Docker",
+			}
+		},
+
+		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
+			return PrepareK3d(ctx, clusterName, env, ch)
+		},
+	}
+}
+
+func PrepareK3d(ctx context.Context, clusterName string, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
+	return tasks.Return(ctx, tasks.Action("prepare.k3s").HumanReadablef("Preparing a local Kubernetes cluster (k3s running in Docker)"),
+		func(ctx context.Context) (*schema.DevHost_ConfigureEnvironment, error) {
 			dockerclient, err := docker.NewClient()
 			if err != nil {
 				return nil, err
@@ -44,7 +62,12 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.
 				return nil, err
 			}
 
-			fmt.Fprintln(console.Stdout(ctx), "[✓] Validate Docker version.")
+			ch <- &orchestration.Event{
+				Category:   "Local workstation",
+				ResourceId: "docker-checker",
+				Ready:      orchestration.Event_READY,
+				Stage:      orchestration.Event_DONE,
+			}
 
 			// download k3d
 			k3dbin, err := k3d.EnsureSDK(ctx, host.HostPlatform())
@@ -77,7 +100,11 @@ func PrepareK3d(clusterName string, env cfg.Context) compute.Computable[*schema.
 				return nil, err
 			}
 
-			fmt.Fprintln(console.Stdout(ctx), "[✓] Ensure local Kubernetes cluster is running (k3s in Docker).")
+			ch <- &orchestration.Event{
+				ResourceId: "k3s-cluster",
+				Ready:      orchestration.Event_READY,
+				Stage:      orchestration.Event_DONE,
+			}
 
 			return c, nil
 		})

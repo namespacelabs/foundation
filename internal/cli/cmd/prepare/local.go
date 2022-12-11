@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/schema"
@@ -22,7 +21,7 @@ func newLocalCmd() *cobra.Command {
 		Use:   "local",
 		Short: "Prepares the local workspace for development or production.",
 
-		RunE: runPrepare(func(ctx context.Context, env cfg.Context) (compute.Computable[*schema.DevHost_ConfigureEnvironment], error) {
+		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 			if contextName != "" {
 				return nil, fnerrors.New("to configure an existing cluster use `prepare existing`")
 			}
@@ -31,9 +30,7 @@ func newLocalCmd() *cobra.Command {
 				return nil, fnerrors.BadInputError("only development environments are supported locally")
 			}
 
-			k8sconfig := prepare.PrepareK3d("ns", env)
-
-			return prepare.PrepareCluster(env, k8sconfig), nil
+			return []prepare.Stage{prepare.K3D("ns")}, nil
 		}),
 	}
 
