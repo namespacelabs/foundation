@@ -5,7 +5,6 @@
 package keys
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"io/fs"
@@ -13,7 +12,6 @@ import (
 
 	"filippo.io/age"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 )
 
 const SnapshotKeys = "fn.keys"
@@ -64,17 +62,4 @@ func Decrypt(ctx context.Context, keyDir fs.FS, src io.Reader) ([]byte, error) {
 	}
 
 	return decryptedContents, nil
-}
-
-func DecryptAsFS(ctx context.Context, keyDir fs.FS, archive io.Reader) (fs.FS, error) {
-	decrypted, err := Decrypt(ctx, keyDir, archive)
-	if err != nil {
-		return nil, err
-	}
-
-	return tarfs.FS{
-		TarStream: func() (io.ReadCloser, error) {
-			return io.NopCloser(bytes.NewReader(decrypted)), nil
-		},
-	}, nil
 }

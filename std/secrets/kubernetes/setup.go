@@ -313,7 +313,7 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 	var bundles []*fnsecrets.Bundle
 	var bundleNames []string
 
-	for _, snapshot := range contentSnapshots {
+	for snapshotPath, snapshot := range contentSnapshots {
 		if err := fnfs.VisitFiles(ctx, snapshot, func(path string, blob bytestream.ByteStream, de fs.DirEntry) error {
 			if filepath.Ext(path) != ".secrets" {
 				return nil
@@ -330,12 +330,12 @@ func fillData(ctx context.Context, server *schema.Server, env *schema.Environmen
 
 			bundle, err := fnsecrets.LoadBundle(ctx, snapshotKeys, contents)
 			if err != nil {
-				return err
+				return fnerrors.New("%s: %w", snapshotPath, err)
 			}
 
 			bundles = append(bundles, bundle)
 			if sliceContains(bundleNames, path) {
-				return fnerrors.InternalError("multiple secret bundles with the same name? saw: %s", strings.Join(bundleNames, "; "))
+				return fnerrors.InternalError("%s: multiple secret bundles with the same name? saw: %s", snapshotPath, strings.Join(bundleNames, "; "))
 			}
 
 			bundleNames = append(bundleNames, path)
