@@ -106,22 +106,22 @@ func getCurrentDigest(ctx context.Context) (*schema.Workspace_BinaryDigest, erro
 }
 
 func (vc *versionChecker) updateLatest() error {
+	// Update prebuilts first, so that errors on the deployment plan path do not affect prebuilt updates.
+	// TODO remove this path when we exclusively use deployment plans.
+	if err := vc.updatePrebuilts(); err != nil {
+		return err
+	}
+
+	return vc.updatePinnedPlan()
+}
+
+func (vc *versionChecker) updatePrebuilts() error {
 	ctx, cancel := context.WithTimeout(vc.serverCtx, fetchLatestTimeout)
 	defer cancel()
 
 	prebuilts, err := fnapi.GetLatestPrebuilts(ctx, constants.ServerPkg, constants.ToolPkg)
 	if err != nil {
 		return fmt.Errorf("failed to fetch latest orch prebuilts from API server: %v", err)
-	}
-
-	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
-	if err != nil {
-		return fmt.Errorf("failed to fetch latest orch deployment plan from API server: %v", err)
-	}
-
-	plan, version, err := parsePlan(plans)
-	if err != nil {
-		return err
 	}
 
 	vc.mu.Lock()
@@ -135,6 +135,26 @@ func (vc *versionChecker) updateLatest() error {
 			Digest:      p.Digest,
 		})
 	}
+
+	return nil
+}
+
+func (vc *versionChecker) updatePinnedPlan() error {
+	ctx, cancel := context.WithTimeout(vc.serverCtx, fetchLatestTimeout)
+	defer cancel()
+
+	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
+	if err != nil {
+		return fmt.Errorf("failed to fetch latest orch deployment plan from API server: %v", err)
+	}
+
+	plan, version, err := parsePlan(plans)
+	if err != nil {
+		return err
+	}
+
+	vc.mu.Lock()
+	defer vc.mu.Unlock()
 
 	vc.versions.Latest = version
 	vc.plan = plan
