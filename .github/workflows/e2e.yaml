@@ -61,7 +61,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
 
   run_deploy:
     name: Test local Namespace (deploy to k3d) os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
@@ -176,7 +176,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
 
   deploy_staging:
     name: Deploy staging
@@ -255,7 +255,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
 
   run_cross_repo_tests:
     name: cross-repo e2e tests
@@ -318,7 +318,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
 
   test_unprepare:
     name: Test unprepare os=${{ matrix.os }}

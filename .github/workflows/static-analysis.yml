@@ -37,7 +37,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
 
   vet:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
 
   staticcheck:
     runs-on: ubuntu-latest
@@ -106,4 +106,4 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.event_name == 'push'
+        if: failure() && github.ref_name == 'main'
