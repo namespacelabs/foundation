@@ -98,5 +98,14 @@ func ParsePackage(ctx context.Context, env *schema.Environment, pl parsing.Early
 		parsedPkg.Secrets = append(parsedPkg.Secrets, secretSpecs...)
 	}
 
+	// Binaries should really be called "OCI Images".
+	if binary := v.LookupPath("binary"); binary.Exists() {
+		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
+		if err != nil {
+			return nil, fnerrors.NewWithLocation(loc, "parsing binary: %w", err)
+		}
+		parsedPkg.Binaries = append(parsedPkg.Binaries, parsedBinary)
+	}
+
 	return parsedPkg, nil
 }
