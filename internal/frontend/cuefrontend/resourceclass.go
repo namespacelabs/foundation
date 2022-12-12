@@ -30,24 +30,24 @@ func parseResourceClass(ctx context.Context, loc pkggraph.Location, name string,
 		return nil, err
 	}
 
-	if bits.Intent == nil {
-		return nil, fnerrors.NewWithLocation(loc, "resource class %q must specify an intent", name)
-	}
-
 	if bits.Produces == nil {
 		return nil, fnerrors.NewWithLocation(loc, "resource class %q must specify the provided type", name)
 	}
 
 	return &schema.ResourceClass{
 		Name:            name,
-		IntentType:      parseResourceClassType(bits.Intent),
-		InstanceType:    parseResourceClassType(bits.Produces),
+		IntentType:      parseResourceType(bits.Intent),
+		InstanceType:    parseResourceType(bits.Produces),
 		DefaultProvider: bits.DefaultProvider,
 	}, nil
 }
 
-func parseResourceClassType(t *cueResourceType) *schema.ResourceClass_Type {
-	return &schema.ResourceClass_Type{
+func parseResourceType(t *cueResourceType) *schema.ResourceType {
+	if t == nil {
+		return nil
+	}
+
+	return &schema.ResourceType{
 		ProtoType:   t.Type,
 		ProtoSource: t.Source,
 	}

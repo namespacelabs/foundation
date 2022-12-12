@@ -6,12 +6,12 @@ package main
 
 import (
 	"namespacelabs.dev/foundation/framework/resources/provider"
-	"namespacelabs.dev/foundation/internal/testdata/integrations/resources/classes"
 	pb "namespacelabs.dev/foundation/internal/testdata/integrations/resources/classes/protos"
+	"namespacelabs.dev/foundation/internal/testdata/integrations/resources/testgenprovider"
 )
 
 func main() {
-	_, p := provider.MustPrepare[*classes.DatabaseIntent]()
+	_, p := provider.MustPrepare[*testgenprovider.DatabaseIntent]()
 
 	p.EmitResult(&pb.DatabaseInstance{Url: "http://test-" + p.Intent.Name})
 }

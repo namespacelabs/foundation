@@ -100,7 +100,7 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 
 	if intentFrom == nil {
 		// Returns an empty proto of the intent type, wrapper into an Any, if rawIntent is nil.
-		instance.Intent, err = parseResourceIntent(ctx, pl, pkg.Location, classRef, rawIntent)
+		instance.Intent, err = parseResourceIntent(ctx, pl, pkg, classRef, provider, rawIntent)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func parseStrFieldCompat(namev2, valuev2, namev1, valuev1 string, required bool)
 	return "", nil
 }
 
-func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, value any) (*anypb.Any, error) {
+func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, pp *pkggraph.Package, classRef *schema.PackageRef, provider string, value any) (*anypb.Any, error) {
 	pkg, err := pl.LoadByName(ctx, classRef.AsPackageName())
 	if err != nil {
 		return nil, err
@@ -160,27 +160,47 @@ func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, loc
 
 	rc := pkg.LookupResourceClass(classRef.Name)
 	if rc == nil {
-		return nil, fnerrors.NewWithLocation(loc, "resource class %q not found", classRef.Canonical())
+		return nil, fnerrors.NewWithLocation(pp.Location, "resource class %q not found", classRef.Canonical())
 	}
 
 	if value == nil {
 		return nil, nil
 	}
 
-	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
+	if provider == "" {
+		provider = rc.Source.DefaultProvider
+	}
+
+	intentType := rc.IntentType
+
+	if provider != "" {
+		resourceProvider, err := parsing.LookupResourceProvider(ctx, pl, pp, provider, classRef)
+		if err != nil {
+			return nil, err
+		}
+		if resourceProvider != nil && resourceProvider.IntentType != nil {
+			intentType = resourceProvider.IntentType
+		}
+	}
+
+	if intentType == nil {
+		return nil, fnerrors.NewWithLocation(pp.Location, "missing intent definition")
+	}
+
+	fsys, err := pl.WorkspaceOf(ctx, pp.Location.Module)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
 	}
 
-	subFsys, err := fs.Sub(fsys, loc.Rel())
+	subFsys, err := fs.Sub(fsys, pp.Location.Rel())
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
 	}
 
 	msg, err := allocateWellKnownMessage(parseContext{
 		FS:          subFsys,
-		PackageName: loc.PackageName,
-	}, rc.IntentType.Descriptor, value)
+		PackageName: pp.PackageName(),
+	}, intentType.Descriptor, value)
 	if err != nil {
 		return nil, err
 	}

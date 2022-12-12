@@ -68,25 +68,9 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 	}
 
 	if provider != "" {
-		var providerPkg *pkggraph.Package
-
-		// Is this a resource that references a provider in the same package?
-		if provider == loc.PackageName {
-			providerPkg = pkg
-			if pkg == nil {
-				return nil, fnerrors.InternalError("resource references %q as the provider but no provider package was specified", provider)
-			}
-		} else {
-			loadedPkg, err := pl.LoadByName(ctx, provider)
-			if err != nil {
-				return nil, err
-			}
-			providerPkg = loadedPkg
-		}
-
-		provider := providerPkg.LookupResourceProvider(instance.Class)
-		if provider == nil {
-			return nil, fnerrors.NewWithLocation(loc, "package %q is not a provider for resource class %q", providerPkg.PackageName(), instance.Class.Canonical())
+		provider, err := LookupResourceProvider(ctx, pl, pkg, provider.String(), instance.Class)
+		if err != nil {
+			return nil, err
 		}
 
 		ri.Provider = provider
@@ -98,6 +82,12 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 			return nil, fnerrors.InternalError("failed to re-serialize intent: %w", err)
 		}
 		ri.Source.Intent = serialized
+	}
+
+	if ri.Provider != nil && ri.Provider.IntentType != nil {
+		ri.IntentType = ri.Provider.IntentType
+	} else if class.IntentType != nil {
+		ri.IntentType = class.IntentType
 	}
 
 	if len(instance.InputResource) > 0 {
@@ -138,6 +128,31 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 	}
 
 	return &pkggraph.ResourceInstance{ResourceRef: name, Spec: ri}, nil
+}
+
+func LookupResourceProvider(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, provider string, classRef *schema.PackageRef) (*pkggraph.ResourceProvider, error) {
+	var providerPkg *pkggraph.Package
+
+	// Is this a resource that references a provider in the same package?
+	if provider == pkg.PackageName().String() {
+		providerPkg = pkg
+		if pkg == nil {
+			return nil, fnerrors.InternalError("resource references %q as the provider but no provider package was specified", provider)
+		}
+	} else {
+		loadedPkg, err := pl.LoadByName(ctx, schema.PackageName(provider))
+		if err != nil {
+			return nil, err
+		}
+		providerPkg = loadedPkg
+	}
+
+	p := providerPkg.LookupResourceProvider(classRef)
+	if p == nil {
+		return nil, fnerrors.NewWithLocation(pkg.Location, "package %q is not a provider for resource class %q", providerPkg.PackageName(), classRef.Canonical())
+	}
+
+	return p, nil
 }
 
 func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, instance *schema.ResourceInstance) (proto.Message, error) {

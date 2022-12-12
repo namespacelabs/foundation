@@ -38,6 +38,25 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 
 	rp := pkggraph.ResourceProvider{Spec: provider}
 
+	if provider.IntentType != nil {
+		parseOpts, err := MakeProtoParseOpts(ctx, pl, pp.Location.Module.Workspace)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			fsys, err := pl.WorkspaceOf(ctx, pp.Location.Module)
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				intentType, err := loadUserType(parseOpts, fsys, pp.Location, provider.IntentType)
+				if err != nil {
+					errs = append(errs, err)
+				} else {
+					rp.IntentType = &intentType
+				}
+			}
+		}
+	}
+
 	for _, input := range provider.ResourceInput {
 		if rp.LookupExpected(input.Name) != nil {
 			errs = append(errs, fnerrors.BadInputError("resource input %q defined more than once", input.Name.Canonical()))

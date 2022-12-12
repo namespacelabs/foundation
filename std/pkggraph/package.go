@@ -66,6 +66,7 @@ type Package struct {
 
 type ResourceSpec struct {
 	Source         *schema.ResourceInstance
+	IntentType     *UserType
 	Class          ResourceClass
 	Provider       *ResourceProvider
 	ResourceInputs []ResourceInstance // Resources passed to the provider.
@@ -80,13 +81,14 @@ type ResourceClass struct {
 	Ref             *schema.PackageRef
 	Source          *schema.ResourceClass
 	DefaultProvider schema.PackageName // May be empty.
-	IntentType      UserType
+	IntentType      *UserType
 	InstanceType    UserType
 }
 
 type ResourceProvider struct {
 	Spec *schema.ResourceProvider
 
+	IntentType     *UserType
 	Resources      []ResourceInstance
 	ResourceInputs []ExpectedResourceInstance
 }

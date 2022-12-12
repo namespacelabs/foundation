@@ -389,7 +389,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, sealedCtx pkggraph
 	}
 
 	if instance.Intent != nil {
-		out := dynamicpb.NewMessage(resource.Class.IntentType.Descriptor).Interface()
+		out := dynamicpb.NewMessage(resource.IntentType.Descriptor).Interface()
 
 		if err := proto.Unmarshal(instance.Intent.Value, out); err != nil {
 			return fnerrors.InternalError("%s: failed to unmarshal intent: %w", resourceID, err)

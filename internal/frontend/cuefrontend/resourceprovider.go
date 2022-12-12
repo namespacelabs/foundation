@@ -19,6 +19,8 @@ import (
 
 type cueResourceProvider struct {
 	ResourceInputs map[string]string `json:"inputs"` // Key: name, Value: serialized class ref
+	Intent         *cueResourceType  `json:"intent,omitempty"`
+
 	// TODO: parse prepare hook.
 }
 
@@ -41,6 +43,10 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	rp := &schema.ResourceProvider{
 		ProvidesClass:   classRef,
 		InitializedWith: initializedWithInvocation,
+	}
+
+	if bits.Intent != nil {
+		rp.IntentType = parseResourceType(bits.Intent)
 	}
 
 	if resources := v.LookupPath("resources"); resources.Exists() {

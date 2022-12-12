@@ -33,29 +33,33 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 
 		rc.PackageName = pp.Location.PackageName.String()
 
-		intentType, err := loadUserType(parseOpts, fsys, pp.Location, rc.IntentType)
-		if err != nil {
-			return err
-		}
-
 		instanceType, err := loadUserType(parseOpts, fsys, pp.Location, rc.InstanceType)
 		if err != nil {
 			return err
 		}
 
-		pp.ResourceClasses = append(pp.ResourceClasses, pkggraph.ResourceClass{
+		transformed := pkggraph.ResourceClass{
 			Ref:             &schema.PackageRef{PackageName: rc.PackageName, Name: rc.Name},
 			Source:          rc,
-			IntentType:      intentType,
 			InstanceType:    instanceType,
 			DefaultProvider: schema.PackageName(rc.DefaultProvider),
-		})
+		}
+
+		if rc.IntentType != nil {
+			intentType, err := loadUserType(parseOpts, fsys, pp.Location, rc.IntentType)
+			if err != nil {
+				return err
+			}
+			transformed.IntentType = &intentType
+		}
+
+		pp.ResourceClasses = append(pp.ResourceClasses, transformed)
 	}
 
 	return nil
 }
 
-func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, spec *schema.ResourceClass_Type) (pkggraph.UserType, error) {
+func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, spec *schema.ResourceType) (pkggraph.UserType, error) {
 	switch spec.ProtoType {
 	case "foundation.schema.PackageRef":
 		md := (&schema.PackageRef{}).ProtoReflect().Descriptor()
