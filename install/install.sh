@@ -5,8 +5,6 @@
 
 set -e
 
-VERSION=0.0.73
-
 is_wsl() {
 	case "$(uname -r)" in
 	*microsoft* ) true ;; # WSL 2
@@ -46,10 +44,6 @@ do_install() {
     esac
     shift $(( $# > 0 ? 1 : 0 ))
   done
-
-  if [ -z "$version" ]; then
-    version="$VERSION"
-  fi
 
   sh_c="sh -c"
   if $dry_run; then
@@ -103,17 +97,18 @@ do_install() {
     $sh_c "mkdir -p ${bin_dir}"
   fi
 
-  download_uri="https://get.namespace.so/packages/nsboot/v${version}/nsboot_${version}_${os}_${architecture}.tar.gz"
+  download_uri="https://get.namespace.so/packages/ns/latest?arch=${architecture}&os=${os}"
+  if [ -n "$version" ]; then
+    download_uri="https://get.namespace.so/packages/ns/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
+  fi
 
   echo "Downloading and installing Namespace from ${download_uri}"
 
-  $sh_c "curl -H 'CI: ${CI}' --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} ${download_uri}"
+  $sh_c "curl -H 'CI: ${CI}' --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} \"${download_uri}\""
 
   $sh_c "tar -xzf ${temp_tar} -C ${bin_dir}"
 
-  $sh_c "chmod +x ${bin_dir}/nsboot"
-
-  $sh_c "ln -sf ./nsboot ${bin_dir}/ns"
+  $sh_c "chmod +x ${bin_dir}/ns"
 
   $sh_c "rm ${temp_tar}"
 
