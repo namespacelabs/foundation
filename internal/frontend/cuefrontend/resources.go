@@ -173,7 +173,8 @@ func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, pp 
 
 	intentType := rc.IntentType
 
-	if provider != "" {
+	// XXX handle the resource provider intent type path.
+	if false && provider != "" {
 		resourceProvider, err := parsing.LookupResourceProvider(ctx, pl, pp, provider, classRef)
 		if err != nil {
 			return nil, err
