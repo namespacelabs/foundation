@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/cmd/nspipelines/cmd/runs"
 	workspaceCmd "namespacelabs.dev/foundation/cmd/nspipelines/cmd/workspace"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -49,7 +50,9 @@ func main() {
 
 	tasks.SetupFlags(root.PersistentFlags())
 
-	if err := root.ExecuteContext(ctx); err != nil {
+	if err := fncobra.RunInContext(ctx, func(ctx context.Context) error {
+		return root.ExecuteContext(ctx)
+	}, nil); err != nil {
 		log.Fatal(err)
 	}
 }

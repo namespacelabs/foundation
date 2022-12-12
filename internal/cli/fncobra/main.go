@@ -402,7 +402,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	debugLog := console.Debug(rootCtx)
 	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))
-	err := rootCmd.ExecuteContext(cmdCtx)
+
+	err := RunInContext(cmdCtx, func(ctx context.Context) error {
+		return rootCmd.ExecuteContext(ctx)
+	}, CheckVersion)
 
 	if run != nil {
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.

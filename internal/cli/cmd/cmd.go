@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
+	"namespacelabs.dev/foundation/internal/compute"
 )
 
 func RegisterCommands(root *cobra.Command) {
@@ -61,5 +62,10 @@ func RunCommand(ctx context.Context, args []string) error {
 	RegisterCommands(root)
 
 	root.SetArgs(args)
+
+	if compute.On(ctx) == nil {
+		panic("no graph in context")
+	}
+
 	return root.ExecuteContext(ctx)
 }

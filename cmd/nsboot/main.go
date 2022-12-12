@@ -51,7 +51,9 @@ func main() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
-	err := rootCmd.ExecuteContext(rootCtx)
+	err := fncobra.RunInContext(rootCtx, func(ctx context.Context) error {
+		return rootCmd.ExecuteContext(ctx)
+	}, nil)
 
 	flushLogs()
 
