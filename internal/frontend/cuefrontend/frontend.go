@@ -116,16 +116,6 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 		count++
 	}
 
-	// Binaries should really be called "OCI Images".
-	if binary := v.LookupPath("binary"); binary.Exists() {
-		parsedBinary, err := parseCueBinary(ctx, loc, v, binary)
-		if err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "parsing binary: %w", err)
-		}
-		parsed.Binaries = append(parsed.Binaries, parsedBinary)
-		count++
-	}
-
 	if test := v.LookupPath("test"); test.Exists() {
 		parsedTest, err := parsecueTestOld(ctx, loc, v, test)
 		if err != nil {
@@ -158,7 +148,7 @@ func isNewSyntax(partial *fncue.Partial) bool {
 	}
 
 	// Detecting the old syntax.
-	for _, path := range []string{"service", "extension", "binary", "test"} {
+	for _, path := range []string{"service", "extension", "test"} {
 		if partial.CueV.LookupPath(path).Exists() {
 			return false
 		}
