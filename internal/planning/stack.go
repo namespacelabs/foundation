@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -286,7 +285,7 @@ func discoverDeclaredServers(modules pkggraph.Modules, resources []pkggraph.Reso
 			}
 
 			serverIntent := &schema.PackageRef{}
-			if err := proto.Unmarshal(res.Spec.Source.Intent.Value, serverIntent); err != nil {
+			if err := res.Spec.Intent.UnmarshalTo(serverIntent); err != nil {
 				return fnerrors.InternalError("failed to unwrap Server")
 			}
 

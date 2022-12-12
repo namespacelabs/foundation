@@ -8,13 +8,14 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
-import "google/protobuf/any.proto";
 import "schema/package.proto";
 import "schema/provision.proto";
 
 // A resource represents an instance of an entity class, i.e. a _thing_ that has
 // been instantiated to be used by a server, or by other resources.
 message ResourceInstance {
+    reserved 5;
+
     string package_name = 1;  // Computed, where this resource lives.
     string name         = 2;  // The name of the resource, scoped to the package where it lives.
 
@@ -22,8 +23,8 @@ message ResourceInstance {
     string provider  = 4;  // Package name of the provider that knows how to instantiate this resource.
 
     // A resource is instantiated from an intent, which can be either specified inline, or be computed.
-    google.protobuf.Any intent      = 5;
-    Invocation          intent_from = 6;
+    string     serialized_intent_json = 8;
+    Invocation intent_from            = 6;
 
     // Set of resources passed to provider. Must match the requirements set by the provider.
     repeated InputResource input_resource = 7;

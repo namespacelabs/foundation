@@ -10,6 +10,7 @@ import (
 
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -66,6 +67,7 @@ type Package struct {
 
 type ResourceSpec struct {
 	Source         *schema.ResourceInstance
+	Intent         *anypb.Any
 	IntentType     *UserType
 	Class          ResourceClass
 	Provider       *ResourceProvider

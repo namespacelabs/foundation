@@ -8,13 +8,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
-	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
@@ -98,14 +95,16 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 		rawIntent = src.RawInput
 	}
 
-	if intentFrom == nil {
-		// Returns an empty proto of the intent type, wrapper into an Any, if rawIntent is nil.
-		instance.Intent, err = parseResourceIntent(ctx, pl, pkg, classRef, provider, rawIntent)
-		if err != nil {
-			return nil, err
-		}
-	} else if rawIntent != nil {
+	if intentFrom != nil && rawIntent != nil {
 		return nil, fnerrors.NewWithLocation(pkg.Location, "resource instance %q cannot specify both \"intent\" and \"from\"", name)
+	}
+
+	if rawIntent != nil {
+		serialized, err := json.Marshal(rawIntent)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to re-serialize intent: %w", err)
+		}
+		instance.SerializedIntentJson = string(serialized)
 	}
 
 	var parseErrs []error
@@ -150,63 +149,6 @@ func parseStrFieldCompat(namev2, valuev2, namev1, valuev1 string, required bool)
 	}
 
 	return "", nil
-}
-
-func parseResourceIntent(ctx context.Context, pl parsing.EarlyPackageLoader, pp *pkggraph.Package, classRef *schema.PackageRef, provider string, value any) (*anypb.Any, error) {
-	pkg, err := pl.LoadByName(ctx, classRef.AsPackageName())
-	if err != nil {
-		return nil, err
-	}
-
-	rc := pkg.LookupResourceClass(classRef.Name)
-	if rc == nil {
-		return nil, fnerrors.NewWithLocation(pp.Location, "resource class %q not found", classRef.Canonical())
-	}
-
-	if value == nil {
-		return nil, nil
-	}
-
-	if provider == "" {
-		provider = rc.Source.DefaultProvider
-	}
-
-	intentType := rc.IntentType
-
-	// XXX handle the resource provider intent type path.
-	if false && provider != "" {
-		resourceProvider, err := parsing.LookupResourceProvider(ctx, pl, pp, provider, classRef)
-		if err != nil {
-			return nil, err
-		}
-		if resourceProvider != nil && resourceProvider.IntentType != nil {
-			intentType = resourceProvider.IntentType
-		}
-	}
-
-	if intentType == nil {
-		return nil, fnerrors.NewWithLocation(pp.Location, "missing intent definition")
-	}
-
-	fsys, err := pl.WorkspaceOf(ctx, pp.Location.Module)
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
-	}
-
-	subFsys, err := fs.Sub(fsys, pp.Location.Rel())
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to retrieve workspace access: %w", err)
-	}
-
-	msg, err := allocateWellKnownMessage(parseContext{
-		FS:          subFsys,
-		PackageName: pp.PackageName(),
-	}, intentType.Descriptor, value)
-	if err != nil {
-		return nil, err
-	}
-
-	return fnany.Marshal(rc.PackageName(), msg)
 }
 
 func ParseResourceList(v *fncue.CueV) (*ResourceList, error) {

@@ -93,14 +93,14 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	var count int
 	if extension := v.LookupPath("extension"); extension.Exists() {
 		if err := parseCueNode(ctx, ft.env, ft.loader, loc, schema.Node_EXTENSION, v, extension, parsed); err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "parsing extension: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "failed while parsing extension: %w", err)
 		}
 		count++
 	}
 
 	if service := v.LookupPath("service"); service.Exists() {
 		if err := parseCueNode(ctx, ft.env, ft.loader, loc, schema.Node_SERVICE, v, service, parsed); err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "parsing service: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "failed while parsing service: %w", err)
 		}
 		count++
 	}
@@ -108,7 +108,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	if server := v.LookupPath("server"); server.Exists() {
 		parsedSrv, binaries, err := parseCueServer(ctx, ft.loader, loc, v, server)
 		if err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "parsing server: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "failed while parsing server: %w", err)
 		}
 		parsed.Server = parsedSrv
 		parsed.Binaries = append(parsed.Binaries, binaries...)

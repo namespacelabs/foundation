@@ -6,9 +6,9 @@ package parsing
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -57,11 +57,6 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		Class:  *class,
 	}
 
-	loadedPrimitive, err := loadPrimitiveResources(ctx, pl, loc.PackageName, instance)
-	if err != nil {
-		return nil, err
-	}
-
 	provider := schema.PackageName(instance.Provider)
 	if provider == "" {
 		provider = class.DefaultProvider
@@ -74,14 +69,6 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		}
 
 		ri.Provider = provider
-	} else if loadedPrimitive == nil {
-		return nil, fnerrors.NewWithLocation(loc, "missing provider for resource instance %q", instance.Name)
-	} else {
-		serialized, err := anypb.New(loadedPrimitive)
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to re-serialize intent: %w", err)
-		}
-		ri.Source.Intent = serialized
 	}
 
 	if ri.Provider != nil && ri.Provider.IntentType != nil {
@@ -90,8 +77,35 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		ri.IntentType = class.IntentType
 	}
 
+	if instance.SerializedIntentJson != "" {
+		if ri.IntentType == nil {
+			return nil, fnerrors.NewWithLocation(loc, "missing intent type for instance %q", instance.Name)
+		}
+
+		var raw any
+		if err := json.Unmarshal([]byte(instance.SerializedIntentJson), &raw); err != nil {
+			return nil, fnerrors.InternalError("failed to unmarshal serialized intent: %w", err)
+		}
+
+		resourceLoc, err := pl.Resolve(ctx, schema.PackageName(instance.PackageName))
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to resolve %q: %w", instance.PackageName, err)
+		}
+
+		parsed, err := ParseRawIntent(ctx, resourceLoc, ri.IntentType, raw)
+		if err != nil {
+			return nil, fnerrors.NewWithLocation(loc, "failed to parse intent: %w", err)
+		}
+
+		ri.Intent = parsed
+
+		if err := checkLoadPrimitiveResources(ctx, pl, loc.PackageName, ri.Class.Source, parsed); err != nil {
+			return nil, err
+		}
+	}
+
 	if len(instance.InputResource) > 0 {
-		if instance.Provider == "" {
+		if ri.Provider == nil {
 			return nil, fnerrors.NewWithLocation(loc, "input resources have been set, without a provider")
 		}
 
@@ -130,6 +144,20 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 	return &pkggraph.ResourceInstance{ResourceRef: name, Spec: ri}, nil
 }
 
+func ParseRawIntent(ctx context.Context, loc pkggraph.Location, intentType *pkggraph.UserType, value any) (*anypb.Any, error) {
+	subFsys := loc.Module.ReadOnlyFS(loc.Rel())
+
+	msg, err := allocateWellKnownMessage(parseContext{
+		FS:          subFsys,
+		PackageName: loc.PackageName,
+	}, intentType.Descriptor, value)
+	if err != nil {
+		return nil, err
+	}
+
+	return anypb.New(msg)
+}
+
 func LookupResourceProvider(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, provider string, classRef *schema.PackageRef) (*pkggraph.ResourceProvider, error) {
 	var providerPkg *pkggraph.Package
 
@@ -155,49 +183,42 @@ func LookupResourceProvider(ctx context.Context, pl pkggraph.PackageLoader, pkg 
 	return p, nil
 }
 
-func loadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, instance *schema.ResourceInstance) (proto.Message, error) {
+func checkLoadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, class *schema.ResourceClass, value *anypb.Any) error {
 	// XXX Add generic package loading annotation to avoid special-casing this
 	// resource class. Other type of resources could also have references to
 	// packages.
 
 	if err := pkggraph.ValidateFoundation("runtime resources", Version_LibraryIntentsChanged, pkggraph.ModuleFromLoader(ctx, pl)); err != nil {
-		return nil, err
+		return err
 	}
 
 	var pkg schema.PackageName
-	var msg proto.Message
 
 	switch {
-	case IsServerResource(instance.Class):
+	case IsServerResource(class):
 		intent := &schema.PackageRef{}
-		if err := proto.Unmarshal(instance.Intent.Value, intent); err != nil {
-			return nil, fnerrors.InternalError("failed to unwrap Server intent")
+		if err := value.UnmarshalTo(intent); err != nil {
+			return fnerrors.InternalError("failed to unwrap Server intent: %w", err)
 		}
 
 		pkg = intent.AsPackageName()
-		msg = intent
 
-	case IsSecretResource(instance.Class):
+	case IsSecretResource(class):
 		intent := &schema.PackageRef{}
-		if err := proto.Unmarshal(instance.Intent.Value, intent); err != nil {
-			return nil, fnerrors.InternalError("failed to unwrap Secret intent")
+		if err := value.UnmarshalTo(intent); err != nil {
+			return fnerrors.InternalError("failed to unwrap Secret intent: %w", err)
 		}
 
 		pkg = intent.AsPackageName()
-		msg = intent
 	}
 
-	if pkg == "" {
-		return nil, nil
-	}
-
-	if pkg != owner {
+	if pkg != "" && pkg != owner {
 		if _, err := pl.LoadByName(ctx, pkg); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return msg, nil
+	return nil
 }
 
 func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
@@ -231,7 +252,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph
 
 func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
 	for _, s := range servers {
-		intent, err := anypb.New(&schema.PackageRef{
+		intent, err := json.Marshal(&schema.PackageRef{
 			PackageName: s.String(),
 		})
 		if err != nil {
@@ -245,10 +266,10 @@ func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner
 		}
 
 		pack.ResourceInstance = append(pack.ResourceInstance, &schema.ResourceInstance{
-			PackageName: owner.PackageName,
-			Name:        name,
-			Class:       &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
-			Intent:      intent,
+			PackageName:          owner.PackageName,
+			Name:                 name,
+			Class:                &schema.PackageRef{PackageName: "namespacelabs.dev/foundation/library/runtime", Name: "Server"},
+			SerializedIntentJson: string(intent),
 		})
 	}
 

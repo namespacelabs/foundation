@@ -385,7 +385,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, sealedCtx pkggraph
 		Source:         resource.Source,
 		Class:          resource.Class,
 		Provider:       resource.Provider,
-		Intent:         resource.Source.Intent,
+		Intent:         resource.Intent,
 	}
 
 	if instance.Intent != nil {
@@ -460,7 +460,7 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 	for _, dep := range inputs {
 		if parsing.IsSecretResource(dep.Spec.Class.Ref) {
 			ref := &schema.PackageRef{}
-			if err := proto.Unmarshal(dep.Spec.Source.Intent.Value, ref); err != nil {
+			if err := proto.Unmarshal(dep.Spec.Intent.Value, ref); err != nil {
 				return nil, nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 			}
 
