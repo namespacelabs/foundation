@@ -8,7 +8,6 @@ package library.database.postgres;
 
 option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 
-import "library/database/postgres/cluster.proto";
 import "schema/volume.proto";
 
 message DatabaseIntent {
@@ -17,6 +16,16 @@ message DatabaseIntent {
 }
 
 message DatabaseInstance {
-    string          name    = 1;
-    ClusterInstance cluster = 2;
+    string name = 1;
+
+    // libpq-compliant Postgres connection URI.
+    // Format: postgres://user:passwort@host:port/database
+    // https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+    string connection_uri = 3;
+
+    string user            = 4;
+    string password        = 5;
+    string cluster_address = 6;
+
+    reserved 2;
 }

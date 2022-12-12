@@ -12,6 +12,7 @@ message ClusterIntent {
 }
 
 message ClusterInstance {
-    string url      = 1;
+    // Format: host:port.
+    string address  = 1;
     string password = 2;  // TODO export as secret reference
 }

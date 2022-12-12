@@ -29,7 +29,7 @@ func main() {
 	}
 
 	instance := &postgres.ClusterInstance{
-		Url:      endpoint,
+		Address:  endpoint,
 		Password: string(password),
 	}
 

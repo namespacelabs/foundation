@@ -20,6 +20,7 @@ import (
 const (
 	providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
 	connBackoff = 500 * time.Millisecond
+	user        = "postgres"
 )
 
 func main() {
@@ -43,8 +44,11 @@ func main() {
 	}
 
 	instance := &postgres.DatabaseInstance{
-		Name:    p.Intent.Name,
-		Cluster: cluster,
+		ConnectionUri:  connectionUri(cluster, p.Intent.Name),
+		Name:           p.Intent.Name,
+		User:           user,
+		Password:       cluster.Password,
+		ClusterAddress: cluster.Address,
 	}
 
 	p.EmitResult(instance)
@@ -91,7 +95,7 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 }
 
 func connect(ctx context.Context, cluster *postgres.ClusterInstance, db string) (conn *pgx.Conn, err error) {
-	cfg, err := pgx.ParseConfig(fmt.Sprintf("postgres://postgres:%s@%s/%s", cluster.Password, cluster.Url, db))
+	cfg, err := pgx.ParseConfig(connectionUri(cluster, db))
 	if err != nil {
 		return nil, err
 	}
@@ -109,4 +113,8 @@ func connect(ctx context.Context, cluster *postgres.ClusterInstance, db string) 
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
 
 	return conn, err
+}
+
+func connectionUri(cluster *postgres.ClusterInstance, db string) string {
+	return fmt.Sprintf("postgres://%s:%s@%s/%s", user, cluster.Password, cluster.Address, db)
 }
