@@ -65,15 +65,6 @@ Our releases are published to:
   private repos.
 - [Homebew TAP](https://github.com/namespacelabs/homebrew-namespace)
 
-We have two distict packages to release:
-
-- `ns` core binary, defined in `.goreleaser.yaml` which contains the actual commands. Released to
-  GitHub releases and to the public S3 bucket.
-- `nsboot` binary, defined in `.goreleaser.nsboot.yaml` which is a thin wrapper which downloads and
-  runs the appropriate version of `ns` upon every invocation. This is intended to be the primary
-  entry point for end users and is published to the package repositories (along withj GitHub
-  releases and the S3 bucket).
-
 Before releasing a new `ns` version, please verify that `ns test --include_servers` passes in other
 repos (e.g. examples, internal).
 
@@ -90,15 +81,9 @@ To issue an actual release:
 
 1. Create a Github PAT with `write_packages` permissions and place it in
    `~/.config/goreleaser/github_token`. This allows GoReleaser to upload to Github releases.
-2. Log into AWS with `aws --profile prod-main sso login`.
-3. Export AWS temporary credentials with
-   [aws-sso-creds](https://github.com/jaxxstorm/aws-sso-creds#installation)
-   `aws-sso-creds set default -p prod-main`.
-4. Pick a new version (check the existing tag list): `git tag -a v0.0.24`
-5. Run the release `goreleaser release --rm-dist` (add `-f .goreleaser.nsboot.yaml` to release
-   `nsboot`).
-6. When releasing `nsboot` update the version in `install/install.sh`.
-7. After the release is complete, remember to remove the `dist` directory to keep your workspace
+2. Pick a new version (check the existing tag list): `git tag v0.0.24`
+3. Run the release `goreleaser release --rm-dist`.
+4. After the release is complete, remember to remove the `dist` directory to keep your workspace
    size small.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
