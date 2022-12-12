@@ -34,6 +34,7 @@
             aws-iam-authenticator
             eksctl
             google-cloud-sdk
+            postgresql
           ];
       };
     });
