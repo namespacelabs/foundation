@@ -238,7 +238,7 @@ func loadCachedMetadata() (*versionCache, error) {
 
 func CheckInvalidate(ver *versioncheck.Status) (string, bool) {
 	cached, err := loadCachedMetadata()
-	if err == nil && cached.Latest != nil {
+	if err == nil && cached != nil && cached.Latest != nil {
 		newVersion := semver.Compare(ver.Version, cached.Latest.TagName) > 0
 		if newVersion {
 			if err := invalidate(cached, ver.Version); err == nil {
