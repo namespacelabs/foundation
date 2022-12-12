@@ -92,9 +92,9 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 			return nil, fnerrors.InternalError("failed to resolve %q: %w", instance.PackageName, err)
 		}
 
-		parsed, err := ParseRawIntent(ctx, resourceLoc, ri.IntentType, raw)
+		parsed, err := parseRawIntent(ctx, pl, pkg, resourceLoc, ri.IntentType, raw)
 		if err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "failed to parse intent: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "failed to parse intent %q: %w", instance.Name, err)
 		}
 
 		ri.Intent = parsed
@@ -144,12 +144,19 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 	return &pkggraph.ResourceInstance{ResourceRef: name, Spec: ri}, nil
 }
 
-func ParseRawIntent(ctx context.Context, loc pkggraph.Location, intentType *pkggraph.UserType, value any) (*anypb.Any, error) {
+func parseRawIntent(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, loc pkggraph.Location, intentType *pkggraph.UserType, value any) (*anypb.Any, error) {
 	subFsys := loc.Module.ReadOnlyFS(loc.Rel())
 
 	msg, err := allocateWellKnownMessage(parseContext{
 		FS:          subFsys,
 		PackageName: loc.PackageName,
+		EnsurePackage: func(requested schema.PackageName) error {
+			if requested == pkg.PackageName() {
+				return nil
+			}
+			_, err := pl.LoadByName(ctx, requested)
+			return err
+		},
 	}, intentType.Descriptor, value)
 	if err != nil {
 		return nil, err
@@ -184,38 +191,8 @@ func LookupResourceProvider(ctx context.Context, pl pkggraph.PackageLoader, pkg 
 }
 
 func checkLoadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, class *schema.ResourceClass, value *anypb.Any) error {
-	// XXX Add generic package loading annotation to avoid special-casing this
-	// resource class. Other type of resources could also have references to
-	// packages.
-
 	if err := pkggraph.ValidateFoundation("runtime resources", Version_LibraryIntentsChanged, pkggraph.ModuleFromLoader(ctx, pl)); err != nil {
 		return err
-	}
-
-	var pkg schema.PackageName
-
-	switch {
-	case IsServerResource(class):
-		intent := &schema.PackageRef{}
-		if err := value.UnmarshalTo(intent); err != nil {
-			return fnerrors.InternalError("failed to unwrap Server intent: %w", err)
-		}
-
-		pkg = intent.AsPackageName()
-
-	case IsSecretResource(class):
-		intent := &schema.PackageRef{}
-		if err := value.UnmarshalTo(intent); err != nil {
-			return fnerrors.InternalError("failed to unwrap Secret intent: %w", err)
-		}
-
-		pkg = intent.AsPackageName()
-	}
-
-	if pkg != "" && pkg != owner {
-		if _, err := pl.LoadByName(ctx, pkg); err != nil {
-			return err
-		}
 	}
 
 	return nil

@@ -17,11 +17,12 @@ import (
 )
 
 type parseContext struct {
-	FS          fs.FS
-	PackageName schema.PackageName
+	FS            fs.FS
+	PackageName   schema.PackageName
+	EnsurePackage func(schema.PackageName) error
 }
 
-func allocateValue(pctx parseContext, parent *dynamicpb.Message, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
+func allocateValue(pctx parseContext, parent protoreflect.Message, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
 	if field.IsMap() {
 		return protoreflect.Value{}, fnerrors.New("maps not supported")
 	}
@@ -141,16 +142,35 @@ func allocateWellKnownMessage(pctx parseContext, messageType protoreflect.Messag
 		return allocateFileContents(pctx, value)
 
 	case "foundation.schema.PackageRef":
-		return allocatePackageRef(pctx, messageType, value)
+		pkgref, err := allocatePackageRef(pctx, messageType, value)
+		if err != nil {
+			return nil, err
+		}
+
+		if ref, ok := pkgref.(*schema.PackageRef); ok {
+			if pctx.EnsurePackage != nil {
+				if err := pctx.EnsurePackage(ref.AsPackageName()); err != nil {
+					return nil, err
+				}
+			}
+		} else {
+			return nil, fnerrors.InternalError("expected package ref parsing to yield a schema.PackageRef")
+		}
+
+		return pkgref, nil
 	}
 
-	return allocateMessage(pctx, messageType, value)
+	return allocateDynamicMessage(pctx, messageType, value)
 }
 
-func allocateMessage(pctx parseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
+func allocateDynamicMessage(pctx parseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
+	msg := dynamicpb.NewMessage(messageType)
+	return allocateMessage(pctx, msg, value)
+}
+
+func allocateMessage(pctx parseContext, msg protoreflect.Message, value any) (protoreflect.ProtoMessage, error) {
 	switch x := value.(type) {
 	case map[string]interface{}:
-		msg := dynamicpb.NewMessage(messageType)
 		fields := msg.Descriptor().Fields()
 
 		for key, v := range x {
@@ -171,10 +191,10 @@ func allocateMessage(pctx parseContext, messageType protoreflect.MessageDescript
 			msg.Set(f, newValue)
 		}
 
-		return msg, nil
+		return msg.Interface(), nil
 	}
 
-	return nil, fnerrors.New("expected map, got %s", reflect.TypeOf(value).String())
+	return nil, fnerrors.New("%s: expected map, got %s", msg.Descriptor().FullName(), reflect.TypeOf(value).String())
 }
 
 func allocatePackageRef(pctx parseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
@@ -185,12 +205,9 @@ func allocatePackageRef(pctx parseContext, messageType protoreflect.MessageDescr
 		}
 
 		return schema.ParsePackageRef(pctx.PackageName, x)
-
-	case map[string]any:
-		return allocateMessage(pctx, messageType, value)
 	}
 
-	return nil, fnerrors.New("failed to handle package ref, got %s", reflect.TypeOf(value).String())
+	return allocateMessage(pctx, (&schema.PackageRef{}).ProtoReflect(), value)
 }
 
 func allocateFileContents(pctx parseContext, value any) (protoreflect.ProtoMessage, error) {
