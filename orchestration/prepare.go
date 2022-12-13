@@ -39,6 +39,8 @@ const (
 	orchestratorStateKey = "foundation.orchestration"
 	orchDialTimeout      = 5 * time.Second
 	deployPlanFile       = "deployplan.binarypb"
+
+	firstStatelessVersion = 3
 )
 
 var (
@@ -47,12 +49,12 @@ var (
 	SkipVersionCache             = false
 	RenderOrchestratorDeployment = false
 
-	server = &runtimepb.Deployable{
+	stateless = &runtimepb.Deployable{
 		PackageName:     constants.ServerPkg.String(),
 		PackageRef:      schema.MakePackageSingleRef(constants.ServerPkg),
 		Id:              constants.ServerId,
 		Name:            constants.ServerName,
-		DeployableClass: string(schema.DeployableClass_STATEFUL),
+		DeployableClass: string(schema.DeployableClass_STATELESS),
 	}
 )
 
@@ -79,18 +81,36 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		return nil, err
 	}
 
-	res := &RemoteOrchestrator{cluster: boundCluster, server: server}
-
 	if UseHeadOrchestrator {
 		if err := deployHead(ctx, env, boundCluster, wait); err != nil {
 			return nil, err
 		}
 
-		return res, nil
+		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
 	}
 
-	if !requiresUpdate(ctx, env, boundCluster) {
-		return res, nil
+	versions, err := getVersions(ctx, env, boundCluster)
+	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to check if orchestrator is up to date: %v\nwill update orchestrator by default\n", err)
+	}
+
+	latest := stateless
+	if versions.Latest < firstStatelessVersion {
+		latest.DeployableClass = string(schema.DeployableClass_STATEFUL)
+	}
+
+	if versions.Current != 0 && versions.Current == versions.Latest {
+		// already up to date
+		return &RemoteOrchestrator{cluster: boundCluster, server: latest}, nil
+	}
+
+	if versions.Current < firstStatelessVersion && versions.Latest >= firstStatelessVersion {
+		// best-effort clean up old stateful set
+		stateful := stateless
+		stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
+		if err := boundCluster.DeleteDeployable(ctx, stateful); err != nil {
+			fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
+		}
 	}
 
 	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
@@ -107,7 +127,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 			return nil, err
 		}
 
-		return res, nil
+		return &RemoteOrchestrator{cluster: boundCluster, server: latest}, nil
 	}
 
 	return nil, fnerrors.InternalError("Did not receive any pinned deployment plan for Namespace orchestrator")
@@ -186,15 +206,15 @@ func execute(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterN
 	return execution.RawExecute(ctx, "orchestrator.deploy", plan, execution.FromContext(env), runtime.InjectCluster(boundCluster))
 }
 
-func requiresUpdate(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace) bool {
-	requiresUpdate, err := tasks.Return(ctx, tasks.Action("orchestrator.check-version"), func(ctx context.Context) (bool, error) {
+func getVersions(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace) (*orchestrationpb.GetOrchestratorVersionResponse, error) {
+	return tasks.Return(ctx, tasks.Action("orchestrator.check-version"), func(ctx context.Context) (*orchestrationpb.GetOrchestratorVersionResponse, error) {
 		ctx, cancel := context.WithTimeout(ctx, orchDialTimeout)
 		defer cancel()
 
 		// Only dial once.
-		conn, err := boundCluster.DialServer(ctx, server, &schema.Endpoint_Port{Name: portName})
+		conn, err := boundCluster.DialServer(ctx, stateless, &schema.Endpoint_Port{Name: portName})
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
 		rpc, err := grpc.DialContext(ctx, "orchestrator",
@@ -204,29 +224,11 @@ func requiresUpdate(ctx context.Context, env cfg.Context, boundCluster runtime.C
 				return conn, nil
 			}))
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
-		res, err := orchestrationpb.NewOrchestrationServiceClient(rpc).GetOrchestratorVersion(ctx, &orchestrationpb.GetOrchestratorVersionRequest{
+		return orchestrationpb.NewOrchestrationServiceClient(rpc).GetOrchestratorVersion(ctx, &orchestrationpb.GetOrchestratorVersionRequest{
 			SkipCache: SkipVersionCache,
 		})
-
-		if err != nil {
-			return false, err
-		}
-
-		if res.Current == 0 {
-			fmt.Fprintf(console.Debug(ctx), "outdated orchestrator did not provide a current version - will update\n")
-			return true, nil
-		}
-
-		return res.Current != res.Latest, nil
 	})
-
-	if err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to check if orchestrator is up to date - will update by default\n")
-		return true
-	}
-
-	return requiresUpdate
 }

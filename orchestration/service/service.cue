@@ -11,19 +11,18 @@ service: fn.#Service & {
 	framework:     "GO"
 	exportService: $proto.services.OrchestrationService
 
-	requirePersistentStorage: {
-		persistentId: "ns-orchestration-state"
-		byteCount:    "1GiB"
-		mountPath:    "/namespace/orchestration/data"
+	mounts: {
+		"/namespace/orchestration/data": ephemeral: {}
+		"/namespace/orchestration/home": ephemeral: {}
 	}
 }
 
 configure: fn.#Configure & {
 	startup: {
 		env: {
-			"ORCH_VERSION": "2"
+			"ORCH_VERSION": "3"
 			"NSDATA":       "/namespace/orchestration/data"
-			"HOME":         "/namespace/orchestration/data/tmphome" // TODO Move to empty dir.
+			"HOME":         "/namespace/orchestration/home"
 		}
 	}
 }
