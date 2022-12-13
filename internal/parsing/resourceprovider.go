@@ -6,6 +6,7 @@ package parsing
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -74,7 +75,9 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 		}
 	}
 
-	if instances, err := LoadResources(ctx, pl, pp, provider.ResourcePack); err != nil {
+	rp.ProviderID = fmt.Sprintf("{%s; class=%s}", provider.PackageName, provider.ProvidesClass.Canonical())
+
+	if instances, err := LoadResources(ctx, pl, pp, rp.ProviderID, provider.ResourcePack); err != nil {
 		errs = append(errs, err)
 	} else {
 		for _, instance := range instances {
@@ -87,13 +90,13 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pp *p
 	}
 
 	// Make sure that all referenced classes and providers are loaded.
-	for _, pkg := range provider.ResourceInstanceFromAvailableClasses {
+	for _, pkg := range provider.AvailableClasses {
 		_, err := pl.LoadByName(ctx, pkg.AsPackageName())
 		errs = append(errs, err)
 	}
 
-	for _, pkg := range provider.ResourceInstanceFromAvailableProviders {
-		_, err := pl.LoadByName(ctx, pkg.AsPackageName())
+	for _, pkg := range provider.AvailablePackages {
+		_, err := pl.LoadByName(ctx, schema.PackageName(pkg))
 		errs = append(errs, err)
 	}
 

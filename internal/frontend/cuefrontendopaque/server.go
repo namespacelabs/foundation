@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/resources"
 )
 
 type cueServer struct {
@@ -162,7 +163,10 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 				return nil, nil, err
 			}
 
-			out.Permissions.ClusterRole = append(out.Permissions.ClusterRole, parsed)
+			out.Permissions.ClusterRole = append(out.Permissions.ClusterRole, &schema.ServerPermissions_ClusterRole{
+				Label:      parsed.Canonical(),
+				ResourceId: resources.ResourceID(parsed),
+			})
 
 			if out.ResourcePack == nil {
 				out.ResourcePack = &schema.ResourcePack{}

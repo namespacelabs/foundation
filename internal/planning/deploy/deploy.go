@@ -254,15 +254,19 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
-				if err := rp.checkAddOwnedResources(ctx, ps.Server, ps.Resources); err != nil {
+				if err := rp.checkAddOwnedResources(ctx, stackAndDefs.Stack, ps.Server, ps.Resources); err != nil {
 					return nil, err
 				}
 			}
 
 			for _, p := range prepared {
-				if err := rp.checkAddOwnedResources(ctx, p.Value, p.Value.Resources); err != nil {
+				if err := rp.checkAddOwnedResources(ctx, stackAndDefs.Stack, p.Value, p.Value.Resources); err != nil {
 					return nil, err
 				}
+			}
+
+			for key, msg := range stackAndDefs.Stack.ComputedResources {
+				fmt.Fprintf(console.Debug(ctx), "planResources: %q: %+v\n", key, msg)
 			}
 
 			return planResources(ctx, modules, planner, registry, stackAndDefs.Stack, rp)

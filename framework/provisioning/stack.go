@@ -7,6 +7,7 @@ package provisioning
 import (
 	"context"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
@@ -34,6 +35,14 @@ type ApplyOutput struct {
 	ServerExtensions []*schema.ServerExtension
 	// Output a resource instance.
 	OutputResourceInstance *anypb.Any
+	// Set of resources that should be passed to the initializer.
+	ComputedResourceInput []ResourceInput
+}
+
+type ResourceInput struct {
+	Name   string
+	Class  *schema.PackageRef
+	Intent proto.Message
 }
 
 type Compilable interface {

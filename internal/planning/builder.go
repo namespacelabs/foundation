@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type stackBuilder struct {
@@ -35,7 +36,7 @@ func (stack *stackBuilder) claim(pkgname schema.PackageName) (*PlannedServer, bo
 	return ps, false
 }
 
-func (stack *stackBuilder) buildStack(focusPackages ...schema.PackageName) *Stack {
+func (stack *stackBuilder) buildStack(computedResources map[string][]pkggraph.ResourceInstance, focusPackages ...schema.PackageName) *Stack {
 	stack.mu.Lock()
 	defer stack.mu.Unlock()
 
@@ -45,7 +46,8 @@ func (stack *stackBuilder) buildStack(focusPackages ...schema.PackageName) *Stac
 	}
 
 	s := &Stack{
-		Focus: focus,
+		Focus:             focus,
+		ComputedResources: computedResources,
 	}
 
 	for _, sb := range stack.servers {
@@ -87,6 +89,12 @@ func (stack *stackBuilder) buildStack(focusPackages ...schema.PackageName) *Stac
 	s.Endpoints = endpoints
 	s.InternalEndpoints = internal
 	return s
+}
+
+func (stack *stackBuilder) changeServer(handler func()) {
+	stack.mu.Lock()
+	defer stack.mu.Unlock()
+	handler()
 }
 
 func order(foci schema.PackageList, a, b schema.PackageName) bool {

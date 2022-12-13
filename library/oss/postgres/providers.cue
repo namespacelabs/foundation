@@ -11,17 +11,20 @@ providers: {
 	"namespacelabs.dev/foundation/library/database/postgres:Cluster": {
 		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/postgres/prepare/cluster"
 
-		resources: {
-			// Adds the server to the stack
-			server: {
-				class:  "namespacelabs.dev/foundation/library/runtime:Server"
-				intent: "namespacelabs.dev/foundation/library/oss/postgres/server"
-			}
-			// Mounts the Postgres password as a secret
-			password: {
-				class:  "namespacelabs.dev/foundation/library/runtime:Secret"
-				intent: "namespacelabs.dev/foundation/library/oss/postgres/server:password"
-			}
+		intent: {
+			type:   "library.oss.postgres.ClusterIntent"
+			source: "./types.proto"
 		}
+
+		resourcesFrom: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/postgres/prepare/clusterinstance"
+
+		availableClasses: [
+			"namespacelabs.dev/foundation/library/runtime:Server",
+			"namespacelabs.dev/foundation/library/runtime:Secret",
+		]
+
+		availablePackages: [
+			"namespacelabs.dev/foundation/library/oss/postgres/server",
+		]
 	}
 }

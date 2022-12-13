@@ -217,14 +217,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		for _, role := range deployable.Permissions.ClusterRole {
 			var clusterRole *runtime.PlannedResource
 			for _, res := range deployable.PlannedResource {
-				if res.ResourceInstanceID == resources.ResourceID(role) {
+				if res.ResourceInstanceID == role.ResourceId {
 					clusterRole = &res
 					// XXX check dups?
 				}
 			}
 
 			if clusterRole == nil {
-				return fnerrors.New("permissions refer to %q which is not present", role.Canonical())
+				return fnerrors.New("permissions refer to %q which is not present", role.Label)
 			}
 
 			const roleInstance = "library.kubernetes.rbac.ClusterRoleInstance"
@@ -238,7 +238,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			s.operations = append(s.operations, kubedef.Apply{
-				Description: fmt.Sprintf("%s: bind Cluster Role", role.Canonical()),
+				Description: fmt.Sprintf("%s: bind Cluster Role", role.Label),
 				Resource: rbacv1.ClusterRoleBinding(fmt.Sprintf("binding:%s:%s", kubedef.MakeDeploymentId(deployable), instance.Name)).
 					WithLabels(labels).
 					WithAnnotations(kubedef.BaseAnnotations()).

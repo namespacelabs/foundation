@@ -96,6 +96,8 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 	}
 
 	format(w, cause, opts)
+	// XXX TODO write stacktrace out if requested.
+	// writeSourceFileAndLine(w, cause, opts.style)
 }
 
 func writeSourceFileAndLine(w io.Writer, err error, colors colors.Style) {

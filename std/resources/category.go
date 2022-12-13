@@ -17,3 +17,14 @@ func ResourceInstanceCategory(id string) string {
 func ResourceID(resourceRef *schema.PackageRef) string {
 	return fmt.Sprintf("%s:%s", resourceRef.AsPackageName(), resourceRef.Name)
 }
+
+func ScopedID(parentID string, ref *schema.PackageRef) string {
+	return JoinID(parentID, ResourceID(ref))
+}
+
+func JoinID(parent, child string) string {
+	if parent == "" {
+		return child
+	}
+	return fmt.Sprintf("%s;%s", parent, child)
+}

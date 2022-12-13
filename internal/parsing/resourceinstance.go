@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/resources"
 )
 
 const Version_LibraryIntentsChanged = 48
@@ -37,7 +38,7 @@ func IsSecretResource(ref packageRefLike) bool {
 	return isRuntimeResource(ref) && ref.GetName() == "Secret"
 }
 
-func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
+func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, parentID string, instance *schema.ResourceInstance) (*pkggraph.ResourceInstance, error) {
 	loc := pkg.Location
 
 	if instance.IntentFrom != nil {
@@ -141,7 +142,11 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		}
 	}
 
-	return &pkggraph.ResourceInstance{ResourceRef: name, Spec: ri}, nil
+	return &pkggraph.ResourceInstance{
+		ResourceID:  resources.ScopedID(parentID, name),
+		ResourceRef: name,
+		Spec:        ri,
+	}, nil
 }
 
 func parseRawIntent(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, loc pkggraph.Location, intentType *pkggraph.UserType, value any) (*anypb.Any, error) {
@@ -198,7 +203,7 @@ func checkLoadPrimitiveResources(ctx context.Context, pl pkggraph.PackageLoader,
 	return nil
 }
 
-func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
+func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, parentID string, pack *schema.ResourcePack) ([]pkggraph.ResourceInstance, error) {
 	var resources []pkggraph.ResourceInstance
 
 	for _, resource := range pack.GetResourceRef() {
@@ -216,7 +221,7 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph
 	}
 
 	for _, resource := range pack.GetResourceInstance() {
-		instance, err := loadResourceInstance(ctx, pl, pkg, resource)
+		instance, err := loadResourceInstance(ctx, pl, pkg, parentID, resource)
 		if err != nil {
 			return nil, err
 		}
@@ -228,6 +233,10 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph
 }
 
 func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
+	if owner.PackageName == "" {
+		return fnerrors.InternalError("owner.package_name is missing")
+	}
+
 	for _, s := range servers {
 		intent, err := json.Marshal(&schema.PackageRef{
 			PackageName: s.String(),

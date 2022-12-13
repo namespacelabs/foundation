@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/keys"
+	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -181,4 +182,23 @@ func makeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggr
 	})
 
 	return invocation, nil
+}
+
+func ValidateProviderReponse(response *protocol.ToolResponse) error {
+	if response.ApplyResponse == nil {
+		return fnerrors.InternalError("missing apply response")
+	}
+
+	r := response.ApplyResponse
+	if len(r.ServerExtension) > 0 || len(r.Extension) > 0 {
+		return fnerrors.InternalError("a resource planner can not return server extensions")
+	}
+	if len(r.InvocationSource) > 0 {
+		return fnerrors.InternalError("computable invocation sources not supported in this path")
+	}
+	if len(r.Computed) > 0 {
+		return fnerrors.InternalError("compute configurations not supported in this path")
+	}
+
+	return nil
 }

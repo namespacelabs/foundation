@@ -6,7 +6,6 @@ package deploy
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -49,6 +48,7 @@ type plannedResource struct {
 type serverStack interface {
 	GetServerProto(srv schema.PackageName) (*schema.Server, bool)
 	GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bool)
+	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
 }
 
 func planResources(ctx context.Context, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
@@ -62,7 +62,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 	type resourcePlanInvocation struct {
 		Env                  cfg.Context
 		Source               schema.PackageName
-		ResourceInstanceID   string
+		Resource             *resourceInstance
 		ResourceSource       *schema.ResourceInstance
 		ResourceClass        *schema.ResourceClass
 		Invocation           *invocation.Invocation
@@ -163,7 +163,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 			planningInvocations = append(planningInvocations, resourcePlanInvocation{
 				Env:                  sealedCtx,
 				Source:               schema.PackageName(resource.Source.PackageName),
-				ResourceInstanceID:   resource.ID,
+				Resource:             resource,
 				ResourceSource:       resource.Source,
 				ResourceClass:        resource.Class.Source,
 				Invocation:           inv,
@@ -239,11 +239,11 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 			planningInvocations[k].Image = builtPlanningImages[k].Value
 		}
 
-		var x []compute.Computable[*protocol.ToolResponse]
+		var invocationResponses []compute.Computable[*protocol.ToolResponse]
 		var errs []error
 		for _, planned := range planningInvocations {
 			source, err := anypb.New(&protocol.ResourceInstance{
-				ResourceInstanceId: planned.ResourceInstanceID,
+				ResourceInstanceId: planned.Resource.ID,
 				ResourceInstance:   planned.ResourceSource,
 			})
 			if err != nil {
@@ -261,7 +261,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 			if err != nil {
 				errs = append(errs, err)
 			} else {
-				x = append(x, inv)
+				invocationResponses = append(invocationResponses, inv)
 			}
 		}
 
@@ -269,7 +269,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 			return nil, err
 		}
 
-		responses, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.invoke-providers"), x...))
+		responses, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.invoke-providers"), invocationResponses...))
 		if err != nil {
 			return nil, err
 		}
@@ -277,24 +277,19 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 		for k, raw := range responses {
 			response := raw.Value
 
-			if response.ApplyResponse == nil {
-				return nil, fnerrors.InternalError("missing apply response")
+			if err := invocation.ValidateProviderReponse(response); err != nil {
+				return nil, err
 			}
 
 			r := response.ApplyResponse
-			if len(r.ServerExtension) > 0 || len(r.Extension) > 0 {
-				return nil, fnerrors.InternalError("a resource planner can not return server extensions")
-			}
-			if len(r.InvocationSource) > 0 {
-				return nil, fnerrors.InternalError("computable invocation sources not supported in this path")
-			}
-			if len(r.Computed) > 0 {
-				return nil, fnerrors.InternalError("compute configurations not supported in this path")
+
+			if len(r.ComputedResourceInput) > 0 {
+				return nil, fnerrors.InternalError("prepareWith response can't include computed resourced")
 			}
 
 			plan.PlannedResources = append(plan.PlannedResources, plannedResource{
 				PlannedResource: runtime.PlannedResource{
-					ResourceInstanceID: planningInvocations[k].ResourceInstanceID,
+					ResourceInstanceID: planningInvocations[k].Resource.ID,
 					Class:              planningInvocations[k].ResourceClass,
 					Instance:           r.OutputResourceInstance,
 				},
@@ -349,10 +344,10 @@ type resourceOwner interface {
 	PackageRef() *schema.PackageRef
 }
 
-func (rp *resourceList) checkAddOwnedResources(ctx context.Context, owner resourceOwner, instances []pkggraph.ResourceInstance) error {
+func (rp *resourceList) checkAddOwnedResources(ctx context.Context, stack serverStack, owner resourceOwner, instances []pkggraph.ResourceInstance) error {
 	var instance resourceInstance
 
-	if err := rp.checkAddTo(ctx, owner.SealedContext(), "", instances, &instance); err != nil {
+	if err := rp.checkAddTo(ctx, stack, owner.SealedContext(), "", instances, &instance); err != nil {
 		return err
 	}
 
@@ -369,7 +364,7 @@ func (rp *resourceList) checkAddOwnedResources(ctx context.Context, owner resour
 	return nil
 }
 
-func (rp *resourceList) checkAddResource(ctx context.Context, sealedCtx pkggraph.SealedContext, resourceID string, resource pkggraph.ResourceSpec) error {
+func (rp *resourceList) checkAddResource(ctx context.Context, stack serverStack, sealedCtx pkggraph.SealedContext, resourceID string, resource pkggraph.ResourceSpec) error {
 	if existing, has := rp.resources[resourceID]; has {
 		existing.ParentContexts = append(existing.ParentContexts, sealedCtx)
 		return nil
@@ -409,9 +404,10 @@ func (rp *resourceList) checkAddResource(ctx context.Context, sealedCtx pkggraph
 		inputs = append(inputs, resource.Provider.Resources...)
 	}
 
+	inputs = append(inputs, stack.GetComputedResources(resourceID)...)
 	inputs = append(inputs, resource.ResourceInputs...)
 
-	if err := rp.checkAddTo(ctx, sealedCtx, resourceID, inputs, &instance); err != nil {
+	if err := rp.checkAddTo(ctx, stack, sealedCtx, resourceID, inputs, &instance); err != nil {
 		return err
 	}
 
@@ -419,7 +415,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, sealedCtx pkggraph
 	return nil
 }
 
-func (rp *resourceList) checkAddTo(ctx context.Context, sealedCtx pkggraph.SealedContext, parentID string, inputs []pkggraph.ResourceInstance, instance *resourceInstance) error {
+func (rp *resourceList) checkAddTo(ctx context.Context, stack serverStack, sealedCtx pkggraph.SealedContext, parentID string, inputs []pkggraph.ResourceInstance, instance *resourceInstance) error {
 	regular, secrets, err := splitRegularAndSecretResources(ctx, sealedCtx, inputs)
 	if err != nil {
 		return err
@@ -428,12 +424,9 @@ func (rp *resourceList) checkAddTo(ctx context.Context, sealedCtx pkggraph.Seale
 	// Add static resources required by providers.
 	var errs []error
 	for _, res := range regular {
-		scopedID := resources.ResourceID(res.ResourceRef)
-		if parentID != "" {
-			scopedID = fmt.Sprintf("%s;%s", parentID, scopedID)
-		}
+		scopedID := resources.JoinID(parentID, res.ResourceID)
 
-		if err := rp.checkAddResource(ctx, sealedCtx, scopedID, res.Spec); err != nil {
+		if err := rp.checkAddResource(ctx, stack, sealedCtx, scopedID, res.Spec); err != nil {
 			errs = append(errs, err)
 		} else {
 			dep := &resources.ResourceDependency{

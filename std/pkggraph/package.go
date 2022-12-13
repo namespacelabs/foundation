@@ -75,6 +75,7 @@ type ResourceSpec struct {
 }
 
 type ResourceInstance struct {
+	ResourceID  string
 	ResourceRef *schema.PackageRef
 	Spec        ResourceSpec
 }
@@ -90,6 +91,7 @@ type ResourceClass struct {
 type ResourceProvider struct {
 	Spec *schema.ResourceProvider
 
+	ProviderID     string
 	IntentType     *UserType
 	Resources      []ResourceInstance
 	ResourceInputs []ExpectedResourceInstance

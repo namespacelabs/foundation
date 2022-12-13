@@ -354,7 +354,6 @@ func (l *loadingPackage) Ensure(ctx context.Context) error {
 
 		return FinalizePackage(ctx, l.pl.env, l.pl, pp)
 	})
-
 	l.mu.Lock()
 
 	l.done = true

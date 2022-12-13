@@ -1,0 +1,18 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package library.oss.postgres;
+
+option go_package = "namespacelabs.dev/foundation/library/oss/postgres";
+
+import "schema/package.proto";
+
+message ClusterIntent {
+    // If set, overrides the server package used to instantiate the local database cluster.
+    foundation.schema.PackageRef server_ref = 1;
+    // If set, overrides the root password used to access the cluster.
+    foundation.schema.PackageRef password_resource_ref = 2;
+}

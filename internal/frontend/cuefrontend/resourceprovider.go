@@ -21,6 +21,9 @@ type cueResourceProvider struct {
 	ResourceInputs map[string]string `json:"inputs"` // Key: name, Value: serialized class ref
 	Intent         *cueResourceType  `json:"intent,omitempty"`
 
+	AvailableClasses  []string `json:"availableClasses"`
+	AvailablePackages []string `json:"availablePackages"`
+
 	// TODO: parse prepare hook.
 }
 
@@ -40,10 +43,27 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 		return nil, err
 	}
 
+	resourcesFrom, err := binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-resfrom-"+key /* binaryName */, "resourcesFrom" /* cuePath */, v)
+	if err != nil {
+		return nil, err
+	}
+
 	rp := &schema.ResourceProvider{
+		PackageName:     pkg.PackageName().String(),
 		ProvidesClass:   classRef,
 		InitializedWith: initializedWithInvocation,
+		ResourcesFrom:   resourcesFrom,
 	}
+
+	for _, x := range bits.AvailableClasses {
+		ref, err := schema.ParsePackageRef(pkg.PackageName(), x)
+		if err != nil {
+			return nil, err
+		}
+		rp.AvailableClasses = append(rp.AvailableClasses, ref)
+	}
+
+	rp.AvailablePackages = bits.AvailablePackages
 
 	if bits.Intent != nil {
 		rp.IntentType = parseResourceType(bits.Intent)

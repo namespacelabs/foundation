@@ -6,6 +6,7 @@ package provisioning
 
 import (
 	"context"
+	"encoding/json"
 	"io/fs"
 	"log"
 
@@ -133,6 +134,19 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, handlers AllH
 		response.ApplyResponse.InvocationSource = out.InvocationSources
 		response.ApplyResponse.Computed = out.Computed
 		response.ApplyResponse.OutputResourceInstance = out.OutputResourceInstance
+
+		for _, computed := range out.ComputedResourceInput {
+			intent, err := json.Marshal(computed.Intent)
+			if err != nil {
+				return nil, err
+			}
+
+			response.ApplyResponse.ComputedResourceInput = append(response.ApplyResponse.ComputedResourceInput, &protocol.ApplyResponse_ResourceInput{
+				Name:                 computed.Name,
+				Class:                computed.Class,
+				SerializedIntentJson: string(intent),
+			})
+		}
 
 	case *protocol.ToolRequest_DeleteRequest:
 		p, err := parseStackRequest(br, x.DeleteRequest.Header)

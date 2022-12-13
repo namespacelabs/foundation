@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -31,6 +32,7 @@ type Stack struct {
 	Servers           []PlannedServer
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
+	ComputedResources map[string][]pkggraph.ResourceInstance // Key is resource ID.
 }
 
 type ProvisionOpts struct {
@@ -119,6 +121,10 @@ func (stack *Stack) GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bo
 	return nil, false
 }
 
+func (stack *Stack) GetComputedResources(resourceID string) []pkggraph.ResourceInstance {
+	return stack.ComputedResources[resourceID]
+}
+
 func ComputeStack(ctx context.Context, servers Servers, opts ProvisionOpts) (*Stack, error) {
 	return tasks.Return(ctx, tasks.Action("planning.compute").Scope(servers.Packages().PackageNames()...),
 		func(ctx context.Context) (*Stack, error) {
@@ -141,13 +147,15 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...Server) (*
 		focus[k] = server.PackageName()
 	}
 
-	cs := computeState{exec: executor.New(ctx, "planning.compute"), out: &builder}
+	eg := executor.New(ctx, "planning.compute")
+	rp := newResourcePlanner(eg)
+	cs := computeState{exec: eg, out: &builder}
 
 	for _, srv := range servers {
 		srv := srv // Close srv.
 
 		cs.exec.Go(func(ctx context.Context) error {
-			return cs.recursivelyComputeServerContents(ctx, srv.SealedContext(), srv.PackageName(), opts)
+			return cs.recursivelyComputeServerContents(ctx, rp, srv.SealedContext(), srv.PackageName(), opts)
 		})
 	}
 
@@ -155,7 +163,7 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...Server) (*
 		return nil, err
 	}
 
-	return builder.buildStack(focus...), nil
+	return builder.buildStack(rp.Complete(), focus...), nil
 }
 
 type computeState struct {
@@ -163,7 +171,7 @@ type computeState struct {
 	out  *stackBuilder
 }
 
-func (cs *computeState) recursivelyComputeServerContents(ctx context.Context, pkgs pkggraph.SealedContext, pkg schema.PackageName, opts ProvisionOpts) error {
+func (cs *computeState) recursivelyComputeServerContents(ctx context.Context, rp *resourcePlanner, pkgs pkggraph.SealedContext, pkg schema.PackageName, opts ProvisionOpts) error {
 	ps, existing := cs.out.claim(pkg)
 	if existing {
 		return nil // Already added.
@@ -174,21 +182,21 @@ func (cs *computeState) recursivelyComputeServerContents(ctx context.Context, pk
 		return err
 	}
 
-	if err := computeServerContents(ctx, srv, opts, ps); err != nil {
+	if err := cs.computeServerContents(ctx, rp, srv, opts, ps); err != nil {
 		return err
 	}
 
 	for _, pkg := range ps.DeclaredStack.PackageNames() {
 		pkg := pkg // Close pkg.
 		cs.exec.Go(func(ctx context.Context) error {
-			return cs.recursivelyComputeServerContents(ctx, pkgs, pkg, opts)
+			return cs.recursivelyComputeServerContents(ctx, rp, pkgs, pkg, opts)
 		})
 	}
 
 	return nil
 }
 
-func computeServerContents(ctx context.Context, server Server, opts ProvisionOpts, ps *PlannedServer) error {
+func (cs *computeState) computeServerContents(ctx context.Context, rp *resourcePlanner, server Server, opts ProvisionOpts, ps *PlannedServer) error {
 	return tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
 		deps := server.Deps()
 
@@ -251,16 +259,23 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
-		resources, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package, server.Proto().GetResourcePack())
+		resources, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package,
+			server.PackageName().String(), server.Proto().GetResourcePack())
 		if err != nil {
 			return err
 		}
 
 		ps.Resources = append(ps.Resources, resources...)
 
-		if err := discoverDeclaredServers(server.SealedContext(), resources, &ps.DeclaredStack); err != nil {
-			return err
-		}
+		traverseResources(server.SealedContext(), server.PackageName().String(), rp, resources, func(pkg schema.PackageName) {
+			cs.exec.Go(func(ctx context.Context) error {
+				cs.out.changeServer(func() {
+					ps.DeclaredStack.Add(pkg)
+				})
+
+				return cs.recursivelyComputeServerContents(ctx, rp, server.SealedContext(), pkg, opts)
+			})
+		})
 
 		// Fill in env-bound data now, post ports allocation.
 		endpoints, internal, err := ComputeEndpoints(server, allocatedPorts.Ports)
@@ -276,38 +291,26 @@ func computeServerContents(ctx context.Context, server Server, opts ProvisionOpt
 	})
 }
 
-func discoverDeclaredServers(modules pkggraph.Modules, resources []pkggraph.ResourceInstance, serverList *schema.PackageList) error {
-	for _, res := range resources {
-		switch {
-		case parsing.IsServerResource(res.Spec.Class.Ref):
-			if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(modules)); err != nil {
-				return err
-			}
+func traverseResources(sealedctx pkggraph.SealedContext, parentID string, r *resourcePlanner, instances []pkggraph.ResourceInstance, loadServer func(schema.PackageName)) error {
+	var errs []error
 
-			serverIntent := &schema.PackageRef{}
-			if err := res.Spec.Intent.UnmarshalTo(serverIntent); err != nil {
-				return fnerrors.InternalError("failed to unwrap Server")
-			}
+	for _, res := range instances {
+		if err := r.computeResource(sealedctx, parentID, res, loadServer); err != nil {
+			errs = append(errs, err)
+		}
 
-			serverList.Add(serverIntent.AsPackageName())
+		if err := traverseResources(sealedctx, res.ResourceID, r, res.Spec.ResourceInputs, loadServer); err != nil {
+			errs = append(errs, err)
+		}
 
-		case parsing.IsSecretResource(res.Spec.Class.Ref):
-			// Nothing to do.
-
-		default:
-			if err := discoverDeclaredServers(modules, res.Spec.ResourceInputs, serverList); err != nil {
-				return err
-			}
-
-			if res.Spec.Provider != nil {
-				if err := discoverDeclaredServers(modules, res.Spec.Provider.Resources, serverList); err != nil {
-					return err
-				}
+		if res.Spec.Provider != nil {
+			if err := traverseResources(sealedctx, res.ResourceID, r, res.Spec.Provider.Resources, loadServer); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}
 
-	return nil
+	return multierr.New(errs...)
 }
 
 func EvalProvision(ctx context.Context, server Server, n *pkggraph.Package) (*ParsedNode, error) {

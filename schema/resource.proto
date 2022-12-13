@@ -55,15 +55,16 @@ message ResourceProvider {
     ResourceType intent_type    = 9;
     PackageRef   provides_class = 2;  // The resource this provider supports.
 
-    Invocation initialized_with = 3;  // Run this invocation to create the resource. This yields an instantiation during the execution phase.
-    Invocation prepare_with     = 5;  // Create the resource during planning phase.
+    Invocation initialized_with = 3;   // Run this invocation to create the resource. This yields an instantiation during the execution phase.
+    Invocation prepare_with     = 5;   // Create the resource during planning phase.
+    Invocation resources_from   = 10;  // Compute resources from this invocation.
 
     repeated ResourceInput resource_input = 8;
 
     ResourcePack resource_pack = 4;  // Resources this provider depends on in order to instantiate its own resource.
 
-    repeated PackageRef resource_instance_from_available_classes   = 6;  // Resource classes that an invocation may produce (any instance of a different class will be rejected).
-    repeated PackageRef resource_instance_from_available_providers = 7;  // Resource providers that an invocation may reference (any instance of a different class will be rejected).
+    repeated PackageRef available_classes  = 6;  // Resource classes that an invocation may produce (any instance of a different class will be rejected).
+    repeated string     available_packages = 7;  // Packages that an invocation may reference.
 
     message ResourceInput {
         PackageRef name  = 1;

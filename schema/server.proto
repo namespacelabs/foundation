@@ -16,7 +16,6 @@ import "schema/probe.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/volume.proto";
-import "schema/package.proto";
 
 enum Framework {
     reserved 2, 3;
@@ -165,7 +164,12 @@ message RequiredStorage {
 }
 
 message ServerPermissions {
-    repeated PackageRef cluster_role = 1;
+    repeated ClusterRole cluster_role = 1;
+
+    message ClusterRole {
+        string label       = 1;
+        string resource_id = 2;
+    }
 }
 
 // Server extensions which are dynamically provided by tools.

@@ -78,7 +78,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	resources, err := parsing.LoadResources(ctx, pl, testPkg, pack)
+	resources, err := parsing.LoadResources(ctx, pl, testPkg, testRef.Canonical(), pack)
 	if err != nil {
 		return nil, err
 	}

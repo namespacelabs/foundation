@@ -108,5 +108,5 @@ func InjectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader
 		pkg.Server.ResourcePack = &schema.ResourcePack{}
 	}
 
-	return parsing.AddServersAsResources(ctx, pl, pkg.Server.GetPackageRef(), servers.PackageNames(), pkg.Server.ResourcePack)
+	return parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), servers.PackageNames(), pkg.Server.ResourcePack)
 }
