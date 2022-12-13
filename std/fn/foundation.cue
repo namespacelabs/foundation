@@ -39,6 +39,8 @@ _#Node: {
 		required?: [string]: string
 	}
 
+	mounts?: {...}
+
 	resources?: {...}
 }
 
