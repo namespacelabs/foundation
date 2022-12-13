@@ -11,6 +11,22 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
+  // resources: {
+	// 	logins: {
+	// 		class:    "namespacelabs.dev/foundation/library/database/postgres:Database"
+	// 		provider: "namespacelabs.dev/foundation/library/oss/postgres"
+
+	// 		intent: {
+	// 			name: "logins"
+	// 			schema: ["schema.sql"]
+	// 		}
+
+	// 		resources: {
+	// 			"cluster": "namespacelabs.dev/foundation/library/oss/postgres:colocated"
+	// 		}
+	// 	}
+	// }
+
 	instantiate: {
 		// TODO: Move creds instantiation into provides when the server supports multiple users
 		creds: gencreds.#Exports.Creds
