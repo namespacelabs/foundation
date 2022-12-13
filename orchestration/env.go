@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
-	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -31,7 +30,7 @@ func MakeSyntheticContext(wsproto *schema.Workspace, env *schema.Environment, ho
 	return cfg.MakeUnverifiedContext(newCfg, env)
 }
 
-func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration, prebuilts ...*schema.Workspace_BinaryDigest) (cfg.Context, error) {
+func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration) (cfg.Context, error) {
 	// We use a static environment here, since the orchestrator has global scope.
 	envProto := &schema.Environment{
 		Name:      kubedef.AdminNamespace,
@@ -48,10 +47,9 @@ func MakeOrchestratorContext(ctx context.Context, conf cfg.Configuration, prebui
 	}
 
 	newCfg := conf.Derive(kubedef.AdminNamespace, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
-		previous.Configuration = append(previous.Configuration, protos.WrapAnysOrDie(
+		previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(
 			&kubetool.KubernetesEnv{Namespace: kubedef.AdminNamespace}, // pin deployments to admin namespace
-			&binary.Prebuilts{PrebuiltBinary: prebuilts},               // TODO: prebuilt overwrites are internal for now. Consider merging if these become more frequently used.
-		)...)
+		))
 		return previous
 	})
 

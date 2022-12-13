@@ -21,7 +21,7 @@ service: fn.#Service & {
 configure: fn.#Configure & {
 	startup: {
 		env: {
-			"ORCH_VERSION": "1"
+			"ORCH_VERSION": "2"
 			"NSDATA":       "/namespace/orchestration/data"
 			"HOME":         "/namespace/orchestration/data/tmphome" // TODO Move to empty dir.
 		}

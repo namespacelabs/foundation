@@ -11,7 +11,6 @@ option go_package = "namespacelabs.dev/foundation/orchestration/proto";
 import "universe/aws/configuration/aws.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
-import "schema/workspace.proto";
 import "std/tasks/protolog/log.proto";
 
 message DeployRequest {
@@ -50,18 +49,10 @@ message GetOrchestratorVersionRequest {
 }
 
 message GetOrchestratorVersionResponse {
-    // Old protocol - support old clients
-    foundation.schema.Workspace.BinaryDigest current         = 1;
-    repeated foundation.schema.Workspace.BinaryDigest pinned = 2;
+    int32 current = 6;
+    int32 latest  = 7;
 
-    // New protocol
-    Versions                     versions = 3;
-    foundation.schema.DeployPlan plan     = 4;
-
-    message Versions {
-        int32 current = 1;
-        int32 latest  = 2;
-    }
+    reserved 1 to 4;
 }
 
 service OrchestrationService {
