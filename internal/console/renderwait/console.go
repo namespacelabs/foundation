@@ -91,14 +91,9 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 				ids = append(ids, ev.ResourceId)
 				sort.Strings(ids)
 
-				title := ev.Scope
-				if title == "" {
-					title = ev.ResourceId
-				}
-
 				resourceState[ev.ResourceId] = &blockState{
 					Category:  ev.Category,
-					Title:     title,
+					Title:     title(ev),
 					Stage:     stage,
 					StartTime: timestamp,
 				}
@@ -123,6 +118,17 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 			rwb.setSticky(render(resourceState, ids, false))
 		}
 	}
+}
+
+func title(ev *orchestration.Event) string {
+	title := ev.ResourceLabel
+	if title == "" {
+		title = ev.Scope
+		if title == "" {
+			title = ev.ResourceId
+		}
+	}
+	return title
 }
 
 func render(m map[string]*blockState, ids []string, flush bool) string {

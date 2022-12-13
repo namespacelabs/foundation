@@ -32,15 +32,17 @@ func K3D(clusterName string) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
-				Category:   "Local workstation",
-				ResourceId: "docker-checker",
-				Scope:      "Validate Docker version",
+				Category:      "Local workstation",
+				ResourceId:    "docker-checker",
+				Scope:         "Validate Docker version", // XXX remove soon.
+				ResourceLabel: "Validate Docker version",
 			}
 
 			ch <- &orchestration.Event{
-				Category:   "Local workstation",
-				ResourceId: "k3s-cluster",
-				Scope:      "Kubernetes cluster in Docker",
+				Category:      "Local workstation",
+				ResourceId:    "k3s-cluster",
+				Scope:         "Kubernetes cluster in Docker",
+				ResourceLabel: "Kubernetes cluster in Docker", // XXX remove soon.
 			}
 		},
 

@@ -19,9 +19,10 @@ func PrepareEksCluster(clusterName string) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
-				Category:   "AWS",
-				ResourceId: "eks-profile",
-				Scope:      fmt.Sprintf("Configure EKS Cluster %q", clusterName),
+				Category:      "AWS",
+				ResourceId:    "eks-profile",
+				Scope:         fmt.Sprintf("Configure EKS Cluster %q", clusterName), // XXX remove soon.
+				ResourceLabel: fmt.Sprintf("Configure EKS Cluster %q", clusterName),
 			}
 		},
 		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {

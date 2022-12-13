@@ -19,11 +19,12 @@ func Orchestrator() ClusterStage {
 	return ClusterStage{
 		Pre: func(ch chan *orchpb.Event) {
 			ch <- &orchpb.Event{
-				ResourceId: "orchestrator",
-				Scope:      "Deploy Namespace Orchestrator",
-				Category:   "Preparing cluster",
-				Ready:      orchpb.Event_NOT_READY,
-				Stage:      orchpb.Event_WAITING,
+				ResourceId:    "orchestrator",
+				Scope:         "Deploy Namespace Orchestrator", // XXX remove soon.
+				ResourceLabel: "Deploy Namespace Orchestrator",
+				Category:      "Preparing cluster",
+				Ready:         orchpb.Event_NOT_READY,
+				Stage:         orchpb.Event_WAITING,
 			}
 		},
 		Post: func(ch chan *orchpb.Event) {

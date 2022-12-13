@@ -11,7 +11,7 @@ option go_package = "namespacelabs.dev/foundation/schema/orchestration";
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
-// Next ID: 13
+// Next ID: 14
 message Event {
     reserved 2;
 
@@ -24,7 +24,12 @@ message Event {
     // A human-readable label that describes the resource.
     string category = 3;
 
+    // Scope acts as a label. But this will be eventually removed. Used label instead.
     string scope = 4;
+
+    // A human-readable description of the resource that is being modified. Only needs to
+    // be set on the first event observed.
+    string resource_label = 13;
 
     // READY after the resource is ready.
     ReadyTriState ready = 5;

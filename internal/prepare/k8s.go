@@ -30,11 +30,12 @@ func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registr
 			}
 
 			ch <- &orchestration.Event{
-				Category:   "Cluster",
-				ResourceId: "existing",
-				Scope:      fmt.Sprintf("Configure existing context %q", contextName),
-				Ready:      orchestration.Event_READY,
-				Stage:      orchestration.Event_DONE,
+				Category:      "Cluster",
+				ResourceId:    "existing",
+				Scope:         fmt.Sprintf("Configure existing context %q", contextName), // XXX remove soon.
+				ResourceLabel: fmt.Sprintf("Configure existing context %q", contextName),
+				Ready:         orchestration.Event_READY,
+				Stage:         orchestration.Event_DONE,
 			}
 
 			return devhost.MakeConfiguration(confs...)

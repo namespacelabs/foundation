@@ -22,16 +22,18 @@ func NamespaceCluster(machineType string, ephemeral, withBuild bool) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
-				Category:   "Namespace Cloud",
-				ResourceId: "new-cluster",
-				Scope:      "New cluster",
+				Category:      "Namespace Cloud",
+				ResourceId:    "new-cluster",
+				Scope:         "New cluster", // XXX remove soon.
+				ResourceLabel: "New cluster",
 			}
 
 			if withBuild {
 				ch <- &orchestration.Event{
-					Category:   "Namespace Cloud",
-					ResourceId: "build-cluster",
-					Scope:      "Setup build cluster",
+					Category:      "Namespace Cloud",
+					ResourceId:    "build-cluster",
+					Scope:         "Setup build cluster", // XXX remove soon.
+					ResourceLabel: "Setup build cluster",
 				}
 			}
 		},
@@ -64,11 +66,12 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 			}
 
 			ch <- &orchestration.Event{
-				Category:   "Namespace Cloud",
-				ResourceId: "build-cluster",
-				Scope:      "Setup build cluster",
-				Ready:      orchestration.Event_READY,
-				Stage:      orchestration.Event_DONE,
+				Category:      "Namespace Cloud",
+				ResourceId:    "build-cluster",
+				Scope:         "Setup build cluster", // XXX remove soon.
+				ResourceLabel: "Setup build cluster",
+				Ready:         orchestration.Event_READY,
+				Stage:         orchestration.Event_DONE,
 			}
 
 			buildMessages = append(buildMessages, msg)
@@ -81,11 +84,12 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	}
 
 	ch <- &orchestration.Event{
-		Category:   "Namespace Cloud",
-		ResourceId: "new-cluster",
-		Scope:      "New cluster",
-		Ready:      orchestration.Event_READY,
-		Stage:      orchestration.Event_DONE,
+		Category:      "Namespace Cloud",
+		ResourceId:    "new-cluster",
+		Scope:         "New cluster", // XXX remove soon.
+		ResourceLabel: "New cluster",
+		Ready:         orchestration.Event_READY,
+		Stage:         orchestration.Event_DONE,
 	}
 
 	return devhost.MakeConfiguration(append(mainMessages, buildMessages...)...)

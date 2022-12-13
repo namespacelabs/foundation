@@ -20,11 +20,12 @@ func Ingress() ClusterStage {
 	return ClusterStage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
-				ResourceId: "ingress",
-				Scope:      "Setup Ingress Controller",
-				Category:   "Preparing cluster",
-				Ready:      orchestration.Event_NOT_READY,
-				Stage:      orchestration.Event_WAITING,
+				ResourceId:    "ingress",
+				Scope:         "Setup Ingress Controller", // XXX remove soon.
+				ResourceLabel: "Setup Ingress Controller",
+				Category:      "Preparing cluster",
+				Ready:         orchestration.Event_NOT_READY,
+				Stage:         orchestration.Event_WAITING,
 			}
 		},
 		Post: func(ch chan *orchestration.Event) {

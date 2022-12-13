@@ -42,8 +42,8 @@ func (rwb logRenderer) Loop(ctx context.Context) {
 				return
 			}
 
-			fmt.Fprintf(l, "waiting (stage=%v alreadyExisted=%v) for id %s category %s scope %s impl %v\n",
-				ev.Stage, ev.AlreadyExisted, ev.ResourceId, ev.Category, ev.Scope, string(ev.ImplMetadata))
+			fmt.Fprintf(l, "waiting (stage=%v alreadyExisted=%v) for id %s category %s title %s impl %v\n",
+				ev.Stage, ev.AlreadyExisted, ev.ResourceId, ev.Category, title(ev), string(ev.ImplMetadata))
 		}
 	}
 }

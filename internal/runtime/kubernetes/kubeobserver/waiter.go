@@ -57,11 +57,13 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 		if deployable != nil {
 			// Servers are singletons per package, so only display the pkg for brevity.
 			ev.Scope = deployable.GetPackageRef().GetPackageName()
+			ev.ResourceLabel = deployable.GetPackageRef().GetPackageName()
 		}
 	default:
 		ev.Category = desc
 		if deployable != nil {
 			ev.Scope = deployable.GetPackageRef().Canonical()
+			ev.ResourceLabel = deployable.GetPackageRef().Canonical()
 		}
 	}
 
@@ -69,6 +71,7 @@ func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string,
 	if deployable != nil && ev.Scope == "" {
 		// nolint directives: stylecheck:sa1019
 		ev.Scope = deployable.GetPackageName()
+		ev.ResourceLabel = deployable.GetPackageName()
 	}
 
 	return ev
@@ -114,6 +117,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 		ev := PrepareEvent(w.GroupVersionKind, w.Namespace, w.Name, w.Description, nil)
 		ev.Stage = orchestration.Event_WAITING
 		ev.Scope = w.Scope.String()
+		ev.ResourceLabel = w.Scope.String()
 		if w.PreviousGen > 0 && w.PreviousGen == w.ExpectedGen {
 			ev.AlreadyExisted = true
 		}

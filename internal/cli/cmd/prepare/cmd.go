@@ -159,10 +159,11 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 			clusterStages := []prepare.ClusterStage{
 				{Pre: func(ch chan *orchestration.Event) {
 					ch <- &orchestration.Event{
-						Category:   "Preparing cluster",
-						ResourceId: "connect-to-cluster",
-						Scope:      "Connect to cluster",
-						Stage:      orchestration.Event_WAITING,
+						Category:      "Preparing cluster",
+						ResourceId:    "connect-to-cluster",
+						Scope:         "Connect to cluster", // XXX remove soon.
+						ResourceLabel: "Connect to cluster",
+						Stage:         orchestration.Event_WAITING,
 					}
 				}},
 				prepare.Ingress(),
