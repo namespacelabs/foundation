@@ -4,6 +4,8 @@ resources: {
 		class:    "namespacelabs.dev/foundation/library/database/postgres:Cluster"
 		provider: "namespacelabs.dev/foundation/library/oss/postgres"
 
-		intent: {}
+		intent: {
+			server: "namespacelabs.dev/foundation/library/oss/postgres/server"
+		}
 	}
 }

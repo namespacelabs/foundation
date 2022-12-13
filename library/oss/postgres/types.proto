@@ -12,7 +12,7 @@ import "schema/package.proto";
 
 message ClusterIntent {
     // If set, overrides the server package used to instantiate the local database cluster.
-    foundation.schema.PackageRef server_ref = 1;
+    foundation.schema.PackageRef server = 1;
     // If set, overrides the root password used to access the cluster.
-    foundation.schema.PackageRef password_resource_ref = 2;
+    foundation.schema.PackageRef password_secret = 2;
 }

@@ -21,12 +21,12 @@ func main() {
 			return err
 		}
 
-		srv := intent.ServerRef
+		srv := intent.Server
 		if srv == nil {
 			srv = schema.MakePackageSingleRef("namespacelabs.dev/foundation/library/oss/postgres/server")
 		}
 
-		password := intent.PasswordResourceRef
+		password := intent.PasswordSecret
 		if password == nil {
 			password = schema.MakePackageRef("namespacelabs.dev/foundation/library/oss/postgres/server", "password")
 		}
