@@ -95,16 +95,16 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 	}
 
 	latest := stateless
-	if versions.Latest < firstStatelessVersion {
+	if versions.GetLatest() < firstStatelessVersion {
 		latest.DeployableClass = string(schema.DeployableClass_STATEFUL)
 	}
 
-	if versions.Current != 0 && versions.Current == versions.Latest {
+	if versions.GetCurrent() != 0 && versions.GetCurrent() == versions.GetLatest() {
 		// already up to date
 		return &RemoteOrchestrator{cluster: boundCluster, server: latest}, nil
 	}
 
-	if versions.Current < firstStatelessVersion && versions.Latest >= firstStatelessVersion {
+	if versions.GetCurrent() < firstStatelessVersion && versions.GetLatest() >= firstStatelessVersion {
 		// best-effort clean up old stateful set
 		stateful := stateless
 		stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
