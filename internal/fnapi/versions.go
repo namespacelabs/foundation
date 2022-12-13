@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -90,9 +89,10 @@ type GetLatestDeployPlansResponse struct {
 }
 
 type GetLatestDeployPlansResponse_Plan struct {
-	PackageName string    `json:"package_name,omitempty"`
-	Plan        anypb.Any `json:"plan,omitempty"`
-	Version     int32     `json:"version,omitempty"`
+	PackageName string `json:"package_name,omitempty"`
+	Version     int32  `json:"version,omitempty"`
+	Repository  string `json:"repository,omitempty"`
+	Digest      string `json:"digest,omitempty"`
 }
 
 func GetLatestDeployPlans(ctx context.Context, pkgs ...schema.PackageName) (*GetLatestDeployPlansResponse, error) {
