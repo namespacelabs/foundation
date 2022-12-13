@@ -63,7 +63,7 @@ Our releases are published to:
 - [Public S3 bucket](https://s3.console.aws.amazon.com/s3/buckets/ns-releases). This allows
   end-users easily download binaries without messing with GitHub authentication to access the
   private repos.
-- [Homebew TAP](https://github.com/namespacelabs/homebrew-namespace)
+- [Homebrew TAP](https://github.com/namespacelabs/homebrew-namespace)
 
 Before releasing a new `ns` version, please verify that `ns test --include_servers` passes in other
 repos (e.g. examples, internal).
