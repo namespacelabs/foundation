@@ -13,8 +13,6 @@ import (
 )
 
 func NewUpdateNSCmd() *cobra.Command {
-	// This command is installed in the ns binary as a placeholder for the
-	// one implemented in nsboot. This makes it show up in `ns help`.
 	cmd := &cobra.Command{
 		Use:     "upgrade",
 		Short:   "Updates ns to the latest version.",
