@@ -88,6 +88,7 @@ do_install() {
 
   case "$os" in
     darwin) bin_dir="$(printf %q "$ns_root")/bin" ;;
+    # printf is not available in sh on Github runners.
     linux) bin_dir="$ns_root/bin" ;;
   esac
 
