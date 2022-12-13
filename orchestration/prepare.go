@@ -105,6 +105,8 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		if err := deployPlan(ctx, env, plan.Repository, plan.Digest, boundCluster, wait); err != nil {
 			return nil, err
 		}
+
+		return res, nil
 	}
 
 	return nil, fnerrors.InternalError("Did not receive any pinned deployment plan for Namespace orchestrator")
