@@ -5,7 +5,8 @@ resources: {
 		provider: "namespacelabs.dev/foundation/library/oss/postgres"
 
 		intent: {
-			server: "namespacelabs.dev/foundation/library/oss/postgres/server"
+			server:          "namespacelabs.dev/foundation/library/oss/postgres/server"
+			password_secret: "namespacelabs.dev/foundation/library/oss/postgres/server:password"
 		}
 	}
 }
