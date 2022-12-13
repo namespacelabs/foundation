@@ -214,11 +214,16 @@ func requiresUpdate(ctx context.Context, env cfg.Context, boundCluster runtime.C
 			return false, err
 		}
 
-		return res.RequiresUpdate, nil
+		if res.Current == 0 {
+			fmt.Fprintf(console.Debug(ctx), "outdated orchestrator did not provide a current version - will update\n")
+			return true, nil
+		}
+
+		return res.Current != res.Latest, nil
 	})
 
 	if err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to check if orchestrator is up to date - will try to update by default")
+		fmt.Fprintf(console.Debug(ctx), "failed to check if orchestrator is up to date - will update by default\n")
 		return true
 	}
 

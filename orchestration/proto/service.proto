@@ -49,7 +49,8 @@ message GetOrchestratorVersionRequest {
 }
 
 message GetOrchestratorVersionResponse {
-    bool requires_update = 5;
+    int32 current = 6;
+    int32 latest  = 7;
 
     reserved 1 to 4;
 }

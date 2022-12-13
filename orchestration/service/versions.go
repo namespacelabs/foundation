@@ -26,22 +26,22 @@ const (
 type versionChecker struct {
 	serverCtx context.Context
 
-	planVersion int32
+	current int32
 
-	mu             sync.Mutex
-	requiresUpdate bool
+	mu     sync.Mutex
+	latest int32
 }
 
 func newVersionChecker(ctx context.Context) *versionChecker {
 	version := os.Getenv("ORCH_VERSION")
-	planVersion, err := strconv.ParseInt(version, 10, 32)
+	current, err := strconv.ParseInt(version, 10, 32)
 	if err != nil {
 		log.Fatalf("unable to compute current version: %v", err)
 	}
 
 	vc := &versionChecker{
-		serverCtx:   ctx,
-		planVersion: int32(planVersion),
+		serverCtx: ctx,
+		current:   int32(current),
 	}
 
 	go func() {
@@ -67,7 +67,8 @@ func (vc *versionChecker) GetOrchestratorVersion(skipCache bool) (*proto.GetOrch
 	vc.mu.Lock()
 	defer vc.mu.Unlock()
 	return &proto.GetOrchestratorVersionResponse{
-		RequiresUpdate: vc.requiresUpdate,
+		Current: vc.current,
+		Latest:  vc.latest,
 	}, nil
 }
 
@@ -88,7 +89,7 @@ func (vc *versionChecker) updateLatest() error {
 			continue
 		}
 
-		vc.requiresUpdate = plan.Version != vc.planVersion
+		vc.latest = plan.Version
 	}
 
 	return nil
