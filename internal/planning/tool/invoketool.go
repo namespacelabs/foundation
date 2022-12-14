@@ -10,11 +10,11 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 var InvocationDebug = false
@@ -34,8 +33,8 @@ type InvokeProps struct {
 }
 
 func MakeInvocation(ctx context.Context, env cfg.Context, planner runtime.Planner, r *Definition, stack *schema.Stack, focus schema.PackageName, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
-	x := makeBaseInvocation(ctx, env, r, props)
 	// Calculate injections early on to make sure that they're part of the cache key.
+	var injections []*anypb.Any
 	for _, inject := range r.Invocation.Inject {
 		provider, ok := registrations[inject.Type]
 		if !ok {
@@ -51,13 +50,14 @@ func MakeInvocation(ctx context.Context, env cfg.Context, planner runtime.Planne
 			return nil, err
 		}
 
-		x.injections = append(x.injections, input)
+		injections = append(injections, input)
 	}
 
-	x.stack = stack
-	x.focus = focus
-
-	return x, nil
+	return makeBaseInvocation(ctx, env, r, props, &protocol.StackRelated{
+		Env:           env.Environment(),
+		Stack:         stack,
+		FocusedServer: focus.String(),
+	}, injections)
 }
 
 func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
@@ -65,85 +65,23 @@ func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, r *Definit
 		return nil, fnerrors.InternalError("injections are not supported in this path")
 	}
 
-	return makeBaseInvocation(ctx, env, r, props), nil
+	return makeBaseInvocation(ctx, env, r, props, nil, nil)
 }
 
 // The caller must ensure that injections are handled.
-func makeBaseInvocation(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps) *cacheableInvocation {
-	return &cacheableInvocation{
-		targetServer: r.TargetServer,
-		source:       r.Source,
-		invocation:   r.Invocation,
-		env:          env,
-		props:        props,
-	}
-}
-
-type cacheableInvocation struct {
-	env          cfg.Context        // env.Proto() is used as cache key.
-	targetServer schema.PackageName // May be unspecified. For logging purposes only.
-	source       Source             // Where the invocation was declared.
-	invocation   *invocation.Invocation
-	stack        *schema.Stack
-	focus        schema.PackageName
-	props        InvokeProps
-	injections   []*anypb.Any
-
-	compute.LocalScoped[*protocol.ToolResponse]
-}
-
-func (inv *cacheableInvocation) Action() *tasks.ActionEvent {
-	action := tasks.Action("provision.invoke").
-		Scope(inv.source.PackageName)
-
-	if inv.targetServer != "" {
-		return action.Arg("target", inv.targetServer)
-	}
-
-	return action
-}
-
-func (inv *cacheableInvocation) Inputs() *compute.In {
-	invocation := *inv.invocation // Copy
-	invocation.Image = nil        // To make the invocation JSON serializable.
-	invocation.Buildkit = nil     // To make the invocation JSON serializable.
-
-	return compute.Inputs().
-		JSON("invocation", invocation). // Without image and PackageAbsPath.
-		JSON("source", inv.source).
-		Proto("stack", inv.stack).
-		Stringer("focus", inv.focus).
-		Proto("env", inv.env.Environment()).
-		JSON("props", inv.props).
-		JSON("injections", inv.injections).
-		Computable("image", inv.invocation.Image)
-}
-
-func (inv *cacheableInvocation) Output() compute.Output {
-	return compute.Output{
-		NotCacheable: inv.invocation.NoCache,
-	}
-}
-
-func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolved) (res *protocol.ToolResponse, err error) {
-	invocation := inv.invocation
+func makeBaseInvocation(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps, header *protocol.StackRelated, injections []*anypb.Any) (compute.Computable[*protocol.ToolResponse], error) {
+	invocation := r.Invocation
 
 	req := &protocol.ToolRequest{
 		ApiVersion:  int32(versions.Builtin().APIVersion),
-		ToolPackage: inv.source.PackageName.String(),
+		ToolPackage: r.Source.PackageName.String(),
 		// XXX temporary.
-		Stack:         inv.stack,
-		FocusedServer: inv.focus.String(),
-		Env:           inv.env.Environment(),
+		Stack:         header.GetStack(),
+		FocusedServer: header.GetFocusedServer(),
+		Env:           env.Environment(),
 	}
 
-	header := &protocol.StackRelated{
-		Stack:         inv.stack,
-		FocusedServer: inv.focus.String(),
-		Env:           inv.env.Environment(),
-	}
-
-	switch inv.props.Event {
+	switch props.Event {
 	case protocol.Lifecycle_PROVISION:
 		req.RequestType = &protocol.ToolRequest_ApplyRequest{
 			ApplyRequest: &protocol.ApplyRequest{
@@ -155,7 +93,7 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 				Header: header,
 			}}
 	default:
-		return nil, fnerrors.InternalError("%v: no support for lifecycle", inv.props.Event)
+		return nil, fnerrors.InternalError("%v: no support for lifecycle", props.Event)
 	}
 
 	// Snapshots are pushed synchrously with the invocation itself. This is bound
@@ -183,45 +121,28 @@ func (inv *cacheableInvocation) Compute(ctx context.Context, deps compute.Resolv
 		req.Snapshot = append(req.Snapshot, snap)
 	}
 
-	opts := rtypes.RunToolOpts{
-		ImageName: invocation.ImageName,
-		RunBinaryOpts: rtypes.RunBinaryOpts{
-			Command:    invocation.Command,
-			Args:       invocation.Args,
-			WorkingDir: invocation.WorkingDir,
-		},
-		// Don't let an invocation reach out, it should be hermetic. Tools are
-		// expected to produce operations which can be inspected. And then these
-		// operations are applied by the caller.
-		NoNetworking: true,
+	opts := rtypes.RunBinaryOpts{
+		Command:    invocation.Command,
+		Args:       invocation.Args,
+		WorkingDir: invocation.WorkingDir,
 	}
 
-	resolvable := compute.MustGetDepValue(deps, invocation.Image, "image")
-
-	cli, err := inv.invocation.Buildkit.MakeClient(ctx)
+	cli, err := invocation.Buildkit.MakeClient(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if image, err := resolvable.ImageForPlatform(cli.BuildkitOpts().HostPlatform); err == nil {
-		opts.Image = image
-	} else {
-		return nil, err
-	}
-
-	opts.SupportedToolVersion = invocation.SupportedToolVersion
+	ximage := oci.ResolveImagePlatform(invocation.Image, cli.BuildkitOpts().HostPlatform)
 
 	if InvocationDebug {
-		opts.RunBinaryOpts.Args = append(opts.RunBinaryOpts.Args, "--debug")
+		opts.Args = append(opts.Args, "--debug")
 	}
 
-	req.Input = append(req.Input, inv.props.ProvisionInput...)
-	req.Input = append(req.Input, inv.injections...)
+	req.Input = append(req.Input, props.ProvisionInput...)
+	req.Input = append(req.Input, injections...)
 
-	x := tools.LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]{RedactRequest: redactMessage}
-
-	return x.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.InvocationService/Invoke",
-		inv.source.PackageName, opts.Image, opts, req)
+	return tools.InvokeOnBuildkit[*protocol.ToolResponse](cli, "foundation.provision.tool.protocol.InvocationService/Invoke",
+		r.Source.PackageName, ximage, opts, req, tools.LowLevelInvokeOptions{RedactRequest: redactMessage}), nil
 }
 
 func redactMessage(req proto.Message) proto.Message {

@@ -150,7 +150,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 				errs = append(errs, fnerrors.New("providers with prepareWith don't support secrets yet"))
 			}
 
-			inv, err := invocation.Make(ctx, sealedCtx, sealedCtx, nil, provider.PrepareWith)
+			inv, err := invocation.BuildAndPrepare(ctx, sealedCtx, sealedCtx, nil, provider.PrepareWith)
 			if err != nil {
 				errs = append(errs, err)
 			}

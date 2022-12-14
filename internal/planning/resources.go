@@ -101,7 +101,7 @@ func (st *computedResource) compute(ctx context.Context, sealedCtx pkggraph.Seal
 		return nil, nil
 	}
 
-	inv, err := invocation.Make(ctx, sealedCtx, sealedCtx, nil, provider.Spec.ResourcesFrom)
+	inv, err := invocation.BuildAndPrepare(ctx, sealedCtx, sealedCtx, nil, provider.Spec.ResourcesFrom)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to compute invocation configuration: %w", err)
 	}

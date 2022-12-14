@@ -47,16 +47,16 @@ type Snapshot struct {
 	Contents fs.FS
 }
 
-func Make(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
+func BuildAndPrepare(ctx context.Context, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation) (*Invocation, error) {
 	cli, err := buildkit.Client(ctx, env.Configuration(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return makeForPlatforms(ctx, cli, pl, env, serverLocRef, with, cli.BuildkitOpts().HostPlatform)
+	return buildAndPrepareForPlatform(ctx, cli, pl, env, serverLocRef, with, cli.BuildkitOpts().HostPlatform)
 }
 
-func makeForPlatforms(ctx context.Context, cli *buildkit.GatewayClient, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
+func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient, pl pkggraph.SealedPackageLoader, env cfg.Context, serverLocRef *pkggraph.Location, with *schema.Invocation, target ...specs.Platform) (*Invocation, error) {
 	var binRef *schema.PackageRef
 	if with.BinaryRef != nil {
 		binRef = with.BinaryRef

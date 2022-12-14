@@ -18,9 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/types"
 )
 
@@ -28,12 +26,6 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 	c, err := buildkit.Client(ctx, env.Configuration(), nil)
 	if err != nil {
 		return nil, err
-	}
-
-	it := &invokeTool{
-		conf:       env.Configuration(),
-		buildkit:   c,
-		invocation: inv,
 	}
 
 	plan := prepared.Plan
@@ -44,73 +36,36 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 		return nil, err
 	}
 
-	it.image = compute.Transform("return image", image, func(ctx context.Context, r oci.ResolvableImage) (oci.Image, error) {
-		return r.ImageForPlatform(c.BuildkitOpts().HostPlatform)
-	})
+	ximage := oci.ResolveImagePlatform(image, c.BuildkitOpts().HostPlatform)
 
-	return it, nil
-}
-
-type invokeTool struct {
-	conf       cfg.Configuration       // Does not affect the output.
-	buildkit   *buildkit.GatewayClient // Does not affect the output.
-	invocation *types.DeferredInvocation
-	image      compute.Computable[oci.Image]
-
-	compute.LocalScoped[*protocol.InvokeResponse]
-}
-
-func (inv *invokeTool) Action() *tasks.ActionEvent {
-	// TODO: support specifying the binary name within the package.
-	return tasks.Action("tool.invoke").Arg("package_ref", inv.invocation.BinaryRef.Canonical())
-}
-
-func (inv *invokeTool) Inputs() *compute.In {
-	in := compute.Inputs().Proto("invocation", inv.invocation)
-	return in.Computable("image", inv.image)
-}
-
-func (inv *invokeTool) Output() compute.Output {
-	return compute.Output{NotCacheable: !inv.invocation.Cacheable}
-}
-
-func (inv *invokeTool) Compute(ctx context.Context, r compute.Resolved) (*protocol.InvokeResponse, error) {
 	req := &protocol.ToolRequest{
 		ApiVersion:  int32(versions.Builtin().APIVersion),
-		ToolPackage: inv.invocation.BinaryRef.AsPackageName().String(),
+		ToolPackage: inv.BinaryRef.AsPackageName().String(),
 		RequestType: &protocol.ToolRequest_InvokeRequest{
 			InvokeRequest: &protocol.InvokeRequest{},
 		},
 	}
 
-	if inv.invocation.GetWithInput().GetTypeUrl() != "" {
-		req.Input = append(req.Input, inv.invocation.WithInput)
+	if inv.GetWithInput().GetTypeUrl() != "" {
+		req.Input = append(req.Input, inv.WithInput)
 	}
 
 	workingDir := "/"
-	if inv.invocation.BinaryConfig.WorkingDir != "" {
-		workingDir = inv.invocation.BinaryConfig.WorkingDir
+	if inv.BinaryConfig.WorkingDir != "" {
+		workingDir = inv.BinaryConfig.WorkingDir
 	}
 
-	run := rtypes.RunToolOpts{
-		ImageName: inv.invocation.BinaryRef.Canonical(),
-		// NoNetworking: true, // XXX security
-
-		RunBinaryOpts: rtypes.RunBinaryOpts{
-			WorkingDir: workingDir,
-			Command:    inv.invocation.BinaryConfig.Command,
-			Args:       inv.invocation.BinaryConfig.Args,
-			Env:        append(slices.Clone(inv.invocation.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
-		}}
-
-	var invoke LowLevelInvokeOptions[*protocol.ToolRequest, *protocol.ToolResponse]
-
-	run.Image = compute.MustGetDepValue(r, inv.image, "image")
-
-	resp, err := invoke.InvokeOnBuildkit(ctx, inv.buildkit, "foundation.provision.tool.protocol.InvocationService/Invoke", inv.invocation.BinaryRef.AsPackageName(), run.Image, run, req)
-	if err != nil {
-		return nil, err
+	run := rtypes.RunBinaryOpts{
+		WorkingDir: workingDir,
+		Command:    inv.BinaryConfig.Command,
+		Args:       inv.BinaryConfig.Args,
+		Env:        append(slices.Clone(inv.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
 	}
 
-	return resp.InvokeResponse, nil
+	return compute.Transform("get-response",
+		InvokeOnBuildkit[*protocol.ToolResponse](c, "foundation.provision.tool.protocol.InvocationService/Invoke",
+			inv.BinaryRef.AsPackageName(), ximage, run, req, LowLevelInvokeOptions{}),
+		func(_ context.Context, resp *protocol.ToolResponse) (*protocol.InvokeResponse, error) {
+			return resp.InvokeResponse, nil
+		}), nil
 }

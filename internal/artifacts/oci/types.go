@@ -45,6 +45,12 @@ func AsResolvable(c compute.Computable[Image]) compute.Computable[ResolvableImag
 	})
 }
 
+func ResolveImagePlatform(c compute.Computable[ResolvableImage], platform specs.Platform) compute.Computable[Image] {
+	return compute.Transform("resolve-platform", c, func(_ context.Context, r ResolvableImage) (Image, error) {
+		return r.ImageForPlatform(platform)
+	})
+}
+
 func RawAsResolvable(img Image) ResolvableImage {
 	// XXX check if its an index?
 	return rawImage{img}

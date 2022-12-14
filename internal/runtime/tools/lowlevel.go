@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-type LowLevelInvokeOptions[Req, Resp proto.Message] struct {
+type LowLevelInvokeOptions struct {
 	RedactRequest  func(proto.Message) proto.Message
 	RedactResponse func(proto.Message) proto.Message
 }
@@ -38,63 +38,15 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 	}
 }
 
-func (oo LowLevelInvokeOptions[Req, Resp]) InvokeOnBuildkit(ctx context.Context, c *buildkit.GatewayClient, method string, pkg schema.PackageName, image oci.Image, opts rtypes.RunToolOpts, req Req) (Resp, error) {
-	return tasks.Return(ctx, tasks.Action("buildkit.invocation").Scope(pkg).Arg("method", method).LogLevel(1), func(ctx context.Context) (Resp, error) {
-		attachToAction(ctx, "request", req, oo.RedactRequest)
+func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
+	state := makeState(c, pkg, image, method, req, opts, oo)
 
+	p := c.BuildkitOpts().HostPlatform
+
+	files := buildkit.DeferBuildFilesystem(c, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), state)
+
+	return compute.Transform("parse-response", files, func(ctx context.Context, fsys fs.FS) (Resp, error) {
 		resp := protos.NewFromType[Resp]()
-
-		image, err := oci.EnsureCached(ctx, image)
-		if err != nil {
-			return resp, err
-		}
-
-		d, err := image.Digest()
-		if err != nil {
-			return resp, err
-		}
-
-		tasks.Attachments(ctx).AddResult("ref", d.String())
-
-		if !c.BuildkitOpts().SupportsCanonicalBuilds {
-			return resp, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
-		}
-
-		p := c.BuildkitOpts().HostPlatform
-
-		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
-
-		args := append(slices.Clone(opts.Command), opts.Args...)
-		args = append(args, "--inline_invocation="+method)
-		args = append(args, "--inline_invocation_input=/request/request.binarypb")
-		args = append(args, "--inline_invocation_output=/out/response.binarypb")
-
-		runOpts := []llb.RunOption{llb.ReadonlyRootFS(), llb.Network(llb.NetModeNone), llb.Args(args)}
-		if opts.WorkingDir != "" {
-			runOpts = append(runOpts, llb.Dir(opts.WorkingDir))
-		}
-
-		run := base.Run(runOpts...)
-
-		requestBytes, err := proto.Marshal(req)
-		if err != nil {
-			return resp, err
-		}
-
-		requestState := llb.Scratch().File(llb.Mkfile("request.binarypb", 0644, requestBytes))
-
-		run.AddMount("/request", requestState, llb.Readonly)
-		out := run.AddMount("/out", llb.Scratch())
-
-		output, err := buildkit.BuildFilesystem(ctx, c, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), out)
-		if err != nil {
-			return resp, err
-		}
-
-		fsys, err := compute.GetValue(ctx, output)
-		if err != nil {
-			return resp, err
-		}
 
 		responseBytes, err := fs.ReadFile(fsys, "response.binarypb")
 		if err != nil {
@@ -115,4 +67,50 @@ func redact(m proto.Message, f func(proto.Message) proto.Message) proto.Message 
 		return m
 	}
 	return f(m)
+}
+
+func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], method string, req proto.Message, opts rtypes.RunBinaryOpts, oo LowLevelInvokeOptions) compute.Computable[llb.State] {
+	return compute.Transform("make-request", ensureCached(image), func(ctx context.Context, image oci.Image) (llb.State, error) {
+		attachToAction(ctx, "request", req, oo.RedactRequest)
+
+		d, err := image.Digest()
+		if err != nil {
+			return llb.State{}, err
+		}
+
+		tasks.Attachments(ctx).AddResult("ref", d.String())
+
+		if !c.BuildkitOpts().SupportsCanonicalBuilds {
+			return llb.State{}, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
+		}
+
+		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
+
+		args := append(slices.Clone(opts.Command), opts.Args...)
+		args = append(args, "--inline_invocation="+method)
+		args = append(args, "--inline_invocation_input=/request/request.binarypb")
+		args = append(args, "--inline_invocation_output=/out/response.binarypb")
+
+		runOpts := []llb.RunOption{llb.ReadonlyRootFS(), llb.Network(llb.NetModeNone), llb.Args(args)}
+		if opts.WorkingDir != "" {
+			runOpts = append(runOpts, llb.Dir(opts.WorkingDir))
+		}
+
+		run := base.Run(runOpts...)
+
+		requestBytes, err := proto.Marshal(req)
+		if err != nil {
+			return llb.State{}, err
+		}
+
+		requestState := llb.Scratch().File(llb.Mkfile("request.binarypb", 0644, requestBytes))
+
+		run.AddMount("/request", requestState, llb.Readonly)
+		out := run.AddMount("/out", llb.Scratch())
+		return out, nil
+	})
+}
+
+func ensureCached(image compute.Computable[oci.Image]) compute.Computable[oci.Image] {
+	return compute.Transform("ensure-cached", image, oci.EnsureCached)
 }

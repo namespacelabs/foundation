@@ -41,6 +41,25 @@ func BuildFilesystem(ctx context.Context, makeClient ClientFactory, target build
 	return &reqToFS{baseRequest: base}, nil
 }
 
+func DeferBuildFilesystem(makeClient ClientFactory, target build.BuildTarget, state compute.Computable[llb.State], localDirs ...LocalContents) compute.Computable[fs.FS] {
+	base := &baseRequest[fs.FS]{
+		sourceLabel:    target.SourceLabel(),
+		sourcePackage:  target.SourcePackage(),
+		makeClient:     makeClient,
+		targetPlatform: target.TargetPlatform(),
+		localDirs:      localDirs,
+		req: compute.Transform("marshal-request", state, func(ctx context.Context, state llb.State) (*FrontendRequest, error) {
+			serialized, err := MarshalForTarget(ctx, state, target)
+			if err != nil {
+				return nil, err
+			}
+
+			return &FrontendRequest{Def: serialized, OriginalState: &state}, nil
+		}),
+	}
+	return &reqToFS{baseRequest: base}
+}
+
 type reqToFS struct {
 	*baseRequest[fs.FS]
 }

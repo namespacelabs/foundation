@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -340,7 +341,7 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 			combinedProps.AppendWith(*props)
 		} else if hook.InvokeBinary != nil {
 			// XXX combine all builds beforehand.
-			inv, err := invocation.Make(ctx, server.SealedContext(), server.SealedContext(), nil, hook.InvokeBinary)
+			inv, err := invocation.BuildAndPrepare(ctx, server.SealedContext(), server.SealedContext(), nil, hook.InvokeBinary)
 			if err != nil {
 				return nil, err
 			}
@@ -349,19 +350,11 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				return nil, fnerrors.BadInputError("injection requested when it's not possible: %v", inv.Inject)
 			}
 
-			opts := rtypes.RunToolOpts{
-				ImageName: inv.ImageName,
-				RunBinaryOpts: rtypes.RunBinaryOpts{
-					Command:    inv.Command,
-					Args:       inv.Args,
-					WorkingDir: inv.WorkingDir,
-				},
+			opts := rtypes.RunBinaryOpts{
+				Command:    inv.Command,
+				Args:       inv.Args,
+				WorkingDir: inv.WorkingDir,
 				// XXX security prepare invocations have network access.
-			}
-
-			image, err := compute.GetValue(ctx, inv.Image)
-			if err != nil {
-				return nil, err
 			}
 
 			cli, err := buildkit.Client(ctx, server.SealedContext().Configuration(), nil)
@@ -369,14 +362,7 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				return nil, err
 			}
 
-			hostPlatform := cli.BuildkitOpts().HostPlatform
-
-			opts.Image, err = image.ImageForPlatform(hostPlatform)
-			if err != nil {
-				return nil, err
-			}
-
-			var invoke tools.LowLevelInvokeOptions[*protocol.PrepareRequest, *protocol.PrepareResponse]
+			ximage := oci.ResolveImagePlatform(inv.Image, cli.BuildkitOpts().HostPlatform)
 
 			req := &protocol.PrepareRequest{
 				Env:        server.SealedContext().Environment(),
@@ -384,8 +370,9 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				ApiVersion: int32(versions.Builtin().APIVersion),
 			}
 
-			resp, err := invoke.InvokeOnBuildkit(ctx, cli, "foundation.provision.tool.protocol.PrepareService/Prepare",
-				node.PackageName(), opts.Image, opts, req)
+			resp, err := compute.GetValue(ctx, tools.InvokeOnBuildkit[*protocol.PrepareResponse](cli,
+				"foundation.provision.tool.protocol.PrepareService/Prepare",
+				node.PackageName(), ximage, opts, req, tools.LowLevelInvokeOptions{}))
 			if err != nil {
 				return nil, err
 			}
