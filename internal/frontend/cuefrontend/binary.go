@@ -12,7 +12,6 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -198,22 +197,4 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	}
 
 	return plan, nil
-}
-
-func parseCueFunction(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.ExperimentalFunction, error) {
-	// Ensure all fields are bound.
-	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
-		return nil, err
-	}
-
-	function := &schema.ExperimentalFunction{}
-	if err := v.Val.Decode(function); err != nil {
-		return nil, err
-	}
-
-	if err := parsing.TransformFunction(loc, function); err != nil {
-		return nil, err
-	}
-
-	return function, nil
 }

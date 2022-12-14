@@ -11,26 +11,25 @@ option go_package = "namespacelabs.dev/foundation/std/types";
 import "google/protobuf/any.proto";
 import "std/proto/options.proto";
 import "schema/binary.proto";
-import "schema/function.proto";
 import "schema/package.proto";
 
 message DeferredInvocationSource {
+    reserved 4;
+
     // Deprecated, use binary_ref instead
     string            binary     = 1 [(foundation.std.proto.is_package) = true];
     schema.PackageRef binary_ref = 5;
 
-    string              experimental_function = 4 [(foundation.std.proto.is_package) = true];
-    bool                cacheable             = 2;
-    google.protobuf.Any with_input            = 3;
+    bool                cacheable  = 2;
+    google.protobuf.Any with_input = 3;
 }
 
 message DeferredInvocation {
-    reserved 1;
+    reserved 1, 6;
 
-    schema.PackageRef                      binary_ref            = 7;
-    string                                 image                 = 2;
-    foundation.schema.BinaryConfig         binary_config         = 3;
-    foundation.schema.ExperimentalFunction experimental_function = 6;
-    bool                                   cacheable             = 4;
-    google.protobuf.Any                    with_input            = 5;
+    schema.PackageRef              binary_ref    = 7;
+    string                         image         = 2;
+    foundation.schema.BinaryConfig binary_config = 3;
+    bool                           cacheable     = 4;
+    google.protobuf.Any            with_input    = 5;
 }

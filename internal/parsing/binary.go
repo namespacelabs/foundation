@@ -47,25 +47,3 @@ func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 func isImagePlanGo(plan *schema.ImageBuildPlan) bool {
 	return plan.GoBuild != nil || plan.GoPackage != ""
 }
-
-func TransformFunction(loc pkggraph.Location, function *schema.ExperimentalFunction) error {
-	if function.PackageName != "" {
-		return fnerrors.NewWithLocation(loc, "package_name can not be set")
-	}
-
-	function.PackageName = loc.PackageName.String()
-
-	if function.Kind == "" {
-		return fnerrors.NewWithLocation(loc, "function kind can't be empty")
-	}
-
-	if function.Runtime == "" {
-		return fnerrors.NewWithLocation(loc, "function runtime can't be empty")
-	}
-
-	if function.Source == "" {
-		return fnerrors.NewWithLocation(loc, "function source must be specified")
-	}
-
-	return nil
-}

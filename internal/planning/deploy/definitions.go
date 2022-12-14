@@ -406,22 +406,6 @@ func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *sch
 
 		var invocation compute.Computable[*protocol.InvokeResponse]
 		switch {
-		case compiledInvocation.ExperimentalFunction != nil:
-			foundation, err := env.Resolve(ctx, "namespacelabs.dev/foundation")
-			if err != nil {
-				return nil, err
-			}
-
-			loc, err := env.Resolve(ctx, schema.PackageName(compiledInvocation.ExperimentalFunction.PackageName))
-			if err != nil {
-				return nil, err
-			}
-
-			invocation, err = tools.InvokeFunction(ctx, loc, foundation.Module.Abs(), compiledInvocation)
-			if err != nil {
-				return nil, err
-			}
-
 		case compiledInvocation.BinaryRef != nil:
 			invocation, err = tools.InvokeWithBinary(ctx, env, compiledInvocation, prepared)
 			if err != nil {
@@ -449,27 +433,6 @@ func compileComputable(ctx context.Context, env pkggraph.SealedContext, src *sch
 }
 
 func makeInvocation(ctx context.Context, env pkggraph.SealedContext, inv *types.DeferredInvocationSource) (*types.DeferredInvocation, *binary.Prepared, error) {
-	if inv.ExperimentalFunction != "" {
-		if inv.Binary != "" || inv.BinaryRef != nil {
-			return nil, nil, fnerrors.New("binary and experimentalFunction are exclusive (%q vs %q)", inv.Binary, inv.ExperimentalFunction)
-		}
-
-		pkg, err := env.LoadByName(ctx, schema.PackageName(inv.ExperimentalFunction))
-		if err != nil {
-			return nil, nil, fnerrors.New("%s: failed to load: %w", inv.Binary, err)
-		}
-
-		if pkg.ExperimentalFunction == nil {
-			return nil, nil, fnerrors.New("%s: missing function definition", inv.ExperimentalFunction)
-		}
-
-		return &types.DeferredInvocation{
-			ExperimentalFunction: pkg.ExperimentalFunction,
-			Cacheable:            inv.Cacheable,
-			WithInput:            inv.WithInput,
-		}, nil, nil
-	}
-
 	var ref *schema.PackageRef
 	if inv.Binary != "" {
 		// Legacy path, this should never be an implicit package reference.

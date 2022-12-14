@@ -125,15 +125,6 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 		count++
 	}
 
-	if function := v.LookupPath("function"); function.Exists() {
-		parsedFunction, err := parseCueFunction(ctx, loc, v, function)
-		if err != nil {
-			return nil, fnerrors.NewWithLocation(loc, "parsing function: %w", err)
-		}
-		parsed.ExperimentalFunction = parsedFunction
-		count++
-	}
-
 	if count > 1 {
 		return nil, fnerrors.New("package must only define one of: server, service, extension, binary or test")
 	}
