@@ -254,6 +254,7 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 	})
 
 	w.ExperimentalProtoModuleImports = m.ProtoModuleImports
+	w.EnabledFeatures = m.EnabledFeatures
 
 	return w, nil
 }
@@ -530,6 +531,7 @@ type cueModule struct {
 	Prebuilts          *cueWorkspacePrebuilts                 `json:"prebuilts"`
 	Environments       map[string]cueEnvironment              `json:"environment"`
 	ProtoModuleImports []*schema.Workspace_ProtoModuleImports `json:"experimentalProtoModuleImports"`
+	EnabledFeatures    []string                               `json:"enabledFeatures"`
 }
 
 type cueModuleFoundation struct {

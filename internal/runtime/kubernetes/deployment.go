@@ -449,7 +449,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
 
 		case constants.VolumeKindHostPath:
-			pv := &schema.HostVolume{}
+			pv := &schema.HostPathVolume{}
 			if err := volume.Definition.UnmarshalTo(pv); err != nil {
 				return fnerrors.InternalError("%s: failed to unmarshal hostDir volume definition: %w", volume.Name, err)
 			}

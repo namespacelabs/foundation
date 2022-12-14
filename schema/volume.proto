@@ -42,7 +42,7 @@ message PersistentVolume {
     uint64 size_bytes = 2;
 }
 
-message HostVolume {
+message HostPathVolume {
     string directory = 1;
 }
 

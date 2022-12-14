@@ -137,11 +137,15 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 		}
 
 	case constants.VolumeKindHostPath:
+		if err := parsing.RequireFeature(loc.Module, "experimental/volume/hostPath"); err != nil {
+			return nil, fnerrors.AttachLocation(loc, err)
+		}
+
 		if bits.HostPath == nil || bits.HostPath.Directory == "" {
 			return nil, fnerrors.NewWithLocation(loc, "host: missing required field 'directory'")
 		}
 
-		definition = &schema.HostVolume{Directory: bits.HostPath.Directory}
+		definition = &schema.HostPathVolume{Directory: bits.HostPath.Directory}
 
 	case constants.VolumeKindWorkspaceSync:
 		if bits.FromDir == "" {

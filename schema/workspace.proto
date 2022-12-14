@@ -12,7 +12,7 @@ import "google/protobuf/any.proto";
 import "schema/environment.proto";
 
 // Workspace definition.
-// Next ID: 12
+// Next ID: 13
 message Workspace {
     reserved 2;
 
@@ -31,6 +31,9 @@ message Workspace {
     string                prebuilt_base_repository = 7;
 
     FoundationRequirements foundation = 8;
+
+    // A list of features to enable. Usually experimental features.
+    repeated string enabledFeatures = 12;
 
     repeated ProtoModuleImports experimental_proto_module_imports = 9;
 

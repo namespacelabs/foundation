@@ -21,3 +21,4 @@ internalAliases: [{
 	module_name: "library.namespace.so"
 	rel_path:    "library"
 }]
+enabledFeatures: ["experimental/volume/hostPath"]
