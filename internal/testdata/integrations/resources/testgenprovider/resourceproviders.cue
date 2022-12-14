@@ -1,6 +1,6 @@
 providers: {
 	"namespacelabs.dev/foundation/internal/testdata/integrations/resources/classes:Database": {
-		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/internal/testdata/integrations/resources/testgenprovider/testgen"
+		initializedWith: "namespacelabs.dev/foundation/internal/testdata/integrations/resources/testgenprovider/testgen"
 
 		intent: {
 			type:   "foundation.internal.testdata.integrations.resources.classes.DatabaseIntent"

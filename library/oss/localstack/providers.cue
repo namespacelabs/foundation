@@ -1,6 +1,6 @@
 providers: {
 	"namespacelabs.dev/foundation/library/storage/s3:Bucket": {
-		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/localstack/prepare"
+		initializedWith: "namespacelabs.dev/foundation/library/oss/localstack/prepare"
 
 		resources: {
 			server: {

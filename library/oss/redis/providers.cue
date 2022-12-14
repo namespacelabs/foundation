@@ -1,6 +1,6 @@
 providers: {
 	"namespacelabs.dev/foundation/library/database/redis:Database": {
-		initializedWith: imageFrom: binary: "namespacelabs.dev/foundation/library/oss/redis/prepare"
+		initializedWith: "namespacelabs.dev/foundation/library/oss/redis/prepare"
 
 		resources: {
 			// Adds the server to the stack

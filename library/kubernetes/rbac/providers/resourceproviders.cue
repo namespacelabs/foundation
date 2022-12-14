@@ -1,5 +1,5 @@
 providers: {
 	"namespacelabs.dev/foundation/library/kubernetes/rbac:ClusterRole": {
-		prepareWith: imageFrom: binary: "namespacelabs.dev/foundation/library/kubernetes/rbac/prepare/clusterrole"
+		prepareWith: "namespacelabs.dev/foundation/library/kubernetes/rbac/prepare/clusterrole"
 	}
 }
