@@ -457,7 +457,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			case pv.Directory != "":
 				spec = spec.WithVolumes(applycorev1.Volume().WithName(name).
 					WithHostPath(applycorev1.HostPathVolumeSource().
-						WithType(v1.HostPathDirectory).WithPath(pv.Directory)))
+						WithType(v1.HostPathDirectoryOrCreate).WithPath(pv.Directory)))
 			}
 
 		case constants.VolumeKindPersistent:
@@ -767,6 +767,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	if _, err := runAsToPodSecCtx(podSecCtx, deployable.MainContainer.RunAs); err != nil {
 		return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+	}
+
+	if deployable.MainContainer.Privileged {
+		podSecCtx = podSecCtx.WithRunAsUser(0).WithRunAsGroup(0)
 	}
 
 	spec = spec.
