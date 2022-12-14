@@ -306,6 +306,7 @@ type ContainerRunOpts struct {
 	Env                []*schema.BinaryConfig_EnvEntry
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
+	Privileged         bool
 	Mounts             []*schema.Mount
 	AllocatedPorts     []*schema.Endpoint_Port
 }

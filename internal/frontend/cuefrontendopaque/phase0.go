@@ -58,8 +58,8 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 		parsedSrv.Volume = append(parsedSrv.Volume, parsedPkg.Volumes...)
 
-		var parsedSidecars []*schema.SidecarContainer
-		var parsedInitContainers []*schema.SidecarContainer
+		var parsedSidecars []*schema.Container
+		var parsedInitContainers []*schema.Container
 		if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
 			it, err := sidecars.Val.Fields()
 			if err != nil {

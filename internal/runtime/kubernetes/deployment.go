@@ -158,10 +158,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.MainContainer.Image)
 	}
 
-	secCtx := applycorev1.SecurityContext()
-
-	if deployable.MainContainer.ReadOnlyFilesystem {
-		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
+	secCtx, err := makeSecurityContext(deployable.MainContainer)
+	if err != nil {
+		return err
 	}
 
 	name := kubedef.ServerCtrName(deployable)
@@ -677,12 +676,18 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 		containers = append(containers, name)
 
+		sidecarSecCtx, err := makeSecurityContext(sidecar.ContainerRunOpts)
+		if err != nil {
+			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+		}
+
 		scntr := applycorev1.Container().
 			WithName(name).
 			WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 			WithImage(sidecar.Image.RepoAndDigest()).
 			WithArgs(sidecar.Args...).
-			WithCommand(sidecar.Command...)
+			WithCommand(sidecar.Command...).
+			WithSecurityContext(sidecarSecCtx)
 
 		// XXX remove this
 		scntr = scntr.WithEnv(
@@ -735,8 +740,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	podSecCtx := applycorev1.PodSecurityContext()
 	if specifiedSec == nil {
 		toparse := map[string]any{
-			"defaults/container.securitycontext.yaml": secCtx,
-			"defaults/pod.podsecuritycontext.yaml":    podSecCtx,
+			"defaults/pod.podsecuritycontext.yaml": podSecCtx,
 		}
 
 		for path, obj := range toparse {
@@ -876,6 +880,30 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	s.operations = append(s.operations, ensure)
 	return nil
+}
+
+func makeSecurityContext(opts runtime.ContainerRunOpts) (*applycorev1.SecurityContextApplyConfiguration, error) {
+	secCtx := applycorev1.SecurityContext()
+
+	const path = "defaults/container.securitycontext.yaml"
+	contents, err := fs.ReadFile(defaults, path)
+	if err != nil {
+		return nil, fnerrors.InternalError("internal kubernetes data failed to read: %w", err)
+	}
+
+	if err := yaml.Unmarshal(contents, secCtx); err != nil {
+		return nil, fnerrors.InternalError("%s: failed to parse defaults: %w", path, err)
+	}
+
+	if opts.Privileged {
+		secCtx = secCtx.WithPrivileged(true).WithAllowPrivilegeEscalation(true)
+	}
+
+	if opts.ReadOnlyFilesystem {
+		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
+	}
+
+	return secCtx, nil
 }
 
 func firstStr(strs ...string) string {

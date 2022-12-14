@@ -40,8 +40,8 @@ type ValueWithPath struct {
 
 type PreparedProvisionPlan struct {
 	DeclaredStack   []schema.PackageName
-	Sidecars        []*schema.SidecarContainer
-	Inits           []*schema.SidecarContainer
+	Sidecars        []*schema.Container
+	Inits           []*schema.Container
 	ComputePlanWith []*schema.Invocation // Will generate further plan contents.
 }
 

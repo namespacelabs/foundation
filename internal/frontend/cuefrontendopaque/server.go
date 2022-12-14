@@ -29,14 +29,20 @@ type cueServer struct {
 
 	Services map[string]cueService `json:"services"`
 
-	Permissions *cuePermissions `json:"unstable_permissions,omitempty"`
+	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
+	Permissions         *cuePermissions `json:"permissions,omitempty"`
 
 	ReadinessProbe *cueProbe           `json:"probe"`  // `probe: exec: "foo-cmd"`
 	Probes         map[string]cueProbe `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
+	Security       *cueServerSecurity  `json:"security,omitempty"`
 }
 
 type cuePermissions struct {
 	ClusterRoles []string `json:"clusterRoles"`
+}
+
+type cueServerSecurity struct {
+	Privileged bool `json:"privileged"`
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
@@ -49,7 +55,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	}
 
 	out := &schema.Server{
-		MainContainer: &schema.SidecarContainer{},
+		MainContainer: &schema.Container{},
 		Name:          bits.Name,
 		Framework:     schema.Framework_OPAQUE,
 		RunByDefault:  true,
@@ -155,10 +161,18 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		}
 	}
 
+	permissions := bits.UnstablePermissions
 	if bits.Permissions != nil {
+		if err := parsing.RequireFeature(loc.Module, "experimental/kubernetes/permissions"); err != nil {
+			return nil, nil, fnerrors.AttachLocation(loc, err)
+		}
+		permissions = bits.Permissions
+	}
+
+	if permissions != nil {
 		out.Permissions = &schema.ServerPermissions{}
 
-		for _, clusterRole := range bits.Permissions.ClusterRoles {
+		for _, clusterRole := range permissions.ClusterRoles {
 			parsed, err := cuefrontend.ParseResourceRef(ctx, pl, pkg.Location, clusterRole)
 			if err != nil {
 				return nil, nil, err
@@ -173,6 +187,16 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 				out.ResourcePack = &schema.ResourcePack{}
 			}
 			out.ResourcePack.ResourceRef = append(out.ResourcePack.ResourceRef, parsed)
+		}
+	}
+
+	if bits.Security != nil {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/security"); err != nil {
+			return nil, nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		out.MainContainer.Security = &schema.Container_Security{
+			Privileged: bits.Security.Privileged,
 		}
 	}
 

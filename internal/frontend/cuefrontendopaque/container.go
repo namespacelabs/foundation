@@ -23,7 +23,7 @@ type cueContainer struct {
 }
 
 type parsedCueContainer struct {
-	container      *schema.SidecarContainer
+	container      *schema.Container
 	volumes        []*schema.Volume
 	inlineBinaries []*schema.Binary
 }
@@ -41,7 +41,7 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 	}
 
 	out := &parsedCueContainer{
-		container: &schema.SidecarContainer{
+		container: &schema.Container{
 			Name: name,
 			Args: bits.Args.Parsed(),
 			Env:  envVars,

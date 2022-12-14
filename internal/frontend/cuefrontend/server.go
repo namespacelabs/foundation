@@ -78,7 +78,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	var outBinaries []*schema.Binary
 
 	out := &schema.Server{
-		MainContainer: &schema.SidecarContainer{},
+		MainContainer: &schema.Container{},
 	}
 	out.Id = bits.ID
 	out.Name = bits.Name

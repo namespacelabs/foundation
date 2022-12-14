@@ -66,7 +66,7 @@ message Server {
     // E.g. `ns deploy` should not deploy test only servers, unless explicitly mentioned.
     bool run_by_default = 29;
 
-    SidecarContainer main_container = 33;
+    Container main_container = 33;
 
     repeated ServiceSpec service = 10;
     repeated ServiceSpec ingress = 11;

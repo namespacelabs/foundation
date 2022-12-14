@@ -12,9 +12,10 @@ import "schema/binary.proto";
 import "schema/package.proto";
 import "schema/volume.proto";
 
-// TODO: rename to "Container".
-message SidecarContainer {
-    string owner = 5;  // Package name.
+message Container {
+    reserved 5;
+
+    PackageRef owner = 9;
 
     // Deprecated, use binary_ref
     string     binary     = 1;
@@ -23,8 +24,13 @@ message SidecarContainer {
     string          name = 3;
     repeated string args = 2;
 
-    repeated BinaryConfig.EnvEntry env   = 6;
-    repeated Mount                 mount = 7;
+    repeated BinaryConfig.EnvEntry env      = 6;
+    repeated Mount                 mount    = 7;
+    Security                       security = 8;
+
+    message Security {
+        bool privileged = 1;
+    }
 }
 
 message ContainerExtension {

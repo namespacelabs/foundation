@@ -52,8 +52,8 @@ type PlannedServer struct {
 	InternalEndpoints []*schema.InternalEndpoint
 }
 
-func (p PlannedServer) SidecarsAndInits() ([]*schema.SidecarContainer, []*schema.SidecarContainer) {
-	var sidecars, inits []*schema.SidecarContainer
+func (p PlannedServer) SidecarsAndInits() ([]*schema.Container, []*schema.Container) {
+	var sidecars, inits []*schema.Container
 
 	sidecars = append(sidecars, p.Server.Provisioning.Sidecars...)
 	inits = append(inits, p.Server.Provisioning.Inits...)
@@ -418,11 +418,11 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 	}
 
 	for _, sidecar := range combinedProps.PreparedProvisionPlan.Sidecars {
-		sidecar.Owner = node.PackageName().String()
+		sidecar.Owner = schema.MakePackageSingleRef(node.PackageName())
 	}
 
 	for _, sidecar := range combinedProps.PreparedProvisionPlan.Inits {
-		sidecar.Owner = node.PackageName().String()
+		sidecar.Owner = schema.MakePackageSingleRef(node.PackageName())
 	}
 
 	pdata.AppendWith(combinedProps.PreparedProvisionPlan)

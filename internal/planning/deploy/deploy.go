@@ -910,14 +910,18 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 	if merged.WorkingDir != "" {
 		out.MainContainer.WorkingDir = merged.WorkingDir
 	}
+
+	main := srv.Proto().MainContainer
+
 	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
-	out.MainContainer.Env = append(out.MainContainer.Env, srv.Proto().MainContainer.Env...)
+	out.MainContainer.Env = append(out.MainContainer.Env, main.Env...)
 	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
+	out.MainContainer.Privileged = main.GetSecurity().GetPrivileged()
 
 	return nil
 }
 
-func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved ResolvedServerImages, out *[]runtime.SidecarRunOpts) error {
+func prepareContainerRunOpts(containers []*schema.Container, resolved ResolvedServerImages, out *[]runtime.SidecarRunOpts) error {
 	for _, container := range containers {
 		if container.Name == "" {
 			return fnerrors.InternalError("%s: sidecar name is required", container.Owner)
@@ -948,6 +952,7 @@ func prepareContainerRunOpts(containers []*schema.SidecarContainer, resolved Res
 				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.Args...),
 				Command:    sidecarBinary.BinaryConfig.GetCommand(),
 				WorkingDir: sidecarBinary.BinaryConfig.GetWorkingDir(),
+				Privileged: container.GetSecurity().GetPrivileged(),
 			},
 		}
 

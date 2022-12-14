@@ -15,8 +15,8 @@ import (
 type phase1plan struct {
 	startupPlan    *schema.StartupPlan
 	declaredStack  []schema.PackageName
-	sidecars       []*schema.SidecarContainer
-	initContainers []*schema.SidecarContainer
+	sidecars       []*schema.Container
+	initContainers []*schema.Container
 	naming         *schema.Naming
 }
 

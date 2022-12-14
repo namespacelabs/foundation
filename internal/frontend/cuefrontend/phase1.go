@@ -110,7 +110,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 	return pdata, nil
 }
 
-func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*schema.SidecarContainer, error) {
+func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*schema.Container, error) {
 	// XXX remove ListKind version.
 	if v.Kind() == cue.ListKind {
 		var containers []cueContainer
@@ -119,7 +119,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			return nil, err
 		}
 
-		var parsed []*schema.SidecarContainer
+		var parsed []*schema.Container
 		for k, data := range containers {
 			binRef, err := schema.ParsePackageRef(owner, data.Binary)
 			if err != nil {
@@ -130,8 +130,8 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 				return nil, fnerrors.New("%s #%d: name is required", kind, k)
 			}
 
-			parsed = append(parsed, &schema.SidecarContainer{
-				Owner:     owner.String(),
+			parsed = append(parsed, &schema.Container{
+				Owner:     schema.MakePackageSingleRef(owner),
 				Name:      data.Name,
 				BinaryRef: binRef,
 				Args:      data.Args.Parsed(),
@@ -146,7 +146,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 		return nil, err
 	}
 
-	var parsed []*schema.SidecarContainer
+	var parsed []*schema.Container
 	for name, data := range containers {
 		if data.Name != "" && data.Name != name {
 			return nil, fnerrors.New("%s: inconsistent container name %q", name, data.Name)
@@ -157,8 +157,8 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			return nil, err
 		}
 
-		parsed = append(parsed, &schema.SidecarContainer{
-			Owner:     owner.String(),
+		parsed = append(parsed, &schema.Container{
+			Owner:     schema.MakePackageSingleRef(owner),
 			Name:      name,
 			BinaryRef: binRef,
 			Args:      data.Args.Parsed(),

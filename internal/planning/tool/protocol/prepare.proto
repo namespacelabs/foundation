@@ -32,10 +32,10 @@ message PrepareResponse {
 }
 
 message PreparedProvisionPlan {
-    repeated string declared_stack                      = 1;
-    repeated foundation.schema.Invocation provisioning  = 2;
-    repeated foundation.schema.SidecarContainer sidecar = 3;
-    repeated foundation.schema.SidecarContainer init    = 4;
+    repeated string declared_stack                     = 1;
+    repeated foundation.schema.Invocation provisioning = 2;
+    repeated foundation.schema.Container sidecar       = 3;
+    repeated foundation.schema.Container init          = 4;
 }
 
 service PrepareService {
