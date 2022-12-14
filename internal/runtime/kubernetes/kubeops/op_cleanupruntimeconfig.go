@@ -86,6 +86,19 @@ func registerCleanup() {
 							usedConfigs[v] = struct{}{}
 						}
 					}
+
+					daemonSets, err := client.AppsV1().DaemonSets(cleanup.Namespace).List(ctx, v1.ListOptions{
+						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+					})
+					if err != nil {
+						return nil, err
+					}
+
+					for _, d := range daemonSets.Items {
+						if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
+							usedConfigs[v] = struct{}{}
+						}
+					}
 				}
 
 				for _, cfg := range configs.Items {
