@@ -7,6 +7,7 @@ package binary
 import (
 	"context"
 
+	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -39,17 +40,21 @@ func ParseBinaryInvocationField(ctx context.Context, env *schema.Environment, pl
 }
 
 func parseBinaryInvocation(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, binaryName string, v *fncue.CueV) (*schema.Invocation, error) {
-	var cib cueInvokeBinary
-	if err := v.Val.Decode(&cib); err != nil {
-		return nil, err
-	}
-
 	binRef, err := ParseImage(ctx, env, pl, pkg, binaryName, v, ParseImageOpts{Required: true})
 	if err != nil {
 		return nil, err
 	}
 
-	return ParseBinaryInvocationForBinaryRef(ctx, pkg.Location.PackageName, binRef, v)
+	var cib cueInvokeBinary
+
+	switch v.Val.Kind() {
+	case cue.StructKind:
+		if err := v.Val.Decode(&cib); err != nil {
+			return nil, err
+		}
+	}
+
+	return completeParsingInvocation(pkg.Location.PackageName, cib, binRef)
 }
 
 func ParseBinaryInvocationForBinaryRef(ctx context.Context, owner schema.PackageName, binRef *schema.PackageRef, v *fncue.CueV) (*schema.Invocation, error) {
@@ -58,6 +63,10 @@ func ParseBinaryInvocationForBinaryRef(ctx context.Context, owner schema.Package
 		return nil, err
 	}
 
+	return completeParsingInvocation(owner, cib, binRef)
+}
+
+func completeParsingInvocation(owner schema.PackageName, cib cueInvokeBinary, binRef *schema.PackageRef) (*schema.Invocation, error) {
 	envVars, err := cib.Env.Parsed(owner)
 	if err != nil {
 		return nil, err

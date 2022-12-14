@@ -36,11 +36,17 @@ var (
 func register_OpWaitForProviderResults() {
 	execution.RegisterFuncs(execution.Funcs[*internalres.OpWaitForProviderResults]{
 		EmitStart: func(ctx context.Context, inv *schema.SerializedInvocation, wait *internalres.OpWaitForProviderResults, ch chan *orchpb.Event) {
+			var label string
+			if wait.GetResourceClass().GetDescription() != "" {
+				label = fmt.Sprintf("%s (%s)", wait.GetResourceClass().GetDescription(), wait.ResourceInstanceId)
+			}
+
 			ch <- &orchpb.Event{
-				ResourceId: wait.ResourceInstanceId,
-				Category:   "Resources deployed",
-				Ready:      orchpb.Event_NOT_READY,
-				Stage:      orchpb.Event_WAITING,
+				ResourceId:    wait.ResourceInstanceId,
+				Category:      "Resources deployed",
+				Ready:         orchpb.Event_NOT_READY,
+				Stage:         orchpb.Event_WAITING,
+				ResourceLabel: label,
 			}
 		},
 

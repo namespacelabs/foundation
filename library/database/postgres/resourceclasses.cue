@@ -1,5 +1,6 @@
 resourceClasses: {
 	"Database": {
+		description: "Postgres Database"
 		intent: {
 			type:   "library.database.postgres.DatabaseIntent"
 			source: "./database.proto"
@@ -10,6 +11,7 @@ resourceClasses: {
 		}
 	}
 	"Cluster": {
+		description: "Postgres Database Cluster"
 		intent: {
 			type:   "library.database.postgres.ClusterIntent"
 			source: "./cluster.proto"

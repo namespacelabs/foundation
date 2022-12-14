@@ -17,6 +17,7 @@ type cueResourceClass struct {
 	Intent          *cueResourceType `json:"intent"`
 	Produces        *cueResourceType `json:"produces"`
 	DefaultProvider string           `json:"defaultProvider"`
+	Description     string           `json:"description"`
 }
 
 type cueResourceType struct {
@@ -39,6 +40,7 @@ func parseResourceClass(ctx context.Context, loc pkggraph.Location, name string,
 		IntentType:      parseResourceType(bits.Intent),
 		InstanceType:    parseResourceType(bits.Produces),
 		DefaultProvider: bits.DefaultProvider,
+		Description:     bits.Description,
 	}, nil
 }
 
