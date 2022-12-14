@@ -837,6 +837,24 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 			ensure.Resource = statefulSet
 
+		case schema.DeployableClass_DAEMONSET:
+			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server DaemonSet %s", deployable.Name))
+			deployment := appsv1.
+				DaemonSet(deploymentId, target.namespace).
+				WithAnnotations(annotations).
+				WithLabels(labels).
+				WithSpec(appsv1.DaemonSetSpec().
+					WithRevisionHistoryLimit(revisionHistoryLimit).
+					WithTemplate(tmpl).
+					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
+			if deployable.ConfigImage != nil {
+				deployment.WithAnnotations(map[string]string{
+					kubedef.K8sConfigImage: deployable.ConfigImage.RepoAndDigest(),
+				})
+			}
+
+			ensure.Resource = deployment
+
 		default:
 			return fnerrors.InternalError("%s: unsupported deployable class", deployable.Class)
 		}

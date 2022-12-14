@@ -60,7 +60,8 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.DeployableClass = string(schema.DeployableClass_STATELESS)
 	case "stateful", string(schema.DeployableClass_STATEFUL):
 		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
-		out.IsStateful = true
+	case "daemonset", string(schema.DeployableClass_DAEMONSET):
+		out.DeployableClass = string(schema.DeployableClass_DAEMONSET)
 	default:
 		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}

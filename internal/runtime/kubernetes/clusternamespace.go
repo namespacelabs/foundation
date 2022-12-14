@@ -156,6 +156,14 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 
 				return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
 
+			case string(schema.DeployableClass_DAEMONSET):
+				deployment, err := r.underlying.cli.AppsV1().DaemonSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+				if err != nil {
+					return false, err
+				}
+
+				return deployment.Status.NumberReady > 0 && deployment.Status.NumberReady == deployment.Status.NumberAvailable, nil
+
 			case string(schema.DeployableClass_MANUAL), string(schema.DeployableClass_ONESHOT):
 				return r.isPodReady(ctx, srv)
 
@@ -429,6 +437,9 @@ func (r *ClusterNamespace) DeleteDeployable(ctx context.Context, deployable runt
 
 	case string(schema.DeployableClass_STATELESS):
 		return r.underlying.cli.AppsV1().Deployments(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
+
+	case string(schema.DeployableClass_DAEMONSET):
+		return r.underlying.cli.AppsV1().DaemonSets(r.target.namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, listOpts)
 
 	default:
 		return fnerrors.InternalError("%s: unsupported deployable class", deployable.GetDeployableClass())

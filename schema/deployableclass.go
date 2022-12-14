@@ -15,4 +15,6 @@ const (
 	DeployableClass_ONESHOT DeployableClass = "deployableclass.namespace.so/one-shot"
 	// Represents an internal one-shot run whose orchestration management is manual.
 	DeployableClass_MANUAL DeployableClass = "deployableclass.namespace.so/manual"
+	// Represents a horizontally scalable stateless deployment, that is deployed per node.
+	DeployableClass_DAEMONSET DeployableClass = "deployableclass.namespace.so/daemonset"
 )

@@ -154,9 +154,9 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		}
 	}
 
-	if persistentVolumeCount > 0 && !sealed.Proto.Server.IsStateful {
-		return nil, fnerrors.BadInputError("%s: servers that use persistent storage are required to set IsStateful=true",
-			sealed.Proto.Server.Name)
+	if persistentVolumeCount > 0 && sealed.Proto.Server.DeployableClass != string(schema.DeployableClass_STATEFUL) {
+		return nil, fnerrors.BadInputError("%s: servers that use persistent storage are required to be of class %q",
+			sealed.Proto.Server.Name, schema.DeployableClass_STATEFUL)
 	}
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
