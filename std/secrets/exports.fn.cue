@@ -20,9 +20,8 @@ import (
 				packageName?: string
 				name?:        string
 			}
-			experimentalFunction?: inputs.#Package
-			cacheable?:            bool
-			withInput?:            types.#Any
+			cacheable?: bool
+			withInput?: types.#Any
 		}
 		selfSignedTlsCertificate?: {
 			organization?: [...string]

@@ -197,7 +197,7 @@ _#ConfigureBase: {
 
 	#Startup: {
 		args?: #Args | [...string]
-		env: [string]: string
+		env?: [string]: string | {experimentalFromDownwardsFieldPath: string}
 	}
 
 	#Container: {
