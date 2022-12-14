@@ -31,7 +31,7 @@ func (loc Location) Rel(rel ...string) string {
 // escape the module, an error is returned.
 func (loc Location) CheckRel(rel string) (string, error) {
 	abs := loc.Abs(rel)
-	r, err := filepath.Rel(loc.Module.absPath, abs)
+	r, err := filepath.Rel(loc.Module.Abs(), abs)
 	if err != nil {
 		return "", fnerrors.InternalError("%s: failed to get a relative path for %q: %w", loc.PackageName, rel, err)
 	}
@@ -44,7 +44,7 @@ func (loc Location) CheckRel(rel string) (string, error) {
 // Abs returns an absolute path to the location. If path segments are passed
 // in, the combined relative path is returned.
 func (loc Location) Abs(rel ...string) string {
-	return filepath.Join(append([]string{loc.Module.absPath, loc.relPath}, rel...)...)
+	return filepath.Join(append([]string{loc.Module.Abs(), loc.relPath}, rel...)...)
 }
 
 // ErrorLocation implements the fnerrors.Location interface.

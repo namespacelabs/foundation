@@ -20,10 +20,9 @@ import (
 )
 
 type Module struct {
-	Workspace     *schema.Workspace
-	WorkspaceData WorkspaceData
+	Workspace *schema.Workspace
 
-	absPath string
+	loadedFrom *schema.Workspace_LoadedFrom
 	// If not empty, this is an external module.
 	version string
 }
@@ -35,9 +34,9 @@ type MutableModule interface {
 
 func NewModule(w *schema.Workspace, lf *schema.Workspace_LoadedFrom, version string) *Module {
 	return &Module{
-		Workspace: w,
-		absPath:   lf.AbsPath,
-		version:   version,
+		Workspace:  w,
+		loadedFrom: lf,
+		version:    version,
 	}
 }
 
@@ -47,10 +46,11 @@ func (mod *Module) ErrorLocation() string {
 		return mod.Workspace.ModuleName
 	}
 
-	return mod.absPath
+	return mod.loadedFrom.AbsPath
 }
 
-func (mod *Module) Abs() string                                                         { return mod.absPath }
+func (mod *Module) Abs() string                                                         { return mod.loadedFrom.AbsPath }
+func (mod *Module) DefinitionFile() string                                              { return mod.loadedFrom.DefinitionFile }
 func (mod *Module) ModuleName() string                                                  { return mod.Workspace.ModuleName }
 func (mod *Module) Version() string                                                     { return mod.version }
 func (mod *Module) ChangeTrigger(rel string, excludes []string) compute.Computable[any] { return nil }
@@ -59,14 +59,14 @@ func (mod *Module) ChangeTrigger(rel string, excludes []string) compute.Computab
 func (mod *Module) IsExternal() bool { return mod.version != "" }
 
 func (mod *Module) ReadOnlyFS(rel ...string) fs.FS {
-	return fnfs.Local(mod.absPath, rel...)
+	return fnfs.Local(mod.Abs(), rel...)
 }
 
 func (mod *Module) ReadWriteFS() fnfs.ReadWriteFS {
 	if mod.IsExternal() {
-		return fnfs.Local(mod.absPath).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
+		return fnfs.Local(mod.Abs()).(fnfs.ReadWriteFS) // LocalFS has a Write, which fails Writes.
 	}
-	return fnfs.ReadWriteLocalFS(mod.absPath)
+	return fnfs.ReadWriteLocalFS(mod.Abs())
 }
 
 func (mod *Module) MakeLocation(relPath string) Location {
@@ -89,7 +89,7 @@ func (mod *Module) RootLocation() Location {
 func (mod *Module) VCS(ctx context.Context) (*runtime.BuildVCS, error) {
 	t := time.Now()
 
-	status, err := git.FetchStatus(ctx, mod.absPath)
+	status, err := git.FetchStatus(ctx, mod.Abs())
 	if err != nil {
 		return nil, err
 	}
