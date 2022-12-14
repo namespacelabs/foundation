@@ -82,7 +82,7 @@ func isServer(gvk kubeschema.GroupVersionKind, deployable *runtime.Deployable) b
 		return false
 	}
 
-	return kubedef.IsGVKDeployment(gvk) || kubedef.IsGVKStatefulSet(gvk) || kubedef.IsGVKPod(gvk)
+	return kubedef.IsGVKDeployment(gvk) || kubedef.IsGVKStatefulSet(gvk) || kubedef.IsGVKPod(gvk) || kubedef.IsGVKDaemonSet(gvk)
 }
 
 type WaitOnResource struct {

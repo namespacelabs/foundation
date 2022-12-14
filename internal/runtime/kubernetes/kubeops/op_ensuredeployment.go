@@ -129,7 +129,7 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 		return &d, nil
 
-	case kubedef.IsDaemonSetSet(obj):
+	case kubedef.IsDaemonSet(obj):
 		var d specOnlyDaemonSet
 		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
 			return nil, err

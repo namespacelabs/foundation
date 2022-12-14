@@ -23,7 +23,7 @@ func IsStatefulSet(obj Object) bool {
 	return IsGVKStatefulSet(obj.GroupVersionKind())
 }
 
-func IsDaemonSetSet(obj Object) bool {
+func IsDaemonSet(obj Object) bool {
 	return IsGVKDaemonSet(obj.GroupVersionKind())
 }
 
