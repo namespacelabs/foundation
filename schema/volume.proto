@@ -42,6 +42,10 @@ message PersistentVolume {
     uint64 size_bytes = 2;
 }
 
+message HostVolume {
+    string directory = 1;
+}
+
 message WorkspaceSyncVolume {
     // A directory, relative to package.
     string path = 1;

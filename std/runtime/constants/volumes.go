@@ -9,4 +9,5 @@ const (
 	VolumeKindPersistent    = "namespace.so/volume/persistent"
 	VolumeKindConfigurable  = "namespace.so/volume/configurable"
 	VolumeKindWorkspaceSync = "namespace.so/volume/workspacesync"
+	VolumeKindHostPath      = "namespace.so/volume/hostpath"
 )

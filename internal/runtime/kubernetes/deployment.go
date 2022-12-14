@@ -22,6 +22,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -446,6 +447,19 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		switch volume.Kind {
 		case constants.VolumeKindEphemeral:
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
+
+		case constants.VolumeKindHostPath:
+			pv := &schema.HostVolume{}
+			if err := volume.Definition.UnmarshalTo(pv); err != nil {
+				return fnerrors.InternalError("%s: failed to unmarshal hostDir volume definition: %w", volume.Name, err)
+			}
+
+			switch {
+			case pv.Directory != "":
+				spec = spec.WithVolumes(applycorev1.Volume().WithName(name).
+					WithHostPath(applycorev1.HostPathVolumeSource().
+						WithType(v1.HostPathDirectory).WithPath(pv.Directory)))
+			}
 
 		case constants.VolumeKindPersistent:
 			pv := &schema.PersistentVolume{}

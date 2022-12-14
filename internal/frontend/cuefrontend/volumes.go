@@ -58,10 +58,11 @@ type cueVolume struct {
 	Kind string `json:"kind"`
 
 	// Shortcuts
-	Ephemeral     interface{}             `json:"ephemeral"`
-	Persistent    *cuePersistentVolume    `json:"persistent"`
-	WorkspaceSync *cueWorkspaceSyncVolume `json:"syncWorkspace"`
-	Configurable  interface{}             `json:"configurable"`
+	Ephemeral     any                     `json:"ephemeral,omitempty"`
+	Persistent    *cuePersistentVolume    `json:"persistent,omitempty"`
+	WorkspaceSync *cueWorkspaceSyncVolume `json:"syncWorkspace,omitempty"`
+	Configurable  any                     `json:"configurable,omitempty"`
+	HostPath      *cueHostPathVolume      `json:"hostPath,omitempty"`
 }
 
 type cuePersistentVolume struct {
@@ -71,6 +72,10 @@ type cuePersistentVolume struct {
 
 type cueWorkspaceSyncVolume struct {
 	FromDir string `json:"fromDir"`
+}
+
+type cueHostPathVolume struct {
+	Directory string `json:"directory"`
 }
 
 type cueConfigurableEntry struct {
@@ -103,6 +108,9 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			// Parsing can't be done via JSON unmarshalling, so doing it manually below.
 			bits.Kind = constants.VolumeKindConfigurable
 		}
+		if bits.HostPath != nil {
+			bits.Kind = constants.VolumeKindHostPath
+		}
 	}
 
 	out := &schema.Volume{
@@ -127,6 +135,13 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			Id:        bits.Id,
 			SizeBytes: uint64(sizeBytes),
 		}
+
+	case constants.VolumeKindHostPath:
+		if bits.HostPath == nil || bits.HostPath.Directory == "" {
+			return nil, fnerrors.NewWithLocation(loc, "host: missing required field 'directory'")
+		}
+
+		definition = &schema.HostVolume{Directory: bits.HostPath.Directory}
 
 	case constants.VolumeKindWorkspaceSync:
 		if bits.FromDir == "" {
