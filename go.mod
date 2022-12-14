@@ -20,7 +20,6 @@ require (
 	github.com/bcicen/jstream v1.0.1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
-	github.com/bramvdbogaerde/go-scp v1.2.0
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/charmbracelet/bubbles v0.14.0

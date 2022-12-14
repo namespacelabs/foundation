@@ -5,11 +5,10 @@
 package k3s
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 
-	"github.com/bramvdbogaerde/go-scp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/client-go/tools/clientcmd"
@@ -93,17 +92,28 @@ func makeRemoteConfig(ctx context.Context, publicEndpoint string, endpoint ssh.E
 			return nil, err
 		}
 
-		c, err := scp.NewClientBySSH(conn)
+		session, err := conn.NewSession()
 		if err != nil {
 			return nil, err
 		}
 
-		var b bytes.Buffer
-		if err := c.CopyFromRemotePassThru(ctx, &b, "/etc/rancher/k3s/k3s.yaml", nil); err != nil {
+		defer session.Close()
+
+		r, err := session.StdoutPipe()
+		if err != nil {
 			return nil, err
 		}
 
-		return decodeKubeConfig(publicEndpoint, b.Bytes())
+		if err := session.Run("cat /etc/rancher/k3s/k3s.yaml"); err != nil {
+			return nil, err
+		}
+
+		contents, err := io.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+
+		return decodeKubeConfig(publicEndpoint, contents)
 	})
 }
 
