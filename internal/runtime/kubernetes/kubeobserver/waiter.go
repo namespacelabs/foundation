@@ -130,6 +130,8 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			var observedGeneration int64
 			var readyReplicas, replicas, updatedReplicas int32
 
+			hasReplicaSet := false
+
 			switch {
 			case kubedef.IsGVKDeployment(w.GroupVersionKind):
 				res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
@@ -154,6 +156,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 					return false, fnerrors.InternalError("failed to marshal deployment status: %w", err)
 				}
 				ev.ImplMetadata = meta
+				hasReplicaSet = true
 
 			case kubedef.IsGVKStatefulSet(w.GroupVersionKind):
 				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
@@ -178,14 +181,41 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 					return false, fnerrors.InternalError("failed to marshal stateful set status: %w", err)
 				}
 				ev.ImplMetadata = meta
+				hasReplicaSet = true
+
+			case kubedef.IsGVKDaemonSet(w.GroupVersionKind):
+				res, err := cli.AppsV1().DaemonSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
+				if err != nil {
+					// If the resource is not visible yet, wait anyway, as the
+					// only way to get here is by requesting that the resource
+					// be created.
+					if errors.IsNotFound(err) {
+						return false, nil
+					}
+
+					return false, err
+				}
+
+				observedGeneration = res.Status.ObservedGeneration
+				replicas = res.Status.NumberAvailable
+				readyReplicas = res.Status.NumberReady
+				updatedReplicas = res.Status.UpdatedNumberScheduled
+
+				meta, err := json.Marshal(res.Status)
+				if err != nil {
+					return false, fnerrors.InternalError("failed to marshal stateful set status: %w", err)
+				}
+				ev.ImplMetadata = meta
 
 			default:
 				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.GroupVersionKind)
 			}
 
-			if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
-				if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
-					ev.WaitStatus = status
+			if hasReplicaSet {
+				if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
+					if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
+						ev.WaitStatus = status
+					}
 				}
 			}
 

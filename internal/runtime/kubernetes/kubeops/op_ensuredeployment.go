@@ -129,6 +129,18 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 		return &d, nil
 
+	case kubedef.IsDaemonSetSet(obj):
+		var d specOnlyDaemonSet
+		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
+			return nil, err
+		}
+
+		patchConfigID(&d.ObjectMeta, &d.Spec.Template.Spec, output.ConfigId, spec.ConfigurationVolumeName)
+		if err := patchSetFields(&d.ObjectMeta, &d.Spec.Template.Spec, setFields, output); err != nil {
+			return nil, err
+		}
+		return &d, nil
+
 	case kubedef.IsPod(obj):
 		var d specOnlyPod
 		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
@@ -168,6 +180,18 @@ type specOnlyStatefulSet struct {
 	// Spec defines the desired identities of pods in this set.
 	// +optional
 	Spec appsv1.StatefulSetSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+}
+
+type specOnlyDaemonSet struct {
+	metav1.TypeMeta `json:",inline"`
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Spec defines the desired identities of pods in this set.
+	// +optional
+	Spec appsv1.DaemonSetSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 }
 
 type specOnlyPod struct {

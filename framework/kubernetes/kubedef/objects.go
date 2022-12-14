@@ -23,6 +23,10 @@ func IsStatefulSet(obj Object) bool {
 	return IsGVKStatefulSet(obj.GroupVersionKind())
 }
 
+func IsDaemonSetSet(obj Object) bool {
+	return IsGVKDaemonSet(obj.GroupVersionKind())
+}
+
 func IsPod(obj Object) bool {
 	return IsGVKPod(obj.GroupVersionKind())
 }
@@ -37,6 +41,10 @@ func IsGVKDeployment(gvk schema.GroupVersionKind) bool {
 
 func IsGVKStatefulSet(gvk schema.GroupVersionKind) bool {
 	return gvk.GroupVersion().String() == "apps/v1" && gvk.Kind == "StatefulSet"
+}
+
+func IsGVKDaemonSet(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "apps/v1" && gvk.Kind == "DaemonSet"
 }
 
 func IsGVKPod(gvk schema.GroupVersionKind) bool {

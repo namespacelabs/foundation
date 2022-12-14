@@ -185,7 +185,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 	if ch != nil {
 		switch {
-		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj):
+		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj), kubedef.IsDaemonSetSet(obj):
 			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
 			ev.Stage = orchestration.Event_COMMITTED
 			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
@@ -196,7 +196,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 	}
 
 	switch {
-	case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj):
+	case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsDaemonSetSet(obj):
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 		observedGen, found2, err2 := unstructured.NestedInt64(res.Object, "status", "observedGeneration")
 		if err2 != nil || !found2 {
