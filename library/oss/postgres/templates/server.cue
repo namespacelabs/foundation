@@ -4,6 +4,14 @@ package templates
 	spec: {
 		image: *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
 		dataVolumeSize: *"10GiB" | string
+		dataVolume: *{
+			id: "postgres-server-data"
+			size: dataVolumeSize
+		} | {
+			id: string
+			size: string
+		}
+		passwordSecret: *"namespacelabs.dev/foundation/library/oss/postgres/server:password" | string
 	}
 
 	name: "postgres-server"
@@ -25,15 +33,11 @@ package templates
 	}
 
 	mounts: {
-		"/postgres/data": persistent: {
-			// Unique volume identifier
-			id:   "postgres-server-data"
-			size: spec.dataVolumeSize
-		}
+		"/postgres/data": persistent: spec.dataVolume
 
 		"/postgres/secrets": configurable: {
 			contents: {
-				"password": fromSecret: "namespacelabs.dev/foundation/library/oss/postgres/server:password"
+				"password": fromSecret: spec.passwordSecret
 			}
 		}
 	}
