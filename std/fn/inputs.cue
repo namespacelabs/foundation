@@ -37,7 +37,7 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	}
 
 	#Endpoint: {
-		type:          "PRIVATE" | "INTERNET_FACING"
+		type:          string
 		serviceName:   string
 		allocatedName: string
 		containerPort: int
