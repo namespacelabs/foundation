@@ -6,7 +6,6 @@ package templates
 		dataVolumeSize: *"10GiB" | string
 	}
 
-
 	name: "postgres-server"
 
 	image: spec.image
