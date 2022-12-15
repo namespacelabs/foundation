@@ -34,6 +34,7 @@ type cueLayeredImageBuildPlanJSON struct {
 var _ json.Unmarshaler = &cueLayeredImageBuildPlan{}
 
 type cueImageBuildPlan struct {
+	Prebuilt                 string                             `json:"prebuilt,omitempty"`
 	GoPackage                string                             `json:"go_package,omitempty"`
 	GoBuild                  *schema.ImageBuildPlan_GoBuild     `json:"go_build,omitempty"`
 	Dockerfile               string                             `json:"dockerfile,omitempty"`
@@ -141,6 +142,11 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	plan := &schema.ImageBuildPlan{}
 
 	var set []string
+	if bp.Prebuilt != "" {
+		plan.ImageId = bp.Prebuilt
+		set = append(set, "prebuilt")
+	}
+
 	if bp.GoPackage != "" {
 		plan.GoPackage = bp.GoPackage
 		set = append(set, "go_package")

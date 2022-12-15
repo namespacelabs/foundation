@@ -273,6 +273,7 @@ _#ConfigureBase: {
 	}
 
 	#BuildPlan: {
+		prebuilt?: string
 		go_package?: string
 		go_build?: {
 			rel_path:     string

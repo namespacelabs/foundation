@@ -26,7 +26,7 @@ message Binary {
     LayeredImageBuildPlan build_plan = 8;
 }
 
-// Next ID: 14
+// Next ID: 15
 message ImageBuildPlan {
     reserved 3, 9;
 
