@@ -10,7 +10,6 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -25,7 +24,14 @@ func RegisterRuntimeState() {
 		}
 
 		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller (nginx) is ready").Run(ctx, func(ctx context.Context) error {
-			return nginx.IngressWaiter(kube.PreparedClient().RESTConfig).WaitUntilReady(ctx, nil)
+			ingress := kube.Ingress()
+			if ingress == nil {
+				return nil
+			}
+			if w := ingress.Waiter(); w != nil {
+				return w.WaitUntilReady(ctx, nil)
+			}
+			return nil
 		}); err != nil {
 			return nil, err
 		}

@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/networking/dns"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -35,9 +34,7 @@ func Register() {
 			}
 
 			return nil, tasks.Action("ingress.publish-address").Arg("fqdn", op.Fdqn).Run(ctx, func(ctx context.Context) error {
-				ingressSvc := nginx.IngressLoadBalancerService() // Make nginx reference configurable.
-
-				return waitForIngress(ctx, cluster.PreparedClient().Clientset, ingressSvc, op)
+				return waitAndMap(ctx, cluster, op)
 			})
 		},
 
@@ -86,7 +83,18 @@ func Register() {
 	nginx.RegisterGraphHandlers()
 }
 
-func waitForIngress(ctx context.Context, cli *k8s.Clientset, ingressSvc *nginx.NameRef, op *OpMapAddress) error {
+func waitAndMap(ctx context.Context, cluster kubedef.KubeCluster, op *OpMapAddress) error {
+	if op.CnameTarget != "" {
+		return fnapi.Map(ctx, op.Fdqn, op.CnameTarget)
+	}
+
+	cli := cluster.PreparedClient().Clientset
+
+	var ingressSvc *kubedef.IngressSelector
+	if ingress := cluster.Ingress(); ingress != nil {
+		ingressSvc = ingress.Service()
+	}
+
 	return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 1*time.Minute, func(ctx context.Context) (bool, error) {
 		// If the ingress declares there's a load balancer service that backs itself, then look
 		// for the LB address instead of waiting for the ingress to be mapped.

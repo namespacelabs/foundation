@@ -211,29 +211,29 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 	return annotations, nil
 }
 
-type NameRef struct {
-	Namespace, ServiceName string
-	ContainerPort          int
+func Ingress(restcfg *rest.Config) kubedef.KubeIngress {
+	return nginx{restcfg}
 }
 
-func IngressLoadBalancerService() *NameRef {
-	return &NameRef{
+type nginx struct {
+	restcfg *rest.Config
+}
+
+func (nginx) Service() *kubedef.IngressSelector {
+	return &kubedef.IngressSelector{
 		Namespace:     "ingress-nginx",
 		ServiceName:   "ingress-nginx-controller",
 		ContainerPort: 80,
+		PodSelector:   map[string]string{"app.kubernetes.io/component": "controller"},
 	}
 }
 
-func ControllerSelector() map[string]string {
-	return map[string]string{"app.kubernetes.io/component": "controller"}
-}
-
-func IngressWaiter(cfg *rest.Config) kubeobserver.WaitOnResource {
+func (n nginx) Waiter() kubedef.KubeIngressWaiter {
 	return kubeobserver.WaitOnResource{
-		RestConfig:       cfg,
+		RestConfig:       n.restcfg,
 		Description:      "NGINX Ingress Controller",
-		Namespace:        IngressLoadBalancerService().Namespace,
-		Name:             IngressLoadBalancerService().ServiceName,
+		Namespace:        n.Service().Namespace,
+		Name:             n.Service().ServiceName,
 		GroupVersionKind: kubeschema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
 		Scope:            "namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx",
 	}

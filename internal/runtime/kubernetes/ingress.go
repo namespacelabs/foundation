@@ -15,7 +15,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	fnschema "namespacelabs.dev/foundation/schema"
 )
 
@@ -96,10 +95,14 @@ func planIngress(ctx context.Context, r clusterTarget, stack *fnschema.Stack, al
 }
 
 func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify runtime.PortForwardedFunc) (io.Closer, error) {
-	svc := nginx.IngressLoadBalancerService()
+	if r.Ingress() == nil {
+		return nil, nil
+	}
+
+	svc := r.Ingress().Service()
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, nginx.ControllerSelector())
+	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, svc.PodSelector)
 
 	go func() {
 		if err := r.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{

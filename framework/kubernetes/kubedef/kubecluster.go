@@ -11,12 +11,14 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
 )
 
 type KubeCluster interface {
 	runtime.Cluster
 
+	Ingress() KubeIngress
 	PreparedClient() client.Prepared
 }
 
@@ -24,6 +26,21 @@ type KubeClusterNamespace interface {
 	runtime.ClusterNamespace
 
 	KubeConfig() KubeConfig
+}
+
+type KubeIngress interface {
+	Service() *IngressSelector
+	Waiter() KubeIngressWaiter
+}
+
+type KubeIngressWaiter interface {
+	WaitUntilReady(ctx context.Context, ch chan *orchestration.Event) error
+}
+
+type IngressSelector struct {
+	Namespace, ServiceName string
+	ContainerPort          int
+	PodSelector            map[string]string
 }
 
 type KubeConfig struct {
