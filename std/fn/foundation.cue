@@ -41,7 +41,7 @@ _#Node: {
 
 	mounts?: {...}
 
-	resources?: {...}
+	resources?: [string]: {...} | [...string]
 }
 
 #Extension: {
