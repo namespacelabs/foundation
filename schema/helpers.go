@@ -15,6 +15,7 @@ const (
 	ClearTextGrpcProtocol = "grpc"
 	GrpcProtocol          = "grpcs"
 	HttpProtocol          = "http"
+	HttpsProtocol         = "https"
 )
 
 var (

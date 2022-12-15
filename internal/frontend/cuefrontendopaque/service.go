@@ -58,7 +58,7 @@ func (i *cueIngress) UnmarshalJSON(contents []byte) error {
 	return fnerrors.InternalError("ingress: expected 'true', or a full ingress definition")
 }
 
-var knownKinds = []string{"tcp", schema.ClearTextGrpcProtocol, schema.GrpcProtocol, schema.HttpProtocol}
+var knownKinds = []string{"tcp", schema.ClearTextGrpcProtocol, schema.GrpcProtocol, schema.HttpProtocol, schema.HttpsProtocol}
 
 func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, []*schema.Probe, error) {
 	if !slices.Contains(knownKinds, svc.Kind) {

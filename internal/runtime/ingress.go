@@ -142,6 +142,9 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 					return nil, fnerrors.InternalError("unsupported grpc configuration: %v", p.ProtoReflect().Descriptor().FullName())
 				}
 			}
+
+		default:
+			return nil, fnerrors.New("%s: unsupported ingress protocol", *protocol)
 		}
 
 		if len(paths) > 0 && len(grpc) > 0 {

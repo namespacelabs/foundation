@@ -143,6 +143,16 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 			}
 		}
 
+		if _, ok := protocolToKind[schema.HttpsProtocol]; ok && len(httpAccessCmds) == 0 {
+			if p.LocalPort == 0 {
+				httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
+					Cmd: fmt.Sprintf("private: container port %d https", p.Port.ContainerPort), IsManaged: true})
+			} else {
+				httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{
+					Cmd: fmt.Sprintf("https://%s:%d", plan.LocalHostname, p.LocalPort), IsManaged: true})
+			}
+		}
+
 		endpoint.AccessCmd = append(endpoint.AccessCmd, httpAccessCmds...)
 		endpoint.AccessCmd = append(endpoint.AccessCmd, grpcAccessCmds...)
 
