@@ -77,6 +77,12 @@ func (i *cueIngress) UnmarshalJSON(contents []byte) error {
 		default:
 			return fnerrors.New("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got %q", str)
 		}
+	} else if b, ok := tok.(bool); ok {
+		if b {
+			i.Enabled = true
+			return nil
+		}
+		return fnerrors.New("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got \"%v\"", b)
 	} else {
 		return fnerrors.New("ingress: bad value %v, expected 'true', 'LoadBalancer', or a full ingress definition", tok)
 	}
