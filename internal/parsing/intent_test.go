@@ -51,7 +51,7 @@ func TestAllocateMessage(t *testing.T) {
 			}`,
 			Expected: &schema.Server{
 				Import: []string{"1", "2"},
-				MainContainer: &schema.SidecarContainer{
+				MainContainer: &schema.Container{
 					BinaryRef: &schema.PackageRef{
 						PackageName: "foobar",
 					},
