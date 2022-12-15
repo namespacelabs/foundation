@@ -5,6 +5,11 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
+_#Base: {
+	// Marker to detect which Namespace parser to run
+	"namespaceInternalParserVersion": 1
+}
+
 _#Imports: {
 	"import": [...string]
 }
@@ -16,6 +21,8 @@ _#Instantiate: {
 }
 
 _#Node: {
+	_#Base
+
 	_#Imports
 
 	_#Instantiate
@@ -91,6 +98,8 @@ _#Node: {
 #Framework: "GO" | "GO_GRPC" | "WEB"
 
 #Server: {
+	_#Base
+
 	_#Imports
 
 	id:   string
@@ -177,6 +186,8 @@ _#Node: {
 }
 
 _#ConfigureBase: {
+	_#Base
+
 	stack?: {
 		append: [...#WithPackageName]
 	}
@@ -250,6 +261,8 @@ _#ConfigureBase: {
 }
 
 #Binary: {
+	_#Base
+
 	name?:       string
 	repository?: string
 	digest?:     string
@@ -283,6 +296,8 @@ _#ConfigureBase: {
 }
 
 #Test: {
+	_#Base
+
 	name: string
 	*{driver: #Binary} | {binary: #Binary}
 	fixture: {

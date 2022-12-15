@@ -7,6 +7,7 @@ package cuefrontend
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
@@ -14,6 +15,12 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+)
+
+const (
+	Version_ImportsInNewSyntax = 54
+	syntaxVersionMarker        = "namespaceInternalParserVersion"
+	oldSyntaxVersion           = 1
 )
 
 type impl struct {
@@ -76,7 +83,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 
 	// Packages in the new syntax don't rely as much on cue features. They're
 	// streamlined data definitions without the constraints of json.
-	if isNewSyntax(partial) {
+	if isNewSyntax(ctx, partial, ft.loader) {
 		return ft.newSyntaxParser.ParsePackage(ctx, partial, loc)
 	}
 
@@ -132,15 +139,32 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	return parsed, nil
 }
 
-func isNewSyntax(partial *fncue.Partial) bool {
-	if len(partial.CueImports) > 1 {
-		// There is at least one import: the file itself.
-		return false
+func isNewSyntax(ctx context.Context, partial *fncue.Partial, pl parsing.EarlyPackageLoader) bool {
+	if err := pkggraph.ValidateFoundation("allow imports in new syntax", Version_ImportsInNewSyntax, pkggraph.ModuleFromLoader(ctx, pl)); err != nil {
+		if len(partial.CueImports) > 1 {
+			// There is at least one import: the file itself.
+			return false
+		}
+
+		// Detecting the old syntax.
+		for _, path := range []string{"service", "extension", "test"} {
+			if partial.CueV.LookupPath(path).Exists() {
+				return false
+			}
+		}
+
+		return true
 	}
 
-	// Detecting the old syntax.
-	for _, path := range []string{"service", "extension", "test"} {
-		if partial.CueV.LookupPath(path).Exists() {
+	// Detecting the old syntax using a syntax version marker.
+	for _, path := range []string{"server", "service", "extension", "configure", "test"} {
+		v := partial.CueV.LookupPath(fmt.Sprintf("%s.%s", path, syntaxVersionMarker))
+		if !v.Exists() {
+			continue
+		}
+
+		version, err := v.Val.Int64()
+		if err == nil && version == oldSyntaxVersion {
 			return false
 		}
 	}
