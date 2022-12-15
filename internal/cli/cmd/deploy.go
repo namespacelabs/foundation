@@ -45,13 +45,14 @@ import (
 
 func NewDeployCmd() *cobra.Command {
 	var (
-		explain       bool
-		serializePath string
-		uploadTo      string
-		deployOpts    deployOpts
-		env           cfg.Context
-		locs          fncobra.Locations
-		servers       fncobra.Servers
+		explain          bool
+		uploadToRegistry bool
+		serializePath    string
+		uploadTo         string
+		deployOpts       deployOpts
+		env              cfg.Context
+		locs             fncobra.Locations
+		servers          fncobra.Servers
 	)
 
 	return fncobra.
@@ -67,6 +68,7 @@ func NewDeployCmd() *cobra.Command {
 			flags.Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 			flags.StringVar(&serializePath, "serialize_to", "", "If set, rather than execute on the plan, output a serialization of the plan.")
 			flags.StringVar(&uploadTo, "upload_plan_to", "", "If set, rather than execute on the plan, upload a serialized version of the plan.")
+			flags.BoolVar(&uploadToRegistry, "upload_to_registry", false, "If set, uploads the deploy plan to the cluster registry, instead of applying it.")
 			flags.StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 		}).
 		With(
@@ -88,10 +90,20 @@ func NewDeployCmd() *cobra.Command {
 
 			// When uploading a plan, any server and container images should be
 			// pushed to the same repository, so they're accessible by the plan.
+
+			var target compute.Computable[oci.AllocatedRepository]
 			if uploadTo != "" {
-				reg = registry.MakeStaticRegistry(&buildr.Registry{
-					Url: uploadTo,
-				})
+				if uploadToRegistry {
+					target = reg.AllocateName(uploadTo)
+				} else {
+					reg = registry.MakeStaticRegistry(&buildr.Registry{
+						Url: uploadTo,
+					})
+					target = registry.Precomputed(registry.AttachStaticKeychain(nil, oci.ImageID{
+						Repository: filepath.Join(uploadTo, "plan"),
+					}, oci.RegistryAccess{}))
+					uploadToRegistry = true
+				}
 			}
 
 			plan, err := deploy.PrepareDeployStack(ctx, env, servers.SealedPackages, planner, reg, stack)
@@ -119,8 +131,8 @@ func NewDeployCmd() *cobra.Command {
 				return protos.WriteFile(serializePath, any)
 			}
 
-			if uploadTo != "" {
-				return uploadPlanTo(ctx, uploadTo, deployPlan)
+			if target != nil {
+				return uploadPlanTo(ctx, target, deployPlan)
 			}
 
 			sealed := pkggraph.MakeSealedContext(env, servers.SealedPackages)
@@ -244,7 +256,7 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 	return nil
 }
 
-func uploadPlanTo(ctx context.Context, targetRepo string, plan *schema.DeployPlan) error {
+func uploadPlanTo(ctx context.Context, target compute.Computable[oci.AllocatedRepository], plan *schema.DeployPlan) error {
 	any, err := anypb.New(plan)
 	if err != nil {
 		return err
@@ -262,9 +274,7 @@ func uploadPlanTo(ctx context.Context, targetRepo string, plan *schema.DeployPla
 
 	image := oci.MakeImageFromScratch("deploy plan", oci.MakeLayer("deploy plan contents", compute.Precomputed[fs.FS](&contents, digestfs.Digest)))
 
-	result := oci.PublishImage(registry.Precomputed(registry.AttachStaticKeychain(nil, oci.ImageID{
-		Repository: filepath.Join(targetRepo, "plan"),
-	}, oci.RegistryAccess{})), image)
+	result := oci.PublishImage(target, image)
 	resultImageID, err := compute.GetValue(ctx, result.ImageID())
 	if err != nil {
 		return err
