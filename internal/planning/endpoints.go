@@ -65,7 +65,12 @@ func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*sc
 	// Handle statically defined services.
 	server := sch.Server
 	for _, s := range server.GetService() {
-		spec, err := ServiceSpecToEndpoint(server, s, schema.Endpoint_PRIVATE)
+		t := schema.Endpoint_PRIVATE
+		if s.EndpointType != schema.Endpoint_INGRESS_UNSPECIFIED {
+			t = s.EndpointType
+		}
+
+		spec, err := ServiceSpecToEndpoint(server, s, t)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -73,6 +78,10 @@ func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*sc
 	}
 
 	for _, s := range server.GetIngress() {
+		if s.EndpointType != schema.Endpoint_INGRESS_UNSPECIFIED && s.EndpointType != schema.Endpoint_INTERNET_FACING {
+			return nil, nil, fnerrors.InternalError("ingress endpoint type is incompatible, saw %v", s.EndpointType)
+		}
+
 		spec, err := ServiceSpecToEndpoint(server, s, schema.Endpoint_INTERNET_FACING)
 		if err != nil {
 			return nil, nil, err

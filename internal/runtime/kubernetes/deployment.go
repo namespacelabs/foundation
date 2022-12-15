@@ -1122,9 +1122,25 @@ func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.Dep
 		serviceSpec = serviceSpec.WithPorts(applycorev1.ServicePort().
 			WithProtocol(corev1.ProtocolTCP).WithName(port.Name).WithPort(port.ContainerPort))
 
+		if endpoint.Type == schema.Endpoint_LOAD_BALANCER {
+			serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)
+		}
+
 		serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
 		if err != nil {
 			return err
+		}
+
+		for _, md := range endpoint.ServiceMetadata {
+			x := &schema.ServiceAnnotations{}
+			if md.Details.MessageIs(x) {
+				if err := md.Details.UnmarshalTo(x); err != nil {
+					return fnerrors.InternalError("failed to unmarshal ServiceAnnotations: %w", err)
+				}
+				for _, kv := range x.KeyValue {
+					serviceAnnotations[kv.Key] = kv.Value
+				}
+			}
 		}
 
 		if err := validateServiceName(endpoint.AllocatedName); err != nil {

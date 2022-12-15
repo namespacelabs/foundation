@@ -17,7 +17,8 @@ message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
         PRIVATE             = 1;
-        INTERNET_FACING     = 2;
+        INTERNET_FACING     = 2;  // With an ingress frontend.
+        LOAD_BALANCER       = 3;  // Public facing load-balancer.
     }
 
     Type type = 1;
@@ -112,4 +113,13 @@ message GrpcHttpTranscoding {
 
 message HttpExportedService {
     string path = 1;
+}
+
+message ServiceAnnotations {
+    repeated KeyValue key_value = 1;
+
+    message KeyValue {
+        string key   = 1;
+        string value = 2;
+    }
 }

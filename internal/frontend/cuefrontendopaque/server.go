@@ -74,18 +74,18 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 
 	var serviceProbes []*schema.Probe
 	for name, svc := range bits.Services {
-		parsed, endpointType, probes, err := parseService(loc, name, svc)
+		parsed, probes, err := parseService(loc, name, svc)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		if endpointType == schema.Endpoint_INTERNET_FACING {
+		if parsed.EndpointType == schema.Endpoint_INTERNET_FACING {
 			out.Ingress = append(out.Ingress, parsed)
 		} else {
 			out.Service = append(out.Service, parsed)
 		}
 
-		if endpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.Details.HttpRoutes) > 0 {
+		if parsed.EndpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.Details.HttpRoutes) > 0 {
 			return nil, nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
 		}
 

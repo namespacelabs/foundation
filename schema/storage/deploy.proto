@@ -73,6 +73,7 @@ message Endpoint {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
         PRIVATE             = 1;
         INTERNET_FACING     = 2;
+        LOAD_BALANCER       = 3;
     }
 
     Type type = 1;

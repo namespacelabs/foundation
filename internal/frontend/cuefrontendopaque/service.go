@@ -5,12 +5,14 @@
 package cuefrontendopaque
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
-	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -21,6 +23,8 @@ type cueService struct {
 	Port    int        `json:"port"`
 	Ingress cueIngress `json:"ingress"`
 
+	Annotations map[string]string `json:"annotations,omitempty"`
+
 	ReadinessProbe *cueServiceProbe            `json:"probe"`  // `probe: http: "/"`
 	Probes         map[string]*cueServiceProbe `json:"probes"` // `probes: readiness: http: "/"`
 }
@@ -30,8 +34,9 @@ type cueServiceProbe struct {
 }
 
 type cueIngress struct {
-	Enabled bool
-	Details CueIngressDetails
+	Enabled      bool
+	LoadBalancer bool
+	Details      CueIngressDetails
 }
 
 type CueIngressDetails struct {
@@ -45,29 +50,53 @@ func (i *cueIngress) UnmarshalJSON(contents []byte) error {
 		return nil
 	}
 
-	if string(contents) == "true" {
-		i.Enabled = true
-		return nil
+	dec := json.NewDecoder(bytes.NewReader(contents))
+
+	tok, err := dec.Token()
+	if err != nil {
+		return err
 	}
 
-	if json.Unmarshal(contents, &i.Details) == nil {
+	if tok == json.Delim('{') {
+		if err := json.Unmarshal(contents, &i.Details); err != nil {
+			return err
+		}
+
 		i.Enabled = true
 		return nil
-	}
+	} else if str, ok := tok.(string); ok {
+		switch strings.ToLower(str) {
+		case "true":
+			i.Enabled = true
+			return nil
 
-	return fnerrors.InternalError("ingress: expected 'true', or a full ingress definition")
+		case "loadbalancer":
+			i.LoadBalancer = true
+			return nil
+
+		default:
+			return fnerrors.New("ingress: expected 'true', 'LoadBalancer', or a full ingress definition got %q", str)
+		}
+	} else {
+		return fnerrors.New("ingress: bad value %v, expected 'true', 'LoadBalancer', or a full ingress definition", tok)
+	}
 }
 
 var knownKinds = []string{"tcp", schema.ClearTextGrpcProtocol, schema.GrpcProtocol, schema.HttpProtocol, schema.HttpsProtocol}
 
-func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, schema.Endpoint_Type, []*schema.Probe, error) {
-	if !slices.Contains(knownKinds, svc.Kind) {
-		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, nil, fnerrors.NewWithLocation(loc, "service kind is not supported: %s (support %v)", svc.Kind, strings.Join(knownKinds, ", "))
+func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, []*schema.Probe, error) {
+	if svc.Kind != "" && !slices.Contains(knownKinds, svc.Kind) {
+		return nil, nil, fnerrors.NewWithLocation(loc, "service kind is not supported: %s (support %v)", svc.Kind, strings.Join(knownKinds, ", "))
 	}
 
 	var endpointType schema.Endpoint_Type
 	if svc.Ingress.Enabled {
 		endpointType = schema.Endpoint_INTERNET_FACING
+	} else if svc.Ingress.LoadBalancer {
+		if err := parsing.RequireFeature(loc.Module, "experimental/service/loadbalancer"); err != nil {
+			return nil, nil, err
+		}
+		endpointType = schema.Endpoint_LOAD_BALANCER
 	} else {
 		endpointType = schema.Endpoint_PRIVATE
 	}
@@ -84,7 +113,7 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 	if len(urlMap.Entry) > 0 {
 		details = &anypb.Any{}
 		if err := details.MarshalFrom(urlMap); err != nil {
-			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -92,21 +121,50 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 	if svc.Kind == schema.GrpcProtocol || svc.Kind == schema.ClearTextGrpcProtocol {
 		details = &anypb.Any{}
 		if err := details.MarshalFrom(&schema.GrpcExportAllServices{}); err != nil {
-			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, nil, fnerrors.New("failed to serialize grpc configuration: %w", err)
+			return nil, nil, fnerrors.New("failed to serialize grpc configuration: %w", err)
 		}
 	}
 
 	parsed := &schema.Server_ServiceSpec{
-		Name: name,
-		Port: &schema.Endpoint_Port{Name: name, ContainerPort: int32(svc.Port)},
-		Metadata: []*schema.ServiceMetadata{{
-			Protocol: svc.Kind,
-			Details:  details,
-		}},
+		Name:         name,
+		Port:         &schema.Endpoint_Port{Name: name, ContainerPort: int32(svc.Port)},
+		EndpointType: endpointType,
+	}
+
+	if svc.Kind != "" {
+		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Protocol: svc.Kind, Details: details})
+	} else if details != nil {
+		return nil, nil, fnerrors.New("service metadata is specified without kind")
+	}
+
+	if len(svc.Annotations) > 0 {
+		if err := parsing.RequireFeature(loc.Module, "experimental/service/annotations"); err != nil {
+			return nil, nil, err
+		}
+
+		x := &schema.ServiceAnnotations{}
+		for key, value := range svc.Annotations {
+			x.KeyValue = append(x.KeyValue, &schema.ServiceAnnotations_KeyValue{Key: key, Value: value})
+		}
+		slices.SortFunc(x.KeyValue, func(a, b *schema.ServiceAnnotations_KeyValue) bool {
+			if a.Key == b.Key {
+				return strings.Compare(a.Value, b.Value) < 0
+			}
+			return strings.Compare(a.Key, b.Key) < 0
+		})
+
+		serialized, err := anypb.New(x)
+		if err != nil {
+			return nil, nil, fnerrors.InternalError("failed to serialize annotations: %w", err)
+		}
+
+		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{
+			Details: serialized,
+		})
 	}
 
 	if svc.Probes != nil && svc.ReadinessProbe != nil {
-		return nil, schema.Endpoint_INGRESS_UNSPECIFIED, nil, fnerrors.AttachLocation(loc, fnerrors.BadInputError("probes and probe are exclusive"))
+		return nil, nil, fnerrors.AttachLocation(loc, fnerrors.BadInputError("probes and probe are exclusive"))
 	}
 
 	if svc.ReadinessProbe != nil {
@@ -118,14 +176,14 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 			},
 		}
 
-		return parsed, endpointType, []*schema.Probe{probe}, nil
+		return parsed, []*schema.Probe{probe}, nil
 	}
 
 	var probes []*schema.Probe
 	for name, data := range svc.Probes {
 		kind, err := parseProbeKind(name)
 		if err != nil {
-			return nil, schema.Endpoint_INGRESS_UNSPECIFIED, nil, fnerrors.AttachLocation(loc, err)
+			return nil, nil, fnerrors.AttachLocation(loc, err)
 		}
 
 		probes = append(probes, &schema.Probe{
@@ -137,5 +195,5 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 		})
 	}
 
-	return parsed, endpointType, probes, nil
+	return parsed, probes, nil
 }

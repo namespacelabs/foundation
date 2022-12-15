@@ -133,6 +133,8 @@ func convertEndpointType(t fnschema.Endpoint_Type) (storage.Endpoint_Type, error
 		return storage.Endpoint_PRIVATE, nil
 	case fnschema.Endpoint_INTERNET_FACING:
 		return storage.Endpoint_INTERNET_FACING, nil
+	case fnschema.Endpoint_LOAD_BALANCER:
+		return storage.Endpoint_LOAD_BALANCER, nil
 	default:
 		return storage.Endpoint_INGRESS_UNSPECIFIED, fnerrors.InternalError("unknown endpoint type: %s", t)
 	}
