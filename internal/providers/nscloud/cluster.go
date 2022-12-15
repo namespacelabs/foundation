@@ -226,6 +226,10 @@ func (d *cluster) Class() runtime.Class {
 	return runtimeClass{}
 }
 
+func (d *cluster) Ingress() kubedef.KubeIngress {
+	return d.cluster.Ingress()
+}
+
 func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
 	planner := completePlanner(ctx, env, d.clusterId, d.ingressDomain, d.registry, env.Environment().Ephemeral)
 

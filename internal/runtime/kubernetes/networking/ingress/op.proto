@@ -9,6 +9,8 @@ package foundation.runtime.kubernetes.networking.ingress;
 option go_package = "namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress";
 
 message OpMapAddress {
+    string description = 5;
+
     string fdqn = 1;
 
     // If specified, will map to the IP address of the LoadBalancer resolved.

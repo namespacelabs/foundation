@@ -15,10 +15,11 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	fnschema "namespacelabs.dev/foundation/schema"
 )
 
-func planIngress(ctx context.Context, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
+func planIngress(ctx context.Context, ingressPlanner ingress.Planner, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
 	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.namespace})
@@ -75,20 +76,39 @@ func planIngress(ctx context.Context, r clusterTarget, stack *fnschema.Stack, al
 	}
 
 	// XXX this could be reduced in effort (e.g. batched).
+
+	var seen uniquestrings.List
 	for _, frag := range allManaged.Sorted() {
-		impl, err := anypb.New(&ingress.OpMapAddress{
-			Fdqn:        frag.FQDN,
-			IngressNs:   frag.Ingress.Namespace,
-			IngressName: frag.Ingress.Name,
-		})
+		if !seen.Add(frag.FQDN) {
+			continue
+		}
+
+		if ingressPlanner == nil {
+			fmt.Fprintf(console.Warnings(ctx), "Skipped updating %q, no ingress planner available.\n", frag.FQDN)
+			continue
+		}
+
+		maps, err := ingressPlanner.Map(ctx, frag)
 		if err != nil {
 			return nil, err
 		}
 
-		state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
-			Description: fmt.Sprintf("Update %s's address", frag.FQDN),
-			Impl:        impl,
-		})
+		for _, m := range maps {
+			impl, err := anypb.New(m)
+			if err != nil {
+				return nil, err
+			}
+
+			desc := m.Description
+			if desc == "" {
+				desc = fmt.Sprintf("Update %s's address", frag.FQDN)
+			}
+
+			state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
+				Description: desc,
+				Impl:        impl,
+			})
+		}
 	}
 
 	return &state, nil

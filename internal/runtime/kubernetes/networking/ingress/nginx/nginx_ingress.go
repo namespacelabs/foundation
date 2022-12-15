@@ -111,7 +111,11 @@ func RegisterGraphHandlers() {
 	})
 }
 
-func Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
+type nginx struct {
+	restcfg *rest.Config
+}
+
+func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	f, err := lib.Open("ingress.yaml")
 	if err != nil {
 		return nil, err
@@ -213,10 +217,6 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 
 func Ingress(restcfg *rest.Config) kubedef.KubeIngress {
 	return nginx{restcfg}
-}
-
-type nginx struct {
-	restcfg *rest.Config
 }
 
 func (nginx) Service() *kubedef.IngressSelector {

@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -24,7 +25,9 @@ import (
 )
 
 type Planner struct {
-	Configuration   cfg.Configuration
+	Configuration  cfg.Configuration
+	IngressPlanner ingress.Planner
+
 	fetchSystemInfo FetchSystemInfoFunc
 	underlying      *Cluster
 	target          clusterTarget
@@ -45,7 +48,13 @@ func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo FetchSyste
 }
 
 func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetchSystemInfo FetchSystemInfoFunc) Planner {
-	return Planner{Configuration: env.Configuration(), fetchSystemInfo: fetchSystemInfo, target: newTarget(env), registry: registry}
+	return Planner{
+		Configuration:   env.Configuration(),
+		IngressPlanner:  ingress.MapPublicLoadBalancer{},
+		fetchSystemInfo: fetchSystemInfo,
+		target:          newTarget(env),
+		registry:        registry,
+	}
 }
 
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
@@ -53,7 +62,7 @@ func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (
 }
 
 func (r Planner) PlanIngress(ctx context.Context, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
-	return planIngress(ctx, r.target, stack, allFragments)
+	return planIngress(ctx, r.IngressPlanner, r.target, stack, allFragments)
 }
 
 func (r Planner) KubernetesNamespace() string { return r.target.namespace }

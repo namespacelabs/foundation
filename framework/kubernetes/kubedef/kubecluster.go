@@ -29,6 +29,7 @@ type KubeClusterNamespace interface {
 }
 
 type KubeIngress interface {
+	Ensure(context.Context) ([]*schema.SerializedInvocation, error)
 	Service() *IngressSelector
 	Waiter() KubeIngressWaiter
 }

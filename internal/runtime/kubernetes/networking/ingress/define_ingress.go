@@ -28,11 +28,6 @@ import (
 
 const LblNameStatus = "ns:kubernetes:ingress:status"
 
-func EnsureStack(ctx context.Context) ([]*schema.SerializedInvocation, error) {
-	// XXX make this configurable.
-	return nginx.Ensure(ctx)
-}
-
 type MapAddress struct {
 	FQDN    string
 	Ingress IngressRef

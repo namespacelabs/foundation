@@ -51,7 +51,12 @@ func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes
 		}
 	}
 
-	ingressDefs, err := ingress.EnsureStack(ctx)
+	ingress := kube.Ingress()
+	if ingress == nil {
+		return nil
+	}
+
+	ingressDefs, err := ingress.Ensure(ctx)
 	if err != nil {
 		return err
 	}
