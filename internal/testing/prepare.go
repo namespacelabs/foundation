@@ -109,7 +109,7 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 		Args:               testBin.Args,
 		Env:                testBin.Env,
 		WorkingDir:         testBin.WorkingDir,
-		ReadOnlyFilesystem: true,
+		ReadOnlyFilesystem: false,
 	}
 
 	if driver.Debug {
