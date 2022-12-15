@@ -1,9 +1,15 @@
 package templates
 
 #Server: {
+	spec: {
+		image: *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
+		dataVolumeSize: *"10GiB" | string
+	}
+
+
 	name: "postgres-server"
 
-	image: *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
+	image: spec.image
 
 	// Postgres mounts a persistent volume which requires a stateful deployment (more conservative update strategy).
 	class: "stateful"
@@ -23,7 +29,7 @@ package templates
 		"/postgres/data": persistent: {
 			// Unique volume identifier
 			id:   "postgres-server-data"
-			size: *"10GiB" | string
+			size: spec.dataVolumeSize
 		}
 
 		"/postgres/secrets": configurable: {
