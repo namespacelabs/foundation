@@ -2,13 +2,13 @@ package templates
 
 #Server: {
 	spec: {
-		image: *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
+		image:          *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
 		dataVolumeSize: *"10GiB" | string
-		dataVolume: *{
-			id: "postgres-server-data"
+		dataVolume:     *{
+			id:   "postgres-server-data"
 			size: dataVolumeSize
 		} | {
-			id: string
+			id:   string
 			size: string
 		}
 		passwordSecret: *"namespacelabs.dev/foundation/library/oss/postgres/server:password" | string
