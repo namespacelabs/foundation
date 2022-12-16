@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -115,16 +116,16 @@ func getAwsConf(ctx context.Context, env cfg.Context) (*awsconf.Configuration, e
 }
 
 func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
-	auth, err := fnapi.LoadUser()
+	x, err := fnapi.LoadUser()
 	if err != nil {
-		if errors.Is(err, fnapi.ErrRelogin) {
+		if errors.Is(err, auth.ErrRelogin) {
 			// Don't require login yet. The orchestrator will fail with the appropriate error if required.
 			return nil, nil
 		}
 		return nil, err
 	}
 
-	return auth, nil
+	return x, nil
 }
 
 func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, plan *schema.DeployPlan) (string, error) {

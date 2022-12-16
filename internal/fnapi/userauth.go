@@ -8,16 +8,14 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
-
-var ErrRelogin = errors.New("not logged in, please run `ns login`")
 
 const userAuthJson = "auth.json"
 
@@ -83,7 +81,7 @@ func LoadUser() (*UserAuth, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// XXX use fnerrors
-			return nil, ErrRelogin
+			return nil, auth.ErrRelogin
 		}
 
 		return nil, err

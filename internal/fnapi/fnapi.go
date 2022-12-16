@@ -17,6 +17,7 @@ import (
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 )
@@ -139,7 +140,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	dec := json.NewDecoder(response.Body)
 	if err := dec.Decode(st); err == nil {
 		if st.Code == int32(codes.Unauthenticated) {
-			return ErrRelogin
+			return auth.ErrRelogin
 		}
 
 		return status.ErrorProto(st)
@@ -169,7 +170,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	case http.StatusForbidden:
 		return fnerrors.NoAccessToLimitedFeature()
 	case http.StatusUnauthorized:
-		return ErrRelogin
+		return auth.ErrRelogin
 	default:
 		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}

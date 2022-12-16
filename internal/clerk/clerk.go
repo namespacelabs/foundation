@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -148,6 +149,10 @@ func JWT(ctx context.Context, st *State) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		if resp.StatusCode == 401 {
+			return "", auth.ErrRelogin
+		}
+
 		return "", fnerrors.InvocationError("jwt", "failed to obtain token: %v", resp.Status)
 	}
 
