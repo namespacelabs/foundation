@@ -351,9 +351,10 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 			}
 
 			opts := rtypes.RunBinaryOpts{
-				Command:    inv.Command,
-				Args:       inv.Args,
-				WorkingDir: inv.WorkingDir,
+				Command:    inv.Config.Command,
+				Args:       inv.Config.Args,
+				WorkingDir: inv.Config.WorkingDir,
+				Env:        inv.Config.Env,
 				// XXX security prepare invocations have network access.
 			}
 

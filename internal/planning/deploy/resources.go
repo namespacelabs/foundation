@@ -189,6 +189,11 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 				return nil, err
 			}
 
+			config, err := invocation.MergePreparedConfig(prepared, initializer)
+			if err != nil {
+				return nil, err
+			}
+
 			poster, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
 			if err != nil {
 				return nil, err
@@ -198,7 +203,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 			executionInvocations = append(executionInvocations, &InvokeResourceProvider{
 				ResourceInstanceId:   resource.ID,
 				BinaryRef:            initializer.BinaryRef,
-				BinaryConfig:         bin.Config,
+				BinaryConfig:         config,
 				ResourceClass:        resource.Class.Source,
 				ResourceProvider:     provider,
 				InstanceTypeSource:   resource.Class.InstanceType.Sources,

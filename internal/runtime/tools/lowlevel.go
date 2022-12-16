@@ -96,6 +96,14 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 			runOpts = append(runOpts, llb.Dir(opts.WorkingDir))
 		}
 
+		for _, env := range opts.Env {
+			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromSecretRef != nil || env.FromServiceEndpoint != nil || env.FromResourceField != nil {
+				return llb.State{}, fnerrors.New("invocation: only support environment variables with static values")
+			}
+
+			runOpts = append(runOpts, llb.AddEnv(env.Name, env.Value))
+		}
+
 		run := base.Run(runOpts...)
 
 		requestBytes, err := proto.Marshal(req)

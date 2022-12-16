@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
@@ -22,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -33,11 +35,8 @@ type Invocation struct {
 	ImageName            string
 	Image                compute.Computable[oci.ResolvableImage]
 	SupportedToolVersion int
-	Command              []string
-	Args                 []string
-	Env                  []*schema.BinaryConfig_EnvEntry
+	Config               *schema.BinaryConfig
 	Snapshots            []Snapshot
-	WorkingDir           string
 	NoCache              bool
 	Inject               []*schema.Invocation_ValueInjection
 }
@@ -84,31 +83,23 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 		return nil, err
 	}
 
-	workingDir := with.WorkingDir
-	if prepared.WorkingDir != "" {
-		workingDir = prepared.WorkingDir
+	invocation := &Invocation{
+		Buildkit:  cli,
+		ImageName: bin.Name,
+		Image:     image,
+		NoCache:   with.NoCache,
+		Inject:    with.Inject,
 	}
 
-	invocation := &Invocation{
-		Buildkit:   cli,
-		ImageName:  bin.Name,
-		Command:    prepared.Command,
-		Args:       prepared.Args,
-		Env:        prepared.Env,
-		WorkingDir: workingDir,
-		Image:      image,
-		NoCache:    with.NoCache,
-		Inject:     with.Inject,
+	config, err := MergePreparedConfig(prepared, with)
+	if err != nil {
+		return nil, err
 	}
+
+	invocation.Config = config
 
 	if v := pkg.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {
 		invocation.SupportedToolVersion = int(v)
-	}
-
-	invocation.Args = append(invocation.Args, with.Args...)
-	invocation.Env, err = support.MergeEnvs(invocation.Env, with.Env)
-	if err != nil {
-		return nil, err
 	}
 
 	for k, v := range with.Snapshots {
@@ -182,6 +173,52 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 	})
 
 	return invocation, nil
+}
+
+func MergePreparedConfig(prepared *binary.Prepared, with *schema.Invocation) (*schema.BinaryConfig, error) {
+	return MergeBinaryConfig(&schema.BinaryConfig{
+		WorkingDir: prepared.WorkingDir,
+		Command:    prepared.Command,
+		Args:       prepared.Args,
+		Env:        prepared.Env,
+	}, &schema.BinaryConfig{
+		WorkingDir: with.WorkingDir,
+		Args:       with.Args,
+		Env:        with.Env,
+	})
+}
+
+func MergeBinaryConfig(original, with *schema.BinaryConfig) (*schema.BinaryConfig, error) {
+	t := protos.Clone(original)
+
+	if t.WorkingDir != "" {
+		if with.WorkingDir != "" {
+			if t.WorkingDir != with.WorkingDir {
+				return nil, fnerrors.New("incompatible working dirs %q vs %q", t.WorkingDir, with.WorkingDir)
+			}
+		}
+	} else {
+		t.WorkingDir = with.WorkingDir
+	}
+
+	if len(t.Command) != 0 {
+		if len(with.Command) != 0 {
+			if !slices.Equal(t.Command, with.Command) {
+				return nil, fnerrors.New("incompatible commands %v vs %v", t.Command, with.Command)
+			}
+		}
+	} else {
+		t.Command = with.Command
+	}
+
+	env, err := support.MergeEnvs(t.Env, with.Env)
+	if err != nil {
+		return nil, err
+	}
+
+	t.Args = append(t.Args, with.Args...)
+	t.Env = env
+	return t, nil
 }
 
 func ValidateProviderReponse(response *protocol.ToolResponse) error {

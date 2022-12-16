@@ -122,9 +122,10 @@ func makeBaseInvocation(ctx context.Context, env cfg.Context, r *Definition, pro
 	}
 
 	opts := rtypes.RunBinaryOpts{
-		Command:    invocation.Command,
-		Args:       invocation.Args,
-		WorkingDir: invocation.WorkingDir,
+		Command:    invocation.Config.Command,
+		Args:       invocation.Config.Args,
+		WorkingDir: invocation.Config.WorkingDir,
+		Env:        invocation.Config.Env,
 	}
 
 	cli, err := invocation.Buildkit.MakeClient(ctx)
