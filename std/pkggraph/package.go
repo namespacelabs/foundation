@@ -191,13 +191,16 @@ func (rp ResourceProvider) LookupExpected(name *schema.PackageRef) *ExpectedReso
 	return nil
 }
 
-func LookupResourceClass(ctx context.Context, pl MinimalPackageLoader, ref *schema.PackageRef) (*ResourceClass, error) {
-	pkg, err := pl.LoadByName(ctx, ref.AsPackageName())
-	if err != nil {
-		return nil, err
+func LookupResourceClass(ctx context.Context, pl MinimalPackageLoader, owner *Package, ref *schema.PackageRef) (*ResourceClass, error) {
+	if owner == nil || owner.Location.PackageName != ref.AsPackageName() {
+		pkg, err := pl.LoadByName(ctx, ref.AsPackageName())
+		if err != nil {
+			return nil, err
+		}
+		owner = pkg
 	}
 
-	rc := pkg.LookupResourceClass(ref.Name)
+	rc := owner.LookupResourceClass(ref.Name)
 	if rc == nil {
 		return nil, fnerrors.BadInputError("resource class %q not found in package %q", ref.Name, ref.PackageName)
 	}

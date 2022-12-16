@@ -263,7 +263,7 @@ func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoade
 }
 
 func canonicalizeClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, fieldSelector string) (string, error) {
-	class, err := pkggraph.LookupResourceClass(ctx, pl, classRef)
+	class, err := pkggraph.LookupResourceClass(ctx, pl, nil, classRef)
 	if err != nil {
 		return "", err
 	}

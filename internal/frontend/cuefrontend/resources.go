@@ -73,6 +73,12 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 		return nil, err
 	}
 
+	if pkg.PackageName() != classRef.AsPackageName() {
+		if _, err := pl.LoadByName(ctx, classRef.AsPackageName()); err != nil {
+			return nil, err
+		}
+	}
+
 	intentFrom, err := binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-from-"+name /* binaryName */, "from" /* cuePath */, v)
 	if err != nil {
 		return nil, err

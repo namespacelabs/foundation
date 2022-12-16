@@ -47,7 +47,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		}
 	}
 
-	class, err := pkggraph.LookupResourceClass(ctx, pl, instance.Class)
+	class, err := pkggraph.LookupResourceClass(ctx, pl, pkg, instance.Class)
 	if err != nil {
 		return nil, err
 	}
