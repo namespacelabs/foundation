@@ -388,20 +388,42 @@ func (r *ClusterNamespace) resolvePod(ctx context.Context, cli *kubernetes.Clien
 	return resolvePodByLabels(ctx, cli, w, r.target.namespace, kubedef.SelectById(obj))
 }
 
-func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, server runtime.Deployable) (oci.ImageID, error) {
-	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(schema.PackageName(server.GetPackageRef().GetPackageName())),
+func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, deployable runtime.Deployable) (oci.ImageID, error) {
+	return tasks.Return(ctx, tasks.Action("kubernetes.resolve-config-image-id").Scope(deployable.GetPackageRef().AsPackageName()),
 		func(ctx context.Context) (oci.ImageID, error) {
-			// XXX need a StatefulSet variant.
-			d, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(server), metav1.GetOptions{})
-			if err != nil {
-				// XXX better error messages.
-				return oci.ImageID{}, err
+			name := kubedef.MakeDeploymentId(deployable)
+
+			var o kubedef.Object
+			switch schema.DeployableClass(deployable.GetDeployableClass()) {
+			case schema.DeployableClass_STATELESS:
+				d, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, name, metav1.GetOptions{})
+				if err != nil {
+					return oci.ImageID{}, fnerrors.InvocationError("kubernetes", "failed to fetch deployment %s: %w", name, err)
+				}
+				o = d
+
+			case schema.DeployableClass_STATEFUL:
+				ss, err := r.underlying.cli.AppsV1().StatefulSets(r.target.namespace).Get(ctx, name, metav1.GetOptions{})
+				if err != nil {
+					return oci.ImageID{}, fnerrors.InvocationError("kubernetes", "failed to fetch stateful set %s: %w", name, err)
+				}
+				o = ss
+
+			case schema.DeployableClass_DAEMONSET:
+				ds, err := r.underlying.cli.AppsV1().DaemonSets(r.target.namespace).Get(ctx, name, metav1.GetOptions{})
+				if err != nil {
+					return oci.ImageID{}, fnerrors.InvocationError("kubernetes", "failed to fetch deamon set %s: %w", name, err)
+				}
+				o = ds
+
+			default:
+				return oci.ImageID{}, fnerrors.InternalError("unable to fetch config image id: unsupported deployable class %q", deployable.GetDeployableClass())
 			}
 
-			cfgimage, ok := d.Annotations[kubedef.K8sConfigImage]
+			cfgimage, ok := o.GetAnnotations()[kubedef.K8sConfigImage]
 			if !ok {
 				return oci.ImageID{}, fnerrors.BadInputError("%s: %q is missing as an annotation in %q",
-					server.GetPackageRef().GetPackageName(), kubedef.K8sConfigImage, kubedef.MakeDeploymentId(server))
+					deployable.GetPackageRef().GetPackageName(), kubedef.K8sConfigImage, name)
 			}
 
 			imgid, err := oci.ParseImageID(cfgimage)
