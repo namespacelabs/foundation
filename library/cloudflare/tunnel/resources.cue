@@ -14,7 +14,7 @@
 // Attach the following to your server:
 //
 //  resources: {
-//	  ingress: {
+//   ingress: {
 //      class: "namespacelabs.dev/foundation/library/cloudflare/tunnel:Ingress"
 //      intent: hostname: ["xyz.foobar.com", "foobar.com"]
 //    }
