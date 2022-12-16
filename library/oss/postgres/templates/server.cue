@@ -12,6 +12,8 @@ package templates
 			size: string
 		}
 		passwordSecret: *"namespacelabs.dev/foundation/library/oss/postgres/server:password" | string
+		authLocal:      *"trust" | string    // Trust local-socket connections by default
+		authHost:       *"password" | string // Require password for local TCP/IP by default
 	}
 
 	name: "postgres-server"
@@ -25,7 +27,7 @@ package templates
 		// PGDATA may not be a mount point but only a subdirectory.
 		PGDATA:                 "/postgres/data/pgdata"
 		POSTGRES_PASSWORD_FILE: "/postgres/secrets/password"
-		POSTGRES_INITDB_ARGS:   "--auth-local=trust --auth-host=password" // Trust local-socket connections, require password for local TCP/IP
+		POSTGRES_INITDB_ARGS:   "--auth-local=\(spec.authLocal) --auth-host=\(spec.authHost)"
 	}
 
 	services: "postgres": {
