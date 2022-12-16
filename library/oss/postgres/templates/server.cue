@@ -25,6 +25,7 @@ package templates
 		// PGDATA may not be a mount point but only a subdirectory.
 		PGDATA:                 "/postgres/data/pgdata"
 		POSTGRES_PASSWORD_FILE: "/postgres/secrets/password"
+		POSTGRES_INITDB_ARGS:   "--auth-local=trust --auth-host=password" // Trust local-socket connections, require password for local TCP/IP
 	}
 
 	services: "postgres": {
