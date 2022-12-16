@@ -13,89 +13,57 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
-type SecretSource interface {
-	Load(context.Context, SecretRequest) (*schema.FileContents, error)
-	MissingError(refs []*schema.PackageRef, specs []*schema.SecretSpec, servers []schema.PackageName) error
+type groundedSecrets struct {
+	source    runtime.SecretSource
+	sealedCtx pkggraph.SealedPackageLoader
+	server    *runtime.SecretRequest_ServerRef
 }
 
-type SecretsContext struct {
-	WorkspaceModuleName string
-	Environment         *schema.Environment
-}
-
-type SecretRequest struct {
-	SecretsContext SecretsContext
-	Server         struct {
-		PackageName schema.PackageName
-		ModuleName  string
-		RelPath     string // Relative path within the module.
-	}
-	SecretRef *schema.PackageRef
-}
-
-type secretUser struct {
-	Server  planning.Server
-	Secrets []*schema.PackageRef
-}
-
-func loadSecrets(ctx context.Context, source SecretSource, env SecretsContext, users ...secretUser) (*runtime.GroundedSecrets, error) {
-	return tasks.Return(ctx, tasks.Action("planning.load-secrets"), func(ctx context.Context) (*runtime.GroundedSecrets, error) {
-		g := &runtime.GroundedSecrets{}
-
-		var missing []*schema.PackageRef
-		var missingSpecs []*schema.SecretSpec
-		var missingServer []schema.PackageName
-		for _, ps := range users {
-			srv := ps.Server
-
-			if len(ps.Secrets) == 0 {
-				continue
-			}
-
-			specs, err := loadSecretSpecs(ctx, srv.SealedContext(), ps.Secrets...)
-			if err != nil {
-				return nil, err
-			}
-
-			for k, secretRef := range ps.Secrets {
-				gsec := runtime.GroundedSecret{
-					Ref:  secretRef,
-					Spec: specs[k],
-				}
-
-				if gsec.Spec.Generate == nil {
-					req := SecretRequest{SecretsContext: env, SecretRef: secretRef}
-					req.Server.PackageName = srv.Location.PackageName
-					req.Server.ModuleName = srv.Location.Module.ModuleName()
-					req.Server.RelPath = srv.Location.Rel()
-					value, err := source.Load(ctx, req)
-					if err != nil {
-						return nil, err
-					}
-
-					if value == nil {
-						missing = append(missing, secretRef)
-						missingSpecs = append(missingSpecs, gsec.Spec)
-						missingServer = append(missingServer, srv.PackageName())
-						continue
-					}
-
-					gsec.Value = value
-				}
-
-				g.Secrets = append(g.Secrets, gsec)
-			}
-		}
-
-		if len(missing) > 0 {
-			return nil, source.MissingError(missing, missingSpecs, missingServer)
-		}
-
-		return g, nil
+func ScopeSecretsToServer(source runtime.SecretSource, server planning.Server) runtime.GroundedSecrets {
+	return ScopeSecretsTo(source, server.SealedContext(), &runtime.SecretRequest_ServerRef{
+		PackageName: server.PackageName(),
+		ModuleName:  server.Module().ModuleName(),
+		RelPath:     server.Location.Rel(),
 	})
+}
+
+func ScopeSecretsTo(source runtime.SecretSource, sealedCtx pkggraph.SealedPackageLoader, server *runtime.SecretRequest_ServerRef) runtime.GroundedSecrets {
+	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
+}
+
+func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
+	specs, err := loadSecretSpecs(ctx, gs.sealedCtx, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	gsec := &schema.SecretResult{
+		Ref:  ref,
+		Spec: specs[0],
+	}
+
+	if gsec.Spec.Generate == nil {
+		req := runtime.SecretRequest{SecretRef: ref, Server: gs.server}
+		req.Server = gs.server
+		value, err := gs.source.Load(ctx, gs.sealedCtx, req)
+		if err != nil {
+			return nil, err
+		}
+
+		if value == nil {
+			var server schema.PackageName
+			if gs.server != nil {
+				server = gs.server.PackageName
+			}
+			return nil, gs.source.MissingError(ref, specs[0], server)
+		}
+
+		gsec.Value = value
+	}
+
+	return gsec, nil
 }
 
 func loadSecretSpecs(ctx context.Context, pl pkggraph.PackageLoader, secrets ...*schema.PackageRef) ([]*schema.SecretSpec, error) {

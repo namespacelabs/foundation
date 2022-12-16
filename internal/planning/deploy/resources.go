@@ -51,7 +51,7 @@ type serverStack interface {
 	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
 }
 
-func planResources(ctx context.Context, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, secrets runtime.SecretSource, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -201,6 +201,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 
 			imageIDs = append(imageIDs, poster.ImageID)
 			executionInvocations = append(executionInvocations, &InvokeResourceProvider{
+				SealedContext:        sealedCtx,
 				ResourceInstanceId:   resource.ID,
 				BinaryRef:            initializer.BinaryRef,
 				BinaryConfig:         config,
@@ -225,7 +226,7 @@ func planResources(ctx context.Context, modules pkggraph.Modules, planner runtim
 		for k, invocation := range executionInvocations {
 			invocation.BinaryImageId = builtExecutionImages[k].Value
 
-			theseOps, err := PlanResourceProviderInvocation(ctx, modules, planner, invocation)
+			theseOps, err := PlanResourceProviderInvocation(ctx, secrets, modules, planner, invocation)
 			if err != nil {
 				return nil, err
 			}

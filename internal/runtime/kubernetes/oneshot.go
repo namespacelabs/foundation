@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
-	spec, err := makePodSpec(name, runOpts)
+func (r *Cluster) RunAttachedOpts(ctx context.Context, secrets runtime.GroundedSecrets, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
+	spec, err := makePodSpec(ctx, secrets, name, runOpts)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts 
 	return nil
 }
 
-func makePodSpec(name string, runOpts runtime.ContainerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
+func makePodSpec(ctx context.Context, secrets runtime.GroundedSecrets, name string, runOpts runtime.ContainerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
 	container := applycorev1.Container().
 		WithName(name).
 		WithImage(runOpts.Image.RepoAndDigest()).
@@ -65,7 +65,7 @@ func makePodSpec(name string, runOpts runtime.ContainerRunOpts) (*applycorev1.Po
 			applycorev1.SecurityContext().
 				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
 
-	if _, err := fillEnv(container, runOpts.Env, runtime.GroundedSecrets{}, nil, nil); err != nil {
+	if _, err := fillEnv(ctx, container, runOpts.Env, secrets, nil, nil); err != nil {
 		return nil, err
 	}
 

@@ -32,6 +32,7 @@ import (
 const version_introducedProviderContext = 45
 
 type InvokeResourceProvider struct {
+	SealedContext        pkggraph.SealedPackageLoader
 	ResourceInstanceId   string
 	SerializedIntentJson []byte
 	BinaryRef            *schema.PackageRef
@@ -44,7 +45,7 @@ type InvokeResourceProvider struct {
 	SecretResources      []runtime.SecretResourceDependency
 }
 
-func PlanResourceProviderInvocation(ctx context.Context, modules pkggraph.Modules, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
+func PlanResourceProviderInvocation(ctx context.Context, secrets runtime.SecretSource, modules pkggraph.Modules, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
 	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
 
 	versions, err := foundationVersion(ctx, modules)
@@ -81,6 +82,8 @@ func PlanResourceProviderInvocation(ctx context.Context, modules pkggraph.Module
 			// XXX security validate this.
 			{SetArg: []*runtimepb.SetContainerField_SetValue{{Key: "--resources", Value: runtimepb.SetContainerField_RESOURCE_CONFIG}}},
 		},
+
+		Secrets: ScopeSecretsTo(secrets, invoke.SealedContext, nil),
 
 		MainContainer: runtime.ContainerRunOpts{
 			Image:   invoke.BinaryImageId,

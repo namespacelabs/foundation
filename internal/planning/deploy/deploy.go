@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/startup"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -238,12 +239,18 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 		return nil, err
 	}
 
+	secrets, err := secrets.NewLocalSecrets(env)
+	if err != nil {
+		return nil, err
+	}
+
 	preparedComp := compute.Collect(tasks.Action("deployment.prepared"), prepared...)
 
 	resourcePlan := compute.Map(
 		tasks.Action("resource.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
+			Indigestible("secrets", secrets).
 			Indigestible("modules", modules).
 			Computable("stackAndDefs", stackDef).
 			Computable("prepared", preparedComp),
@@ -269,7 +276,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 				fmt.Fprintf(console.Debug(ctx), "planResources: %q: %+v\n", key, msg)
 			}
 
-			return planResources(ctx, modules, planner, registry, stackAndDefs.Stack, rp)
+			return planResources(ctx, secrets, modules, planner, registry, stackAndDefs.Stack, rp)
 		})
 
 	imageInputs := compute.Inputs().Indigestible("packages", packages)
@@ -305,7 +312,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env, modules, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
+			return planDeployment(ctx, env, secrets, modules, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -347,11 +354,10 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, modules pkg
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env cfg.Context, modules pkggraph.Modules, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, secrets runtime.SecretSource, modules pkggraph.Modules, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverDeployables []runtime.DeployableSpec
-	var secretUsers []secretUser
 
 	moduleVCS := map[string]*runtimepb.BuildVCS{}
 	var errs []error
@@ -452,24 +458,6 @@ func planDeployment(ctx context.Context, env cfg.Context, modules pkggraph.Modul
 		deployable.Endpoints = stack.Proto().EndpointsBy(srv.PackageName())
 		deployable.Focused = stack.Focus.Has(srv.PackageName())
 
-		// Collect all secret references.
-		var secretRefs []*schema.PackageRef
-		// TODO collect secret refs from resources, too.
-		for _, v := range deployable.Volumes {
-			if v.Kind == constants.VolumeKindConfigurable {
-				cv := &schema.ConfigurableVolume{}
-				if err := v.Definition.UnmarshalTo(cv); err != nil {
-					return runtime.DeploymentSpec{}, fnerrors.InternalError("%s: failed to unmarshal configurable volume definition: %w", v.Name, err)
-				}
-
-				for _, e := range cv.Entries {
-					if e.SecretRef != nil && e.SecretRef.Name != "" {
-						secretRefs = append(secretRefs, e.SecretRef)
-					}
-				}
-			}
-		}
-
 		// Backwards compatibility (e.g. readiness checks for Go application framework use service metadata)
 		// TODO refactor.
 		probes, err := httpProbes(deployable.Endpoints, deployable.InternalEndpoints)
@@ -489,9 +477,6 @@ func planDeployment(ctx context.Context, env cfg.Context, modules pkggraph.Modul
 
 		for _, env := range allEnv {
 			switch {
-			case env.FromSecretRef != nil:
-				secretRefs = append(secretRefs, env.FromSecretRef)
-
 			case env.FromServiceEndpoint != nil:
 				if err := validateServiceRef(env.FromServiceEndpoint, stack); err != nil {
 					return runtime.DeploymentSpec{}, fnerrors.AttachLocation(srv.Location, err)
@@ -499,26 +484,13 @@ func planDeployment(ctx context.Context, env cfg.Context, modules pkggraph.Modul
 			}
 		}
 
+		deployable.Secrets = ScopeSecretsToServer(secrets, srv.Server)
+
 		serverDeployables = append(serverDeployables, deployable)
-		secretUsers = append(secretUsers, secretUser{srv.Server, secretRefs})
-	}
-
-	localSecrets, err := newLocalSecrets(modules)
-	if err != nil {
-		return runtime.DeploymentSpec{}, err
-	}
-
-	grounded, err := loadSecrets(ctx, localSecrets, SecretsContext{
-		WorkspaceModuleName: env.Workspace().ModuleName(),
-		Environment:         env.Environment(),
-	}, secretUsers...)
-	if err != nil {
-		return runtime.DeploymentSpec{}, err
 	}
 
 	return runtime.DeploymentSpec{
-		Specs:   serverDeployables,
-		Secrets: *grounded,
+		Specs: serverDeployables,
 	}, nil
 }
 

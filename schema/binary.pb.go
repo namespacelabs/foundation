@@ -99,7 +99,7 @@ func (x *Binary) GetBuildPlan() *LayeredImageBuildPlan {
 	return nil
 }
 
-// Next ID: 14
+// Next ID: 15
 type ImageBuildPlan struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

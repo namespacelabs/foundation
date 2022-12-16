@@ -218,8 +218,7 @@ type Deployable interface {
 }
 
 type DeploymentSpec struct {
-	Specs   []DeployableSpec
-	Secrets GroundedSecrets
+	Specs []DeployableSpec
 }
 
 type DeployableSpec struct {
@@ -245,6 +244,8 @@ type DeployableSpec struct {
 	BuildVCS        *runtimepb.BuildVCS
 	Resources       []*resources.ResourceDependency
 	PlannedResource []PlannedResource
+
+	Secrets GroundedSecrets
 
 	// The list of primitive std/runtime:Secret that this deployable depends on.
 	// These are treated in a special way: each one of them is mounted under
@@ -293,14 +294,8 @@ func (d DeployableSpec) GetDeployableClass() string        { return string(d.Cla
 func (d DeployableSpec) GetPackageRef() *schema.PackageRef { return d.PackageRef }
 func (d DeployableSpec) GetPackageName() string            { return d.PackageRef.GetPackageName() }
 
-type GroundedSecrets struct {
-	Secrets []GroundedSecret
-}
-
-type GroundedSecret struct {
-	Ref   *schema.PackageRef
-	Spec  *schema.SecretSpec
-	Value *schema.FileContents
+type GroundedSecrets interface {
+	Get(context.Context, *schema.PackageRef) (*schema.SecretResult, error)
 }
 
 type ContainerRunOpts struct {
@@ -426,16 +421,6 @@ func (e ErrContainerFailed) Error() string {
 	}
 
 	return fmt.Sprintf("%s: multiple failures:\n%s", e.Name, strings.Join(labels, "\n"))
-}
-
-func (g GroundedSecrets) Get(ref *schema.PackageRef) *GroundedSecret {
-	for _, secret := range g.Secrets {
-		if secret.Ref.Equals(ref) {
-			return &secret
-		}
-	}
-
-	return nil
 }
 
 func DeployableToProto(spec Deployable) *runtimepb.Deployable {

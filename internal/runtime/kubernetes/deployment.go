@@ -426,7 +426,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		SetContainerFields: slices.Clone(deployable.SetContainerField),
 	}
 
-	if _, err := fillEnv(mainContainer, mainEnv, opts.secrets, secrets, &ensure); err != nil {
+	if _, err := fillEnv(ctx, mainContainer, mainEnv, opts.secrets, secrets, &ensure); err != nil {
 		return err
 	}
 
@@ -506,9 +506,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					}
 
 				case entry.SecretRef != nil:
-					resource := opts.secrets.Get(entry.SecretRef)
-					if resource == nil {
-						return fnerrors.BadInputError("%q: missing secret value", entry.SecretRef.Canonical())
+					resource, err := opts.secrets.Get(ctx, entry.SecretRef)
+					if err != nil {
+						return err
 					}
 
 					if resource.Value != nil {
@@ -696,7 +696,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(scntr, sidecar.Env, opts.secrets, secrets, &ensure); err != nil {
+		if _, err := fillEnv(ctx, scntr, sidecar.Env, opts.secrets, secrets, &ensure); err != nil {
 			return err
 		}
 
@@ -728,7 +728,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithCommand(init.Command...).
 			WithVolumeMounts(initVolumeMounts...)
 
-		if _, err := fillEnv(scntr, init.Env, opts.secrets, secrets, &ensure); err != nil {
+		if _, err := fillEnv(ctx, scntr, init.Env, opts.secrets, secrets, &ensure); err != nil {
 			return err
 		}
 
@@ -1028,7 +1028,7 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	return nil, nil
 }
 
-func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets runtime.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(ctx context.Context, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets runtime.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
 	sort.SliceStable(env, func(i, j int) bool {
 		return env[i].Name < env[j].Name
 	})
@@ -1056,7 +1056,7 @@ func fillEnv(container *applycorev1.ContainerApplyConfiguration, env []*schema.B
 				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
 			}
 
-			name, key, err := out.allocate(secrets, kv.FromSecretRef)
+			name, key, err := out.allocate(ctx, secrets, kv.FromSecretRef)
 			if err != nil {
 				return nil, err
 			}

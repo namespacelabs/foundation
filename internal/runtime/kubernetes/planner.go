@@ -110,14 +110,13 @@ func (r Planner) ClusterNamespaceFor(parent runtime.Cluster, underlying *Cluster
 
 func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
-	deployOpts := deployOpts{
-		secrets: d.Secrets,
-	}
 
 	for _, deployable := range d.Specs {
 		var singleState serverRunState
 
-		if err := prepareDeployment(ctx, target, deployable, deployOpts, &singleState); err != nil {
+		if err := prepareDeployment(ctx, target, deployable, deployOpts{
+			secrets: deployable.Secrets,
+		}, &singleState); err != nil {
 			return nil, err
 		}
 

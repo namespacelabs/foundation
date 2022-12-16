@@ -5,6 +5,7 @@
 package kubernetes
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -35,10 +36,10 @@ func newSecretCollector(secretId string) *secretCollector {
 	return &secretCollector{secretId: secretId, items: newDataItemCollector()}
 }
 
-func (s *secretCollector) allocate(secrets runtime.GroundedSecrets, ref *schema.PackageRef) (string, string, error) {
-	contents := secrets.Get(ref)
-	if contents == nil {
-		return "", "", fnerrors.BadInputError("%q: missing secret value", ref.Canonical())
+func (s *secretCollector) allocate(ctx context.Context, secrets runtime.GroundedSecrets, ref *schema.PackageRef) (string, string, error) {
+	contents, err := secrets.Get(ctx, ref)
+	if err != nil {
+		return "", "", err
 	}
 
 	if contents.Value != nil {
