@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 
+	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/universe/db/postgres"
 )
@@ -34,6 +35,19 @@ func GetEndpoint() (*schema.Endpoint, error) {
 }
 
 func ProvideDatabase(ctx context.Context, db *Database, deps ExtensionDeps) (*postgres.DB, error) {
+	if db.ResourceRef != "" {
+		if db.SchemaFile != nil || db.Name != "" {
+			return nil, fmt.Errorf("resource ref and schema file or name are mutually exclusive")
+		}
+
+		res, err := resources.LoadResources()
+		if err != nil {
+			return nil, err
+		}
+
+		return postgres.ConnectToResource(ctx, res, db.ResourceRef)
+	}
+
 	endpoint, err := GetEndpoint()
 	if err != nil {
 		return nil, err

@@ -48,6 +48,11 @@ func (tool) Apply(_ context.Context, r provisioning.StackRequest, out *provision
 	owners := map[string][]string{}
 	if err := allocations.Visit(r.Focus.Server.Allocation, schema.PackageName(r.PackageOwner()), &incluster.Database{},
 		func(alloc *schema.Allocation_Instance, _ *schema.Instantiate, db *incluster.Database) error {
+			if db.GetResourceRef() != "" {
+				// This is a resource.
+				return nil
+			}
+
 			if existing, ok := dbs[db.GetName()]; ok {
 				if !proto.Equal(existing, db) {
 					return fnerrors.New("%s: database definition for %q is incompatible with %s", alloc.InstanceOwner, db.GetName(), strings.Join(owners[db.GetName()], ","))

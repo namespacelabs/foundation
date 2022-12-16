@@ -1,6 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
+	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
@@ -33,6 +34,9 @@ service: fn.#Service & {
 			schemaFile: inputs.#FromFile & {
 				path: "schema_postgres.sql"
 			}
+		}
+		postgres: incluster.#Exports.Database & {
+			resourceRef: "namespacelabs.dev/foundation/internal/testdata/service/multidb:postgres"
 		}
 	}
 

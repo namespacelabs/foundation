@@ -14,4 +14,7 @@ import "std/types/resource.proto";
 message Database {
     string                        name        = 1;
     foundation.std.types.Resource schema_file = 2 [(foundation.std.proto.provision_only) = true];
+    // If set, uses this resource instead of "universe/db/postgres/server".
+    // "name" and "schema_file" can't be set in this case.
+    string resource_ref = 3;
 }

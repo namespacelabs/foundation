@@ -7,8 +7,9 @@ import (
 
 #Exports: {
 	Database: {
-		name?:       string
-		schemaFile?: types.#Resource
+		name?:        string
+		schemaFile?:  types.#Resource
+		resourceRef?: string
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres/incluster"
