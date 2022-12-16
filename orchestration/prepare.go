@@ -39,8 +39,6 @@ const (
 	orchestratorStateKey = "foundation.orchestration"
 	orchDialTimeout      = 5 * time.Second
 	deployPlanFile       = "deployplan.binarypb"
-
-	firstStatelessVersion = 3
 )
 
 var (
@@ -94,23 +92,9 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		fmt.Fprintf(console.Debug(ctx), "failed to check if orchestrator is up to date: %v\nwill update orchestrator by default\n", err)
 	}
 
-	latest := stateless
-	if versions.GetLatest() < firstStatelessVersion {
-		latest.DeployableClass = string(schema.DeployableClass_STATEFUL)
-	}
-
 	if versions.GetCurrent() != 0 && versions.GetCurrent() == versions.GetLatest() {
 		// already up to date
-		return &RemoteOrchestrator{cluster: boundCluster, server: latest}, nil
-	}
-
-	if versions.GetCurrent() < firstStatelessVersion && versions.GetLatest() >= firstStatelessVersion {
-		// best-effort clean up old stateful set
-		stateful := stateless
-		stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
-		if err := boundCluster.DeleteDeployable(ctx, stateful); err != nil {
-			fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
-		}
+		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
 	}
 
 	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
@@ -123,11 +107,20 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 			continue
 		}
 
+		// Best-effort clean up old stateful set for each orchestrator update.
+		// Ideally, we'd only do so when upgrading to the first stateless version.
+		// Due to a bug, some users are left with both versions, so we need to delete more aggressively for a while.
+		stateful := stateless
+		stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
+		if err := boundCluster.DeleteDeployable(ctx, stateful); err != nil {
+			fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
+		}
+
 		if err := deployPlan(ctx, env, plan.Repository, plan.Digest, boundCluster, wait); err != nil {
 			return nil, err
 		}
 
-		return &RemoteOrchestrator{cluster: boundCluster, server: latest}, nil
+		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
 	}
 
 	return nil, fnerrors.InternalError("Did not receive any pinned deployment plan for Namespace orchestrator")
