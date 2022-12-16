@@ -9,10 +9,12 @@ package library.database.postgres;
 option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 
 import "schema/volume.proto";
+import "library/database/postgres/cluster.proto";
 
 message DatabaseIntent {
-    string   name                                  = 1;
-    repeated foundation.schema.FileContents schema = 2;
+    string   name                                   = 1;
+    repeated foundation.schema.FileContents schema  = 2;
+    ClusterInstance                         cluster = 3;
 }
 
 message DatabaseInstance {

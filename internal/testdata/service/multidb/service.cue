@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/db/postgres/incluster"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
@@ -20,6 +20,7 @@ service: fn.#Service & {
 			intent: {
 				name: "postgreslist"
 				schema: ["schema_postgres.sql"]
+				cluster: "namespacelabs.dev/foundation/library/oss/postgres:colocated"
 			}
 
 			resources: {
@@ -35,7 +36,7 @@ service: fn.#Service & {
 				path: "schema_postgres.sql"
 			}
 		}
-		postgres: incluster.#Exports.Database & {
+		"postgres": postgres.#Exports.Database & {
 			resourceRef: "namespacelabs.dev/foundation/internal/testdata/service/multidb:postgres"
 		}
 	}
