@@ -7,6 +7,7 @@ package kubedef
 import (
 	"context"
 
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -18,7 +19,7 @@ import (
 type KubeCluster interface {
 	runtime.Cluster
 
-	Ingress() KubeIngress
+	Ingress() IngressClass
 	PreparedClient() client.Prepared
 }
 
@@ -28,10 +29,13 @@ type KubeClusterNamespace interface {
 	KubeConfig() KubeConfig
 }
 
-type KubeIngress interface {
+type IngressClass interface {
+	runtime.IngressClass
+
 	Ensure(context.Context) ([]*schema.SerializedInvocation, error)
 	Service() *IngressSelector
-	Waiter() KubeIngressWaiter
+	Waiter(*rest.Config) KubeIngressWaiter
+	Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*OpMapAddress, error)
 }
 
 type KubeIngressWaiter interface {

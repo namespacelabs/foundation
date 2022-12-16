@@ -28,7 +28,7 @@ func RegisterRuntimeState() {
 			if ingress == nil {
 				return nil
 			}
-			if w := ingress.Waiter(); w != nil {
+			if w := ingress.Waiter(kube.PreparedClient().RESTConfig); w != nil {
 				return w.WaitUntilReady(ctx, nil)
 			}
 			return nil

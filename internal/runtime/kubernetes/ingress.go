@@ -10,19 +10,19 @@ import (
 	"io"
 
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
-	"namespacelabs.dev/foundation/internal/uniquestrings"
 	fnschema "namespacelabs.dev/foundation/schema"
 )
 
-func planIngress(ctx context.Context, ingressPlanner ingress.Planner, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
+func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
-	cleanup, err := anypb.New(&ingress.OpCleanupMigration{Namespace: r.namespace})
+	cleanup, err := anypb.New(&kubedef.OpCleanupMigration{Namespace: r.namespace})
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func planIngress(ctx context.Context, ingressPlanner ingress.Planner, r clusterT
 			continue
 		}
 
-		defs, managed, err := ingress.PlanIngress(ctx, r.namespace, r.env, srv.Server, frags, certSecretMap)
+		defs, managed, err := ingress.PlanIngress(ctx, ingressPlanner, r.namespace, r.env, srv.Server, frags, certSecretMap)
 		if err != nil {
 			return nil, err
 		}
@@ -70,45 +70,31 @@ func planIngress(ctx context.Context, ingressPlanner ingress.Planner, r clusterT
 			state.Definitions = append(state.Definitions, def)
 		}
 
-		if err := allManaged.Merge(managed); err != nil {
-			return nil, err
-		}
+		allManaged.Merge(managed)
 	}
 
 	// XXX this could be reduced in effort (e.g. batched).
 
-	var seen uniquestrings.List
 	for _, frag := range allManaged.Sorted() {
-		if !seen.Add(frag.FQDN) {
-			continue
-		}
-
 		if ingressPlanner == nil {
-			fmt.Fprintf(console.Warnings(ctx), "Skipped updating %q, no ingress planner available.\n", frag.FQDN)
+			fmt.Fprintf(console.Warnings(ctx), "Skipped updating %q, no ingress planner available.\n", frag.Fdqn)
 			continue
 		}
 
-		maps, err := ingressPlanner.Map(ctx, frag)
+		impl, err := anypb.New(frag)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, m := range maps {
-			impl, err := anypb.New(m)
-			if err != nil {
-				return nil, err
-			}
-
-			desc := m.Description
-			if desc == "" {
-				desc = fmt.Sprintf("Update %s's address", frag.FQDN)
-			}
-
-			state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
-				Description: desc,
-				Impl:        impl,
-			})
+		desc := frag.Description
+		if desc == "" {
+			desc = fmt.Sprintf("Update %s's address", frag.Fdqn)
 		}
+
+		state.Definitions = append(state.Definitions, &fnschema.SerializedInvocation{
+			Description: desc,
+			Impl:        impl,
+		})
 	}
 
 	return &state, nil

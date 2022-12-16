@@ -136,17 +136,22 @@ type Planner interface {
 	// XXX move to planner.
 	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
 
-	// ComputeBaseNaming returns a base naming configuration that is specific
-	// to the target runtime (e.g. kubernetes cluster).
-	ComputeBaseNaming(*schema.Naming) (*schema.ComputedNaming, error)
-
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
 
 	// The registry we should upload to.
 	Registry() registry.Manager
 
+	// The ingress class this runtime implementation uses.
+	Ingress() IngressClass
+
 	EnsureClusterNamespace(context.Context) (ClusterNamespace, error)
+}
+
+type IngressClass interface {
+	// ComputeBaseNaming returns a base naming configuration that is specific
+	// to the target runtime (e.g. kubernetes cluster).
+	ComputeNaming(*schema.Environment, *schema.Naming) (*schema.ComputedNaming, error)
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application

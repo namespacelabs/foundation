@@ -1,4 +1,4 @@
-// Copyright 2022 Namespace Labs Inc; All rights reserved.
+framework/kubernetes/kubedef/op_ingress.proto// Copyright 2022 Namespace Labs Inc; All rights reserved.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package foundation.runtime.kubernetes.networking.ingress;
 
-option go_package = "namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress";
+option go_package = "namespacelabs.dev/foundation/framework/kubernetes/kubedef";
 
 message OpMapAddress {
     string description = 5;

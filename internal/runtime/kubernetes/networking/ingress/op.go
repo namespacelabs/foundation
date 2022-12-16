@@ -26,8 +26,8 @@ import (
 func Register() {
 	RegisterRuntimeState()
 
-	execution.RegisterFuncs(execution.Funcs[*OpMapAddress]{
-		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpMapAddress) (*execution.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpMapAddress]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *kubedef.OpMapAddress) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
@@ -38,15 +38,15 @@ func Register() {
 			})
 		},
 
-		PlanOrder: func(ctx context.Context, _ *OpMapAddress) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *kubedef.OpMapAddress) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
 				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
 			}, nil
 		},
 	})
 
-	execution.RegisterFuncs(execution.Funcs[*OpCleanupMigration]{
-		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *OpCleanupMigration) (*execution.HandleResult, error) {
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpCleanupMigration]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *kubedef.OpCleanupMigration) (*execution.HandleResult, error) {
 			cluster, err := kubedef.InjectedKubeCluster(ctx)
 			if err != nil {
 				return nil, err
@@ -73,7 +73,7 @@ func Register() {
 			})
 		},
 
-		PlanOrder: func(ctx context.Context, _ *OpCleanupMigration) (*fnschema.ScheduleOrder, error) {
+		PlanOrder: func(ctx context.Context, _ *kubedef.OpCleanupMigration) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
 				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
 			}, nil
@@ -83,7 +83,7 @@ func Register() {
 	nginx.RegisterGraphHandlers()
 }
 
-func waitAndMap(ctx context.Context, cluster kubedef.KubeCluster, op *OpMapAddress) error {
+func waitAndMap(ctx context.Context, cluster kubedef.KubeCluster, op *kubedef.OpMapAddress) error {
 	if op.CnameTarget != "" {
 		return fnapi.Map(ctx, op.Fdqn, op.CnameTarget)
 	}

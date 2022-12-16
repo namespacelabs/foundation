@@ -18,7 +18,6 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applynetworkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -28,23 +27,14 @@ import (
 
 const LblNameStatus = "ns:kubernetes:ingress:status"
 
-type MapAddress struct {
-	FQDN    string
-	Ingress IngressRef
-}
-
-type IngressRef struct {
-	Namespace, Name string
-}
-
-func PlanIngress(ctx context.Context, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
+func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
 	var applies []kubedef.Apply
 
 	groups := groupByName(fragments)
 
 	var allManaged MapAddressList
 	for _, g := range groups {
-		apply, managed, err := generateForSrv(ctx, ns, env, deployable, g.Name, g.Fragments, certSecrets)
+		apply, managed, err := generateForSrv(ctx, ingressPlanner, ns, env, deployable, g.Name, g.Fragments, certSecrets)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -57,9 +47,7 @@ func PlanIngress(ctx context.Context, ns string, env *schema.Environment, deploy
 			},
 		})
 
-		if err := allManaged.Merge(managed); err != nil {
-			return nil, nil, err
-		}
+		allManaged.Merge(managed)
 	}
 
 	// Since we built the Cert list from a map, it's order is non-deterministic.
@@ -150,56 +138,40 @@ func groupByName(ngs []*schema.IngressFragment) []ingressGroup {
 }
 
 type MapAddressList struct {
-	index   map[string]MapAddress // fqdn -> MapAddress
-	sources map[string][]string   // fqdn -> list of sources
+	list []*kubedef.OpMapAddress
 }
 
-func (m *MapAddressList) Add(ma MapAddress, sources ...string) error {
-	if existing, has := m.index[ma.FQDN]; has {
-		if existing.Ingress.Name != ma.Ingress.Name || existing.Ingress.Namespace != ma.Ingress.Namespace {
-			return fnerrors.InternalError("%s: incompatible map address definitions: %s/%s (from %s) vs %s/%s",
-				ma.FQDN, existing.Ingress.Namespace, existing.Ingress.Name,
-				strings.Join(m.sources[ma.FQDN], ", "), ma.Ingress.Namespace, ma.Ingress.Name)
+func (m *MapAddressList) Add(ma *kubedef.OpMapAddress) {
+	for _, m := range m.list {
+		if m.Fdqn == ma.Fdqn && m.IngressNs == ma.IngressNs && m.IngressName == ma.IngressName && m.CnameTarget == ma.CnameTarget {
+			return
 		}
-
-		return nil
 	}
 
-	if m.index == nil {
-		m.index = map[string]MapAddress{}
-		m.sources = map[string][]string{}
-	}
-
-	m.index[ma.FQDN] = ma
-	m.sources[ma.FQDN] = append(m.sources[ma.FQDN], sources...)
-
-	return nil
+	m.list = append(m.list, ma)
 }
 
-func (m *MapAddressList) Merge(rhs *MapAddressList) error {
-	if m == nil {
-		return nil
+func (m *MapAddressList) Merge(rhs *MapAddressList) {
+	if m != nil {
+		for _, ma := range rhs.list {
+			m.Add(ma)
+		}
 	}
-
-	var errs []error
-	for _, ma := range rhs.index {
-		errs = append(errs, m.Add(ma, rhs.sources[ma.FQDN]...))
-	}
-	return multierr.New(errs...)
 }
 
-func (m *MapAddressList) Sorted() []MapAddress {
-	var mas []MapAddress
-	for _, ma := range m.index {
-		mas = append(mas, ma)
-	}
-	slices.SortFunc(mas, func(a, b MapAddress) bool {
-		return strings.Compare(a.FQDN, b.FQDN) < 0
+func (m *MapAddressList) Sorted() []*kubedef.OpMapAddress {
+	copy := slices.Clone(m.list)
+
+	slices.SortFunc(copy, func(a, b *kubedef.OpMapAddress) bool {
+		keyA := fmt.Sprintf("%s/%s/%s/%s", a.Fdqn, a.IngressNs, a.IngressName, a.CnameTarget)
+		keyB := fmt.Sprintf("%s/%s/%s/%s", b.Fdqn, b.IngressNs, b.IngressName, b.CnameTarget)
+		return strings.Compare(keyA, keyB) < 0
 	})
-	return mas
+
+	return copy
 }
 
-func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv runtime.Deployable, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
+func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, srv runtime.Deployable, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
 	var clearTextGrpcCount, grpcCount, nonGrpcCount int
 
 	spec := applynetworkingv1.IngressSpec()
@@ -272,13 +244,13 @@ func generateForSrv(ctx context.Context, ns string, env *schema.Environment, srv
 			tlsCount++
 		}
 
-		if ng.Domain.Managed == schema.Domain_CLOUD_MANAGED && ng.Domain.TlsInclusterTermination {
-			if err := managed.Add(MapAddress{
-				FQDN:    ng.Domain.Fqdn,
-				Ingress: IngressRef{ns, name},
-			}, name); err != nil {
-				return nil, nil, err
-			}
+		ops, err := ingressPlanner.Map(ctx, ng.Domain, ns, name)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for _, op := range ops {
+			managed.Add(op)
 		}
 	}
 

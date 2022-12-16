@@ -14,73 +14,24 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-const (
-	LocalBaseDomain = "nslocal.host"
-	CloudBaseDomain = "nscloud.dev"
-)
-
 var (
 	NamingNoTLS = false // Set to true in CI.
 
 	WorkInProgressUseShortAlias = false
 )
 
-func ComputeNaming(ctx context.Context, ws string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
-	result, err := computeNaming(ctx, ws, env, cluster, source)
+func ComputeNaming(ctx context.Context, moduleName string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
+	naming, err := cluster.Ingress().ComputeNaming(env.Environment(), source)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "computed naming: %+v\n", result)
-	return result, nil
-}
-
-func computeNaming(ctx context.Context, workspace string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
-	naming, err := computeInnerNaming(ctx, env, cluster, source)
-	if err != nil {
-		return nil, err
-	}
-
-	naming.MainModuleName = workspace
+	naming.MainModuleName = moduleName
 	naming.UseShortAlias = naming.GetUseShortAlias() || WorkInProgressUseShortAlias
 
+	fmt.Fprintf(console.Debug(ctx), "computed naming: %+v\n", naming)
+
 	return naming, nil
-}
-
-func computeInnerNaming(ctx context.Context, rootenv cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
-	base, err := cluster.ComputeBaseNaming(source)
-	if err != nil {
-		return nil, err
-	}
-
-	if base != nil {
-		return base, nil
-	}
-
-	env := rootenv.Environment()
-
-	if env.Purpose != schema.Environment_PRODUCTION {
-		return &schema.ComputedNaming{
-			Source:     source,
-			BaseDomain: LocalBaseDomain,
-			Managed:    schema.Domain_LOCAL_MANAGED,
-		}, nil
-	}
-
-	if !source.GetEnableNamespaceManaged() {
-		return &schema.ComputedNaming{}, nil
-	}
-
-	org := source.GetWithOrg()
-	if org == "" {
-		return &schema.ComputedNaming{}, nil
-	}
-
-	return &schema.ComputedNaming{
-		Source:     source,
-		BaseDomain: fmt.Sprintf("%s.%s", org, CloudBaseDomain),
-		Managed:    schema.Domain_CLOUD_MANAGED,
-	}, nil
 }
 
 func allocateName(ctx context.Context, srv Deployable, opts fnapi.AllocateOpts) (*schema.Certificate, error) {

@@ -25,8 +25,8 @@ import (
 )
 
 type Planner struct {
-	Configuration  cfg.Configuration
-	IngressPlanner ingress.Planner
+	Configuration cfg.Configuration
+	ingress       kubedef.IngressClass
 
 	fetchSystemInfo FetchSystemInfoFunc
 	underlying      *Cluster
@@ -50,19 +50,21 @@ func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo FetchSyste
 func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetchSystemInfo FetchSystemInfoFunc) Planner {
 	return Planner{
 		Configuration:   env.Configuration(),
-		IngressPlanner:  ingress.MapPublicLoadBalancer{},
+		ingress:         ingress.FromConfig(env.Configuration()),
 		fetchSystemInfo: fetchSystemInfo,
 		target:          newTarget(env),
 		registry:        registry,
 	}
 }
 
+func (r Planner) Ingress() runtime.IngressClass { return r.ingress }
+
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
 	return planDeployment(ctx, r.target, d)
 }
 
 func (r Planner) PlanIngress(ctx context.Context, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
-	return planIngress(ctx, r.IngressPlanner, r.target, stack, allFragments)
+	return planIngress(ctx, r.ingress, r.target, stack, allFragments)
 }
 
 func (r Planner) KubernetesNamespace() string { return r.target.namespace }

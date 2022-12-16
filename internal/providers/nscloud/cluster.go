@@ -226,7 +226,7 @@ func (d *cluster) Class() runtime.Class {
 	return runtimeClass{}
 }
 
-func (d *cluster) Ingress() kubedef.KubeIngress {
+func (d *cluster) Ingress() kubedef.IngressClass {
 	return d.cluster.Ingress()
 }
 
@@ -266,15 +266,12 @@ func (d *cluster) PreparedClient() client.Prepared {
 	return d.cluster.PreparedClient()
 }
 
-type planner struct {
-	kubernetes.Planner
-	clusterId     string
+type ingressClass struct {
 	ingressDomain string
-	registry      *api.ImageRegistry
-	ephemeral     bool
+	clusterId     string
 }
 
-func (d planner) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNaming, error) {
+func (d ingressClass) ComputeNaming(_ *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
 		Source:                   source,
 		BaseDomain:               d.ingressDomain,
@@ -284,6 +281,18 @@ func (d planner) ComputeBaseNaming(source *schema.Naming) (*schema.ComputedNamin
 		DomainFragmentSuffix:     d.clusterId, // XXX fetch ingress external IP to calculate domain.
 		UseShortAlias:            true,
 	}, nil
+}
+
+type planner struct {
+	kubernetes.Planner
+	clusterId     string
+	ingressDomain string
+	registry      *api.ImageRegistry
+	ephemeral     bool
+}
+
+func (d planner) Ingress() runtime.IngressClass {
+	return ingressClass{ingressDomain: d.ingressDomain, clusterId: d.clusterId}
 }
 
 func (d planner) EnsureClusterNamespace(ctx context.Context) (runtime.ClusterNamespace, error) {

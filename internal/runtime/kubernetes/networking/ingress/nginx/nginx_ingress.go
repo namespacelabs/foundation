@@ -25,7 +25,9 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/execution/defs"
@@ -112,7 +114,15 @@ func RegisterGraphHandlers() {
 }
 
 type nginx struct {
-	restcfg *rest.Config
+	shared.MapPublicLoadBalancer
+}
+
+func Ingress() kubedef.IngressClass {
+	return nginx{}
+}
+
+func (nginx) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
+	return nsingress.ComputeNaming(env, naming)
 }
 
 func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
@@ -215,10 +225,6 @@ func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb
 	return annotations, nil
 }
 
-func Ingress(restcfg *rest.Config) kubedef.KubeIngress {
-	return nginx{restcfg}
-}
-
 func (nginx) Service() *kubedef.IngressSelector {
 	return &kubedef.IngressSelector{
 		Namespace:     "ingress-nginx",
@@ -228,9 +234,9 @@ func (nginx) Service() *kubedef.IngressSelector {
 	}
 }
 
-func (n nginx) Waiter() kubedef.KubeIngressWaiter {
+func (n nginx) Waiter(restcfg *rest.Config) kubedef.KubeIngressWaiter {
 	return kubeobserver.WaitOnResource{
-		RestConfig:       n.restcfg,
+		RestConfig:       restcfg,
 		Description:      "NGINX Ingress Controller",
 		Namespace:        n.Service().Namespace,
 		Name:             n.Service().ServiceName,

@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -73,8 +73,8 @@ func (u *Cluster) Class() runtime.Class {
 	return kubernetesClass{}
 }
 
-func (u *Cluster) Ingress() kubedef.KubeIngress {
-	return nginx.Ingress(u.RESTConfig())
+func (u *Cluster) Ingress() kubedef.IngressClass {
+	return ingress.FromConfig(u.Configuration)
 }
 
 func (u *Cluster) RESTConfig() *rest.Config {
