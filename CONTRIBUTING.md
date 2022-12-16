@@ -1,6 +1,4 @@
-# Contributing to Foundation
-
-This guide is targeted at the Namespace Labs team for now.
+# Contributing to Namespace
 
 ## Developing
 
@@ -13,7 +11,7 @@ releases, but that's a work in progress).
 - [Install `nix`](https://nixos.org/download.html) to your target environment. Both Linux (and WSL2)
   as well as MacOS are supported.
 
-Foundation is regularly tested under Linux, MacOS 11+ and Windows WSL2.
+Namespace is regularly tested under Linux, MacOS 11+ and Windows WSL2.
 
 After `nix` is installed, you can:
 
@@ -53,54 +51,12 @@ git config --global init.templateDir ~/.git-template
 pre-commit init-templatedir ~/.git-template
 ```
 
-## Releasing
-
-We use `goreleaser` for our releases. You should have it under your `nix-shell`.
-
-Our releases are published to:
-
-- [GitHub releases](https://github.com/namespacelabs/foundation/releases),
-- [Public S3 bucket](https://s3.console.aws.amazon.com/s3/buckets/ns-releases). This allows
-  end-users easily download binaries without messing with GitHub authentication to access the
-  private repos.
-- [Homebrew TAP](https://github.com/namespacelabs/homebrew-namespace)
-
-Before releasing a new `ns` version, please verify that `ns test --include_servers` passes in other
-repos (e.g. examples, internal).
-
-You can test a release by running:
-
-```bash
-goreleaser release --rm-dist --snapshot
-```
-
-Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so
-on.
-
-To issue an actual release:
-
-1. Create a Github PAT with `write_packages` permissions and place it in
-   `~/.config/goreleaser/github_token`. This allows GoReleaser to upload to Github releases.
-2. Pick a new version (check the existing tag list): `git tag v0.0.24`
-3. Run the release `goreleaser release --rm-dist`.
-4. After the release is complete, remember to remove the `dist` directory to keep your workspace
-   size small.
-
-NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
-`test:` or `nochangelog` are excluded from the changelog.
-
-### MacOS Notarization
-
-Note: currently the notarization is not required. Namespace binaries are downloaded by Homebrew and
-`nsboot` and these tools do not set the quarantine flag (see
-[SO](https://stackoverflow.com/questions/67446317/why-are-executables-installed-with-homebrew-trusted-on-macos),
-verified on a fresh macOS install by Kirill).
-
-If needed, notarization is to be done in MacOSX, and requires XCode, and
-[gon](https://github.com/mitchellh/gon#installation). Currently Hugo is the only person to perform
-notarization as he posesses the right Apple Developer Certificate.
-
 ## Development Workflows
+
+### nsdev
+
+`nsdev` is a copy of `ns` that also embeds additional debug/maintenance features.
+Install it with `go install ./cmd/nsdev` to unlock all debug workflows below.
 
 ### Debugging via VS Code
 
@@ -156,11 +112,11 @@ You can modify this behavior using one of:
 
 ### Protos
 
-We use protos in various parts of our codebase. Code gen for protos is managed manually. You can run
-`ns source protogen` to update the generated files. E.g.
+We use protos in various parts of our codebase. Code gen for protos is managed manually using [`nsdev`](#nsdev).
+You can run `nsdev source protogen` to update the generated files. E.g.
 
 ```bash
-ns source protogen schema/
+nsdev source protogen schema/
 ```
 
 At times you'll also see JSON being used directly, this is often of two forms:
@@ -171,41 +127,6 @@ support for us to rely on.
 (b) Adding one more proto was cumbersome, and for iteration purposes we ended up with inline JSON
 definitions. It's a hard iteration speed trade-off (because of the manual codegen bit), but we
 should lean on protos more permanently.
-
-### Changing node definitions (extensions, service, server)
-
-Changing a definition which impacts codegen (i.e. services are exported, or extension
-initializations are registered), requires a codegen refresh. This is done automatically as a part of
-`ns build/deploy/dev` but can also be triggered manually:
-
-```bash
-ns generate
-```
-
-### Rebuild prebuilts
-
-At the moment, "prebuilts" are stored in GCP's Artifact Registry. Accessing these packages requires
-no authentication. However, you'll have to sign-in in order to update these prebuilts.
-
-Run `gcloud auth login` to authenticate to GCP with your `namespacelabs.com` account, and then
-whenever you need to write new prebuilt images, you'll have to run:
-
-#### All prebuilts
-
-```bash
-ns build-binary --all --build_platforms=linux/arm64,linux/amd64 \
-     --output_prebuilts --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
-```
-
-#### Specific images
-
-```bash
-nsdev build-binary std/networking/gateway/controller std/networking/gateway/server/configure \
-     --build_platforms=linux/arm64,linux/amd64 --output_prebuilts \
-     --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
-```
-
-You can then update the `prebuilt_binary` definitions in `workspace.textpb` with the values above.
 
 ### Inspect computed schemas
 
@@ -259,7 +180,7 @@ different from your workstation.
 ### Using `age` for simple secret management
 
 When a server has secrets required for deployment, sharing those secrets between different users can
-sometimes be challenging. Foundation includes a simple solution for it, building on `age`.
+sometimes be challenging. Namespace includes a simple solution for it, building on `age`.
 
 Users generate pub/private identities using `ns keys generate`, which can then be used to encrypt
 "secret bundles" which are submittable into the repository. Access to the payload is determined by
