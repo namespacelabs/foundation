@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -207,6 +208,12 @@ func ensureCluster(ctx context.Context, cfg cfg.Configuration, clusterId, ingres
 	return &cluster{cluster: unbound, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry}, nil
 }
 
+func newIngress(cfg cfg.Configuration, clusterId, ingressDomain string) kubedef.IngressClass {
+	parent := ingress.FromConfig(cfg)
+
+	return ingressClass{IngressClass: parent, ingressDomain: ingressDomain, clusterId: clusterId}
+}
+
 type cluster struct {
 	cluster       *kubernetes.Cluster
 	clusterId     string
@@ -227,7 +234,7 @@ func (d *cluster) Class() runtime.Class {
 }
 
 func (d *cluster) Ingress() kubedef.IngressClass {
-	return d.cluster.Ingress()
+	return newIngress(d.cluster.Configuration, d.clusterId, d.ingressDomain)
 }
 
 func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
@@ -267,6 +274,8 @@ func (d *cluster) PreparedClient() client.Prepared {
 }
 
 type ingressClass struct {
+	kubedef.IngressClass
+
 	ingressDomain string
 	clusterId     string
 }
@@ -283,6 +292,10 @@ func (d ingressClass) ComputeNaming(_ *schema.Environment, source *schema.Naming
 	}, nil
 }
 
+func (d ingressClass) Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*kubedef.OpMapAddress, error) {
+	return nil, nil
+}
+
 type planner struct {
 	kubernetes.Planner
 	clusterId     string
@@ -292,7 +305,7 @@ type planner struct {
 }
 
 func (d planner) Ingress() runtime.IngressClass {
-	return ingressClass{ingressDomain: d.ingressDomain, clusterId: d.clusterId}
+	return newIngress(d.Configuration, d.clusterId, d.ingressDomain)
 }
 
 func (d planner) EnsureClusterNamespace(ctx context.Context) (runtime.ClusterNamespace, error) {
