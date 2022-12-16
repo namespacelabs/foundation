@@ -13,14 +13,15 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 const (
-	Version_ImportsInNewSyntax = 54
-	syntaxVersionMarker        = "namespaceInternalParserVersion"
-	oldSyntaxVersion           = 1
+	Version_SyntaxVersionMarker = 54
+	syntaxVersionMarker         = "namespaceInternalParserVersion"
+	oldSyntaxVersion            = 1
 )
 
 type impl struct {
@@ -81,9 +82,14 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 		return nil, err
 	}
 
+	newSyntax, err := isNewSyntax(ctx, partial, ft.loader)
+	if err != nil {
+		return nil, err
+	}
+
 	// Packages in the new syntax don't rely as much on cue features. They're
 	// streamlined data definitions without the constraints of json.
-	if isNewSyntax(ctx, partial, ft.loader) {
+	if newSyntax {
 		return ft.newSyntaxParser.ParsePackage(ctx, partial, loc)
 	}
 
@@ -139,37 +145,57 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	return parsed, nil
 }
 
-func isNewSyntax(ctx context.Context, partial *fncue.Partial, pl parsing.EarlyPackageLoader) bool {
-	if err := pkggraph.ValidateFoundation("allow imports in new syntax", Version_ImportsInNewSyntax, pkggraph.ModuleFromLoader(ctx, pl)); err != nil {
-		if len(partial.CueImports) > 1 {
-			// There is at least one import: the file itself.
-			return false
-		}
+func isNewSyntax(ctx context.Context, partial *fncue.Partial, pl parsing.EarlyPackageLoader) (bool, error) {
+	supportsMarker, err := supportsSyntaxVersionMarker(ctx, pl)
+	if err != nil {
+		return false, err
+	}
 
-		// Detecting the old syntax.
-		for _, path := range []string{"service", "extension", "test"} {
-			if partial.CueV.LookupPath(path).Exists() {
-				return false
+	if supportsMarker {
+		// Detecting the old syntax using a syntax version marker.
+		for _, path := range []string{"server", "service", "extension", "configure", "test"} {
+			v := partial.CueV.LookupPath(fmt.Sprintf("%s.%s", path, syntaxVersionMarker))
+			if !v.Exists() {
+				continue
+			}
+
+			version, err := v.Val.Int64()
+			if err == nil && version == oldSyntaxVersion {
+				return false, nil
 			}
 		}
 
-		return true
+		return true, nil
 	}
 
-	// Detecting the old syntax using a syntax version marker.
-	for _, path := range []string{"server", "service", "extension", "configure", "test"} {
-		v := partial.CueV.LookupPath(fmt.Sprintf("%s.%s", path, syntaxVersionMarker))
-		if !v.Exists() {
-			continue
-		}
+	if len(partial.CueImports) > 1 {
+		// There is at least one import: the file itself.
+		return false, nil
+	}
 
-		version, err := v.Val.Int64()
-		if err == nil && version == oldSyntaxVersion {
-			return false
+	// Detecting the old syntax.
+	for _, path := range []string{"service", "extension", "test"} {
+		if partial.CueV.LookupPath(path).Exists() {
+			return false, nil
 		}
 	}
 
-	return true
+	return true, nil
+}
+
+func supportsSyntaxVersionMarker(ctx context.Context, pl parsing.EarlyPackageLoader) (bool, error) {
+	pkg, err := pl.Resolve(ctx, "namespacelabs.dev/foundation")
+	if err != nil {
+		return false, err
+	}
+
+	data, err := versions.LoadAtOrDefaults(pkg.Module.ReadOnlyFS(), "internal/versions/versions.json")
+	if err != nil {
+		return false, fnerrors.InternalError("failed to load namespacelabs.dev/foundation version data: %w", err)
+	}
+
+	return data.APIVersion >= Version_SyntaxVersionMarker, nil
+
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (parsing.PackageType, error) {
