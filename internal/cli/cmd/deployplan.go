@@ -28,7 +28,7 @@ import (
 
 func NewDeployPlanCmd() *cobra.Command {
 	var opts deployOpts
-	var image bool
+	var image, insecure bool
 
 	cmd := &cobra.Command{
 		Use:    "deploy-plan <path/to/plan> | <imageref>",
@@ -40,6 +40,7 @@ func NewDeployPlanCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.alsoWait, "wait", true, "Wait for the deployment after running.")
 	cmd.Flags().StringVar(&opts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 	cmd.Flags().BoolVar(&image, "image", false, "If set to true, the argument represents an image.")
+	cmd.Flags().BoolVar(&insecure, "insecure", false, "Access to the registry is insecure.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, err := module.FindRoot(ctx, ".")
@@ -47,7 +48,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		plan, err := loadPlan(ctx, image, args[0])
+		plan, err := loadPlan(ctx, image, insecure, args[0])
 		if err != nil {
 			return err
 		}
@@ -81,8 +82,8 @@ func (se serializedContext) Environment() *schema.Environment { return se.env }
 func (se serializedContext) ErrorLocation() string            { return se.root.ErrorLocation() }
 func (se serializedContext) Configuration() cfg.Configuration { return se.config }
 
-func loadPlan(ctx context.Context, image bool, path string) (*schema.DeployPlan, error) {
-	raw, err := loadPlanContents(ctx, image, path)
+func loadPlan(ctx context.Context, image, insecure bool, path string) (*schema.DeployPlan, error) {
+	raw, err := loadPlanContents(ctx, image, insecure, path)
 	if err != nil {
 		return nil, fnerrors.New("failed to load %q: %w", path, err)
 	}
@@ -100,9 +101,9 @@ func loadPlan(ctx context.Context, image bool, path string) (*schema.DeployPlan,
 	return plan, nil
 }
 
-func loadPlanContents(ctx context.Context, image bool, path string) ([]byte, error) {
+func loadPlanContents(ctx context.Context, image, insecure bool, path string) ([]byte, error) {
 	if image {
-		image, err := compute.GetValue(ctx, oci.ImageP(path, nil, oci.ResolveOpts{}))
+		image, err := compute.GetValue(ctx, oci.ImageP(path, nil, oci.ResolveOpts{RegistryAccess: oci.RegistryAccess{InsecureRegistry: insecure}}))
 		if err != nil {
 			return nil, err
 		}
