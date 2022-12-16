@@ -6,7 +6,6 @@ package postgres
 
 import (
 	"context"
-	"log"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.opentelemetry.io/otel/trace"
@@ -18,7 +17,7 @@ import (
 func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, tracer trace.Tracer) (*DB, error) {
 	db := &postgrespb.DatabaseInstance{}
 	if err := res.Unmarshal(resourceRef, db); err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	config, err := pgxpool.ParseConfig(db.ConnectionUri)

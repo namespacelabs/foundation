@@ -10,7 +10,7 @@ $providerProto: inputs.#Proto & {
 
 extension: fn.#Extension & {
 	instantiate: {
-		openTelemetry:  tracing.#Exports.TracerProvider
+		openTelemetry: tracing.#Exports.TracerProvider
 	}
 
 	provides: {

@@ -1,7 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/universe/db/postgres/rds"
+	"namespacelabs.dev/foundation/universe/db/postgres"
 )
 
 $proto: inputs.#Proto & {
@@ -11,12 +11,25 @@ $proto: inputs.#Proto & {
 service: fn.#Service & {
 	framework: "GO"
 
-	instantiate: {
-		db: rds.#Exports.Database & {
-			name:       "list"
-			schemaFile: inputs.#FromFile & {
-				path: "schema.sql"
+	resources: {
+		postgres: {
+			class:    "namespacelabs.dev/foundation/library/database/postgres:Database"
+			provider: "namespacelabs.dev/foundation/library/oss/postgres"
+
+			intent: {
+				name: "list"
+				schema: ["schema.sql"]
 			}
+
+			resources: {
+				"cluster": "namespacelabs.dev/foundation/library/oss/postgres:colocated"
+			}
+		}
+	}
+
+	instantiate: {
+		db: postgres.#Exports.Database & {
+			resourceRef: "namespacelabs.dev/foundation/internal/testdata/service/list:postgres"
 		}
 	}
 

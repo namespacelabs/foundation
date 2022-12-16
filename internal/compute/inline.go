@@ -39,21 +39,6 @@ func Transform[From, To any](desc string, from Computable[From], compute func(co
 	})
 }
 
-func TransformResult[From, To any](desc string, from Computable[From], compute func(context.Context, ResultWithTimestamp[From]) (To, error)) Computable[To] {
-	newAction := from.Action().Clone(func(original string) string {
-		return fmt.Sprintf("%s: %s", original, desc)
-	})
-	return Map(newAction, Inputs().Computable("from", from), Output{
-		NotCacheable: true, // There's no value in retaining these intermediary artifacts.
-	}, func(ctx context.Context, r Resolved) (To, error) {
-		v, ok := GetDep(r, from, "from")
-		if !ok {
-			panic("missing from")
-		}
-		return compute(ctx, v)
-	})
-}
-
 type inline[V any] struct {
 	action  *tasks.ActionEvent
 	inputs  *In

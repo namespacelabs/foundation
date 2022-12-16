@@ -8,7 +8,6 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
 	"namespacelabs.dev/foundation/universe/db/postgres"
-	"namespacelabs.dev/foundation/universe/db/postgres/rds"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
@@ -35,9 +34,9 @@ var (
 func makeDeps__o0mf74(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ServiceDeps
 
-	if err := di.Instantiate(ctx, rds.Provider__4j13h1, func(ctx context.Context, v interface{}) (err error) {
-		// name: "list"
-		if deps.Db, err = rds.ProvideDatabase(ctx, core.MustUnwrapProto("CgRsaXN0", &rds.Database{}).(*rds.Database), v.(rds.ExtensionDeps)); err != nil {
+	if err := di.Instantiate(ctx, postgres.Provider__sfr1nt, func(ctx context.Context, v interface{}) (err error) {
+		// resource_ref: "namespacelabs.dev/foundation/internal/testdata/service/list:postgres"
+		if deps.Db, err = postgres.ProvideDatabase(ctx, core.MustUnwrapProto("GkRuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL2ludGVybmFsL3Rlc3RkYXRhL3NlcnZpY2UvbGlzdDpwb3N0Z3Jlcw==", &postgres.DatabaseArgs{}).(*postgres.DatabaseArgs), v.(postgres.ExtensionDeps)); err != nil {
 			return err
 		}
 		return nil
