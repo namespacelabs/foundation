@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	fnsecrets "namespacelabs.dev/foundation/internal/secrets"
+	fnsecrets "namespacelabs.dev/foundation/internal/secrets/localsecrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/types"

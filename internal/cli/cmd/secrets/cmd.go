@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/internal/secrets/localsecrets"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -38,16 +38,16 @@ func NewSecretsCmd() *cobra.Command {
 	return cmd
 }
 
-type createFunc func(context.Context) (*secrets.Bundle, error)
+type createFunc func(context.Context) (*localsecrets.Bundle, error)
 
 type location struct {
 	workspaceFS fnfs.ReadWriteFS
 	sourceFile  string
 }
 
-func bundleFromArgs(cmd *cobra.Command, env *cfg.Context, locs *fncobra.Locations, createIfMissing createFunc) (*location, *secrets.Bundle) {
+func bundleFromArgs(cmd *cobra.Command, env *cfg.Context, locs *fncobra.Locations, createIfMissing createFunc) (*location, *localsecrets.Bundle) {
 	targetloc := new(location)
-	targetbundle := new(secrets.Bundle)
+	targetbundle := new(localsecrets.Bundle)
 
 	user := cmd.Flags().Bool("user", false, "If set, updates a user-owned secret database which can be more easily git-ignored.")
 
@@ -64,7 +64,7 @@ func bundleFromArgs(cmd *cobra.Command, env *cfg.Context, locs *fncobra.Location
 	return targetloc, targetbundle
 }
 
-func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locations, user bool, createIfMissing createFunc) (*location, *secrets.Bundle, error) {
+func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locations, user bool, createIfMissing createFunc) (*location, *localsecrets.Bundle, error) {
 	if env.Workspace().LoadedFrom() == nil {
 		return nil, nil, fnerrors.InternalError("workspace is missing it's source")
 	}
@@ -76,9 +76,9 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 	case 0:
 		// Workspace
 		if user {
-			result.sourceFile = secrets.UserBundleName
+			result.sourceFile = localsecrets.UserBundleName
 		} else {
-			result.sourceFile = secrets.WorkspaceBundleName
+			result.sourceFile = localsecrets.WorkspaceBundleName
 		}
 
 	case 1:
@@ -97,7 +97,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 			return nil, nil, fnerrors.BadInputError("%s: expected a server", loc.AsPackageName())
 		}
 
-		result.sourceFile = loc.Rel(secrets.ServerBundleName)
+		result.sourceFile = loc.Rel(localsecrets.ServerBundleName)
 
 	default:
 		return nil, nil, fnerrors.New("expected up to a single package to be selected, saw %d", len(locs.Locs))
@@ -118,20 +118,20 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 		return nil, nil, err
 	}
 
-	bundle, err := secrets.LoadBundle(ctx, keyDir, contents)
+	bundle, err := localsecrets.LoadBundle(ctx, keyDir, contents)
 	return result, bundle, err
 }
 
-func parseKey(v string) (*secrets.ValueKey, error) {
+func parseKey(v string) (*localsecrets.ValueKey, error) {
 	parts := strings.SplitN(v, ":", 2)
 	if len(parts) < 2 {
 		return nil, fnerrors.New("expected secret format to be {package_name}:{name}")
 	}
 
-	return &secrets.ValueKey{PackageName: parts[0], Key: parts[1]}, nil
+	return &localsecrets.ValueKey{PackageName: parts[0], Key: parts[1]}, nil
 }
 
-func writeBundle(ctx context.Context, loc *location, bundle *secrets.Bundle, encrypt bool) error {
+func writeBundle(ctx context.Context, loc *location, bundle *localsecrets.Bundle, encrypt bool) error {
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), loc.workspaceFS, loc.sourceFile, func(w io.Writer) error {
 		return bundle.SerializeTo(ctx, w, encrypt)
 	})

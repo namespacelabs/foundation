@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/internal/secrets/localsecrets"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -35,8 +35,8 @@ func newSetCmd() *cobra.Command {
 
 	env := envFromValue(cmd, specificEnv)
 	locs := locationsFromArgs(cmd, env)
-	loc, bundle := bundleFromArgs(cmd, env, locs, func(ctx context.Context) (*secrets.Bundle, error) {
-		return secrets.NewBundle(ctx, *keyID)
+	loc, bundle := bundleFromArgs(cmd, env, locs, func(ctx context.Context) (*localsecrets.Bundle, error) {
+		return localsecrets.NewBundle(ctx, *keyID)
 	})
 
 	return fncobra.With(cmd, func(ctx context.Context) error {

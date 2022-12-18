@@ -25,7 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/startup"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/internal/secrets/localsecrets"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -239,7 +239,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		return nil, err
 	}
 
-	secrets, err := secrets.NewLocalSecrets(env)
+	secrets, err := localsecrets.NewLocalSecrets(env)
 	if err != nil {
 		return nil, err
 	}

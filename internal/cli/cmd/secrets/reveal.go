@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/internal/secrets/localsecrets"
 )
 
 func newRevealCmd() *cobra.Command {
@@ -56,13 +56,13 @@ func newRevealCmd() *cobra.Command {
 				fmt.Fprintln(out)
 			}
 
-			secrets.DescribeKey(out, result.Key)
+			localsecrets.DescribeKey(out, result.Key)
 
 			if utf8.Valid(result.Value) {
 				fmt.Fprintf(out, "\n\n  %s\n", result.Value)
 			} else {
 				fmt.Fprintf(out, " raw value:\n\n")
-				if err := secrets.OutputBase64(text.NewIndentWriter(out, []byte("  ")), result.Value); err != nil {
+				if err := localsecrets.OutputBase64(text.NewIndentWriter(out, []byte("  ")), result.Value); err != nil {
 					return err
 				}
 			}
