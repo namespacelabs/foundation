@@ -12,13 +12,8 @@ import (
 )
 
 type SecretSource interface {
-	Load(context.Context, pkggraph.Modules, SecretRequest) (*schema.FileContents, error)
+	Load(context.Context, pkggraph.Modules, *schema.PackageRef, *SecretRequest_ServerRef) (*schema.FileContents, error)
 	MissingError(*schema.PackageRef, *schema.SecretSpec, schema.PackageName) error
-}
-
-type SecretRequest struct {
-	Server    *SecretRequest_ServerRef
-	SecretRef *schema.PackageRef
 }
 
 type SecretRequest_ServerRef struct {

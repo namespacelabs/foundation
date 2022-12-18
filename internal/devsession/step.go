@@ -96,8 +96,6 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 		return err
 	}
 
-	modules := snapshot.Modules()
-
 	do.session.updateStackInPlace(func(stack *Stack) {
 		resetStack(stack, do.env, do.session.availableEnvs, focus)
 	})
@@ -140,7 +138,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 
 		observers = append(observers, updateDeploymentStatus{do.session})
 
-		plan, err := deploy.PrepareDeployStack(ctx, do.env, modules, do.planner, do.planner.Registry(), stack)
+		plan, err := deploy.PrepareDeployStack(ctx, do.env, do.planner, do.planner.Registry(), stack)
 		if err != nil {
 			return err
 		}

@@ -45,9 +45,7 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 	}
 
 	if gsec.Spec.Generate == nil {
-		req := runtime.SecretRequest{SecretRef: ref, Server: gs.server}
-		req.Server = gs.server
-		value, err := gs.source.Load(ctx, gs.sealedCtx, req)
+		value, err := gs.source.Load(ctx, gs.sealedCtx, ref, gs.server)
 		if err != nil {
 			return nil, err
 		}

@@ -137,7 +137,7 @@ func deployHead(ctx context.Context, env cfg.Context, boundCluster runtime.Clust
 		return err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, focus.SealedContext(), planner, focus)
+	plan, err := deploy.PrepareDeployServers(ctx, env, planner, focus)
 	if err != nil {
 		return err
 	}

@@ -51,7 +51,7 @@ type serverStack interface {
 	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
 }
 
-func planResources(ctx context.Context, secrets runtime.SecretSource, modules pkggraph.Modules, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, secrets runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,6 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 
 	var executionInvocations []*InvokeResourceProvider
 	var planningInvocations []resourcePlanInvocation
-	var planningImages []compute.Computable[oci.ResolvableImage]
 	var imageIDs []compute.Computable[oci.ImageID]
 
 	plan := &resourcePlan{
@@ -81,6 +80,13 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 	}
 
 	for _, resource := range rlist {
+		if len(resource.ParentContexts) == 0 {
+			return nil, fnerrors.InternalError("%s: resource is missing a context", resource.ID)
+		}
+
+		// Any of the contexts should be valid to load the binary, as all of them refer to this resources.
+		sealedCtx := resource.ParentContexts[0]
+
 		if resource.Provider == nil {
 			if len(resource.Dependencies) != 0 {
 				return nil, fnerrors.InternalError("can't set dependencies on providerless-resources")
@@ -88,7 +94,7 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 
 			switch {
 			case parsing.IsServerResource(resource.Class.Ref):
-				if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(modules)); err != nil {
+				if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(sealedCtx)); err != nil {
 					return nil, err
 				}
 
@@ -131,13 +137,6 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 			continue // Nothing to do re: provider.
 		}
 
-		if len(resource.ParentContexts) == 0 {
-			return nil, fnerrors.InternalError("%s: resource is missing a context", resource.ID)
-		}
-
-		// Any of the contexts should be valid to load the binary, as all of them refer to this resources.
-		sealedCtx := resource.ParentContexts[0]
-
 		provider := resource.Provider.Spec
 
 		if provider.PrepareWith != nil {
@@ -159,7 +158,6 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 				return nil, err
 			}
 
-			planningImages = append(planningImages, inv.Image)
 			planningInvocations = append(planningInvocations, resourcePlanInvocation{
 				Env:                  sealedCtx,
 				Source:               schema.PackageName(resource.Source.PackageName),
@@ -226,7 +224,7 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 		for k, invocation := range executionInvocations {
 			invocation.BinaryImageId = builtExecutionImages[k].Value
 
-			theseOps, err := PlanResourceProviderInvocation(ctx, secrets, modules, planner, invocation)
+			theseOps, err := PlanResourceProviderInvocation(ctx, secrets, invocation.SealedContext, planner, invocation)
 			if err != nil {
 				return nil, err
 			}
@@ -235,73 +233,62 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, modules pk
 		}
 	}
 
-	if len(planningInvocations) > 0 {
-		builtPlanningImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.build-planning-images"), planningImages...))
+	var invocationResponses []compute.Computable[*protocol.ToolResponse]
+	var errs []error
+	for _, planned := range planningInvocations {
+		source, err := anypb.New(&protocol.ResourceInstance{
+			ResourceInstanceId: planned.Resource.ID,
+			ResourceInstance:   planned.ResourceSource,
+		})
 		if err != nil {
-			return nil, err
+			errs = append(errs, err)
+			continue
 		}
 
-		for k := range planningInvocations {
-			planningInvocations[k].Image = builtPlanningImages[k].Value
-		}
-
-		var invocationResponses []compute.Computable[*protocol.ToolResponse]
-		var errs []error
-		for _, planned := range planningInvocations {
-			source, err := anypb.New(&protocol.ResourceInstance{
-				ResourceInstanceId: planned.Resource.ID,
-				ResourceInstance:   planned.ResourceSource,
-			})
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
-
-			inv, err := tool.MakeInvocationNoInjections(ctx, planned.Env, &tool.Definition{
-				Source:     tool.Source{PackageName: planned.Source},
-				Invocation: planned.Invocation,
-			}, tool.InvokeProps{
-				Event:          protocol.Lifecycle_PROVISION,
-				ProvisionInput: []*anypb.Any{planned.Intent, source},
-			})
-			if err != nil {
-				errs = append(errs, err)
-			} else {
-				invocationResponses = append(invocationResponses, inv)
-			}
-		}
-
-		if err := multierr.New(errs...); err != nil {
-			return nil, err
-		}
-
-		responses, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.invoke-providers"), invocationResponses...))
+		inv, err := tool.MakeInvocationNoInjections(ctx, planned.Env, &tool.Definition{
+			Source:     tool.Source{PackageName: planned.Source},
+			Invocation: planned.Invocation,
+		}, tool.InvokeProps{
+			Event:          protocol.Lifecycle_PROVISION,
+			ProvisionInput: []*anypb.Any{planned.Intent, source},
+		})
 		if err != nil {
+			errs = append(errs, err)
+		} else {
+			invocationResponses = append(invocationResponses, inv)
+		}
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
+	responses, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.invoke-providers"), invocationResponses...))
+	if err != nil {
+		return nil, err
+	}
+
+	for k, raw := range responses {
+		response := raw.Value
+
+		if err := invocation.ValidateProviderReponse(response); err != nil {
 			return nil, err
 		}
 
-		for k, raw := range responses {
-			response := raw.Value
+		r := response.ApplyResponse
 
-			if err := invocation.ValidateProviderReponse(response); err != nil {
-				return nil, err
-			}
-
-			r := response.ApplyResponse
-
-			if len(r.ComputedResourceInput) > 0 {
-				return nil, fnerrors.InternalError("prepareWith response can't include computed resourced")
-			}
-
-			plan.PlannedResources = append(plan.PlannedResources, plannedResource{
-				PlannedResource: runtime.PlannedResource{
-					ResourceInstanceID: planningInvocations[k].Resource.ID,
-					Class:              planningInvocations[k].ResourceClass,
-					Instance:           r.OutputResourceInstance,
-				},
-				Invocations: r.Invocation,
-			})
+		if len(r.ComputedResourceInput) > 0 {
+			return nil, fnerrors.InternalError("prepareWith response can't include computed resourced")
 		}
+
+		plan.PlannedResources = append(plan.PlannedResources, plannedResource{
+			PlannedResource: runtime.PlannedResource{
+				ResourceInstanceID: planningInvocations[k].Resource.ID,
+				Class:              planningInvocations[k].ResourceClass,
+				Instance:           r.OutputResourceInstance,
+			},
+			Invocations: r.Invocation,
+		})
 	}
 
 	return plan, nil

@@ -45,7 +45,7 @@ func NewLocalSecrets(env cfg.Context) (runtime.SecretSource, error) {
 	return &localSecrets{keyDir: keyDir, workspaceModule: env.Workspace().ModuleName(), env: env.Environment(), cache: map[string]*Bundle{}}, nil
 }
 
-func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, req runtime.SecretRequest) (*schema.FileContents, error) {
+func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, ref *schema.PackageRef, server *runtime.SecretRequest_ServerRef) (*schema.FileContents, error) {
 	// Ordered by lookup order.
 	var bundles []*Bundle
 
@@ -57,13 +57,13 @@ func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, req r
 
 	lookup := []string{l.workspaceModule}
 
-	if req.Server != nil && req.Server.ModuleName != "" {
-		if serverSecrets, err := l.loadSecretsFor(ctx, modules, req.Server.ModuleName, filepath.Join(req.Server.RelPath, ServerBundleName)); err != nil {
+	if server != nil && server.ModuleName != "" {
+		if serverSecrets, err := l.loadSecretsFor(ctx, modules, server.ModuleName, filepath.Join(server.RelPath, ServerBundleName)); err != nil {
 			return nil, err
 		} else if serverSecrets != nil {
 			bundles = append(bundles, serverSecrets)
 		}
-		lookup = append(lookup, req.Server.ModuleName)
+		lookup = append(lookup, server.ModuleName)
 	}
 
 	for _, moduleName := range lookup {
@@ -74,7 +74,7 @@ func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, req r
 		}
 	}
 
-	return lookupSecret(ctx, l.env, req.SecretRef, bundles...)
+	return lookupSecret(ctx, l.env, ref, bundles...)
 }
 
 func (l *localSecrets) MissingError(missing *schema.PackageRef, missingSpec *schema.SecretSpec, missingServer schema.PackageName) error {

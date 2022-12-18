@@ -42,7 +42,7 @@ func newComputeConfigCmd() *cobra.Command {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployServers(ctx, env, servers.SealedPackages, planner, servers.Servers...)
+			plan, err := deploy.PrepareDeployServers(ctx, env, planner, servers.Servers...)
 			if err != nil {
 				return err
 			}
