@@ -14,25 +14,28 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning/invocation"
+	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
 )
 
 type resourcePlanner struct {
-	eg    *executor.Executor
-	mu    sync.Mutex
-	state map[string]*computedResource
+	eg      *executor.Executor
+	secrets runtime.SecretSource
+	mu      sync.Mutex
+	state   map[string]*computedResource
 }
 
 type computedResource struct {
 	resources []pkggraph.ResourceInstance
 }
 
-func newResourcePlanner(eg *executor.Executor) *resourcePlanner {
-	return &resourcePlanner{eg: eg, state: map[string]*computedResource{}}
+func newResourcePlanner(eg *executor.Executor, secrets runtime.SecretSource) *resourcePlanner {
+	return &resourcePlanner{eg: eg, secrets: secrets, state: map[string]*computedResource{}}
 }
 
 func (rp *resourcePlanner) Complete() map[string][]pkggraph.ResourceInstance {
@@ -76,7 +79,7 @@ func (rp *resourcePlanner) computeResource(sealedctx pkggraph.SealedContext, par
 	}
 
 	rp.eg.Go(func(ctx context.Context) error {
-		resources, err := state.compute(ctx, sealedctx, res.Spec.Intent, res.Spec.Provider)
+		resources, err := state.compute(ctx, rp.secrets, sealedctx, res.Spec.Intent, res.Spec.Provider)
 		if err != nil {
 			return err
 		}
@@ -96,7 +99,7 @@ func (rp *resourcePlanner) computeResource(sealedctx pkggraph.SealedContext, par
 	return nil
 }
 
-func (st *computedResource) compute(ctx context.Context, sealedCtx pkggraph.SealedContext, intent *anypb.Any, provider *pkggraph.ResourceProvider) ([]pkggraph.ResourceInstance, error) {
+func (st *computedResource) compute(ctx context.Context, secs runtime.SecretSource, sealedCtx pkggraph.SealedContext, intent *anypb.Any, provider *pkggraph.ResourceProvider) ([]pkggraph.ResourceInstance, error) {
 	if provider == nil || provider.Spec.ResourcesFrom == nil {
 		return nil, nil
 	}
@@ -106,13 +109,15 @@ func (st *computedResource) compute(ctx context.Context, sealedCtx pkggraph.Seal
 		return nil, fnerrors.InternalError("failed to compute invocation configuration: %w", err)
 	}
 
-	deferredResponse, err := tool.MakeInvocationNoInjections(ctx, sealedCtx, &tool.Definition{
-		Source:     tool.Source{PackageName: schema.PackageName(provider.Spec.PackageName)},
-		Invocation: inv,
-	}, tool.InvokeProps{
-		Event:          protocol.Lifecycle_PROVISION,
-		ProvisionInput: []*anypb.Any{intent},
-	})
+	deferredResponse, err := tool.MakeInvocationNoInjections(ctx, sealedCtx,
+		secrets.ScopeSecretsTo(secs, sealedCtx, nil),
+		&tool.Definition{
+			Source:     tool.Source{PackageName: schema.PackageName(provider.Spec.PackageName)},
+			Invocation: inv,
+		}, tool.InvokeProps{
+			Event:          protocol.Lifecycle_PROVISION,
+			ProvisionInput: []*anypb.Any{intent},
+		})
 	if err != nil {
 		return nil, fnerrors.InternalError("resourcesFrom: failed to compute invocation: %w", err)
 	}

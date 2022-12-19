@@ -27,13 +27,16 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 
@@ -223,6 +226,7 @@ type FrontendRequest struct {
 	Frontend       string
 	FrontendOpt    map[string]string
 	FrontendInputs map[string]llb.State
+	Secrets        []*schema.PackageRef
 }
 
 func MakeLocalExcludes(src LocalContents) []string {
@@ -242,7 +246,7 @@ func MakeLocalState(src LocalContents) llb.State {
 		llb.ExcludePatterns(MakeLocalExcludes(src)))
 }
 
-func prepareSession(ctx context.Context, keychain oci.Keychain) ([]session.Attachable, error) {
+func prepareSession(ctx context.Context, keychain oci.Keychain, src runtime.GroundedSecrets, secrets []*schema.PackageRef) ([]session.Attachable, error) {
 	var fs []secretsprovider.Source
 
 	for _, def := range strings.Split(BuildkitSecrets, ";") {
@@ -276,8 +280,34 @@ func prepareSession(ctx context.Context, keychain oci.Keychain) ([]session.Attac
 		return nil, err
 	}
 
+	secretValues := map[string][]byte{}
+	if len(secrets) > 0 {
+		if src == nil {
+			return nil, fnerrors.InternalError("secrets specified, but secret source missing")
+		}
+
+		var errs []error
+		for _, sec := range secrets {
+			result, err := src.Get(ctx, sec)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
+			if result.Value == nil {
+				return nil, fnerrors.New("can't use secret %q, no value available (it's generated)", sec.Canonical())
+			}
+
+			secretValues[sec.Canonical()] = result.Value.Contents
+		}
+
+		if err := multierr.New(errs...); err != nil {
+			return nil, err
+		}
+	}
+
 	attachables := []session.Attachable{
-		secretsprovider.NewSecretProvider(store),
+		secretsprovider.NewSecretProvider(secretSource{store, secretValues}),
 	}
 
 	if ForwardKeychain {

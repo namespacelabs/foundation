@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"google.golang.org/protobuf/types/known/anypb"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/provisioning"
@@ -50,14 +49,9 @@ func main() {
 			Resource:    clusterRole,
 		})
 
-		instance, err := anypb.New(&rbac.ClusterRoleInstance{
+		out.OutputResourceInstance = &rbac.ClusterRoleInstance{
 			Name: roleName,
-		})
-		if err != nil {
-			return err
 		}
-
-		out.OutputResourceInstance = instance
 		return nil
 	})
 	provisioning.Handle(h)

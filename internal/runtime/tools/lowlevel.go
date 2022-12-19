@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -38,12 +39,12 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 	}
 }
 
-func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
+func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, secrets runtime.GroundedSecrets, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
 	state := makeState(c, pkg, image, method, req, opts, oo)
 
 	p := c.BuildkitOpts().HostPlatform
 
-	files := buildkit.DeferBuildFilesystem(c, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), state)
+	files := buildkit.DeferBuildFilesystem(c, secrets, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), state)
 
 	return compute.Transform("parse-response", files, func(ctx context.Context, fsys fs.FS) (Resp, error) {
 		resp := protos.NewFromType[Resp]()
@@ -69,19 +70,19 @@ func redact(m proto.Message, f func(proto.Message) proto.Message) proto.Message 
 	return f(m)
 }
 
-func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], method string, req proto.Message, opts rtypes.RunBinaryOpts, oo LowLevelInvokeOptions) compute.Computable[llb.State] {
-	return compute.Transform("make-request", ensureCached(image), func(ctx context.Context, image oci.Image) (llb.State, error) {
+func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], method string, req proto.Message, opts rtypes.RunBinaryOpts, oo LowLevelInvokeOptions) compute.Computable[*buildkit.Input] {
+	return compute.Transform("make-request", ensureCached(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
 		d, err := image.Digest()
 		if err != nil {
-			return llb.State{}, err
+			return nil, err
 		}
 
 		tasks.Attachments(ctx).AddResult("ref", d.String())
 
 		if !c.BuildkitOpts().SupportsCanonicalBuilds {
-			return llb.State{}, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
+			return nil, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
 		}
 
 		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
@@ -96,9 +97,16 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 			runOpts = append(runOpts, llb.Dir(opts.WorkingDir))
 		}
 
+		var secrets []*schema.PackageRef
 		for _, env := range opts.Env {
-			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromSecretRef != nil || env.FromServiceEndpoint != nil || env.FromResourceField != nil {
-				return llb.State{}, fnerrors.New("invocation: only support environment variables with static values")
+			if env.FromSecretRef != nil {
+				runOpts = append(runOpts, llb.AddSecret(env.Name, llb.SecretAsEnv(true), llb.SecretID(env.FromSecretRef.Canonical())))
+				secrets = append(secrets, env.FromSecretRef)
+				continue
+			}
+
+			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromServiceEndpoint != nil || env.FromResourceField != nil {
+				return nil, fnerrors.New("invocation: only support environment variables with static values")
 			}
 
 			runOpts = append(runOpts, llb.AddEnv(env.Name, env.Value))
@@ -108,14 +116,14 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 
 		requestBytes, err := proto.Marshal(req)
 		if err != nil {
-			return llb.State{}, err
+			return nil, err
 		}
 
 		requestState := llb.Scratch().File(llb.Mkfile("request.binarypb", 0644, requestBytes))
 
 		run.AddMount("/request", requestState, llb.Readonly)
 		out := run.AddMount("/out", llb.Scratch())
-		return out, nil
+		return &buildkit.Input{State: out, Secrets: secrets}, nil
 	})
 }
 

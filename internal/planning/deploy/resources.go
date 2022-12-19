@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning/invocation"
+	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -51,7 +52,7 @@ type serverStack interface {
 	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
 }
 
-func planResources(ctx context.Context, secrets runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -61,6 +62,7 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, planner ru
 
 	type resourcePlanInvocation struct {
 		Env                  cfg.Context
+		Secrets              runtime.GroundedSecrets
 		Source               schema.PackageName
 		Resource             *resourceInstance
 		ResourceSource       *schema.ResourceInstance
@@ -160,6 +162,7 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, planner ru
 
 			planningInvocations = append(planningInvocations, resourcePlanInvocation{
 				Env:                  sealedCtx,
+				Secrets:              secrets.ScopeSecretsTo(secs, sealedCtx, nil),
 				Source:               schema.PackageName(resource.Source.PackageName),
 				Resource:             resource,
 				ResourceSource:       resource.Source,
@@ -215,22 +218,20 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, planner ru
 		}
 	}
 
-	if len(executionInvocations) > 0 {
-		builtExecutionImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.build-execution-images"), imageIDs...))
+	builtExecutionImages, err := compute.GetValue(ctx, compute.Collect(tasks.Action("resources.build-execution-images"), imageIDs...))
+	if err != nil {
+		return nil, err
+	}
+
+	for k, invocation := range executionInvocations {
+		invocation.BinaryImageId = builtExecutionImages[k].Value
+
+		theseOps, err := PlanResourceProviderInvocation(ctx, secs, planner, invocation)
 		if err != nil {
 			return nil, err
 		}
 
-		for k, invocation := range executionInvocations {
-			invocation.BinaryImageId = builtExecutionImages[k].Value
-
-			theseOps, err := PlanResourceProviderInvocation(ctx, secrets, invocation.SealedContext, planner, invocation)
-			if err != nil {
-				return nil, err
-			}
-
-			plan.ExecutionInvocations = append(plan.ExecutionInvocations, theseOps...)
-		}
+		plan.ExecutionInvocations = append(plan.ExecutionInvocations, theseOps...)
 	}
 
 	var invocationResponses []compute.Computable[*protocol.ToolResponse]
@@ -245,7 +246,7 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, planner ru
 			continue
 		}
 
-		inv, err := tool.MakeInvocationNoInjections(ctx, planned.Env, &tool.Definition{
+		inv, err := tool.MakeInvocationNoInjections(ctx, planned.Env, planned.Secrets, &tool.Definition{
 			Source:     tool.Source{PackageName: planned.Source},
 			Invocation: planned.Invocation,
 		}, tool.InvokeProps{
@@ -283,9 +284,10 @@ func planResources(ctx context.Context, secrets runtime.SecretSource, planner ru
 
 		plan.PlannedResources = append(plan.PlannedResources, plannedResource{
 			PlannedResource: runtime.PlannedResource{
-				ResourceInstanceID: planningInvocations[k].Resource.ID,
-				Class:              planningInvocations[k].ResourceClass,
-				Instance:           r.OutputResourceInstance,
+				ResourceInstanceID:     planningInvocations[k].Resource.ID,
+				Class:                  planningInvocations[k].ResourceClass,
+				Instance:               r.OutputResourceInstance,
+				InstanceSerializedJSON: r.OutputResourceInstanceSerializedJson,
 			},
 			Invocations: r.Invocation,
 		})
@@ -442,7 +444,7 @@ func (rp *resourceList) checkAddTo(ctx context.Context, stack serverStack, seale
 
 func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoader, inputs []pkggraph.ResourceInstance) ([]pkggraph.ResourceInstance, []runtime.SecretResourceDependency, error) {
 	var regularDependencies []pkggraph.ResourceInstance
-	var secrets []runtime.SecretResourceDependency
+	var secs []runtime.SecretResourceDependency
 	for _, dep := range inputs {
 		if parsing.IsSecretResource(dep.Spec.Class.Ref) {
 			ref := &schema.PackageRef{}
@@ -450,12 +452,12 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 				return nil, nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 			}
 
-			specs, err := loadSecretSpecs(ctx, pl, ref)
+			specs, err := secrets.LoadSecretSpecs(ctx, pl, ref)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			secrets = append(secrets, runtime.SecretResourceDependency{
+			secs = append(secs, runtime.SecretResourceDependency{
 				SecretRef:   ref,
 				ResourceRef: dep.ResourceRef,
 				Spec:        specs[0],
@@ -465,5 +467,5 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 		}
 	}
 
-	return regularDependencies, secrets, nil
+	return regularDependencies, secs, nil
 }

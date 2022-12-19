@@ -19,7 +19,9 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
+	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/internal/versions"
@@ -37,6 +39,7 @@ type Stack struct {
 }
 
 type ProvisionOpts struct {
+	Secrets   runtime.SecretSource
 	PortRange eval.PortRange
 }
 
@@ -149,7 +152,7 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...Server) (*
 	}
 
 	eg := executor.New(ctx, "planning.compute")
-	rp := newResourcePlanner(eg)
+	rp := newResourcePlanner(eg, opts.Secrets)
 	cs := computeState{exec: eg, out: &builder}
 
 	for _, srv := range servers {
@@ -168,8 +171,9 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...Server) (*
 }
 
 type computeState struct {
-	exec *executor.Executor
-	out  *stackBuilder
+	exec    *executor.Executor
+	secrets runtime.SecretSource
+	out     *stackBuilder
 }
 
 func (cs *computeState) recursivelyComputeServerContents(ctx context.Context, rp *resourcePlanner, pkgs pkggraph.SealedContext, pkg schema.PackageName, opts ProvisionOpts) error {
@@ -209,7 +213,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			node := n // Close n.
 
 			exec.Go(func(ctx context.Context) error {
-				ev, err := EvalProvision(ctx, server, node)
+				ev, err := EvalProvision(ctx, cs.secrets, server, node)
 				if err != nil {
 					return err
 				}
@@ -314,9 +318,9 @@ func traverseResources(sealedctx pkggraph.SealedContext, parentID string, r *res
 	return multierr.New(errs...)
 }
 
-func EvalProvision(ctx context.Context, server Server, n *pkggraph.Package) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, secrets runtime.SecretSource, server Server, n *pkggraph.Package) (*ParsedNode, error) {
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
-		pn, err := evalProvision(ctx, server, n)
+		pn, err := evalProvision(ctx, secrets, server, n)
 		if err != nil {
 			return nil, fnerrors.AttachLocation(n.Location, err)
 		}
@@ -325,7 +329,7 @@ func EvalProvision(ctx context.Context, server Server, n *pkggraph.Package) (*Pa
 	})
 }
 
-func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, secs runtime.SecretSource, server Server, node *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps planninghooks.InternalPrepareProps
 	for _, hook := range node.PrepareHooks {
 		if hook.InvokeInternal != "" {
@@ -371,9 +375,11 @@ func evalProvision(ctx context.Context, server Server, node *pkggraph.Package) (
 				ApiVersion: int32(versions.Builtin().APIVersion),
 			}
 
-			resp, err := compute.GetValue(ctx, tools.InvokeOnBuildkit[*protocol.PrepareResponse](cli,
+			invocation := tools.InvokeOnBuildkit[*protocol.PrepareResponse](
+				cli, secrets.ScopeSecretsTo(secs, server.SealedContext(), nil),
 				"foundation.provision.tool.protocol.PrepareService/Prepare",
-				node.PackageName(), ximage, opts, req, tools.LowLevelInvokeOptions{}))
+				node.PackageName(), ximage, opts, req, tools.LowLevelInvokeOptions{})
+			resp, err := compute.GetValue(ctx, invocation)
 			if err != nil {
 				return nil, err
 			}

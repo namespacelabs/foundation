@@ -239,11 +239,12 @@ type DeployableSpec struct {
 	Sidecars      []SidecarRunOpts
 	Inits         []SidecarRunOpts
 
-	ConfigImage     *oci.ImageID
-	RuntimeConfig   *runtimepb.RuntimeConfig
-	BuildVCS        *runtimepb.BuildVCS
-	Resources       []*resources.ResourceDependency
-	PlannedResource []PlannedResource
+	ConfigImage         *oci.ImageID
+	RuntimeConfig       *runtimepb.RuntimeConfig
+	BuildVCS            *runtimepb.BuildVCS
+	ResourceDeps        []*resources.ResourceDependency
+	PlannedResourceDeps []*resources.ResourceDependency
+	PlannedResources    []PlannedResource
 
 	Secrets GroundedSecrets
 
@@ -268,9 +269,10 @@ type DeployableSpec struct {
 }
 
 type PlannedResource struct {
-	ResourceInstanceID string
-	Class              *schema.ResourceClass
-	Instance           *anypb.Any
+	ResourceInstanceID     string
+	Class                  *schema.ResourceClass
+	Instance               *anypb.Any
+	InstanceSerializedJSON []byte
 }
 
 type SecretResourceDependency struct {
@@ -293,10 +295,6 @@ func (d DeployableSpec) GetName() string                   { return d.Name }
 func (d DeployableSpec) GetDeployableClass() string        { return string(d.Class) }
 func (d DeployableSpec) GetPackageRef() *schema.PackageRef { return d.PackageRef }
 func (d DeployableSpec) GetPackageName() string            { return d.PackageRef.GetPackageName() }
-
-type GroundedSecrets interface {
-	Get(context.Context, *schema.PackageRef) (*schema.SecretResult, error)
-}
 
 type ContainerRunOpts struct {
 	WorkingDir         string

@@ -13,6 +13,8 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
+	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -41,20 +43,26 @@ func BuildFilesystem(ctx context.Context, makeClient ClientFactory, target build
 	return &reqToFS{baseRequest: base}, nil
 }
 
-func DeferBuildFilesystem(makeClient ClientFactory, target build.BuildTarget, state compute.Computable[llb.State], localDirs ...LocalContents) compute.Computable[fs.FS] {
+type Input struct {
+	State   llb.State
+	Secrets []*schema.PackageRef
+}
+
+func DeferBuildFilesystem(makeClient ClientFactory, secrets runtime.GroundedSecrets, target build.BuildTarget, state compute.Computable[*Input], localDirs ...LocalContents) compute.Computable[fs.FS] {
 	base := &baseRequest[fs.FS]{
 		sourceLabel:    target.SourceLabel(),
 		sourcePackage:  target.SourcePackage(),
 		makeClient:     makeClient,
 		targetPlatform: target.TargetPlatform(),
 		localDirs:      localDirs,
-		req: compute.Transform("marshal-request", state, func(ctx context.Context, state llb.State) (*FrontendRequest, error) {
-			serialized, err := MarshalForTarget(ctx, state, target)
+		secrets:        secrets,
+		req: compute.Transform("marshal-request", state, func(ctx context.Context, state *Input) (*FrontendRequest, error) {
+			serialized, err := MarshalForTarget(ctx, state.State, target)
 			if err != nil {
 				return nil, err
 			}
 
-			return &FrontendRequest{Def: serialized, OriginalState: &state}, nil
+			return &FrontendRequest{Def: serialized, OriginalState: &state.State, Secrets: state.Secrets}, nil
 		}),
 	}
 	return &reqToFS{baseRequest: base}

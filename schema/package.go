@@ -5,6 +5,7 @@
 package schema
 
 import (
+	"fmt"
 	"strings"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -81,4 +82,11 @@ func (n *PackageRef) Canonical() string {
 	}
 
 	return n.GetPackageName() + ":" + n.GetName()
+}
+
+func (n *PackageRef) ErrorLocation() string {
+	if n.Name == "" {
+		return n.PackageName
+	}
+	return fmt.Sprintf("%s: %s", n.PackageName, n.Name)
 }

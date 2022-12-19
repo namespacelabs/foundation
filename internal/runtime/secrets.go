@@ -21,3 +21,7 @@ type SecretRequest_ServerRef struct {
 	ModuleName  string
 	RelPath     string // Relative path within the module.
 }
+
+type GroundedSecrets interface {
+	Get(context.Context, *schema.PackageRef) (*schema.SecretResult, error)
+}

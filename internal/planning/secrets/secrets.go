@@ -2,14 +2,13 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package deploy
+package secrets
 
 import (
 	"context"
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -21,11 +20,18 @@ type groundedSecrets struct {
 	server    *runtime.SecretRequest_ServerRef
 }
 
-func ScopeSecretsToServer(source runtime.SecretSource, server planning.Server) runtime.GroundedSecrets {
+type Server interface {
+	SealedContext() pkggraph.SealedContext
+	PackageName() schema.PackageName
+	Module() *pkggraph.Module
+	RelPath() string
+}
+
+func ScopeSecretsToServer(source runtime.SecretSource, server Server) runtime.GroundedSecrets {
 	return ScopeSecretsTo(source, server.SealedContext(), &runtime.SecretRequest_ServerRef{
 		PackageName: server.PackageName(),
 		ModuleName:  server.Module().ModuleName(),
-		RelPath:     server.Location.Rel(),
+		RelPath:     server.RelPath(),
 	})
 }
 
@@ -34,7 +40,7 @@ func ScopeSecretsTo(source runtime.SecretSource, sealedCtx pkggraph.SealedPackag
 }
 
 func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
-	specs, err := loadSecretSpecs(ctx, gs.sealedCtx, ref)
+	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, ref)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +70,7 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 	return gsec, nil
 }
 
-func loadSecretSpecs(ctx context.Context, pl pkggraph.PackageLoader, secrets ...*schema.PackageRef) ([]*schema.SecretSpec, error) {
+func LoadSecretSpecs(ctx context.Context, pl pkggraph.PackageLoader, secrets ...*schema.PackageRef) ([]*schema.SecretSpec, error) {
 	var errs []error
 	var specs []*schema.SecretSpec // Same indexing as secrets.
 	for _, ref := range secrets {

@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/eval"
+	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/startup"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -271,10 +272,6 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 				}
 			}
 
-			for key, msg := range stackAndDefs.Stack.ComputedResources {
-				fmt.Fprintf(console.Debug(ctx), "planResources: %q: %+v\n", key, msg)
-			}
-
 			return planResources(ctx, secrets, planner, registry, stackAndDefs.Stack, rp)
 		})
 
@@ -326,7 +323,8 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 			for _, d := range prepared {
 				spec := d.Value.Template
-				spec.Resources = resourcePlan.ResourceList.perOwnerResources[d.Value.PackageRef().Canonical()].Dependencies
+				spec.ResourceDeps = resourcePlan.ResourceList.perOwnerResources[d.Value.PackageRef().Canonical()].Dependencies
+				spec.PlannedResourceDeps = resourcePlan.ResourceList.perOwnerResources[d.Value.PackageRef().Canonical()].PlannedDependencies
 				spec.SecretResources = resourcePlan.ResourceList.perOwnerResources[d.Value.PackageRef().Canonical()].Secrets
 
 				deploymentSpec.Specs = append(deploymentSpec.Specs, spec)
@@ -353,7 +351,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env cfg.Context, secrets runtime.SecretSource, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSource, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverDeployables []runtime.DeployableSpec
@@ -395,7 +393,8 @@ func planDeployment(ctx context.Context, env cfg.Context, secrets runtime.Secret
 		deployable.MountRuntimeConfigPath = constants.NamespaceConfigMount
 		deployable.RuntimeConfig = rt
 		deployable.BuildVCS = moduleVCS[srv.Location.Module.ModuleName()]
-		deployable.Resources = resources[srv.PackageRef().Canonical()].Dependencies
+		deployable.ResourceDeps = resources[srv.PackageRef().Canonical()].Dependencies
+		deployable.PlannedResourceDeps = resources[srv.PackageRef().Canonical()].PlannedDependencies
 		deployable.SecretResources = resources[srv.PackageRef().Canonical()].Secrets
 		deployable.Permissions = srv.Proto().Permissions
 
@@ -404,7 +403,7 @@ func planDeployment(ctx context.Context, env cfg.Context, secrets runtime.Secret
 			for _, y := range rp.PlannedResources {
 				if x.ResourceInstanceId == y.ResourceInstanceID {
 					found = true
-					deployable.PlannedResource = append(deployable.PlannedResource, y.PlannedResource)
+					deployable.PlannedResources = append(deployable.PlannedResources, y.PlannedResource)
 				}
 			}
 			if !found {
@@ -483,7 +482,7 @@ func planDeployment(ctx context.Context, env cfg.Context, secrets runtime.Secret
 			}
 		}
 
-		deployable.Secrets = ScopeSecretsToServer(secrets, srv.Server)
+		deployable.Secrets = secrets.ScopeSecretsToServer(secs, srv.Server)
 
 		serverDeployables = append(serverDeployables, deployable)
 	}

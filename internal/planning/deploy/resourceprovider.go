@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	protos2 "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/protos"
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -45,10 +46,10 @@ type InvokeResourceProvider struct {
 	SecretResources      []runtime.SecretResourceDependency
 }
 
-func PlanResourceProviderInvocation(ctx context.Context, secrets runtime.SecretSource, modules pkggraph.Modules, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
+func PlanResourceProviderInvocation(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
 	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
 
-	versions, err := foundationVersion(ctx, modules)
+	versions, err := foundationVersion(ctx, invoke.SealedContext)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to determine foundation version: %w", err)
 	}
@@ -75,7 +76,7 @@ func PlanResourceProviderInvocation(ctx context.Context, secrets runtime.SecretS
 		Name:        "provider",
 		Description: fmt.Sprintf("Ensure resource: %s", invoke.ResourceInstanceId),
 
-		Resources:       invoke.ResourceDependencies,
+		ResourceDeps:    invoke.ResourceDependencies,
 		SecretResources: invoke.SecretResources,
 		SetContainerField: []*runtimepb.SetContainerField{
 			// Resources are passed in as flags to minimize the number of k8s resources that are created.
@@ -83,7 +84,7 @@ func PlanResourceProviderInvocation(ctx context.Context, secrets runtime.SecretS
 			{SetArg: []*runtimepb.SetContainerField_SetValue{{Key: "--resources", Value: runtimepb.SetContainerField_RESOURCE_CONFIG}}},
 		},
 
-		Secrets: ScopeSecretsTo(secrets, invoke.SealedContext, nil),
+		Secrets: secrets.ScopeSecretsTo(secs, invoke.SealedContext, nil),
 
 		MainContainer: runtime.ContainerRunOpts{
 			Image:   invoke.BinaryImageId,

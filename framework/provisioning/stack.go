@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/schema"
@@ -34,7 +33,7 @@ type ApplyOutput struct {
 	// Extend the server definition.
 	ServerExtensions []*schema.ServerExtension
 	// Output a resource instance.
-	OutputResourceInstance *anypb.Any
+	OutputResourceInstance proto.Message
 	// Set of resources that should be passed to the initializer.
 	ComputedResourceInput []ResourceInput
 }

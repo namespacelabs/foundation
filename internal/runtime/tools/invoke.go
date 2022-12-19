@@ -63,7 +63,7 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 	}
 
 	return compute.Transform("get-response",
-		InvokeOnBuildkit[*protocol.ToolResponse](c, "foundation.provision.tool.protocol.InvocationService/Invoke",
+		InvokeOnBuildkit[*protocol.ToolResponse](c, nil, "foundation.provision.tool.protocol.InvocationService/Invoke",
 			inv.BinaryRef.AsPackageName(), ximage, run, req, LowLevelInvokeOptions{}),
 		func(_ context.Context, resp *protocol.ToolResponse) (*protocol.InvokeResponse, error) {
 			return resp.InvokeResponse, nil

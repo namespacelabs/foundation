@@ -32,6 +32,7 @@ type Server struct {
 func (t Server) Module() *pkggraph.Module              { return t.Location.Module }
 func (t Server) SealedContext() pkggraph.SealedContext { return t.env }
 func (t Server) PackageName() schema.PackageName       { return t.Location.PackageName }
+func (t Server) RelPath() string                       { return t.Location.Rel() }
 func (t Server) StackEntry() *schema.Stack_Entry       { return t.entry }
 func (t Server) Proto() *schema.Server                 { return t.entry.Server }
 func (t Server) Name() string                          { return t.entry.Server.Name }

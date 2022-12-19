@@ -53,23 +53,23 @@ func MakeInvocation(ctx context.Context, env cfg.Context, planner runtime.Planne
 		injections = append(injections, input)
 	}
 
-	return makeBaseInvocation(ctx, env, r, props, &protocol.StackRelated{
+	return makeBaseInvocation(ctx, env, nil, r, props, &protocol.StackRelated{
 		Env:           env.Environment(),
 		Stack:         stack,
 		FocusedServer: focus.String(),
 	}, injections)
 }
 
-func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, secrets runtime.GroundedSecrets, r *Definition, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
 	if len(r.Invocation.Inject) > 0 {
 		return nil, fnerrors.InternalError("injections are not supported in this path")
 	}
 
-	return makeBaseInvocation(ctx, env, r, props, nil, nil)
+	return makeBaseInvocation(ctx, env, secrets, r, props, nil, nil)
 }
 
 // The caller must ensure that injections are handled.
-func makeBaseInvocation(ctx context.Context, env cfg.Context, r *Definition, props InvokeProps, header *protocol.StackRelated, injections []*anypb.Any) (compute.Computable[*protocol.ToolResponse], error) {
+func makeBaseInvocation(ctx context.Context, env cfg.Context, secrets runtime.GroundedSecrets, r *Definition, props InvokeProps, header *protocol.StackRelated, injections []*anypb.Any) (compute.Computable[*protocol.ToolResponse], error) {
 	invocation := r.Invocation
 
 	req := &protocol.ToolRequest{
@@ -142,8 +142,10 @@ func makeBaseInvocation(ctx context.Context, env cfg.Context, r *Definition, pro
 	req.Input = append(req.Input, props.ProvisionInput...)
 	req.Input = append(req.Input, injections...)
 
-	return tools.InvokeOnBuildkit[*protocol.ToolResponse](cli, "foundation.provision.tool.protocol.InvocationService/Invoke",
-		r.Source.PackageName, ximage, opts, req, tools.LowLevelInvokeOptions{RedactRequest: redactMessage}), nil
+	return tools.InvokeOnBuildkit[*protocol.ToolResponse](cli, secrets,
+		"foundation.provision.tool.protocol.InvocationService/Invoke",
+		r.Source.PackageName, ximage, opts, req,
+		tools.LowLevelInvokeOptions{RedactRequest: redactMessage}), nil
 }
 
 func redactMessage(req proto.Message) proto.Message {

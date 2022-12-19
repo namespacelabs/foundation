@@ -12,6 +12,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
@@ -133,7 +134,21 @@ func handleRequest(ctx context.Context, req *protocol.ToolRequest, handlers AllH
 
 		response.ApplyResponse.InvocationSource = out.InvocationSources
 		response.ApplyResponse.Computed = out.Computed
-		response.ApplyResponse.OutputResourceInstance = out.OutputResourceInstance
+
+		if out.OutputResourceInstance != nil {
+			resourceInstance, err := anypb.New(out.OutputResourceInstance)
+			if err != nil {
+				return nil, err
+			}
+
+			resourceJson, err := json.Marshal(out.OutputResourceInstance)
+			if err != nil {
+				return nil, err
+			}
+
+			response.ApplyResponse.OutputResourceInstance = resourceInstance
+			response.ApplyResponse.OutputResourceInstanceSerializedJson = resourceJson
+		}
 
 		for _, computed := range out.ComputedResourceInput {
 			intent, err := json.Marshal(computed.Intent)

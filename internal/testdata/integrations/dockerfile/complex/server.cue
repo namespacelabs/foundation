@@ -5,7 +5,7 @@ server: {
 
 	env: {
 		NAME: "\($env.name)-Bob"
-		SECRET: fromSecret:            "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/complex:key1"
+		SECRET: fromSecret:            ":key1"
 		ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/internal/testdata/integrations/dockerfile/simple:webapi"
 		XYZ: fromResourceField: {
 			resource: "namespacelabs.dev/foundation/internal/testdata/integrations/resources/instances:test1"
@@ -28,6 +28,7 @@ server: {
 
 	resources: [
 		"namespacelabs.dev/foundation/internal/testdata/integrations/resources/instances:test1",
+		"namespacelabs.dev/foundation/internal/testdata/integrations/resources/instances:test2",
 	]
 
 	requires: [

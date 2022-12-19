@@ -19,7 +19,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -33,10 +32,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/library/kubernetes/rbac"
-	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	rtschema "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution/defs"
@@ -216,7 +215,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 		for _, role := range deployable.Permissions.ClusterRole {
 			var clusterRole *runtime.PlannedResource
-			for _, res := range deployable.PlannedResource {
+			for _, res := range deployable.PlannedResources {
 				if res.ResourceInstanceID == role.ResourceId {
 					clusterRole = &res
 					// XXX check dups?
@@ -414,7 +413,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	// XXX Think through this, should it also be hashed + immutable?
 	secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
-	secrets := newSecretCollector(secretId)
+	seccol := newSecretCollector(secretId)
 
 	ensure := kubedef.EnsureDeployment{
 		Deployable:    deployable,
@@ -426,7 +425,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		SetContainerFields: slices.Clone(deployable.SetContainerField),
 	}
 
-	if _, err := fillEnv(ctx, mainContainer, mainEnv, opts.secrets, secrets, &ensure); err != nil {
+	if _, err := fillEnv(ctx, mainContainer, mainEnv, opts.secrets, seccol, &ensure); err != nil {
 		return err
 	}
 
@@ -512,9 +511,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 					}
 
 					if resource.Value != nil {
-						secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource.Value, secrets.items).WithPath(entry.Path))
+						secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource.Value, seccol.items).WithPath(entry.Path))
 					} else if resource.Spec.Generate != nil {
-						name, key := secrets.allocateGenerated(resource.Ref, resource.Spec)
+						name, key := seccol.allocateGenerated(resource.Ref, resource.Spec)
 						projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
 							applycorev1.SecretProjection().WithName(name).WithItems(applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path)),
 						))
@@ -583,10 +582,9 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 	}
 
-	regularResources := slices.Clone(deployable.Resources)
+	regularResources := slices.Clone(deployable.ResourceDeps)
 
 	const projectedSecretsVolName = "ns-projected-secrets"
-	const secretBaseMountPath = "/namespace/secrets"
 
 	var secretProjections []*applycorev1.SecretProjectionApplyConfiguration
 	var injected []*kubedef.OpEnsureRuntimeConfig_InjectedResource
@@ -595,27 +593,39 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.BadInputError("don't yet support secrets used in resources, which don't use a generate block")
 		}
 
-		name, key := secrets.allocateGenerated(res.SecretRef, res.Spec)
+		name, key := seccol.allocateGenerated(res.SecretRef, res.Spec)
 
-		targetPathSegment := naming.DomainFragLike(res.ResourceRef.PackageName, res.ResourceRef.Name)
-
-		secretProjections = append(secretProjections,
-			applycorev1.SecretProjection().WithName(name).WithItems(
-				applycorev1.KeyToPath().WithKey(key).WithPath(targetPathSegment)))
-
-		instance := &runtimepb.SecretInstance{
-			Path: filepath.Join(secretBaseMountPath, targetPathSegment),
-		}
-
-		serializedInstance, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(instance)
+		serialized, err := secrets.Serialize(res.ResourceRef)
 		if err != nil {
 			return err
 		}
 
+		secretProjections = append(secretProjections,
+			applycorev1.SecretProjection().WithName(name).WithItems(
+				applycorev1.KeyToPath().WithKey(key).WithPath(serialized.RelPath)))
+
 		injected = append(injected, &kubedef.OpEnsureRuntimeConfig_InjectedResource{
 			ResourceRef:    res.ResourceRef,
-			SerializedJson: serializedInstance,
+			SerializedJson: serialized.JSON,
 		})
+	}
+
+	for _, dep := range deployable.PlannedResourceDeps {
+		handled := false
+		for _, x := range deployable.PlannedResources {
+			if dep.ResourceInstanceId == x.ResourceInstanceID {
+				injected = append(injected, &kubedef.OpEnsureRuntimeConfig_InjectedResource{
+					ResourceRef:    dep.ResourceRef,
+					SerializedJson: x.InstanceSerializedJSON,
+				})
+				handled = true
+				break
+			}
+		}
+
+		if !handled {
+			return fnerrors.InternalError("%s: resource value is missing", dep.ResourceRef.Canonical())
+		}
 	}
 
 	if len(secretProjections) > 0 {
@@ -627,7 +637,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		spec = spec.WithVolumes(applycorev1.Volume().WithName(projectedSecretsVolName).WithProjected(src))
 		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
 			WithName(projectedSecretsVolName).
-			WithMountPath(secretBaseMountPath).
+			WithMountPath(secrets.SecretBaseMountPath).
 			WithReadOnly(true))
 	}
 
@@ -696,7 +706,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(ctx, scntr, sidecar.Env, opts.secrets, secrets, &ensure); err != nil {
+		if _, err := fillEnv(ctx, scntr, sidecar.Env, opts.secrets, seccol, &ensure); err != nil {
 			return err
 		}
 
@@ -728,14 +738,14 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithCommand(init.Command...).
 			WithVolumeMounts(initVolumeMounts...)
 
-		if _, err := fillEnv(ctx, scntr, init.Env, opts.secrets, secrets, &ensure); err != nil {
+		if _, err := fillEnv(ctx, scntr, init.Env, opts.secrets, seccol, &ensure); err != nil {
 			return err
 		}
 
 		spec.WithInitContainers(scntr)
 	}
 
-	s.operations = append(s.operations, secrets.planDeployment(target.namespace, annotations, labels)...)
+	s.operations = append(s.operations, seccol.planDeployment(target.namespace, annotations, labels)...)
 
 	podSecCtx := applycorev1.PodSecurityContext()
 	if specifiedSec == nil {

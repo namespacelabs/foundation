@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 )
@@ -39,6 +40,7 @@ type baseRequest[V any] struct {
 	targetPlatform *specs.Platform    // If one is set, may be used to select the target build cluster.
 	req            compute.Computable[*FrontendRequest]
 	localDirs      []LocalContents // If set, the output is not cachable by us.
+	secrets        runtime.GroundedSecrets
 
 	compute.LocalScoped[V]
 }
@@ -156,7 +158,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 
 	sid := ids.NewRandomBase62ID(8)
 
-	attachables, err := prepareSession(ctx, keychain)
+	attachables, err := prepareSession(ctx, keychain, l.secrets, req.Secrets)
 	if err != nil {
 		return res, err
 	}
