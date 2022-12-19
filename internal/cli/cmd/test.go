@@ -10,8 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -293,11 +295,47 @@ func printResult(out io.Writer, style colors.Style, testRef *schema.PackageRef, 
 	var suffix string
 	if res.TestSummary.GetCreated() != nil && res.TestSummary.GetStarted() != nil && res.TestSummary.GetCompleted() != nil {
 		suffix = style.Comment.Apply(fmt.Sprintf(" (waited %v, took %v)",
-			res.TestSummary.Started.AsTime().Sub(res.TestSummary.Created.AsTime()),
-			res.TestSummary.Completed.AsTime().Sub(res.TestSummary.Started.AsTime())))
+			humanizeDuration(res.TestSummary.Started.AsTime().Sub(res.TestSummary.Created.AsTime()), 2),
+			humanizeDuration(res.TestSummary.Completed.AsTime().Sub(res.TestSummary.Started.AsTime()), 2)))
 	}
 
 	fmt.Fprintf(out, "%s: Test %s%s\n", testRef.Canonical(), status, suffix)
+}
+
+func humanizeDuration(duration time.Duration, n int) string {
+	days := duration.Hours() / 24
+	hours := math.Mod(duration.Hours(), 24)
+	minutes := math.Mod(duration.Minutes(), 60)
+	seconds := duration.Seconds() - math.Floor(duration.Minutes())
+
+	chunks := []struct {
+		suffix string
+		amount float64
+	}{
+		{"d", days},
+		{"h", hours},
+		{"m", minutes},
+		{"s", seconds},
+	}
+
+	var parts []string
+	for k, chunk := range chunks {
+		if int64(math.Floor(chunk.amount)) == 0 {
+			continue
+		}
+
+		mod := "%.0f%s"
+		if len(parts) == (n-1) || k == len(chunks)-1 {
+			mod = "%.1f%s"
+		}
+
+		parts = append(parts, fmt.Sprintf(mod, chunk.amount, chunk.suffix))
+		if len(parts) == n {
+			break
+		}
+	}
+
+	return strings.Join(parts, "")
 }
 
 func printIncompatible(out io.Writer, style colors.Style, testRef *schema.PackageRef) {
