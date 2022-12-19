@@ -5,10 +5,10 @@
 package cuefrontend
 
 import (
+	"bytes"
 	"context"
-	"strings"
+	"encoding/json"
 
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -20,14 +20,18 @@ import (
 )
 
 type cueResourceProvider struct {
-	ResourceInputs   map[string]string `json:"inputs"`   // Key: name, Value: class reference (package ref)
-	ResourceDefaults map[string]string `json:"defaults"` // Key: name, Value: resource reference (package ref)
-	Intent           *cueResourceType  `json:"intent,omitempty"`
+	ResourceInputs map[string]cueResourceProviderInput `json:"inputs"`
+	Intent         *cueResourceType                    `json:"intent,omitempty"`
 
 	AvailableClasses  []string `json:"availableClasses"`
 	AvailablePackages []string `json:"availablePackages"`
 
 	// TODO: parse prepare hook.
+}
+
+type cueResourceProviderInput struct {
+	Class   string
+	Default string
 }
 
 func parseResourceProvider(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
@@ -87,9 +91,8 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	}
 
 	var errs []error
-	unusedDefaults := maps.Clone(bits.ResourceDefaults)
 	for key, value := range bits.ResourceInputs {
-		class, err := schema.ParsePackageRef(pkg.PackageName(), value)
+		class, err := schema.ParsePackageRef(pkg.PackageName(), value.Class)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
@@ -98,8 +101,8 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 				Class: class,
 			}
 
-			if def, ok := bits.ResourceDefaults[key]; ok {
-				parsed, err := schema.ParsePackageRef(pkg.PackageName(), def)
+			if value.Default != "" {
+				parsed, err := schema.ParsePackageRef(pkg.PackageName(), value.Default)
 				if err != nil {
 					errs = append(errs, err)
 				} else {
@@ -108,13 +111,7 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 			}
 
 			rp.ResourceInput = append(rp.ResourceInput, input)
-
-			delete(unusedDefaults, key)
 		}
-	}
-
-	if len(unusedDefaults) > 0 {
-		errs = append(errs, fnerrors.New("the following defaults are unused: %s", strings.Join(maps.Keys(unusedDefaults), ", ")))
 	}
 
 	if err := multierr.New(errs...); err != nil {
@@ -135,4 +132,31 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	}
 
 	return rp, nil
+}
+
+func (input *cueResourceProviderInput) UnmarshalJSON(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+
+	if v, ok := tok.(string); ok {
+		input.Class = v
+		return nil
+	}
+
+	var values struct {
+		Class   string `json:"class"`
+		Default string `json:"default"`
+	}
+
+	if err := json.Unmarshal(data, &values); err != nil {
+		return err
+	}
+
+	input.Class = values.Class
+	input.Default = values.Default
+	return nil
 }
