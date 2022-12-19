@@ -38,6 +38,29 @@ type Stack struct {
 	ComputedResources map[string][]pkggraph.ResourceInstance // Key is resource ID.
 }
 
+type StackWithIngress struct {
+	Stack
+	IngressFragments []*schema.IngressFragment
+}
+
+func (s *StackWithIngress) GetIngressesForService(endpointOwner string, serviceName string) []*schema.IngressFragment {
+	var result []*schema.IngressFragment
+
+	for _, fragment := range s.IngressFragments {
+		if fragment.GetOwner() != endpointOwner {
+			continue
+		}
+
+		if fragment.GetEndpoint().GetServiceName() != serviceName {
+			continue
+		}
+
+		result = append(result, fragment)
+	}
+
+	return result
+}
+
 type ProvisionOpts struct {
 	Secrets   runtime.SecretSource
 	PortRange eval.PortRange
