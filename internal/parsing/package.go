@@ -43,7 +43,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		}
 	}
 
-	if pp.Server != nil && pp.Server.RunByDefault && hasReadinessProbe(pp.Server) {
+	if pp.Server != nil && shouldCreateStartupTest(pp.Server) {
 		test, err := createServerStartupTest(ctx, pl, pp.PackageName())
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(pp.Location, "creating server startup test: %w", err)
@@ -92,4 +92,11 @@ func hasReadinessProbe(server *schema.Server) bool {
 	// This ignores Namespace-generated readiness checks (e.g. for Go application framework)
 	// TODO refactor their modeling.
 	return false
+}
+
+func shouldCreateStartupTest(server *schema.Server) bool {
+	// XXX startup tests are disabled until we rethink the modeling. There are
+	// various servers that have side-effect initialization, which can't be
+	// easily be tested.
+	return false && server.RunByDefault && hasReadinessProbe(server)
 }
