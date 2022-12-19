@@ -124,7 +124,6 @@ func expandAnys(inputs []rtypes.ProvisionInput) ([]*anypb.Any, error) {
 }
 
 type handlerResult struct {
-	Stack *planning.Stack
 	// Merged set of invocations that are produced from the handlers invoked.
 	// Topologically ordered based on the server dependency graph.
 	OrderedInvocations []*schema.SerializedInvocation
@@ -328,7 +327,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 	allOps = append(allOps, orderedOps...)
 
-	return &handlerResult{Stack: r.stack, OrderedInvocations: allOps, ProvisionOutput: perServer}, nil
+	return &handlerResult{OrderedInvocations: allOps, ProvisionOutput: perServer}, nil
 }
 
 func sortServers(ctx context.Context, stack *planning.Stack) ([]schema.PackageName, error) {

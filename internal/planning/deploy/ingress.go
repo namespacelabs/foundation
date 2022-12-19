@@ -6,10 +6,13 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -51,9 +54,11 @@ func (ci *computeIngress) Inputs() *compute.In {
 		Proto("stack", ci.stack).
 		Computable("fragments", ci.fragments)
 }
+
 func (ci *computeIngress) Output() compute.Output {
 	return compute.Output{NotCacheable: true}
 }
+
 func (ci *computeIngress) Compute(ctx context.Context, deps compute.Resolved) (*ComputeIngressResult, error) {
 	allFragments, err := computeDeferredIngresses(ctx, ci.rootenv, ci.planner, ci.stack)
 	if err != nil {
@@ -108,4 +113,31 @@ func computeDeferredIngresses(ctx context.Context, env cfg.Context, planner runt
 	}
 
 	return fragments, nil
+}
+
+func computeIngressWithHandlerResult(env cfg.Context, planner runtime.Planner, stack *planning.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
+	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
+		var fragments []*schema.IngressFragment
+
+		for _, computed := range h.MergedComputedConfigurations().GetEntry() {
+			for _, conf := range computed.Configuration {
+				p := &schema.IngressFragment{}
+				if !conf.Impl.MessageIs(p) {
+					continue
+				}
+
+				if err := conf.Impl.UnmarshalTo(p); err != nil {
+					return nil, err
+				}
+
+				fmt.Fprintf(console.Debug(ctx), "%s: received domain: %+v\n", conf.Owner, p.Domain)
+
+				fragments = append(fragments, p)
+			}
+		}
+
+		return fragments, nil
+	})
+
+	return ComputeIngress(env, planner, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
 }

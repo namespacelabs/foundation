@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -96,7 +95,7 @@ func PrepareDeployStack(ctx context.Context, env cfg.Context, planner runtime.Pl
 
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
-	prepare, err := prepareBuildAndDeployment(ctx, env, planner, registry, stack, def, makeBuildAssets(ingressFragments), prepared...)
+	prepare, err := prepareBuildAndDeployment(ctx, env, planner, registry, stack, def, ingressFragments, prepared...)
 	if err != nil {
 		return nil, err
 	}
@@ -120,33 +119,6 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 			return res.Fragments, nil
 		}),
 	}
-}
-
-func computeIngressWithHandlerResult(env cfg.Context, planner runtime.Planner, stack *planning.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
-	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
-		var fragments []*schema.IngressFragment
-
-		for _, computed := range h.MergedComputedConfigurations().GetEntry() {
-			for _, conf := range computed.Configuration {
-				p := &schema.IngressFragment{}
-				if !conf.Impl.MessageIs(p) {
-					continue
-				}
-
-				if err := conf.Impl.UnmarshalTo(p); err != nil {
-					return nil, err
-				}
-
-				fmt.Fprintf(console.Debug(ctx), "%s: received domain: %+v\n", conf.Owner, p.Domain)
-
-				fragments = append(fragments, p)
-			}
-		}
-
-		return fragments, nil
-	})
-
-	return ComputeIngress(env, planner, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
 }
 
 type makeDeployGraph struct {
@@ -230,11 +202,11 @@ type prepareAndBuildResult struct {
 	NamespaceReference string
 }
 
-func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], buildAssets assets.AvailableBuildAssets, prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
+func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner runtime.Planner, registry registry.Manager, stack *planning.Stack, stackDef compute.Computable[*handlerResult], ingress compute.Computable[*ComputeIngressResult], prepared ...compute.Computable[PreparedDeployable]) (compute.Computable[prepareAndBuildResult], error) {
 	packages, images, err := computeStackAndImages(ctx, env, planner, registry, stack, serverImagesOpts{
-		def:         stackDef,
-		buildAssets: buildAssets,
-		wantConfig:  true,
+		ProvisionResult:     stackDef,
+		IngressFragments:    ingress,
+		GenerateConfigImage: true,
 	})
 	if err != nil {
 		return nil, err
@@ -247,24 +219,25 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 
 	preparedComp := compute.Collect(tasks.Action("deployment.prepared"), prepared...)
 
+	stackWithIngress := compute.Transform("combine-stack-and-ingress", ingress,
+		func(_ context.Context, ingress *ComputeIngressResult) (*planning.StackWithIngress, error) {
+			return &planning.StackWithIngress{Stack: *stack, IngressFragments: ingress.Fragments}, nil
+		})
+
 	resourcePlan := compute.Map(
 		tasks.Action("resource.plan-deployment").
 			Scope(stack.AllPackageList().PackageNames()...),
 		compute.Inputs().
 			Indigestible("secrets", secrets).
-			Computable("stackAndDefs", stackDef).
-			Computable("prepared", preparedComp).
-			Computable("ingressFragments", buildAssets.IngressFragments),
+			Computable("stackWithIngress", stackWithIngress).
+			Computable("prepared", preparedComp),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (*resourcePlan, error) {
-			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+			stackWithIngress := compute.MustGetDepValue(deps, stackWithIngress, "stackWithIngress")
 			prepared := compute.MustGetDepValue(deps, preparedComp, "prepared")
-			ingressFragments := compute.MustGetDepValue(deps, buildAssets.IngressFragments, "ingressFragments")
-
-			stackWithIngress := &planning.StackWithIngress{Stack: *stackAndDefs.Stack, IngressFragments: ingressFragments}
 
 			var rp resourceList
-			for _, ps := range stackAndDefs.Stack.Servers {
+			for _, ps := range stackWithIngress.Servers {
 				if err := rp.checkAddOwnedResources(ctx, stackWithIngress, ps.Server, ps.Resources); err != nil {
 					return nil, err
 				}
@@ -304,15 +277,13 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			Computable("resourcePlan", resourcePlan).
 			Computable("images", imageIDs).
 			Computable("stackAndDefs", stackDef).
-			Computable("ingressFragments", buildAssets.IngressFragments),
+			Computable("stackWithIngress", stackWithIngress),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (runtime.DeploymentSpec, error) {
 			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
-			ingressFragments := compute.MustGetDepValue(deps, buildAssets.IngressFragments, "ingressFragments")
-
-			stackWithIngress := &planning.StackWithIngress{Stack: *stackAndDefs.Stack, IngressFragments: ingressFragments}
+			stackWithIngress := compute.MustGetDepValue(deps, stackWithIngress, "stackWithIngress")
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
@@ -578,13 +549,13 @@ func checkExtend(sidecars []runtime.SidecarRunOpts, cext *schema.ContainerExtens
 }
 
 type serverImagesOpts struct {
-	buildAssets assets.AvailableBuildAssets
-	def         compute.Computable[*handlerResult]
-	wantConfig  bool
+	IngressFragments    compute.Computable[*ComputeIngressResult]
+	ProvisionResult     compute.Computable[*handlerResult]
+	GenerateConfigImage bool
 }
 
 func (opts serverImagesOpts) computedOnly() compute.Computable[*schema.ComputedConfigurations] {
-	return compute.Transform("return computed", opts.def, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
+	return compute.Transform("return computed", opts.ProvisionResult, func(_ context.Context, h *handlerResult) (*schema.ComputedConfigurations, error) {
 		return h.MergedComputedConfigurations(), nil
 	})
 }
@@ -606,7 +577,7 @@ func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.P
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, opts.buildAssets, srv.Server, stack.Focus.Has(srv.PackageName()))
+			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, makeBuildAssets(opts.IngressFragments), srv.Server, stack.Focus.Has(srv.PackageName()))
 		}
 		if err != nil {
 			return nil, err
@@ -630,7 +601,7 @@ func prepareServerImages(ctx context.Context, env cfg.Context, planner runtime.P
 		// source configuration files used to compute a startup configuration, so it can be re-
 		// evaluated on a need basis.
 		pctx := srv.Server.SealedContext()
-		if stack.Focus.Has(srv.PackageName()) && !pctx.Environment().Ephemeral && opts.def != nil && opts.wantConfig {
+		if stack.Focus.Has(srv.PackageName()) && !pctx.Environment().Ephemeral && opts.ProvisionResult != nil && opts.GenerateConfigImage {
 			configImage := prepareConfigImage(ctx, env, planner, srv.Server, stack, opts.computedOnly())
 			name := registry.AllocateName(srv.PackageName().String())
 			images.Config = oci.PublishImage(name, configImage).ImageID()
@@ -760,9 +731,9 @@ func ComputeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 	ingressFragments := computeIngressWithHandlerResult(env, planner, stack, def)
 
 	_, images, err := computeStackAndImages(ctx, env, planner, planner.Registry(), stack, serverImagesOpts{
-		def:         def,
-		buildAssets: makeBuildAssets(ingressFragments),
-		wantConfig:  false,
+		ProvisionResult:     def,
+		IngressFragments:    ingressFragments,
+		GenerateConfigImage: false,
 	})
 	return stack, images, err
 }
@@ -773,7 +744,7 @@ func computeStackAndImages(ctx context.Context, env cfg.Context, planner runtime
 		return nil, nil, err
 	}
 
-	sidecarImages, err := prepareSidecarAndInitImages(ctx, planner, registry, stack, opts.buildAssets)
+	sidecarImages, err := prepareSidecarAndInitImages(ctx, planner, registry, stack, makeBuildAssets(opts.IngressFragments))
 	if err != nil {
 		return nil, nil, err
 	}
