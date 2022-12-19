@@ -261,20 +261,22 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			prepared := compute.MustGetDepValue(deps, preparedComp, "prepared")
 			ingressFragments := compute.MustGetDepValue(deps, buildAssets.IngressFragments, "ingressFragments")
 
+			stackWithIngress := &planning.StackWithIngress{Stack: *stackAndDefs.Stack, IngressFragments: ingressFragments}
+
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
-				if err := rp.checkAddOwnedResources(ctx, stackAndDefs.Stack, ps.Server, ps.Resources); err != nil {
+				if err := rp.checkAddOwnedResources(ctx, stackWithIngress, ps.Server, ps.Resources); err != nil {
 					return nil, err
 				}
 			}
 
 			for _, p := range prepared {
-				if err := rp.checkAddOwnedResources(ctx, stackAndDefs.Stack, p.Value, p.Value.Resources); err != nil {
+				if err := rp.checkAddOwnedResources(ctx, stackWithIngress, p.Value, p.Value.Resources); err != nil {
 					return nil, err
 				}
 			}
 
-			return planResources(ctx, secrets, planner, registry, stackAndDefs.Stack, rp, ingressFragments)
+			return planResources(ctx, secrets, planner, registry, stackWithIngress, rp)
 		})
 
 	imageInputs := compute.Inputs().Indigestible("packages", packages)
@@ -310,9 +312,11 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 			ingressFragments := compute.MustGetDepValue(deps, buildAssets.IngressFragments, "ingressFragments")
 
+			stackWithIngress := &planning.StackWithIngress{Stack: *stackAndDefs.Stack, IngressFragments: ingressFragments}
+
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env, secrets, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan, ingressFragments)
+			return planDeployment(ctx, env, secrets, planner, stackWithIngress, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -355,7 +359,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSource, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan, ingressFragments []*schema.IngressFragment) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSource, planner runtime.Planner, stack *planning.StackWithIngress, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverDeployables []runtime.DeployableSpec
@@ -387,7 +391,7 @@ func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSou
 
 		var deployable runtime.DeployableSpec
 
-		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary, ingressFragments)
+		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary)
 		if err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
@@ -415,7 +419,7 @@ func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSou
 			}
 		}
 
-		if err := prepareRunOpts(ctx, stack, srv.Server, resolved, &deployable); err != nil {
+		if err := prepareRunOpts(ctx, &stack.Stack, srv.Server, resolved, &deployable); err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
@@ -480,7 +484,7 @@ func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSou
 		for _, env := range allEnv {
 			switch {
 			case env.FromServiceEndpoint != nil:
-				if err := validateServiceRef(env.FromServiceEndpoint, stack); err != nil {
+				if err := validateServiceRef(env.FromServiceEndpoint, &stack.Stack); err != nil {
 					return runtime.DeploymentSpec{}, fnerrors.AttachLocation(srv.Location, err)
 				}
 			}

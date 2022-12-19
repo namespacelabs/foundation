@@ -50,9 +50,10 @@ type serverStack interface {
 	GetServerProto(srv schema.PackageName) (*schema.Server, bool)
 	GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bool)
 	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
+	GetIngressesForService(endpointOwner string, serviceName string) []*schema.IngressFragment
 }
 
-func planResources(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList, ingressFragments []*schema.IngressFragment) (*resourcePlan, error) {
+func planResources(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -124,7 +125,7 @@ func planResources(ctx context.Context, secs runtime.SecretSource, planner runti
 
 				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 					ResourceInstanceId: resource.ID,
-					ServerConfig:       makeServerConfig(stack, target, sealedCtx.Environment(), ingressFragments),
+					ServerConfig:       makeServerConfig(stack, target, sealedCtx.Environment()),
 					Deployable:         runtime.DeployableToProto(target),
 				})
 				if err != nil {

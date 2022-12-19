@@ -76,7 +76,7 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 	registry := driver.Planner.Registry()
 
 	sutServers := driver.Stack.Focus.PackageNamesAsString()
-	runtimeConfig, err := deploy.TestStackToRuntimeConfig(driver.Stack, sutServers, nil /* ingressFragments */)
+	runtimeConfig, err := deploy.TestStackToRuntimeConfig(&planning.StackWithIngress{Stack: *driver.Stack}, sutServers)
 	if err != nil {
 		return deploy.PreparedDeployable{}, err
 	}

@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-func serverToRuntimeConfig(stack serverStack, ps planning.PlannedServer, serverImage oci.ImageID, ingressFragments []*schema.IngressFragment) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack serverStack, ps planning.PlannedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	srv := ps.Server
 	env := srv.SealedContext().Environment()
 	config := &runtime.RuntimeConfig{
 		Environment: makeEnv(env),
-		Current:     makeServerConfig(stack, srv.Proto(), env, ingressFragments),
+		Current:     makeServerConfig(stack, srv.Proto(), env),
 	}
 
 	config.Current.ImageRef = serverImage.String()
@@ -35,13 +35,13 @@ func serverToRuntimeConfig(stack serverStack, ps planning.PlannedServer, serverI
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
 
-		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref, env, ingressFragments))
+		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref, env))
 	}
 
 	return config, nil
 }
 
-func TestStackToRuntimeConfig(stack *planning.Stack, sutServers []string, ingressFragments []*schema.IngressFragment) (*runtime.RuntimeConfig, error) {
+func TestStackToRuntimeConfig(stack *planning.StackWithIngress, sutServers []string) (*runtime.RuntimeConfig, error) {
 	if len(sutServers) == 0 {
 		return nil, fnerrors.InternalError("no servers to test")
 	}
@@ -56,8 +56,7 @@ func TestStackToRuntimeConfig(stack *planning.Stack, sutServers []string, ingres
 		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
-
-		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref, env, ingressFragments))
+		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref, env))
 	}
 
 	return config, nil
@@ -77,7 +76,7 @@ func makeEnv(env *schema.Environment) *runtime.RuntimeConfig_Environment {
 	return res
 }
 
-func makeServerConfig(stack serverStack, server *schema.Server, env *schema.Environment, ingressFragments []*schema.IngressFragment) *runtime.Server {
+func makeServerConfig(stack serverStack, server *schema.Server, env *schema.Environment) *runtime.Server {
 	current := &runtime.Server{
 		PackageName: server.PackageName,
 		ModuleName:  server.ModuleName,
@@ -97,7 +96,7 @@ func makeServerConfig(stack serverStack, server *schema.Server, env *schema.Envi
 			Owner:    endpoint.EndpointOwner,
 			Name:     endpoint.ServiceName,
 			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),
-			Ingress:  makeServiceIngress(endpoint, env, ingressFragments),
+			Ingress:  makeServiceIngress(stack, endpoint, env),
 		})
 	}
 
@@ -112,28 +111,14 @@ func makePort(service *schema.Server_ServiceSpec) *runtime.Server_Port {
 }
 
 // TODO: consolidate with "resolveBackend" from Node.js build
-func makeServiceIngress(endpoint *schema.Endpoint, env *schema.Environment, ingressFragments []*schema.IngressFragment) *runtime.Server_Ingress {
-	var matching []*schema.IngressFragment
-
-	for _, fragment := range ingressFragments {
-		if fragment.GetOwner() != endpoint.EndpointOwner {
-			continue
-		}
-
-		if fragment.GetEndpoint().GetServiceName() != endpoint.ServiceName {
-			continue
-		}
-
-		matching = append(matching, fragment)
-	}
-
+func makeServiceIngress(stack serverStack, endpoint *schema.Endpoint, env *schema.Environment) *runtime.Server_Ingress {
 	// There is often no ingress in tests so we use in-cluster addresses.
 	// In the future we could allow the user to annotate domains which would
 	// be accessible from the test environment.
 	useInClusterAddresses := env.Purpose == schema.Environment_TESTING
 
 	ingress := &runtime.Server_Ingress{}
-	for _, fragment := range matching {
+	for _, fragment := range stack.GetIngressesForService(endpoint.EndpointOwner, endpoint.ServiceName) {
 		domain := &runtime.Server_Ingress_Domain{}
 
 		if useInClusterAddresses {
