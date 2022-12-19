@@ -193,6 +193,7 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 	}
 
 	var commonArgs, initArgs []string
+	var initEnv []*schema.BinaryConfig_EnvEntry
 	if useLocalstack(req.Env) {
 		var localstackService string
 		for _, endpoint := range req.Stack.Endpoint {
@@ -221,13 +222,9 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 			return fmt.Errorf("minio is required, but no endpoint is present that exports %q in %q", minioEndpoint, service)
 		}
 
-		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/storage/minio/creds") {
-			if secret.Name == "root-password" {
-				initArgs = append(initArgs, fmt.Sprintf("--minio_password_file=%s", secret.FromPath))
-			} else if secret.Name == "root-user" {
-				initArgs = append(initArgs, fmt.Sprintf("--minio_user_file=%s", secret.FromPath))
-			}
-		}
+		initEnv = append(initEnv,
+			&schema.BinaryConfig_EnvEntry{Name: "MINIO_USER", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-user")},
+			&schema.BinaryConfig_EnvEntry{Name: "MINIO_PASSWORD", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-password")})
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useMinioFlag, service))
 	} else {
 		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
@@ -243,7 +240,7 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 	out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
 		ExtendContainer: []*schema.ContainerExtension{
 			{Args: commonArgs},
-			{BinaryRef: initContainer, Args: initArgs},
+			{BinaryRef: initContainer, Args: initArgs, Env: initEnv},
 		},
 	})
 

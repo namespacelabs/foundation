@@ -6,16 +6,9 @@ package creds
 import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/secrets"
 )
 
-// Dependencies that are instantiated once for the lifetime of the extension.
-type ExtensionDeps struct {
-	RootPassword *secrets.Value
-	User         *secrets.Value
-}
-
-type _checkProvideCreds func(context.Context, *CredsRequest, ExtensionDeps) (*Creds, error)
+type _checkProvideCreds func(context.Context, *CredsRequest) (*Creds, error)
 
 var _ _checkProvideCreds = ProvideCreds
 
@@ -23,27 +16,4 @@ var (
 	Package__cld7nf = &core.Package{
 		PackageName: "namespacelabs.dev/foundation/universe/storage/minio/creds",
 	}
-
-	Provider__cld7nf = core.Provider{
-		Package:     Package__cld7nf,
-		Instantiate: makeDeps__cld7nf,
-	}
 )
-
-func makeDeps__cld7nf(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
-	var deps ExtensionDeps
-
-	// name: "root-password"
-	// experimental_mount_as_env_var: "MINIO_ROOT_PASSWORD"
-	if deps.RootPassword, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cg1yb290LXBhc3N3b3JkMhNNSU5JT19ST09UX1BBU1NXT1JE", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
-
-	// name: "root-user"
-	// experimental_mount_as_env_var: "MINIO_ROOT_USER"
-	if deps.User, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("Cglyb290LXVzZXIyD01JTklPX1JPT1RfVVNFUg==", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
-
-	return deps, nil
-}

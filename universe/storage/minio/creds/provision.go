@@ -6,12 +6,34 @@ package creds
 
 import (
 	"context"
+	"fmt"
+
+	"namespacelabs.dev/foundation/framework/resources"
 )
 
-func ProvideCreds(ctx context.Context, _ *CredsRequest, deps ExtensionDeps) (*Creds, error) {
-	creds := &Creds{
-		User:     string(deps.User.MustValue()),
-		Password: string(deps.RootPassword.MustValue()),
+const (
+	userResourceRef     = "namespacelabs.dev/foundation/universe/storage/minio/creds:root-user"
+	passwordResourceRef = "namespacelabs.dev/foundation/universe/storage/minio/creds:root-password"
+)
+
+func ProvideCreds(ctx context.Context, _ *CredsRequest) (*Creds, error) {
+	rs, err := resources.LoadResources()
+	if err != nil {
+		return nil, err
 	}
-	return creds, nil
+
+	user, err := resources.ReadSecret(rs, userResourceRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Minio user: %w", err)
+	}
+
+	password, err := resources.ReadSecret(rs, passwordResourceRef)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Minio password: %w", err)
+	}
+
+	return &Creds{
+		User:     string(user),
+		Password: string(password),
+	}, nil
 }

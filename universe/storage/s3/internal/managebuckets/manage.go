@@ -20,8 +20,6 @@ import (
 
 var (
 	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
-	minioUserFile      = flag.String("minio_user_file", "", "Path to the AWS credentials file.")
-	minioPasswordFile  = flag.String("minio_password_file", "", "Path to the AWS credentials file.")
 )
 
 func main() {
@@ -69,20 +67,13 @@ func apply(ctx context.Context) error {
 }
 
 func getMinioCreds() (*minio.Creds, error) {
-	if *minioPasswordFile != "" && *minioUserFile != "" {
-		pass, err := os.ReadFile(*minioPasswordFile)
-		if err != nil {
-			return nil, err
-		}
-		user, err := os.ReadFile(*minioUserFile)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Printf("Connecting to minio.")
+	minioUser, minioUserOk := os.LookupEnv("MINIO_USER")
+	minioPassword, minioPasswordOk := os.LookupEnv("MINIO_PASSWORD")
+	if minioUserOk && minioPasswordOk {
+		log.Printf("Connecting to minio via new secrets.")
 		return &minio.Creds{
-			User:     string(user),
-			Password: string(pass),
+			User:     minioUser,
+			Password: minioPassword,
 		}, nil
 	}
 

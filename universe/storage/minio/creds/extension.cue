@@ -2,7 +2,6 @@ import (
 	"encoding/json"
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
-	"namespacelabs.dev/foundation/std/secrets"
 )
 
 $providerProto: inputs.#Proto & {
@@ -10,24 +9,17 @@ $providerProto: inputs.#Proto & {
 }
 
 extension: fn.#Extension & {
-	instantiate: {
-		user: secrets.#Exports.Secret & {
-			name:                      "root-user"
-			experimentalMountAsEnvVar: "MINIO_ROOT_USER"
-			generate: {
-				randomByteCount: 8
-				format:          "FORMAT_BASE32"
-			}
+	resources: {
+		"root-user": {
+			kind:  "namespacelabs.dev/foundation/library/runtime:Secret"
+			input: ":root-user"
 		}
-		root_password: secrets.#Exports.Secret & {
-			name:                      "root-password"
-			experimentalMountAsEnvVar: "MINIO_ROOT_PASSWORD"
-			generate: {
-				randomByteCount: 16
-				format:          "FORMAT_BASE32"
-			}
+		"root-password": {
+			kind:  "namespacelabs.dev/foundation/library/runtime:Secret"
+			input: ":root-password"
 		}
 	}
+
 	provides: {
 		Creds: {
 			input: $providerProto.types.CredsRequest
@@ -35,6 +27,25 @@ extension: fn.#Extension & {
 			availableIn: {
 				go: type: "*Creds"
 			}
+		}
+	}
+}
+
+secrets: {
+	"root-user": {
+		description: "MinIO root user."
+		generate: {
+			uniqueId:        "root-user"
+			randomByteCount: 8
+			format:          "FORMAT_BASE32"
+		}
+	}
+	"root-password": {
+		description: "MinIO root user password."
+		generate: {
+			uniqueId:        "root-password"
+			randomByteCount: 16
+			format:          "FORMAT_BASE32"
 		}
 	}
 }

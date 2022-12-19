@@ -44,12 +44,7 @@ func makeDeps__4pkegf(ctx context.Context, di core.Dependencies) (_ interface{},
 		return nil, err
 	}
 
-	if err := di.Instantiate(ctx, creds.Provider__cld7nf, func(ctx context.Context, v interface{}) (err error) {
-		if deps.MinioCreds, err = creds.ProvideCreds(ctx, nil, v.(creds.ExtensionDeps)); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
+	if deps.MinioCreds, err = creds.ProvideCreds(ctx, nil); err != nil {
 		return nil, err
 	}
 
