@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -31,7 +32,7 @@ type cueServer struct {
 	Import      []string                   `json:"import"`
 	Services    map[string]cueServiceSpec  `json:"service"`
 	Ingress     map[string]cueServiceSpec  `json:"ingress"`
-	StaticEnv   map[string]string          `json:"env"`
+	Env         *args.EnvMap               `json:"env"`
 	Binary      interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 
 	// XXX this should be somewhere else.
@@ -131,18 +132,20 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	out.Import = bits.Import
 	out.RunByDefault = runByDefault(bits)
 
-	for k, v := range bits.StaticEnv {
-		out.MainContainer.Env = append(out.MainContainer.Env, &schema.BinaryConfig_EnvEntry{
-			Name: k, Value: v,
-		})
+	env, err := bits.Env.Parsed(loc.PackageName)
+	if err != nil {
+		return nil, nil, err
 	}
-	sort.Slice(out.MainContainer.Env, func(i, j int) bool {
-		x, y := out.MainContainer.Env[i].Name, out.MainContainer.Env[j].Name
+
+	sort.Slice(env, func(i, j int) bool {
+		x, y := env[i].Name, env[j].Name
 		if x == y {
-			return strings.Compare(out.MainContainer.Env[i].Value, out.MainContainer.Env[j].Value) < 0
+			return strings.Compare(env[i].Value, env[j].Value) < 0
 		}
 		return strings.Compare(x, y) < 0
 	})
+
+	out.MainContainer.Env = env
 
 	var webServices schema.PackageList
 	for _, entry := range bits.URLMap {

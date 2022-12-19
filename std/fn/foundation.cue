@@ -116,7 +116,7 @@ _#Node: {
 	}
 
 	// XXX temporary
-	env: [string]: string
+	env: [string]: string | {fromSecret: string}
 
 	urlmap: [...#UrlMapEntry]
 
