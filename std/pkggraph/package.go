@@ -97,8 +97,9 @@ type ResourceProvider struct {
 }
 
 type ExpectedResourceInstance struct {
-	Name  *schema.PackageRef
-	Class ResourceClass
+	Name            *schema.PackageRef
+	Class           ResourceClass
+	DefaultResource *schema.PackageRef
 }
 
 func (rc ResourceClass) PackageName() schema.PackageName {

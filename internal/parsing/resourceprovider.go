@@ -68,10 +68,22 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pkg *
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			rp.ResourceInputs = append(rp.ResourceInputs, pkggraph.ExpectedResourceInstance{
+			x := pkggraph.ExpectedResourceInstance{
 				Name:  input.Name,
 				Class: *class,
-			})
+			}
+
+			if x.DefaultResource != nil {
+				if input.DefaultResource.PackageName != pkg.PackageName().String() {
+					if _, err := pl.LoadByName(ctx, schema.PackageName(input.DefaultResource.PackageName)); err != nil {
+						return nil, err
+					}
+				}
+
+				x.DefaultResource = input.DefaultResource
+			}
+
+			rp.ResourceInputs = append(rp.ResourceInputs, x)
 		}
 	}
 

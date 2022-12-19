@@ -8,7 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
+	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -105,41 +107,57 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		}
 	}
 
-	if len(instance.InputResource) > 0 {
-		if ri.Provider == nil {
-			return nil, fnerrors.NewWithLocation(loc, "input resources have been set, without a provider")
-		}
+	index := map[string]*schema.ResourceInstance_InputResource{}
 
-		var resErrs []error
-		for _, input := range instance.InputResource {
-			expected := ri.Provider.LookupExpected(input.Name)
+	for _, input := range instance.InputResource {
+		index[input.Name.Canonical()] = input
+	}
 
-			if expected == nil {
-				resErrs = append(resErrs, fnerrors.BadInputError("resource %q is provided but not required", input.Name))
-			} else {
-				class := expected.Class
-				resPkg, err := pl.LoadByName(ctx, input.ResourceRef.AsPackageName())
-				if err != nil {
-					resErrs = append(resErrs, fnerrors.BadInputError("resource %q failed to load package: %w", input.Name, err))
+	var errs []error
+
+	if ri.Provider != nil {
+		for _, expected := range ri.Provider.ResourceInputs {
+			value, ok := index[expected.Name.Canonical()]
+			var resourceRef *schema.PackageRef
+			if !ok {
+				if expected.DefaultResource != nil {
+					resourceRef = expected.DefaultResource
 				} else {
-					instance := resPkg.LookupResourceInstance(input.ResourceRef.Name)
-					if instance == nil {
-						resErrs = append(resErrs, fnerrors.BadInputError("resource %q refers to non-existing resource %q", input.Name, input.ResourceRef.Canonical()))
-					} else if instance.Spec.Class.Ref.Canonical() != class.Ref.Canonical() {
-						resErrs = append(resErrs, fnerrors.BadInputError("resource %q is of class %q, expected %q", input.Name, instance.Spec.Class.Ref.Canonical(), class.Ref.Canonical()))
-					} else {
-						ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
-							ResourceRef: input.Name,
-							Spec:        instance.Spec,
-						})
-					}
+					errs = append(errs, fnerrors.New("resource input for %q is missing", expected.Name.Canonical()))
+					continue
+				}
+			} else {
+				resourceRef = value.ResourceRef
+				delete(index, expected.Name.Canonical())
+			}
+
+			name := expected.Name.Canonical()
+			resPkg, err := pl.LoadByName(ctx, resourceRef.AsPackageName())
+			if err != nil {
+				errs = append(errs, fnerrors.BadInputError("resource %q failed to load package: %w", name, err))
+			} else {
+				instance := resPkg.LookupResourceInstance(resourceRef.Name)
+				if instance == nil {
+					errs = append(errs, fnerrors.BadInputError("resource %q refers to non-existing resource %q", name, resourceRef.Canonical()))
+				} else if instance.Spec.Class.Ref.Canonical() != expected.Class.Ref.Canonical() {
+					errs = append(errs, fnerrors.BadInputError("resource %q is of class %q, expected %q", name,
+						instance.Spec.Class.Ref.Canonical(), expected.Class.Ref.Canonical()))
+				} else {
+					ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
+						ResourceRef: expected.Name,
+						Spec:        instance.Spec,
+					})
 				}
 			}
 		}
+	}
 
-		if err := multierr.New(resErrs...); err != nil {
-			return nil, err
-		}
+	if len(index) > 0 {
+		errs = append(errs, fnerrors.New("the following specified resource values are not required: %s", strings.Join(maps.Keys(index), ", ")))
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
 	}
 
 	return &pkggraph.ResourceInstance{

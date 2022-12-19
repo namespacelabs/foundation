@@ -68,8 +68,9 @@ message ResourceProvider {
     repeated string     available_packages = 7;  // Packages that an invocation may reference.
 
     message ResourceInput {
-        PackageRef name  = 1;
-        PackageRef class = 2;
+        PackageRef name             = 1;
+        PackageRef class            = 2;
+        PackageRef default_resource = 3;
     }
 }
 

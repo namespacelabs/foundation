@@ -3,8 +3,11 @@ providers: {
 		initializedWith: "namespacelabs.dev/foundation/library/oss/postgres/prepare/database"
 
 		inputs: {
-			// TODO define default
-			"cluster": "namespacelabs.dev/foundation/library/database/postgres:Cluster"
+			cluster: "namespacelabs.dev/foundation/library/database/postgres:Cluster"
+		}
+
+		defaults: {
+			cluster: ":colocated"
 		}
 	}
 

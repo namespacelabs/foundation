@@ -6,7 +6,9 @@ package cuefrontend
 
 import (
 	"context"
+	"strings"
 
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -18,8 +20,9 @@ import (
 )
 
 type cueResourceProvider struct {
-	ResourceInputs map[string]string `json:"inputs"` // Key: name, Value: serialized class ref
-	Intent         *cueResourceType  `json:"intent,omitempty"`
+	ResourceInputs   map[string]string `json:"inputs"`   // Key: name, Value: class reference (package ref)
+	ResourceDefaults map[string]string `json:"defaults"` // Key: name, Value: resource reference (package ref)
+	Intent           *cueResourceType  `json:"intent,omitempty"`
 
 	AvailableClasses  []string `json:"availableClasses"`
 	AvailablePackages []string `json:"availablePackages"`
@@ -84,16 +87,34 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	}
 
 	var errs []error
+	unusedDefaults := maps.Clone(bits.ResourceDefaults)
 	for key, value := range bits.ResourceInputs {
 		class, err := schema.ParsePackageRef(pkg.PackageName(), value)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			rp.ResourceInput = append(rp.ResourceInput, &schema.ResourceProvider_ResourceInput{
+			input := &schema.ResourceProvider_ResourceInput{
 				Name:  schema.MakePackageRef(pkg.PackageName(), key),
 				Class: class,
-			})
+			}
+
+			if def, ok := bits.ResourceDefaults[key]; ok {
+				parsed, err := schema.ParsePackageRef(pkg.PackageName(), def)
+				if err != nil {
+					errs = append(errs, err)
+				} else {
+					input.DefaultResource = parsed
+				}
+			}
+
+			rp.ResourceInput = append(rp.ResourceInput, input)
+
+			delete(unusedDefaults, key)
 		}
+	}
+
+	if len(unusedDefaults) > 0 {
+		errs = append(errs, fnerrors.New("the following defaults are unused: %s", strings.Join(maps.Keys(unusedDefaults), ", ")))
 	}
 
 	if err := multierr.New(errs...); err != nil {
