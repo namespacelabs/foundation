@@ -52,11 +52,11 @@ message Server {
 
     message Ingress {
         repeated Domain domain = 4;
-    }
 
-    message Domain {
-        // Includes the protocol, e.g. https://, and a port if needed.
-        string base_url = 1;
+        message Domain {
+            // Includes the protocol, e.g. https://, and a port if needed.
+            string base_url = 1;
+        }
     }
 }
 
