@@ -44,9 +44,19 @@ message Server {
     }
 
     message Service {
-        string owner    = 1;  // Package name.
-        string name     = 2;  // Scoped to package name.
-        string endpoint = 3;  // E.g. hostname:port.
+        string  owner    = 1;  // Package name.
+        string  name     = 2;  // Scoped to package name.
+        string  endpoint = 3;  // E.g. hostname:port.
+        Ingress ingress  = 4;  // Computed ingress for this service.
+    }
+
+    message Ingress {
+        repeated Domain domain = 4;
+
+        message Domain {
+            // Includes the protocol, e.g. https://, and a port if needed.
+            string base_url = 1;
+        }
     }
 }
 
