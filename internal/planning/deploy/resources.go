@@ -52,7 +52,7 @@ type serverStack interface {
 	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
 }
 
-func planResources(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList, ingressFragments []*schema.IngressFragment) (*resourcePlan, error) {
 	platforms, err := planner.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func planResources(ctx context.Context, secs runtime.SecretSource, planner runti
 
 				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 					ResourceInstanceId: resource.ID,
-					ServerConfig:       makeServerConfig(stack, target),
+					ServerConfig:       makeServerConfig(stack, target, sealedCtx.Environment(), ingressFragments),
 					Deployable:         runtime.DeployableToProto(target),
 				})
 				if err != nil {
