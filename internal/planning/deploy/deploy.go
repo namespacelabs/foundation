@@ -253,11 +253,13 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		compute.Inputs().
 			Indigestible("secrets", secrets).
 			Computable("stackAndDefs", stackDef).
-			Computable("prepared", preparedComp),
+			Computable("prepared", preparedComp).
+			Computable("ingressFragments", buildAssets.IngressFragments),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (*resourcePlan, error) {
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
 			prepared := compute.MustGetDepValue(deps, preparedComp, "prepared")
+			ingressFragments := compute.MustGetDepValue(deps, buildAssets.IngressFragments, "ingressFragments")
 
 			var rp resourceList
 			for _, ps := range stackAndDefs.Stack.Servers {
@@ -272,7 +274,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 				}
 			}
 
-			return planResources(ctx, secrets, planner, registry, stackAndDefs.Stack, rp)
+			return planResources(ctx, secrets, planner, registry, stackAndDefs.Stack, rp, ingressFragments)
 		})
 
 	imageInputs := compute.Inputs().Indigestible("packages", packages)
@@ -299,16 +301,18 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 			Proto("env", env.Environment()).
 			Computable("resourcePlan", resourcePlan).
 			Computable("images", imageIDs).
-			Computable("stackAndDefs", stackDef),
+			Computable("stackAndDefs", stackDef).
+			Computable("ingressFragments", buildAssets.IngressFragments),
 		compute.Output{},
 		func(ctx context.Context, deps compute.Resolved) (runtime.DeploymentSpec, error) {
 			resourcePlan := compute.MustGetDepValue(deps, resourcePlan, "resourcePlan")
 			imageIDs := compute.MustGetDepValue(deps, imageIDs, "images")
 			stackAndDefs := compute.MustGetDepValue(deps, stackDef, "stackAndDefs")
+			ingressFragments := compute.MustGetDepValue(deps, buildAssets.IngressFragments, "ingressFragments")
 
 			// And finally compute the startup plan of each server in the stack, passing in the id of the
 			// images we just built.
-			return planDeployment(ctx, env, secrets, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan)
+			return planDeployment(ctx, env, secrets, planner, stackAndDefs.Stack, stackAndDefs.ProvisionOutput, imageIDs, resourcePlan, ingressFragments)
 		})
 
 	return compute.Map(tasks.Action("plan.combine"), compute.Inputs().
@@ -351,7 +355,7 @@ func prepareBuildAndDeployment(ctx context.Context, env cfg.Context, planner run
 		}), nil
 }
 
-func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSource, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan) (runtime.DeploymentSpec, error) {
+func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSource, planner runtime.Planner, stack *planning.Stack, outputs map[schema.PackageName]*provisionOutput, imageIDs map[schema.PackageName]ResolvedServerImages, rp *resourcePlan, ingressFragments []*schema.IngressFragment) (runtime.DeploymentSpec, error) {
 	// And finally compute the startup plan of each server in the stack, passing in the id of the
 	// images we just built.
 	var serverDeployables []runtime.DeployableSpec
@@ -383,7 +387,7 @@ func planDeployment(ctx context.Context, env cfg.Context, secs runtime.SecretSou
 
 		var deployable runtime.DeployableSpec
 
-		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary)
+		rt, err := serverToRuntimeConfig(stack, srv, resolved.Binary, ingressFragments)
 		if err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
