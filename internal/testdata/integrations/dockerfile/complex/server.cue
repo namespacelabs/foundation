@@ -11,6 +11,7 @@ server: {
 			resource: "namespacelabs.dev/foundation/internal/testdata/integrations/resources/instances:test1"
 			fieldRef: "url"
 		}
+		INGRESS: fromServiceIngress: ":webapi"
 	}
 
 	services: {
@@ -42,6 +43,7 @@ tests: {
 		integration: shellscript: "test/test.sh"
 		env: {
 			ENDPOINT: fromServiceEndpoint: ":webapi"
+			INGRESS: fromServiceIngress:   ":webapi"
 		}
 	}
 }

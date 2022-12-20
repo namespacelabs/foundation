@@ -15,6 +15,8 @@ const nsResourcesRaw = fs.readFileSync("/namespace/config/resources.json");
 const nsResources = JSON.parse(nsResourcesRaw);
 console.log(`Namespace resources: ${JSON.stringify(nsResources, null, 2)}`);
 
+console.log(`Ingress base url: ${process.env.INGRESS}`);
+
 // Constants
 const PORT = nsConfig.current.port.find((s) => s.name === "webapi").port;
 const HOST = "0.0.0.0";
