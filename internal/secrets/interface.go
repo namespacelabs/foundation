@@ -12,16 +12,22 @@ import (
 )
 
 type SecretsSource interface {
-	Load(context.Context, pkggraph.Modules, *schema.PackageRef, *SecretRequest_ServerRef) (*schema.FileContents, error)
+	Load(context.Context, pkggraph.Modules, *SecretLoadRequest) (*schema.SecretResult, error)
 	MissingError(*schema.PackageRef, *schema.SecretSpec, schema.PackageName) error
 }
 
-type SecretRequest_ServerRef struct {
+type SecretLoadRequest struct {
+	SecretRef          *schema.PackageRef
+	Server             *SecretLoadRequest_ServerRef
+	ExternalRefTypeUrl []string
+}
+
+type SecretLoadRequest_ServerRef struct {
 	PackageName schema.PackageName
 	ModuleName  string
 	RelPath     string // Relative path within the module.
 }
 
 type GroundedSecrets interface {
-	Get(context.Context, *schema.PackageRef) (*schema.SecretResult, error)
+	Get(ctx context.Context, secretRef *schema.PackageRef, externalRefTypeUrl ...string) (*schema.SecretResult, error)
 }

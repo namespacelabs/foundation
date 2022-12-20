@@ -50,7 +50,7 @@ func NewLocalSecrets(env SecretsContext) (secrets.SecretsSource, error) {
 	return &localSecrets{keyDir: keyDir, workspaceModule: env.Workspace().ModuleName(), env: env.Environment(), cache: map[string]*Bundle{}}, nil
 }
 
-func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, ref *schema.PackageRef, server *secrets.SecretRequest_ServerRef) (*schema.FileContents, error) {
+func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	// Ordered by lookup order.
 	var bundles []*Bundle
 
@@ -62,13 +62,13 @@ func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, ref *
 
 	lookup := []string{l.workspaceModule}
 
-	if server != nil && server.ModuleName != "" {
-		if serverSecrets, err := l.loadSecretsFor(ctx, modules, server.ModuleName, filepath.Join(server.RelPath, ServerBundleName)); err != nil {
+	if req.Server != nil && req.Server.ModuleName != "" {
+		if serverSecrets, err := l.loadSecretsFor(ctx, modules, req.Server.ModuleName, filepath.Join(req.Server.RelPath, ServerBundleName)); err != nil {
 			return nil, err
 		} else if serverSecrets != nil {
 			bundles = append(bundles, serverSecrets)
 		}
-		lookup = append(lookup, server.ModuleName)
+		lookup = append(lookup, req.Server.ModuleName)
 	}
 
 	for _, moduleName := range lookup {
@@ -79,7 +79,7 @@ func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, ref *
 		}
 	}
 
-	return lookupSecret(ctx, l.env, ref, bundles...)
+	return lookupSecret(ctx, l.env, req.SecretRef, bundles...)
 }
 
 func (l *localSecrets) MissingError(missing *schema.PackageRef, missingSpec *schema.SecretSpec, missingServer schema.PackageName) error {
@@ -140,7 +140,7 @@ func loadSecretsFile(ctx context.Context, keyDir fs.FS, name string, fsys fs.FS,
 	return LoadBundle(ctx, keyDir, contents)
 }
 
-func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, lookup ...*Bundle) (*schema.FileContents, error) {
+func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schema.PackageRef, lookup ...*Bundle) (*schema.SecretResult, error) {
 	key := &ValueKey{PackageName: secretRef.PackageName, Key: secretRef.Name, EnvironmentName: env.Name}
 
 	for _, src := range lookup {
@@ -150,7 +150,7 @@ func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schem
 		}
 
 		if value != nil {
-			return &schema.FileContents{Contents: value, Utf8: true}, nil
+			return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value, Utf8: true}}, nil
 		}
 	}
 

@@ -160,10 +160,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		return err
 	}
 
-	name := kubedef.ServerCtrName(deployable)
-	containers := []string{name}
+	ctrName := kubedef.ServerCtrName(deployable)
+	containers := []string{ctrName}
 	mainContainer := applycorev1.Container().
-		WithName(name).
+		WithName(ctrName).
 		WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 		WithImage(deployable.MainContainer.Image.RepoAndDigest()).
 		WithArgs(deployable.MainContainer.Args...).
@@ -508,12 +508,13 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 						return err
 					}
 
-					if resource.Value != nil {
-						secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource.Value, seccol.items).WithPath(entry.Path))
+					if resource.FileContents != nil {
+						secretItems = append(secretItems, makeConfigEntry(configHash, entry, resource.FileContents, seccol.items).WithPath(entry.Path))
 					} else if resource.Spec.Generate != nil {
-						name, key := seccol.allocateGenerated(resource.Ref, resource.Spec)
+						alloc := seccol.allocateGenerated(resource.Ref, resource.Spec)
 						projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
-							applycorev1.SecretProjection().WithName(name).WithItems(applycorev1.KeyToPath().WithKey(key).WithPath(entry.Path)),
+							applycorev1.SecretProjection().WithName(alloc.Name).WithItems(
+								applycorev1.KeyToPath().WithKey(alloc.Key).WithPath(entry.Path)),
 						))
 					}
 
@@ -591,7 +592,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			return fnerrors.BadInputError("don't yet support secrets used in resources, which don't use a generate block")
 		}
 
-		name, key := seccol.allocateGenerated(res.SecretRef, res.Spec)
+		alloc := seccol.allocateGenerated(res.SecretRef, res.Spec)
 
 		serialized, err := secrets.Serialize(res.ResourceRef)
 		if err != nil {
@@ -599,8 +600,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		}
 
 		secretProjections = append(secretProjections,
-			applycorev1.SecretProjection().WithName(name).WithItems(
-				applycorev1.KeyToPath().WithKey(key).WithPath(serialized.RelPath)))
+			applycorev1.SecretProjection().WithName(alloc.Name).WithItems(
+				applycorev1.KeyToPath().WithKey(alloc.Key).WithPath(serialized.RelPath)))
 
 		injected = append(injected, &kubedef.OpEnsureRuntimeConfig_InjectedResource{
 			ResourceRef:    res.ResourceRef,
@@ -940,12 +941,8 @@ func newDataItemCollector() *collector {
 	return &collector{data: map[string]string{}, binaryData: map[string][]byte{}}
 }
 
-func (cm *collector) set(key string, rsc *schema.FileContents) {
-	if rsc.Utf8 {
-		cm.data[key] = string(rsc.Contents)
-	} else {
-		cm.binaryData[key] = rsc.Contents
-	}
+func (cm *collector) set(key string, rsc []byte) {
+	cm.binaryData[key] = rsc
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
@@ -953,7 +950,7 @@ func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc
 	fmt.Fprintf(hash, "%s:", key)
 	_, _ = hash.Write(rsc.Contents)
 	fmt.Fprintln(hash)
-	cm.set(key, rsc)
+	cm.set(key, rsc.Contents)
 
 	return applycorev1.KeyToPath().WithKey(key)
 }

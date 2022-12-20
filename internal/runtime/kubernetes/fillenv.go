@@ -42,14 +42,14 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
 			}
 
-			name, key, err := out.allocate(ctx, secrets, kv.FromSecretRef)
+			alloc, err := out.allocate(ctx, secrets, kv.FromSecretRef)
 			if err != nil {
 				return nil, err
 			}
 
 			entry = applycorev1.EnvVar().WithName(kv.Name).
 				WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
-					applycorev1.SecretKeySelector().WithName(name).WithKey(key),
+					applycorev1.SecretKeySelector().WithName(alloc.Name).WithKey(alloc.Key),
 				))
 
 		case kv.FromServiceEndpoint != nil:

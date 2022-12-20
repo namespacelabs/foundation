@@ -298,7 +298,7 @@ func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.Grou
 				return nil, fnerrors.New("can't use secret %q, no value available (it's generated)", sec.Canonical())
 			}
 
-			secretValues[sec.Canonical()] = result.Value.Contents
+			secretValues[sec.Canonical()] = result.Value
 		}
 
 		if err := multierr.New(errs...); err != nil {

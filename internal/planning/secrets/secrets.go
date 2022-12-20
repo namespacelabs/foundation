@@ -17,7 +17,7 @@ import (
 type groundedSecrets struct {
 	source    secrets.SecretsSource
 	sealedCtx pkggraph.SealedPackageLoader
-	server    *secrets.SecretRequest_ServerRef
+	server    *secrets.SecretLoadRequest_ServerRef
 }
 
 type Server interface {
@@ -28,18 +28,18 @@ type Server interface {
 }
 
 func ScopeSecretsToServer(source secrets.SecretsSource, server Server) secrets.GroundedSecrets {
-	return ScopeSecretsTo(source, server.SealedContext(), &secrets.SecretRequest_ServerRef{
+	return ScopeSecretsTo(source, server.SealedContext(), &secrets.SecretLoadRequest_ServerRef{
 		PackageName: server.PackageName(),
 		ModuleName:  server.Module().ModuleName(),
 		RelPath:     server.RelPath(),
 	})
 }
 
-func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPackageLoader, server *secrets.SecretRequest_ServerRef) secrets.GroundedSecrets {
+func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPackageLoader, server *secrets.SecretLoadRequest_ServerRef) secrets.GroundedSecrets {
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 
-func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
+func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef, externalTypeUrl ...string) (*schema.SecretResult, error) {
 	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, ref)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 	}
 
 	if gsec.Spec.Generate == nil {
-		value, err := gs.source.Load(ctx, gs.sealedCtx, ref, gs.server)
+		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: ref, Server: gs.server, ExternalRefTypeUrl: externalTypeUrl})
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +64,8 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 			return nil, gs.source.MissingError(ref, specs[0], server)
 		}
 
-		gsec.Value = value
+		gsec.Value = value.Value
+		gsec.ExternalRef = value.ExternalRef
 	}
 
 	return gsec, nil

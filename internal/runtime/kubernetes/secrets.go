@@ -36,31 +36,36 @@ func newSecretCollector(secretId string) *secretCollector {
 	return &secretCollector{secretId: secretId, items: newDataItemCollector()}
 }
 
-func (s *secretCollector) allocate(ctx context.Context, secrets secrets.GroundedSecrets, ref *schema.PackageRef) (string, string, error) {
+type secretReference struct {
+	Name string // Secret object name.
+	Key  string // Key within the Secret above that this secret refers to.
+}
+
+func (s *secretCollector) allocate(ctx context.Context, secrets secrets.GroundedSecrets, ref *schema.PackageRef) (*secretReference, error) {
 	contents, err := secrets.Get(ctx, ref)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	if contents.Value != nil {
 		key := naming.DomainFragLike(ref.PackageName, ref.Name)
 		s.items.set(key, contents.Value)
 
-		return s.secretId, key, nil
+		return &secretReference{Name: s.secretId, Key: key}, nil
 	}
 
 	if contents.Spec.Generate != nil {
-		name, key := s.allocateGenerated(contents.Ref, contents.Spec)
-		return name, key, nil
+		alloc := s.allocateGenerated(contents.Ref, contents.Spec)
+		return alloc, nil
 	}
 
-	return "", "", fnerrors.InternalError("don't know how to handle secret %q", ref.Canonical())
+	return nil, fnerrors.InternalError("don't know how to handle secret %q", ref.Canonical())
 }
 
-func (s *secretCollector) allocateGenerated(ref *schema.PackageRef, spec *schema.SecretSpec) (string, string) {
+func (s *secretCollector) allocateGenerated(ref *schema.PackageRef, spec *schema.SecretSpec) *secretReference {
 	s.requiredGeneratedSecrets = append(s.requiredGeneratedSecrets, secretRefAndSpec{ref, spec})
 	name, key := generatedSecretName(spec.Generate)
-	return name, key
+	return &secretReference{Name: name, Key: key}
 }
 
 func (s *secretCollector) planDeployment(ns string, annotations, labels map[string]string) []definition {
