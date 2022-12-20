@@ -13,7 +13,6 @@ import (
 	"io/fs"
 	"math"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -37,7 +36,6 @@ import (
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/library/kubernetes/rbac"
 	"namespacelabs.dev/foundation/schema"
-	rtschema "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution/defs"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/runtime/constants"
@@ -425,7 +423,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		SetContainerFields: slices.Clone(deployable.SetContainerField),
 	}
 
-	if _, err := fillEnv(ctx, mainContainer, mainEnv, opts.secrets, seccol, &ensure); err != nil {
+	if _, err := fillEnv(ctx, deployable.RuntimeConfig, mainContainer, mainEnv, opts.secrets, seccol, &ensure); err != nil {
 		return err
 	}
 
@@ -706,7 +704,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(ctx, scntr, sidecar.Env, opts.secrets, seccol, &ensure); err != nil {
+		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, sidecar.Env, opts.secrets, seccol, &ensure); err != nil {
 			return err
 		}
 
@@ -738,7 +736,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithCommand(init.Command...).
 			WithVolumeMounts(initVolumeMounts...)
 
-		if _, err := fillEnv(ctx, scntr, init.Env, opts.secrets, seccol, &ensure); err != nil {
+		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, init.Env, opts.secrets, seccol, &ensure); err != nil {
 			return err
 		}
 
@@ -1036,110 +1034,6 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	}
 
 	return nil, nil
-}
-
-func fillEnv(ctx context.Context, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets secrets.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
-	sort.SliceStable(env, func(i, j int) bool {
-		return env[i].Name < env[j].Name
-	})
-
-	for _, kv := range env {
-		var entry *applycorev1.EnvVarApplyConfiguration
-
-		switch {
-		case kv.ExperimentalFromSecret != "":
-			parts := strings.SplitN(kv.ExperimentalFromSecret, ":", 2)
-			if len(parts) < 2 {
-				return nil, fnerrors.New("invalid experimental_from_secret format")
-			}
-			entry = applycorev1.EnvVar().WithName(kv.Name).
-				WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
-					applycorev1.SecretKeySelector().WithName(parts[0]).WithKey(parts[1])))
-
-		case kv.ExperimentalFromDownwardsFieldPath != "":
-			entry = applycorev1.EnvVar().WithName(kv.Name).
-				WithValueFrom(applycorev1.EnvVarSource().WithFieldRef(
-					applycorev1.ObjectFieldSelector().WithFieldPath(kv.ExperimentalFromDownwardsFieldPath)))
-
-		case kv.FromSecretRef != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
-			}
-
-			name, key, err := out.allocate(ctx, secrets, kv.FromSecretRef)
-			if err != nil {
-				return nil, err
-			}
-
-			entry = applycorev1.EnvVar().WithName(kv.Name).
-				WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
-					applycorev1.SecretKeySelector().WithName(name).WithKey(key),
-				))
-
-		case kv.FromServiceEndpoint != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromServiceEndpoint in this context")
-			}
-
-			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
-				SetEnv: []*rtschema.SetContainerField_SetValue{
-					{
-						ContainerName: *container.Name,
-						Key:           kv.Name,
-						Value:         rtschema.SetContainerField_RUNTIME_CONFIG_SERVICE_ENDPOINT,
-						ServiceRef:    kv.FromServiceEndpoint,
-					},
-				},
-			})
-
-			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
-
-		case kv.FromResourceField != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromResourceField in this context")
-			}
-
-			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
-				SetEnv: []*rtschema.SetContainerField_SetValue{
-					{
-						ContainerName:               *container.Name,
-						Key:                         kv.Name,
-						Value:                       rtschema.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR,
-						ResourceConfigFieldSelector: kv.FromResourceField,
-					},
-				},
-			})
-
-			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
-
-		case kv.FromServiceIngress != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromServiceIngress in this context")
-			}
-
-			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
-				SetEnv: []*rtschema.SetContainerField_SetValue{
-					{
-						ContainerName: *container.Name,
-						Key:           kv.Name,
-						Value:         rtschema.SetContainerField_RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL,
-						ServiceRef:    kv.FromServiceIngress,
-					},
-				},
-			})
-
-			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
-
-		default:
-			entry = applycorev1.EnvVar().WithName(kv.Name).WithValue(kv.Value)
-		}
-
-		if entry != nil {
-			container = container.WithEnv(entry)
-		}
-	}
-
-	return container, nil
 }
 
 func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.DeployableSpec, endpoint *schema.Endpoint, s *serverRunState) error {

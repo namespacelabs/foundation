@@ -66,7 +66,7 @@ func makePodSpec(ctx context.Context, secrets secrets.GroundedSecrets, name stri
 			applycorev1.SecurityContext().
 				WithReadOnlyRootFilesystem(runOpts.ReadOnlyFilesystem))
 
-	if _, err := fillEnv(ctx, container, runOpts.Env, secrets, nil, nil); err != nil {
+	if _, err := fillEnv(ctx, nil, container, runOpts.Env, secrets, nil, nil); err != nil {
 		return nil, err
 	}
 

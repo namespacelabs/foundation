@@ -19,10 +19,11 @@ import (
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	fnschema "namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
-	"namespacelabs.dev/foundation/schema/runtime"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -103,7 +104,7 @@ func registerEnsureDeployment() {
 	})
 }
 
-func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *kubedef.EnsureRuntimeConfigOutput, setFields []*runtime.SetContainerField) (any, error) {
+func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *kubedef.EnsureRuntimeConfigOutput, setFields []*runtimepb.SetContainerField) (any, error) {
 	switch {
 	case kubedef.IsDeployment(obj):
 		var d specOnlyDeployment
@@ -225,7 +226,7 @@ func patchConfigID(metadata *metav1.ObjectMeta, spec *v1.PodSpec, configID, conf
 	})
 }
 
-func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*runtime.SetContainerField, output *kubedef.EnsureRuntimeConfigOutput) error {
+func patchSetFields(metadata *metav1.ObjectMeta, spec *v1.PodSpec, setFields []*runtimepb.SetContainerField, output *kubedef.EnsureRuntimeConfigOutput) error {
 	var errs []error
 	for _, setField := range setFields {
 		for _, setArg := range setField.GetSetArg() {
@@ -262,37 +263,32 @@ type value struct {
 	From   *v1.EnvVarSource
 }
 
-func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetContainerField_SetValue) (*value, error) {
+func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtimepb.SetContainerField_SetValue) (*value, error) {
 	switch set.Value {
-	case runtime.SetContainerField_RUNTIME_CONFIG:
+	case runtimepb.SetContainerField_RUNTIME_CONFIG:
 		return &value{Inline: output.SerializedRuntimeJson}, nil
 
-	case runtime.SetContainerField_RESOURCE_CONFIG:
+	case runtimepb.SetContainerField_RESOURCE_CONFIG:
 		return &value{Inline: output.SerializedResourceJson}, nil
 
-	case runtime.SetContainerField_RUNTIME_CONFIG_SERVICE_ENDPOINT:
-		service, err := getServiceByRef(set.ServiceRef, output.SerializedRuntimeJson)
+	case runtimepb.SetContainerField_RUNTIME_CONFIG_SERVICE_ENDPOINT:
+		endpoint, err := selectServiceValue(set.ServiceRef, output.SerializedRuntimeJson, runtime.SelectServiceEndpoint)
 		if err != nil {
 			return nil, err
 		}
 
 		// Returns a hostname:port pair.
-		return &value{Inline: service.Endpoint}, nil
+		return &value{Inline: endpoint}, nil
 
-	case runtime.SetContainerField_RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL:
-		service, err := getServiceByRef(set.ServiceRef, output.SerializedRuntimeJson)
+	case runtimepb.SetContainerField_RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL:
+		ingressUrl, err := selectServiceValue(set.ServiceRef, output.SerializedRuntimeJson, runtime.SelectServiceIngress)
 		if err != nil {
 			return nil, err
 		}
 
-		if service.Ingress == nil || len(service.Ingress.Domain) == 0 {
-			return nil, fnerrors.BadInputError("service %s has no ingress, %v", service.Name, service)
-		}
+		return &value{Inline: ingressUrl}, nil
 
-		// TODO: introduce a concept of the "default" ingress, use it here.
-		return &value{Inline: service.Ingress.Domain[0].BaseUrl}, nil
-
-	case runtime.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR:
+	case runtimepb.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR:
 		if set.ResourceConfigFieldSelector == nil {
 			return nil, fnerrors.BadInputError("missing required field selector")
 		}
@@ -322,33 +318,18 @@ func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetCont
 	return nil, fnerrors.BadInputError("%s: don't know this value", set.Value)
 }
 
-func getServiceByRef(ref *fnschema.ServiceRef, serializedResourceJson string) (*runtime.Server_Service, error) {
+func selectServiceValue(ref *fnschema.ServiceRef, serializedResourceJson string, selector func(*runtimepb.Server_Service) (string, error)) (string, error) {
 	if ref == nil {
-		return nil, fnerrors.BadInputError("missing required service endpoint")
+		return "", fnerrors.BadInputError("missing required service endpoint")
 	}
 
-	rt := &runtime.RuntimeConfig{}
+	rt := &runtimepb.RuntimeConfig{}
 	// XXX unmarshal once.
 	if err := protojson.Unmarshal([]byte(serializedResourceJson), rt); err != nil {
-		return nil, fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
+		return "", fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
 	}
 
-	allServers := append(rt.StackEntry, rt.Current)
-
-	for _, srv := range allServers {
-		if srv.PackageName == ref.GetServerRef().GetPackageName() {
-			for _, service := range srv.Service {
-				if service.Name == ref.ServiceName {
-					return service, nil
-				}
-			}
-
-			return nil, fnerrors.BadInputError("the required service %q is not exported by %q",
-				ref.ServiceName, ref.GetServerRef().GetPackageName())
-		}
-	}
-
-	return nil, fnerrors.BadInputError("the required server %q is not present in the stack", ref.GetServerRef().GetPackageName())
+	return runtime.SelectServiceValue(rt, ref, selector)
 }
 
 func updateContainers(spec *v1.PodSpec, name string, update func(container *v1.Container)) error {
