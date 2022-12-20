@@ -413,7 +413,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, stack serverStack,
 }
 
 func (rp *resourceList) checkAddTo(ctx context.Context, stack serverStack, sealedCtx pkggraph.SealedContext, parentID string, inputs []pkggraph.ResourceInstance, instance *resourceInstance) error {
-	regular, secrets, err := splitRegularAndSecretResources(ctx, sealedCtx, inputs)
+	regular, secrets, err := splitRegularAndSecretResources(ctx, inputs)
 	if err != nil {
 		return err
 	}
@@ -444,7 +444,7 @@ func (rp *resourceList) checkAddTo(ctx context.Context, stack serverStack, seale
 	return multierr.New(errs...)
 }
 
-func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoader, inputs []pkggraph.ResourceInstance) ([]pkggraph.ResourceInstance, []runtime.SecretResourceDependency, error) {
+func splitRegularAndSecretResources(ctx context.Context, inputs []pkggraph.ResourceInstance) ([]pkggraph.ResourceInstance, []runtime.SecretResourceDependency, error) {
 	var regularDependencies []pkggraph.ResourceInstance
 	var secs []runtime.SecretResourceDependency
 	for _, dep := range inputs {
@@ -454,15 +454,9 @@ func splitRegularAndSecretResources(ctx context.Context, pl pkggraph.PackageLoad
 				return nil, nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 			}
 
-			specs, err := secrets.LoadSecretSpecs(ctx, pl, ref)
-			if err != nil {
-				return nil, nil, err
-			}
-
 			secs = append(secs, runtime.SecretResourceDependency{
 				SecretRef:   ref,
 				ResourceRef: dep.ResourceRef,
-				Spec:        specs[0],
 			})
 		} else {
 			regularDependencies = append(regularDependencies, dep)

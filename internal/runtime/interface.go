@@ -278,7 +278,6 @@ type PlannedResource struct {
 type SecretResourceDependency struct {
 	SecretRef   *schema.PackageRef
 	ResourceRef *schema.PackageRef
-	Spec        *schema.SecretSpec
 }
 
 type AttachableKind string

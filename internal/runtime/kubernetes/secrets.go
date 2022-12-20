@@ -22,6 +22,7 @@ import (
 )
 
 type secretCollector struct {
+	secrets                  secrets.GroundedSecrets
 	secretId                 string
 	items                    *collector
 	requiredGeneratedSecrets []secretRefAndSpec
@@ -32,8 +33,8 @@ type secretRefAndSpec struct {
 	Spec *schema.SecretSpec
 }
 
-func newSecretCollector(secretId string) *secretCollector {
-	return &secretCollector{secretId: secretId, items: newDataItemCollector()}
+func newSecretCollector(secs secrets.GroundedSecrets, secretId string) *secretCollector {
+	return &secretCollector{secrets: secs, secretId: secretId, items: newDataItemCollector()}
 }
 
 type secretReference struct {
@@ -41,8 +42,8 @@ type secretReference struct {
 	Key  string // Key within the Secret above that this secret refers to.
 }
 
-func (s *secretCollector) allocate(ctx context.Context, secrets secrets.GroundedSecrets, ref *schema.PackageRef) (*secretReference, error) {
-	contents, err := secrets.Get(ctx, ref)
+func (s *secretCollector) allocate(ctx context.Context, ref *schema.PackageRef) (*secretReference, error) {
+	contents, err := s.secrets.Get(ctx, ref)
 	if err != nil {
 		return nil, err
 	}

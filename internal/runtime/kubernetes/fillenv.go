@@ -12,13 +12,12 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	rtschema "namespacelabs.dev/foundation/schema/runtime"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
-func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets secrets.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
 	for _, kv := range env {
 		var entry *applycorev1.EnvVarApplyConfiguration
 
@@ -42,7 +41,7 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
 			}
 
-			alloc, err := out.allocate(ctx, secrets, kv.FromSecretRef)
+			alloc, err := out.allocate(ctx, kv.FromSecretRef)
 			if err != nil {
 				return nil, err
 			}

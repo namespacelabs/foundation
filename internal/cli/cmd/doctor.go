@@ -254,7 +254,7 @@ func NewDoctorCmd() *cobra.Command {
 							return r, err
 						}
 						t = time.Now()
-						err = k.RunAttachedOpts(ctx, nil, "default", "doctor-"+ids.NewRandomBase32ID(8),
+						err = k.RunAttachedOpts(ctx, "default", "doctor-"+ids.NewRandomBase32ID(8),
 							runtime.ContainerRunOpts{Image: helloID}, runtime.TerminalIO{}, func() {})
 						r.RunLatency = time.Since(t)
 

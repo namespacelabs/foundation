@@ -345,7 +345,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	// XXX Think through this, should it also be hashed + immutable?
 	secretId := fmt.Sprintf("ns-managed-%s-%s", deployable.Name, deployable.GetId())
-	seccol := newSecretCollector(secretId)
+	seccol := newSecretCollector(opts.secrets, secretId)
 
 	ensure := kubedef.EnsureDeployment{
 		Deployable:    deployable,
@@ -357,7 +357,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		SetContainerFields: slices.Clone(deployable.SetContainerField),
 	}
 
-	if _, err := fillEnv(ctx, deployable.RuntimeConfig, mainContainer, mainEnv, opts.secrets, seccol, &ensure); err != nil {
+	if _, err := fillEnv(ctx, deployable.RuntimeConfig, mainContainer, mainEnv, seccol, &ensure); err != nil {
 		return err
 	}
 
@@ -522,11 +522,10 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	var secretProjections []*applycorev1.SecretProjectionApplyConfiguration
 	var injected []*kubedef.OpEnsureRuntimeConfig_InjectedResource
 	for _, res := range deployable.SecretResources {
-		if res.Spec.Generate == nil {
-			return fnerrors.BadInputError("don't yet support secrets used in resources, which don't use a generate block")
+		alloc, err := seccol.allocate(ctx, res.SecretRef)
+		if err != nil {
+			return err
 		}
-
-		alloc := seccol.allocateGenerated(res.SecretRef, res.Spec)
 
 		serialized, err := secrets.Serialize(res.ResourceRef)
 		if err != nil {
@@ -639,7 +638,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			applycorev1.EnvVar().WithName("FN_SERVER_NAME").WithValue(deployable.Name),
 		)
 
-		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, sidecar.Env, opts.secrets, seccol, &ensure); err != nil {
+		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, sidecar.Env, seccol, &ensure); err != nil {
 			return err
 		}
 
@@ -671,7 +670,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithCommand(init.Command...).
 			WithVolumeMounts(initVolumeMounts...)
 
-		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, init.Env, opts.secrets, seccol, &ensure); err != nil {
+		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, init.Env, seccol, &ensure); err != nil {
 			return err
 		}
 
