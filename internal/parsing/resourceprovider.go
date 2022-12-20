@@ -38,6 +38,7 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pkg *
 	}
 
 	rp := pkggraph.ResourceProvider{Spec: provider}
+	provider.PackageName = pkg.Location.PackageName.String()
 
 	if provider.IntentType != nil {
 		parseOpts, err := MakeProtoParseOpts(ctx, pl, pkg.Location.Module.Workspace)

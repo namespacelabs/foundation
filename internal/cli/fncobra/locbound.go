@@ -133,7 +133,7 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 		}
 	}
 
-	if opts.RequireSingle && len(locs) != 1 {
+	if opts.RequireSingle && len(locs)+len(refs) != 1 {
 		return nil, fnerrors.New("expected exactly one package")
 	}
 
