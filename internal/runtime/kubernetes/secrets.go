@@ -122,3 +122,7 @@ func (s *secretCollector) planDeployment(ns string, annotations, labels map[stri
 
 	return operations
 }
+
+func generatedSecretName(spec *schema.SecretSpec_GenerateSpec) (string, string) {
+	return fmt.Sprintf("gen-%s", spec.UniqueId), "generated"
+}

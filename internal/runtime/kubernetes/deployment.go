@@ -11,18 +11,13 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math"
 	"path/filepath"
-	"strconv"
 	"strings"
 
-	"github.com/dustin/go-humanize"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -53,38 +48,6 @@ const (
 
 	revisionHistoryLimit int32 = 10
 )
-
-type perEnvConf struct {
-	dashnessPeriod        int32
-	livenessInitialDelay  int32
-	readinessInitialDelay int32
-	probeTimeout          int32
-	failureThreshold      int32
-}
-
-var perEnvConfMapping = map[schema.Environment_Purpose]*perEnvConf{
-	schema.Environment_DEVELOPMENT: {
-		dashnessPeriod:        1,
-		livenessInitialDelay:  1,
-		readinessInitialDelay: 1,
-		probeTimeout:          1,
-		failureThreshold:      3,
-	},
-	schema.Environment_TESTING: {
-		dashnessPeriod:        1,
-		livenessInitialDelay:  1,
-		readinessInitialDelay: 1,
-		probeTimeout:          1,
-		failureThreshold:      3,
-	},
-	schema.Environment_PRODUCTION: {
-		dashnessPeriod:        3,
-		livenessInitialDelay:  1,
-		readinessInitialDelay: 3,
-		probeTimeout:          1,
-		failureThreshold:      5,
-	},
-}
 
 type definitions []definition
 
@@ -117,37 +80,8 @@ func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bo
 	return "", false
 }
 
-func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf, probe *schema.Probe) (*applycorev1.ProbeApplyConfiguration, error) {
-	p = p.WithPeriodSeconds(probevalues.dashnessPeriod).
-		WithFailureThreshold(probevalues.failureThreshold).
-		WithTimeoutSeconds(probevalues.probeTimeout)
-
-	switch {
-	case probe.Http != nil:
-		return p.WithHTTPGet(applycorev1.HTTPGetAction().WithPath(probe.Http.GetPath()).
-			WithPort(intstr.FromInt(int(probe.Http.GetContainerPort())))), nil
-
-	case probe.Exec != nil:
-		return p.WithExec(applycorev1.ExecAction().WithCommand(probe.Exec.Command...)), nil
-
-	default:
-		return nil, fnerrors.InternalError("unknown probe type for %q", probe.Kind)
-	}
-}
-
 type deployOpts struct {
 	secrets secrets.GroundedSecrets
-}
-
-func deployAsPods(env *schema.Environment) bool {
-	return env.GetPurpose() == schema.Environment_TESTING && DeployAsPodsInTests
-}
-
-// Transient data structure used to prepare volumes and mounts
-type volumeDef struct {
-	name string
-	// True if the volume is actually a filesync and needs a different handling.
-	isWorkspaceSync bool
 }
 
 func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, opts deployOpts, s *serverRunState) error {
@@ -895,30 +829,6 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	return nil
 }
 
-func makeSecurityContext(opts runtime.ContainerRunOpts) (*applycorev1.SecurityContextApplyConfiguration, error) {
-	secCtx := applycorev1.SecurityContext()
-
-	const path = "defaults/container.securitycontext.yaml"
-	contents, err := fs.ReadFile(defaults, path)
-	if err != nil {
-		return nil, fnerrors.InternalError("internal kubernetes data failed to read: %w", err)
-	}
-
-	if err := yaml.Unmarshal(contents, secCtx); err != nil {
-		return nil, fnerrors.InternalError("%s: failed to parse defaults: %w", path, err)
-	}
-
-	if opts.Privileged {
-		secCtx = secCtx.WithPrivileged(true).WithAllowPrivilegeEscalation(true)
-	}
-
-	if opts.ReadOnlyFilesystem {
-		secCtx = secCtx.WithReadOnlyRootFilesystem(true)
-	}
-
-	return secCtx, nil
-}
-
 func firstStr(strs ...string) string {
 	for _, str := range strs {
 		if str != "" {
@@ -955,82 +865,8 @@ func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc
 	return applycorev1.KeyToPath().WithKey(key)
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, definitions, error) {
-	if sizeBytes >= math.MaxInt64 {
-		return nil, nil, fnerrors.NewWithLocation(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
-	}
-
-	quantity := resource.NewScaledQuantity(int64(sizeBytes), 0)
-
-	// Ephemeral environments are short lived, so there is no need for persistent volume claims.
-	// Admin servers are excluded here as they run as singletons in a global namespace.
-	var operations definitions
-	var v *applycorev1.VolumeApplyConfiguration
-
-	if env.GetEphemeral() {
-		v = applycorev1.Volume().
-			WithName(name).
-			WithEmptyDir(applycorev1.EmptyDirVolumeSource().
-				WithSizeLimit(*quantity))
-	} else {
-		v = applycorev1.Volume().
-			WithName(name).
-			WithPersistentVolumeClaim(
-				applycorev1.PersistentVolumeClaimVolumeSource().
-					WithClaimName(persistentId))
-
-		operations = append(operations, kubedef.Apply{
-			Description: fmt.Sprintf("Persistent storage for %s (%s)", owner, humanize.Bytes(sizeBytes)),
-			Resource: applycorev1.PersistentVolumeClaim(persistentId, ns).
-				WithLabels(kubedef.ManagedByUs()).
-				WithAnnotations(annotations).
-				WithSpec(applycorev1.PersistentVolumeClaimSpec().
-					WithAccessModes(corev1.ReadWriteOnce).
-					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
-						corev1.ResourceStorage: *quantity,
-					}))),
-		})
-	}
-
-	return v, operations, nil
-}
-
 func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, o.Name)
-}
-
-func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguration, runAs *runtime.RunAs) (*applycorev1.PodSecurityContextApplyConfiguration, error) {
-	if runAs != nil {
-		if runAs.UserID != "" {
-			userId, err := strconv.ParseInt(runAs.UserID, 10, 64)
-			if err != nil {
-				return nil, fnerrors.InternalError("expected server.RunAs.UserID to be an int64: %w", err)
-			}
-
-			if podSecCtx.RunAsUser != nil && *podSecCtx.RunAsUser != userId {
-				return nil, fnerrors.BadInputError("incompatible userid %d vs %d (in RunAs)", *podSecCtx.RunAsUser, userId)
-			}
-
-			podSecCtx = podSecCtx.WithRunAsUser(userId).WithRunAsNonRoot(true)
-		}
-
-		if runAs.FSGroup != nil {
-			fsGroup, err := strconv.ParseInt(*runAs.FSGroup, 10, 64)
-			if err != nil {
-				return nil, fnerrors.InternalError("expected server.RunAs.FSGroup to be an int64: %w", err)
-			}
-
-			if podSecCtx.FSGroup != nil && *podSecCtx.FSGroup != fsGroup {
-				return nil, fnerrors.BadInputError("incompatible fsgroup %d vs %d (in RunAs)", *podSecCtx.FSGroup, fsGroup)
-			}
-
-			podSecCtx.WithFSGroup(fsGroup)
-		}
-
-		return podSecCtx, nil
-	}
-
-	return nil, nil
 }
 
 func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.DeployableSpec, endpoint *schema.Endpoint, s *serverRunState) error {
@@ -1084,24 +920,4 @@ func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.Dep
 	}
 
 	return nil
-}
-
-func toK8sVol(vol *kubedef.SpecExtension_Volume) (*applycorev1.VolumeApplyConfiguration, error) {
-	v := applycorev1.Volume().WithName(vol.Name)
-	switch x := vol.VolumeType.(type) {
-	case *kubedef.SpecExtension_Volume_Secret_:
-		return v.WithSecret(applycorev1.SecretVolumeSource().WithSecretName(x.Secret.SecretName)), nil
-	case *kubedef.SpecExtension_Volume_ConfigMap_:
-		vol := applycorev1.ConfigMapVolumeSource().WithName(x.ConfigMap.Name)
-		for _, it := range x.ConfigMap.Item {
-			vol = vol.WithItems(applycorev1.KeyToPath().WithKey(it.Key).WithPath(it.Path))
-		}
-		return v.WithConfigMap(vol), nil
-	default:
-		return nil, fnerrors.InternalError("don't know how to instantiate a k8s volume from %v", vol)
-	}
-}
-
-func generatedSecretName(spec *schema.SecretSpec_GenerateSpec) (string, string) {
-	return fmt.Sprintf("gen-%s", spec.UniqueId), "generated"
 }
