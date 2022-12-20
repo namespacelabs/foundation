@@ -89,7 +89,7 @@ func NewLsCmd() *cobra.Command {
 						fmt.Fprintf(resout, "%s :%s (%s)\n",
 							style.Comment.Apply("Resource"),
 							r.ResourceRef.Name,
-							formatPkgRef(r.Spec.Class.Ref))
+							formatPkgRef(style, r.Spec.Class.Ref))
 						fmt.Fprintf(resout, "      %s %s\n",
 							style.Comment.Apply("<-"),
 							r.Spec.Provider.Spec.PackageName)
@@ -102,7 +102,7 @@ func NewLsCmd() *cobra.Command {
 					for _, r := range pkg.ResourceProviders {
 						fmt.Fprintf(resout, "%s %s\n",
 							style.Comment.Apply("ResourceProvider"),
-							formatPkgRef(r.Spec.ProvidesClass))
+							formatPkgRef(style, r.Spec.ProvidesClass))
 					}
 					fmt.Fprintln(resout)
 				}
@@ -111,6 +111,6 @@ func NewLsCmd() *cobra.Command {
 		})
 }
 
-func formatPkgRef(pr *schema.PackageRef) string {
-	return fmt.Sprintf("%s:%s", pr.PackageName, pr.Name)
+func formatPkgRef(style colors.Style, pr *schema.PackageRef) string {
+	return fmt.Sprintf("%s:%s", style.LessRelevant.Apply(pr.PackageName), pr.Name)
 }

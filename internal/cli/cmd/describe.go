@@ -15,6 +15,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/codegen/protos/resolver"
@@ -34,7 +35,7 @@ func NewDescribeCmd() *cobra.Command {
 
 	return fncobra.Cmd(
 		&cobra.Command{
-			Use:  "describe <path/to/package:target>",
+			Use:  "describe <path/to/package | path/to/package:target>",
 			Args: cobra.ExactArgs(1),
 		}).
 		With(
@@ -44,6 +45,7 @@ func NewDescribeCmd() *cobra.Command {
 			style := colors.Ctx(ctx)
 			stdout := console.Stdout(ctx)
 			pl := parsing.NewPackageLoader(env)
+			rs := resolver.NewResolver(ctx, pl)
 
 			for _, loc := range locs.Locs {
 				locs.Refs = append(locs.Refs, schema.MakePackageSingleRef(loc.AsPackageName()))
@@ -57,50 +59,74 @@ func NewDescribeCmd() *cobra.Command {
 
 			bodyWriter := indent(stdout)
 			if ref.Name == "" {
-				if pkg.Extension != nil {
-					fmt.Fprintln(stdout, style.Comment.Apply("Extension"))
-					formatProto(ctx, bodyWriter, pl, style, pkg.Extension)
-					fmt.Fprintln(bodyWriter)
-				}
-				if pkg.Service != nil {
-					fmt.Fprintln(stdout, style.Comment.Apply("Service"))
-					formatProto(ctx, bodyWriter, pl, style, pkg.Service)
-					fmt.Fprintln(bodyWriter)
-				}
+
 				if pkg.Server != nil {
 					fmt.Fprintln(stdout, style.Comment.Apply("Server"))
-					formatProto(ctx, bodyWriter, pl, style, pkg.Server)
+					formatProto(bodyWriter, rs, style, pkg.Server)
 					fmt.Fprintln(bodyWriter)
 				}
-				for _, rp := range pkg.ResourceProviders {
-					formatResourceProvider(ctx, stdout, style, pl, &rp)
+
+				for _, binary := range pkg.Binaries {
+					formatBinary(stdout, style, rs, binary)
 				}
+
+				for _, test := range pkg.Tests {
+					formatTest(stdout, style, rs, test)
+				}
+
+				for _, secret := range pkg.Secrets {
+					formatSecret(stdout, style, rs, pkg.PackageName(), secret)
+				}
+
+				for _, vol := range pkg.Volumes {
+					formatVolume(stdout, style, rs, pkg.PackageName(), vol)
+				}
+
+				for _, resClass := range pkg.ResourceClasses {
+					formatResourceClass(stdout, style, &resClass)
+				}
+
+				for _, res := range pkg.Resources {
+					formatResourceInstance(stdout, style, rs, &res)
+				}
+
+				for _, rp := range pkg.ResourceProviders {
+					formatResourceProvider(stdout, style, rs, &rp)
+				}
+
+				if pkg.Extension != nil {
+					fmt.Fprintln(stdout, style.Comment.Apply("Extension"))
+					formatProto(bodyWriter, rs, style, pkg.Extension)
+					fmt.Fprintln(bodyWriter)
+				}
+
+				if pkg.Service != nil {
+					fmt.Fprintln(stdout, style.Comment.Apply("Service"))
+					formatProto(bodyWriter, rs, style, pkg.Service)
+					fmt.Fprintln(bodyWriter)
+				}
+
 			} else {
+
 				binary, err := pkg.LookupBinary(ref.Name)
 				if err == nil {
-					fmt.Fprintf(stdout, "%s :%s\n", style.Comment.Apply("Binary"), binary.Name)
-					formatProto(ctx, bodyWriter, pl, style, binary)
-					fmt.Fprintln(bodyWriter)
+					formatBinary(stdout, style, rs, binary)
 				}
 
 				for _, test := range pkg.Tests {
 					if test.Name == ref.Name {
-						fmt.Fprintf(stdout, "%s :%s\n", style.Comment.Apply("Test"), test.Name)
-						formatProto(ctx, stdout, pl, style, test)
-						fmt.Fprintln(bodyWriter)
+						formatTest(stdout, style, rs, test)
 					}
 				}
 
 				secret := pkg.LookupSecret(ref.Name)
 				if secret != nil {
-					fmt.Fprintf(stdout, "%s :%s\n", style.Comment.Apply("Secret"), secret.Name)
-					formatProto(ctx, stdout, pl, style, secret)
-					fmt.Fprintln(bodyWriter)
+					formatSecret(stdout, style, rs, pkg.PackageName(), secret)
 				}
 
 				for _, vol := range pkg.Volumes {
 					if vol.Name == ref.Name {
-						formatVolume(ctx, stdout, style, pl, vol)
+						formatVolume(stdout, style, rs, pkg.PackageName(), vol)
 					}
 				}
 
@@ -111,8 +137,9 @@ func NewDescribeCmd() *cobra.Command {
 
 				res := pkg.LookupResourceInstance(ref.Name)
 				if res != nil {
-					formatResourceInstance(ctx, stdout, style, pl, res)
+					formatResourceInstance(stdout, style, rs, res)
 				}
+
 			}
 
 			return nil
@@ -120,7 +147,7 @@ func NewDescribeCmd() *cobra.Command {
 }
 
 func formatResourceClass(w io.Writer, style colors.Style, resClass *pkggraph.ResourceClass) {
-	fmt.Fprintf(w, "%s :%s\n", style.Comment.Apply("ResourceClass"), resClass.Ref.Name)
+	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("ResourceClass"), formatPkgRef(style, resClass.Ref))
 	resout := indent(w)
 
 	fmt.Fprintf(resout, "intent: ")
@@ -140,14 +167,14 @@ func formatResourceClass(w io.Writer, style colors.Style, resClass *pkggraph.Res
 	// TODO: Print all known providers in the dep tree.
 }
 
-func formatResourceInstance(ctx context.Context, w io.Writer, style colors.Style, pl *parsing.PackageLoader, res *pkggraph.ResourceInstance) {
-	fmt.Fprintf(w, "%s :%s\n", style.Comment.Apply("Resource"), res.ResourceRef.Name)
+func formatResourceInstance(w io.Writer, style colors.Style, rs Resolver, res *pkggraph.ResourceInstance) {
+	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("Resource"), formatPkgRef(style, res.ResourceRef))
 	resout := indent(w)
 
 	fmt.Fprintf(resout, "Class: %s\n", res.Spec.Class.Ref.Canonical())
 	fmt.Fprintf(resout, "Provider: %s\n", res.Spec.Provider.Spec.PackageName)
 	fmt.Fprintf(resout, "Intent: ")
-	formatProto(ctx, resout, pl, style, res.Spec.Intent)
+	formatProto(resout, rs, style, res.Spec.Intent)
 	fmt.Fprintln(resout)
 	fmt.Fprint(resout, "ResouceInputs: ")
 	if len(res.Spec.ResourceInputs) == 0 {
@@ -160,10 +187,10 @@ func formatResourceInstance(ctx context.Context, w io.Writer, style colors.Style
 	}
 }
 
-func formatResourceProvider(ctx context.Context, w io.Writer, style colors.Style, pl *parsing.PackageLoader, rp *pkggraph.ResourceProvider) {
-
+func formatResourceProvider(w io.Writer, style colors.Style, rs Resolver, rp *pkggraph.ResourceProvider) {
 	fmt.Fprintf(w, "%s %s\n",
-		style.Comment.Apply("ResourceProvider"), formatPkgRef(rp.Spec.ProvidesClass))
+		style.Comment.Apply("ResourceProvider"), formatPkgRef(style, rp.Spec.ProvidesClass))
+
 	iw := indent(w)
 	fmt.Fprint(iw, "IntentType: ")
 	if rp.IntentType != nil {
@@ -174,24 +201,46 @@ func formatResourceProvider(ctx context.Context, w io.Writer, style colors.Style
 
 	if rp.Spec.InitializedWith != nil {
 		fmt.Fprint(iw, "InitializedWith: ")
-		formatProto(ctx, iw, pl, style, rp.Spec.InitializedWith)
+		formatProto(iw, rs, style, rp.Spec.InitializedWith)
 		fmt.Fprintln(iw)
 	}
 
 	if rp.Spec.PrepareWith != nil {
 		fmt.Fprint(iw, "PrepareWith: ")
-		formatProto(ctx, iw, pl, style, rp.Spec.PrepareWith)
+		formatProto(iw, rs, style, rp.Spec.PrepareWith)
 		fmt.Fprintln(iw)
 	}
 }
 
-func formatVolume(ctx context.Context, w io.Writer, style colors.Style, pl *parsing.PackageLoader, vol *schema.Volume) {
-	fmt.Fprintf(w, "%s :%s %s\n",
-		style.Comment.Apply("Volume"), vol.Name,
+func formatBinary(w io.Writer, style colors.Style, rs Resolver, binary *schema.Binary) {
+	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("Binary"),
+		formatPkgRef(style, schema.MakePackageRef(schema.PackageName(binary.PackageName), binary.Name)))
+	formatProto(indent(w), rs, style, binary)
+	fmt.Fprintln(w)
+}
+
+func formatTest(w io.Writer, style colors.Style, rs Resolver, test *schema.Test) {
+	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("Test"),
+		formatPkgRef(style, schema.MakePackageRef(schema.PackageName(test.PackageName), test.Name)))
+	formatProto(indent(w), rs, style, test)
+	fmt.Fprintln(w)
+}
+
+func formatSecret(w io.Writer, style colors.Style, rs Resolver, pkg schema.PackageName, secret *schema.SecretSpec) {
+	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("Secret"),
+		formatPkgRef(style, schema.MakePackageRef(pkg, secret.Name)))
+	formatProto(indent(w), rs, style, secret)
+	fmt.Fprintln(w)
+}
+
+func formatVolume(w io.Writer, style colors.Style, rs Resolver, pkg schema.PackageName, vol *schema.Volume) {
+	fmt.Fprintf(w, "%s %s %s\n",
+		style.Comment.Apply("Volume"),
+		formatPkgRef(style, schema.MakePackageRef(pkg, vol.Name)),
 		style.LessRelevant.Apply(fmt.Sprintf("(%s)", vol.Kind)))
 
 	iw := indent(w)
-	formatProto(ctx, iw, pl, style, vol.Definition)
+	formatProto(iw, rs, style, vol.Definition)
 	fmt.Fprintln(iw)
 }
 
@@ -216,7 +265,7 @@ func formatMessageDef(w io.Writer, desc protoreflect.MessageDescriptor, style co
 		loc := src.ByDescriptor(field)
 
 		if loc.LeadingComments != "" {
-			printComments(cw, loc.LeadingComments, style)
+			formatComments(cw, loc.LeadingComments, style)
 			fmt.Fprintln(cw)
 		}
 		fmt.Fprintf(cw, "%s: ", field.JSONName())
@@ -253,14 +302,14 @@ func formatMessageDef(w io.Writer, desc protoreflect.MessageDescriptor, style co
 		}
 		if loc.TrailingComments != "" {
 			fmt.Fprint(cw, " ")
-			printComments(cw, loc.TrailingComments, style)
+			formatComments(cw, loc.TrailingComments, style)
 		}
 		fmt.Fprintln(cw)
 	}
 	fmt.Fprint(w, "}")
 }
 
-func printComments(w io.Writer, s string, style colors.Style) {
+func formatComments(w io.Writer, s string, style colors.Style) {
 	lines := strings.Split(strings.Trim(s, "\n"), "\n")
 	for i, l := range lines {
 		fmt.Fprint(w, style.Comment.Apply("//"), style.Comment.Apply(l))
@@ -270,12 +319,10 @@ func printComments(w io.Writer, s string, style colors.Style) {
 	}
 }
 
-func formatProto(ctx context.Context, w io.Writer, pl *parsing.PackageLoader, style colors.Style, msg protoreflect.ProtoMessage) {
-	res := resolver.NewResolver(ctx, pl)
-
+func formatProto(w io.Writer, rs Resolver, style colors.Style, msg protoreflect.ProtoMessage) {
 	if any, ok := msg.(*anypb.Any); ok {
 		var err error
-		msg, err = anypb.UnmarshalNew(any, proto.UnmarshalOptions{Resolver: res})
+		msg, err = anypb.UnmarshalNew(any, proto.UnmarshalOptions{Resolver: rs})
 		if err != nil {
 			fmt.Print(w, style.LessRelevant.Apply(fmt.Sprintf("error %v", err)))
 		}
@@ -284,7 +331,7 @@ func formatProto(ctx context.Context, w io.Writer, pl *parsing.PackageLoader, st
 	body, err := (protojson.MarshalOptions{
 		UseProtoNames: true,
 		Indent:        "    ",
-		Resolver:      res,
+		Resolver:      rs,
 	}).Marshal(msg)
 	if err != nil {
 		fmt.Print(w, style.LessRelevant.Apply(fmt.Sprintf("error %v", err)))
@@ -294,4 +341,9 @@ func formatProto(ctx context.Context, w io.Writer, pl *parsing.PackageLoader, st
 
 func indent(w io.Writer) io.Writer {
 	return text.NewIndentWriter(w, []byte("    "))
+}
+
+type Resolver interface {
+	protoregistry.ExtensionTypeResolver
+	protoregistry.MessageTypeResolver
 }
