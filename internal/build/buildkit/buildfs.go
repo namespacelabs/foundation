@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -48,7 +48,7 @@ type Input struct {
 	Secrets []*schema.PackageRef
 }
 
-func DeferBuildFilesystem(makeClient ClientFactory, secrets runtime.GroundedSecrets, target build.BuildTarget, state compute.Computable[*Input], localDirs ...LocalContents) compute.Computable[fs.FS] {
+func DeferBuildFilesystem(makeClient ClientFactory, secrets secrets.GroundedSecrets, target build.BuildTarget, state compute.Computable[*Input], localDirs ...LocalContents) compute.Computable[fs.FS] {
 	base := &baseRequest[fs.FS]{
 		sourceLabel:    target.SourceLabel(),
 		sourcePackage:  target.SourcePackage(),

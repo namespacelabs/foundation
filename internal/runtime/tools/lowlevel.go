@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -39,7 +39,7 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 	}
 }
 
-func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, secrets runtime.GroundedSecrets, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
+func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, secrets secrets.GroundedSecrets, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
 	state := makeState(c, pkg, image, method, req, opts, oo)
 
 	p := c.BuildkitOpts().HostPlatform

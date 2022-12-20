@@ -15,17 +15,18 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
+	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -53,8 +54,8 @@ type serverStack interface {
 	GetIngressesForService(endpointOwner string, serviceName string) []*schema.IngressFragment
 }
 
-func planResources(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, registry registry.Manager, stack serverStack, rp resourceList) (*resourcePlan, error) {
-	platforms, err := planner.TargetPlatforms(ctx)
+func planResources(ctx context.Context, planner planning.Planner, stack serverStack, rp resourceList) (*resourcePlan, error) {
+	platforms, err := planner.Runtime.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func planResources(ctx context.Context, secs runtime.SecretSource, planner runti
 
 	type resourcePlanInvocation struct {
 		Env                  cfg.Context
-		Secrets              runtime.GroundedSecrets
+		Secrets              is.GroundedSecrets
 		Source               schema.PackageName
 		Resource             *resourceInstance
 		ResourceSource       *schema.ResourceInstance
@@ -163,7 +164,7 @@ func planResources(ctx context.Context, secs runtime.SecretSource, planner runti
 
 			planningInvocations = append(planningInvocations, resourcePlanInvocation{
 				Env:                  sealedCtx,
-				Secrets:              secrets.ScopeSecretsTo(secs, sealedCtx, nil),
+				Secrets:              secrets.ScopeSecretsTo(planner.Secrets, sealedCtx, nil),
 				Source:               schema.PackageName(resource.Source.PackageName),
 				Resource:             resource,
 				ResourceSource:       resource.Source,
@@ -196,7 +197,7 @@ func planResources(ctx context.Context, secs runtime.SecretSource, planner runti
 				return nil, err
 			}
 
-			poster, err := ensureImage(ctx, sealedCtx, registry, prepared.Plan)
+			poster, err := ensureImage(ctx, sealedCtx, planner.Registry, prepared.Plan)
 			if err != nil {
 				return nil, err
 			}
@@ -227,7 +228,7 @@ func planResources(ctx context.Context, secs runtime.SecretSource, planner runti
 	for k, invocation := range executionInvocations {
 		invocation.BinaryImageId = builtExecutionImages[k].Value
 
-		theseOps, err := PlanResourceProviderInvocation(ctx, secs, planner, invocation)
+		theseOps, err := PlanResourceProviderInvocation(ctx, planner.Secrets, planner.Runtime, invocation)
 		if err != nil {
 			return nil, err
 		}

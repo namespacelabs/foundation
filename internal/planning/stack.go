@@ -21,9 +21,9 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
+	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -62,7 +62,7 @@ func (s *StackWithIngress) GetIngressesForService(endpointOwner string, serviceN
 }
 
 type ProvisionOpts struct {
-	Secrets   runtime.SecretSource
+	Secrets   is.SecretsSource
 	PortRange eval.PortRange
 }
 
@@ -195,7 +195,7 @@ func computeStack(ctx context.Context, opts ProvisionOpts, servers ...Server) (*
 
 type computeState struct {
 	exec    *executor.Executor
-	secrets runtime.SecretSource
+	secrets is.SecretsSource
 	out     *stackBuilder
 }
 
@@ -341,7 +341,7 @@ func traverseResources(sealedctx pkggraph.SealedContext, parentID string, r *res
 	return multierr.New(errs...)
 }
 
-func EvalProvision(ctx context.Context, secrets runtime.SecretSource, server Server, n *pkggraph.Package) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, secrets is.SecretsSource, server Server, n *pkggraph.Package) (*ParsedNode, error) {
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
 		pn, err := evalProvision(ctx, secrets, server, n)
 		if err != nil {
@@ -352,7 +352,7 @@ func EvalProvision(ctx context.Context, secrets runtime.SecretSource, server Ser
 	})
 }
 
-func evalProvision(ctx context.Context, secs runtime.SecretSource, server Server, node *pkggraph.Package) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, node *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps planninghooks.InternalPrepareProps
 	for _, hook := range node.PrepareHooks {
 		if hook.InvokeInternal != "" {

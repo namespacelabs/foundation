@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -42,7 +41,7 @@ func newPrintSealedCmd() *cobra.Command {
 			pl := parsing.NewPackageLoader(env)
 			loc := locs.Locs[0]
 
-			cluster, err := runtime.PlannerFor(ctx, env)
+			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {
 				return err
 			}
@@ -60,7 +59,7 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				plan, err := deploy.PrepareDeployServers(ctx, env, cluster, t)
+				plan, err := deploy.PrepareDeployServers(ctx, p, t)
 				if err != nil {
 					return err
 				}

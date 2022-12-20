@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -60,7 +61,7 @@ func MakeInvocation(ctx context.Context, env cfg.Context, planner runtime.Planne
 	}, injections)
 }
 
-func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, secrets runtime.GroundedSecrets, r *Definition, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
+func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, secrets secrets.GroundedSecrets, r *Definition, props InvokeProps) (compute.Computable[*protocol.ToolResponse], error) {
 	if len(r.Invocation.Inject) > 0 {
 		return nil, fnerrors.InternalError("injections are not supported in this path")
 	}
@@ -69,7 +70,7 @@ func MakeInvocationNoInjections(ctx context.Context, env cfg.Context, secrets ru
 }
 
 // The caller must ensure that injections are handled.
-func makeBaseInvocation(ctx context.Context, env cfg.Context, secrets runtime.GroundedSecrets, r *Definition, props InvokeProps, header *protocol.StackRelated, injections []*anypb.Any) (compute.Computable[*protocol.ToolResponse], error) {
+func makeBaseInvocation(ctx context.Context, env cfg.Context, secrets secrets.GroundedSecrets, r *Definition, props InvokeProps, header *protocol.StackRelated, injections []*anypb.Any) (compute.Computable[*protocol.ToolResponse], error) {
 	invocation := r.Invocation
 
 	req := &protocol.ToolRequest{

@@ -13,9 +13,9 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/startup"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -37,12 +37,12 @@ func newComputeConfigCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
 			fncobra.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			planner, err := runtime.PlannerFor(ctx, env)
+			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {
 				return err
 			}
 
-			plan, err := deploy.PrepareDeployServers(ctx, env, planner, servers.Servers...)
+			plan, err := deploy.PrepareDeployServers(ctx, p, servers.Servers...)
 			if err != nil {
 				return err
 			}

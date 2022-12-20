@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package runtime
+package secrets
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-type SecretSource interface {
+type SecretsSource interface {
 	Load(context.Context, pkggraph.Modules, *schema.PackageRef, *SecretRequest_ServerRef) (*schema.FileContents, error)
 	MissingError(*schema.PackageRef, *schema.SecretSpec, schema.PackageName) error
 }

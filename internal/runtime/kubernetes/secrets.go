@@ -15,7 +15,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
@@ -36,7 +36,7 @@ func newSecretCollector(secretId string) *secretCollector {
 	return &secretCollector{secretId: secretId, items: newDataItemCollector()}
 }
 
-func (s *secretCollector) allocate(ctx context.Context, secrets runtime.GroundedSecrets, ref *schema.PackageRef) (string, string, error) {
+func (s *secretCollector) allocate(ctx context.Context, secrets secrets.GroundedSecrets, ref *schema.PackageRef) (string, string, error) {
 	contents, err := secrets.Get(ctx, ref)
 	if err != nil {
 		return "", "", err

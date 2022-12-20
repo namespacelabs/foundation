@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	internalres "namespacelabs.dev/foundation/internal/resources"
 	"namespacelabs.dev/foundation/internal/runtime"
+	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -46,7 +47,7 @@ type InvokeResourceProvider struct {
 	SecretResources      []runtime.SecretResourceDependency
 }
 
-func PlanResourceProviderInvocation(ctx context.Context, secs runtime.SecretSource, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
+func PlanResourceProviderInvocation(ctx context.Context, secs is.SecretsSource, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
 	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
 
 	versions, err := foundationVersion(ctx, invoke.SealedContext)

@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -133,7 +134,6 @@ type Planner interface {
 	// PrepareProvision is called before invoking a provisioning tool, to offer
 	// the runtime implementation a way to pass runtime-specific information to
 	// the tool. E.g. what's the Kubernetes namespace we're working with.
-	// XXX move to planner.
 	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
@@ -246,7 +246,7 @@ type DeployableSpec struct {
 	PlannedResourceDeps []*resources.ResourceDependency
 	PlannedResources    []PlannedResource
 
-	Secrets GroundedSecrets
+	Secrets secrets.GroundedSecrets
 
 	// The list of primitive std/runtime:Secret that this deployable depends on.
 	// These are treated in a special way: each one of them is mounted under

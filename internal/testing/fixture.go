@@ -100,7 +100,12 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		Debug:         opts.Debug,
 	}
 
-	deployPlan, err := deploy.PrepareDeployStack(ctx, env, planner, planner.Registry(), stack, driver)
+	p, err := planning.NewPlannerFromExisting(env, planner)
+	if err != nil {
+		return nil, err
+	}
+
+	deployPlan, err := deploy.PrepareDeployStack(ctx, p, stack, driver)
 	if err != nil {
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load stack: %w", err)
 	}

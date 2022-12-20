@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/runtime"
 	orchestrationpb "namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/orchestration/server/constants"
@@ -137,7 +138,14 @@ func deployHead(ctx context.Context, env cfg.Context, boundCluster runtime.Clust
 		return err
 	}
 
-	plan, err := deploy.PrepareDeployServers(ctx, env, planner, focus)
+	p := planning.Planner{
+		Context:  env,
+		Runtime:  planner,
+		Registry: planner.Registry(),
+		Secrets:  secrets.NoSecrets,
+	}
+
+	plan, err := deploy.PrepareDeployServers(ctx, p, focus)
 	if err != nil {
 		return err
 	}

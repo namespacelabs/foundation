@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
-	"namespacelabs.dev/foundation/internal/runtime"
+	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
@@ -25,7 +25,7 @@ import (
 
 type resourcePlanner struct {
 	eg      *executor.Executor
-	secrets runtime.SecretSource
+	secrets is.SecretsSource
 	mu      sync.Mutex
 	state   map[string]*computedResource
 }
@@ -34,7 +34,7 @@ type computedResource struct {
 	resources []pkggraph.ResourceInstance
 }
 
-func newResourcePlanner(eg *executor.Executor, secrets runtime.SecretSource) *resourcePlanner {
+func newResourcePlanner(eg *executor.Executor, secrets is.SecretsSource) *resourcePlanner {
 	return &resourcePlanner{eg: eg, secrets: secrets, state: map[string]*computedResource{}}
 }
 
@@ -99,7 +99,7 @@ func (rp *resourcePlanner) computeResource(sealedctx pkggraph.SealedContext, par
 	return nil
 }
 
-func (st *computedResource) compute(ctx context.Context, secs runtime.SecretSource, sealedCtx pkggraph.SealedContext, intent *anypb.Any, provider *pkggraph.ResourceProvider) ([]pkggraph.ResourceInstance, error) {
+func (st *computedResource) compute(ctx context.Context, secs is.SecretsSource, sealedCtx pkggraph.SealedContext, intent *anypb.Any, provider *pkggraph.ResourceProvider) ([]pkggraph.ResourceInstance, error) {
 	if provider == nil || provider.Spec.ResourcesFrom == nil {
 		return nil, nil
 	}

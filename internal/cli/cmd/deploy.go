@@ -81,12 +81,10 @@ func NewDeployCmd() *cobra.Command {
 				return err
 			}
 
-			planner, err := runtime.PlannerFor(ctx, env)
+			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {
 				return err
 			}
-
-			reg := planner.Registry()
 
 			// When uploading a plan, any server and container images should be
 			// pushed to the same repository, so they're accessible by the plan.
@@ -94,9 +92,9 @@ func NewDeployCmd() *cobra.Command {
 			var target compute.Computable[oci.AllocatedRepository]
 			if uploadTo != "" {
 				if uploadToRegistry {
-					target = reg.AllocateName(uploadTo)
+					target = p.Registry.AllocateName(uploadTo)
 				} else {
-					reg = registry.MakeStaticRegistry(&buildr.Registry{
+					p.Registry = registry.MakeStaticRegistry(&buildr.Registry{
 						Url: uploadTo,
 					})
 					target = registry.Precomputed(registry.AttachStaticKeychain(nil, oci.ImageID{
@@ -106,7 +104,7 @@ func NewDeployCmd() *cobra.Command {
 				}
 			}
 
-			plan, err := deploy.PrepareDeployStack(ctx, env, planner, reg, stack)
+			plan, err := deploy.PrepareDeployStack(ctx, p, stack)
 			if err != nil {
 				return err
 			}

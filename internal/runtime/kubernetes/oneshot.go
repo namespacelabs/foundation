@@ -17,10 +17,11 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func (r *Cluster) RunAttachedOpts(ctx context.Context, secrets runtime.GroundedSecrets, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
+func (r *Cluster) RunAttachedOpts(ctx context.Context, secrets secrets.GroundedSecrets, ns, name string, runOpts runtime.ContainerRunOpts, io runtime.TerminalIO, onStart func()) error {
 	spec, err := makePodSpec(ctx, secrets, name, runOpts)
 	if err != nil {
 		return err
@@ -55,7 +56,7 @@ func (r *Cluster) RunAttachedOpts(ctx context.Context, secrets runtime.GroundedS
 	return nil
 }
 
-func makePodSpec(ctx context.Context, secrets runtime.GroundedSecrets, name string, runOpts runtime.ContainerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
+func makePodSpec(ctx context.Context, secrets secrets.GroundedSecrets, name string, runOpts runtime.ContainerRunOpts) (*applycorev1.PodSpecApplyConfiguration, error) {
 	container := applycorev1.Container().
 		WithName(name).
 		WithImage(runOpts.Image.RepoAndDigest()).

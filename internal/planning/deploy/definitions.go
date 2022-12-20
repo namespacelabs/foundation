@@ -24,18 +24,16 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/types"
 )
 
-func prepareInvokeHandlers(ctx context.Context, env cfg.Context, planner runtime.Planner, stack *planning.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
-	props, err := planner.PrepareProvision(ctx)
+func prepareInvokeHandlers(ctx context.Context, planner planning.Planner, stack *planning.Stack, handlers []*tool.Definition, event protocol.Lifecycle) (compute.Computable[*handlerResult], error) {
+	props, err := planner.Runtime.PrepareProvision(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +83,7 @@ func prepareInvokeHandlers(ctx context.Context, env cfg.Context, planner runtime
 			return nil, fnerrors.InternalError("found lifecycle for %q, but no such server in our stack", r.TargetServer)
 		}
 
-		inv, err := tool.MakeInvocation(ctx, env, planner, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()])
+		inv, err := tool.MakeInvocation(ctx, planner.Context, planner.Runtime, r, stack.Proto(), focus.PackageName(), propsPerServer[focus.PackageName()])
 		if err != nil {
 			return nil, err
 		}

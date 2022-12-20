@@ -110,15 +110,15 @@ func (c *prepareServerConfig) Compute(ctx context.Context, deps compute.Resolved
 	return files, nil
 }
 
-func prepareConfigImage(ctx context.Context, env cfg.Context, planner runtime.Planner, server planning.Server, stack *planning.Stack,
+func prepareConfigImage(ctx context.Context, planner planning.Planner, server planning.Server, stack *planning.Stack,
 	computedConfigs compute.Computable[*schema.ComputedConfigurations]) oci.NamedImage {
 
 	return oci.MakeImageFromScratch(fmt.Sprintf("config %s", server.PackageName()),
 		oci.MakeLayer(fmt.Sprintf("config %s", server.PackageName()),
 			&prepareServerConfig{
-				planner:         planner,
+				planner:         planner.Runtime,
 				serverPackage:   server.PackageName(),
-				env:             env,
+				env:             planner.Context,
 				stack:           stack.Proto(),
 				computedConfigs: computedConfigs,
 			}))

@@ -26,7 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 )
@@ -40,7 +40,7 @@ type baseRequest[V any] struct {
 	targetPlatform *specs.Platform    // If one is set, may be used to select the target build cluster.
 	req            compute.Computable[*FrontendRequest]
 	localDirs      []LocalContents // If set, the output is not cachable by us.
-	secrets        runtime.GroundedSecrets
+	secrets        secrets.GroundedSecrets
 
 	compute.LocalScoped[V]
 }

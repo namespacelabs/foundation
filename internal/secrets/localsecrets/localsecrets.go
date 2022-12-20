@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -32,7 +32,12 @@ type localSecrets struct {
 	cache map[string]*Bundle
 }
 
-func NewLocalSecrets(env cfg.Context) (runtime.SecretSource, error) {
+type SecretsContext interface {
+	Workspace() cfg.Workspace
+	Environment() *schema.Environment
+}
+
+func NewLocalSecrets(env SecretsContext) (secrets.SecretsSource, error) {
 	keyDir, err := keys.KeysDir()
 	if err != nil {
 		if errors.Is(err, keys.ErrKeyGen) {
@@ -45,7 +50,7 @@ func NewLocalSecrets(env cfg.Context) (runtime.SecretSource, error) {
 	return &localSecrets{keyDir: keyDir, workspaceModule: env.Workspace().ModuleName(), env: env.Environment(), cache: map[string]*Bundle{}}, nil
 }
 
-func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, ref *schema.PackageRef, server *runtime.SecretRequest_ServerRef) (*schema.FileContents, error) {
+func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, ref *schema.PackageRef, server *secrets.SecretRequest_ServerRef) (*schema.FileContents, error) {
 	// Ordered by lookup order.
 	var bundles []*Bundle
 

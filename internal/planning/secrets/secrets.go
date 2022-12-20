@@ -9,15 +9,15 @@ import (
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type groundedSecrets struct {
-	source    runtime.SecretSource
+	source    secrets.SecretsSource
 	sealedCtx pkggraph.SealedPackageLoader
-	server    *runtime.SecretRequest_ServerRef
+	server    *secrets.SecretRequest_ServerRef
 }
 
 type Server interface {
@@ -27,15 +27,15 @@ type Server interface {
 	RelPath() string
 }
 
-func ScopeSecretsToServer(source runtime.SecretSource, server Server) runtime.GroundedSecrets {
-	return ScopeSecretsTo(source, server.SealedContext(), &runtime.SecretRequest_ServerRef{
+func ScopeSecretsToServer(source secrets.SecretsSource, server Server) secrets.GroundedSecrets {
+	return ScopeSecretsTo(source, server.SealedContext(), &secrets.SecretRequest_ServerRef{
 		PackageName: server.PackageName(),
 		ModuleName:  server.Module().ModuleName(),
 		RelPath:     server.RelPath(),
 	})
 }
 
-func ScopeSecretsTo(source runtime.SecretSource, sealedCtx pkggraph.SealedPackageLoader, server *runtime.SecretRequest_ServerRef) runtime.GroundedSecrets {
+func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPackageLoader, server *secrets.SecretRequest_ServerRef) secrets.GroundedSecrets {
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 

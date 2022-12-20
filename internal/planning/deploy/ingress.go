@@ -26,8 +26,8 @@ type ComputeIngressResult struct {
 	stack   *schema.Stack
 }
 
-func ComputeIngress(rootenv cfg.Context, planner runtime.Planner, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
-	return &computeIngress{rootenv: rootenv, planner: planner, stack: stack, fragments: plans, allocate: allocate}
+func ComputeIngress(planner planning.Planner, stack *schema.Stack, plans compute.Computable[[]*schema.IngressFragment], allocate bool) compute.Computable[*ComputeIngressResult] {
+	return &computeIngress{rootenv: planner.Context, planner: planner.Runtime, stack: stack, fragments: plans, allocate: allocate}
 }
 
 func PlanIngressDeployment(rc runtime.Planner, c compute.Computable[*ComputeIngressResult]) compute.Computable[*runtime.DeploymentPlan] {
@@ -115,7 +115,7 @@ func computeDeferredIngresses(ctx context.Context, env cfg.Context, planner runt
 	return fragments, nil
 }
 
-func computeIngressWithHandlerResult(env cfg.Context, planner runtime.Planner, stack *planning.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
+func computeIngressWithHandlerResult(planner planning.Planner, stack *planning.Stack, def compute.Computable[*handlerResult]) compute.Computable[*ComputeIngressResult] {
 	computedIngressFragments := compute.Transform("parse computed ingress", def, func(ctx context.Context, h *handlerResult) ([]*schema.IngressFragment, error) {
 		var fragments []*schema.IngressFragment
 
@@ -139,5 +139,5 @@ func computeIngressWithHandlerResult(env cfg.Context, planner runtime.Planner, s
 		return fragments, nil
 	})
 
-	return ComputeIngress(env, planner, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
+	return ComputeIngress(planner, stack.Proto(), computedIngressFragments, AlsoDeployIngress)
 }

@@ -34,7 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -246,7 +246,7 @@ func MakeLocalState(src LocalContents) llb.State {
 		llb.ExcludePatterns(MakeLocalExcludes(src)))
 }
 
-func prepareSession(ctx context.Context, keychain oci.Keychain, src runtime.GroundedSecrets, secrets []*schema.PackageRef) ([]session.Attachable, error) {
+func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.GroundedSecrets, secrets []*schema.PackageRef) ([]session.Attachable, error) {
 	var fs []secretsprovider.Source
 
 	for _, def := range strings.Split(BuildkitSecrets, ";") {

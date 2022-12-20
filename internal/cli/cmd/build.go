@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -64,12 +64,12 @@ func NewBuildCmd() *cobra.Command {
 				}
 			}
 
-			cluster, err := runtime.PlannerFor(ctx, env)
+			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {
 				return err
 			}
 
-			_, images, err := deploy.ComputeStackAndImages(ctx, env, cluster, servers.Servers)
+			_, images, err := deploy.ComputeStackAndImages(ctx, p, servers.Servers)
 			if err != nil {
 				return err
 			}

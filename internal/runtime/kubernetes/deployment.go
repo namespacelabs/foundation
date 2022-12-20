@@ -138,7 +138,7 @@ func toK8sProbe(p *applycorev1.ProbeApplyConfiguration, probevalues *perEnvConf,
 }
 
 type deployOpts struct {
-	secrets runtime.GroundedSecrets
+	secrets secrets.GroundedSecrets
 }
 
 func deployAsPods(env *schema.Environment) bool {
@@ -1038,7 +1038,7 @@ func runAsToPodSecCtx(podSecCtx *applycorev1.PodSecurityContextApplyConfiguratio
 	return nil, nil
 }
 
-func fillEnv(ctx context.Context, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets runtime.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(ctx context.Context, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets secrets.GroundedSecrets, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
 	sort.SliceStable(env, func(i, j int) bool {
 		return env[i].Name < env[j].Name
 	})
