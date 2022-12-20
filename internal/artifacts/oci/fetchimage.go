@@ -31,6 +31,7 @@ func ImageP(ref string, platform *specs.Platform, opts ResolveOpts) compute.Comp
 		imageid:    imageID,
 		descriptor: &fetchDescriptor{imageID: imageID, opts: opts},
 		platform:   platform,
+		opts:       opts,
 	}
 }
 

@@ -163,7 +163,7 @@ func deployHead(ctx context.Context, env cfg.Context, boundCluster runtime.Clust
 
 func deployPlan(ctx context.Context, env cfg.Context, repository, digest string, boundCluster runtime.ClusterNamespace, wait bool) error {
 	plan, err := tasks.Return(ctx, tasks.Action("orchestrator.fetch-latest"), func(ctx context.Context) (*schema.DeployPlan, error) {
-		image, err := compute.GetValue(ctx, oci.ImageP(fmt.Sprintf("%s@%s", repository, digest), nil, oci.ResolveOpts{}))
+		image, err := compute.GetValue(ctx, oci.ImageP(fmt.Sprintf("%s@%s", repository, digest), nil, oci.ResolveOpts{PublicImage: true}))
 		if err != nil {
 			return nil, err
 		}
