@@ -112,27 +112,29 @@ func makePort(service *schema.Server_ServiceSpec) *runtime.Server_Port {
 
 // TODO: consolidate with "resolveBackend" from Node.js build
 func makeServiceIngress(stack serverStack, endpoint *schema.Endpoint, env *schema.Environment) *runtime.Server_Ingress {
-	// There is often no ingress in tests so we use in-cluster addresses.
+	// There is often no ingress in tests so we use the in-cluster address.
 	// In the future we could allow the user to annotate domains which would
 	// be accessible from the test environment.
-	useInClusterAddresses := env.Purpose == schema.Environment_TESTING
+	if env.Purpose == schema.Environment_TESTING {
+		return &runtime.Server_Ingress{
+			Domain: []*runtime.Server_Ingress_Domain{{
+				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),
+			}},
+		}
+	}
 
 	ingress := &runtime.Server_Ingress{}
 	for _, fragment := range stack.GetIngressesForService(endpoint.EndpointOwner, endpoint.ServiceName) {
 		domain := &runtime.Server_Ingress_Domain{}
 
-		if useInClusterAddresses {
-			domain.BaseUrl = fmt.Sprintf("http://%s:%d", fragment.Endpoint.AllocatedName, fragment.Endpoint.Port.ContainerPort)
+		d := fragment.Domain
+		if d.Managed == schema.Domain_LOCAL_MANAGED {
+			domain.BaseUrl = fmt.Sprintf("http://%s:%d", d.Fqdn, internalruntime.LocalIngressPort)
 		} else {
-			d := fragment.Domain
-			if d.Managed == schema.Domain_LOCAL_MANAGED {
-				domain.BaseUrl = fmt.Sprintf("http://%s:%d", d.Fqdn, internalruntime.LocalIngressPort)
+			if d.TlsFrontend {
+				domain.BaseUrl = fmt.Sprintf("https://%s", d.Fqdn)
 			} else {
-				if d.TlsFrontend {
-					domain.BaseUrl = fmt.Sprintf("https://%s", d.Fqdn)
-				} else {
-					domain.BaseUrl = fmt.Sprintf("http://%s", d.Fqdn)
-				}
+				domain.BaseUrl = fmt.Sprintf("http://%s", d.Fqdn)
 			}
 		}
 

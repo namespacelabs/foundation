@@ -1112,6 +1112,24 @@ func fillEnv(ctx context.Context, container *applycorev1.ContainerApplyConfigura
 
 			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
 
+		case kv.FromServiceIngress != nil:
+			if out == nil {
+				return nil, fnerrors.InternalError("can't use FromServiceIngress in this context")
+			}
+
+			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
+				SetEnv: []*rtschema.SetContainerField_SetValue{
+					{
+						ContainerName: *container.Name,
+						Key:           kv.Name,
+						Value:         rtschema.SetContainerField_RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL,
+						ServiceRef:    kv.FromServiceIngress,
+					},
+				},
+			})
+
+			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
+
 		default:
 			entry = applycorev1.EnvVar().WithName(kv.Name).WithValue(kv.Value)
 		}

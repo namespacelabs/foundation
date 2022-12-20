@@ -452,6 +452,10 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 				if err := validateServiceRef(env.FromServiceEndpoint, &stack.Stack); err != nil {
 					return runtime.DeploymentSpec{}, fnerrors.AttachLocation(srv.Location, err)
 				}
+			case env.FromServiceIngress != nil:
+				if err := validateServiceRef(env.FromServiceIngress, &stack.Stack); err != nil {
+					return runtime.DeploymentSpec{}, fnerrors.AttachLocation(srv.Location, err)
+				}
 			}
 		}
 

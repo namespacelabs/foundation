@@ -271,31 +271,26 @@ func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetCont
 		return &value{Inline: output.SerializedResourceJson}, nil
 
 	case runtime.SetContainerField_RUNTIME_CONFIG_SERVICE_ENDPOINT:
-		if set.ServiceRef == nil {
-			return nil, fnerrors.BadInputError("missing required service endpoint")
+		service, err := getServiceByRef(set.ServiceRef, output.SerializedRuntimeJson)
+		if err != nil {
+			return nil, err
 		}
 
-		rt := &runtime.RuntimeConfig{}
-		// XXX unmarshal once.
-		if err := protojson.Unmarshal([]byte(output.SerializedRuntimeJson), rt); err != nil {
-			return nil, fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
+		// Returns a hostname:port pair.
+		return &value{Inline: service.Endpoint}, nil
+
+	case runtime.SetContainerField_RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL:
+		service, err := getServiceByRef(set.ServiceRef, output.SerializedRuntimeJson)
+		if err != nil {
+			return nil, err
 		}
 
-		for _, srv := range rt.StackEntry {
-			if srv.PackageName == set.ServiceRef.GetServerRef().GetPackageName() {
-				for _, service := range srv.Service {
-					if service.Name == set.ServiceRef.ServiceName {
-						// Returns a hostname:port pair.
-						return &value{Inline: service.Endpoint}, nil
-					}
-				}
-
-				return nil, fnerrors.BadInputError("the required service %q is not exported by %q",
-					set.ServiceRef.ServiceName, set.ServiceRef.GetServerRef().GetPackageName())
-			}
+		if service.Ingress == nil || len(service.Ingress.Domain) == 0 {
+			return nil, fnerrors.BadInputError("service %s has no ingress, %v", service.Name, service)
 		}
 
-		return nil, fnerrors.BadInputError("the required server %q is not present in the stack", set.ServiceRef.GetServerRef().GetPackageName())
+		// TODO: introduce a concept of the "default" ingress, use it here.
+		return &value{Inline: service.Ingress.Domain[0].BaseUrl}, nil
 
 	case runtime.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR:
 		if set.ResourceConfigFieldSelector == nil {
@@ -325,6 +320,35 @@ func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtime.SetCont
 	}
 
 	return nil, fnerrors.BadInputError("%s: don't know this value", set.Value)
+}
+
+func getServiceByRef(ref *fnschema.ServiceRef, serializedResourceJson string) (*runtime.Server_Service, error) {
+	if ref == nil {
+		return nil, fnerrors.BadInputError("missing required service endpoint")
+	}
+
+	rt := &runtime.RuntimeConfig{}
+	// XXX unmarshal once.
+	if err := protojson.Unmarshal([]byte(serializedResourceJson), rt); err != nil {
+		return nil, fnerrors.InternalError("failed to unmarshal runtime configuration: %w", err)
+	}
+
+	allServers := append(rt.StackEntry, rt.Current)
+
+	for _, srv := range allServers {
+		if srv.PackageName == ref.GetServerRef().GetPackageName() {
+			for _, service := range srv.Service {
+				if service.Name == ref.ServiceName {
+					return service, nil
+				}
+			}
+
+			return nil, fnerrors.BadInputError("the required service %q is not exported by %q",
+				ref.ServiceName, ref.GetServerRef().GetPackageName())
+		}
+	}
+
+	return nil, fnerrors.BadInputError("the required server %q is not present in the stack", ref.GetServerRef().GetPackageName())
 }
 
 func updateContainers(spec *v1.PodSpec, name string, update func(container *v1.Container)) error {

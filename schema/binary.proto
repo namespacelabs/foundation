@@ -85,6 +85,7 @@ message BinaryConfig {
         string                      experimental_from_downwards_field_path = 7;  // Kubernetes specific.
         PackageRef                  from_secret_ref                        = 4;
         ServiceRef                  from_service_endpoint                  = 5;  // Inject the endpoint of a service in the stack.
+        ServiceRef                  from_service_ingress                   = 8;  // Inject the ingress address of a service. This is available from outside the cluster.
         ResourceConfigFieldSelector from_resource_field                    = 6;
     }
 }

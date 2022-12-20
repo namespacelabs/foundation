@@ -159,6 +159,13 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
 			}
 		}
+		if env.FromServiceIngress != nil {
+			dep := env.FromServiceIngress.ServerRef.AsPackageName()
+			if !availableServers.Has(dep) {
+				// TODO reconcider if we want to implicitly add the dependency NSL-357
+				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
+			}
+		}
 	}
 
 	permissions := bits.UnstablePermissions
@@ -218,6 +225,11 @@ func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg
 
 		case e.FromServiceEndpoint.GetServerRef() != nil:
 			if _, err := ensureLoad(ctx, pl, pkg, e.FromServiceEndpoint.GetServerRef()); err != nil {
+				return err
+			}
+
+		case e.FromServiceIngress.GetServerRef() != nil:
+			if _, err := ensureLoad(ctx, pl, pkg, e.FromServiceIngress.GetServerRef()); err != nil {
 				return err
 			}
 

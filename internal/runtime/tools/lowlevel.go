@@ -105,7 +105,7 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 				continue
 			}
 
-			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromServiceEndpoint != nil || env.FromResourceField != nil {
+			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromServiceEndpoint != nil || env.FromServiceIngress != nil || env.FromResourceField != nil {
 				return nil, fnerrors.New("invocation: only support environment variables with static values")
 			}
 

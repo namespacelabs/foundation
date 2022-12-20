@@ -64,11 +64,12 @@ message Diagnostics {
 
 message SetContainerField {
     enum ValueSource {
-        VALUE_SOURCE_UNKNOWN            = 0;
-        RUNTIME_CONFIG                  = 1;
-        RESOURCE_CONFIG                 = 2;
-        RUNTIME_CONFIG_SERVICE_ENDPOINT = 3;
-        RESOURCE_CONFIG_FIELD_SELECTOR  = 4;
+        VALUE_SOURCE_UNKNOWN                    = 0;
+        RUNTIME_CONFIG                          = 1;
+        RESOURCE_CONFIG                         = 2;
+        RUNTIME_CONFIG_SERVICE_ENDPOINT         = 3;
+        RESOURCE_CONFIG_FIELD_SELECTOR          = 4;
+        RUNTIME_CONFIG_SERVICE_INGRESS_BASE_URL = 5;
     }
 
     repeated SetValue set_arg = 1;

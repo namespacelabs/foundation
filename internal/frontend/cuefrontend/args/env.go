@@ -23,6 +23,7 @@ type envValue struct {
 	value                              string
 	fromSecret                         string
 	fromServiceEndpoint                string
+	fromServiceIngress                 string
 	experimentalFromDownwardsFieldPath string
 	fromResourceField                  *resourceFieldSyntax
 }
@@ -70,6 +71,16 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 				ServiceName: serviceRef.Name,
 			}
 
+		case value.fromServiceIngress != "":
+			serviceRef, err := schema.ParsePackageRef(owner, value.fromServiceIngress)
+			if err != nil {
+				return nil, err
+			}
+			out.FromServiceIngress = &schema.ServiceRef{
+				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
+				ServiceName: serviceRef.Name,
+			}
+
 		case value.fromResourceField != nil:
 			resourceRef, err := schema.ParsePackageRef(owner, value.fromResourceField.Resource)
 			if err != nil {
@@ -94,7 +105,7 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 	return env, nil
 }
 
-var validKeys = []string{"fromSecret", "fromServiceEndpoint", "fromResourceField", "experimentalFromDownwardsFieldPath"}
+var validKeys = []string{"fromSecret", "fromServiceEndpoint", "fromServiceIngress", "fromResourceField", "experimentalFromDownwardsFieldPath"}
 
 func (ev *envValue) UnmarshalJSON(data []byte) error {
 	d := json.NewDecoder(bytes.NewReader(data))
@@ -121,6 +132,9 @@ func (ev *envValue) UnmarshalJSON(data []byte) error {
 
 		case "fromServiceEndpoint":
 			ev.fromServiceEndpoint, err = mustString("fromServiceEndpoint", m[keys[0]])
+
+		case "fromServiceIngress":
+			ev.fromServiceIngress, err = mustString("fromServiceIngress", m[keys[0]])
 
 		case "fromResourceField":
 			var ref resourceFieldSyntax

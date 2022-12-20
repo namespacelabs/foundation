@@ -120,6 +120,10 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			return fnerrors.New("docker: doesn't support env.FromServiceEndpoint")
 		}
 
+		if kv.FromServiceIngress != nil {
+			return fnerrors.New("docker: doesn't support env.FromServiceIngress")
+		}
+
 		if kv.FromResourceField != nil {
 			return fnerrors.New("docker: doesn't support env.FromResourceField")
 		}
