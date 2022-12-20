@@ -27,6 +27,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewFmtCmd())
 	root.AddCommand(NewUnprepareCmd())
 	root.AddCommand(NewDevCmd())
+	root.AddCommand(NewDescribeCmd())
 	root.AddCommand(NewBuildBinaryCmd())
 	root.AddCommand(NewCacheCmd())
 	root.AddCommand(mod.NewModCmd(RunCommand))
