@@ -73,7 +73,7 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pkg *
 				Class: *class,
 			}
 
-			if x.DefaultResource != nil {
+			if input.DefaultResource != nil {
 				if input.DefaultResource.PackageName != pkg.PackageName().String() {
 					if _, err := pl.LoadByName(ctx, schema.PackageName(input.DefaultResource.PackageName)); err != nil {
 						return nil, err
