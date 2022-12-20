@@ -588,11 +588,15 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	var secretProjections []*applycorev1.SecretProjectionApplyConfiguration
 	var injected []*kubedef.OpEnsureRuntimeConfig_InjectedResource
 	for _, res := range deployable.SecretResources {
-		if res.Spec.Generate == nil {
-			return fnerrors.BadInputError("don't yet support secrets used in resources, which don't use a generate block")
+		var alloc *secretReference
+		if res.Spec.Generate != nil {
+			alloc = seccol.allocateGenerated(res.SecretRef, res.Spec)
+		} else {
+			alloc, err = seccol.allocate(ctx, opts.secrets, res.SecretRef)
+			if err != nil {
+				return err
+			}
 		}
-
-		alloc := seccol.allocateGenerated(res.SecretRef, res.Spec)
 
 		serialized, err := secrets.Serialize(res.ResourceRef)
 		if err != nil {
