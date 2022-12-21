@@ -319,10 +319,6 @@ func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtimepb.SetCo
 }
 
 func selectServiceValue(ref *fnschema.ServiceRef, serializedResourceJson string, selector func(*runtimepb.Server_Service) (string, error)) (string, error) {
-	if ref == nil {
-		return "", fnerrors.BadInputError("missing required service endpoint")
-	}
-
 	rt := &runtimepb.RuntimeConfig{}
 	// XXX unmarshal once.
 	if err := protojson.Unmarshal([]byte(serializedResourceJson), rt); err != nil {

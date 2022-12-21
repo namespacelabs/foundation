@@ -155,7 +155,6 @@ jobs:
             --also_report_start_events \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
-            --tools_invocation_can_use_buildkit \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel \
@@ -237,7 +236,6 @@ jobs:
             internal/testdata/integrations/nodejs/yarn \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
-            --tools_invocation_can_use_buildkit \
             --run_codegen=false
 
       - uses: k0kubun/action-slack@v2.0.0
@@ -298,7 +296,6 @@ jobs:
             golang/02-withsecrets/server \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
-            --tools_invocation_can_use_buildkit \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel
