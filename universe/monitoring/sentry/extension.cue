@@ -1,6 +1,5 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
-	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/std/core/info"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 	"namespacelabs.dev/foundation/std/go/http/middleware"
