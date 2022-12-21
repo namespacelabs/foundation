@@ -1,4 +1,4 @@
 binary: {
-	name: "localstack-prepare-hook"
+	name: "localstack-prepare-bucket"
 	from: go_package: "."
 }
