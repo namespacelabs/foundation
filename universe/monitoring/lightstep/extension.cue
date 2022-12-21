@@ -10,12 +10,19 @@ extension: fn.#Extension & {
 	initializeBefore: ["namespacelabs.dev/foundation/std/monitoring/tracing"]
 
 	instantiate: {
-		accessToken: secrets.#Exports.Secret & {
-			name:     "lightstep-access-token"
-			optional: true // XXX this is temporary until we figure out the testing story.
-		}
 		openTelemetry: tracing.#Exports.Exporter & {
 			name: "lightstep"
+		}
+	}
+}
+
+configure: fn.#Configure & {
+	startup: {
+		env: {
+			// TODO: support optional secrets
+			if $env.name == "prod-metal" {
+				"MONITORING_LIGHTSTEP_ACCESS_TOKEN": fromSecret: ":lightstepAccessToken"
+			}
 		}
 	}
 }

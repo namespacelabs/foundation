@@ -6,13 +6,15 @@ package lightstep
 
 import (
 	"context"
+	"os"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	if deps.AccessToken.GetPath() == "" {
+	accessToken := os.Getenv("MONITORING_LIGHTSTEP_ACCESS_TOKEN")
+	if accessToken == "" {
 		// No secret specified.
 		return nil
 	}
@@ -20,7 +22,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint("ingest.lightstep.com:443"),
 		otlptracegrpc.WithHeaders(map[string]string{
-			"lightstep-access-token": string(deps.AccessToken.MustValue()),
+			"lightstep-access-token": accessToken,
 		}),
 	}
 
