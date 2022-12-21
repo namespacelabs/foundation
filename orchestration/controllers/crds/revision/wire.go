@@ -72,7 +72,7 @@ func setupControllers() error {
 	if err := ctrlruntime.NewControllerManagedBy(mgr).
 		For(&Revision{}).
 		Complete(&RevisionReconciler{
-			client:   mgr.GetClient(),
+			clt:      mgr.GetClient(),
 			recorder: mgr.GetEventRecorderFor("revision"),
 		}); err != nil {
 		return err
