@@ -202,6 +202,7 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		AllocatedName:   fmt.Sprintf("%s-%s", spec.GetName(), srv.Id),
 		ServiceLabel:    spec.GetLabel(),
 		ServiceMetadata: spec.Metadata,
+		IngressProvider: spec.IngressProvider,
 	}
 
 	// XXX Rethink this -- i.e. consolidate with InternalEndpoint.

@@ -343,8 +343,17 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 			ingressProviders := maps.Keys(ingressEndpoints)
 			slices.Sort(ingressProviders)
-			for k, provider := range ingressProviders {
-				endpoints := ingressEndpoints[provider]
+			for k, providerRef := range ingressProviders {
+				provider, err := parsing.LookupResourceProvider(ctx, server.SealedContext(), server.Package, providerRef, ingressClassRef)
+				if err != nil {
+					return err
+				}
+
+				if provider.Spec.PrepareWith == nil || provider.Spec.InitializedWith != nil {
+					return fnerrors.InternalError("for the time being, ingress providers must operate in the planning phase (i.e. must set prepareWith)")
+				}
+
+				endpoints := ingressEndpoints[providerRef]
 
 				ref := &schema.PackageRef{
 					PackageName: server.PackageName().String(),
@@ -378,6 +387,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 						Intent:     boxedIntent,
 						IntentType: ingressClass.IntentType,
 						Class:      *ingressClass,
+						Provider:   provider,
 					},
 				})
 			}
