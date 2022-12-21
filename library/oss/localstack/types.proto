@@ -1,0 +1,21 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package library.oss.localstack;
+
+option go_package = "namespacelabs.dev/foundation/library/oss/localstack";
+
+import "schema/package.proto";
+
+message ClusterIntent {}
+
+message ClusterInstance {
+    string endpoint = 1;
+}
+
+message ServerIntent {
+    foundation.schema.PackageRef server = 1;
+}

@@ -11,8 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
+	"namespacelabs.dev/foundation/library/oss/localstack"
 	"namespacelabs.dev/foundation/library/storage/s3"
 )
 
@@ -28,9 +28,9 @@ const (
 func main() {
 	ctx, p := provider.MustPrepare[*s3.BucketIntent]()
 
-	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:server", providerPkg), "api")
-	if err != nil {
-		log.Fatalf("failed to get localstack server: %v", err)
+	server := &localstack.ClusterInstance{}
+	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), server); err != nil {
+		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
 
 	instance := &s3.BucketInstance{
@@ -38,7 +38,7 @@ func main() {
 		BucketName:      p.Intent.BucketName,
 		AccessKey:       accessKey,
 		SecretAccessKey: secretAccessKey,
-		Url:             fmt.Sprintf("http://%s", endpoint),
+		Url:             fmt.Sprintf("http://%s", server.Endpoint),
 	}
 
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
