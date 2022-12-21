@@ -9,7 +9,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -42,15 +41,6 @@ func Ingress() ClusterStage {
 }
 
 func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes.Cluster) error {
-	for _, lbl := range kube.PreparedClient().Configuration.Labels {
-		if lbl.Name == ingress.LblNameStatus {
-			if lbl.Value == "installed" {
-				return nil
-			}
-			break
-		}
-	}
-
 	ingress := kube.Ingress()
 	if ingress == nil {
 		return nil

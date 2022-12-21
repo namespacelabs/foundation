@@ -23,44 +23,36 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
-const LblNameStatus = "ns:kubernetes:ingress:status"
-
-func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment, certSecrets map[string]string) ([]kubedef.Apply, *MapAddressList, error) {
-	var applies []kubedef.Apply
+func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment) ([]defs.MakeDefinition, error) {
+	var applies []defs.MakeDefinition
 
 	groups := groupByName(fragments)
 
-	var allManaged MapAddressList
-	for _, g := range groups {
-		apply, managed, err := generateForSrv(ctx, ingressPlanner, ns, env, deployable, g.Name, g.Fragments, certSecrets)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		applies = append(applies, kubedef.Apply{
-			Description: fmt.Sprintf("Ingress %s", g.Name),
-			Resource:    apply,
-			SchedAfterCategory: []string{
-				kubedef.MakeServicesCat(deployable),
-			},
-		})
-
-		allManaged.Merge(managed)
-	}
-
-	// Since we built the Cert list from a map, it's order is non-deterministic.
-	sort.Slice(applies, func(i, j int) bool {
-		return strings.Compare(applies[i].Description, applies[j].Description) < 0
+	slices.SortFunc(groups, func(a, b IngressGroup) bool {
+		return strings.Compare(a.Name, b.Name) < 0
 	})
 
-	return applies, &allManaged, nil
+	for _, g := range groups {
+		apply, err := generateForSrv(ctx, ingressPlanner, env, deployable, ns, g)
+		if err != nil {
+			return nil, err
+		}
+
+		applies = append(applies, apply...)
+	}
+
+	return applies, nil
 }
 
-func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map[string]string, []kubedef.Apply) {
-	var applies []kubedef.Apply
+type Cert struct {
+	SecretName string
+	Defs       []defs.MakeDefinition
+}
 
+func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) map[string]Cert {
 	domains := map[string]*schema.Domain{}
 	domainCerts := map[string]*schema.Certificate{}
 
@@ -72,51 +64,50 @@ func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) (map
 		}
 	}
 
-	certSecrets := map[string]string{} // Map fqdn->secret name.
+	certSecrets := map[string]Cert{} // Map fqdn->secret name.
 	for _, domain := range domains {
 		name := fmt.Sprintf("tls-%s", strings.ReplaceAll(domain.Fqdn, ".", "-"))
-		certSecrets[domain.Fqdn] = name
 		cert := domainCerts[domain.Fqdn]
-		applies = append(applies, kubedef.Apply{
-			Description: fmt.Sprintf("Certificate for %s", domain.Fqdn),
-			Resource: applycorev1.
-				Secret(name, ns).
-				WithType(corev1.SecretTypeTLS).
-				WithLabels(kubedef.ManagedByUs()).
-				WithAnnotations(kubedef.BaseAnnotations()).
-				WithData(map[string][]byte{
-					"tls.key": cert.PrivateKey,
-					"tls.crt": cert.CertificateBundle,
-				}),
-		})
+		certSecrets[domain.Fqdn] = Cert{
+			SecretName: name,
+			Defs: []defs.MakeDefinition{
+				kubedef.Apply{
+					Description: fmt.Sprintf("Certificate for %s", domain.Fqdn),
+					Resource: applycorev1.
+						Secret(name, ns).
+						WithType(corev1.SecretTypeTLS).
+						WithLabels(kubedef.ManagedByUs()).
+						WithAnnotations(kubedef.BaseAnnotations()).
+						WithData(map[string][]byte{
+							"tls.key": cert.PrivateKey,
+							"tls.crt": cert.CertificateBundle,
+						}),
+				},
+			},
+		}
 	}
 
-	// Since we built the Cert list from a map, it's order is non-deterministic.
-	sort.Slice(applies, func(i, j int) bool {
-		return strings.Compare(applies[i].Description, applies[j].Description) < 0
-	})
-
-	return certSecrets, applies
+	return certSecrets
 }
 
-type ingressGroup struct {
+type IngressGroup struct {
 	Name      string
 	Fragments []*schema.IngressFragment
 }
 
-func groupByName(ngs []*schema.IngressFragment) []ingressGroup {
+func groupByName(ngs []*schema.IngressFragment) []IngressGroup {
 	sort.Slice(ngs, func(i, j int) bool {
 		return strings.Compare(ngs[i].Name, ngs[j].Name) < 0
 	})
 
-	var groups []ingressGroup
+	var groups []IngressGroup
 
 	var currentName string
 	var g []*schema.IngressFragment
 	for _, ng := range ngs {
 		if ng.Name != currentName {
 			if len(g) > 0 {
-				groups = append(groups, ingressGroup{
+				groups = append(groups, IngressGroup{
 					Name:      g[0].Name,
 					Fragments: g,
 				})
@@ -128,7 +119,7 @@ func groupByName(ngs []*schema.IngressFragment) []ingressGroup {
 		g = append(g, ng)
 	}
 	if len(g) > 0 {
-		groups = append(groups, ingressGroup{
+		groups = append(groups, IngressGroup{
 			Name:      g[0].Name,
 			Fragments: g,
 		})
@@ -137,49 +128,18 @@ func groupByName(ngs []*schema.IngressFragment) []ingressGroup {
 	return groups
 }
 
-type MapAddressList struct {
-	list []*kubedef.OpMapAddress
-}
-
-func (m *MapAddressList) Add(ma *kubedef.OpMapAddress) {
-	for _, m := range m.list {
-		if m.Fdqn == ma.Fdqn && m.IngressNs == ma.IngressNs && m.IngressName == ma.IngressName && m.CnameTarget == ma.CnameTarget {
-			return
-		}
-	}
-
-	m.list = append(m.list, ma)
-}
-
-func (m *MapAddressList) Merge(rhs *MapAddressList) {
-	if m != nil {
-		for _, ma := range rhs.list {
-			m.Add(ma)
-		}
-	}
-}
-
-func (m *MapAddressList) Sorted() []*kubedef.OpMapAddress {
-	copy := slices.Clone(m.list)
-
-	slices.SortFunc(copy, func(a, b *kubedef.OpMapAddress) bool {
-		keyA := fmt.Sprintf("%s/%s/%s/%s", a.Fdqn, a.IngressNs, a.IngressName, a.CnameTarget)
-		keyB := fmt.Sprintf("%s/%s/%s/%s", b.Fdqn, b.IngressNs, b.IngressName, b.CnameTarget)
-		return strings.Compare(keyA, keyB) < 0
-	})
-
-	return copy
-}
-
-func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, srv runtime.Deployable, name string, fragments []*schema.IngressFragment, certSecrets map[string]string) (*applynetworkingv1.IngressApplyConfiguration, *MapAddressList, error) {
+func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, env *schema.Environment, deployable runtime.Deployable, ns string, g IngressGroup) ([]defs.MakeDefinition, error) {
 	var clearTextGrpcCount, grpcCount, nonGrpcCount int
+
+	certSecrets := MakeCertificateSecrets(ns, g.Fragments)
+	labels := kubedef.MakeLabels(env, deployable)
 
 	spec := applynetworkingv1.IngressSpec()
 
 	var tlsCount int
-	var managed MapAddressList
 	var extensions []*anypb.Any
-	for _, ng := range fragments {
+	var applies []defs.MakeDefinition
+	for _, ng := range g.Fragments {
 		extensions = append(extensions, ng.Extension...)
 
 		var paths []*applynetworkingv1.HTTPIngressPathApplyConfiguration
@@ -187,7 +147,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, ns
 			nonGrpcCount++
 
 			if p.Port == nil {
-				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.Path, p.Service))
+				return nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.Path, p.Service))
 			}
 
 			// XXX validate ports.
@@ -208,11 +168,11 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, ns
 			}
 
 			if p.Port == nil {
-				return nil, nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
+				return nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
 			}
 
 			if p.GrpcService == "" && !p.AllServices {
-				return nil, nil, fnerrors.InternalError("%s: grpc service name is required", p.Service)
+				return nil, fnerrors.InternalError("%s: grpc service name is required", p.Service)
 			}
 
 			backend := applynetworkingv1.IngressBackend().
@@ -240,26 +200,32 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, ns
 				paths...)))
 
 		if tlsSecret, ok := certSecrets[ng.Domain.Fqdn]; ok {
-			spec = spec.WithTLS(applynetworkingv1.IngressTLS().WithHosts(ng.Domain.Fqdn).WithSecretName(tlsSecret))
+			spec = spec.WithTLS(applynetworkingv1.IngressTLS().WithHosts(ng.Domain.Fqdn).WithSecretName(tlsSecret.SecretName))
+			applies = append(applies, tlsSecret.Defs...)
 			tlsCount++
 		}
 
-		ops, err := ingressPlanner.Map(ctx, ng.Domain, ns, name)
+		ops, err := ingressPlanner.Map(ctx, ng.Domain, ns, g.Name)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
-		for _, op := range ops {
-			managed.Add(op)
+		for _, frag := range ops {
+			desc := frag.Description
+			if desc == "" {
+				desc = fmt.Sprintf("Update %s's address", frag.Fdqn)
+			}
+
+			applies = append(applies, defs.Static(desc, frag))
 		}
 	}
 
 	if grpcCount > 0 && nonGrpcCount > 0 {
-		return nil, nil, fnerrors.InternalError("can't mix grpc and non-grpc backends in the same ingress")
+		return nil, fnerrors.InternalError("can't mix grpc and non-grpc backends in the same ingress")
 	}
 
 	if grpcCount > 0 && clearTextGrpcCount > 0 {
-		return nil, nil, fnerrors.InternalError("can't mix grpc and cleartext-grpc backends in the same ingress")
+		return nil, fnerrors.InternalError("can't mix grpc and cleartext-grpc backends in the same ingress")
 	}
 
 	backendProtocol := "http"
@@ -273,15 +239,21 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, ns
 	// XXX make nginx configurable.
 	annotations, err := nginx.IngressAnnotations(tlsCount > 0, backendProtocol, extensions)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	ingress := applynetworkingv1.Ingress(name, ns).
-		WithLabels(kubedef.MakeLabels(env, srv)).
-		WithAnnotations(annotations).
-		WithSpec(spec)
+	applies = append(applies, kubedef.Apply{
+		Description: fmt.Sprintf("Ingress %s", g.Name),
+		Resource: applynetworkingv1.Ingress(g.Name, ns).
+			WithLabels(labels).
+			WithAnnotations(annotations).
+			WithSpec(spec),
+		SchedAfterCategory: []string{
+			kubedef.MakeServicesCat(deployable),
+		},
+	})
 
-	return ingress, &managed, nil
+	return applies, nil
 }
 
 func Delete(ns string, stack []planning.Server) ([]*schema.SerializedInvocation, error) {

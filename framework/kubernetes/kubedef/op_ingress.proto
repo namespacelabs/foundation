@@ -2,10 +2,6 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-framework/kubernetes/kubedef/op_ingress.proto// Copyright 2022 Namespace Labs Inc; All rights reserved.
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-
 syntax = "proto3";
 
 package foundation.runtime.kubernetes.networking.ingress;
@@ -22,8 +18,4 @@ message OpMapAddress {
     string ingress_name = 3;
     // If specified, will map to the specified target.
     string cname_target = 4;
-}
-
-message OpCleanupMigration {
-    string namespace = 1;
 }

@@ -21,7 +21,7 @@ func TestGroupByName(t *testing.T) {
 
 	got := groupByName(x)
 
-	if d := cmp.Diff([]ingressGroup{
+	if d := cmp.Diff([]IngressGroup{
 		{
 			Name: "a",
 			Fragments: []*schema.IngressFragment{
