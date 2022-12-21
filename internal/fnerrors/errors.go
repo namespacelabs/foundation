@@ -64,7 +64,7 @@ func makeError(kind ErrorKind, format string, args ...interface{}) *BaseError {
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(runThis, toFixThis string, args ...interface{}) error {
 	err := makeError(Kind_USER, toFixThis, args...)
-	return &UsageErr{BaseError: *err, Why: fmt.Sprintf(toFixThis, args...), What: runThis}
+	return &UsageErr{BaseError: *err, Why: err.Error(), What: runThis}
 }
 
 // Unexpected error.
