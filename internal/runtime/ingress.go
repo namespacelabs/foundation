@@ -39,6 +39,10 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			continue
 		}
 
+		if endpoint.IngressProvider != nil {
+			continue
+		}
+
 		var protocol *string
 		var protocolDetails []*anypb.Any
 		var httpExtensions []*anypb.Any
