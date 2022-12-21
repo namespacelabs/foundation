@@ -91,7 +91,7 @@ func PrepareDeployStack(ctx context.Context, planner planning.Planner, stack *pl
 		return nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(planner, stack, def)
+	ingressFragments := computeIngressWithHandlerResult(planner, stack, ingressesFromHandlerResult(def))
 
 	prepare, err := prepareBuildAndDeployment(ctx, planner, stack, def, ingressFragments, prepared...)
 	if err != nil {
@@ -724,7 +724,7 @@ func ComputeStackAndImages(ctx context.Context, planner planning.Planner, server
 		return nil, nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(planner, stack, def)
+	ingressFragments := computeIngressWithHandlerResult(planner, stack, ingressesFromHandlerResult(def))
 
 	_, images, err := computeStackAndImages(ctx, planner, stack, serverImagesOpts{
 		ProvisionResult:     def,

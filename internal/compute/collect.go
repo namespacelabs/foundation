@@ -11,6 +11,16 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+func Merge[V any](desc string, c Computable[[]ResultWithTimestamp[[]V]]) Computable[[]V] {
+	return Transform(desc, c, func(ctx context.Context, wrapped []ResultWithTimestamp[[]V]) ([]V, error) {
+		var values []V
+		for _, v := range wrapped {
+			values = append(values, v.Value...)
+		}
+		return values, nil
+	})
+}
+
 func Collect[V any](ev *tasks.ActionEvent, computables ...Computable[V]) Computable[[]ResultWithTimestamp[V]] {
 	return &collect[V]{ev: ev, computables: computables}
 }
