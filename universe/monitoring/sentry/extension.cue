@@ -10,11 +10,16 @@ extension: fn.#Extension & {
 	hasInitializerIn: "GO"
 
 	instantiate: {
-		dsn: secrets.#Exports.Secret & {
-			name: "sentry-dsn"
-		}
 		serverInfo:     info.#Exports.ServerInfo
 		"interceptors": interceptors.#Exports.InterceptorRegistration
 		"middleware":   middleware.#Exports.Middleware
+	}
+}
+
+configure: fn.#Configure & {
+	startup: {
+		env: {
+			"MONITORING_SENTRY_DSN": fromSecret: ":sentryDsn"
+		}
 	}
 }

@@ -7,6 +7,7 @@ package sentry
 import (
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -18,7 +19,7 @@ import (
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:              string(deps.Dsn.MustValue()),
+		Dsn:              os.Getenv("MONITORING_SENTRY_DSN"),
 		ServerName:       deps.ServerInfo.ServerName,
 		Environment:      deps.ServerInfo.EnvName,
 		Release:          deps.ServerInfo.GetVcs().GetRevision(),
