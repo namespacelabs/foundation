@@ -11,6 +11,7 @@ import (
 
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
@@ -22,13 +23,7 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clu
 	var state runtime.DeploymentPlan
 
 	for _, srv := range stack.Entry {
-		var frags []*fnschema.IngressFragment
-		for _, fr := range allFragments {
-			if srv.GetPackageName().Equals(fr.Owner) {
-				frags = append(frags, fr)
-			}
-		}
-
+		frags := planning.IngressOwnedBy(allFragments, srv.GetPackageName())
 		if len(frags) == 0 {
 			continue
 		}

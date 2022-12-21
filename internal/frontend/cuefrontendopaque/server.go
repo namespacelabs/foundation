@@ -74,7 +74,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 
 	var serviceProbes []*schema.Probe
 	for name, svc := range bits.Services {
-		parsed, probes, err := parseService(loc, name, svc)
+		parsed, probes, err := parseService(ctx, pl, loc, name, svc)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -180,7 +180,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.Permissions = &schema.ServerPermissions{}
 
 		for _, clusterRole := range permissions.ClusterRoles {
-			parsed, err := cuefrontend.ParseResourceRef(ctx, pl, pkg.Location, clusterRole)
+			parsed, err := pkggraph.ParseAndLoadRef(ctx, pl, pkg.Location, clusterRole)
 			if err != nil {
 				return nil, nil, err
 			}

@@ -376,7 +376,7 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 			for _, y := range rp.PlannedResources {
 				if x.ResourceInstanceId == y.ResourceInstanceID {
 					found = true
-					deployable.PlannedResources = append(deployable.PlannedResources, y.PlannedResource)
+					deployable.ComputedResources = append(deployable.ComputedResources, y.ComputedResource)
 				}
 			}
 			if !found {
@@ -460,7 +460,6 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 		}
 
 		deployable.Secrets = secrets.ScopeSecretsToServer(planner.Secrets, srv.Server)
-
 		serverDeployables = append(serverDeployables, deployable)
 	}
 

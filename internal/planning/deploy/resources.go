@@ -43,7 +43,7 @@ type resourcePlan struct {
 }
 
 type plannedResource struct {
-	runtime.PlannedResource
+	runtime.ComputedResource
 	Invocations []*schema.SerializedInvocation
 }
 
@@ -285,7 +285,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 		}
 
 		plan.PlannedResources = append(plan.PlannedResources, plannedResource{
-			PlannedResource: runtime.PlannedResource{
+			ComputedResource: runtime.ComputedResource{
 				ResourceInstanceID:     planningInvocations[k].Resource.ID,
 				Class:                  planningInvocations[k].ResourceClass,
 				Instance:               r.OutputResourceInstance,

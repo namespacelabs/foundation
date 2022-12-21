@@ -6,13 +6,19 @@ package planning
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -25,8 +31,10 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/versions"
+	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -287,15 +295,95 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
-		resources, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package,
+		computed, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package,
 			server.PackageName().String(), server.Proto().GetResourcePack())
 		if err != nil {
 			return err
 		}
 
-		ps.Resources = append(ps.Resources, resources...)
+		ps.Resources = append(ps.Resources, computed...)
 
-		traverseResources(server.SealedContext(), server.PackageName().String(), rp, resources, func(pkg schema.PackageName) {
+		// Fill in env-bound data now, post ports allocation.
+		endpoints, internal, err := ComputeEndpoints(server, allocatedPorts.Ports)
+		if err != nil {
+			return err
+		}
+
+		var ignored []string
+		ingressEndpoints := map[string][]*schema.Endpoint{}
+		for _, endpoint := range endpoints {
+			if endpoint.Type == schema.Endpoint_INTERNET_FACING {
+				if endpoint.IngressProvider == nil {
+					ignored = append(ignored, endpoint.ServiceName)
+				} else {
+					ingressEndpoints[endpoint.IngressProvider.Canonical()] = append(ingressEndpoints[endpoint.IngressProvider.Canonical()], endpoint)
+				}
+			}
+		}
+
+		if len(ignored) > 0 {
+			fmt.Fprintf(console.Debug(ctx), "Ignored the following services in %q, due to a lack of ingress provider: %s\n",
+				server.PackageName(), strings.Join(ignored, ", "))
+		}
+
+		if len(ingressEndpoints) > 0 {
+			if err := pkggraph.ValidateFoundation("computed ingress", 56, pkggraph.ModuleFromModules(server.SealedContext())); err != nil {
+				return err
+			}
+
+			ingressClassRef := &schema.PackageRef{
+				PackageName: "namespacelabs.dev/foundation/library/runtime",
+				Name:        "Ingress",
+			}
+
+			ingressClass, err := pkggraph.LookupResourceClass(ctx, server.SealedContext(), server.Package, ingressClassRef)
+			if err != nil {
+				return err
+			}
+
+			ingressProviders := maps.Keys(ingressEndpoints)
+			slices.Sort(ingressProviders)
+			for k, provider := range ingressProviders {
+				endpoints := ingressEndpoints[provider]
+
+				ref := &schema.PackageRef{
+					PackageName: server.PackageName().String(),
+					Name:        fmt.Sprintf("%s$ingress_%d", server.Proto().Name, k),
+				}
+
+				intent := &runtimepb.IngressIntent{
+					Endpoint: endpoints,
+				}
+
+				boxedIntent, err := anypb.New(intent)
+				if err != nil {
+					return fnerrors.InternalError("failed to serialize ingress intent: %w", err)
+				}
+
+				intentJSON, err := json.Marshal(intent)
+				if err != nil {
+					return fnerrors.InternalError("failed to json serialize ingress intent: %w", err)
+				}
+
+				ps.Resources = append(ps.Resources, pkggraph.ResourceInstance{
+					ResourceID:  resources.ResourceID(ref),
+					ResourceRef: ref,
+					Spec: pkggraph.ResourceSpec{
+						Source: &schema.ResourceInstance{
+							PackageName:          ref.PackageName,
+							Name:                 ref.Name,
+							Class:                ingressClassRef,
+							SerializedIntentJson: string(intentJSON),
+						},
+						Intent:     boxedIntent,
+						IntentType: ingressClass.IntentType,
+						Class:      *ingressClass,
+					},
+				})
+			}
+		}
+
+		traverseResources(server.SealedContext(), server.PackageName().String(), rp, ps.Resources, func(pkg schema.PackageName) {
 			cs.exec.Go(func(ctx context.Context) error {
 				cs.out.changeServer(func() {
 					ps.DeclaredStack.Add(pkg)
@@ -304,12 +392,6 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				return cs.recursivelyComputeServerContents(ctx, rp, server.SealedContext(), pkg, opts)
 			})
 		})
-
-		// Fill in env-bound data now, post ports allocation.
-		endpoints, internal, err := ComputeEndpoints(server, allocatedPorts.Ports)
-		if err != nil {
-			return err
-		}
 
 		ps.AllocatedPorts = allocatedPorts.Ports
 		ps.Endpoints = endpoints

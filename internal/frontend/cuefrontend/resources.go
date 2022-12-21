@@ -62,21 +62,15 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 		return nil, err
 	}
 
-	if provider != "" && pkg.PackageName() != schema.PackageName(provider) {
-		if _, err := pl.LoadByName(ctx, schema.PackageName(provider)); err != nil {
+	if provider != "" {
+		if err := pkggraph.CheckLoad(ctx, pl, pkg.Location, schema.MakePackageSingleRef(schema.PackageName(provider))); err != nil {
 			return nil, err
 		}
 	}
 
-	classRef, err := schema.ParsePackageRef(pkg.PackageName(), class)
+	classRef, err := pkggraph.ParseAndLoadRef(ctx, pl, pkg.Location, class)
 	if err != nil {
 		return nil, err
-	}
-
-	if pkg.PackageName() != classRef.AsPackageName() {
-		if _, err := pl.LoadByName(ctx, classRef.AsPackageName()); err != nil {
-			return nil, err
-		}
 	}
 
 	intentFrom, err := binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-from-"+name /* binaryName */, "from" /* cuePath */, v)
@@ -187,7 +181,7 @@ func (rl *ResourceList) ToPack(ctx context.Context, env *schema.Environment, pl 
 	pack := &schema.ResourcePack{}
 
 	for _, resource := range rl.Refs {
-		r, err := ParseResourceRef(ctx, pl, pkg.Location, resource)
+		r, err := pkggraph.ParseAndLoadRef(ctx, pl, pkg.Location, resource)
 		if err != nil {
 			return nil, err
 		}
@@ -205,19 +199,4 @@ func (rl *ResourceList) ToPack(ctx context.Context, env *schema.Environment, pl 
 	}
 
 	return pack, nil
-}
-
-func ParseResourceRef(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, ref string) (*schema.PackageRef, error) {
-	pkgRef, err := schema.ParsePackageRef(loc.PackageName, ref)
-	if err != nil {
-		return nil, err
-	}
-
-	if loc.PackageName != pkgRef.AsPackageName() {
-		if _, err := pl.LoadByName(ctx, pkgRef.AsPackageName()); err != nil {
-			return nil, err
-		}
-	}
-
-	return pkgRef, nil
 }

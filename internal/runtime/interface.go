@@ -244,7 +244,7 @@ type DeployableSpec struct {
 	BuildVCS            *runtimepb.BuildVCS
 	ResourceDeps        []*resources.ResourceDependency
 	PlannedResourceDeps []*resources.ResourceDependency
-	PlannedResources    []PlannedResource
+	ComputedResources   []ComputedResource
 
 	Secrets secrets.GroundedSecrets
 
@@ -268,7 +268,8 @@ type DeployableSpec struct {
 	Probes []*schema.Probe
 }
 
-type PlannedResource struct {
+// A resource whose instance is known.
+type ComputedResource struct {
 	ResourceInstanceID     string
 	Class                  *schema.ResourceClass
 	Instance               *anypb.Any

@@ -11,8 +11,9 @@ option go_package = "namespacelabs.dev/foundation/schema";
 import "google/protobuf/any.proto";
 import "google/protobuf/descriptor.proto";
 import "schema/domain.proto";
+import "schema/package.proto";
 
-// Next ID: 11
+// Next ID: 12
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -34,6 +35,8 @@ message Endpoint {
     repeated ServiceMetadata service_metadata = 8;
 
     string service_label = 10;
+
+    PackageRef ingress_provider = 11;
 
     message Port {
         string name           = 1;

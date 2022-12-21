@@ -79,7 +79,7 @@ func (rp *resourcePlanner) computeResource(sealedctx pkggraph.SealedContext, par
 	}
 
 	rp.eg.Go(func(ctx context.Context) error {
-		resources, err := state.compute(ctx, rp.secrets, sealedctx, res.Spec.Intent, res.Spec.Provider)
+		resources, err := state.compute(ctx, rp.secrets, sealedctx, res.Spec)
 		if err != nil {
 			return err
 		}
@@ -99,7 +99,8 @@ func (rp *resourcePlanner) computeResource(sealedctx pkggraph.SealedContext, par
 	return nil
 }
 
-func (st *computedResource) compute(ctx context.Context, secs is.SecretsSource, sealedCtx pkggraph.SealedContext, intent *anypb.Any, provider *pkggraph.ResourceProvider) ([]pkggraph.ResourceInstance, error) {
+func (st *computedResource) compute(ctx context.Context, secs is.SecretsSource, sealedCtx pkggraph.SealedContext, spec pkggraph.ResourceSpec) ([]pkggraph.ResourceInstance, error) {
+	provider := spec.Provider
 	if provider == nil || provider.Spec.ResourcesFrom == nil {
 		return nil, nil
 	}
@@ -116,7 +117,7 @@ func (st *computedResource) compute(ctx context.Context, secs is.SecretsSource, 
 			Invocation: inv,
 		}, tool.InvokeProps{
 			Event:          protocol.Lifecycle_PROVISION,
-			ProvisionInput: []*anypb.Any{intent},
+			ProvisionInput: []*anypb.Any{spec.Intent},
 		})
 	if err != nil {
 		return nil, fnerrors.InternalError("resourcesFrom: failed to compute invocation: %w", err)

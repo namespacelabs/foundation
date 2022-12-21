@@ -6,6 +6,7 @@ package cuefrontendopaque
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -40,7 +41,8 @@ type cueIngress struct {
 }
 
 type CueIngressDetails struct {
-	HttpRoutes map[string][]string `json:"httpRoutes"`
+	HttpRoutes    map[string][]string `json:"httpRoutes"`
+	ProviderClass string              `json:"provider"`
 }
 
 var _ json.Unmarshaler = &cueIngress{}
@@ -90,7 +92,7 @@ func (i *cueIngress) UnmarshalJSON(contents []byte) error {
 
 var knownKinds = []string{"tcp", schema.ClearTextGrpcProtocol, schema.GrpcProtocol, schema.HttpProtocol, schema.HttpsProtocol}
 
-func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, []*schema.Probe, error) {
+func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, name string, svc cueService) (*schema.Server_ServiceSpec, []*schema.Probe, error) {
 	if svc.Kind != "" && !slices.Contains(knownKinds, svc.Kind) {
 		return nil, nil, fnerrors.NewWithLocation(loc, "service kind is not supported: %s (support %v)", svc.Kind, strings.Join(knownKinds, ", "))
 	}
@@ -115,6 +117,7 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 			})
 		}
 	}
+
 	var details *anypb.Any
 	if len(urlMap.Entry) > 0 {
 		details = &anypb.Any{}
@@ -125,6 +128,10 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 
 	// For the time being, having a grpc service implies exporting all GRPC services.
 	if svc.Kind == schema.GrpcProtocol || svc.Kind == schema.ClearTextGrpcProtocol {
+		if details != nil {
+			return nil, nil, fnerrors.New("service metadata was already set")
+		}
+
 		details = &anypb.Any{}
 		if err := details.MarshalFrom(&schema.GrpcExportAllServices{}); err != nil {
 			return nil, nil, fnerrors.New("failed to serialize grpc configuration: %w", err)
@@ -141,6 +148,15 @@ func parseService(loc pkggraph.Location, name string, svc cueService) (*schema.S
 		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Protocol: svc.Kind, Details: details})
 	} else if details != nil {
 		return nil, nil, fnerrors.New("service metadata is specified without kind")
+	}
+
+	if svc.Ingress.Details.ProviderClass != "" {
+		ref, err := pkggraph.ParseAndLoadRef(ctx, pl, loc, svc.Ingress.Details.ProviderClass)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		parsed.IngressProvider = ref
 	}
 
 	if len(svc.Annotations) > 0 {

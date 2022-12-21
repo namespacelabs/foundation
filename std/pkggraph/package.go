@@ -66,7 +66,7 @@ type Package struct {
 
 type ResourceSpec struct {
 	Source         *schema.ResourceInstance
-	Intent         *anypb.Any
+	Intent         *anypb.Any // XXX always use serialized JSON.
 	IntentType     *UserType
 	Class          ResourceClass
 	Provider       *ResourceProvider

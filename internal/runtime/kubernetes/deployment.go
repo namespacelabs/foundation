@@ -146,8 +146,8 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 		serviceAccount = kubedef.MakeDeploymentId(deployable)
 
 		for _, role := range deployable.Permissions.ClusterRole {
-			var clusterRole *runtime.PlannedResource
-			for _, res := range deployable.PlannedResources {
+			var clusterRole *runtime.ComputedResource
+			for _, res := range deployable.ComputedResources {
 				if res.ResourceInstanceID == role.ResourceId {
 					clusterRole = &res
 					// XXX check dups?
@@ -544,7 +544,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	for _, dep := range deployable.PlannedResourceDeps {
 		handled := false
-		for _, x := range deployable.PlannedResources {
+		for _, x := range deployable.ComputedResources {
 			if dep.ResourceInstanceId == x.ResourceInstanceID {
 				injected = append(injected, &kubedef.OpEnsureRuntimeConfig_InjectedResource{
 					ResourceRef:    dep.ResourceRef,

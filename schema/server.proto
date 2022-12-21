@@ -12,6 +12,7 @@ import "google/protobuf/any.proto";
 import "schema/container.proto";
 import "schema/environment.proto";
 import "schema/networking.proto";
+import "schema/package.proto";
 import "schema/probe.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
@@ -96,12 +97,13 @@ message Server {
     repeated Probe probe = 38;
 
     message ServiceSpec {
-        string                   name          = 1;
-        string                   label         = 5;
-        repeated ServiceMetadata metadata      = 6;
-        Endpoint.Port            port          = 3;
-        bool                     internal      = 4;  // This service is of no relevance for development.
-        Endpoint.Type            endpoint_type = 7;
+        string                   name             = 1;
+        string                   label            = 5;
+        repeated ServiceMetadata metadata         = 6;
+        Endpoint.Port            port             = 3;
+        bool                     internal         = 4;  // This service is of no relevance for development.
+        Endpoint.Type            endpoint_type    = 7;
+        PackageRef               ingress_provider = 8;
 
         reserved 2;
     }

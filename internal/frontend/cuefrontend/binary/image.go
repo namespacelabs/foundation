@@ -35,7 +35,7 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 			break
 		}
 
-		return checkLoadRef(ctx, pl, pkg.Location, ref)
+		return pkggraph.ParseAndLoadRef(ctx, pl, pkg.Location, ref)
 
 	case cue.StructKind:
 		strct, _ := v.Val.Struct()
@@ -75,7 +75,7 @@ func ParseImage(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 					return nil, err
 				}
 
-				return checkLoadRef(ctx, pl, pkg.Location, str)
+				return pkggraph.ParseAndLoadRef(ctx, pl, pkg.Location, str)
 			} else {
 				integration, err := integrationparsing.BuildParser.ParseEntity(ctx, env, pl, pkg.Location, x)
 				if err != nil {
@@ -120,19 +120,4 @@ func fields(strct *cue.Struct, filter ...string) map[string]cue.Value {
 		kvs[key] = iter.Value()
 	}
 	return kvs
-}
-
-func checkLoadRef(ctx context.Context, pl pkggraph.PackageLoader, owner pkggraph.Location, ref string) (*schema.PackageRef, error) {
-	outRef, err := schema.ParsePackageRef(owner.PackageName, ref)
-	if err != nil {
-		return nil, fnerrors.NewWithLocation(owner, "parsing binary reference: %w", err)
-	}
-
-	if outRef.AsPackageName() != owner.PackageName {
-		if _, err := pl.LoadByName(ctx, outRef.AsPackageName()); err != nil {
-			return nil, err
-		}
-	}
-
-	return outRef, nil
 }
