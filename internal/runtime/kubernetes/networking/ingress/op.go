@@ -6,6 +6,7 @@ package ingress
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -14,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/networking/dns"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	fnschema "namespacelabs.dev/foundation/schema"
@@ -37,6 +39,42 @@ func Register() {
 		},
 
 		PlanOrder: func(ctx context.Context, _ *kubedef.OpMapAddress) (*fnschema.ScheduleOrder, error) {
+			return &fnschema.ScheduleOrder{
+				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
+			}, nil
+		},
+	})
+
+	// XXX deprecated, remove soon.
+	execution.RegisterFuncs(execution.Funcs[*kubedef.OpCleanupMigration]{
+		Handle: func(ctx context.Context, g *fnschema.SerializedInvocation, op *kubedef.OpCleanupMigration) (*execution.HandleResult, error) {
+			cluster, err := kubedef.InjectedKubeCluster(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
+				ingresses, err := cluster.PreparedClient().Clientset.NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
+					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+				})
+				if err != nil {
+					return fnerrors.InvocationError("kubernetes", "unable to list ingresses: %w", err)
+				}
+
+				// We no longer emit "-managed" ingresses.
+				for _, ingress := range ingresses.Items {
+					if strings.HasSuffix(ingress.Name, "-managed") {
+						if err := cluster.PreparedClient().Clientset.NetworkingV1().Ingresses(op.Namespace).Delete(ctx, ingress.Name, metav1.DeleteOptions{}); err != nil {
+							return err
+						}
+					}
+				}
+
+				return nil
+			})
+		},
+
+		PlanOrder: func(ctx context.Context, _ *kubedef.OpCleanupMigration) (*fnschema.ScheduleOrder, error) {
 			return &fnschema.ScheduleOrder{
 				SchedAfterCategory: []string{kubedef.MakeSchedCat(schema.GroupKind{Group: "networking.k8s.io", Kind: "Ingress"})},
 			}, nil

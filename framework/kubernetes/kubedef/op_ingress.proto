@@ -19,3 +19,7 @@ message OpMapAddress {
     // If specified, will map to the specified target.
     string cname_target = 4;
 }
+
+message OpCleanupMigration {
+    string namespace = 1;
+}
