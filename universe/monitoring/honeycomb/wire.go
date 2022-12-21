@@ -6,6 +6,7 @@ package honeycomb
 
 import (
 	"context"
+	"os"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -13,7 +14,8 @@ import (
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	if deps.HoneycombTeam.GetPath() == "" {
+	xHoneycombTeam := os.Getenv("MONITORING_HONEYCOMB_X_HONEYCOMB_TEAM")
+	if xHoneycombTeam == "" {
 		// No secret specified.
 		return nil
 	}
@@ -21,7 +23,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
 		otlptracegrpc.WithHeaders(map[string]string{
-			"x-honeycomb-team": string(deps.HoneycombTeam.MustValue()),
+			"x-honeycomb-team": xHoneycombTeam,
 		}),
 		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
 	}

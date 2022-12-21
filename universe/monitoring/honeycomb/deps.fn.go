@@ -7,12 +7,10 @@ import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
-	"namespacelabs.dev/foundation/std/secrets"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
-	HoneycombTeam *secrets.Value
 	OpenTelemetry tracing.Exporter
 }
 
@@ -41,12 +39,6 @@ var (
 
 func makeDeps__e1uscp(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
-
-	// name: "x-honeycomb-team"
-	// optional: true
-	if deps.HoneycombTeam, err = secrets.ProvideSecret(ctx, core.MustUnwrapProto("ChB4LWhvbmV5Y29tYi10ZWFtKAE=", &secrets.Secret{}).(*secrets.Secret)); err != nil {
-		return nil, err
-	}
 
 	if err := di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {
 		// name: "honeycomb"
