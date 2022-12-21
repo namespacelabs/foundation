@@ -5,7 +5,8 @@ package main
 
 import (
 	"context"
-	"namespacelabs.dev/foundation/orchestration/controllers"
+	"namespacelabs.dev/foundation/orchestration/controllers/crds/revision"
+	"namespacelabs.dev/foundation/orchestration/controllers/runtimeconfig"
 	"namespacelabs.dev/foundation/orchestration/legacycontroller"
 	"namespacelabs.dev/foundation/orchestration/service"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -23,8 +24,15 @@ func RegisterInitializers(di *core.DependencyGraph) {
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {
 	var errs []error
 
-	if err := depgraph.Instantiate(ctx, controllers.Provider__6f40u5, func(ctx context.Context, v interface{}) error {
-		controllers.WireService(ctx, srv.Scope(controllers.Package__6f40u5), v.(controllers.ServiceDeps))
+	if err := depgraph.Instantiate(ctx, revision.Provider__qjpb7o, func(ctx context.Context, v interface{}) error {
+		revision.WireService(ctx, srv.Scope(revision.Package__qjpb7o), v.(revision.ServiceDeps))
+		return nil
+	}); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := depgraph.Instantiate(ctx, runtimeconfig.Provider__8ict6m, func(ctx context.Context, v interface{}) error {
+		runtimeconfig.WireService(ctx, srv.Scope(runtimeconfig.Package__8ict6m), v.(runtimeconfig.ServiceDeps))
 		return nil
 	}); err != nil {
 		errs = append(errs, err)

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package controllers
+package runtimeconfig
 
 import (
 	"context"
@@ -47,6 +47,9 @@ func setupControllers() error {
 		LeaderElection:         *enableLeaderElection,
 		LeaderElectionID:       "64367099.k8s.namespacelabs.dev",
 	})
+	if err != nil {
+		return fmt.Errorf("failed to start the controller manager: %+v", err)
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to set up healthz: %+v", err)
@@ -54,10 +57,6 @@ func setupControllers() error {
 
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		return fmt.Errorf("failed to set up readyz: %+v", err)
-	}
-
-	if err != nil {
-		return fmt.Errorf("failed to start the controller manager: %+v", err)
 	}
 
 	if err := controllerruntime.NewControllerManagedBy(mgr).
