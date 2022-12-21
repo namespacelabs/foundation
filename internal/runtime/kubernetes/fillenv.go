@@ -17,7 +17,7 @@ import (
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
-func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, out *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
+func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
 	for _, kv := range env {
 		var entry *applycorev1.EnvVarApplyConfiguration
 
@@ -37,11 +37,11 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 					applycorev1.ObjectFieldSelector().WithFieldPath(kv.ExperimentalFromDownwardsFieldPath)))
 
 		case kv.FromSecretRef != nil:
-			if out == nil {
+			if secrets == nil {
 				return nil, fnerrors.InternalError("can't use FromSecretRef in this context")
 			}
 
-			alloc, err := out.allocate(ctx, kv.FromSecretRef)
+			alloc, err := secrets.allocate(ctx, kv.FromSecretRef)
 			if err != nil {
 				return nil, err
 			}
@@ -52,10 +52,6 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 				))
 
 		case kv.FromServiceEndpoint != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromServiceEndpoint in this context")
-			}
-
 			endpoint, err := runtime.SelectServiceValue(rt, kv.FromServiceEndpoint, runtime.SelectServiceEndpoint)
 			if err != nil {
 				return nil, err
@@ -64,10 +60,6 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 			entry = applycorev1.EnvVar().WithName(kv.Name).WithValue(endpoint)
 
 		case kv.FromServiceIngress != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromServiceIngress in this context")
-			}
-
 			url, err := runtime.SelectServiceValue(rt, kv.FromServiceIngress, runtime.SelectServiceIngress)
 			if err != nil {
 				return nil, err
@@ -76,10 +68,6 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 			entry = applycorev1.EnvVar().WithName(kv.Name).WithValue(url)
 
 		case kv.FromResourceField != nil:
-			if out == nil {
-				return nil, fnerrors.InternalError("can't use FromResourceField in this context")
-			}
-
 			ensure.SetContainerFields = append(ensure.SetContainerFields, &rtschema.SetContainerField{
 				SetEnv: []*rtschema.SetContainerField_SetValue{
 					{
