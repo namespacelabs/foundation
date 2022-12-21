@@ -113,7 +113,7 @@ func cacheAndReturn(ctx context.Context, d ImageID, opts ResolveOpts) (Image, er
 		return img, nil
 	}
 
-	fetched, err := fetchRemoteImage(ctx, d, opts)
+	fetched, err := FetchRemoteImage(ctx, d, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func EnsureCached(ctx context.Context, img Image) (Image, error) {
 	})
 }
 
-func fetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (Image, error) {
+func FetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (Image, error) {
 	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), opts)
 	if err != nil {
 		return nil, fnerrors.InternalError("%s: failed to parse: %w", imageid.RepoAndDigest(), err)
