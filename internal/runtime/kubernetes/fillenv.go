@@ -68,7 +68,7 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 				return nil, fnerrors.InternalError("can't use FromServiceIngress in this context")
 			}
 
-			url, err := runtime.SelectServiceValue(rt, kv.FromServiceEndpoint, runtime.SelectServiceIngress)
+			url, err := runtime.SelectServiceValue(rt, kv.FromServiceIngress, runtime.SelectServiceIngress)
 			if err != nil {
 				return nil, err
 			}
