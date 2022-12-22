@@ -220,8 +220,6 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 			&schema.BinaryConfig_EnvEntry{Name: "MINIO_USER", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-user")},
 			&schema.BinaryConfig_EnvEntry{Name: "MINIO_PASSWORD", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-password")})
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useMinioFlag, service))
-	} else {
-		return fmt.Errorf("AWS S3 is not supported")
 	}
 
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", serializedFlag, serializedBuckets))
