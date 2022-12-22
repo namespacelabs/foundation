@@ -1,7 +1,7 @@
 package templates
 
 #Server: {
-	_spec: {
+	spec: {
 		image:          *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
 		dataVolumeSize: *"10GiB" | string
 		dataVolume:     *{
@@ -18,7 +18,7 @@ package templates
 
 	name: "postgres-server"
 
-	image: _spec.image
+	image: spec.image
 
 	// Postgres mounts a persistent volume which requires a stateful deployment (more conservative update strategy).
 	class: "stateful"
@@ -27,7 +27,7 @@ package templates
 		// PGDATA may not be a mount point but only a subdirectory.
 		PGDATA:                 "/postgres/data/pgdata"
 		POSTGRES_PASSWORD_FILE: "/postgres/secrets/password"
-		POSTGRES_INITDB_ARGS:   "--auth-local=\(_spec.authLocal) --auth-host=\(_spec.authHost)"
+		POSTGRES_INITDB_ARGS:   "--auth-local=\(spec.authLocal) --auth-host=\(spec.authHost)"
 	}
 
 	services: "postgres": {
@@ -36,11 +36,11 @@ package templates
 	}
 
 	mounts: {
-		"/postgres/data": persistent: _spec.dataVolume
+		"/postgres/data": persistent: spec.dataVolume
 
 		"/postgres/secrets": configurable: {
 			contents: {
-				"password": fromSecret: _spec.passwordSecret
+				"password": fromSecret: spec.passwordSecret
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 package templates
 
 #Server: {
-	_spec: {
+	spec: {
 		image:          *"localstack/localstack@sha256:4ebb75b927bcfc9a79c77075734e51ce6031054b776eed2defcb3c0dfa4cf699" | string
 		ingress:        *false | bool
 		dataVolumeSize: *"10GiB" | string
@@ -16,7 +16,7 @@ package templates
 
 	name: "localstack-server"
 
-	image: _spec.image
+	image: spec.image
 
 	// Localstack requires a stateful deployment (more conservative update strategy).
 	class: "stateful"
@@ -27,7 +27,7 @@ package templates
 			kind: "http"
 		}
 	}
-	if _spec.ingress {
+	if spec.ingress {
 		services: "api": ingress: true
 	}
 
@@ -36,6 +36,6 @@ package templates
 	}
 
 	mounts: {
-		"/localstack/data": persistent: _spec.dataVolume
+		"/localstack/data": persistent: spec.dataVolume
 	}
 }
