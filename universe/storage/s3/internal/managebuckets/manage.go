@@ -18,10 +18,6 @@ import (
 	fns3 "namespacelabs.dev/foundation/universe/storage/s3"
 )
 
-var (
-	awsCredentialsFile = flag.String("aws_credentials_file", "", "Path to the AWS credentials file.")
-)
-
 func main() {
 	log.SetFlags(log.Lmicroseconds | log.LstdFlags)
 
@@ -48,9 +44,7 @@ func apply(ctx context.Context) error {
 		bucket := bucket // Close bucket.
 
 		eg.Go(func(ctx context.Context) error {
-			b, err := fns3.ProvideBucketWithFactory(ctx, bucket, client.ClientFactory{
-				SharedCredentialsPath: *awsCredentialsFile,
-			}, minioCreds)
+			b, err := fns3.ProvideBucketWithFactory(ctx, bucket, client.ClientFactory{}, minioCreds)
 			if err != nil {
 				return err
 			}

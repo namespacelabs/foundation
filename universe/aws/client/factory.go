@@ -18,23 +18,15 @@ import (
 )
 
 type ClientFactory struct {
-	SharedCredentialsPath string
-
 	openTelemetry tracing.DeferredTracerProvider
 }
 
 func (cf ClientFactory) NewWithCreds(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
-	if tokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE"); tokenFile == "" {
-		if cf.SharedCredentialsPath == "" {
-			return aws.Config{}, errors.New("when running without universe/aws/irsa, aws credentials are required to be set")
-		}
-
-		core.Log.Printf("[aws/client] using shared credentials at %q", cf.SharedCredentialsPath)
-
-		optFns = append(optFns, config.WithSharedCredentialsFiles([]string{cf.SharedCredentialsPath}))
-	} else {
-		core.Log.Printf("[aws/client] using web identity credentials at %q", tokenFile)
+	tokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+	if tokenFile == "" {
+		return aws.Config{}, errors.New("AWS_WEB_IDENTITY_TOKEN_FILE is not set")
 	}
+	core.Log.Printf("[aws/client] using web identity credentials at %q", tokenFile)
 
 	return cf.New(ctx, optFns...)
 }
@@ -61,8 +53,5 @@ func (cf ClientFactory) New(ctx context.Context, optFns ...func(*config.LoadOpti
 
 func ProvideClientFactory(_ context.Context, _ *ClientFactoryArgs, deps ExtensionDeps) (ClientFactory, error) {
 	cf := ClientFactory{openTelemetry: deps.OpenTelemetry}
-	if deps.Credentials != nil {
-		cf.SharedCredentialsPath = deps.Credentials.Path
-	}
 	return cf, nil
 }

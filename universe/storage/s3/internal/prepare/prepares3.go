@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/allocations"
 	"namespacelabs.dev/foundation/std/execution/defs"
-	"namespacelabs.dev/foundation/std/secrets"
 	"namespacelabs.dev/foundation/universe/aws/eks"
 	fniam "namespacelabs.dev/foundation/universe/aws/iam"
 	"namespacelabs.dev/foundation/universe/storage/s3"
@@ -187,11 +186,6 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 		return err
 	}
 
-	col, err := secrets.Collect(req.Focus.Server)
-	if err != nil {
-		return err
-	}
-
 	var commonArgs, initArgs []string
 	var initEnv []*schema.BinaryConfig_EnvEntry
 	if useLocalstack(req.Env) {
@@ -226,12 +220,6 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 			&schema.BinaryConfig_EnvEntry{Name: "MINIO_USER", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-user")},
 			&schema.BinaryConfig_EnvEntry{Name: "MINIO_PASSWORD", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-password")})
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useMinioFlag, service))
-	} else {
-		for _, secret := range col.SecretsOf("namespacelabs.dev/foundation/universe/aws/client") {
-			if secret.Name == "aws_credentials_file" {
-				initArgs = append(initArgs, fmt.Sprintf("--aws_credentials_file=%s", secret.FromPath))
-			}
-		}
 	}
 
 	commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", serializedFlag, serializedBuckets))
