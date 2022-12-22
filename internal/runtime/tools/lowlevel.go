@@ -39,12 +39,14 @@ func attachToAction(ctx context.Context, name string, msg proto.Message, redactM
 	}
 }
 
-func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, secrets secrets.GroundedSecrets, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
-	state := makeState(c, pkg, image, method, req, opts, oo)
-
+func InvokeOnBuildkit0(c *buildkit.GatewayClient, secrets secrets.GroundedSecrets, pkg schema.PackageName, state compute.Computable[*buildkit.Input]) compute.Computable[fs.FS] {
 	p := c.BuildkitOpts().HostPlatform
 
-	files := buildkit.DeferBuildFilesystem(c, secrets, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), state)
+	return buildkit.DeferBuildFilesystem(c, secrets, build.NewBuildTarget(&p).WithSourceLabel("Invocation %s", pkg).WithSourcePackage(pkg), state)
+}
+
+func InvokeOnBuildkit[Resp proto.Message](c *buildkit.GatewayClient, secrets secrets.GroundedSecrets, method string, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts, req proto.Message, oo LowLevelInvokeOptions) compute.Computable[Resp] {
+	files := InvokeOnBuildkit0(c, secrets, pkg, makeState(c, pkg, image, method, req, opts, oo))
 
 	return compute.Transform("parse-response", files, func(ctx context.Context, fsys fs.FS) (Resp, error) {
 		resp := protos.NewFromType[Resp]()
@@ -71,7 +73,7 @@ func redact(m proto.Message, f func(proto.Message) proto.Message) proto.Message 
 }
 
 func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], method string, req proto.Message, opts rtypes.RunBinaryOpts, oo LowLevelInvokeOptions) compute.Computable[*buildkit.Input] {
-	return compute.Transform("make-request", ensureCached(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
+	return compute.Transform("make-request", EnsureCached(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
 		attachToAction(ctx, "request", req, oo.RedactRequest)
 
 		d, err := image.Digest()
@@ -127,6 +129,6 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 	})
 }
 
-func ensureCached(image compute.Computable[oci.Image]) compute.Computable[oci.Image] {
+func EnsureCached(image compute.Computable[oci.Image]) compute.Computable[oci.Image] {
 	return compute.Transform("ensure-cached", image, oci.EnsureCached)
 }

@@ -6,6 +6,7 @@ syntax = "proto3";
 
 package foundation.schema;
 
+import "schema/environment.proto";
 import "schema/integration.proto";
 import "schema/package.proto";
 
@@ -24,6 +25,7 @@ message Binary {
 
     BinaryConfig          config     = 6;  // Run instructions.
     LayeredImageBuildPlan build_plan = 8;
+    repeated Label        labels     = 9;
 }
 
 // Next ID: 15

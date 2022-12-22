@@ -34,12 +34,11 @@ import (
 const version_introducedProviderContext = 45
 
 type InvokeResourceProvider struct {
-	SealedContext        pkggraph.SealedPackageLoader
+	providerArgsInput
 	ResourceInstanceId   string
-	SerializedIntentJson []byte
 	BinaryRef            *schema.PackageRef
+	BinaryLabels         []*schema.Label
 	BinaryImageId        oci.ImageID
-	BinaryConfig         *schema.BinaryConfig
 	ResourceClass        *schema.ResourceClass
 	ResourceProvider     *schema.ResourceProvider
 	InstanceTypeSource   *protos2.FileDescriptorSetAndDeps
@@ -47,25 +46,16 @@ type InvokeResourceProvider struct {
 	SecretResources      []runtime.SecretResourceDependency
 }
 
+type providerArgsInput struct {
+	SealedContext        pkggraph.SealedPackageLoader
+	SerializedIntentJson []byte
+	BinaryConfig         *schema.BinaryConfig
+}
+
 func PlanResourceProviderInvocation(ctx context.Context, secs is.SecretsSource, planner runtime.Planner, invoke *InvokeResourceProvider) ([]*schema.SerializedInvocation, error) {
-	args := append(slices.Clone(invoke.BinaryConfig.Args), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
-
-	versions, err := foundationVersion(ctx, invoke.SealedContext)
+	args, err := planProviderArgs(ctx, invoke.providerArgsInput)
 	if err != nil {
-		return nil, fnerrors.InternalError("failed to determine foundation version: %w", err)
-	}
-
-	if versions.APIVersion >= version_introducedProviderContext {
-		providerCtx := provider.ProviderContext{
-			ProtocolVersion: "1",
-		}
-
-		ctxBytes, err := json.Marshal(providerCtx)
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to serialize provider context: %w", err)
-		}
-
-		args = append(args, fmt.Sprintf("--provider_context=%s", ctxBytes))
+		return nil, err
 	}
 
 	spec := runtime.DeployableSpec{
@@ -120,6 +110,30 @@ func PlanResourceProviderInvocation(ctx context.Context, secs is.SecretsSource, 
 	})
 
 	return ops, nil
+}
+
+func planProviderArgs(ctx context.Context, invoke providerArgsInput) ([]string, error) {
+	args := append(slices.Clone(invoke.BinaryConfig.GetArgs()), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
+
+	versions, err := foundationVersion(ctx, invoke.SealedContext)
+	if err != nil {
+		return nil, fnerrors.InternalError("failed to determine foundation version: %w", err)
+	}
+
+	if versions.APIVersion >= version_introducedProviderContext {
+		providerCtx := provider.ProviderContext{
+			ProtocolVersion: "1",
+		}
+
+		ctxBytes, err := json.Marshal(providerCtx)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to serialize provider context: %w", err)
+		}
+
+		args = append(args, fmt.Sprintf("--provider_context=%s", ctxBytes))
+	}
+
+	return args, nil
 }
 
 func foundationVersion(ctx context.Context, modules pkggraph.Modules) (versions.InternalVersions, error) {

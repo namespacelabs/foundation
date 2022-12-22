@@ -21,6 +21,7 @@ type cueBinary struct {
 	Config    *schema.BinaryConfig      `json:"config,omitempty"`
 	From      *cueImageBuildPlan        `json:"from,omitempty"`
 	BuildPlan *cueLayeredImageBuildPlan `json:"build_plan,omitempty"`
+	Labels    map[string]string         `json:"labels"`
 }
 
 type cueLayeredImageBuildPlan struct {
@@ -97,6 +98,12 @@ func (srcBin cueBinary) ToSchema(loc fnerrors.Location) (*schema.Binary, error) 
 			LayerBuildPlan: []*schema.ImageBuildPlan{parsed},
 		}
 	}
+
+	for k, v := range srcBin.Labels {
+		bin.Labels = append(bin.Labels, &schema.Label{Name: k, Value: v})
+	}
+
+	bin.Labels = sortLabels(bin.Labels)
 
 	return bin, nil
 }

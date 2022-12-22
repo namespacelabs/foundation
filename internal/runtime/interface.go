@@ -13,7 +13,6 @@ import (
 	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/console/termios"
@@ -271,8 +270,7 @@ type DeployableSpec struct {
 // A resource whose instance is known.
 type ComputedResource struct {
 	ResourceInstanceID     string
-	Class                  *schema.ResourceClass
-	Instance               *anypb.Any
+	InstanceType           *schema.ResourceType
 	InstanceSerializedJSON []byte
 }
 

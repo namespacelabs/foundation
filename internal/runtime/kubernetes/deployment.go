@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -15,7 +16,6 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
@@ -159,12 +159,12 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			}
 
 			const roleInstance = "library.kubernetes.rbac.ClusterRoleInstance"
-			if clusterRole.Class.GetInstanceType().GetProtoType() != roleInstance {
-				return fnerrors.New("expected resource class to be %q, got %q", roleInstance, clusterRole.Class.GetInstanceType().GetProtoType())
+			if clusterRole.InstanceType.GetProtoType() != roleInstance {
+				return fnerrors.New("expected resource class to be %q, got %q", roleInstance, clusterRole.InstanceType.GetProtoType())
 			}
 
 			instance := &rbac.ClusterRoleInstance{}
-			if err := proto.Unmarshal(clusterRole.Instance.Value, instance); err != nil {
+			if err := json.Unmarshal(clusterRole.InstanceSerializedJSON, instance); err != nil {
 				return fnerrors.New("failed to unmarshal instance %q: %w", roleInstance, err)
 			}
 

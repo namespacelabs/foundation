@@ -369,12 +369,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 			})
 		}
 
-		slices.SortFunc(node.EnvironmentRequirement.EnvironmentHasLabel, func(a, b *schema.Label) bool {
-			if a.GetName() == b.GetName() {
-				return strings.Compare(a.GetValue(), b.GetValue()) < 0
-			}
-			return strings.Compare(a.GetName(), b.GetName()) < 0
-		})
+		node.EnvironmentRequirement.EnvironmentHasLabel = sortLabels(node.EnvironmentRequirement.EnvironmentHasLabel)
 	}
 
 	if on := v.LookupPath("on.prepare"); on.Exists() {
@@ -455,6 +450,16 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	}
 
 	return parsing.TransformNode(ctx, pl, loc, node, kind)
+}
+
+func sortLabels(labels []*schema.Label) []*schema.Label {
+	slices.SortFunc(labels, func(a, b *schema.Label) bool {
+		if a.GetName() == b.GetName() {
+			return strings.Compare(a.GetValue(), b.GetValue()) < 0
+		}
+		return strings.Compare(a.GetName(), b.GetName()) < 0
+	})
+	return labels
 }
 
 func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {

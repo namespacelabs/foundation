@@ -39,6 +39,7 @@ type Invocation struct {
 	Snapshots            []Snapshot
 	NoCache              bool
 	Inject               []*schema.Invocation_ValueInjection
+	BinaryLabels         []*schema.Label
 }
 
 type Snapshot struct {
@@ -84,11 +85,12 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 	}
 
 	invocation := &Invocation{
-		Buildkit:  cli,
-		ImageName: bin.Name,
-		Image:     image,
-		NoCache:   with.NoCache,
-		Inject:    with.Inject,
+		Buildkit:     cli,
+		ImageName:    bin.Name,
+		Image:        image,
+		NoCache:      with.NoCache,
+		Inject:       with.Inject,
+		BinaryLabels: prepared.Labels,
 	}
 
 	config, err := MergePreparedConfig(prepared, with)

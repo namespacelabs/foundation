@@ -6,8 +6,12 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
+	"io/fs"
 	"strings"
 
+	"github.com/moby/buildkit/client/llb"
+	"github.com/opencontainers/go-digest"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -17,6 +21,8 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
+	protos2 "namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -26,9 +32,10 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/runtime/tools"
 	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -54,6 +61,20 @@ type serverStack interface {
 	GetIngressesForService(endpointOwner string, serviceName string) []*schema.IngressFragment
 }
 
+type resourcePlanInvocation struct {
+	Env                  pkggraph.SealedContext
+	Secrets              is.GroundedSecrets
+	Source               schema.PackageName
+	Resource             *resourceInstance
+	ResourceSource       *schema.ResourceInstance
+	ResourceClass        *schema.ResourceClass
+	Invocation           *invocation.Invocation
+	Intent               *anypb.Any
+	SerializedIntentJson []byte
+	InstanceTypeSource   *protos2.FileDescriptorSetAndDeps
+	Image                oci.ResolvableImage
+}
+
 func planResources(ctx context.Context, planner planning.Planner, stack serverStack, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.Runtime.TargetPlatforms(ctx)
 	if err != nil {
@@ -61,19 +82,6 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 	}
 
 	rlist := rp.Resources()
-
-	type resourcePlanInvocation struct {
-		Env                  cfg.Context
-		Secrets              is.GroundedSecrets
-		Source               schema.PackageName
-		Resource             *resourceInstance
-		ResourceSource       *schema.ResourceInstance
-		ResourceClass        *schema.ResourceClass
-		Invocation           *invocation.Invocation
-		Intent               *anypb.Any
-		SerializedIntentJson []byte
-		Image                oci.ResolvableImage
-	}
 
 	var executionInvocations []*InvokeResourceProvider
 	var planningInvocations []resourcePlanInvocation
@@ -172,6 +180,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 				Invocation:           inv,
 				Intent:               resource.Intent,
 				SerializedIntentJson: resource.JSONSerializedIntent,
+				InstanceTypeSource:   resource.Class.InstanceType.Sources,
 			})
 		} else if provider.InitializedWith != nil {
 			initializer := provider.InitializedWith
@@ -203,18 +212,22 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 			}
 
 			imageIDs = append(imageIDs, poster.ImageID)
-			executionInvocations = append(executionInvocations, &InvokeResourceProvider{
-				SealedContext:        sealedCtx,
+
+			p := &InvokeResourceProvider{
 				ResourceInstanceId:   resource.ID,
 				BinaryRef:            initializer.BinaryRef,
-				BinaryConfig:         config,
+				BinaryLabels:         prepared.Labels,
 				ResourceClass:        resource.Class.Source,
 				ResourceProvider:     provider,
 				InstanceTypeSource:   resource.Class.InstanceType.Sources,
-				SerializedIntentJson: resource.JSONSerializedIntent,
 				ResourceDependencies: resource.Dependencies,
 				SecretResources:      resource.Secrets,
-			})
+			}
+			p.SealedContext = sealedCtx
+			p.BinaryConfig = config
+			p.SerializedIntentJson = resource.JSONSerializedIntent
+
+			executionInvocations = append(executionInvocations, p)
 		} else {
 			return nil, fnerrors.InternalError("%s: an initializer is missing", resource.ID)
 		}
@@ -236,9 +249,19 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 		plan.ExecutionInvocations = append(plan.ExecutionInvocations, theseOps...)
 	}
 
-	var invocationResponses []compute.Computable[*protocol.ToolResponse]
+	var invocationResponses []compute.Computable[plannedResource]
 	var errs []error
 	for _, planned := range planningInvocations {
+		if supportsDirectInvocation(planned.Invocation.BinaryLabels) {
+			p, err := directPlanningInvocation(ctx, planned)
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				invocationResponses = append(invocationResponses, p)
+			}
+			continue
+		}
+
 		source, err := anypb.New(&protocol.ResourceInstance{
 			ResourceInstanceId: planned.Resource.ID,
 			ResourceInstance:   planned.ResourceSource,
@@ -258,7 +281,27 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			invocationResponses = append(invocationResponses, inv)
+			planned := planned // Close planned.
+			invocationResponses = append(invocationResponses, compute.Transform("validate", inv, func(ctx context.Context, response *protocol.ToolResponse) (plannedResource, error) {
+				if err := invocation.ValidateProviderReponse(response); err != nil {
+					return plannedResource{}, err
+				}
+
+				r := response.ApplyResponse
+
+				if len(r.ComputedResourceInput) > 0 {
+					return plannedResource{}, fnerrors.InternalError("prepareWith response can't include computed resourced")
+				}
+
+				return plannedResource{
+					ComputedResource: runtime.ComputedResource{
+						ResourceInstanceID:     planned.Resource.ID,
+						InstanceType:           planned.ResourceClass.InstanceType,
+						InstanceSerializedJSON: r.OutputResourceInstanceSerializedJson,
+					},
+					Invocations: r.Invocation,
+				}, nil
+			}))
 		}
 	}
 
@@ -271,31 +314,119 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 		return nil, err
 	}
 
-	for k, raw := range responses {
-		response := raw.Value
-
-		if err := invocation.ValidateProviderReponse(response); err != nil {
-			return nil, err
-		}
-
-		r := response.ApplyResponse
-
-		if len(r.ComputedResourceInput) > 0 {
-			return nil, fnerrors.InternalError("prepareWith response can't include computed resourced")
-		}
-
-		plan.PlannedResources = append(plan.PlannedResources, plannedResource{
-			ComputedResource: runtime.ComputedResource{
-				ResourceInstanceID:     planningInvocations[k].Resource.ID,
-				Class:                  planningInvocations[k].ResourceClass,
-				Instance:               r.OutputResourceInstance,
-				InstanceSerializedJSON: r.OutputResourceInstanceSerializedJson,
-			},
-			Invocations: r.Invocation,
-		})
+	for _, raw := range responses {
+		plan.PlannedResources = append(plan.PlannedResources, raw.Value)
 	}
 
 	return plan, nil
+}
+
+func directPlanningInvocation(ctx context.Context, planned resourcePlanInvocation) (compute.Computable[plannedResource], error) {
+	invocation := planned.Invocation
+
+	args, err := planProviderArgs(ctx, providerArgsInput{
+		SealedContext:        planned.Env,
+		SerializedIntentJson: planned.SerializedIntentJson,
+		BinaryConfig:         planned.Invocation.Config,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	args = append(args, "--planning_output=/out/output.json")
+
+	opts := rtypes.RunBinaryOpts{
+		Command:    invocation.Config.Command,
+		Args:       append(slices.Clone(invocation.Config.Args), args...),
+		WorkingDir: invocation.Config.WorkingDir,
+		Env:        invocation.Config.Env,
+	}
+
+	cli, err := invocation.Buildkit.MakeClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ximage := oci.ResolveImagePlatform(invocation.Image, cli.BuildkitOpts().HostPlatform)
+	state := makeState(cli, planned.Source, ximage, opts)
+	files := tools.InvokeOnBuildkit0(cli, planned.Secrets, planned.Source, state)
+
+	return compute.Transform("parse json", files, func(ctx context.Context, fsys fs.FS) (plannedResource, error) {
+		instanceData, err := fs.ReadFile(fsys, "instance.json")
+		if err != nil {
+			return plannedResource{}, err
+		}
+
+		var output PlanningOutput
+		if err := json.Unmarshal(instanceData, &output); err != nil {
+			return plannedResource{}, fnerrors.BadInputError("failed to decode output: %w", err)
+		}
+
+		return plannedResource{
+			ComputedResource: runtime.ComputedResource{
+				ResourceInstanceID:     planned.Resource.ID,
+				InstanceType:           planned.ResourceClass.InstanceType,
+				InstanceSerializedJSON: []byte(output.InstanceSerializedJSON),
+			},
+		}, nil
+	}), nil
+}
+
+type PlanningOutput struct {
+	InstanceSerializedJSON string `json:"instance_json"`
+}
+
+func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.Computable[oci.Image], opts rtypes.RunBinaryOpts) compute.Computable[*buildkit.Input] {
+	return compute.Transform("make-request", tools.EnsureCached(image), func(ctx context.Context, image oci.Image) (*buildkit.Input, error) {
+		d, err := image.Digest()
+		if err != nil {
+			return nil, err
+		}
+
+		tasks.Attachments(ctx).AddResult("ref", d.String())
+
+		if !c.BuildkitOpts().SupportsCanonicalBuilds {
+			return nil, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
+		}
+
+		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
+
+		args := append(slices.Clone(opts.Command), opts.Args...)
+
+		runOpts := []llb.RunOption{llb.ReadonlyRootFS(), llb.Network(llb.NetModeNone), llb.Args(args)}
+		if opts.WorkingDir != "" {
+			runOpts = append(runOpts, llb.Dir(opts.WorkingDir))
+		}
+
+		var secrets []*schema.PackageRef
+		for _, env := range opts.Env {
+			if env.FromSecretRef != nil {
+				runOpts = append(runOpts, llb.AddSecret(env.Name, llb.SecretAsEnv(true), llb.SecretID(env.FromSecretRef.Canonical())))
+				secrets = append(secrets, env.FromSecretRef)
+				continue
+			}
+
+			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromServiceEndpoint != nil || env.FromServiceIngress != nil || env.FromResourceField != nil {
+				return nil, fnerrors.New("invocation: only support environment variables with static values")
+			}
+
+			runOpts = append(runOpts, llb.AddEnv(env.Name, env.Value))
+		}
+
+		run := base.Run(runOpts...)
+
+		out := run.AddMount("/out", llb.Scratch())
+		return &buildkit.Input{State: out, Secrets: secrets}, nil
+	})
+}
+
+func supportsDirectInvocation(labels []*schema.Label) bool {
+	for _, kv := range labels {
+		if kv.Name == "namespace.so/binary-protocol" {
+			return kv.Value == "inlineprovider.namespace.so/v1alpha1"
+		}
+	}
+	return false
 }
 
 type resourceList struct {

@@ -48,6 +48,7 @@ type Prepared struct {
 	Args       []string
 	Env        []*schema.BinaryConfig_EnvEntry
 	WorkingDir string
+	Labels     []*schema.Label
 }
 
 type PreparedImage struct {
@@ -98,6 +99,7 @@ func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context,
 		Args:       binary.Config.GetArgs(),
 		Env:        binary.Config.GetEnv(),
 		WorkingDir: binary.Config.GetWorkingDir(),
+		Labels:     binary.GetLabels(),
 	}, nil
 }
 
