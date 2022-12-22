@@ -41,6 +41,7 @@ type Client interface {
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (types.ImageLoadResponse, error)
 	ImageTag(ctx context.Context, source, target string) error
+	VolumeRemove(ctx context.Context, volumeID string, force bool) error
 	Close() error
 }
 
@@ -181,6 +182,10 @@ func (w wrappedClient) ImageLoad(ctx context.Context, input io.Reader, quiet boo
 
 func (w wrappedClient) ImageTag(ctx context.Context, source, target string) error {
 	return maybeReplaceErr(w.cli.ImageTag(ctx, source, target))
+}
+
+func (w wrappedClient) VolumeRemove(ctx context.Context, volumeID string, force bool) error {
+	return maybeReplaceErr(w.cli.VolumeRemove(ctx, volumeID, force))
 }
 
 func (w wrappedClient) Close() error {
