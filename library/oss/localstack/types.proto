@@ -13,7 +13,8 @@ import "schema/package.proto";
 message ClusterIntent {}
 
 message ClusterInstance {
-    string endpoint = 1;
+    string endpoint        = 1;
+    string public_base_url = 2;  // Optional.
 }
 
 message ServerIntent {

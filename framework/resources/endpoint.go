@@ -14,3 +14,12 @@ func LookupServerEndpoint(resources *Parsed, serverRef, service string) (string,
 
 	return runtime.Endpoint(srv, service)
 }
+
+func LookupServerFirstIngress(resources *Parsed, serverRef, service string) (*string, error) {
+	srv := &runtime.Server{}
+	if err := resources.Unmarshal(serverRef, &srv); err != nil {
+		return nil, err
+	}
+
+	return runtime.FirstIngress(srv, service), nil
+}

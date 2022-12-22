@@ -47,7 +47,10 @@ func main() {
 }
 
 func prepareInstance(r *resources.Parsed, intent *s3.BucketIntent) (*s3.BucketInstance, error) {
-	endpoint, err := resources.LookupServerEndpoint(r, fmt.Sprintf("%s:server", providerPkg), "api")
+	serverRef := fmt.Sprintf("%s:server", providerPkg)
+	serviceName := "api"
+
+	endpoint, err := resources.LookupServerEndpoint(r, serverRef, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -62,11 +65,23 @@ func prepareInstance(r *resources.Parsed, intent *s3.BucketIntent) (*s3.BucketIn
 		return nil, err
 	}
 
-	return &s3.BucketInstance{
-		Region:          intent.Region,
-		AccessKey:       string(accessKeyID),
-		SecretAccessKey: string(secretAccessKey),
-		BucketName:      intent.BucketName,
-		Url:             fmt.Sprintf("http://%s", endpoint),
-	}, nil
+	ingress, err := resources.LookupServerFirstIngress(r, serverRef, serviceName)
+	if err != nil {
+		return nil, err
+	}
+
+	bucket := &s3.BucketInstance{
+		Region:             intent.Region,
+		AccessKey:          string(accessKeyID),
+		SecretAccessKey:    string(secretAccessKey),
+		BucketName:         intent.BucketName,
+		Url:                fmt.Sprintf("http://%s", endpoint), // XXX remove.
+		PrivateEndpointUrl: fmt.Sprintf("http://%s", endpoint),
+	}
+
+	if ingress != nil {
+		bucket.PublicUrl = *ingress + "/" + intent.BucketName
+	}
+
+	return bucket, nil
 }

@@ -34,11 +34,16 @@ func main() {
 	}
 
 	instance := &s3.BucketInstance{
-		Region:          p.Intent.Region,
-		BucketName:      p.Intent.BucketName,
-		AccessKey:       accessKey,
-		SecretAccessKey: secretAccessKey,
-		Url:             fmt.Sprintf("http://%s", server.Endpoint),
+		Region:             p.Intent.Region,
+		BucketName:         p.Intent.BucketName,
+		AccessKey:          accessKey,
+		SecretAccessKey:    secretAccessKey,
+		Url:                fmt.Sprintf("http://%s", server.Endpoint),
+		PrivateEndpointUrl: fmt.Sprintf("http://%s", server.Endpoint),
+	}
+
+	if server.PublicBaseUrl != "" {
+		instance.PublicUrl = server.PublicBaseUrl + "/" + p.Intent.BucketName
 	}
 
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {

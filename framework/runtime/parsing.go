@@ -56,6 +56,20 @@ func Endpoint(srv *Server, name string) (string, error) {
 	return "", fmt.Errorf("endpoint %s not found for server %s", name, srv.PackageName)
 }
 
+func FirstIngress(srv *Server, name string) *string {
+	for _, s := range srv.Service {
+		if s.Name == name {
+			if len(s.Ingress.GetDomain()) > 0 {
+				return &s.Ingress.Domain[0].BaseUrl
+			}
+
+			return nil
+		}
+	}
+
+	return nil
+}
+
 func ServerEndpoint(rtcfg *runtime.RuntimeConfig, pkg, name string) (string, error) {
 	for _, e := range rtcfg.StackEntry {
 		if e.PackageName == pkg {

@@ -14,9 +14,14 @@ message BucketIntent {
 }
 
 message BucketInstance {
-    string region            = 1;
-    string bucket_name       = 2;
-    string url               = 3;
+    string region               = 1;
+    string bucket_name          = 2;
+    string url                  = 3;  // XXX This will be removed in favor of `endpoint_url` which has clearer semantics.
+    string private_endpoint_url = 6;  // The private network endpoint that provides access to this bucket. The bucket name is not part of the URL.
+    string public_url           = 7;  // If set, a fully qualified URL that provides internet-facing access to this bucket. The bucket name is part of the URL.
+
+    // These are currently embedded for simplicity. They'll be moved to an
+    // access credential profile that is attached to users of this resource.
     string access_key        = 4;  // TODO export as secret reference
     string secret_access_key = 5;  // TODO export as secret reference
 }
