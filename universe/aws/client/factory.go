@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -22,6 +23,9 @@ type ClientFactory struct {
 
 func (cf ClientFactory) NewWithCreds(ctx context.Context, optFns ...func(*config.LoadOptions) error) (aws.Config, error) {
 	tokenFile := os.Getenv("AWS_WEB_IDENTITY_TOKEN_FILE")
+	if tokenFile == "" {
+		return aws.Config{}, errors.New("AWS_WEB_IDENTITY_TOKEN_FILE is not set")
+	}
 	core.Log.Printf("[aws/client] using web identity credentials at %q", tokenFile)
 
 	return cf.New(ctx, optFns...)
