@@ -5,14 +5,19 @@ package revision
 
 import (
 	"context"
+	"google.golang.org/grpc"
+	"namespacelabs.dev/foundation/orchestration/proto"
 	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/server"
+	fngrpc "namespacelabs.dev/foundation/std/grpc"
 )
 
 // Dependencies that are instantiated once for the lifetime of the service.
 type ServiceDeps struct {
-	Ready core.Check
+	Orchestrator     proto.OrchestrationServiceClient
+	Ready            core.Check
+	OrchestratorConn *grpc.ClientConn
 }
 
 // Verify that WireService is present and has the appropriate type.
@@ -37,6 +42,13 @@ func makeDeps__qjpb7o(ctx context.Context, di core.Dependencies) (_ interface{},
 	if deps.Ready, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
 	}
+
+	// package_name: "namespacelabs.dev/foundation/orchestration/service"
+	if deps.OrchestratorConn, err = fngrpc.ProvideConn(ctx, core.MustUnwrapProto("CjJuYW1lc3BhY2VsYWJzLmRldi9mb3VuZGF0aW9uL29yY2hlc3RyYXRpb24vc2VydmljZQ==", &fngrpc.Backend{}).(*fngrpc.Backend)); err != nil {
+		return nil, err
+	}
+
+	deps.Orchestrator = proto.NewOrchestrationServiceClient(deps.OrchestratorConn)
 
 	return deps, nil
 }

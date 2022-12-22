@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/std/go/server"
 	ctrlruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
@@ -32,13 +33,13 @@ var (
 		"Address port pair that the Kubernetes controller health probe endpoint binds to.")
 )
 
-func WireService(context.Context, server.Registrar, ServiceDeps) {
-	if err := setupControllers(); err != nil {
+func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
+	if err := setupControllers(deps.Orchestrator); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func setupControllers() error {
+func setupControllers(orchClt proto.OrchestrationServiceClient) error {
 	groupVersion := schema.GroupVersion{Group: "k8s.namespacelabs.dev", Version: "v1alpha1"}
 	schemeBuilder := &runtimescheme.Builder{GroupVersion: groupVersion}
 	schemeBuilder.Register(&Revision{}, &RevisionList{})
@@ -74,6 +75,7 @@ func setupControllers() error {
 		Complete(&RevisionReconciler{
 			clt:      mgr.GetClient(),
 			recorder: mgr.GetEventRecorderFor("revision"),
+			orchClt:  orchClt,
 		}); err != nil {
 		return err
 	}

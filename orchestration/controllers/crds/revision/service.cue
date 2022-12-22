@@ -1,6 +1,7 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/core"
+	"namespacelabs.dev/foundation/std/grpc"
 )
 
 service: fn.#Service & {
@@ -9,6 +10,10 @@ service: fn.#Service & {
 	// We don't really need it, but https://github.com/namespacelabs/foundation/issues/717
 	instantiate: {
 		ready: core.#Exports.ReadinessCheck
+
+		orchestrator: grpc.#Exports.Backend & {
+			packageName: "namespacelabs.dev/foundation/orchestration/service"
+		}
 	}
 }
 

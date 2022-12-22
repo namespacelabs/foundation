@@ -9,6 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/client-go/tools/record"
+	orchproto "namespacelabs.dev/foundation/orchestration/proto"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -27,6 +28,7 @@ const (
 type RevisionReconciler struct {
 	clt      client.Client
 	recorder record.EventRecorder
+	orchClt  orchproto.OrchestrationServiceClient
 }
 
 func (r *RevisionReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
@@ -80,12 +82,22 @@ func (r *RevisionReconciler) handleCreateUpdate(ctx context.Context, rev *Revisi
 		return err
 	}
 
-	log.Info("got plan", "plan", plan.String())
+	resp, err := r.orchClt.Deploy(ctx, &orchproto.DeployRequest{
+		Plan: plan,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Info("deployed plan", "deploy ID", resp.Id)
 	return nil
 }
 
 func (r *RevisionReconciler) handleDelete(ctx context.Context, rev *Revision) error {
 	log := log.FromContext(ctx)
+
+	//TODO: handle undeploy use-case
+
 	log.Info("delete case")
 	return nil
 }
