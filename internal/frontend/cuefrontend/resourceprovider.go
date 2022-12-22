@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -18,6 +19,12 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
+
+var resourceProviderFields = []string{
+	// Needs to contain JSON names of cueResourceProvider fields.
+	"inputs", "intent", "availableClasses", "availablePackages",
+	"initializedWith", "resourcesFrom", "resources", "prepareWith",
+}
 
 type cueResourceProvider struct {
 	ResourceInputs map[string]cueResourceProviderInput `json:"inputs"`
@@ -35,6 +42,10 @@ type cueResourceProviderInput struct {
 }
 
 func parseResourceProvider(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, key string, v *fncue.CueV) (*schema.ResourceProvider, error) {
+	if err := ValidateNoExtraFields(pkg.Location, fmt.Sprintf("resource provider %q:", key) /* messagePrefix */, v, resourceProviderFields); err != nil {
+		return nil, err
+	}
+
 	var bits cueResourceProvider
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err
