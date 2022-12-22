@@ -97,32 +97,29 @@ func createClient(ctx context.Context, factory client.ClientFactory, minioCreds 
 
 	loadOptFns = append(loadOptFns, config.WithRegion(region))
 
-	var cfg aws.Config
-	var err error
-	if *minioEndpoint != "" {
-		core.Log.Printf("[storage/s3] creating minio client: %s", *minioEndpoint)
-
-		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				PartitionID:   "aws",
-				URL:           *minioEndpoint,
-				SigningRegion: region,
-			}, nil
-		})
-
-		loadOptFns = append(loadOptFns,
-			config.WithEndpointResolverWithOptions(resolver),
-			config.WithCredentialsProvider(credProvider{minioCreds: minioCreds}))
-
-		optFns = append(optFns, func(o *s3.Options) {
-			o.UsePathStyle = true
-		})
-
-		cfg, err = factory.New(ctx, loadOptFns...)
-	} else {
-		cfg, err = factory.NewWithCreds(ctx, loadOptFns...)
+	if *minioEndpoint == "" {
+		return nil, fmt.Errorf("aws S3 is not supported")
 	}
 
+	core.Log.Printf("[storage/s3] creating minio client: %s", *minioEndpoint)
+
+	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+		return aws.Endpoint{
+			PartitionID:   "aws",
+			URL:           *minioEndpoint,
+			SigningRegion: region,
+		}, nil
+	})
+
+	loadOptFns = append(loadOptFns,
+		config.WithEndpointResolverWithOptions(resolver),
+		config.WithCredentialsProvider(credProvider{minioCreds: minioCreds}))
+
+	optFns = append(optFns, func(o *s3.Options) {
+		o.UsePathStyle = true
+	})
+
+	cfg, err := factory.New(ctx, loadOptFns...)
 	if err != nil {
 		return nil, err
 	}
