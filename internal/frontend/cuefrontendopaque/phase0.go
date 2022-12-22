@@ -6,6 +6,7 @@ package cuefrontendopaque
 
 import (
 	"context"
+	"fmt"
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -21,6 +22,15 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
+var packageFields = []string{
+	"server", "sidecars", "volumes", "secrets", "tests", "binary",
+	"resources", "resourceClasses", "providers",
+}
+
+var sidecarFields = []string{
+	"args", "env", "mounts", "image", "imageFrom", "init",
+}
+
 type Frontend struct {
 	loader parsing.EarlyPackageLoader
 	env    *schema.Environment
@@ -35,6 +45,10 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
+		return nil, err
+	}
+
+	if err := cuefrontend.ValidateNoExtraFields(loc, "top level" /* messagePrefix */, v, packageFields); err != nil {
 		return nil, err
 	}
 
@@ -68,6 +82,11 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 
 			for it.Next() {
 				val := &fncue.CueV{Val: it.Value()}
+
+				if err := cuefrontend.ValidateNoExtraFields(loc, fmt.Sprintf("sidecar %q:", it.Label()) /* messagePrefix */, val, sidecarFields); err != nil {
+					return nil, err
+				}
+
 				parsedContainer, err := parseCueContainer(ctx, ft.env, ft.loader, parsedPkg, it.Label(), loc, val)
 				if err != nil {
 					return nil, err

@@ -6,6 +6,7 @@ package cuefrontend
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
@@ -18,6 +19,9 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
+
+// Needs to be consistent with JSON names of cueSecret fields.
+var testFields = []string{"serversUnderTest", "args", "env", "image", "imageFrom", "integration"}
 
 type cueTest struct {
 	Servers []string            `json:"serversUnderTest"`
@@ -47,6 +51,10 @@ func parseTests(ctx context.Context, env *schema.Environment, pl parsing.EarlyPa
 }
 
 func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, name string, v *fncue.CueV) (*schema.Test, error) {
+	if err := ValidateNoExtraFields(pkg.Location, fmt.Sprintf("test %q:", name) /* messagePrefix */, v, testFields); err != nil {
+		return nil, err
+	}
+
 	var bits cueTest
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, err

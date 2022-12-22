@@ -20,6 +20,9 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
+// Needs to be consistent with JSON names of CueResourceInstance fields.
+var resourceInstanceFields = []string{"class", "provider", "intent", "resources", "kind", "on", "input"}
+
 type ResourceList struct {
 	Refs      []string
 	Instances map[string]*fncue.CueV
@@ -51,6 +54,10 @@ func exclusiveFieldsErr(fieldName ...string) error {
 }
 
 func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, name string, v *fncue.CueV) (*schema.ResourceInstance, error) {
+	if err := ValidateNoExtraFields(pkg.Location, fmt.Sprintf("resource %q:", name) /* messagePrefix */, v, resourceInstanceFields); err != nil {
+		return nil, err
+	}
+
 	var src CueResourceInstance
 	if err := v.Val.Decode(&src); err != nil {
 		return nil, err

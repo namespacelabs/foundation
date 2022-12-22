@@ -20,6 +20,13 @@ import (
 	"namespacelabs.dev/foundation/std/resources"
 )
 
+var serverFields = []string{
+	"name", "class", "args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
+	"mounts", "resources", "integration", "image", "imageFrom", "unstable_naming", "requires",
+	// TODO: remove once all templates use private fields
+	"spec",
+}
+
 type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
@@ -49,6 +56,10 @@ type cueServerSecurity struct {
 func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
 	loc := pkg.Location
 
+	if err := cuefrontend.ValidateNoExtraFields(loc, "server" /* messagePrefix */, v, serverFields); err != nil {
+		return nil, nil, err
+	}
+
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
 		return nil, nil, err
@@ -70,6 +81,20 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.DeployableClass = string(schema.DeployableClass_DAEMONSET)
 	default:
 		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
+	}
+
+	// Field validation needs to be done separately, because after parsing to JSON extra fields are lost.
+	if services := v.LookupPath("services"); services.Exists() {
+		it, err := services.Val.Fields()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for it.Next() {
+			if err := cuefrontend.ValidateNoExtraFields(loc, fmt.Sprintf("service %q:", it.Label()) /* messagePrefix */, &fncue.CueV{Val: it.Value()}, serviceFields); err != nil {
+				return nil, nil, err
+			}
+		}
 	}
 
 	var serviceProbes []*schema.Probe

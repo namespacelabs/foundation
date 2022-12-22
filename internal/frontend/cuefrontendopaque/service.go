@@ -19,6 +19,9 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
+// Needs to be consistent with JSON names of cueResourceClass fields.
+var serviceFields = []string{"kind", "port", "ingress", "annotations", "probe", "probes"}
+
 type cueService struct {
 	Kind    string     `json:"kind"`
 	Port    int        `json:"port"`

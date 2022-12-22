@@ -90,7 +90,7 @@ func ParsePackage(ctx context.Context, env *schema.Environment, pl parsing.Early
 	}
 
 	if secrets := v.LookupPath("secrets"); secrets.Exists() {
-		secretSpecs, err := parseSecrets(ctx, secrets)
+		secretSpecs, err := parseSecrets(ctx, loc, secrets)
 		if err != nil {
 			return nil, err
 		}

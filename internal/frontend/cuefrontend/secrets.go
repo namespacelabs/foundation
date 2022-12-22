@@ -6,13 +6,18 @@ package cuefrontend
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
+
+// Needs to be consistent with JSON names of cueSecret fields.
+var secretFields = []string{"description", "generate"}
 
 type cueSecret struct {
 	Description string             `json:"description,omitempty"`
@@ -25,7 +30,7 @@ type cueSecretGenerate struct {
 	Format          string `json:"format,omitempty"`
 }
 
-func parseSecrets(ctx context.Context, v *fncue.CueV) ([]*schema.SecretSpec, error) {
+func parseSecrets(ctx context.Context, loc pkggraph.Location, v *fncue.CueV) ([]*schema.SecretSpec, error) {
 	var parsedSecrets []*schema.SecretSpec
 	it, err := v.Val.Fields()
 	if err != nil {
@@ -33,6 +38,10 @@ func parseSecrets(ctx context.Context, v *fncue.CueV) ([]*schema.SecretSpec, err
 	}
 
 	for it.Next() {
+		if err := ValidateNoExtraFields(loc, fmt.Sprintf("secret %q:", it.Label()) /* messagePrefix */, &fncue.CueV{Val: it.Value()}, secretFields); err != nil {
+			return nil, err
+		}
+
 		parsedSecret, err := parseSecret(ctx, it.Label(), it.Value())
 		if err != nil {
 			return nil, err
