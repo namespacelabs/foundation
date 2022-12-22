@@ -18,13 +18,25 @@ const providerPkg = "namespacelabs.dev/foundation/library/oss/localstack"
 func main() {
 	_, p := provider.MustPrepare[*localstack.ClusterIntent]()
 
-	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:server", providerPkg), "api")
+	serverPkg := fmt.Sprintf("%s:server", providerPkg)
+	service := "api"
+
+	endpoint, err := resources.LookupServerEndpoint(p.Resources, serverPkg, service)
 	if err != nil {
 		log.Fatalf("failed to get Localstack server endpoint: %v", err)
 	}
 
+	ingress, err := resources.LookupServerFirstIngress(p.Resources, serverPkg, service)
+	if err != nil {
+		log.Fatalf("failed to get Localstack server ingress: %v", err)
+	}
+
 	instance := &localstack.ClusterInstance{
 		Endpoint: endpoint,
+	}
+
+	if ingress != nil {
+		instance.PublicBaseUrl = *ingress
 	}
 
 	p.EmitResult(instance)
