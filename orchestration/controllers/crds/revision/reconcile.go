@@ -8,17 +8,20 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
+)
+
+const (
+	revisionFinalizerKey = "revisions.k8s.namespacelabs.dev/finalizer"
 )
 
 type RevisionReconciler struct {
@@ -30,26 +33,61 @@ func (r *RevisionReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 	log := log.FromContext(ctx)
 	log.Info("Reconciling", "name", req.NamespacedName)
 
-	var rev Revision
-	err := r.clt.Get(ctx, req.NamespacedName, &rev)
+	rev := &Revision{}
+	err := r.clt.Get(ctx, req.NamespacedName, rev)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			// TODO: handle delete use-case
-			return reconcile.Result{}, nil
-		}
-		log.Error(err, "failed to get Revision")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, client.IgnoreNotFound(err)
 	}
 
+	if rev.ObjectMeta.DeletionTimestamp.IsZero() {
+		// Revision is *not* under deletion - i.e. create or update
+		if !controllerutil.ContainsFinalizer(rev, revisionFinalizerKey) {
+			// Let's add the finalizer key if object does not have it
+			controllerutil.AddFinalizer(rev, revisionFinalizerKey)
+			if err := r.clt.Update(ctx, rev); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+		if err := r.handleCreateUpdate(ctx, rev); err != nil {
+			// if failed, return with error so that it can be retried
+			return reconcile.Result{}, err
+		}
+	} else {
+		// Revision is under deletion
+		if controllerutil.ContainsFinalizer(rev, revisionFinalizerKey) {
+			// our finalizer is present, so let's process the deletion
+			if err := r.handleDelete(ctx, rev); err != nil {
+				// if failed, return with error so that it can be retried
+				return reconcile.Result{}, err
+			}
+
+			// remove our finalizer from the list and update it - so API server can delete the object
+			controllerutil.RemoveFinalizer(rev, revisionFinalizerKey)
+			if err := r.clt.Update(ctx, rev); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func (r *RevisionReconciler) handleCreateUpdate(ctx context.Context, rev *Revision) error {
+	log := log.FromContext(ctx)
 	plan, err := loadPlan(ctx, rev.Spec.Image)
 	if err != nil {
 		log.Error(err, "failed to load plan")
-		return reconcile.Result{Requeue: true}, err
+		return err
 	}
 
 	log.Info("got plan", "plan", plan.String())
+	return nil
+}
 
-	return reconcile.Result{}, nil
+func (r *RevisionReconciler) handleDelete(ctx context.Context, rev *Revision) error {
+	log := log.FromContext(ctx)
+	log.Info("delete case")
+	return nil
 }
 
 func loadPlan(ctx context.Context, path string) (*schema.DeployPlan, error) {
@@ -72,7 +110,13 @@ func loadPlan(ctx context.Context, path string) (*schema.DeployPlan, error) {
 }
 
 func loadPlanContents(ctx context.Context, path string) ([]byte, error) {
-	image, err := compute.GetValue(ctx, oci.ImageP(path, nil, oci.ResolveOpts{}))
+	imageID, err := oci.ParseImageID(path)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO: remove insecure access flag
+	image, err := oci.FetchRemoteImage(ctx, imageID, oci.ResolveOpts{PublicImage: true, RegistryAccess: oci.RegistryAccess{InsecureRegistry: true}})
 	if err != nil {
 		return nil, err
 	}
