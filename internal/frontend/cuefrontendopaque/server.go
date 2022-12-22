@@ -152,19 +152,20 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	}
 
 	for _, env := range startupPlan.Env {
+		var dep schema.PackageName
+		var builtinName string
 		if env.FromServiceEndpoint != nil {
-			dep := env.FromServiceEndpoint.ServerRef.AsPackageName()
-			if !availableServers.Has(dep) {
-				// TODO reconcider if we want to implicitly add the dependency NSL-357
-				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
-			}
+			dep = env.FromServiceEndpoint.ServerRef.AsPackageName()
+			builtinName = `fromServiceEndpoint`
 		}
 		if env.FromServiceIngress != nil {
-			dep := env.FromServiceIngress.ServerRef.AsPackageName()
-			if !availableServers.Has(dep) {
-				// TODO reconcider if we want to implicitly add the dependency NSL-357
-				return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled: missing required server %s", env.Name, dep)
-			}
+			dep = env.FromServiceIngress.ServerRef.AsPackageName()
+			builtinName = `fromServiceIngress`
+		}
+
+		if builtinName != "" && !availableServers.Has(dep) {
+			// TODO reconcider if we want to implicitly add the dependency NSL-357
+			return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled:\nserver %q is referenced in %q but it is not in the server stack. Please explitly add this server to the `requires` list.\n", env.Name, dep, builtinName)
 		}
 	}
 
