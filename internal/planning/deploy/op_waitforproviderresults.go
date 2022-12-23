@@ -100,7 +100,7 @@ func register_OpWaitForProviderResults() {
 				if main.TerminationError != nil {
 					fmt.Fprintf(console.Errors(ctx), "%s provision failure:\n%s\n", wait.ResourceInstanceId, out.Bytes())
 
-					return nil, fnerrors.ExternalError("provider failed: %w", main.TerminationError)
+					return nil, fnerrors.ExternalError("provider failed: %w\n\n    >> See the logs above for the provider error. <<\n", main.TerminationError)
 				}
 
 				_, msgdesc, err := protos.LoadMessageByName(wait.InstanceTypeSource, wait.ResourceClass.InstanceType.ProtoType)

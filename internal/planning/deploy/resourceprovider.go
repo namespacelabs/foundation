@@ -113,7 +113,10 @@ func PlanResourceProviderInvocation(ctx context.Context, secs is.SecretsSource, 
 }
 
 func planProviderArgs(ctx context.Context, invoke providerArgsInput) ([]string, error) {
-	args := append(slices.Clone(invoke.BinaryConfig.GetArgs()), fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
+	args := slices.Clone(invoke.BinaryConfig.GetArgs())
+	if len(invoke.SerializedIntentJson) > 0 {
+		args = append(args, fmt.Sprintf("--intent=%s", invoke.SerializedIntentJson))
+	}
 
 	versions, err := foundationVersion(ctx, invoke.SealedContext)
 	if err != nil {
