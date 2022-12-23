@@ -89,12 +89,10 @@ func (p *Provider[T]) emitMessage(message Message) {
 }
 
 func prepare(intentFlag, resourcesFlag string, intent any) (*resources.Parsed, error) {
-	if intentFlag == "" {
-		return nil, fmt.Errorf("--intent is required")
-	}
-
-	if err := json.Unmarshal([]byte(intentFlag), intent); err != nil {
-		return nil, fmt.Errorf("failed to decode intent: %w", err)
+	if intentFlag != "" {
+		if err := json.Unmarshal([]byte(intentFlag), intent); err != nil {
+			return nil, fmt.Errorf("failed to decode intent: %w", err)
+		}
 	}
 
 	if resourcesFlag == "" {
