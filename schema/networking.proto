@@ -13,7 +13,7 @@ import "google/protobuf/descriptor.proto";
 import "schema/domain.proto";
 import "schema/package.proto";
 
-// Next ID: 12
+// Next ID: 13
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -36,11 +36,16 @@ message Endpoint {
 
     string service_label = 10;
 
-    PackageRef ingress_provider = 11;
+    PackageRef  ingress_provider = 11;
+    IngressSpec ingress_spec     = 12;
 
     message Port {
         string name           = 1;
         int32  container_port = 2;
+    }
+
+    message IngressSpec {
+        repeated string domain = 1;  // If set, exposes this endpoint in the specified domains.
     }
 
     reserved 9;

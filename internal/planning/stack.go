@@ -27,11 +27,13 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
+	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/versions"
-	runtimepb "namespacelabs.dev/foundation/library/runtime"
+	runtimelibrary "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
@@ -360,8 +362,20 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 					Name:        fmt.Sprintf("%s$ingress_%d", server.Proto().Name, k),
 				}
 
-				intent := &runtimepb.IngressIntent{
-					Endpoint: endpoints,
+				var applicationDomains []string
+				if server.env.Environment().Purpose == schema.Environment_DEVELOPMENT {
+					applicationDomains = append(applicationDomains, "nslocal.host")
+				}
+
+				intent := &runtimelibrary.IngressIntent{
+					Env:                   protos.Clone(server.env.Environment()),
+					Endpoint:              endpoints,
+					Deployable:            runtime.DeployableToProto(server.Proto()),
+					ApplicationBaseDomain: applicationDomains,
+				}
+
+				if intent.Env.Ephemeral {
+					intent.Env.Name = "" // Make sure we don't trash the cache in tests.
 				}
 
 				boxedIntent, err := anypb.New(intent)

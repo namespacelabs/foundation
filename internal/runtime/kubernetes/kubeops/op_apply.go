@@ -81,7 +81,16 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		HumanReadablef(desc).
 		Arg("name", obj.GetName())
 
-	if ns := obj.GetNamespace(); ns != "" {
+	ns := obj.GetNamespace()
+	if spec.SetNamespace {
+		c, err := kubedef.InjectedKubeClusterNamespace(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ns = c.KubeConfig().Namespace
+	}
+
+	if ns != "" {
 		action = action.Arg("namespace", ns)
 	}
 
@@ -131,13 +140,13 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		Run: func(ctx context.Context) error {
 			client, err := client.MakeGroupVersionBasedClient(ctx, restcfg, resource.GroupVersion())
 			if err != nil {
-				return err
+				return fnerrors.InternalError("failed to create client: %w", err)
 			}
 
 			patchOpts := kubedef.Ego().ToPatchOptions()
 			req := client.Patch(types.ApplyPatchType)
-			if obj.GetNamespace() != "" {
-				req = req.Namespace(obj.GetNamespace())
+			if ns != "" {
+				req = req.Namespace(ns)
 			}
 
 			prepReq := req.Resource(resource.Resource).

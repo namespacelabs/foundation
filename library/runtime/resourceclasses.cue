@@ -14,17 +14,17 @@ resourceClasses: {
 		}
 		produces: {
 			type:   "foundation.library.runtime.SecretInstance"
-			source: "./instances.proto"
+			source: "./secrets.proto"
 		}
 	}
 	Ingress: {
 		intent: {
 			type:   "foundation.library.runtime.IngressIntent"
-			source: "./intents.proto"
+			source: "./ingress.proto"
 		}
 		produces: {
 			type:   "foundation.library.runtime.IngressInstance"
-			source: "./instances.proto"
+			source: "./ingress.proto"
 		}
 	}
 }

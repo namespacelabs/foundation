@@ -12,7 +12,7 @@ server: {
 			port: 4000
 			kind: "http"
 
-			ingress: true
+			ingress: provider: "namespacelabs.dev/foundation/library/kubernetes/ingress"
 		}
 	}
 

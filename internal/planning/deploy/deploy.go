@@ -6,6 +6,7 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"golang.org/x/exp/slices"
@@ -25,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/startup"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
+	runtimelibrary "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/execution"
@@ -91,21 +93,25 @@ func PrepareDeployStack(ctx context.Context, planner planning.Planner, stack *pl
 		return nil, err
 	}
 
-	ingressFragments := computeIngressWithHandlerResult(planner, stack, ingressesFromHandlerResult(def))
+	ingressResult := computeIngressWithHandlerResult(planner, stack, ingressesFromHandlerResult(def))
 
-	prepare, err := prepareBuildAndDeployment(ctx, planner, stack, def, ingressFragments, prepared...)
+	prepare, err := prepareBuildAndDeployment(ctx, planner, stack, def, ingressResult, prepared...)
 	if err != nil {
 		return nil, err
 	}
 
+	fragmentsOnly := compute.Transform("fragments only", ingressResult, func(_ context.Context, r *ComputeIngressResult) ([]*schema.IngressFragment, error) {
+		return r.Fragments, nil
+	})
+
 	g := &makeDeployGraph{
 		stack:            stack,
 		prepare:          prepare,
-		ingressFragments: ingressFragments,
+		ingressFragments: fragmentsOnly,
 	}
 
 	if AlsoDeployIngress {
-		g.ingressPlan = PlanIngressDeployment(planner.Runtime, g.ingressFragments)
+		g.ingressPlan = PlanIngressDeployment(planner.Runtime, ingressResult)
 	}
 
 	return g, nil
@@ -122,7 +128,7 @@ func makeBuildAssets(ingressFragments compute.Computable[*ComputeIngressResult])
 type makeDeployGraph struct {
 	stack            *planning.Stack
 	prepare          compute.Computable[prepareAndBuildResult]
-	ingressFragments compute.Computable[*ComputeIngressResult]
+	ingressFragments compute.Computable[[]*schema.IngressFragment]
 	ingressPlan      compute.Computable[*runtime.DeploymentPlan]
 
 	compute.LocalScoped[*Plan]
@@ -172,7 +178,20 @@ func (m *makeDeployGraph) Compute(ctx context.Context, deps compute.Resolved) (*
 		g.Add(ingress.Value.Definitions...)
 	}
 
-	plan.IngressFragments = compute.MustGetDepValue(deps, m.ingressFragments, "ingress").Fragments
+	plan.IngressFragments = compute.MustGetDepValue(deps, m.ingressFragments, "ingress")
+
+	// Look for ingress instances in the output of plan resource phase. Any ingresses that were
+	// setup via ingress provider will show up here.
+	for _, computed := range pbr.ResourcePlan.PlannedResources {
+		if computed.InstanceType.ProtoType == "foundation.library.runtime.IngressInstance" {
+			instance := &runtimelibrary.IngressInstance{}
+			if err := json.Unmarshal(computed.InstanceSerializedJSON, instance); err != nil {
+				return nil, err
+			}
+			plan.IngressFragments = append(plan.IngressFragments, instance.IngressFragment...)
+		}
+	}
+
 	plan.Computed = pbr.HandlerResult.MergedComputedConfigurations()
 
 	return plan, nil
@@ -195,6 +214,7 @@ func prepareHandlerInvocations(ctx context.Context, planner planning.Planner, st
 
 type prepareAndBuildResult struct {
 	HandlerResult      *handlerResult
+	ResourcePlan       *resourcePlan
 	Ops                []*schema.SerializedInvocation
 	Hints              []string
 	NamespaceReference string
@@ -317,6 +337,7 @@ func prepareBuildAndDeployment(ctx context.Context, planner planning.Planner, st
 
 			return prepareAndBuildResult{
 				HandlerResult:      compute.MustGetDepValue(deps, stackDef, "stackAndDefs"),
+				ResourcePlan:       resourcePlan,
 				Ops:                ops,
 				Hints:              deploymentPlan.Hints,
 				NamespaceReference: deploymentPlan.NamespaceReference,
