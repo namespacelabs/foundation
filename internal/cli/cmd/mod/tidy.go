@@ -7,8 +7,6 @@ package mod
 import (
 	"context"
 	"io"
-	"io/fs"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -18,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -121,12 +118,12 @@ func maybeUpdateWorkspace(ctx context.Context, env cfg.Context) error {
 	}
 	pl := parsing.NewPackageLoader(env, parsing.WithMissingModuleResolver(res))
 
-	locs, err := listLocations(ctx, root)
+	schemas, err := parsing.ListSchemas(ctx, env, root)
 	if err != nil {
 		return err
 	}
 
-	for _, loc := range locs {
+	for _, loc := range schemas.Locations {
 		if _, err := pl.LoadByName(ctx, loc.AsPackageName()); err != nil {
 			return err
 		}
@@ -147,40 +144,6 @@ func rewriteWorkspace(ctx context.Context, root *parsing.Root, data pkggraph.Wor
 	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.ReadWriteFS(), data.DefinitionFile(), func(w io.Writer) error {
 		return data.FormatTo(w)
 	})
-}
-
-func listLocations(ctx context.Context, root *parsing.Root) ([]fnfs.Location, error) {
-	var locs []fnfs.Location
-
-	visited := map[string]struct{}{} // Map of directory name to presence.
-
-	if err := fnfs.WalkDir(root.ReadOnlyFS(), ".", func(path string, d fs.DirEntry) error {
-		if d.IsDir() {
-			if dirs.IsExcludedAsSource(path) {
-				return fs.SkipDir
-			}
-			return nil
-		}
-
-		// Is there a least a .cue file in the directory?
-		if filepath.Ext(d.Name()) == ".cue" {
-			dir := filepath.Dir(path)
-			if _, ok := visited[dir]; ok {
-				return nil
-			}
-
-			pkg := root.RelPackage(dir)
-			locs = append(locs, pkg)
-
-			visited[dir] = struct{}{}
-		}
-
-		return nil
-	}); err != nil {
-		return []fnfs.Location{}, err
-	}
-
-	return locs, nil
 }
 
 type moduleResolver struct {
