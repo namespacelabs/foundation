@@ -10,7 +10,8 @@ import (
 
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
-	"namespacelabs.dev/foundation/library/database/postgres"
+	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
+	"namespacelabs.dev/foundation/library/oss/postgres"
 )
 
 const providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
@@ -28,7 +29,7 @@ func main() {
 		log.Fatalf("failed to read Postgres password: %v", err)
 	}
 
-	instance := &postgres.ClusterInstance{
+	instance := &postgresclass.ClusterInstance{
 		Address:  endpoint,
 		Password: string(password),
 	}

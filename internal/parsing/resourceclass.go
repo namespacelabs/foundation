@@ -45,14 +45,6 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 			DefaultProvider: schema.PackageName(rc.DefaultProvider),
 		}
 
-		if rc.IntentType != nil {
-			intentType, err := loadUserType(parseOpts, fsys, pp.Location, rc.IntentType)
-			if err != nil {
-				return err
-			}
-			transformed.IntentType = &intentType
-		}
-
 		pp.ResourceClasses = append(pp.ResourceClasses, transformed)
 	}
 

@@ -4,12 +4,10 @@
 
 syntax = "proto3";
 
-package library.database.redis;
+package library.oss.redis;
 
-option go_package = "namespacelabs.dev/foundation/library/database/redis";
+option go_package = "namespacelabs.dev/foundation/library/oss/redis";
 
-message DatabaseInstance {
-    int32  database = 1;
-    string url      = 2;
-    string password = 3;
+message DatabaseIntent {
+    int32 database = 1;
 }

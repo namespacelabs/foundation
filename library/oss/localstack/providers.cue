@@ -2,6 +2,11 @@ providers: {
 	"namespacelabs.dev/foundation/library/storage/s3:Bucket": {
 		initializedWith: "namespacelabs.dev/foundation/library/oss/localstack/prepare/bucket"
 
+		intent: {
+			type:   "library.oss.localstack.BucketIntent"
+			source: "./types.proto"
+		}
+
 		inputs: {
 			cluster: {
 				class:   "namespacelabs.dev/foundation/library/oss/localstack:Cluster"

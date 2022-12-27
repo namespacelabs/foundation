@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
+	"namespacelabs.dev/foundation/library/kubernetes/ingress"
 	"namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -24,7 +25,7 @@ func main() {
 	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleApply(func(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
-		intent := &runtime.IngressIntent{}
+		intent := &ingress.IngressIntent{}
 		if err := req.UnpackInput(intent); err != nil {
 			return err
 		}

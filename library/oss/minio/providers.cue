@@ -2,6 +2,11 @@ providers: {
 	"namespacelabs.dev/foundation/library/storage/s3:Bucket": {
 		initializedWith: "namespacelabs.dev/foundation/library/oss/minio/prepare"
 
+		intent: {
+			type:   "library.oss.minio.BucketIntent"
+			source: "./types.proto"
+		}
+
 		resources: {
 			// Adds the server to the stack
 			server: {

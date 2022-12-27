@@ -9,10 +9,16 @@ package library.oss.postgres;
 option go_package = "namespacelabs.dev/foundation/library/oss/postgres";
 
 import "schema/package.proto";
+import "schema/volume.proto";
 
 message ClusterIntent {
     // If set, overrides the server package used to instantiate the local database cluster.
     foundation.schema.PackageRef server = 1;
     // If set, overrides the root password used to access the cluster.
     foundation.schema.PackageRef password_secret = 2;
+}
+
+message DatabaseIntent {
+    string   name                                  = 1;
+    repeated foundation.schema.FileContents schema = 2;
 }

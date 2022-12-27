@@ -12,12 +12,13 @@ import (
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	redisclass "namespacelabs.dev/foundation/library/database/redis"
+	redisprovider "namespacelabs.dev/foundation/library/oss/redis"
 )
 
 const providerPkg = "namespacelabs.dev/foundation/library/oss/redis"
 
 func main() {
-	ctx, p := provider.MustPrepare[*redisclass.DatabaseIntent]()
+	ctx, p := provider.MustPrepare[*redisprovider.DatabaseIntent]()
 
 	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:redisServer", providerPkg), "redis")
 	if err != nil {

@@ -8,11 +8,10 @@ package library.database.postgres;
 
 option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 
-import "schema/volume.proto";
-
-message DatabaseIntent {
-    string   name                                  = 1;
-    repeated foundation.schema.FileContents schema = 2;
+message ClusterInstance {
+    // Format: host:port.
+    string address  = 1;
+    string password = 2;  // TODO export as secret reference
 }
 
 message DatabaseInstance {

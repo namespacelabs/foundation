@@ -33,7 +33,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	is "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/versions"
-	runtimelibrary "namespacelabs.dev/foundation/library/runtime"
+	"namespacelabs.dev/foundation/library/kubernetes/ingress"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
@@ -367,7 +367,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 					applicationDomains = append(applicationDomains, "nslocal.host")
 				}
 
-				intent := &runtimelibrary.IngressIntent{
+				intent := &ingress.IngressIntent{
 					Env:                   protos.Clone(server.env.Environment()),
 					Endpoint:              endpoints,
 					Deployable:            runtime.DeployableToProto(server.Proto()),
@@ -399,7 +399,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 							SerializedIntentJson: string(intentJSON),
 						},
 						Intent:     boxedIntent,
-						IntentType: ingressClass.IntentType,
+						IntentType: provider.IntentType,
 						Class:      *ingressClass,
 						Provider:   provider,
 					},

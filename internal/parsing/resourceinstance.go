@@ -74,17 +74,17 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 		ri.Provider = provider
 	}
 
-	if ri.Provider != nil && ri.Provider.IntentType != nil {
-		ri.IntentType = ri.Provider.IntentType
-	} else if class.IntentType != nil {
-		ri.IntentType = class.IntentType
+	if ri.Provider == nil {
+		return nil, fnerrors.NewWithLocation(loc, "missing provider for instance %q", instance.Name)
 	}
 
-	if instance.SerializedIntentJson != "" {
-		if ri.IntentType == nil {
-			return nil, fnerrors.NewWithLocation(loc, "missing intent type for instance %q", instance.Name)
-		}
+	if ri.Provider.IntentType == nil {
+		return nil, fnerrors.NewWithLocation(loc, "missing intent type for instance %q", instance.Name)
+	}
 
+	ri.IntentType = ri.Provider.IntentType
+
+	if instance.SerializedIntentJson != "" {
 		var raw any
 		if err := json.Unmarshal([]byte(instance.SerializedIntentJson), &raw); err != nil {
 			return nil, fnerrors.InternalError("failed to unmarshal serialized intent: %w", err)

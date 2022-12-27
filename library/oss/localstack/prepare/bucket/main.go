@@ -26,7 +26,7 @@ const (
 )
 
 func main() {
-	ctx, p := provider.MustPrepare[*s3.BucketIntent]()
+	ctx, p := provider.MustPrepare[*localstack.BucketIntent]()
 
 	server := &localstack.ClusterInstance{}
 	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), server); err != nil {
@@ -34,7 +34,6 @@ func main() {
 	}
 
 	instance := &s3.BucketInstance{
-		Region:             p.Intent.Region,
 		BucketName:         p.Intent.BucketName,
 		AccessKey:          accessKey,
 		SecretAccessKey:    secretAccessKey,

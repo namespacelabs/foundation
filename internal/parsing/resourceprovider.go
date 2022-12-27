@@ -15,7 +15,7 @@ import (
 )
 
 func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pkg *pkggraph.Package, provider *schema.ResourceProvider) (*pkggraph.ResourceProvider, error) {
-	if provider.InitializedWith == nil && provider.PrepareWith == nil {
+	if provider.InitializedWith == nil && provider.PrepareWith == nil && !isRuntimeResource(provider.ProvidesClass) {
 		return nil, fnerrors.NewWithLocation(pkg.Location, "resource provider requires either initializedWith or prepareWith")
 	}
 

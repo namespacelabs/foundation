@@ -6,6 +6,11 @@ providers: {
 				TEST_SECRET: fromSecret: ":testsecret"
 			}
 		}
+
+		intent: {
+			type:   "foundation.internal.testdata.integrations.resources.classes.DatabaseIntent"
+			source: "../testgenprovider/proto1.proto"
+		}
 	}
 }
 

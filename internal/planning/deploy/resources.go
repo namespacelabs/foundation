@@ -99,59 +99,62 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 		// Any of the contexts should be valid to load the binary, as all of them refer to this resources.
 		sealedCtx := resource.ParentContexts[0]
 
-		if resource.Provider == nil {
-			if len(resource.Dependencies) != 0 {
-				return nil, fnerrors.InternalError("can't set dependencies on providerless-resources")
-			}
-
-			switch {
-			case parsing.IsServerResource(resource.Class.Ref):
-				if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(sealedCtx)); err != nil {
-					return nil, err
-				}
-
-				serverIntent := &schema.PackageRef{}
-				if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
-					return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
-				}
-
-				target, has := stack.GetServerProto(serverIntent.AsPackageName())
-				if !has {
-					return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
-				}
-
-				si := &schema.SerializedInvocation{
-					Description: "Capture Runtime Config",
-					Order: &schema.ScheduleOrder{
-						SchedCategory: []string{
-							resources.ResourceInstanceCategory(resource.ID),
-						},
-						SchedAfterCategory: []string{
-							runtime.OwnedByDeployable(target),
-						},
-					},
-				}
-
-				wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
-					ResourceInstanceId: resource.ID,
-					ServerConfig:       makeServerConfig(stack, target, sealedCtx.Environment()),
-					Deployable:         runtime.DeployableToProto(target),
-				})
-				if err != nil {
-					return nil, err
-				}
-
-				si.Impl = wrapped
-
-				plan.ExecutionInvocations = append(plan.ExecutionInvocations, si)
-			}
-
-			continue // Nothing to do re: provider.
-		}
-
 		provider := resource.Provider.Spec
 
-		if provider.PrepareWith != nil {
+		switch {
+		case parsing.IsSecretResource(resource.Class.Ref):
+			if len(resource.Dependencies) > 0 {
+				return nil, fnerrors.New("runtime secrets don't support dependencies")
+			}
+
+			// Nothing to do
+			continue
+
+		case parsing.IsServerResource(resource.Class.Ref):
+			if len(resource.Dependencies) > 0 {
+				return nil, fnerrors.New("runtime servers don't support dependencies")
+			}
+
+			if err := pkggraph.ValidateFoundation("runtime resources", parsing.Version_LibraryIntentsChanged, pkggraph.ModuleFromModules(sealedCtx)); err != nil {
+				return nil, err
+			}
+
+			serverIntent := &schema.PackageRef{}
+			if err := proto.Unmarshal(resource.Intent.Value, serverIntent); err != nil {
+				return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
+			}
+
+			target, has := stack.GetServerProto(serverIntent.AsPackageName())
+			if !has {
+				return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
+			}
+
+			si := &schema.SerializedInvocation{
+				Description: "Capture Runtime Config",
+				Order: &schema.ScheduleOrder{
+					SchedCategory: []string{
+						resources.ResourceInstanceCategory(resource.ID),
+					},
+					SchedAfterCategory: []string{
+						runtime.OwnedByDeployable(target),
+					},
+				},
+			}
+
+			wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
+				ResourceInstanceId: resource.ID,
+				ServerConfig:       makeServerConfig(stack, target, sealedCtx.Environment()),
+				Deployable:         runtime.DeployableToProto(target),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			si.Impl = wrapped
+
+			plan.ExecutionInvocations = append(plan.ExecutionInvocations, si)
+
+		case provider.PrepareWith != nil:
 			var errs []error
 			if len(resource.Dependencies) > 0 {
 				errs = append(errs, fnerrors.New("providers with prepareWith don't support dependencies yet"))
@@ -182,7 +185,8 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 				SerializedIntentJson: resource.JSONSerializedIntent,
 				InstanceTypeSource:   resource.Class.InstanceType.Sources,
 			})
-		} else if provider.InitializedWith != nil {
+
+		case provider.InitializedWith != nil:
 			initializer := provider.InitializedWith
 			if initializer.RequiresKeys || initializer.Snapshots != nil || initializer.Inject != nil {
 				return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
@@ -228,7 +232,8 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 			p.SerializedIntentJson = resource.JSONSerializedIntent
 
 			executionInvocations = append(executionInvocations, p)
-		} else {
+
+		default:
 			return nil, fnerrors.InternalError("%s: an initializer is missing", resource.ID)
 		}
 	}

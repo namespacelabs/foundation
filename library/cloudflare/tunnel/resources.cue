@@ -25,10 +25,6 @@
 resourceClasses: {
 	"Ingress": {
 		description: "Cloudflare Tunnel Ingress"
-		intent: {
-			type:   "library.cloudflare.tunnel.IngressIntent"
-			source: "./types.proto"
-		}
 		produces: {
 			type:   "library.cloudflare.tunnel.IngressInstance"
 			source: "./types.proto"
@@ -46,6 +42,11 @@ providers: {
 				CF_TUNNEL_CREDENTIALS: fromSecret: "namespacelabs.dev/foundation/library/cloudflare/tunnel/server:cfTunnelCredentials"
 				CF_TUNNEL_CERT_PEM: fromSecret:    ":cfTunnelCertPem"
 			}
+		}
+
+		intent: {
+			type:   "library.cloudflare.tunnel.IngressIntent"
+			source: "./types.proto"
 		}
 
 		resources: {

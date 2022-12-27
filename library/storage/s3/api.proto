@@ -8,11 +8,6 @@ package library.storage.s3;
 
 option go_package = "namespacelabs.dev/foundation/library/storage/s3";
 
-message BucketIntent {
-    string region      = 1;
-    string bucket_name = 2;
-}
-
 message BucketInstance {
     string region               = 1;
     string bucket_name          = 2;

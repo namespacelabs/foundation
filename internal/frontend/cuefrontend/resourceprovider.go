@@ -51,6 +51,10 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 		return nil, err
 	}
 
+	if bits.Intent == nil {
+		return nil, fnerrors.NewWithLocation(pkg.Location, "resource provider %q is missing an intent", key)
+	}
+
 	classRef, err := schema.ParsePackageRef(pkg.PackageName(), key)
 	if err != nil {
 		return nil, err
@@ -67,10 +71,12 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 	}
 
 	rp := &schema.ResourceProvider{
-		PackageName:     pkg.PackageName().String(),
-		ProvidesClass:   classRef,
-		InitializedWith: initializedWithInvocation,
-		ResourcesFrom:   resourcesFrom,
+		PackageName:       pkg.PackageName().String(),
+		ProvidesClass:     classRef,
+		InitializedWith:   initializedWithInvocation,
+		ResourcesFrom:     resourcesFrom,
+		AvailablePackages: bits.AvailablePackages,
+		IntentType:        parseResourceType(bits.Intent),
 	}
 
 	for _, x := range bits.AvailableClasses {
@@ -79,12 +85,6 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 			return nil, err
 		}
 		rp.AvailableClasses = append(rp.AvailableClasses, ref)
-	}
-
-	rp.AvailablePackages = bits.AvailablePackages
-
-	if bits.Intent != nil {
-		rp.IntentType = parseResourceType(bits.Intent)
 	}
 
 	if resources := v.LookupPath("resources"); resources.Exists() {

@@ -2,6 +2,11 @@ providers: {
 	"namespacelabs.dev/foundation/library/database/postgres:Database": {
 		initializedWith: "namespacelabs.dev/foundation/library/oss/postgres/prepare/database"
 
+		intent: {
+			type:   "library.oss.postgres.DatabaseIntent"
+			source: "./types.proto"
+		}
+
 		inputs: {
 			cluster: {
 				class:   "namespacelabs.dev/foundation/library/database/postgres:Cluster"

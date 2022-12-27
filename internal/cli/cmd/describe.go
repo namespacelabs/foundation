@@ -150,10 +150,6 @@ func formatResourceClass(w io.Writer, style colors.Style, resClass *pkggraph.Res
 	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("ResourceClass"), formatPkgRef(style, resClass.Ref))
 	resout := indent(w)
 
-	fmt.Fprintf(resout, "intent: ")
-	formatMessageDef(resout, resClass.IntentType.Descriptor, style)
-	fmt.Fprintln(resout)
-
 	fmt.Fprintf(resout, "output: ")
 	formatMessageDef(resout, resClass.InstanceType.Descriptor, style)
 	fmt.Fprintln(resout)

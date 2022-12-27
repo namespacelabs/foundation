@@ -14,7 +14,8 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v4"
 	"namespacelabs.dev/foundation/framework/resources/provider"
-	"namespacelabs.dev/foundation/library/database/postgres"
+	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
+	"namespacelabs.dev/foundation/library/oss/postgres"
 )
 
 const (
@@ -26,7 +27,7 @@ const (
 func main() {
 	ctx, p := provider.MustPrepare[*postgres.DatabaseIntent]()
 
-	cluster := &postgres.ClusterInstance{}
+	cluster := &postgresclass.ClusterInstance{}
 	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
 		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
@@ -43,7 +44,7 @@ func main() {
 		}
 	}
 
-	instance := &postgres.DatabaseInstance{
+	instance := &postgresclass.DatabaseInstance{
 		ConnectionUri:  connectionUri(cluster, p.Intent.Name),
 		Name:           p.Intent.Name,
 		User:           user,
@@ -54,7 +55,7 @@ func main() {
 	p.EmitResult(instance)
 }
 
-func ensureDatabase(ctx context.Context, cluster *postgres.ClusterInstance, name string) (*pgx.Conn, error) {
+func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (*pgx.Conn, error) {
 	// Postgres needs a database to connect to so we pin one that is guaranteed to exist.
 	conn, err := connect(ctx, cluster, "postgres")
 	if err != nil {
@@ -94,7 +95,7 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 	return rows.Next(), nil
 }
 
-func connect(ctx context.Context, cluster *postgres.ClusterInstance, db string) (conn *pgx.Conn, err error) {
+func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db string) (conn *pgx.Conn, err error) {
 	cfg, err := pgx.ParseConfig(connectionUri(cluster, db))
 	if err != nil {
 		return nil, err
@@ -115,6 +116,6 @@ func connect(ctx context.Context, cluster *postgres.ClusterInstance, db string) 
 	return conn, err
 }
 
-func connectionUri(cluster *postgres.ClusterInstance, db string) string {
+func connectionUri(cluster *postgresclass.ClusterInstance, db string) string {
 	return fmt.Sprintf("postgres://%s:%s@%s/%s", user, cluster.Password, cluster.Address, db)
 }

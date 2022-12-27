@@ -13,13 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
+	"namespacelabs.dev/foundation/library/oss/minio"
 	"namespacelabs.dev/foundation/library/storage/s3"
 )
 
 const providerPkg = "namespacelabs.dev/foundation/library/oss/minio"
 
 func main() {
-	ctx, p := provider.MustPrepare[*s3.BucketIntent]()
+	ctx, p := provider.MustPrepare[*minio.BucketIntent]()
 
 	instance, err := prepareInstance(p.Resources, p.Intent)
 	if err != nil {
@@ -46,7 +47,7 @@ func main() {
 	p.EmitResult(instance)
 }
 
-func prepareInstance(r *resources.Parsed, intent *s3.BucketIntent) (*s3.BucketInstance, error) {
+func prepareInstance(r *resources.Parsed, intent *minio.BucketIntent) (*s3.BucketInstance, error) {
 	serverRef := fmt.Sprintf("%s:server", providerPkg)
 	serviceName := "api"
 
@@ -71,7 +72,6 @@ func prepareInstance(r *resources.Parsed, intent *s3.BucketIntent) (*s3.BucketIn
 	}
 
 	bucket := &s3.BucketInstance{
-		Region:             intent.Region,
 		AccessKey:          string(accessKeyID),
 		SecretAccessKey:    string(secretAccessKey),
 		BucketName:         intent.BucketName,

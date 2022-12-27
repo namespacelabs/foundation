@@ -83,7 +83,6 @@ type ResourceClass struct {
 	Ref             *schema.PackageRef
 	Source          *schema.ResourceClass
 	DefaultProvider schema.PackageName // May be empty.
-	IntentType      *UserType
 	InstanceType    UserType
 }
 
