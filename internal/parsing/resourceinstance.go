@@ -144,6 +144,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 						instance.Spec.Class.Ref.Canonical(), expected.Class.Ref.Canonical()))
 				} else {
 					ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
+						ResourceID:  instance.ResourceID,
 						ResourceRef: expected.Name,
 						Spec:        instance.Spec,
 					})

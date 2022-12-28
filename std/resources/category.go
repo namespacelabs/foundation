@@ -26,6 +26,7 @@ func JoinID(parent, child string) string {
 	if parent == "" {
 		return child
 	}
+
 	// Child is kept on the leftside to optimize for readability.
 	return fmt.Sprintf("%s;%s", child, parent)
 }
