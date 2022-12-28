@@ -306,7 +306,7 @@ func humanizeDuration(duration time.Duration, n int) string {
 	days := duration.Hours() / 24
 	hours := math.Mod(duration.Hours(), 24)
 	minutes := math.Mod(duration.Minutes(), 60)
-	seconds := duration.Seconds() - math.Floor(duration.Minutes())
+	seconds := math.Mod(duration.Seconds(), 60)
 
 	chunks := []struct {
 		suffix string
