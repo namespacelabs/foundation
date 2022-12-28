@@ -65,6 +65,7 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef, exter
 		}
 
 		gsec.Value = value.Value
+		gsec.FileContents = value.FileContents
 		gsec.ExternalRef = value.ExternalRef
 	}
 
