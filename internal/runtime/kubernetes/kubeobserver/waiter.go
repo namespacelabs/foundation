@@ -18,6 +18,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
@@ -130,7 +131,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			var observedGeneration int64
 			var readyReplicas, replicas, updatedReplicas int32
 
-			hasReplicaSet := false
+			podOwner := w.Name
 
 			switch {
 			case kubedef.IsGVKDeployment(w.GroupVersionKind):
@@ -156,7 +157,12 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 					return false, fnerrors.InternalError("failed to marshal deployment status: %w", err)
 				}
 				ev.ImplMetadata = meta
-				hasReplicaSet = true
+
+				podOwner, err = fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen)
+				if err != nil {
+					fmt.Fprintf(console.Debug(ctx), "Failed to fetch replica set version %d in namespace %q owned by %q :%v\n", w.ExpectedGen, w.Namespace, w.Name, err)
+					podOwner = ""
+				}
 
 			case kubedef.IsGVKStatefulSet(w.GroupVersionKind):
 				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
@@ -181,7 +187,6 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 					return false, fnerrors.InternalError("failed to marshal stateful set status: %w", err)
 				}
 				ev.ImplMetadata = meta
-				hasReplicaSet = true
 
 			case kubedef.IsGVKDaemonSet(w.GroupVersionKind):
 				res, err := cli.AppsV1().DaemonSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
@@ -211,11 +216,9 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.GroupVersionKind)
 			}
 
-			if hasReplicaSet {
-				if rs, err := fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen); err == nil {
-					if status, err := podWaitingStatus(c, cli, w.Namespace, rs); err == nil {
-						ev.WaitStatus = status
-					}
+			if podOwner != "" {
+				if status, err := podWaitingStatus(c, cli, w.Namespace, podOwner); err == nil {
+					ev.WaitStatus = status
 				}
 			}
 

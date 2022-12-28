@@ -53,7 +53,7 @@ func PodStatusToWaitStatus(ns, name string, ps v1.PodStatus) *orchestration.Even
 	}
 }
 
-func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string, replicaset string) ([]*orchestration.Event_WaitStatus, error) {
+func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string, owner string) ([]*orchestration.Event_WaitStatus, error) {
 	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
 	pods, err := cli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs())})
 	if err != nil {
@@ -63,8 +63,8 @@ func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string,
 	var statuses []*orchestration.Event_WaitStatus
 	for _, pod := range pods.Items {
 		owned := false
-		for _, owner := range pod.ObjectMeta.OwnerReferences {
-			if owner.Name == replicaset {
+		for _, ref := range pod.ObjectMeta.OwnerReferences {
+			if ref.Name == owner {
 				owned = true
 			}
 		}
