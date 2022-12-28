@@ -25,10 +25,15 @@ func main() {
 		log.Fatalf("failed to get redis server endpoint: %v", err)
 	}
 
+	password, err := resources.ReadSecret(p.Resources, fmt.Sprintf("%s:password", providerPkg))
+	if err != nil {
+		log.Fatalf("failed to get redis server root password: %v", err)
+	}
+
 	instance := &redisclass.DatabaseInstance{
 		Database: p.Intent.Database,
 		Url:      endpoint,
-		Password: "", // TODO model password as a generated secret
+		Password: string(password),
 	}
 
 	client := redis.NewClient(&redis.Options{

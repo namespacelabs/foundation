@@ -13,6 +13,11 @@ providers: {
 				class:  "namespacelabs.dev/foundation/library/runtime:Server"
 				intent: "namespacelabs.dev/foundation/library/oss/redis/server"
 			}
+			// Mounts the Redis root password as a secret
+			password: {
+				class:  "namespacelabs.dev/foundation/library/runtime:Secret"
+				intent: "namespacelabs.dev/foundation/library/oss/redis/server:password"
+			}
 		}
 	}
 }
