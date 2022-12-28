@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/go-redis/redis/v8"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -24,7 +25,7 @@ func ProvideRedis(ctx context.Context, args *RedisArgs, deps ExtensionDeps) (*re
 	client := redis.NewClient(&redis.Options{
 		Network:  "tcp",
 		Addr:     *redisServerEndpoint,
-		Password: "",
+		Password: os.Getenv("REDIS_ROOT_PASSWORD"),
 		DB:       int(args.Database),
 	})
 

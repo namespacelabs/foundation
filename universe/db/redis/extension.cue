@@ -42,6 +42,9 @@ configure: fn.#Configure & {
 			args: {
 				redis_endpoint: $redisServer.$addressMap.redis
 			}
+			env: {
+				REDIS_ROOT_PASSWORD: fromSecret: "namespacelabs.dev/foundation/library/oss/redis/server:password"
+			}
 		}
 	}
 }
