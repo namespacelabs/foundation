@@ -523,6 +523,12 @@ func makeVersion(v string) *ast.StructLit {
 	})
 }
 
+// Consider using https://pkg.go.dev/reflect#StructTag to infer this from cueModule
+var ModuleFields = []string{
+	"module", "requirements", "replace", "dependency", "prebuilts", "environment",
+	"experimentalProtoModuleImports", "enabledFeatures",
+}
+
 type cueModule struct {
 	ModuleName         string                                 `json:"module"`
 	Foundation         *cueModuleFoundation                   `json:"requirements"`

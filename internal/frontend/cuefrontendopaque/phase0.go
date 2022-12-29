@@ -48,7 +48,12 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, err
 	}
 
-	if err := cuefrontend.ValidateNoExtraFields(loc, "top level" /* messagePrefix */, v, packageFields); err != nil {
+	allowedFields := packageFields
+	if loc.Module.ModuleName() == string(loc.PackageName) {
+		allowedFields = append(allowedFields, cuefrontend.ModuleFields...)
+	}
+	// Is this too strict? What if there is non-Namespace CUE in a package?
+	if err := cuefrontend.ValidateNoExtraFields(loc, "top level" /* messagePrefix */, v, allowedFields); err != nil {
 		return nil, err
 	}
 
