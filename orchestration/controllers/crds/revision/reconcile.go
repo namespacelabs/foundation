@@ -10,14 +10,17 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/client-go/tools/record"
 	orchproto "namespacelabs.dev/foundation/orchestration/proto"
+	"namespacelabs.dev/foundation/std/tasks"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
+	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -127,13 +130,23 @@ func loadPlanContents(ctx context.Context, path string) ([]byte, error) {
 		return nil, err
 	}
 
-	//TODO: remove insecure access flag
-	image, err := oci.FetchRemoteImage(ctx, imageID, oci.ResolveOpts{PublicImage: true, RegistryAccess: oci.RegistryAccess{InsecureRegistry: true}})
+	var img oci.Image
+	ctx = tasks.WithSink(ctx, tasks.NullSink())
+	err = compute.Do(ctx, func(ctx context.Context) error {
+		img, err = compute.GetValue(ctx, oci.ImageP(imageID.ImageRef(), nil, oci.ResolveOpts{
+			PublicImage: false,
+			RegistryAccess: oci.RegistryAccess{
+				InsecureRegistry: false,
+				Keychain:         ecr.DefaultKeychain, //TODO: hard-coded ECR authenticator? What about other registries?
+			},
+		}))
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	fsys := tarfs.FS{TarStream: func() (io.ReadCloser, error) { return mutate.Extract(image), nil }}
+	fsys := tarfs.FS{TarStream: func() (io.ReadCloser, error) { return mutate.Extract(img), nil }}
 
 	return fs.ReadFile(fsys, "deployplan.binarypb")
 }
