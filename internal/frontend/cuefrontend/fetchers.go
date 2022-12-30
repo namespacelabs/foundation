@@ -214,6 +214,6 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 			return nil, fnerrors.New("expected a string when loading a package: %w", err)
 		}
 
-		return ConsumeNoValue, parsing.Ensure(ctx, pl, schema.PackageName(packageName))
+		return ConsumeNoValue, pl.Ensure(ctx, schema.PackageName(packageName))
 	}
 }

@@ -213,34 +213,43 @@ func (pl *PackageLoader) WorkspaceOf(ctx context.Context, module *pkggraph.Modul
 }
 
 func (pl *PackageLoader) LoadByName(ctx context.Context, packageName schema.PackageName) (*pkggraph.Package, error) {
-	loc, err := pl.Resolve(ctx, packageName)
-	if err != nil {
-		return nil, err
-	}
-
-	return pl.loadPackage(ctx, loc)
-}
-
-func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location) (*pkggraph.Package, error) {
-	pkgName := loc.PackageName
-
 	// Fast path: was the package already loaded?
 	pl.mu.RLock()
-	loaded := pl.loaded[pkgName]
+	loaded := pl.loaded[packageName]
 	pl.mu.RUnlock()
 	if loaded != nil {
 		return loaded, nil
 	}
 
 	// Slow path: if not, concentrate all concurrent loads of the same package into a single loader.
+	loading, err := pl.ensurePackage(ctx, packageName)
+	if err != nil {
+		return nil, err
+	}
+
+	return loading.Get(ctx)
+}
+
+func (pl *PackageLoader) Ensure(ctx context.Context, packageName schema.PackageName) error {
+	// Intentionally do not block on the loading package.
+	_, err := pl.ensurePackage(ctx, packageName)
+	return err
+}
+
+func (pl *PackageLoader) ensurePackage(ctx context.Context, packageName schema.PackageName) (*loadingPackage, error) {
+	loc, err := pl.Resolve(ctx, packageName)
+	if err != nil {
+		return nil, err
+	}
+
 	pl.mu.Lock()
-	loading := pl.loading[pkgName]
+	loading := pl.loading[packageName]
 	if loading == nil {
 		loading = &loadingPackage{
 			pl:  pl,
 			loc: loc,
 		}
-		pl.loading[pkgName] = loading
+		pl.loading[packageName] = loading
 	}
 	pl.mu.Unlock()
 
@@ -248,7 +257,7 @@ func (pl *PackageLoader) loadPackage(ctx context.Context, loc pkggraph.Location)
 		return nil, err
 	}
 
-	return loading.Get(ctx)
+	return loading, nil
 }
 
 func (pl *PackageLoader) ExternalLocation(ctx context.Context, mod *schema.Workspace_Dependency, packageName schema.PackageName) (pkggraph.Location, error) {
@@ -423,6 +432,13 @@ func (sealed sealedPackages) LoadByName(ctx context.Context, original schema.Pac
 	return nil, fnerrors.InternalError("%s: package not loaded!", packageName)
 }
 
+func (sealed sealedPackages) Ensure(ctx context.Context, original schema.PackageName) error {
+	// We can just reuse LoadByName here, since packages are already sealed.
+	// Hence, LoadByName is guaranteed to return immediately.
+	_, err := sealed.LoadByName(ctx, original)
+	return err
+}
+
 func (sealed sealedPackages) Modules() []*pkggraph.Module {
 	mods := maps.Values(sealed.modules)
 	slices.SortFunc(mods, func(a, b *pkggraph.Module) bool {
@@ -437,11 +453,6 @@ func (sealed sealedPackages) Packages() []*pkggraph.Package {
 		return strings.Compare(a.PackageName().String(), b.PackageName().String()) < 0
 	})
 	return packages
-}
-
-func Ensure(ctx context.Context, packages pkggraph.PackageLoader, packageName schema.PackageName) error {
-	_, err := packages.LoadByName(ctx, packageName)
-	return err
 }
 
 func maybeRewritePackage(pkg schema.PackageName) schema.PackageName {

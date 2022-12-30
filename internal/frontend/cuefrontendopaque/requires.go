@@ -21,8 +21,7 @@ func parseRequires(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggr
 	}
 
 	for _, p := range bits {
-		err := parsing.Ensure(ctx, pl, p)
-		if err != nil {
+		if err := pl.Ensure(ctx, p); err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "loading package %s failed: %w", p, err)
 		}
 	}
