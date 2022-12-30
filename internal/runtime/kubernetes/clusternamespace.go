@@ -219,16 +219,16 @@ func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployabl
 		return false, err
 	}
 
-	if pod.Status.Phase == corev1.PodFailed {
+	switch pod.Status.Phase {
+	case corev1.PodSucceeded:
+		return true, nil
+
+	case corev1.PodFailed:
 		if err := kubeobserver.CheckContainerFailed(*pod); err != nil {
 			return false, err
 		}
 
 		return false, fnerrors.New("pod %q failed")
-	}
-
-	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
-		return true, nil
 	}
 
 	for _, reason := range pod.Status.Conditions {
