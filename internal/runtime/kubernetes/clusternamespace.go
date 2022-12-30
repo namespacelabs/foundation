@@ -228,7 +228,7 @@ func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployabl
 			return false, err
 		}
 
-		return false, fnerrors.New("pod %q failed")
+		return false, fnerrors.New("pod %q failed", pod.Name)
 	}
 
 	for _, reason := range pod.Status.Conditions {
