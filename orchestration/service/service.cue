@@ -20,7 +20,7 @@ service: fn.#Service & {
 configure: fn.#Configure & {
 	startup: {
 		env: {
-			"ORCH_VERSION": "7"
+			"ORCH_VERSION": "8"
 			"NSDATA":       "/namespace/orchestration/data"
 			"HOME":         "/namespace/orchestration/home"
 		}
