@@ -53,34 +53,8 @@ func (w *podWaiter) Poll(ctx context.Context, c *k8s.Clientset) (bool, error) {
 	for _, pod := range list.Items {
 		// If the pod is configured to never restart, we check if it's in an unrecoverable state.
 		if pod.Spec.RestartPolicy == corev1.RestartPolicyNever {
-			var failures []runtime.ErrContainerFailed_Failure
-			for _, init := range pod.Status.InitContainerStatuses {
-				if init.State.Terminated != nil && init.State.Terminated.ExitCode != 0 {
-					failures = append(failures, runtime.ErrContainerFailed_Failure{
-						Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, nil),
-						Reason:    init.State.Terminated.Reason,
-						Message:   init.State.Terminated.Message,
-						ExitCode:  init.State.Terminated.ExitCode,
-					})
-				}
-			}
-
-			for _, container := range pod.Status.ContainerStatuses {
-				if container.State.Terminated != nil && container.State.Terminated.ExitCode != 0 {
-					failures = append(failures, runtime.ErrContainerFailed_Failure{
-						Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
-						Reason:    container.State.Terminated.Reason,
-						Message:   container.State.Terminated.Message,
-						ExitCode:  container.State.Terminated.ExitCode,
-					})
-				}
-			}
-
-			if len(failures) > 0 {
-				return false, runtime.ErrContainerFailed{
-					Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
-					Failures: failures,
-				}
+			if err := CheckContainerFailed(pod); err != nil {
+				return false, err
 			}
 		}
 
@@ -119,4 +93,38 @@ func MatchPodCondition(ps corev1.PodStatus, typ corev1.PodConditionType) (corev1
 	}
 
 	return corev1.PodCondition{}, false
+}
+
+func CheckContainerFailed(pod corev1.Pod) error {
+	var failures []runtime.ErrContainerFailed_Failure
+	for _, init := range pod.Status.InitContainerStatuses {
+		if init.State.Terminated != nil && init.State.Terminated.ExitCode != 0 {
+			failures = append(failures, runtime.ErrContainerFailed_Failure{
+				Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, nil),
+				Reason:    init.State.Terminated.Reason,
+				Message:   init.State.Terminated.Message,
+				ExitCode:  init.State.Terminated.ExitCode,
+			})
+		}
+	}
+
+	for _, container := range pod.Status.ContainerStatuses {
+		if container.State.Terminated != nil && container.State.Terminated.ExitCode != 0 {
+			failures = append(failures, runtime.ErrContainerFailed_Failure{
+				Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
+				Reason:    container.State.Terminated.Reason,
+				Message:   container.State.Terminated.Message,
+				ExitCode:  container.State.Terminated.ExitCode,
+			})
+		}
+	}
+
+	if len(failures) > 0 {
+		return runtime.ErrContainerFailed{
+			Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+			Failures: failures,
+		}
+	}
+
+	return nil
 }

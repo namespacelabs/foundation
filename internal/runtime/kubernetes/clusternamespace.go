@@ -78,7 +78,7 @@ func (r *ClusterNamespace) FetchEnvironmentDiagnostics(ctx context.Context) (*st
 
 	events, err := r.underlying.cli.CoreV1().Events(r.target.namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		return nil, fnerrors.New("kubernetes: failed to obtain event list: %w", err)
+		return nil, fnerrors.InvocationError("kubernetes", "failed to obtain event list: %w", err)
 	}
 
 	// Ignore failures, this is best effort.
@@ -123,55 +123,59 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 		Scope(srv.GetPackageRef().AsPackageName()).
 		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
-			if ready, err := r.areServicesReady(ctx, srv); err != nil || !ready {
+			if ready, err := r.isDeployableReady(ctx, srv); err != nil || !ready {
 				return ready, err
 			}
 
-			if deployAsPods(r.target.env) {
-				return r.isPodReady(ctx, srv)
-			}
-
-			switch srv.GetDeployableClass() {
-			case string(schema.DeployableClass_STATELESS):
-				deployment, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-
-				replicas := deployment.Status.Replicas
-				readyReplicas := deployment.Status.ReadyReplicas
-				updatedReplicas := deployment.Status.UpdatedReplicas
-
-				return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
-
-			case string(schema.DeployableClass_STATEFUL):
-				deployment, err := r.underlying.cli.AppsV1().StatefulSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-
-				replicas := deployment.Status.Replicas
-				readyReplicas := deployment.Status.ReadyReplicas
-				updatedReplicas := deployment.Status.UpdatedReplicas
-
-				return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
-
-			case string(schema.DeployableClass_DAEMONSET):
-				deployment, err := r.underlying.cli.AppsV1().DaemonSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
-				if err != nil {
-					return false, err
-				}
-
-				return deployment.Status.NumberReady > 0 && deployment.Status.NumberReady == deployment.Status.NumberAvailable, nil
-
-			case string(schema.DeployableClass_MANUAL), string(schema.DeployableClass_ONESHOT):
-				return r.isPodReady(ctx, srv)
-
-			default:
-				return false, fnerrors.InternalError("don't how to check for readiness of %q", srv.GetDeployableClass())
-			}
+			return r.areServicesReady(ctx, srv)
 		})
 	})
+}
+
+func (r *ClusterNamespace) isDeployableReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
+	if deployAsPods(r.target.env) {
+		return r.isPodReady(ctx, srv)
+	}
+
+	switch srv.GetDeployableClass() {
+	case string(schema.DeployableClass_STATELESS):
+		deployment, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		replicas := deployment.Status.Replicas
+		readyReplicas := deployment.Status.ReadyReplicas
+		updatedReplicas := deployment.Status.UpdatedReplicas
+
+		return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
+
+	case string(schema.DeployableClass_STATEFUL):
+		deployment, err := r.underlying.cli.AppsV1().StatefulSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		replicas := deployment.Status.Replicas
+		readyReplicas := deployment.Status.ReadyReplicas
+		updatedReplicas := deployment.Status.UpdatedReplicas
+
+		return kubeobserver.AreReplicasReady(replicas, readyReplicas, updatedReplicas), nil
+
+	case string(schema.DeployableClass_DAEMONSET):
+		deployment, err := r.underlying.cli.AppsV1().DaemonSets(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		return deployment.Status.NumberReady > 0 && deployment.Status.NumberReady == deployment.Status.NumberAvailable, nil
+
+	case string(schema.DeployableClass_MANUAL), string(schema.DeployableClass_ONESHOT):
+		return r.isPodReady(ctx, srv)
+
+	default:
+		return false, fnerrors.InternalError("don't how to check for readiness of %q", srv.GetDeployableClass())
+	}
 }
 
 func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
@@ -213,6 +217,14 @@ func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployabl
 	pod, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).Get(ctx, kubedef.MakeDeploymentId(srv), metav1.GetOptions{})
 	if err != nil {
 		return false, err
+	}
+
+	if pod.Status.Phase == corev1.PodFailed {
+		if err := kubeobserver.CheckContainerFailed(*pod); err != nil {
+			return false, err
+		}
+
+		return false, fnerrors.New("pod %q failed")
 	}
 
 	if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
