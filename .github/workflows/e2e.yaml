@@ -247,16 +247,8 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           git clone https://${{ secrets.GH_MANIFESTS_REPO_PAT }}@github.com/namespacelabs/argocd-staging-manifests
-
           cd argocd-staging-manifests/manifests
-          cat << EOF > revision.yaml
-          apiVersion: k8s.namespacelabs.dev/v1alpha1
-          kind: Revision
-          metadata:
-            name: staging-deploy-plan
-          spec:
-            image: ${{ env.DEPLOY_PLAN_URI }}
-          EOF
+          echo "image: ${{ env.DEPLOY_PLAN_URI }}" > values.yaml
           git add .
           git commit -m "Foundation ${{ github.sha }}"
           git push
