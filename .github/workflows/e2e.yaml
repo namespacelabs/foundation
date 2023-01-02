@@ -182,7 +182,7 @@ jobs:
     needs:
       - build_fn
       - run_e2e_tests
-    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/main' #TODO: revert comment once tested on private branch
     strategy:
       matrix:
         os: [ubuntu-20.04]
@@ -223,20 +223,44 @@ jobs:
 
       - name: Prepare workspace
         run: |
-          /tmp/ns prepare eks --env=staging --cluster=${{ secrets.EKS_STAGING_CLUSTER }} --aws_profile=ns-staging
+          /tmp/ns prepare eks --env=staging --cluster=${{ secrets.EKS_STAGING_CLUSTER }} --aws_profile=ns-staging --use_head_orchestrator
 
-          /tmp/ns prepare new-build-cluster --env=staging
+          /tmp/ns prepare new-build-cluster --env=staging --use_head_orchestrator
 
-      - name: Deploy staging
+      - name: Upload staging deploy-plan to registry
         run: |
-          /tmp/ns deploy --env=staging \
+          DEPLOY_PLAN_URI = $(/tmp/ns deploy --env=staging \
             internal/testdata/server/gogrpc \
             internal/testdata/integrations/dockerfile/complex \
             internal/testdata/integrations/golang \
             internal/testdata/integrations/nodejs/yarn \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
-            --run_codegen=false
+            --run_codegen=false \
+            --upload_plan_to=staging-deploy-plan \
+            --upload_to_registry \ 
+            | grep -F "Pushed plan to" | cut -f4 -d ' ')
+          echo "DEPLOY_PLAN_URI=$DEPLOY_PLAN_URI" >> $GITHUB_ENV
+      
+      - name: Push new Revision to manifests repo
+        run:
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git clone https://${{ secrets.GH_MANIFESTS_REPO_PAT }}@github.com/namespacelabs/argocd-staging-manifests
+
+          cd argocd-staging-manifests/manifests
+          cat << EOF > revision.yaml
+          apiVersion: k8s.namespacelabs.dev/v1alpha1
+          kind: Revision
+          metadata:
+            name: staging-deploy-plan
+          spec:
+            image: ${{ env.DEPLOY_PLAN_URI }}
+          EOF
+          git add .
+          git commit -m "Foundation ${{ github.sha }}"
+          git push
+
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
