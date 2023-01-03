@@ -229,7 +229,7 @@ jobs:
 
       - name: Upload staging deploy-plan to registry
         run: |
-          DEPLOY_PLAN_URI = $(/tmp/ns deploy --env=staging \
+          DEPLOY_PLAN_URI=$(/tmp/ns deploy --env=staging \
             internal/testdata/server/gogrpc \
             internal/testdata/integrations/dockerfile/complex \
             internal/testdata/integrations/golang \
