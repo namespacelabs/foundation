@@ -242,10 +242,12 @@ jobs:
           echo "DEPLOY_PLAN_URI=$DEPLOY_PLAN_URI" >> $GITHUB_ENV
       
       - name: Push new Revision to manifests repo
+        uses: actions/checkout@v3
+        with:
+          repository: namespacelabs/argocd-staging-manifests
+          token: ${{ secrets.GH_MANIFESTS_REPO_PAT }}
+          path: argocd-staging-manifests
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git clone https://${{ secrets.GH_MANIFESTS_REPO_PAT }}@github.com/namespacelabs/argocd-staging-manifests
           cd argocd-staging-manifests/manifests
           echo 'image: ${{ env.DEPLOY_PLAN_URI }}' > values.yaml
           git add .
