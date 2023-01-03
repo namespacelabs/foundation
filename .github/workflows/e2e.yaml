@@ -254,8 +254,8 @@ jobs:
           echo 'image: ${{ env.DEPLOY_PLAN_URI }}' > values.yaml
           git add .
           git commit -m "Foundation ${{ github.sha }}"
-          git config user.name github-actions
-          git config user.email github-actions@github.com
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
           git push
 
 
