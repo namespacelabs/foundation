@@ -241,12 +241,14 @@ jobs:
             --upload_to_registry | grep -F "Pushed plan to" | cut -f4 -d ' ')
           echo "DEPLOY_PLAN_URI=$DEPLOY_PLAN_URI" >> $GITHUB_ENV
       
-      - name: Push new Revision to manifests repo
+      - name: Checkout ArgoCD manifests repo
         uses: actions/checkout@v3
         with:
           repository: namespacelabs/argocd-staging-manifests
           token: ${{ secrets.GH_MANIFESTS_REPO_PAT }}
           path: argocd-staging-manifests
+
+      - name: Push new Revision to manifests repo
         run: |
           cd argocd-staging-manifests/manifests
           echo 'image: ${{ env.DEPLOY_PLAN_URI }}' > values.yaml
