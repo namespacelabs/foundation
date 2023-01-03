@@ -238,8 +238,7 @@ jobs:
             --golang_use_buildkit=true \
             --run_codegen=false \
             --upload_plan_to=staging-deploy-plan \
-            --upload_to_registry \ 
-            | grep -F "Pushed plan to" | cut -f4 -d ' ')
+            --upload_to_registry | grep -F "Pushed plan to" | cut -f4 -d ' ')
           echo "DEPLOY_PLAN_URI=$DEPLOY_PLAN_URI" >> $GITHUB_ENV
       
       - name: Push new Revision to manifests repo
