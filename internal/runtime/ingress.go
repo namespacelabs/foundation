@@ -85,11 +85,11 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 				}
 				for _, entry := range p.Entry {
 					paths = append(paths, &schema.IngressFragment_IngressHttpPath{
-						Path:    entry.PathPrefix,
-						Kind:    kind,
-						Owner:   endpoint.EndpointOwner,
-						Service: endpoint.AllocatedName,
-						Port:    endpoint.Port,
+						Path:        entry.PathPrefix,
+						Kind:        kind,
+						Owner:       endpoint.EndpointOwner,
+						Service:     endpoint.AllocatedName,
+						ServicePort: endpoint.ExportedPort,
 					})
 				}
 			}
@@ -97,7 +97,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			// XXX still relevant? We used to do this when grpc followed the http path.
 			if len(paths) == 0 {
 				paths = []*schema.IngressFragment_IngressHttpPath{
-					{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, Port: endpoint.Port},
+					{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, ServicePort: endpoint.ExportedPort},
 				}
 			}
 
@@ -118,7 +118,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 						GrpcService: p.ProtoTypename,
 						Owner:       endpoint.EndpointOwner,
 						Service:     endpoint.AllocatedName,
-						Port:        endpoint.Port,
+						ServicePort: endpoint.ExportedPort,
 						Method:      p.Method,
 						BackendTls:  *protocol == schema.GrpcProtocol,
 					})
@@ -128,7 +128,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 							GrpcService: "grpc.reflection.v1alpha.ServerReflection",
 							Owner:       endpoint.EndpointOwner,
 							Service:     endpoint.AllocatedName,
-							Port:        endpoint.Port,
+							ServicePort: endpoint.ExportedPort,
 							BackendTls:  *protocol == schema.GrpcProtocol,
 						})
 					}
@@ -138,7 +138,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 						AllServices: true,
 						Owner:       endpoint.EndpointOwner,
 						Service:     endpoint.AllocatedName,
-						Port:        endpoint.Port,
+						ServicePort: endpoint.ExportedPort,
 						BackendTls:  *protocol == schema.GrpcProtocol,
 					})
 
@@ -219,11 +219,11 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 				}
 
 				paths = append(paths, &schema.IngressFragment_IngressHttpPath{
-					Path:    u.PathPrefix,
-					Kind:    u.Kind,
-					Owner:   owner,
-					Service: httpEndpoint.AllocatedName,
-					Port:    httpEndpoint.Port,
+					Path:        u.PathPrefix,
+					Kind:        u.Kind,
+					Owner:       owner,
+					Service:     httpEndpoint.AllocatedName,
+					ServicePort: httpEndpoint.ExportedPort,
 				})
 			}
 

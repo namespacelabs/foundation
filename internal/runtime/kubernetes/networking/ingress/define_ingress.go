@@ -146,7 +146,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 		for _, p := range ng.HttpPath {
 			nonGrpcCount++
 
-			if p.Port == nil {
+			if p.ServicePort == 0 {
 				return nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.Path, p.Service))
 			}
 
@@ -157,7 +157,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 				WithBackend(
 					applynetworkingv1.IngressBackend().WithService(
 						applynetworkingv1.IngressServiceBackend().WithName(p.Service).WithPort(
-							applynetworkingv1.ServiceBackendPort().WithNumber(p.Port.ContainerPort)))))
+							applynetworkingv1.ServiceBackendPort().WithNumber(p.ServicePort)))))
 		}
 
 		for _, p := range ng.GrpcService {
@@ -167,7 +167,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 				clearTextGrpcCount++
 			}
 
-			if p.Port == nil {
+			if p.ServicePort == 0 {
 				return nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.GrpcService, p.Service))
 			}
 
@@ -178,7 +178,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 			backend := applynetworkingv1.IngressBackend().
 				WithService(applynetworkingv1.IngressServiceBackend().
 					WithName(p.Service).
-					WithPort(applynetworkingv1.ServiceBackendPort().WithNumber(p.Port.ContainerPort)))
+					WithPort(applynetworkingv1.ServiceBackendPort().WithNumber(p.ServicePort)))
 
 			if len(p.Method) == 0 {
 				paths = append(paths, applynetworkingv1.HTTPIngressPath().

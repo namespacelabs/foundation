@@ -95,7 +95,7 @@ func makeServerConfig(stack serverStack, server *schema.Server, env *schema.Envi
 		current.Service = append(current.Service, &runtime.Server_Service{
 			Owner:    endpoint.EndpointOwner,
 			Name:     endpoint.ServiceName,
-			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),
+			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
 			Ingress:  makeServiceIngress(stack, endpoint, env),
 		})
 	}
@@ -118,7 +118,7 @@ func makeServiceIngress(stack serverStack, endpoint *schema.Endpoint, env *schem
 	if env.Purpose == schema.Environment_TESTING {
 		return &runtime.Server_Ingress{
 			Domain: []*runtime.Server_Ingress_Domain{{
-				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),
+				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
 			}},
 		}
 	}

@@ -210,9 +210,10 @@ func main() {
 				for _, path := range spec.Rules {
 					for _, y := range path.HTTP.Paths {
 						fragment.HttpPath = append(fragment.HttpPath, &schema.IngressFragment_IngressHttpPath{
-							Path:  y.Path,
-							Owner: endpoint.EndpointOwner,
-							Port:  endpoint.Port,
+							Path:        y.Path,
+							Owner:       endpoint.EndpointOwner,
+							Service:     endpoint.AllocatedName,
+							ServicePort: endpoint.GetExportedPort(),
 						})
 					}
 				}

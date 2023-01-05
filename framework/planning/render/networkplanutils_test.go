@@ -27,6 +27,7 @@ func TestNetworkPlanToSummary(t *testing.T) {
 				ServiceName:   "http",
 				EndpointOwner: "my/http_service",
 				Port:          &storage.Endpoint_Port{ContainerPort: 123},
+				ExportedPort:  123,
 				ServerOwner:   "main_http_server",
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{
 					{Protocol: "http"},
@@ -37,6 +38,7 @@ func TestNetworkPlanToSummary(t *testing.T) {
 				ServiceName:   "grpc_service",
 				EndpointOwner: "my/grpc_service",
 				Port:          &storage.Endpoint_Port{ContainerPort: 234},
+				ExportedPort:  234,
 				ServerOwner:   "main_grpc_server",
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{
 					{Kind: "my.service.MyGrpcService", Protocol: "grpc"},
@@ -126,10 +128,8 @@ func TestNetworkPlanToSummary(t *testing.T) {
 					ServiceName: "service1",
 				},
 				HttpPath: []*storage.IngressHttpPath{
-					{Path: "/path1", Owner: "owner1",
-						Port: &storage.Endpoint_Port{ContainerPort: 123}},
-					{Path: "/path2", Owner: "owner2",
-						Port: &storage.Endpoint_Port{ContainerPort: 123}},
+					{Path: "/path1", Owner: "owner1", ServicePort: 123},
+					{Path: "/path2", Owner: "owner2", ServicePort: 123},
 				},
 			},
 			{
@@ -144,8 +144,7 @@ func TestNetworkPlanToSummary(t *testing.T) {
 					EndpointOwner: "my/grpc_service",
 				},
 				HttpPath: []*storage.IngressHttpPath{
-					{Path: "/grpc-transcoding2/", Owner: "my/grpc_service",
-						Port: &storage.Endpoint_Port{ContainerPort: 123}},
+					{Path: "/grpc-transcoding2/", Owner: "my/grpc_service", ServicePort: 123},
 				},
 				GrpcService: []*storage.IngressGrpcService{
 					{GrpcService: "my.service.MyGrpcService"}},

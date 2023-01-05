@@ -18,6 +18,7 @@ import (
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -873,8 +874,12 @@ func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.Dep
 
 	port := endpoint.Port
 	if port != nil {
-		serviceSpec = serviceSpec.WithPorts(applycorev1.ServicePort().
-			WithProtocol(corev1.ProtocolTCP).WithName(port.Name).WithPort(port.ContainerPort))
+		serviceSpec = serviceSpec.WithPorts(
+			applycorev1.ServicePort().
+				WithProtocol(corev1.ProtocolTCP).
+				WithName(port.Name).
+				WithPort(endpoint.ExportedPort).
+				WithTargetPort(intstr.FromInt(int(port.ContainerPort))))
 
 		if endpoint.Type == schema.Endpoint_LOAD_BALANCER {
 			serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)

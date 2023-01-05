@@ -101,6 +101,7 @@ message Server {
         string                   label            = 5;
         repeated ServiceMetadata metadata         = 6;
         Endpoint.Port            port             = 3;
+        int32                    exported_port    = 9;
         bool                     internal         = 4;  // This service is of no relevance for development.
         Endpoint.Type            endpoint_type    = 7;
         PackageRef               ingress_provider = 8;

@@ -13,7 +13,7 @@ import "google/protobuf/descriptor.proto";
 import "schema/domain.proto";
 import "schema/package.proto";
 
-// Next ID: 13
+// Next ID: 14
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -30,6 +30,7 @@ message Endpoint {
     string endpoint_owner = 4;  // Package name.
 
     Port                     port             = 5;
+    int32                    exported_port    = 13;  // If unset, will be port.container_port.
     string                   allocated_name   = 6;
     string                   server_owner     = 7;  // Package name.
     repeated ServiceMetadata service_metadata = 8;
@@ -72,11 +73,12 @@ message IngressFragment {
     repeated google.protobuf.Any extension = 5;
 
     message IngressHttpPath {
-        string        path    = 1;
-        string        kind    = 2;
-        string        owner   = 3;  // Package name.
-        string        service = 4;  // Backend service.
-        Endpoint.Port port    = 5;
+        string path         = 1;
+        string kind         = 2;
+        string owner        = 3;  // Package name.
+        string service      = 4;  // Backend service.
+        int32  service_port = 6;
+        reserved 5;
     }
 
     message IngressGrpcService {
@@ -84,9 +86,10 @@ message IngressFragment {
         string          owner        = 2;  // Package name.
         string          service      = 3;  // Backing service.
         repeated string method       = 5;  // If not set, forward all methods.
-        Endpoint.Port   port         = 4;
+        int32           service_port = 8;
         bool            backend_tls  = 6;
         bool            all_services = 7;  // If set, all paths are forwarded.
+        reserved 4;
     }
 }
 

@@ -104,6 +104,7 @@ func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*sc
 			Type:          schema.Endpoint_PRIVATE,
 			ServiceName:   constants.HttpServiceName,
 			Port:          httpPort,
+			ExportedPort:  httpPort.GetContainerPort(),
 			AllocatedName: server.Name,
 			EndpointOwner: server.GetPackageName(),
 			ServerOwner:   server.GetPackageName(),
@@ -141,6 +142,7 @@ func computeServiceEndpoint(server *schema.Server, pkg *pkggraph.Package, n *sch
 		ServerOwner:   server.GetPackageName(),
 		Type:          t,
 		Port:          serverPort,
+		ExportedPort:  serverPort.GetContainerPort(),
 	}
 
 	if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
@@ -199,10 +201,15 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		EndpointOwner:   srv.GetPackageName(),
 		Type:            t,
 		Port:            spec.GetPort(),
+		ExportedPort:    spec.GetExportedPort(),
 		AllocatedName:   fmt.Sprintf("%s-%s", spec.GetName(), srv.Id),
 		ServiceLabel:    spec.GetLabel(),
 		ServiceMetadata: spec.Metadata,
 		IngressProvider: spec.IngressProvider,
+	}
+
+	if endpoint.ExportedPort == 0 {
+		endpoint.ExportedPort = spec.GetPort().GetContainerPort()
 	}
 
 	// XXX Rethink this -- i.e. consolidate with InternalEndpoint.

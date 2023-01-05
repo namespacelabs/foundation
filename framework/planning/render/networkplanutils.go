@@ -72,7 +72,7 @@ func NetworkPlanToSummary(plan *storage.NetworkPlan) *NetworkPlanSummary {
 				url := httpUrl(ingress.Domain, localIngressPort, httpPath.Path)
 
 				if ingress.Owner == p.EndpointOwner &&
-					httpPath.Port.ContainerPort == p.Port.ContainerPort {
+					httpPath.ServicePort == p.ExportedPort {
 					// http service
 					if localIngressPort != 0 || ingress.Domain.TlsFrontend {
 						httpAccessCmds = append(httpAccessCmds, &NetworkPlanSummary_Service_AccessCmd{

@@ -89,20 +89,14 @@
           "kind": "kind1",
           "owner": "owner1",
           "service": "service1",
-          "port": {
-            "name": "port1",
-            "container_port": 1230
-          }
+          "service_port": 1230
         },
         {
           "path": "/path2",
           "kind": "kind2",
           "owner": "owner2",
           "service": "service2",
-          "port": {
-            "name": "port2",
-            "container_port": 2340
-          }
+          "service_port": 2340
         }
       ],
       "grpc_service": [
@@ -115,19 +109,13 @@
             "method1",
             "method2"
           ],
-          "port": {
-            "name": "port1",
-            "container_port": 1231
-          }
+          "service_port": 1231
         },
         {
           "grpc_service": "grpc2",
           "owner": "owner2",
           "service": "service2",
-          "port": {
-            "name": "port2",
-            "container_port": 2341
-          }
+          "service_port": 2341
         }
       ],
       "manager": "manager1"

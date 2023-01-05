@@ -72,16 +72,16 @@ func TestToStorageNetworkPlan(t *testing.T) {
 				HttpPath: []*schema.IngressFragment_IngressHttpPath{
 					{},
 					{Path: "/path1", Kind: "kind1", Owner: "owner1", Service: "service1",
-						Port: &schema.Endpoint_Port{Name: "port1", ContainerPort: 1230}},
+						ServicePort: 1230},
 					{Path: "/path2", Kind: "kind2", Owner: "owner2", Service: "service2",
-						Port: &schema.Endpoint_Port{Name: "port2", ContainerPort: 2340}},
+						ServicePort: 2340},
 				},
 				GrpcService: []*schema.IngressFragment_IngressGrpcService{
 					{},
 					{GrpcService: "grpc1", Owner: "owner1", Service: "service1", Method: []string{"method1", "method2"},
-						Port: &schema.Endpoint_Port{Name: "port1", ContainerPort: 1231}},
+						ServicePort: 1231},
 					{GrpcService: "grpc2", Owner: "owner2", Service: "service2",
-						Port: &schema.Endpoint_Port{Name: "port2", ContainerPort: 2341}},
+						ServicePort: 2341},
 				},
 			},
 			{

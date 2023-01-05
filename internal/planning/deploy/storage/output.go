@@ -78,7 +78,7 @@ func convertGrpcService(s *fnschema.IngressFragment_IngressGrpcService) *storage
 		Owner:       s.Owner,
 		Service:     s.Service,
 		Method:      s.Method,
-		Port:        convertPort(s.Port),
+		ServicePort: s.ServicePort,
 		BackendTls:  s.BackendTls,
 		AllServices: s.AllServices,
 	}
@@ -101,6 +101,7 @@ func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnsch
 		ServiceName:   endpoint.ServiceName,
 		EndpointOwner: endpoint.EndpointOwner,
 		Port:          convertPort(endpoint.Port),
+		ExportedPort:  endpoint.ExportedPort,
 		AllocatedName: endpoint.AllocatedName,
 		ServerOwner:   endpoint.ServerOwner,
 		ServiceLabel:  endpoint.ServiceLabel,
@@ -142,11 +143,11 @@ func convertEndpointType(t fnschema.Endpoint_Type) (storage.Endpoint_Type, error
 
 func convertHttpPath(httpPath *fnschema.IngressFragment_IngressHttpPath) *storage.IngressHttpPath {
 	return &storage.IngressHttpPath{
-		Path:    httpPath.Path,
-		Kind:    httpPath.Kind,
-		Owner:   httpPath.Owner,
-		Service: httpPath.Service,
-		Port:    convertPort(httpPath.Port),
+		Path:        httpPath.Path,
+		Kind:        httpPath.Kind,
+		Owner:       httpPath.Owner,
+		Service:     httpPath.Service,
+		ServicePort: httpPath.ServicePort,
 	}
 }
 

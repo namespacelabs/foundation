@@ -20,12 +20,13 @@ import (
 )
 
 // Needs to be consistent with JSON names of cueResourceClass fields.
-var serviceFields = []string{"kind", "port", "ingress", "annotations", "probe", "probes"}
+var serviceFields = []string{"kind", "port", "exportedPort", "ingress", "annotations", "probe", "probes"}
 
 type cueService struct {
-	Kind    string     `json:"kind"`
-	Port    int        `json:"port"`
-	Ingress cueIngress `json:"ingress"`
+	Kind         string     `json:"kind"`
+	Port         int32      `json:"port"`
+	ExportedPort int32      `json:"exportedPort"`
+	Ingress      cueIngress `json:"ingress"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -143,7 +144,8 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 
 	parsed := &schema.Server_ServiceSpec{
 		Name:         name,
-		Port:         &schema.Endpoint_Port{Name: name, ContainerPort: int32(svc.Port)},
+		Port:         &schema.Endpoint_Port{Name: name, ContainerPort: svc.Port},
+		ExportedPort: svc.ExportedPort,
 		EndpointType: endpointType,
 	}
 
@@ -196,7 +198,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		probe := &schema.Probe{
 			Kind: runtime.FnServiceReadyz,
 			Http: &schema.Probe_Http{
-				ContainerPort: int32(svc.Port),
+				ContainerPort: svc.Port,
 				Path:          svc.ReadinessProbe.Path,
 			},
 		}
@@ -214,7 +216,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		probes = append(probes, &schema.Probe{
 			Kind: kind,
 			Http: &schema.Probe_Http{
-				ContainerPort: int32(svc.Port),
+				ContainerPort: svc.Port,
 				Path:          data.Path,
 			},
 		})

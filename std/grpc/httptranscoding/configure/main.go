@@ -202,10 +202,10 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 				Endpoint: x.Endpoint,
 				// Point HTTP calls under /{serviceName}/ to Envoy.
 				HttpPath: []*schema.IngressFragment_IngressHttpPath{{
-					Path:    fmt.Sprintf("/%s/", x.ProtoService),
-					Owner:   x.Endpoint.EndpointOwner,
-					Service: transcoderEndpoint.AllocatedName,
-					Port:    transcoderEndpoint.Port,
+					Path:        fmt.Sprintf("/%s/", x.ProtoService),
+					Owner:       x.Endpoint.EndpointOwner,
+					Service:     transcoderEndpoint.AllocatedName,
+					ServicePort: transcoderEndpoint.GetExportedPort(),
 				}},
 				Extension: []*anypb.Any{packedCors, packedProxyBodySize},
 				Manager:   "namespacelabs.dev/foundation/std/grpc/httptranscoding",

@@ -12,5 +12,5 @@ import (
 )
 
 func MakeHttpUrl(endpoint *schema.Endpoint, subPath string) string {
-	return fmt.Sprintf("http://%s:%d/%s", endpoint.AllocatedName, endpoint.Port.ContainerPort, strings.TrimPrefix(subPath, "/"))
+	return fmt.Sprintf("http://%s:%d/%s", endpoint.AllocatedName, endpoint.ExportedPort, strings.TrimPrefix(subPath, "/"))
 }

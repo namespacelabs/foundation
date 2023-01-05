@@ -67,7 +67,7 @@ message NetworkPlan {
 // On the other hand, there are additional compatility requirements for these messages,
 // so they may diverge from the original protos as the latter ones evolve.
 
-// Next ID: 13
+// Next ID: 14
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -83,6 +83,7 @@ message Endpoint {
     string endpoint_owner = 4;  // Package name.
 
     Port                     port             = 5;
+    int32                    exported_port    = 13;  // If unset, will be port.container_port.
     string                   allocated_name   = 6;
     string                   server_owner     = 7;  // Package name.
     repeated ServiceMetadata service_metadata = 8;
@@ -117,21 +118,23 @@ message IngressFragment {
 }
 
 message IngressHttpPath {
-    string                path    = 1;
-    string                kind    = 2;
-    string                owner   = 3;  // Package name.
-    string                service = 4;  // Backend service.
-    storage.Endpoint.Port port    = 5;
+    string path         = 1;
+    string kind         = 2;
+    string owner        = 3;  // Package name.
+    string service      = 4;  // Backend service.
+    int32  service_port = 6;
+    reserved 5;
 }
 
 message IngressGrpcService {
-    string                grpc_service = 1;  // Fully qualified name.
-    string                owner        = 2;  // Package name.
-    string                service      = 3;  // Backing service.
-    repeated string       method       = 5;  // If not set, forward all methods.
-    storage.Endpoint.Port port         = 4;
-    bool                  backend_tls  = 6;
-    bool                  all_services = 7;
+    string          grpc_service = 1;  // Fully qualified name.
+    string          owner        = 2;  // Package name.
+    string          service      = 3;  // Backing service.
+    repeated string method       = 5;  // If not set, forward all methods.
+    bool            backend_tls  = 6;
+    bool            all_services = 7;
+    int32           service_port = 8;
+    reserved 4;
 }
 
 message Domain {
