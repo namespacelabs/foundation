@@ -252,10 +252,10 @@ jobs:
         run: |
           cd argocd-staging-manifests/manifests
           echo 'image: ${{ env.DEPLOY_PLAN_URI }}' > values.yaml
-          git add .
-          git commit -m "Foundation ${{ github.sha }}"
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+          git add .
+          git commit -m "Foundation ${{ github.sha }}"
           git push
 
 
