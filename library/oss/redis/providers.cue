@@ -1,23 +1,38 @@
 providers: {
 	"namespacelabs.dev/foundation/library/database/redis:Database": {
-		initializedWith: "namespacelabs.dev/foundation/library/oss/redis/prepare"
+		initializedWith: "namespacelabs.dev/foundation/library/oss/redis/prepare/database"
 
 		intent: {
 			type:   "library.oss.redis.DatabaseIntent"
 			source: "./types.proto"
 		}
 
-		resources: {
-			// Adds the server to the stack
-			redisServer: {
-				class:  "namespacelabs.dev/foundation/library/runtime:Server"
-				intent: "namespacelabs.dev/foundation/library/oss/redis/server"
-			}
-			// Mounts the Redis root password as a secret
-			password: {
-				class:  "namespacelabs.dev/foundation/library/runtime:Secret"
-				intent: "namespacelabs.dev/foundation/library/oss/redis/server:password"
+		inputs: {
+			cluster: {
+				class:   "namespacelabs.dev/foundation/library/database/redis:Cluster"
+				default: ":colocated"
 			}
 		}
+	}
+
+	"namespacelabs.dev/foundation/library/database/redis:Cluster": {
+		initializedWith: "namespacelabs.dev/foundation/library/oss/redis/prepare/cluster"
+
+		intent: {
+			type:   "library.oss.redis.ClusterIntent"
+			source: "./types.proto"
+		}
+
+		resourcesFrom: "namespacelabs.dev/foundation/library/oss/redis/prepare/clusterinstance"
+
+		availableClasses: [
+			"namespacelabs.dev/foundation/library/runtime:Server",
+			"namespacelabs.dev/foundation/library/runtime:Secret",
+		]
+
+		availablePackages: [
+			"namespacelabs.dev/foundation/library/oss/redis/server",
+		]
+
 	}
 }

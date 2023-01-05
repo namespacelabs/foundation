@@ -1,4 +1,4 @@
 binary: {
-	name: "redis-prepare-hook"
+	name: "redis-prepare-cluster"
 	from: go_package: "."
 }

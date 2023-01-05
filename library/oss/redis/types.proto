@@ -8,6 +8,15 @@ package library.oss.redis;
 
 option go_package = "namespacelabs.dev/foundation/library/oss/redis";
 
+import "schema/package.proto";
+
 message DatabaseIntent {
     int32 database = 1;
+}
+
+message ClusterIntent {
+     // If set, overrides the server package used to instantiate the local database cluster.
+     foundation.schema.PackageRef server = 1;
+     // If set, overrides the root password used to access the cluster.
+     foundation.schema.PackageRef password_secret = 2;
 }
