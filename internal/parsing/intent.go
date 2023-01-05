@@ -69,7 +69,7 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		case json.Number:
 			f, err := x.Float64()
 			if err != nil {
-				return protoreflect.Value{}, err
+				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as float: %w", x, err)
 			}
 
 			return protoreflect.ValueOf(f), nil
@@ -89,7 +89,7 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		case json.Number:
 			n, err := x.Int64()
 			if err != nil {
-				return protoreflect.Value{}, err
+				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as integer: %w", x, err)
 			}
 
 			return protoreflect.ValueOf(int32(n)), nil
@@ -109,7 +109,7 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		case json.Number:
 			n, err := x.Int64()
 			if err != nil {
-				return protoreflect.Value{}, err
+				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as integer: %w", x, err)
 			}
 
 			return protoreflect.ValueOf(n), nil
@@ -154,7 +154,7 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		case json.Number:
 			n, err := x.Int64()
 			if err != nil {
-				return protoreflect.Value{}, err
+				return protoreflect.Value{}, fnerrors.New("failed to parse json number %v as integer: %w", x, err)
 			}
 
 			fieldValue := field.Enum().Values().ByNumber(protoreflect.EnumNumber(n))
