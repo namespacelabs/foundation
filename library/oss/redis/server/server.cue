@@ -1,6 +1,6 @@
 import "namespacelabs.dev/foundation/library/oss/redis/templates"
 
-server: templates.#Server 
+server: templates.#Server
 
 secrets: {
 	"password": {

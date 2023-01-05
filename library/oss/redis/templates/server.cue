@@ -2,16 +2,16 @@ package templates
 
 #Server: {
 	spec: {
-		image: *"redis:6.2.6-alpine@sha256:132337b9d7744ffee4fae83f51de53c3530935ad3ba528b7110f2d805f55cbf5" | string
+		image:          *"redis:6.2.6-alpine@sha256:132337b9d7744ffee4fae83f51de53c3530935ad3ba528b7110f2d805f55cbf5" | string
 		dataVolumeSize: *"10GiB" | string
-		dataVolume: *{
-			id: "redis-server-data"
+		dataVolume:     *{
+			id:   "redis-server-data"
 			size: dataVolumeSize
 		} | {
-			id: string
+			id:   string
 			size: string
 		}
-		passwordSecret: *"namespacelabs.dev/foundation/library/oss/redis/server:password" | string
+		passwordSecret:   *"namespacelabs.dev/foundation/library/oss/redis/server:password" | string
 		snapshotInterval: *"60" | string
 	}
 	name: "redis-server"
