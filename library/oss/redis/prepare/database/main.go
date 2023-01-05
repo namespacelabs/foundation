@@ -9,7 +9,6 @@ import (
 	"log"
 
 	"github.com/go-redis/redis/v8"
-	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	redisclass "namespacelabs.dev/foundation/library/database/redis"
 	redisprovider "namespacelabs.dev/foundation/library/oss/redis"
@@ -20,25 +19,21 @@ const providerPkg = "namespacelabs.dev/foundation/library/oss/redis"
 func main() {
 	ctx, p := provider.MustPrepare[*redisprovider.DatabaseIntent]()
 
-	endpoint, err := resources.LookupServerEndpoint(p.Resources, fmt.Sprintf("%s:redisServer", providerPkg), "redis")
-	if err != nil {
-		log.Fatalf("failed to get redis server endpoint: %v", err)
-	}
-
-	password, err := resources.ReadSecret(p.Resources, fmt.Sprintf("%s:password", providerPkg))
-	if err != nil {
-		log.Fatalf("failed to get redis server root password: %v", err)
+	cluster := &redisclass.ClusterInstance{}
+	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
+		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
 
 	instance := &redisclass.DatabaseInstance{
-		Database: p.Intent.Database,
-		Url:      endpoint,
-		Password: string(password),
+		Database:       p.Intent.Database,
+		ClusterAddress: cluster.Address,
+		Password:       cluster.Password,
+		ConnectionUri:  connectionUri(cluster, p.Intent.Database),
 	}
 
 	client := redis.NewClient(&redis.Options{
 		Network:  "tcp",
-		Addr:     instance.Url,
+		Addr:     instance.ClusterAddress,
 		Password: instance.Password,
 		DB:       int(instance.Database),
 	})
@@ -48,4 +43,8 @@ func main() {
 	}
 
 	p.EmitResult(instance)
+}
+
+func connectionUri(cluster *redisclass.ClusterInstance, db int32) string {
+	return fmt.Sprintf("redis://:%s@%s/%d", cluster.Password, cluster.Address, db)
 }
