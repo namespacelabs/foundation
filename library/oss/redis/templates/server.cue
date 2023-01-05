@@ -14,6 +14,7 @@ package templates
 		passwordSecret:   *"namespacelabs.dev/foundation/library/oss/redis/server:password" | string
 		snapshotInterval: *"60" | string
 	}
+
 	name: "redis-server"
 
 	image: spec.image
