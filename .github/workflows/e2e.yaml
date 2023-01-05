@@ -250,7 +250,7 @@ jobs:
 
       - name: Push new Revision to manifests repo
         run: |
-          cd argocd-staging-manifests/manifests
+          cd argocd-staging-manifests
           echo 'image: ${{ env.DEPLOY_PLAN_URI }}' > values.yaml
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"

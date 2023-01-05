@@ -21,7 +21,7 @@ func main() {
 	port := config.Current.Port[0].Port
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("Hello, world! From Go"))
+		w.Write([]byte("Hello, world! From Go!"))
 	})
 
 	log.Printf("Listening on port: %d", port)
