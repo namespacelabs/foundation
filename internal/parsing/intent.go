@@ -5,6 +5,7 @@
 package parsing
 
 import (
+	"encoding/json"
 	"io/fs"
 	"reflect"
 	"unicode/utf8"
@@ -64,6 +65,14 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		switch x := value.(type) {
 		case float32, float64:
 			return protoreflect.ValueOf(x), nil
+
+		case json.Number:
+			f, err := x.Float64()
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+
+			return protoreflect.ValueOf(f), nil
 		}
 
 		return protoreflect.Value{}, fnerrors.New("expected float, got %s", reflect.TypeOf(value).String())
@@ -72,8 +81,23 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		protoreflect.Fixed32Kind,
 		protoreflect.Uint32Kind,
 		protoreflect.Sfixed32Kind,
-		protoreflect.Sint32Kind,
-		protoreflect.Int64Kind,
+		protoreflect.Sint32Kind:
+		switch x := value.(type) {
+		case int32, uint, uint32:
+			return protoreflect.ValueOf(x), nil
+
+		case json.Number:
+			n, err := x.Int64()
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+
+			return protoreflect.ValueOf(int32(n)), nil
+		}
+
+		return protoreflect.Value{}, fnerrors.New("expected int32 or uint32, got %s", reflect.TypeOf(value).String())
+
+	case protoreflect.Int64Kind,
 		protoreflect.Fixed64Kind,
 		protoreflect.Uint64Kind,
 		protoreflect.Sfixed64Kind,
@@ -81,9 +105,17 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 		switch x := value.(type) {
 		case int32, int64, uint, uint32, uint64:
 			return protoreflect.ValueOf(x), nil
+
+		case json.Number:
+			n, err := x.Int64()
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+
+			return protoreflect.ValueOf(n), nil
 		}
 
-		return protoreflect.Value{}, fnerrors.New("expected int{32,64} or uint{32,64}, got %s", reflect.TypeOf(value).String())
+		return protoreflect.Value{}, fnerrors.New("expected int64 or uint64, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.StringKind:
 		switch x := value.(type) {
@@ -113,6 +145,19 @@ func allocateSingleValue(pctx parseContext, field protoreflect.FieldDescriptor, 
 
 		case int32:
 			fieldValue := field.Enum().Values().ByNumber(protoreflect.EnumNumber(x))
+			if fieldValue == nil {
+				return protoreflect.Value{}, fnerrors.New("unknown enum value %v", x)
+			}
+
+			return protoreflect.ValueOfEnum(fieldValue.Number()), nil
+
+		case json.Number:
+			n, err := x.Int64()
+			if err != nil {
+				return protoreflect.Value{}, err
+			}
+
+			fieldValue := field.Enum().Values().ByNumber(protoreflect.EnumNumber(n))
 			if fieldValue == nil {
 				return protoreflect.Value{}, fnerrors.New("unknown enum value %v", x)
 			}

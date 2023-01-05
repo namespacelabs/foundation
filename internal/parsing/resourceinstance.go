@@ -86,7 +86,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 
 	if instance.SerializedIntentJson != "" {
 		var raw any
-		if err := json.Unmarshal([]byte(instance.SerializedIntentJson), &raw); err != nil {
+		if err := JsonNumberDecoder(instance.SerializedIntentJson).Decode(&raw); err != nil {
 			return nil, fnerrors.InternalError("failed to unmarshal serialized intent: %w", err)
 		}
 

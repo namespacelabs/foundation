@@ -19,4 +19,15 @@ server: {
 	mounts: "/app/src": {
 		syncWorkspace: fromDir: "src"
 	}
+
+	resources: {
+		dataBucket: {
+			class:    "namespacelabs.dev/foundation/library/database/redis:Database"
+			provider: "namespacelabs.dev/foundation/library/oss/redis"
+
+			intent: {
+				database: 1
+			}
+		}
+	}
 }
