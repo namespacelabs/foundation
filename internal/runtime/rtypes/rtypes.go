@@ -24,7 +24,6 @@ type RunBinaryOpts struct {
 }
 
 type RunToolOpts struct {
-	SupportedToolVersion int
 	RunBinaryOpts
 	IO
 	ImageName    string

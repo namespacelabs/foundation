@@ -55,6 +55,7 @@ func NewSdkCmd() *cobra.Command {
 	cmd.AddCommand(newSdkDownloadCmd(selectedSdkList))
 	cmd.AddCommand(newSdkVerifyCmd(selectedSdkList))
 	cmd.AddCommand(newGoCmd(goSdkVersion))
+	cmd.AddCommand(newGcloudCmd())
 
 	return cmd
 }
