@@ -9,9 +9,9 @@ package library.database.redis;
 option go_package = "namespacelabs.dev/foundation/library/database/redis";
 
 message DatabaseInstance {
-    int32  database = 1;
-    string password = 3;
-    string connection_uri = 4;
+    int32  database        = 1;
+    string password        = 3;
+    string connection_uri  = 4;
     string cluster_address = 5;
 
     reserved 2;

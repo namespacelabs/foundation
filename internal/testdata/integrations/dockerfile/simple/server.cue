@@ -7,6 +7,14 @@ server: {
 		command: "npm"
 	}
 
+	env: {
+		REDIS_DB: fromResourceField: {
+			resource: ":cache"
+			fieldRef: "database"
+		}
+
+	}
+
 	services: {
 		webapi: {
 			port: 4000
@@ -21,7 +29,7 @@ server: {
 	}
 
 	resources: {
-		dataBucket: {
+		cache: {
 			class:    "namespacelabs.dev/foundation/library/database/redis:Database"
 			provider: "namespacelabs.dev/foundation/library/oss/redis"
 

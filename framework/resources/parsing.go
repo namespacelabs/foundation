@@ -31,6 +31,7 @@ func LoadResources() (*Parsed, error) {
 
 func ParseResourceData(data []byte) (*Parsed, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
 
 	tok, err := dec.Token()
 	if err == nil && tok != json.Delim('{') {
@@ -86,7 +87,18 @@ func (p *Parsed) SelectField(resource, field string) (any, error) {
 
 func selectField(resource, originalSel string, value any, field string) (any, error) {
 	if field == "" {
-		return value, nil
+		switch x := value.(type) {
+		// Hack! Guess the primitive number type.
+		case json.Number:
+			if n, err := x.Int64(); err == nil {
+				return n, nil
+			}
+
+			return x.Float64()
+
+		default:
+			return value, nil
+		}
 	}
 
 	p := strings.SplitN(field, ".", 2)
