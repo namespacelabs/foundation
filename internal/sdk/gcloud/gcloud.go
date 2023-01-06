@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func Run(ctx context.Context, io rtypes.IO, args []string) error {
+func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		return fnerrors.InternalError("failed to determine home")

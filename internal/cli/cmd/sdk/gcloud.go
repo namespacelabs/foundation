@@ -29,6 +29,6 @@ func newGcloudCmd() *cobra.Command {
 			return gcloud.Run(ctx, rtypes.IO{
 				Stdout: stdout,
 				Stderr: stdout,
-			}, args)
+			}, args...)
 		})
 }

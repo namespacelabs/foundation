@@ -7,13 +7,14 @@ package registry
 import (
 	"bytes"
 	"context"
-	"os/exec"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	c "namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/sdk/gcloud"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -43,10 +44,9 @@ func (obtainAccessToken) Inputs() *c.In    { return c.Inputs() }
 func (obtainAccessToken) Output() c.Output { return c.Output{NotCacheable: true} }
 func (obtainAccessToken) Compute(ctx context.Context, _ c.Resolved) (authn.AuthConfig, error) {
 	var out bytes.Buffer
-	cmd := exec.CommandContext(ctx, "gcloud", "auth", "print-access-token")
-	cmd.Stdout = &out
-	cmd.Stderr = console.TypedOutput(ctx, "gcloud", console.CatOutputTool)
-	if err := cmd.Run(); err != nil {
+
+	stderr := console.TypedOutput(ctx, "gcloud", console.CatOutputTool)
+	if err := gcloud.Run(ctx, rtypes.IO{Stdout: &out, Stderr: stderr}, "auth", "print-access-token"); err != nil {
 		return authn.AuthConfig{}, fnerrors.InvocationError("gcp-artifactregistry", "failed to obtain gcloud access token: %w", err)
 	}
 
