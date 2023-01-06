@@ -6,8 +6,8 @@ syntax = "proto3";
 
 package foundation.providers.gcp;
 
-option go_package = "namespacelabs.dev/foundation/internal/providers/gcp";
+option go_package = "namespacelabs.dev/foundation/universe/gcp";
 
-message ArtifactRegistryConf {
-    repeated string enable_location = 1;
+message Project {
+    string id = 1;
 }

@@ -64,6 +64,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
+	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
 	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/providers/k3s"
@@ -249,6 +250,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Providers.
 		ecr.Register()
 		eks.Register()
+		gke.Register()
 		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain, oci.Keychain_UseOnWrites)
 		iam.RegisterGraphHandlers()
 		nscloud.Register()

@@ -5,16 +5,24 @@
 package gcloud
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/natefinch/atomic"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func Run(ctx context.Context, io rtypes.IO, args ...string) error {
@@ -55,4 +63,72 @@ func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 	})
 
 	return docker.Runtime().Run(ctx, opts)
+}
+
+type credential struct {
+	AccessToken string    `json:"access_token"`
+	IDToken     string    `json:"id_token"`
+	TokenExpiry time.Time `json:"token_expiry"`
+}
+
+type ConfigHelper struct {
+	Credential credential `json:"credential"`
+}
+
+func Credentials(ctx context.Context, projectID string) (*credential, error) {
+	return tasks.Return(ctx, tasks.Action("gcloud.fetch-access-token"), func(ctx context.Context) (*credential, error) {
+		cacheDir, err := dirs.Ensure(cacheDir())
+		if err != nil {
+			return nil, err
+		}
+
+		cacheFile := filepath.Join(cacheDir, projectID+".json")
+		contents, err := os.ReadFile(cacheFile)
+		if err == nil {
+			var cred credential
+			if json.Unmarshal(contents, &cred) == nil {
+				if !expired(&cred) {
+					return &cred, nil
+				}
+			}
+		}
+
+		h, err := Helper(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		var b bytes.Buffer
+		if json.NewEncoder(&b).Encode(h.Credential) == nil {
+			_ = atomic.WriteFile(cacheFile, bytes.NewReader(b.Bytes()))
+		}
+
+		return &h.Credential, nil
+	})
+}
+
+func cacheDir() (string, error) {
+	c, err := dirs.Config()
+	if err == nil {
+		return filepath.Join(c, "gcloud-credcache"), nil
+	}
+	return c, err
+}
+
+func Helper(ctx context.Context) (*ConfigHelper, error) {
+	return tasks.Return(ctx, tasks.Action("gcloud.slow-fetch-access-token"), func(ctx context.Context) (*ConfigHelper, error) {
+		var out bytes.Buffer
+		stderr := console.TypedOutput(ctx, "gcloud", common.CatOutputTool)
+
+		if err := Run(ctx, rtypes.IO{Stdout: &out, Stderr: stderr}, "config", "config-helper", "--format=json"); err != nil {
+			return nil, err
+		}
+
+		var h ConfigHelper
+		if err := json.Unmarshal(out.Bytes(), &h); err != nil {
+			return nil, fnerrors.InternalError("failed to decode gcloud output: %w", err)
+		}
+
+		return &h, nil
+	})
 }
