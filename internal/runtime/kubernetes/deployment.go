@@ -763,6 +763,11 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 			WithLabels(tmpl.Labels).
 			WithSpec(tmpl.Spec.WithRestartPolicy(corev1.RestartPolicyNever))
 	} else {
+		replicas := int32(1)
+		if deployable.Replicas > 0 {
+			replicas = deployable.Replicas
+		}
+
 		switch deployable.Class {
 		case schema.DeployableClass_STATELESS:
 			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server Deployment %s", deployable.Name))
@@ -771,7 +776,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
-					WithReplicas(1).
+					WithReplicas(replicas).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
@@ -790,7 +795,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.StatefulSetSpec().
-					WithReplicas(1).
+					WithReplicas(replicas).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))

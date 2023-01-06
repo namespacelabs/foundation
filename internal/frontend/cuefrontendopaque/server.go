@@ -22,7 +22,7 @@ import (
 
 var serverFields = []string{
 	"name", "class", "args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
-	"mounts", "resources", "integration", "image", "imageFrom", "unstable_naming", "requires",
+	"mounts", "resources", "integration", "image", "imageFrom", "unstable_naming", "requires", "replicas",
 	// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 	"spec",
 }
@@ -30,6 +30,8 @@ var serverFields = []string{
 type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
+
+	Replicas int32 `json:"replicas"`
 
 	Args *args.ArgsListOrMap `json:"args"`
 	Env  *args.EnvMap        `json:"env"`
@@ -70,6 +72,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		Name:          bits.Name,
 		Framework:     schema.Framework_OPAQUE,
 		RunByDefault:  true,
+		Replicas:      bits.Replicas,
 	}
 
 	switch bits.Class {
@@ -79,6 +82,9 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
 	case "daemonset", string(schema.DeployableClass_DAEMONSET):
 		out.DeployableClass = string(schema.DeployableClass_DAEMONSET)
+		if bits.Replicas > 0 {
+			return nil, nil, fnerrors.NewWithLocation(loc, "daemon set deployments do not support custom replica counts")
+		}
 	default:
 		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}

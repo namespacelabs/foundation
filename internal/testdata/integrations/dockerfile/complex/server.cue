@@ -3,6 +3,10 @@ server: {
 
 	integration: "dockerfile"
 
+	if $env.purpose == "PRODUCTION" {
+		replicas: 2
+	}
+
 	env: {
 		NAME: "\($env.name)-Bob"
 		SECRET: fromSecret:            ":key1"

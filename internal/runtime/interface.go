@@ -233,6 +233,7 @@ type DeployableSpec struct {
 	Name        string // Can be empty.
 	Volumes     []*schema.Volume
 	Permissions *schema.ServerPermissions
+	Replicas    int32
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts

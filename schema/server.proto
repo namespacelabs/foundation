@@ -28,7 +28,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 39
+// Next ID: 40
 message Server {
     reserved 9, 13, 17, 19, 20, 27, 28, 30, 32, 34;
 
@@ -59,6 +59,8 @@ message Server {
     Framework framework = 8;
 
     string deployable_class = 31;
+
+    int32 replicas = 39;
 
     // This server is meant to be used for tests, and should not be deployed by default.
     bool testonly = 21;
