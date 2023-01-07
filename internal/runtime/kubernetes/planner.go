@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -26,9 +25,9 @@ import (
 
 type Planner struct {
 	Configuration cfg.Configuration
-	ingress       kubedef.IngressClass
 
 	fetchSystemInfo FetchSystemInfoFunc
+	ingress         kubedef.IngressClass
 	underlying      *Cluster
 	target          clusterTarget
 	registry        registry.Manager
@@ -38,26 +37,33 @@ var _ runtime.Planner = Planner{}
 
 type FetchSystemInfoFunc func(context.Context) (*kubedef.SystemInfo, error)
 
-func NewPlanner(ctx context.Context, env cfg.Context, fetchSystemInfo FetchSystemInfoFunc) (Planner, error) {
+type NewClusterOpts struct {
+	FetchSystemInfo         FetchSystemInfoFunc
+	SupportedIngressClasses []string
+}
+
+func NewPlanner(ctx context.Context, env cfg.Context, fetch FetchSystemInfoFunc, ingressClass kubedef.IngressClass) (Planner, error) {
 	registry, err := registry.GetRegistry(ctx, env)
 	if err != nil {
 		return Planner{}, err
 	}
 
-	return NewPlannerWithRegistry(env, registry, fetchSystemInfo), nil
+	return NewPlannerWithRegistry(env, registry, fetch, ingressClass), nil
 }
 
-func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetchSystemInfo FetchSystemInfoFunc) Planner {
+func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetch FetchSystemInfoFunc, ingressClass kubedef.IngressClass) Planner {
 	return Planner{
 		Configuration:   env.Configuration(),
-		ingress:         ingress.FromConfig(env.Configuration()),
-		fetchSystemInfo: fetchSystemInfo,
+		fetchSystemInfo: fetch,
+		ingress:         ingressClass,
 		target:          newTarget(env),
 		registry:        registry,
 	}
 }
 
-func (r Planner) Ingress() runtime.IngressClass { return r.ingress }
+func (r Planner) Ingress() runtime.IngressClass {
+	return r.ingress
+}
 
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
 	return planDeployment(ctx, r.target, d)

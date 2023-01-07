@@ -18,4 +18,5 @@ message HostEnv {
     string                                                  bearer_token_provider = 4;
     string                                                  provider              = 5;  // If set, relies on the specified provider to produce a kube config.
     foundation.framework.kubernetes.kubeclient.StaticConfig static_config         = 6;
+    string                                                  ingress_class         = 7;
 }

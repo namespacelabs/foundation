@@ -105,7 +105,8 @@ func waitAndMap(ctx context.Context, cluster kubedef.KubeCluster, op *kubedef.Op
 	cli := cluster.PreparedClient().Clientset
 
 	var ingressSvc *kubedef.IngressSelector
-	if ingress := cluster.Ingress(); ingress != nil {
+	ingress := cluster.Ingress()
+	if ingress != nil {
 		ingressSvc = ingress.Service()
 	}
 

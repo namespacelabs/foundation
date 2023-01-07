@@ -5,11 +5,37 @@
 package ingress
 
 import (
+	"strings"
+
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
-	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 )
 
-func FromConfig(cfg cfg.Configuration) kubedef.IngressClass {
-	return nginx.Ingress()
+var classes = map[string]kubedef.IngressClass{}
+
+func RegisterIngressClass(name string, class kubedef.IngressClass) {
+	classes[name] = class
+}
+
+func FromConfig(config *client.Prepared, acceptedClasses []string) (kubedef.IngressClass, error) {
+	requestedClass := config.HostEnv.IngressClass
+	if requestedClass == "" {
+		requestedClass = "nginx"
+	}
+
+	if acceptedClasses == nil {
+		acceptedClasses = []string{"nginx"}
+	}
+
+	if !slices.Contains(acceptedClasses, requestedClass) {
+		return nil, fnerrors.BadInputError("ingress class %q is not supported by this cluster type (support: %s)", requestedClass, strings.Join(acceptedClasses, ", "))
+	}
+
+	if class, ok := classes[requestedClass]; ok {
+		return class, nil
+	}
+
+	return nil, fnerrors.BadInputError("ingress class %q is not registered", requestedClass)
 }

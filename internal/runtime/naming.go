@@ -20,8 +20,8 @@ var (
 	WorkInProgressUseShortAlias = false
 )
 
-func ComputeNaming(ctx context.Context, moduleName string, env cfg.Context, cluster Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
-	naming, err := cluster.Ingress().ComputeNaming(env.Environment(), source)
+func ComputeNaming(ctx context.Context, moduleName string, env cfg.Context, planner Planner, source *schema.Naming) (*schema.ComputedNaming, error) {
+	naming, err := planner.Ingress().ComputeNaming(env.Environment(), source)
 	if err != nil {
 		return nil, err
 	}

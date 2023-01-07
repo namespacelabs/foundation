@@ -26,11 +26,12 @@ import (
 var hostEnvConfigType = cfg.DefineConfigType[*HostEnv]()
 
 type ClusterConfiguration struct {
-	Config           clientcmdapi.Config
-	TokenProvider    TokenProviderFunc
-	Ephemeral        bool // Set to true if thie target cluster is ephemeral.
-	ProviderSpecific any  // Up to an implementation to attach state if needed.
-	Labels           []*fnschema.Label
+	Config                  clientcmdapi.Config
+	TokenProvider           TokenProviderFunc
+	Ephemeral               bool // Set to true if thie target cluster is ephemeral.
+	ProviderSpecific        any  // Up to an implementation to attach state if needed.
+	Labels                  []*fnschema.Label
+	SupportedIngressClasses []string
 }
 
 type DeferredProvider struct{}

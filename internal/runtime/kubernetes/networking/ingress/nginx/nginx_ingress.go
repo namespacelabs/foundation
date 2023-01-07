@@ -237,7 +237,7 @@ func (nginx) Service() *kubedef.IngressSelector {
 func (n nginx) Waiter(restcfg *rest.Config) kubedef.KubeIngressWaiter {
 	return kubeobserver.WaitOnResource{
 		RestConfig:       restcfg,
-		Description:      "NGINX Ingress Controller",
+		Description:      "Ingress Controller (nginx)",
 		Namespace:        n.Service().Namespace,
 		Name:             n.Service().ServiceName,
 		GroupVersionKind: kubeschema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},

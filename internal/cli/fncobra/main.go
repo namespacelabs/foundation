@@ -72,6 +72,8 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -256,6 +258,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		nscloud.Register()
 		k3dp.Register()
 		k3s.Register()
+		ingress.RegisterIngressClass("nginx", nginx.Ingress())
 
 		// Runtimes.
 		kubernetes.Register()

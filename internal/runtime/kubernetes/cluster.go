@@ -24,11 +24,12 @@ type UnwrapCluster interface {
 }
 
 type Cluster struct {
-	cli            *k8s.Clientset
-	computedClient client.Prepared
-	Configuration  cfg.Configuration
+	cli           *k8s.Clientset
+	Prepared      client.Prepared
+	Configuration cfg.Configuration
 
-	FetchSystemInfo func(context.Context) (*kubedef.SystemInfo, error)
+	FetchSystemInfo FetchSystemInfoFunc
+	IngressClass    kubedef.IngressClass
 
 	ClusterAttachedState
 }
@@ -57,16 +58,25 @@ func ConnectToCluster(ctx context.Context, config cfg.Configuration) (*Cluster, 
 		return computeSystemInfo(ctx, cli.Clientset)
 	})
 
-	return NewCluster(cli, config, deferredSystemInfo.Get), nil
+	return NewCluster(cli, config, NewClusterOpts{
+		FetchSystemInfo:         deferredSystemInfo.Get,
+		SupportedIngressClasses: cli.Configuration.SupportedIngressClasses,
+	})
 }
 
-func NewCluster(cli *client.Prepared, config cfg.Configuration, fetchSystem FetchSystemInfoFunc) *Cluster {
+func NewCluster(cli *client.Prepared, config cfg.Configuration, opts NewClusterOpts) (*Cluster, error) {
+	ingress, err := ingress.FromConfig(cli, opts.SupportedIngressClasses)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Cluster{
 		cli:             cli.Clientset,
-		computedClient:  *cli,
+		Prepared:        *cli,
 		Configuration:   config,
-		FetchSystemInfo: fetchSystem,
-	}
+		FetchSystemInfo: opts.FetchSystemInfo,
+		IngressClass:    ingress,
+	}, nil
 }
 
 func (u *Cluster) Class() runtime.Class {
@@ -74,17 +84,17 @@ func (u *Cluster) Class() runtime.Class {
 }
 
 func (u *Cluster) Ingress() kubedef.IngressClass {
-	return ingress.FromConfig(u.Configuration)
+	return u.IngressClass
 }
 
 func (u *Cluster) RESTConfig() *rest.Config {
-	return u.computedClient.RESTConfig
+	return u.Prepared.RESTConfig
 }
 
 func (u *Cluster) KubernetesCluster() *Cluster { return u }
 
 func (u *Cluster) PreparedClient() client.Prepared {
-	return u.computedClient
+	return u.Prepared
 }
 
 func (u *Cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {

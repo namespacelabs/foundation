@@ -60,7 +60,7 @@ func ConnectToNamespace(ctx context.Context, env cfg.Context) (*ClusterNamespace
 
 func (r *ClusterNamespace) KubeConfig() kubedef.KubeConfig {
 	return kubedef.KubeConfig{
-		Context:     r.underlying.computedClient.HostEnv.GetContext(),
+		Context:     r.underlying.Prepared.HostEnv.GetContext(),
 		Environment: r.target.env,
 		Namespace:   r.target.namespace,
 	}

@@ -14,24 +14,27 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const nginxIngressState = "ns.kubernetes.nginx"
+const ingressStateKey = "kubernetes.ingress-state"
 
 func RegisterRuntimeState() {
-	runtime.RegisterPrepare(nginxIngressState, func(ctx context.Context, cfg cfg.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(ingressStateKey, func(ctx context.Context, cfg cfg.Configuration, cluster runtime.Cluster) (any, error) {
 		kube, ok := cluster.(kubedef.KubeCluster)
 		if !ok {
-			return nil, fnerrors.InternalError("%s: only supported with Kubernetes clusters", nginxIngressState)
+			return nil, fnerrors.InternalError("%s: only supported with Kubernetes clusters", ingressStateKey)
 		}
 
-		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller (nginx) is ready").Run(ctx, func(ctx context.Context) error {
-			ingress := kube.Ingress()
-			if ingress == nil {
-				return nil
-			}
-			if w := ingress.Waiter(kube.PreparedClient().RESTConfig); w != nil {
-				return w.WaitUntilReady(ctx, nil)
-			}
-			return nil
+		ingress := kube.Ingress()
+		if ingress == nil {
+			return nil, nil
+		}
+
+		w := ingress.Waiter(kube.PreparedClient().RESTConfig)
+		if w == nil {
+			return nil, nil
+		}
+
+		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller is ready").Run(ctx, func(ctx context.Context) error {
+			return w.WaitUntilReady(ctx, nil)
 		}); err != nil {
 			return nil, err
 		}
@@ -41,6 +44,6 @@ func RegisterRuntimeState() {
 }
 
 func EnsureState(ctx context.Context, cluster kubedef.KubeCluster) error {
-	_, err := cluster.EnsureState(ctx, nginxIngressState)
+	_, err := cluster.EnsureState(ctx, ingressStateKey)
 	return err
 }

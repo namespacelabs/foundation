@@ -72,7 +72,7 @@ func Register() {
 
 		kube := unwrap.KubernetesCluster()
 
-		return client.NewRESTMapper(kube.RESTConfig(), kube.computedClient.Configuration.Ephemeral)
+		return client.NewRESTMapper(kube.RESTConfig(), kube.Prepared.Configuration.Ephemeral)
 	})
 
 	planninghooks.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
@@ -96,9 +96,7 @@ func (d kubernetesClass) Planner(ctx context.Context, cfg cfg.Context, purpose s
 		return nil, err
 	}
 
-	planner, err := NewPlanner(ctx, cfg, func(ctx context.Context) (*kubedef.SystemInfo, error) {
-		return cluster.FetchSystemInfo(ctx)
-	})
+	planner, err := NewPlanner(ctx, cfg, cluster.FetchSystemInfo, cluster.IngressClass)
 	if err != nil {
 		return nil, err
 	}

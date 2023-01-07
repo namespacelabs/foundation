@@ -70,11 +70,12 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clu
 }
 
 func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify runtime.PortForwardedFunc) (io.Closer, error) {
-	if r.Ingress() == nil {
+	ingress := r.Ingress()
+	if ingress == nil {
 		return nil, nil
 	}
 
-	svc := r.Ingress().Service()
+	svc := ingress.Service()
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, svc.PodSelector)

@@ -22,7 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -164,7 +164,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 			return nil, err
 		}
 
-		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false), nil
+		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
 	}
 
 	response, err := api.CreateCluster(ctx, api.Endpoint, "", true, purpose, nil)
@@ -172,18 +172,19 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return nil, err
 	}
 
-	return completePlanner(ctx, env, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, env.Environment().Ephemeral), nil
+	return completePlanner(ctx, env, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, env.Environment().Ephemeral)
 }
 
-func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) planner {
-	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: registry, clusterID: clusterId}, func(ctx context.Context) (*kubedef.SystemInfo, error) {
-		return &kubedef.SystemInfo{
-			NodePlatform:         []string{"linux/amd64"},
-			DetectedDistribution: "k3s",
-		}, nil
-	})
+func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
+	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: registry, clusterID: clusterId},
+		func(ctx context.Context) (*kubedef.SystemInfo, error) {
+			return &kubedef.SystemInfo{
+				NodePlatform:         []string{"linux/amd64"},
+				DetectedDistribution: "k3s",
+			}, nil
+		}, nginx.Ingress())
 
-	return planner{Planner: base, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry, ephemeral: ephemeral}
+	return planner{Planner: base, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry, ephemeral: ephemeral}, nil
 }
 
 func ensureCluster(ctx context.Context, cfg cfg.Configuration, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (*cluster, error) {
@@ -198,20 +199,23 @@ func ensureCluster(ctx context.Context, cfg cfg.Configuration, clusterId, ingres
 		return nil, err
 	}
 
-	unbound := kubernetes.NewCluster(cli, cfg, func(ctx context.Context) (*kubedef.SystemInfo, error) {
-		return &kubedef.SystemInfo{
-			NodePlatform:         []string{"linux/amd64"},
-			DetectedDistribution: "k3s",
-		}, nil
+	unbound, err := kubernetes.NewCluster(cli, cfg, kubernetes.NewClusterOpts{
+		FetchSystemInfo: func(ctx context.Context) (*kubedef.SystemInfo, error) {
+			return &kubedef.SystemInfo{
+				NodePlatform:         []string{"linux/amd64"},
+				DetectedDistribution: "k3s",
+			}, nil
+		},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &cluster{cluster: unbound, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry}, nil
 }
 
 func newIngress(cfg cfg.Configuration, clusterId, ingressDomain string) kubedef.IngressClass {
-	parent := ingress.FromConfig(cfg)
-
-	return ingressClass{IngressClass: parent, ingressDomain: ingressDomain, clusterId: clusterId}
+	return ingressClass{IngressClass: nginx.Ingress(), ingressDomain: ingressDomain, clusterId: clusterId}
 }
 
 type cluster struct {
@@ -238,7 +242,10 @@ func (d *cluster) Ingress() kubedef.IngressClass {
 }
 
 func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
-	planner := completePlanner(ctx, env, d.clusterId, d.ingressDomain, d.registry, env.Environment().Ephemeral)
+	planner, err := completePlanner(ctx, env, d.clusterId, d.ingressDomain, d.registry, env.Environment().Ephemeral)
+	if err != nil {
+		return nil, err
+	}
 
 	return clusterNamespaceFromPlanner(planner, d), nil
 }
