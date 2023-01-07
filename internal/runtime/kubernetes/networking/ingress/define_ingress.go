@@ -26,6 +26,8 @@ import (
 	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
+const IngressControllerCat = "kube:ingress:controller"
+
 func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment) ([]defs.MakeDefinition, error) {
 	var applies []defs.MakeDefinition
 
@@ -250,6 +252,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 			WithSpec(spec),
 		SchedAfterCategory: []string{
 			kubedef.MakeServicesCat(deployable),
+			IngressControllerCat,
 		},
 	})
 

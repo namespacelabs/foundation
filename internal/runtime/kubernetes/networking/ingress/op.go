@@ -81,6 +81,19 @@ func Register() {
 		},
 	})
 
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *fnschema.SerializedInvocation, _ *kubedef.OpEnsureIngressController) (*execution.HandleResult, error) {
+		cluster, err := kubedef.InjectedKubeCluster(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := EnsureState(ctx, cluster); err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	})
+
 	nginx.RegisterGraphHandlers()
 }
 

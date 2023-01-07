@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	kobs "namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
@@ -116,22 +115,6 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 			if waitOnNamespace {
 				if err := waitForDefaultServiceAccount(ctx, cluster.PreparedClient().Clientset, obj.GetNamespace()); err != nil {
 					return false, err
-				}
-			}
-
-			// On ephemeral environments, e.g. tests, we don't wait for an
-			// ingress controller to be present, before installing ingress
-			// objects. This is because we sometimes run in environments where
-			// there's no controller installed (e.g. in ephemeral nscloud
-			// clusters). And tests don't (yet) exercise ingress objects.
-			if obj.GroupVersionKind().GroupVersion().String() == "networking.k8s.io/v1" && obj.GroupVersionKind().Kind == "Ingress" {
-				clusterns, _ := kubedef.InjectedKubeClusterNamespace(ctx)
-				// We check for clusterns presence as it's not present when
-				// deploying the ingress controller itself.
-				if clusterns != nil && !clusterns.KubeConfig().Environment.Ephemeral {
-					if err := ingress.EnsureState(ctx, cluster); err != nil {
-						return false, err
-					}
 				}
 			}
 

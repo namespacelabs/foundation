@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -17,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	fnschema "namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
 func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
@@ -39,6 +41,26 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clu
 				return nil, err
 			}
 			state.Definitions = append(state.Definitions, def)
+		}
+	}
+
+	// On ephemeral environments, e.g. tests, we don't wait for an
+	// ingress controller to be present, before installing ingress
+	// objects. This is because we sometimes run in environments where
+	// there's no controller installed (e.g. in ephemeral nscloud
+	// clusters). And tests don't (yet) exercise ingress objects.
+	if len(state.Definitions) > 0 && !r.env.Ephemeral {
+		var d defs.DefList
+
+		d.AddExt("Ensure Ingress Controller", &kubedef.OpEnsureIngressController{},
+			defs.Category(ingress.IngressControllerCat),
+			// Lets make sure that we verify the controller after deployments and services are in place.
+			defs.DependsOn(kubedef.MakeSchedCat(schema.GroupKind{Kind: "Service"})))
+
+		if serialized, err := d.Serialize(); err != nil {
+			return nil, err
+		} else {
+			state.Definitions = append(state.Definitions, serialized...)
 		}
 	}
 
