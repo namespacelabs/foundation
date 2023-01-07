@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/gcp"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/sdk/gcloud"
 	"namespacelabs.dev/foundation/std/cfg"
 	gkepb "namespacelabs.dev/foundation/universe/gcp/gke"
@@ -26,6 +27,7 @@ var clusterConfigType = cfg.DefineConfigType[*gkepb.Cluster]()
 func Register() {
 	client.RegisterConfigurationProvider("gke", provideGKE)
 	client.RegisterConfigurationProvider("gcp/gke", provideGKE)
+	ingress.RegisterIngressClass("gclb", gclb{})
 }
 
 func provideGKE(ctx context.Context, config cfg.Configuration) (client.ClusterConfiguration, error) {
@@ -54,6 +56,7 @@ func provideGKE(ctx context.Context, config cfg.Configuration) (client.ClusterCo
 
 			return token.AccessToken, nil
 		},
+		SupportedIngressClasses: []string{"nginx", "gclb"},
 	}, nil
 }
 

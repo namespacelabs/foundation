@@ -35,7 +35,7 @@ func PrepareGkeCluster(clusterName string) Stage {
 			}
 
 			return devhost.MakeConfiguration(
-				&client.HostEnv{Provider: "gcp/gke"},
+				&client.HostEnv{Provider: "gcp/gke", IngressClass: "gclb"},
 				&registry.Provider{Provider: "gcp/artifactregistry"},
 				&gke.Cluster{Name: clusterName},
 			)
