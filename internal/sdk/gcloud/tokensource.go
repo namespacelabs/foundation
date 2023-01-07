@@ -16,15 +16,14 @@ const minimumTokenExpiry = 5 * time.Minute
 
 type TokenSource struct {
 	ctx       context.Context
-	projectID string
 	mu        sync.Mutex
 	lastToken *credential
 }
 
 var _ oauth2.TokenSource = &TokenSource{}
 
-func NewTokenSource(ctx context.Context, projectID string) *TokenSource {
-	return &TokenSource{ctx: ctx, projectID: projectID}
+func NewTokenSource(ctx context.Context) *TokenSource {
+	return &TokenSource{ctx: ctx}
 }
 
 func (ts *TokenSource) Token() (*oauth2.Token, error) {
@@ -32,7 +31,7 @@ func (ts *TokenSource) Token() (*oauth2.Token, error) {
 	defer ts.mu.Unlock()
 
 	if expired(ts.lastToken) {
-		h, err := Credentials(ts.ctx, ts.projectID)
+		h, err := Credentials(ts.ctx)
 		if err != nil {
 			return nil, err
 		}

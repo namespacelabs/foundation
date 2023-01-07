@@ -29,51 +29,17 @@ func Register() {
 }
 
 func provideGKE(ctx context.Context, config cfg.Configuration) (client.ClusterConfiguration, error) {
-	conf, ok := clusterConfigType.CheckGet(config)
-	if !ok {
-		return client.ClusterConfiguration{}, fnerrors.BadInputError("gke provider configured, but missing gke.Cluster")
-	}
-
-	project, ok := gcp.ProjectConfigType.CheckGet(config)
-	if !ok {
-		return client.ClusterConfiguration{}, fnerrors.BadInputError("gke provider configured, but missing gcp.Project")
-	}
-
-	ts := gcloud.NewTokenSource(ctx, project.Id)
-
-	c, err := container.NewClusterManagerClient(ctx, option.WithTokenSource(ts))
+	selected, err := ConfiguredCluster(ctx, config)
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
 
-	allClusters, err := c.ListClusters(ctx, &containerpb.ListClustersRequest{
-		Parent: fmt.Sprintf("projects/%s/locations/-", project.Id),
-	})
+	token, err := selected.TokenSource.Token()
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
 
-	var selected *containerpb.Cluster
-	for _, cluster := range allClusters.Clusters {
-		if cluster.Name == conf.Name {
-			if selected != nil {
-				return client.ClusterConfiguration{}, fnerrors.BadInputError("multiple clusters named %q", conf.Name)
-			}
-
-			selected = cluster
-		}
-	}
-
-	if selected == nil {
-		return client.ClusterConfiguration{}, fnerrors.BadInputError("no such cluster %q", conf.Name)
-	}
-
-	token, err := ts.Token()
-	if err != nil {
-		return client.ClusterConfiguration{}, err
-	}
-
-	x, err := Kubeconfig(selected, token.AccessToken)
+	x, err := Kubeconfig(selected.Cluster, token.AccessToken)
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
@@ -81,7 +47,7 @@ func provideGKE(ctx context.Context, config cfg.Configuration) (client.ClusterCo
 	return client.ClusterConfiguration{
 		Config: *x,
 		TokenProvider: func(ctx context.Context) (string, error) {
-			token, err := ts.Token()
+			token, err := selected.TokenSource.Token()
 			if err != nil {
 				return "", err
 			}
@@ -89,6 +55,55 @@ func provideGKE(ctx context.Context, config cfg.Configuration) (client.ClusterCo
 			return token.AccessToken, nil
 		},
 	}, nil
+}
+
+type Cluster struct {
+	Cluster     *containerpb.Cluster
+	ProjectID   string
+	TokenSource *gcloud.TokenSource
+}
+
+func ConfiguredCluster(ctx context.Context, config cfg.Configuration) (*Cluster, error) {
+	conf, ok := clusterConfigType.CheckGet(config)
+	if !ok {
+		return nil, fnerrors.BadInputError("gke provider configured, but missing gke.Cluster")
+	}
+
+	project, ok := gcp.ProjectConfigType.CheckGet(config)
+	if !ok {
+		return nil, fnerrors.BadInputError("gke provider configured, but missing gcp.Project")
+	}
+
+	ts := gcloud.NewTokenSource(ctx)
+
+	c, err := container.NewClusterManagerClient(ctx, option.WithTokenSource(ts))
+	if err != nil {
+		return nil, err
+	}
+
+	allClusters, err := c.ListClusters(ctx, &containerpb.ListClustersRequest{
+		Parent: fmt.Sprintf("projects/%s/locations/-", project.Id),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var selected *containerpb.Cluster
+	for _, cluster := range allClusters.Clusters {
+		if cluster.Name == conf.Name {
+			if selected != nil {
+				return nil, fnerrors.BadInputError("multiple clusters named %q", conf.Name)
+			}
+
+			selected = cluster
+		}
+	}
+
+	if selected == nil {
+		return nil, fnerrors.BadInputError("no such cluster %q", conf.Name)
+	}
+
+	return &Cluster{selected, project.Id, ts}, nil
 }
 
 func Kubeconfig(cluster *containerpb.Cluster, token string) (*clientcmdapi.Config, error) {

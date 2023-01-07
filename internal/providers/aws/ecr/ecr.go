@@ -29,7 +29,7 @@ type ecrManager struct {
 var _ registry.Manager = ecrManager{}
 
 func Register() {
-	registry.Register("aws/ecr", func(ctx context.Context, ck cfg.Configuration) (m registry.Manager, finalErr error) {
+	registry.Register("aws/ecr", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
 		sesh, err := awsprovider.MustConfiguredSession(ctx, ck)
 		if err != nil {
 			return nil, err
@@ -84,12 +84,6 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 			}, nil
 		},
 	)
-}
-
-func (em ecrManager) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
-	keychain := keychainSession(em)
-
-	return registry.AttachStaticKeychain(em, img, oci.RegistryAccess{Keychain: keychain}), nil
 }
 
 type makeRepository struct {

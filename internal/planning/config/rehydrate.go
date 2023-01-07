@@ -39,10 +39,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 			return nil, err
 		}
 
-		allocated, err := reg.AttachKeychain(imageID)
-		if err != nil {
-			return nil, err
-		}
+		allocated := registry.AttachStaticKeychain(reg, imageID, reg.Access())
 
 		opts := oci.ResolveOpts{RegistryAccess: allocated.RegistryAccess}
 

@@ -100,10 +100,6 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 	return resp.Registry, nil
 }
 
-func (r nscloudRegistry) AttachKeychain(imgid oci.ImageID) (oci.AllocatedRepository, error) {
-	return registry.AttachStaticKeychain(r, imgid, r.Access()), nil
-}
-
 type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {

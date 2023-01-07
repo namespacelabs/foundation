@@ -38,7 +38,6 @@ type Manager interface {
 	Access() oci.RegistryAccess
 
 	AllocateName(repository string) compute.Computable[oci.AllocatedRepository]
-	AttachKeychain(oci.ImageID) (oci.AllocatedRepository, error)
 }
 
 func GetRegistry(ctx context.Context, env cfg.Context) (Manager, error) {

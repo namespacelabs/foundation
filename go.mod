@@ -3,6 +3,7 @@ module namespacelabs.dev/foundation
 go 1.19
 
 require (
+	cloud.google.com/go/artifactregistry v1.8.0
 	cloud.google.com/go/container v1.6.0
 	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
@@ -109,7 +110,7 @@ require (
 	golang.org/x/sys v0.2.0
 	golang.org/x/term v0.2.0
 	golang.org/x/tools v0.3.0
-	google.golang.org/api v0.99.0
+	google.golang.org/api v0.100.0
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c
 	google.golang.org/grpc v1.50.1
 	google.golang.org/protobuf v1.28.1
@@ -130,7 +131,9 @@ require (
 require github.com/jpillora/backoff v1.0.0 // indirect
 
 require (
+	cloud.google.com/go v0.105.0 // indirect
 	cloud.google.com/go/compute v1.10.0 // indirect
+	cloud.google.com/go/longrunning v0.1.1 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd // indirect

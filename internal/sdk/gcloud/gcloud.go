@@ -75,14 +75,14 @@ type ConfigHelper struct {
 	Credential credential `json:"credential"`
 }
 
-func Credentials(ctx context.Context, projectID string) (*credential, error) {
+func Credentials(ctx context.Context) (*credential, error) {
 	return tasks.Return(ctx, tasks.Action("gcloud.fetch-access-token"), func(ctx context.Context) (*credential, error) {
 		cacheDir, err := dirs.Ensure(cacheDir())
 		if err != nil {
 			return nil, err
 		}
 
-		cacheFile := filepath.Join(cacheDir, projectID+".json")
+		cacheFile := filepath.Join(cacheDir, "access_token.json")
 		contents, err := os.ReadFile(cacheFile)
 		if err == nil {
 			var cred credential

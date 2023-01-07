@@ -78,10 +78,6 @@ func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.All
 	return registry.AllocateStaticName(r, r.baseUrl(), repository, r.Access())
 }
 
-func (r *k3dRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
-	return registry.AttachStaticKeychain(r, img, r.Access()), nil
-}
-
 func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedRepository) (*buildkit.ExportToRegistryRequest, *buildkit.ExportToRegistryRequest) {
 	// There are some assumptions baked into this that are not verified at
 	// runtime, notably that buildkit and the registry are deployed to the same

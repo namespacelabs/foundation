@@ -50,10 +50,6 @@ func AllocateStaticName(r Manager, url, repository string, access oci.RegistryAc
 	return StaticName(r, imgid, access)
 }
 
-func (sr staticRegistry) AttachKeychain(img oci.ImageID) (oci.AllocatedRepository, error) {
-	return AttachStaticKeychain(sr, img, sr.Access()), nil
-}
-
 func (sr staticRegistry) keychain() oci.Keychain {
 	if sr.r.UseDockerAuth {
 		return defaultDockerKeychain{}

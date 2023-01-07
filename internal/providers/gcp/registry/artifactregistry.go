@@ -6,47 +6,92 @@ package registry
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	"github.com/google/go-containerregistry/pkg/authn"
+	artifactregistry "cloud.google.com/go/artifactregistry/apiv1"
+	"cloud.google.com/go/artifactregistry/apiv1/artifactregistrypb"
+	"google.golang.org/api/option"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	c "namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/sdk/gcloud"
+	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var DefaultKeychain oci.Keychain = defaultKeychain{}
+func Register() {
+	registry.Register("gcp/artifactregistry", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
+		cluster, err := gke.ConfiguredCluster(ctx, ck)
+		if err != nil {
+			return nil, err
+		}
 
-type defaultKeychain struct{}
+		return manager{cluster}, nil
+	})
 
-func (defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	authConfig, err := c.GetValue[authn.AuthConfig](ctx, &obtainAccessToken{})
-	if err != nil {
-		return nil, err
+	oci.RegisterDomainKeychain("pkg.dev", DefaultKeychain, oci.Keychain_UseOnWrites)
+}
+
+type manager struct {
+	cluster *gke.Cluster
+}
+
+func (m manager) Access() oci.RegistryAccess {
+	return oci.RegistryAccess{
+		InsecureRegistry: false,
+		Keychain:         keychain{m.cluster.TokenSource},
 	}
-
-	return authn.FromConfig(authConfig), nil
 }
 
-type obtainAccessToken struct {
-	c.DoScoped[authn.AuthConfig]
+func (m manager) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+	return compute.Inline(tasks.Action("artifactregistry.allocate-repository").Arg("repository", repository),
+		func(ctx context.Context) (oci.AllocatedRepository, error) {
+			client, err := artifactregistry.NewClient(ctx, option.WithTokenSource(m.cluster.TokenSource))
+			if err != nil {
+				return oci.AllocatedRepository{}, err
+			}
+
+			const repoID = "namespace-managed"
+			location := region(m.cluster.Cluster.Location)
+			op, err := client.CreateRepository(ctx, &artifactregistrypb.CreateRepositoryRequest{
+				Parent:       fmt.Sprintf("projects/%s/locations/%s", m.cluster.ProjectID, location),
+				RepositoryId: repoID,
+				Repository: &artifactregistrypb.Repository{
+					Format: artifactregistrypb.Repository_DOCKER,
+				},
+			})
+			if err != nil {
+				if status.Code(err) != codes.AlreadyExists {
+					return oci.AllocatedRepository{}, fnerrors.InvocationError("gcp/artifactregistry", "failed to construct request: %w", err)
+				}
+			} else if err == nil {
+				if _, err := op.Wait(ctx); err != nil {
+					return oci.AllocatedRepository{}, fnerrors.InvocationError("gcp/artifactregistry", "failed: %w", err)
+				}
+			}
+
+			repo := oci.TargetRepository{
+				RegistryAccess: m.Access(),
+				ImageID: oci.ImageID{
+					Repository: fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s", location, m.cluster.ProjectID, repoID, repository),
+				},
+			}
+
+			return oci.AllocatedRepository{
+				Parent:           m,
+				TargetRepository: repo,
+			}, nil
+		})
 }
 
-var _ c.Computable[authn.AuthConfig] = &obtainAccessToken{}
-
-func (obtainAccessToken) Action() *tasks.ActionEvent {
-	return tasks.Action("gcloud.auth.print-access-token")
-}
-func (obtainAccessToken) Inputs() *c.In    { return c.Inputs() }
-func (obtainAccessToken) Output() c.Output { return c.Output{NotCacheable: true} }
-func (obtainAccessToken) Compute(ctx context.Context, _ c.Resolved) (authn.AuthConfig, error) {
-	h, err := gcloud.Helper(ctx)
-	if err != nil {
-		return authn.AuthConfig{}, fnerrors.InvocationError("gcp-artifactregistry", "failed to obtain gcloud access token: %w", err)
+func region(loc string) string {
+	parts := strings.Split(loc, "-")
+	if len(parts) > 2 {
+		parts = parts[:2]
 	}
-
-	return authn.AuthConfig{
-		Username: "oauth2accesstoken",
-		Password: h.Credential.AccessToken,
-	}, nil
+	return strings.Join(parts, "-")
 }

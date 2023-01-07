@@ -251,7 +251,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		ecr.Register()
 		eks.Register()
 		gke.Register()
-		oci.RegisterDomainKeychain("pkg.dev", artifactregistry.DefaultKeychain, oci.Keychain_UseOnWrites)
+		artifactregistry.Register()
 		iam.RegisterGraphHandlers()
 		nscloud.Register()
 		k3dp.Register()
