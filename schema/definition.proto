@@ -31,6 +31,9 @@ message SerializedInvocation {
 
     ScheduleOrder order = 5;  // If not specified, is computed based on impl type.
 
+    // The minimum orchestrator version this invocation requires.
+    int32 minimum_version = 7;
+
     message ComputedValue {
         string              name  = 1;
         google.protobuf.Any value = 2;

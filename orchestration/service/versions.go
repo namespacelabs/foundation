@@ -8,12 +8,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"sync"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/orchestration/server/constants"
 )
@@ -33,15 +32,9 @@ type versionChecker struct {
 }
 
 func newVersionChecker(ctx context.Context) *versionChecker {
-	version := os.Getenv("ORCH_VERSION")
-	current, err := strconv.ParseInt(version, 10, 32)
-	if err != nil {
-		log.Fatalf("unable to compute current version: %v", err)
-	}
-
 	vc := &versionChecker{
 		serverCtx: ctx,
-		current:   int32(current),
+		current:   orchestration.ExecuteOpts().OrchestratorVersion,
 	}
 
 	go func() {

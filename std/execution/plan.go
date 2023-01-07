@@ -69,7 +69,11 @@ func (g *Plan) Add(defs ...*schema.SerializedInvocation) *Plan {
 	return g
 }
 
-func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*compiledPlan, error) {
+type compileOpts struct {
+	OrchestratorVersion int32
+}
+
+func compile(ctx context.Context, srcs []*schema.SerializedInvocation, opts compileOpts) (*compiledPlan, error) {
 	g := &compiledPlan{}
 
 	var defs []*schema.SerializedInvocation
@@ -97,14 +101,20 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*compile
 	var nodes []*executionNode
 	for _, src := range defs {
 		key := src.Impl.GetTypeUrl()
+		humanKey := strings.TrimPrefix(key, "type.googleapis.com/")
+
+		if src.MinimumVersion > opts.OrchestratorVersion {
+			return nil, fnerrors.InternalError("%v: requires orchestrator version %d (got %d)", humanKey, src.MinimumVersion, opts.OrchestratorVersion)
+		}
+
 		reg, ok := handlers[key]
 		if !ok {
-			return nil, fnerrors.InternalError("%v: no handler registered", key)
+			return nil, fnerrors.InternalError("%v: no handler registered", humanKey)
 		}
 
 		msg, err := reg.unmarshal(src)
 		if err != nil {
-			return nil, fnerrors.InternalError("%v: failed to unmarshal: %w", key, err)
+			return nil, fnerrors.InternalError("%v: failed to unmarshal: %w", humanKey, err)
 		}
 
 		node := &executionNode{
@@ -117,13 +127,13 @@ func compile(ctx context.Context, srcs []*schema.SerializedInvocation) (*compile
 			var err error
 			node.parsed, err = reg.funcs.Parse(ctx, src, msg)
 			if err != nil {
-				return nil, fnerrors.InternalError("%s: failed to parse: %w", key, err)
+				return nil, fnerrors.InternalError("%s: failed to parse: %w", humanKey, err)
 			}
 		}
 
 		computedOrder, err := reg.funcs.PlanOrder(ctx, msg, node.parsed)
 		if err != nil {
-			return nil, fnerrors.InternalError("%s: failed to compute order: %w", key, err)
+			return nil, fnerrors.InternalError("%s: failed to compute order: %w", humanKey, err)
 		}
 
 		if computedOrder == nil {

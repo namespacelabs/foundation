@@ -19,6 +19,16 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+// Bumping this value leads to an orchestrator upgrade.
+const orchestratorVersion = 11
+
+func ExecuteOpts() execution.ExecuteOpts {
+	return execution.ExecuteOpts{
+		ContinueOnErrors:    false,
+		OrchestratorVersion: orchestratorVersion,
+	}
+}
+
 func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, wait, outputProgress bool) error {
 	if !UseOrchestrator {
 		if !wait {
@@ -28,8 +38,9 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 		p := execution.NewPlan(plan.Program.Invocation...)
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return execution.Execute(ctx, "deployment.execute", p,
+		return execution.ExecuteExt(ctx, "deployment.execute", p,
 			deploy.MaybeRenderBlock(env, cluster, outputProgress),
+			ExecuteOpts(),
 			execution.FromContext(env),
 			runtime.InjectCluster(cluster))
 	}

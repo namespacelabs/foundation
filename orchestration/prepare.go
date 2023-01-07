@@ -204,7 +204,8 @@ func execute(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterN
 			execution.FromContext(env), runtime.InjectCluster(boundCluster))
 	}
 
-	return execution.RawExecute(ctx, "orchestrator.deploy", plan, execution.FromContext(env), runtime.InjectCluster(boundCluster))
+	return execution.RawExecute(ctx, "orchestrator.deploy", execution.ExecuteOpts{ContinueOnErrors: true},
+		plan, execution.FromContext(env), runtime.InjectCluster(boundCluster))
 }
 
 func getVersions(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace) (*orchestrationpb.GetOrchestratorVersionResponse, error) {

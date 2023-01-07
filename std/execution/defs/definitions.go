@@ -80,6 +80,12 @@ func Consumes(name string) func(*schema.SerializedInvocation) {
 	}
 }
 
+func MinimumVersion(version int32) func(*schema.SerializedInvocation) {
+	return func(di *schema.SerializedInvocation) {
+		di.MinimumVersion = version
+	}
+}
+
 func Make[V MakeDefinition](ops ...V) ([]*schema.SerializedInvocation, error) {
 	var defs []*schema.SerializedInvocation
 	for _, m := range ops {

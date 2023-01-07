@@ -54,7 +54,9 @@ func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes
 	g := execution.NewPlan(ingressDefs...)
 
 	// Don't wait for the deployment to complete.
-	if err := execution.RawExecute(ctx, "ingress.deploy", g, execution.FromContext(env), runtime.ClusterInjection.With(kube)); err != nil {
+	if err := execution.RawExecute(ctx, "ingress.deploy", execution.ExecuteOpts{
+		ContinueOnErrors: true,
+	}, g, execution.FromContext(env), runtime.ClusterInjection.With(kube)); err != nil {
 		return err
 	}
 

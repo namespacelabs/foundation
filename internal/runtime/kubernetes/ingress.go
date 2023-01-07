@@ -55,7 +55,9 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clu
 		d.AddExt("Ensure Ingress Controller", &kubedef.OpEnsureIngressController{},
 			defs.Category(ingress.IngressControllerCat),
 			// Lets make sure that we verify the controller after deployments and services are in place.
-			defs.DependsOn(kubedef.MakeSchedCat(schema.GroupKind{Kind: "Service"})))
+			defs.DependsOn(kubedef.MakeSchedCat(schema.GroupKind{Kind: "Service"})),
+			// OpEnsureIngressController was introduced in orchestrator 11.
+			defs.MinimumVersion(11))
 
 		if serialized, err := d.Serialize(); err != nil {
 			return nil, err

@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
+	o "namespacelabs.dev/foundation/orchestration"
 	orchpb "namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -165,7 +166,7 @@ func (d *deployer) execute(ctx context.Context, out *eventFile, plan *execution.
 		defer releaseLease()
 	}
 
-	return execution.Execute(ctx, "deployment.execute", plan, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
+	return execution.ExecuteExt(ctx, "deployment.execute", plan, func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
 		ch := make(chan *orchestration.Event)
 		errCh := make(chan error)
 
@@ -178,7 +179,7 @@ func (d *deployer) execute(ctx context.Context, out *eventFile, plan *execution.
 		return ch, func(_ context.Context) error {
 			return <-errCh // Wait for the logging go-routine to return.
 		}
-	}, execution.FromContext(env), runtime.InjectCluster(cluster))
+	}, o.ExecuteOpts(), execution.FromContext(env), runtime.InjectCluster(cluster))
 }
 
 func (d *deployer) Status(ctx context.Context, id string, loglevel int32, notify func(*orchpb.DeploymentStatusResponse) error) error {

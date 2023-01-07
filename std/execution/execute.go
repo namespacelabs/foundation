@@ -20,8 +20,9 @@ type WaitHandler func(context.Context) (chan *orchestration.Event, func(context.
 type Waiter func(context.Context, chan *orchestration.Event) error
 
 type ExecuteOpts struct {
-	ContinueOnErrors bool
-	WrapWithActions  bool
+	ContinueOnErrors    bool
+	WrapWithActions     bool
+	OrchestratorVersion int32
 
 	OnWaiter func(context.Context, Waiter)
 }
@@ -89,8 +90,8 @@ func ExecuteExt(ctx context.Context, actionName string, g *Plan, channelHandler 
 }
 
 // Don't use this method if you don't have a use-case for it, use Execute.
-func RawExecute(ctx context.Context, actionName string, g *Plan, injected ...MakeInjectionInstance) error {
-	return rawExecute(ctx, actionName, g, nil, ExecuteOpts{ContinueOnErrors: true}, injected...)
+func RawExecute(ctx context.Context, actionName string, opts ExecuteOpts, g *Plan, injected ...MakeInjectionInstance) error {
+	return rawExecute(ctx, actionName, g, nil, opts, injected...)
 }
 
 func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orchestration.Event, opts ExecuteOpts, injected ...MakeInjectionInstance) error {
@@ -100,7 +101,7 @@ func rawExecute(ctx context.Context, actionName string, g *Plan, ch chan *orches
 	}
 
 	return tasks.Return0(injectValues(ctx, values...), tasks.Action(actionName).Scope(g.scope.PackageNames()...), func(ctx context.Context) error {
-		compiled, err := compile(ctx, g.definitions)
+		compiled, err := compile(ctx, g.definitions, compileOpts{OrchestratorVersion: opts.OrchestratorVersion})
 		if err != nil {
 			return err
 		}
