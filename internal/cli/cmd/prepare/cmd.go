@@ -58,6 +58,7 @@ func NewPrepareCmd() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(newEksCmd())
+	rootCmd.AddCommand(newGkeCmd())
 	rootCmd.AddCommand(newLocalCmd())
 	rootCmd.AddCommand(newExistingCmd())
 	rootCmd.AddCommand(newNewClusterCmd())
