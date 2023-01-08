@@ -140,6 +140,7 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 	var tlsCount int
 	var extensions []*anypb.Any
 	var applies []defs.MakeDefinition
+	var domains []*schema.Domain
 	for _, ng := range g.Fragments {
 		extensions = append(extensions, ng.Extension...)
 
@@ -206,6 +207,8 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 			tlsCount++
 		}
 
+		domains = append(domains, ng.Domain)
+
 		ops, err := ingress.Map(ctx, ng.Domain, ns, g.Name)
 		if err != nil {
 			return nil, err
@@ -237,7 +240,7 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 		backendProtocol = kubedef.BackendProtocol_GRPCS
 	}
 
-	annotations, err := ingress.IngressAnnotations(tlsCount > 0, backendProtocol, extensions)
+	annotations, err := ingress.Annotate(ns, g.Name, domains, tlsCount > 0, backendProtocol, extensions)
 	if err != nil {
 		return nil, err
 	}
@@ -246,13 +249,15 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 		Description: fmt.Sprintf("Ingress %s", g.Name),
 		Resource: applynetworkingv1.Ingress(g.Name, ns).
 			WithLabels(labels).
-			WithAnnotations(annotations).
+			WithAnnotations(annotations.Annotations).
 			WithSpec(spec),
-		SchedAfterCategory: []string{
+		SchedAfterCategory: append([]string{
 			kubedef.MakeServicesCat(deployable),
 			IngressControllerCat,
-		},
+		}, annotations.SchedAfter...),
 	})
+
+	applies = append(applies, annotations.Resources...)
 
 	return applies, nil
 }

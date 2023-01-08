@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
+	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
 type KubeCluster interface {
@@ -45,7 +46,15 @@ type IngressClass interface {
 	Service() *IngressSelector
 	Waiter(*rest.Config) KubeIngressWaiter
 	Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*OpMapAddress, error)
-	IngressAnnotations(hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any) (map[string]string, error)
+	Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any) (*IngressAnnotations, error)
+}
+
+type IngressAnnotations struct {
+	Annotations map[string]string
+	Resources   []defs.MakeDefinition
+
+	// If set, make sure that the ingress resource is created after the specified categories.
+	SchedAfter []string
 }
 
 type KubeIngressWaiter interface {

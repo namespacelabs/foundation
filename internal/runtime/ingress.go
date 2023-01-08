@@ -312,62 +312,62 @@ type DomainsRequest struct {
 }
 
 func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
-	if computed.GetManaged() == schema.Domain_MANAGED_UNKNOWN {
-		return nil, nil
-	}
+	var domains []*schema.Domain
 
-	inclusterTls := allocatedName.TlsInclusterTermination || env.Purpose == schema.Environment_PRODUCTION
+	if computed.GetManaged() == schema.Domain_CLOUD_MANAGED ||
+		computed.GetManaged() == schema.Domain_CLOUD_TERMINATION ||
+		computed.GetManaged() == schema.Domain_LOCAL_MANAGED {
+		inclusterTls := allocatedName.TlsInclusterTermination || env.Purpose == schema.Environment_PRODUCTION
 
-	computedDomain := &schema.Domain{
-		Managed: computed.Managed,
-		// If we have TLS termination at an upstream ingress (e.g. in nscloud's
-		// ingress), then still emit https (etc) addresses regardless of whether
-		// the in-cluster ingress has TLS termination or not.
-		TlsFrontend:             computed.UpstreamTlsTermination || inclusterTls,
-		TlsInclusterTermination: inclusterTls,
-	}
-
-	if computed.UseShortAlias {
-		// grpc-abcdef.nslocal.host
-		//
-		// grpc-abcdef.hugosantos.nscloud.dev
-		//
-		// grpc-abcdef-9d5h25dto9nkm.a.nscluster.cloud
-		// -> abcdef = sha256(env.name, pkggraph.Module_name)[6:]
-
-		if computed.MainModuleName == "" {
-			return nil, fnerrors.NamespaceTooOld("domain allocation", 0, 0)
+		computedDomain := &schema.Domain{
+			Managed: computed.Managed,
+			// If we have TLS termination at an upstream ingress (e.g. in nscloud's
+			// ingress), then still emit https (etc) addresses regardless of whether
+			// the in-cluster ingress has TLS termination or not.
+			TlsFrontend:             computed.UpstreamTlsTermination || inclusterTls,
+			TlsInclusterTermination: inclusterTls,
 		}
 
-		x := naming.StableIDN(fmt.Sprintf("%s:%s", env.Name, computed.MainModuleName), 6)
-		name := fmt.Sprintf("%s-%s", allocatedName.Alias, x)
+		if computed.UseShortAlias {
+			// grpc-abcdef.nslocal.host
+			//
+			// grpc-abcdef.hugosantos.nscloud.dev
+			//
+			// grpc-abcdef-9d5h25dto9nkm.a.nscluster.cloud
+			// -> abcdef = sha256(env.name, pkggraph.Module_name)[6:]
 
-		if computed.DomainFragmentSuffix != "" {
-			computedDomain.Fqdn = fmt.Sprintf("%s-%s", name, computed.DomainFragmentSuffix)
+			if computed.MainModuleName == "" {
+				return nil, fnerrors.NamespaceTooOld("domain allocation", 0, 0)
+			}
+
+			x := naming.StableIDN(fmt.Sprintf("%s:%s", env.Name, computed.MainModuleName), 6)
+			name := fmt.Sprintf("%s-%s", allocatedName.Alias, x)
+
+			if computed.DomainFragmentSuffix != "" {
+				computedDomain.Fqdn = fmt.Sprintf("%s-%s", name, computed.DomainFragmentSuffix)
+			} else {
+				computedDomain.Fqdn = name
+			}
 		} else {
-			computedDomain.Fqdn = name
+			if computed.DomainFragmentSuffix != "" {
+				computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s", allocatedName.Key, env.Name, computed.DomainFragmentSuffix)
+			} else {
+				computedDomain.Fqdn = fmt.Sprintf("%s.%s", allocatedName.Key, env.Name)
+			}
 		}
-	} else {
-		if computed.DomainFragmentSuffix != "" {
-			computedDomain.Fqdn = fmt.Sprintf("%s-%s-%s", allocatedName.Key, env.Name, computed.DomainFragmentSuffix)
-		} else {
-			computedDomain.Fqdn = fmt.Sprintf("%s.%s", allocatedName.Key, env.Name)
+
+		baseDomain := computed.BaseDomain
+		// XXX make these runtime calls?
+		if allocatedName.TlsInclusterTermination && computed.TlsPassthroughBaseDomain != "" {
+			baseDomain = computed.TlsPassthroughBaseDomain
 		}
+
+		computedDomain.Fqdn += "." + baseDomain
+
+		domains = append(domains, computedDomain)
 	}
 
-	baseDomain := computed.BaseDomain
-	// XXX make these runtime calls?
-	if allocatedName.TlsInclusterTermination && computed.TlsPassthroughBaseDomain != "" {
-		baseDomain = computed.TlsPassthroughBaseDomain
-	}
-
-	computedDomain.Fqdn += "." + baseDomain
-
-	domains := []*schema.Domain{computedDomain}
-
-	naming := computed.Source
-
-	for _, d := range naming.GetAdditionalTlsManaged() {
+	for _, d := range computed.GetSource().GetAdditionalTlsManaged() {
 		d := d // Capture d.
 		if d.AllocatedName == allocatedName.Key {
 			domains = append(domains, &schema.Domain{
@@ -379,7 +379,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		}
 	}
 
-	for _, d := range naming.GetAdditionalUserSpecified() {
+	for _, d := range computed.GetSource().GetAdditionalUserSpecified() {
 		if d.AllocatedName == allocatedName.Key {
 			domains = append(domains, &schema.Domain{
 				Fqdn:                    d.Fqdn,

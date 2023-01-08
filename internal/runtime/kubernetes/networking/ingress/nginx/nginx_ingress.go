@@ -173,7 +173,11 @@ func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error)
 	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
 }
 
-func (nginx) IngressAnnotations(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (map[string]string, error) {
+func (nginx) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
+	return Annotate(hasTLS, backendProtocol, extensions)
+}
+
+func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
 	annotations := kubedef.BaseAnnotations()
 
 	annotations["kubernetes.io/ingress.class"] = "nginx"
@@ -222,7 +226,7 @@ func (nginx) IngressAnnotations(hasTLS bool, backendProtocol kubedef.BackendProt
 		annotations["nginx.ingress.kubernetes.io/proxy-body-size"] = entityLimit.Limit
 	}
 
-	return annotations, nil
+	return &kubedef.IngressAnnotations{Annotations: annotations}, nil
 }
 
 func (nginx) Service() *kubedef.IngressSelector {

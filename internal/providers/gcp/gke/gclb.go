@@ -6,14 +6,16 @@ package gke
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/shared"
+	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -22,7 +24,11 @@ type gclb struct {
 }
 
 func (gclb) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
-	return nsingress.ComputeNaming(env, naming)
+	if naming.GetWithOrg() != "" {
+		return nil, fnerrors.InternalError("nscloud tls allocation not supported with gclb")
+	}
+
+	return &schema.ComputedNaming{Source: naming}, nil
 }
 
 func (gclb) Ensure(context.Context) ([]*schema.SerializedInvocation, error) {
@@ -32,13 +38,49 @@ func (gclb) Ensure(context.Context) ([]*schema.SerializedInvocation, error) {
 func (gclb) Service() *kubedef.IngressSelector             { return nil }
 func (gclb) Waiter(*rest.Config) kubedef.KubeIngressWaiter { return nil }
 
-func (gclb) IngressAnnotations(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (map[string]string, error) {
-	annotations := kubedef.BaseAnnotations()
+func (gclb) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
+	ann := &kubedef.IngressAnnotations{
+		Annotations: kubedef.BaseAnnotations(),
+	}
 
-	annotations["kubernetes.io/ingress.class"] = "gce"
+	ann.Annotations["kubernetes.io/ingress.class"] = "gce"
 
 	if backendProtocol != kubedef.BackendProtocol_HTTP {
 		return nil, fnerrors.BadInputError("only support backend protocol %q, got %q", kubedef.BackendProtocol_HTTP, backendProtocol)
+	}
+
+	var domainList uniquestrings.List
+	for _, domain := range domains {
+		if domain.TlsFrontend {
+			domainList.Add(domain.Fqdn)
+		}
+	}
+
+	if domainList.Len() > 0 {
+		domains := domainList.Strings()
+		certname := fmt.Sprintf("%s-certs", name)
+		cat := fmt.Sprintf("gclb:ManagedCertificate:%s", certname)
+
+		ann.Resources = append(ann.Resources, kubedef.Apply{
+			Description: fmt.Sprintf("Google Cloud ManagedCertificate: %s", strings.Join(domains, ", ")),
+			// JSON is used because the Google-provided typed ManagedCertificate has a Status object which
+			// is not default ommited. Which messes up our applies.
+			Resource: map[string]any{
+				"kind":       "ManagedCertificate",
+				"apiVersion": "networking.gke.io/v1",
+				"metadata": map[string]any{
+					"name":      certname,
+					"namespace": ns,
+				},
+				"spec": map[string]any{
+					"domains": domains,
+				},
+			},
+			SchedCategory: []string{cat},
+		})
+
+		ann.Annotations["networking.gke.io/managed-certificates"] = certname
+		ann.SchedAfter = append(ann.SchedAfter, cat)
 	}
 
 	// if hasTLS {
@@ -65,5 +107,5 @@ func (gclb) IngressAnnotations(hasTLS bool, backendProtocol kubedef.BackendProto
 		}
 	}
 
-	return annotations, nil
+	return ann, nil
 }

@@ -179,7 +179,7 @@ func main() {
 				}
 
 				// XXX make nginx configurable.
-				annotations, err := nginx.Ingress().IngressAnnotations(false, backendProtocol, httpExtensions)
+				annotations, err := nginx.Annotate(false, backendProtocol, httpExtensions)
 				if err != nil {
 					return err
 				}
@@ -195,7 +195,7 @@ func main() {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:        name,
 							Labels:      labels,
-							Annotations: annotations,
+							Annotations: annotations.Annotations,
 						},
 						Spec: spec,
 					},
@@ -203,6 +203,8 @@ func main() {
 						kubedef.MakeServicesCat(intent.Deployable),
 					},
 				})
+
+				out.Invocations = append(out.Invocations, annotations.Resources...)
 
 				// A fragment is emited for visualization purposes.
 				// XXX revisit "fragment" as an input, into strictly being an output.
