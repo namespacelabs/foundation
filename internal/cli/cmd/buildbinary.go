@@ -59,7 +59,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 		}).
 		With(
 			fncobra.ParseEnv(&env),
-			fncobra.ParseLocations(&cmdLocs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
+			fncobra.ParseLocations(&cmdLocs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, SupportPackageRef: true})).
 		Do(func(ctx context.Context) error {
 			registry, err := registry.GetRegistry(ctx, env)
 			if err != nil {
@@ -82,7 +82,7 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 	pl := parsing.NewPackageLoader(env)
 
 	var pkgs []*pkggraph.Package
-	for _, loc := range locs.Locs {
+	for _, loc := range locs.Refs {
 		if !locs.UserSpecified && loc.AsPackageName().Equals(orchTool) {
 			// Skip the orchestration server tool by default.
 			// TODO scale this if we see a need.
