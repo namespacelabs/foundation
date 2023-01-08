@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
 )
@@ -130,7 +129,7 @@ func groupByName(ngs []*schema.IngressFragment) []IngressGroup {
 	return groups
 }
 
-func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, env *schema.Environment, deployable runtime.Deployable, ns string, g IngressGroup) ([]defs.MakeDefinition, error) {
+func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *schema.Environment, deployable runtime.Deployable, ns string, g IngressGroup) ([]defs.MakeDefinition, error) {
 	var clearTextGrpcCount, grpcCount, nonGrpcCount int
 
 	certSecrets := MakeCertificateSecrets(ns, g.Fragments)
@@ -207,7 +206,7 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 			tlsCount++
 		}
 
-		ops, err := ingressPlanner.Map(ctx, ng.Domain, ns, g.Name)
+		ops, err := ingress.Map(ctx, ng.Domain, ns, g.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -230,16 +229,15 @@ func generateForSrv(ctx context.Context, ingressPlanner kubedef.IngressClass, en
 		return nil, fnerrors.InternalError("can't mix grpc and cleartext-grpc backends in the same ingress")
 	}
 
-	backendProtocol := "http"
+	backendProtocol := kubedef.BackendProtocol_HTTP
 	if clearTextGrpcCount > 0 {
-		backendProtocol = "grpc"
+		backendProtocol = kubedef.BackendProtocol_GRPC
 	}
 	if grpcCount > 0 {
-		backendProtocol = "grpcs"
+		backendProtocol = kubedef.BackendProtocol_GRPCS
 	}
 
-	// XXX make nginx configurable.
-	annotations, err := nginx.IngressAnnotations(tlsCount > 0, backendProtocol, extensions)
+	annotations, err := ingress.IngressAnnotations(tlsCount > 0, backendProtocol, extensions)
 	if err != nil {
 		return nil, err
 	}

@@ -76,6 +76,9 @@ func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 	}
 
 	svc := ingress.Service()
+	if svc == nil {
+		return nil, nil
+	}
 
 	ctxWithCancel, cancel := context.WithCancel(ctx)
 	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, svc.PodSelector)

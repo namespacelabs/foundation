@@ -173,11 +173,11 @@ func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error)
 	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
 }
 
-func IngressAnnotations(hasTLS bool, backendProtocol string, extensions []*anypb.Any) (map[string]string, error) {
+func (nginx) IngressAnnotations(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (map[string]string, error) {
 	annotations := kubedef.BaseAnnotations()
 
 	annotations["kubernetes.io/ingress.class"] = "nginx"
-	annotations["nginx.ingress.kubernetes.io/backend-protocol"] = strings.ToUpper(backendProtocol)
+	annotations["nginx.ingress.kubernetes.io/backend-protocol"] = strings.ToUpper(string(backendProtocol))
 
 	if hasTLS {
 		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"

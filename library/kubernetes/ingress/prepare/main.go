@@ -162,16 +162,16 @@ func main() {
 					spec.Rules = append(spec.Rules, makeRule(domain, rules))
 				}
 
-				backendProtocol := "http"
+				backendProtocol := kubedef.BackendProtocol_HTTP
 				if clearTextGrpcCount > 0 {
-					backendProtocol = "grpc"
+					backendProtocol = kubedef.BackendProtocol_GRPC
 				}
 				if grpcCount > 0 {
-					backendProtocol = "grpcs"
+					backendProtocol = kubedef.BackendProtocol_GRPCS
 				}
 
 				// XXX make nginx configurable.
-				annotations, err := nginx.IngressAnnotations(false, backendProtocol, httpExtensions)
+				annotations, err := nginx.Ingress().IngressAnnotations(false, backendProtocol, httpExtensions)
 				if err != nil {
 					return err
 				}

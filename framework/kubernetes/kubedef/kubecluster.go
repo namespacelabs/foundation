@@ -7,6 +7,7 @@ package kubedef
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -29,6 +30,14 @@ type KubeClusterNamespace interface {
 	KubeConfig() KubeConfig
 }
 
+type BackendProtocol string
+
+const (
+	BackendProtocol_HTTP  BackendProtocol = "http"
+	BackendProtocol_GRPC  BackendProtocol = "grpc"
+	BackendProtocol_GRPCS BackendProtocol = "grpcs"
+)
+
 type IngressClass interface {
 	runtime.IngressClass
 
@@ -36,6 +45,7 @@ type IngressClass interface {
 	Service() *IngressSelector
 	Waiter(*rest.Config) KubeIngressWaiter
 	Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*OpMapAddress, error)
+	IngressAnnotations(hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any) (map[string]string, error)
 }
 
 type KubeIngressWaiter interface {
