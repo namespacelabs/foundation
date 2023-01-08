@@ -120,6 +120,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 		ServerID: req.Focus.Server.Id,
 		Key:      ingressName,
 		Alias:    "grpc",
+		// XXX UserSpecified.
 	})
 	if err != nil {
 		return err

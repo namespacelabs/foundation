@@ -208,6 +208,16 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		IngressProvider: spec.IngressProvider,
 	}
 
+	if len(spec.IngressDomain) > 0 {
+		if t != schema.Endpoint_INTERNET_FACING {
+			return nil, fnerrors.InternalError("ingress domain is specified in non-ingress endpoint")
+		}
+
+		endpoint.IngressSpec = &schema.Endpoint_IngressSpec{
+			Domain: spec.IngressDomain,
+		}
+	}
+
 	if endpoint.ExportedPort == 0 {
 		endpoint.ExportedPort = spec.GetPort().GetContainerPort()
 	}

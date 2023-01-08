@@ -46,10 +46,15 @@ message Endpoint {
     }
 
     message IngressSpec {
-        repeated string domain = 1;  // If set, exposes this endpoint in the specified domains.
+        repeated DomainSpec domain = 1;  // If set, exposes this endpoint in the specified domains.
     }
 
     reserved 9;
+}
+
+message DomainSpec {
+    string fqdn         = 1;
+    bool   tls_frontend = 2;
 }
 
 message InternalEndpoint {

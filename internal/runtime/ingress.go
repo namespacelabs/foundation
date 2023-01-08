@@ -168,6 +168,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			Key:                     endpoint.AllocatedName,
 			Alias:                   endpoint.ServiceName,
 			TlsInclusterTermination: clearTextGrpcCount > 0,
+			UserSpecified:           endpoint.GetIngressSpec().GetDomain(),
 		})
 		if err != nil {
 			return nil, err
@@ -306,6 +307,8 @@ type DomainsRequest struct {
 	// terminated, regardless of whether we can emit a public-CA rooted
 	// certificate or not. E.g. for gRPC.
 	TlsInclusterTermination bool
+
+	UserSpecified []*schema.DomainSpec
 }
 
 func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
@@ -385,6 +388,15 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 				TlsInclusterTermination: false,
 			})
 		}
+	}
+
+	for _, d := range allocatedName.UserSpecified {
+		domains = append(domains, &schema.Domain{
+			Fqdn:                    d.Fqdn,
+			Managed:                 schema.Domain_USER_SPECIFIED,
+			TlsFrontend:             d.TlsFrontend,
+			TlsInclusterTermination: false,
+		})
 	}
 
 	return domains, nil

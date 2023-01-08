@@ -44,11 +44,19 @@ func main() {
 				continue
 			}
 
-			var domains []string
+			var domains []*schema.Domain
 			for _, base := range intent.ApplicationBaseDomain {
-				domains = append(domains, fmt.Sprintf("%s.%s", endpoint.AllocatedName, base))
+				domains = append(domains, &schema.Domain{
+					Fqdn:    fmt.Sprintf("%s.%s", endpoint.AllocatedName, base),
+					Managed: schema.Domain_LOCAL_MANAGED,
+				})
 			}
-			domains = append(domains, endpoint.IngressSpec.GetDomain()...)
+			for _, domain := range endpoint.GetIngressSpec().GetDomain() {
+				domains = append(domains, &schema.Domain{
+					Fqdn:    domain.Fqdn,
+					Managed: schema.Domain_USER_SPECIFIED,
+				})
+			}
 
 			if len(domains) == 0 {
 				continue
@@ -104,7 +112,7 @@ func main() {
 						for _, entry := range p.Entry {
 							rules.Paths = append(rules.Paths, makePathPrefix(entry.PathPrefix, backend))
 						}
-						spec.Rules = append(spec.Rules, makeRule(domain, rules))
+						spec.Rules = append(spec.Rules, makeRule(domain.Fqdn, rules))
 					}
 
 				case schema.GrpcProtocol, schema.ClearTextGrpcProtocol:
@@ -140,12 +148,12 @@ func main() {
 								rules.Paths = append(rules.Paths, makePathPrefix("/grpc.reflection.v1alpha.ServerReflection", backend))
 							}
 
-							spec.Rules = append(spec.Rules, makeRule(domain, rules))
+							spec.Rules = append(spec.Rules, makeRule(domain.Fqdn, rules))
 
 						case *schema.GrpcExportAllServices:
 							var rules networkingv1.HTTPIngressRuleValue
 							rules.Paths = append(rules.Paths, makePathPrefix("/", backend))
-							spec.Rules = append(spec.Rules, makeRule(domain, rules))
+							spec.Rules = append(spec.Rules, makeRule(domain.Fqdn, rules))
 
 						default:
 							return fnerrors.InternalError("unsupported grpc configuration: %v", p.ProtoReflect().Descriptor().FullName())
@@ -159,7 +167,7 @@ func main() {
 				if len(spec.Rules) == 0 {
 					var rules networkingv1.HTTPIngressRuleValue
 					rules.Paths = append(rules.Paths, makePathPrefix("/", backend))
-					spec.Rules = append(spec.Rules, makeRule(domain, rules))
+					spec.Rules = append(spec.Rules, makeRule(domain.Fqdn, rules))
 				}
 
 				backendProtocol := kubedef.BackendProtocol_HTTP
@@ -201,10 +209,7 @@ func main() {
 				fragment := &schema.IngressFragment{
 					Owner:    endpoint.EndpointOwner,
 					Endpoint: endpoint,
-					Domain: &schema.Domain{
-						Fqdn:    domain,
-						Managed: schema.Domain_LOCAL_MANAGED,
-					},
+					Domain:   domain,
 				}
 
 				for _, path := range spec.Rules {

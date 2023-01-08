@@ -47,6 +47,7 @@ type cueIngress struct {
 type CueIngressDetails struct {
 	HttpRoutes    map[string][]string `json:"httpRoutes"`
 	ProviderClass string              `json:"provider"`
+	Domains       []string            `json:"domains"`
 }
 
 var _ json.Unmarshaler = &cueIngress{}
@@ -162,6 +163,13 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		}
 
 		parsed.IngressProvider = ref
+	}
+
+	for _, domain := range svc.Ingress.Details.Domains {
+		parsed.IngressDomain = append(parsed.IngressDomain, &schema.DomainSpec{
+			Fqdn:        domain,
+			TlsFrontend: true,
+		})
 	}
 
 	if len(svc.Annotations) > 0 {
