@@ -15,26 +15,28 @@ import (
 func newGkeCmd() *cobra.Command {
 	var projectId string
 	var clusterName string
+	var experimentalGCLB bool
 
 	// The subcommand `eks` does all of the work done by the parent command in addition to
 	// writing the host configuration for the EKS cluster.
-	eksCmd := &cobra.Command{
+	gkeCmd := &cobra.Command{
 		Use:   "gke --cluster={cluster-name} --env={staging|prod} --project_id={project_id}",
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
 		Args:  cobra.NoArgs,
 		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 			return []prepare.Stage{
 				prepare.PrepareGcpProjectID(projectId),
-				prepare.PrepareGkeCluster(clusterName),
+				prepare.PrepareGkeCluster(clusterName, experimentalGCLB),
 			}, nil
 		}),
 	}
 
-	eksCmd.Flags().StringVar(&clusterName, "cluster", "", "The name of the cluster we're configuring.")
-	eksCmd.Flags().StringVar(&projectId, "project_id", projectId, "Configures the specified GCP project ID.")
+	gkeCmd.Flags().StringVar(&clusterName, "cluster", "", "The name of the cluster we're configuring.")
+	gkeCmd.Flags().StringVar(&projectId, "project_id", projectId, "Configures the specified GCP project ID.")
+	gkeCmd.Flags().BoolVar(&experimentalGCLB, "experimental_use_gclb", experimentalGCLB, "Use GCLB with GKE, rather than an incluster nginx ingress.")
 
-	_ = cobra.MarkFlagRequired(eksCmd.Flags(), "cluster")
-	_ = cobra.MarkFlagRequired(eksCmd.Flags(), "project_id")
+	_ = cobra.MarkFlagRequired(gkeCmd.Flags(), "cluster")
+	_ = cobra.MarkFlagRequired(gkeCmd.Flags(), "project_id")
 
-	return eksCmd
+	return gkeCmd
 }

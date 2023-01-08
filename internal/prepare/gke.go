@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/universe/gcp/gke"
 )
 
-func PrepareGkeCluster(clusterName string) Stage {
+func PrepareGkeCluster(clusterName string, experimentalGCLB bool) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
@@ -34,8 +34,13 @@ func PrepareGkeCluster(clusterName string) Stage {
 				Stage:      orchestration.Event_DONE,
 			}
 
+			ingressClass := "nginx"
+			if experimentalGCLB {
+				ingressClass = "gclb"
+			}
+
 			return devhost.MakeConfiguration(
-				&client.HostEnv{Provider: "gcp/gke", IngressClass: "nginx"},
+				&client.HostEnv{Provider: "gcp/gke", IngressClass: ingressClass},
 				&registry.Provider{Provider: "gcp/artifactregistry"},
 				&gke.Cluster{Name: clusterName},
 			)
