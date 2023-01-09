@@ -8,7 +8,8 @@ server: fn.#Server & {
 	framework: "GO"
 
 	import: [
-		"namespacelabs.dev/foundation/orchestration/controllers",
+		"namespacelabs.dev/foundation/orchestration/controllers/crds/revision",
+		"namespacelabs.dev/foundation/orchestration/controllers/runtimeconfig",
 		"namespacelabs.dev/foundation/orchestration/service",
 		"namespacelabs.dev/foundation/orchestration/legacycontroller", // TODO remove
 		"namespacelabs.dev/foundation/std/grpc/logging",
