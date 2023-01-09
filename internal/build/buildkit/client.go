@@ -28,7 +28,7 @@ import (
 
 var (
 	BuildkitSecrets string
-	ForwardKeychain = false
+	ForwardKeychain = true
 )
 
 const SSHAgentProviderID = "default"
