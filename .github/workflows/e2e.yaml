@@ -182,7 +182,7 @@ jobs:
     needs:
       - build_fn
       - run_e2e_tests
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     strategy:
       matrix:
         os: [ubuntu-20.04]
@@ -253,7 +253,7 @@ jobs:
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure() && github.ref_name == 'main'
+        if: failure()
 
   run_cross_repo_tests:
     name: cross-repo e2e tests
