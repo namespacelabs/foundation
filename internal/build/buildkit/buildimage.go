@@ -93,20 +93,20 @@ func (l *reqToImage) Compute(ctx context.Context, deps compute.Resolved) (oci.Im
 				}
 				if transformed != nil {
 					fmt.Fprintf(console.Debug(ctx), "buildkit: exporting to transformed registry: %q -> %v\n", v.Repository, transformed)
-					return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(v.Parent, requested, transformed))
+					return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(v.Parent, requested, transformed, v.RegistryAccess))
 				}
 			}
 		}
 
 		if !v.InsecureRegistry {
 			if ForwardKeychain {
-				return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(v.Parent, requested, nil))
+				return l.solve(ctx, c, deps, v.Keychain, exportToRegistry(v.Parent, requested, nil, v.RegistryAccess))
 			} else if v.Keychain == nil {
 				// If the target needs permissions, we don't do the direct push
 				// optimization as we don't yet wire the keychain into buildkit.
 				tasks.Attachments(ctx).AddResult("push", v.Repository)
 
-				return l.solve(ctx, c, deps, nil, exportToRegistry(v.Parent, requested, nil))
+				return l.solve(ctx, c, deps, nil, exportToRegistry(v.Parent, requested, nil, v.RegistryAccess))
 			}
 		}
 	}

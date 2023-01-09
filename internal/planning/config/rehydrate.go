@@ -41,9 +41,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 
 		allocated := registry.AttachStaticKeychain(reg, imageID, reg.Access())
 
-		opts := oci.ResolveOpts{RegistryAccess: allocated.RegistryAccess}
-
-		ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageID.RepoAndDigest(), opts)
+		ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageID.RepoAndDigest(), allocated.RegistryAccess)
 		if err != nil {
 			return nil, fnerrors.New("failed to parse: %w", err)
 		}

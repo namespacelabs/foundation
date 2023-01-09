@@ -6,6 +6,7 @@ package ecr
 
 import (
 	"context"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecr/types"
@@ -25,6 +26,10 @@ var DefaultKeychain oci.Keychain = defaultKeychain{}
 type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
+	if !strings.HasSuffix(r.RegistryStr(), ".amazonaws.com") {
+		return nil, nil
+	}
+
 	// XXX rethink this; we need more context in order to pick the right credentials.
 	session, err := awsprovider.ConfiguredSession(ctx, nil)
 	if err != nil {
@@ -44,7 +49,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 	}
 
 	// Nothing available.
-	return authn.FromConfig(authn.AuthConfig{}), nil
+	return nil, nil
 }
 
 type keychainSession struct {

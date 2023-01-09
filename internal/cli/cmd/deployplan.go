@@ -103,7 +103,7 @@ func loadPlan(ctx context.Context, image, insecure bool, path string) (*schema.D
 
 func loadPlanContents(ctx context.Context, image, insecure bool, path string) ([]byte, error) {
 	if image {
-		image, err := compute.GetValue(ctx, oci.ImageP(path, nil, oci.ResolveOpts{RegistryAccess: oci.RegistryAccess{InsecureRegistry: insecure}}))
+		image, err := compute.GetValue(ctx, oci.ImageP(path, nil, oci.RegistryAccess{InsecureRegistry: insecure}))
 		if err != nil {
 			return nil, err
 		}

@@ -22,7 +22,7 @@ const (
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {
-	image := oci.ImageP(fmt.Sprintf("%s/%s@%s", baseRepository, WebPackage, prebuilt), nil, oci.ResolveOpts{PublicImage: true})
+	image := oci.ImageP(fmt.Sprintf("%s/%s@%s", baseRepository, WebPackage, prebuilt), nil, oci.RegistryAccess{PublicImage: true})
 
 	return compute.GetValue(ctx, serveFS(image, "app/dist/" /* pathPrefix */, true /* spa */))
 }

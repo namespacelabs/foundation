@@ -14,14 +14,14 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PrebuiltResolveOpts() oci.ResolveOpts {
+func PrebuiltResolveOpts() oci.RegistryAccess {
 	// We assume all prebuilts are public, unless noted otherwise.
-	return oci.ResolveOpts{
+	return oci.RegistryAccess{
 		PublicImage: true,
 	}
 }
 
-func PrebuiltPlan(imgid oci.ImageID, platformIndependent bool, opts oci.ResolveOpts) Spec {
+func PrebuiltPlan(imgid oci.ImageID, platformIndependent bool, opts oci.RegistryAccess) Spec {
 	return prebuilt{imgid, platformIndependent, opts}
 }
 
@@ -35,7 +35,7 @@ func IsPrebuilt(spec Spec) (oci.ImageID, bool) {
 type prebuilt struct {
 	imgid               oci.ImageID
 	platformIndependent bool
-	opts                oci.ResolveOpts
+	opts                oci.RegistryAccess
 }
 
 func (p prebuilt) BuildImage(ctx context.Context, _ pkggraph.SealedContext, conf Configuration) (compute.Computable[oci.Image], error) {

@@ -6,6 +6,7 @@ package registry
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -19,6 +20,10 @@ type keychain struct {
 }
 
 func (d keychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
+	if !strings.HasSuffix(r.RegistryStr(), ".pkg.dev") {
+		return nil, nil
+	}
+
 	ts := d.ts
 	if ts == nil {
 		ts = gcloud.NewTokenSource(ctx)

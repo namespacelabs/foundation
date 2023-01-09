@@ -26,6 +26,7 @@ type AllocatedRepository struct {
 
 type RegistryAccess struct {
 	InsecureRegistry bool
+	PublicImage      bool
 	Keychain         Keychain
 	Transport        *registry.RegistryTransport
 }

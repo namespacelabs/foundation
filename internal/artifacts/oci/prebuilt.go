@@ -15,13 +15,13 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func Prebuilt(imgid ImageID, opts ResolveOpts) compute.Computable[ResolvableImage] {
+func Prebuilt(imgid ImageID, opts RegistryAccess) compute.Computable[ResolvableImage] {
 	return &fetchPrebuilt{imgid: imgid, opts: opts}
 }
 
 type fetchPrebuilt struct {
 	imgid ImageID
-	opts  ResolveOpts // Does not affect output.
+	opts  RegistryAccess // Does not affect output.
 
 	compute.DoScoped[ResolvableImage]
 }

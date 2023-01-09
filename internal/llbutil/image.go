@@ -21,7 +21,7 @@ func Prebuilt(ctx context.Context, ref string, platform specs.Platform) (llb.Sta
 		return Image(ref, platform), nil
 	}
 
-	image, err := compute.GetValue(ctx, oci.ImageP(ref, &platform, oci.ResolveOpts{PublicImage: true}))
+	image, err := compute.GetValue(ctx, oci.ImageP(ref, &platform, oci.RegistryAccess{PublicImage: true}))
 	if err != nil {
 		return llb.State{}, err
 	}

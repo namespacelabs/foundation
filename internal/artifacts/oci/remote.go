@@ -45,10 +45,14 @@ func userAgent() remote.Option {
 	return remote.WithUserAgent(fmt.Sprintf("NamespaceCLI/%d", versions.Builtin().APIVersion))
 }
 
-func WriteRemoteOptsWithAuth(ctx context.Context, access RegistryAccess) ([]remote.Option, error) {
+func RemoteOptsWithAuth(ctx context.Context, access RegistryAccess, writeAccess bool) ([]remote.Option, error) {
 	options := []remote.Option{
-		remote.WithContext(ctx), remote.WithAuthFromKeychain(keychainSequence{ctx, access.Keychain, true}),
+		remote.WithContext(ctx),
 		userAgent(),
+	}
+
+	if !access.PublicImage {
+		options = append(options, remote.WithAuthFromKeychain(keychainSequence{ctx, access.Keychain, writeAccess}))
 	}
 
 	transportOptions, err := parseTransport(ctx, access.Transport)
@@ -61,7 +65,7 @@ func WriteRemoteOptsWithAuth(ctx context.Context, access RegistryAccess) ([]remo
 	return options, nil
 }
 
-func ParseRefAndKeychain(ctx context.Context, imageRef string, opts ResolveOpts) (name.Reference, []remote.Option, error) {
+func ParseRefAndKeychain(ctx context.Context, imageRef string, opts RegistryAccess) (name.Reference, []remote.Option, error) {
 	var nameOpts []name.Option
 	if opts.InsecureRegistry {
 		nameOpts = append(nameOpts, name.Insecure)
@@ -72,22 +76,10 @@ func ParseRefAndKeychain(ctx context.Context, imageRef string, opts ResolveOpts)
 		return nil, nil, err
 	}
 
-	options := []remote.Option{remote.WithContext(ctx), userAgent()}
-
-	if !opts.PublicImage {
-		if opts.Keychain != nil {
-			options = append(options, remote.WithAuthFromKeychain(keychainSequence{ctx, opts.Keychain, false}))
-		} else {
-			options = append(options, remote.WithAuthFromKeychain(defaultKeychain{ctx, false}))
-		}
-	}
-
-	transportOptions, err := parseTransport(ctx, opts.Transport)
+	options, err := RemoteOptsWithAuth(ctx, opts, false)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	options = append(options, transportOptions...)
 
 	return ref, options, nil
 }

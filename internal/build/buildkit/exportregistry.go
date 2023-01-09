@@ -18,20 +18,24 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func exportToRegistry(parent any, original ExportToRegistryRequest, rewritten *ExportToRegistryRequest) exporter[oci.Image] {
+func exportToRegistry(parent any, original ExportToRegistryRequest, rewritten *ExportToRegistryRequest, registryAccess oci.RegistryAccess) exporter[oci.Image] {
 	if rewritten == nil {
 		rewritten = &original
 	}
-	return &exportRegistry{parent: parent, requested: original, target: *rewritten}
+
+	return &exportRegistry{parent: parent, requested: original, target: *rewritten, registryAccess: registryAccess}
 }
 
 type exportRegistry struct {
-	parent    any
-	requested ExportToRegistryRequest
-	target    ExportToRegistryRequest
+	parent         any
+	requested      ExportToRegistryRequest
+	target         ExportToRegistryRequest
+	registryAccess oci.RegistryAccess
 
 	parsed name.Repository
 }
+
+func (e *exportRegistry) Kind() string { return "registry" }
 
 func (e *exportRegistry) Prepare(ctx context.Context) error {
 	p, err := name.NewRepository(e.requested.Name, e.nameOpts()...)
@@ -76,7 +80,12 @@ func (e *exportRegistry) Provide(ctx context.Context, res *client.SolveResponse,
 	}
 
 	img, err := compute.WithGraphLifecycle(ctx, func(ctx context.Context) (oci.Image, error) {
-		return remote.Image(p, remote.WithContext(ctx))
+		options, err := oci.RemoteOptsWithAuth(ctx, e.registryAccess, false)
+		if err != nil {
+			return nil, err
+		}
+
+		return remote.Image(p, options...)
 	})
 	if err != nil {
 		return nil, err

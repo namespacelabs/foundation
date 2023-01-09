@@ -22,6 +22,8 @@ type exportFS struct {
 	outputDir string
 }
 
+func (e *exportFS) Kind() string { return "local-fs" }
+
 func (e *exportFS) Prepare(ctx context.Context) error {
 	dir, err := dirs.CreateUserTempDir("buildkit", "fs")
 	if err != nil {

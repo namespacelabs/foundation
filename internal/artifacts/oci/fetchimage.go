@@ -21,11 +21,11 @@ import (
 )
 
 func ResolveImage(ref string, platform specs.Platform) NamedImage {
-	return MakeNamedImage(ref, ImageP(ref, &platform, ResolveOpts{}))
+	return MakeNamedImage(ref, ImageP(ref, &platform, RegistryAccess{}))
 }
 
 // Returns a Computable which constraints on platform if one is specified.
-func ImageP(ref string, platform *specs.Platform, opts ResolveOpts) compute.Computable[Image] {
+func ImageP(ref string, platform *specs.Platform, opts RegistryAccess) compute.Computable[Image] {
 	imageID := ResolveDigest(ref, opts)
 	return &fetchImage{
 		imageid:    imageID,
@@ -51,7 +51,7 @@ type fetchImage struct {
 	imageid    NamedImageID
 	descriptor compute.Computable[*RawDescriptor]
 	platform   *specs.Platform
-	opts       ResolveOpts // Does not affect output.
+	opts       RegistryAccess // Does not affect output.
 
 	compute.DoScoped[Image] // Need long-lived ctx, as it's captured to fetch Layers.
 }
@@ -98,7 +98,7 @@ func (r *fetchImage) Compute(ctx context.Context, deps compute.Resolved) (Image,
 	return nil, fnerrors.BadInputError("unexpected media type: %s (expected image or image index)", descriptor.MediaType)
 }
 
-func cacheAndReturn(ctx context.Context, d ImageID, opts ResolveOpts) (Image, error) {
+func cacheAndReturn(ctx context.Context, d ImageID, opts RegistryAccess) (Image, error) {
 	h, err := v1.NewHash(d.Digest)
 	if err != nil {
 		return nil, fnerrors.InternalError("failed to parse digest: %w", err)
@@ -153,7 +153,7 @@ func EnsureCached(ctx context.Context, img Image) (Image, error) {
 	})
 }
 
-func FetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (Image, error) {
+func FetchRemoteImage(ctx context.Context, imageid ImageID, opts RegistryAccess) (Image, error) {
 	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageid.RepoAndDigest(), opts)
 	if err != nil {
 		return nil, fnerrors.InternalError("%s: failed to parse: %w", imageid.RepoAndDigest(), err)
@@ -167,7 +167,7 @@ func FetchRemoteImage(ctx context.Context, imageid ImageID, opts ResolveOpts) (I
 	return img, nil
 }
 
-func fetchRemoteDescriptor(ctx context.Context, imageRef string, opts ResolveOpts) (*remote.Descriptor, error) {
+func fetchRemoteDescriptor(ctx context.Context, imageRef string, opts RegistryAccess) (*remote.Descriptor, error) {
 	ref, remoteOpts, err := ParseRefAndKeychain(ctx, imageRef, opts)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ func ParseRef(imageRef string, insecure bool) (name.Reference, error) {
 
 type fetchDescriptor struct {
 	imageID NamedImageID
-	opts    ResolveOpts
+	opts    RegistryAccess
 	compute.LocalScoped[*RawDescriptor]
 }
 

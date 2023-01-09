@@ -242,19 +242,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 		return res, err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exported: %v\n", sid, solveRes.ExporterResponse)
+	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exported (%s): %v\n", sid, exp.Kind(), solveRes.ExporterResponse)
 
 	return exp.Provide(ctx, solveRes, c.BuildkitOpts())
-}
-
-func Unwrap(c compute.Computable[oci.Image]) (llb.State, []LocalContents, bool) {
-	image, ok := c.(*reqToImage)
-	if ok {
-		v, ok := compute.IsPrecomputed(image.req)
-		if ok && v != nil && v.OriginalState != nil {
-			return *v.OriginalState, image.localDirs, true
-		}
-	}
-
-	return llb.State{}, nil, false
 }

@@ -103,6 +103,10 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
+	if !strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") {
+		return nil, nil
+	}
+
 	user, err := fnapi.LoadUser()
 	if err != nil {
 		return nil, err

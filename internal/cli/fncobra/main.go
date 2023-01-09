@@ -14,7 +14,7 @@ import (
 	"runtime/pprof"
 
 	containerdlog "github.com/containerd/containerd/log"
-	"github.com/google/go-containerregistry/pkg/logs"
+	crlogs "github.com/google/go-containerregistry/pkg/logs"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -181,7 +181,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		binary.BuildStaticFilesServer = genbinary.StaticFilesServerBuilder
 
 		// Setting up container registry logging, which is unfortunately global.
-		logs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
+		crlogs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
 		parsing.ExtendNodeHook = append(parsing.ExtendNodeHook, func(ctx context.Context, packages pkggraph.PackageLoader, l pkggraph.Location, n *schema.Node) (*parsing.ExtendNodeHookResult, error) {
 			// Resolve doesn't require that the package actually exists. It just forces loading the module.

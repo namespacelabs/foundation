@@ -23,6 +23,7 @@ import (
 const KeySourceDateEpoch = "source-date-epoch"
 
 type exporter[V any] interface {
+	Kind() string
 	Prepare(context.Context) error
 	Exports() []client.ExportEntry
 	Provide(context.Context, *client.SolveResponse, builtkitOpts) (V, error)
@@ -39,6 +40,8 @@ func exportToImage(opts builtkitOpts) exporter[oci.Image] {
 type exportImage struct {
 	output *os.File
 }
+
+func (e *exportImage) Kind() string { return "image" }
 
 func (e *exportImage) Prepare(ctx context.Context) error {
 	f, err := dirs.CreateUserTemp("buildkit", "image")
@@ -85,6 +88,8 @@ func (e *exportImage) Provide(ctx context.Context, _ *client.SolveResponse, opts
 type exportOCILayout struct {
 	output string
 }
+
+func (e *exportOCILayout) Kind() string { return "oci-layout" }
 
 func (e *exportOCILayout) Prepare(ctx context.Context) error {
 	f, err := dirs.CreateUserTempDir("buildkit", "image")
