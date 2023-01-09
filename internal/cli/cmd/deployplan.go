@@ -6,11 +6,9 @@ package cmd
 
 import (
 	"context"
-	"io"
 	"io/fs"
 	"os"
 
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -18,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -108,9 +105,7 @@ func loadPlanContents(ctx context.Context, image, insecure bool, path string) ([
 			return nil, err
 		}
 
-		fsys := tarfs.FS{TarStream: func() (io.ReadCloser, error) { return mutate.Extract(image), nil }}
-
-		return fs.ReadFile(fsys, "deployplan.binarypb")
+		return fs.ReadFile(oci.ImageAsFS(image), "deployplan.binarypb")
 	}
 
 	return os.ReadFile(path)

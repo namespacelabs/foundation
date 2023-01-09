@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/fs"
 
 	"github.com/dustin/go-humanize"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -143,7 +144,7 @@ func printContents(ctx context.Context, img v1.Image, filename string) error {
 	out := console.Stdout(ctx)
 
 	if filename != "" {
-		contents, err := oci.ReadFileFromImage(ctx, img, filename)
+		contents, err := fs.ReadFile(oci.ImageAsFS(img), filename)
 		if err == nil {
 			_, _ = console.Stdout(ctx).Write(contents)
 		}

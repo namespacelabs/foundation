@@ -7,18 +7,15 @@ package devsession
 import (
 	"bytes"
 	"context"
-	"io"
 	"io/fs"
 	"net/http"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/gorilla/mux"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/bytestream"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -45,13 +42,7 @@ func (m *fsServing) Inputs() *compute.In {
 func (m *fsServing) Compute(ctx context.Context, deps compute.Resolved) (*mux.Router, error) {
 	image, _ := compute.GetDep(deps, m.image, "image")
 
-	fsys := tarfs.FS{
-		TarStream: func() (io.ReadCloser, error) {
-			return mutate.Extract(image.Value), nil
-		},
-	}
-
-	return muxFromFS(ctx, fsys, image.Digest, image.Completed, m.spa, m.pathPrefix)
+	return muxFromFS(ctx, oci.ImageAsFS(image.Value), image.Digest, image.Completed, m.spa, m.pathPrefix)
 }
 
 func muxFromFS(ctx context.Context, fsys fs.FS, d schema.Digest, ts time.Time, spa bool, pathPrefix string) (*mux.Router, error) {

@@ -7,12 +7,10 @@ package orchestration
 import (
 	"context"
 	"fmt"
-	"io"
 	"io/fs"
 	"net"
 	"time"
 
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
@@ -22,7 +20,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs/tarfs"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
@@ -168,9 +165,7 @@ func deployPlan(ctx context.Context, env cfg.Context, repository, digest string,
 			return nil, err
 		}
 
-		fsys := tarfs.FS{TarStream: func() (io.ReadCloser, error) { return mutate.Extract(image), nil }}
-
-		data, err := fs.ReadFile(fsys, deployPlanFile)
+		data, err := fs.ReadFile(oci.ImageAsFS(image), deployPlanFile)
 		if err != nil {
 			return nil, err
 		}
