@@ -131,20 +131,18 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 		}
 
 		for _, image := range resolvables {
-			var tag compute.Computable[oci.AllocatedRepository]
+			var repository compute.Computable[oci.RepositoryWithParent]
 			if baseRepository != "" {
-				tag = registry.StaticName(nil, oci.ImageID{
-					Repository: filepath.Join(baseRepository, pkg.PackageName().String()),
-				}, oci.RegistryAccess{})
+				repository = registry.StaticRepository(nil, filepath.Join(baseRepository, pkg.PackageName().String()), oci.RegistryAccess{})
 			} else {
-				tag = reg.AllocateName(pkg.PackageName().String())
+				repository = reg.AllocateName(pkg.PackageName().String())
 			}
 
 			var img compute.Computable[oci.ImageID]
 			if opts.publishToDocker {
-				img = docker.PublishImage(tag, image)
+				img = docker.PublishImage(repository, image)
 			} else {
-				img = oci.PublishResolvable(tag, image, nil)
+				img = oci.PublishResolvable(repository, image, nil)
 			}
 			images = append(images, fromImage(pkg.PackageName(), img))
 		}

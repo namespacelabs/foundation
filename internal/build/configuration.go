@@ -15,7 +15,7 @@ import (
 
 type buildTarget struct {
 	target *specs.Platform
-	name   compute.Computable[oci.AllocatedRepository]
+	name   compute.Computable[oci.RepositoryWithParent]
 }
 
 type buildConfiguration struct {
@@ -30,7 +30,7 @@ func NewBuildTarget(target *specs.Platform) *buildTarget {
 	return &buildTarget{target: target}
 }
 
-func (c *buildTarget) WithTargetName(name compute.Computable[oci.AllocatedRepository]) *buildTarget {
+func (c *buildTarget) WithTargetName(name compute.Computable[oci.RepositoryWithParent]) *buildTarget {
 	c.name = name
 	return c
 }
@@ -79,11 +79,11 @@ func CopyConfiguration(b Configuration) *buildConfiguration {
 	return t.WithSourcePackage(b.SourcePackage()).WithSourceLabel(b.SourceLabel()).WithPrefersBuildkit(b.PrefersBuildkit()).WithWorkspace(b.Workspace())
 }
 
-func (c *buildTarget) TargetPlatform() *specs.Platform                          { return c.target }
-func (c *buildTarget) PublishName() compute.Computable[oci.AllocatedRepository] { return c.name }
+func (c *buildTarget) TargetPlatform() *specs.Platform                           { return c.target }
+func (c *buildTarget) PublishName() compute.Computable[oci.RepositoryWithParent] { return c.name }
 
 func (d *buildConfiguration) TargetPlatform() *specs.Platform { return d.buildTarget.target }
-func (d *buildConfiguration) PublishName() compute.Computable[oci.AllocatedRepository] {
+func (d *buildConfiguration) PublishName() compute.Computable[oci.RepositoryWithParent] {
 	return d.buildTarget.name
 }
 func (d *buildConfiguration) SourcePackage() schema.PackageName { return d.source }

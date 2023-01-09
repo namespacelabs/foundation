@@ -85,7 +85,7 @@ type ClientFactory interface {
 	MakeClient(context.Context) (*GatewayClient, error)
 }
 
-func MakeImage(makeClient ClientFactory, conf build.BuildTarget, req compute.Computable[*FrontendRequest], localDirs []LocalContents, targetName compute.Computable[oci.AllocatedRepository]) compute.Computable[oci.Image] {
+func MakeImage(makeClient ClientFactory, conf build.BuildTarget, req compute.Computable[*FrontendRequest], localDirs []LocalContents, targetName compute.Computable[oci.RepositoryWithParent]) compute.Computable[oci.Image] {
 	base := &baseRequest[oci.Image]{
 		sourceLabel:    conf.SourceLabel(),
 		sourcePackage:  conf.SourcePackage(),

@@ -22,7 +22,7 @@ import (
 
 func BuildSpec() build.Spec { return debugShellBuild{} }
 
-func Image(ctx context.Context, env pkggraph.SealedContext, platforms []specs.Platform, tag compute.Computable[oci.AllocatedRepository]) (compute.Computable[oci.ImageID], error) {
+func Image(ctx context.Context, env pkggraph.SealedContext, platforms []specs.Platform, tag compute.Computable[oci.RepositoryWithParent]) (compute.Computable[oci.ImageID], error) {
 	prepared, err := multiplatform.PrepareMultiPlatformImage(ctx, env, build.Plan{
 		SourceLabel: "debugshell.image",
 		Spec:        BuildSpec(),

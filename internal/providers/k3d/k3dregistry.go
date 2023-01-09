@@ -74,11 +74,11 @@ func (r *k3dRegistry) baseUrl() string {
 	return fmt.Sprintf("%s:%s", r.ContainerName, r.PublicPort)
 }
 
-func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
 	return registry.AllocateStaticName(r, r.baseUrl(), repository, r.Access())
 }
 
-func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.AllocatedRepository) (*buildkit.ExportToRegistryRequest, *buildkit.ExportToRegistryRequest) {
+func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.RepositoryWithParent) (*buildkit.ExportToRegistryRequest, *buildkit.ExportToRegistryRequest) {
 	// There are some assumptions baked into this that are not verified at
 	// runtime, notably that buildkit and the registry are deployed to the same
 	// docker instance.
@@ -101,9 +101,9 @@ func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.A
 	return nil, nil
 }
 
-func (r *k3dRegistry) CheckRewriteLocalUse(target oci.TargetRepository) *oci.TargetRepository {
-	if x := strings.TrimPrefix(target.ImageID.Repository, r.baseUrl()+"/"); x != target.ImageID.Repository {
-		target.ImageID.Repository = fmt.Sprintf("127.0.0.1:%s/%s", r.PublicPort, x)
+func (r *k3dRegistry) CheckRewriteLocalUse(target oci.RepositoryWithAccess) *oci.RepositoryWithAccess {
+	if x := strings.TrimPrefix(target.Repository, r.baseUrl()+"/"); x != target.Repository {
+		target.Repository = fmt.Sprintf("127.0.0.1:%s/%s", r.PublicPort, x)
 		return &target
 	}
 	return nil

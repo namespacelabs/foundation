@@ -37,7 +37,7 @@ func Register(name string, make func(context.Context, cfg.Configuration) (Manage
 type Manager interface {
 	Access() oci.RegistryAccess
 
-	AllocateName(repository string) compute.Computable[oci.AllocatedRepository]
+	AllocateName(repository string) compute.Computable[oci.RepositoryWithParent]
 }
 
 func GetRegistry(ctx context.Context, env cfg.Context) (Manager, error) {
@@ -88,32 +88,32 @@ func getRegistryByName(ctx context.Context, conf cfg.Configuration, name string)
 	return nil, fnerrors.New("%q is not a known registry provider", name)
 }
 
-func StaticName(parent Manager, imageID oci.ImageID, access oci.RegistryAccess) compute.Computable[oci.AllocatedRepository] {
-	return compute.Map(tasks.Action("registry.allocate-tag").Arg("ref", imageID.ImageRef()), compute.Inputs().
+func StaticRepository(parent Manager, repository string, access oci.RegistryAccess) compute.Computable[oci.RepositoryWithParent] {
+	return compute.Map(tasks.Action("registry.static-repository").Arg("repository", repository), compute.Inputs().
 		Bool("insecure", access.InsecureRegistry).
 		Proto("transport", access.Transport).
-		JSON("imageID", imageID).
+		JSON("repository", repository).
 		Indigestible("parent", parent).
 		Indigestible("keychain", access.Keychain),
 		compute.Output{NotCacheable: true},
-		func(ctx context.Context, r compute.Resolved) (oci.AllocatedRepository, error) {
-			return oci.AllocatedRepository{
+		func(ctx context.Context, r compute.Resolved) (oci.RepositoryWithParent, error) {
+			return oci.RepositoryWithParent{
 				Parent: parent,
-				TargetRepository: oci.TargetRepository{
+				RepositoryWithAccess: oci.RepositoryWithAccess{
 					RegistryAccess: access,
-					ImageID:        imageID,
+					Repository:     repository,
 				},
 			}, nil
 		})
 }
 
-func Precomputed(tag oci.AllocatedRepository) compute.Computable[oci.AllocatedRepository] {
+func Precomputed(tag oci.RepositoryWithParent) compute.Computable[oci.RepositoryWithParent] {
 	return precomputedTag{tag: tag}
 }
 
 type precomputedTag struct {
-	tag oci.AllocatedRepository
-	compute.PrecomputeScoped[oci.AllocatedRepository]
+	tag oci.RepositoryWithParent
+	compute.PrecomputeScoped[oci.RepositoryWithParent]
 }
 
 var _ compute.Digestible = precomputedTag{}
@@ -127,10 +127,10 @@ func (r precomputedTag) Output() compute.Output {
 }
 
 func (r precomputedTag) Action() *tasks.ActionEvent {
-	return tasks.Action("registry.tag").Arg("ref", r.tag.ImageRef())
+	return tasks.Action("registry.precomputed-repository").Arg("repository", r.tag.Repository)
 }
 
-func (r precomputedTag) Compute(ctx context.Context, _ compute.Resolved) (oci.AllocatedRepository, error) {
+func (r precomputedTag) Compute(ctx context.Context, _ compute.Resolved) (oci.RepositoryWithParent, error) {
 	return r.tag, nil
 }
 

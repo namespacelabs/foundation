@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func pushImage(ctx context.Context, tag TargetRepository, img v1.Image, trackProgress bool) (v1.Hash, error) {
+func pushImage(ctx context.Context, tag RepositoryWithAccess, img v1.Image, trackProgress bool) (v1.Hash, error) {
 	digest, err := img.Digest()
 	if err != nil {
 		return v1.Hash{}, fnerrors.InternalError("digest missing on %q: %w", reflect.TypeOf(img).String(), err)
@@ -43,7 +43,7 @@ func pushImage(ctx context.Context, tag TargetRepository, img v1.Image, trackPro
 	return digest, nil
 }
 
-func pushImageIndex(ctx context.Context, tag TargetRepository, img v1.ImageIndex, trackProgress bool) error {
+func pushImageIndex(ctx context.Context, tag RepositoryWithAccess, img v1.ImageIndex, trackProgress bool) error {
 	digest, err := img.Digest()
 	if err != nil {
 		return err

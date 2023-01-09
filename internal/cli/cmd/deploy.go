@@ -89,7 +89,7 @@ func NewDeployCmd() *cobra.Command {
 			// When uploading a plan, any server and container images should be
 			// pushed to the same repository, so they're accessible by the plan.
 
-			var target compute.Computable[oci.AllocatedRepository]
+			var target compute.Computable[oci.RepositoryWithParent]
 			if uploadTo != "" {
 				if uploadToRegistry {
 					target = p.Registry.AllocateName(uploadTo)
@@ -97,9 +97,7 @@ func NewDeployCmd() *cobra.Command {
 					p.Registry = registry.MakeStaticRegistry(&buildr.Registry{
 						Url: uploadTo,
 					})
-					target = registry.Precomputed(registry.AttachStaticKeychain(nil, oci.ImageID{
-						Repository: filepath.Join(uploadTo, "plan"),
-					}, oci.RegistryAccess{}))
+					target = registry.Precomputed(registry.AttachStaticKeychain(nil, filepath.Join(uploadTo, "plan"), oci.RegistryAccess{}))
 					uploadToRegistry = true
 				}
 			}
@@ -254,7 +252,7 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 	return nil
 }
 
-func uploadPlanTo(ctx context.Context, target compute.Computable[oci.AllocatedRepository], plan *schema.DeployPlan) error {
+func uploadPlanTo(ctx context.Context, target compute.Computable[oci.RepositoryWithParent], plan *schema.DeployPlan) error {
 	any, err := anypb.New(plan)
 	if err != nil {
 		return err

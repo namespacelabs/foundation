@@ -32,7 +32,7 @@ type ResolvableImage interface {
 	Image() (Image, error)
 	ImageForPlatform(specs.Platform) (Image, error)
 	ImageIndex() (ImageIndex, error)
-	Push(context.Context, TargetRepository, bool) (v1.Hash, error)
+	Push(context.Context, RepositoryWithAccess, bool) (v1.Hash, error)
 
 	cache(context.Context, cache.Cache) (schema.Digest, error)
 }
@@ -91,7 +91,7 @@ func (raw rawImage) ImageIndex() (ImageIndex, error) {
 	return nil, fnerrors.InternalError("expected an image index, saw an image")
 }
 
-func (raw rawImage) Push(ctx context.Context, tag TargetRepository, trackProgress bool) (v1.Hash, error) {
+func (raw rawImage) Push(ctx context.Context, tag RepositoryWithAccess, trackProgress bool) (v1.Hash, error) {
 	return pushImage(ctx, tag, raw.image, trackProgress)
 }
 
@@ -127,7 +127,7 @@ func (raw rawImageIndex) ImageIndex() (ImageIndex, error) {
 	return raw.index, nil
 }
 
-func (raw rawImageIndex) Push(ctx context.Context, tag TargetRepository, trackProgress bool) (v1.Hash, error) {
+func (raw rawImageIndex) Push(ctx context.Context, tag RepositoryWithAccess, trackProgress bool) (v1.Hash, error) {
 	digest, err := raw.index.Digest()
 	if err != nil {
 		return v1.Hash{}, err

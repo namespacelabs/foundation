@@ -47,12 +47,12 @@ func (m manager) Access() oci.RegistryAccess {
 	}
 }
 
-func (m manager) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+func (m manager) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
 	return compute.Inline(tasks.Action("artifactregistry.allocate-repository").Arg("repository", repository),
-		func(ctx context.Context) (oci.AllocatedRepository, error) {
+		func(ctx context.Context) (oci.RepositoryWithParent, error) {
 			client, err := artifactregistry.NewClient(ctx, option.WithTokenSource(m.cluster.TokenSource))
 			if err != nil {
-				return oci.AllocatedRepository{}, err
+				return oci.RepositoryWithParent{}, err
 			}
 
 			const repoID = "namespace-managed"
@@ -66,24 +66,22 @@ func (m manager) AllocateName(repository string) compute.Computable[oci.Allocate
 			})
 			if err != nil {
 				if status.Code(err) != codes.AlreadyExists {
-					return oci.AllocatedRepository{}, fnerrors.InvocationError("gcp/artifactregistry", "failed to construct request: %w", err)
+					return oci.RepositoryWithParent{}, fnerrors.InvocationError("gcp/artifactregistry", "failed to construct request: %w", err)
 				}
 			} else if err == nil {
 				if _, err := op.Wait(ctx); err != nil {
-					return oci.AllocatedRepository{}, fnerrors.InvocationError("gcp/artifactregistry", "failed: %w", err)
+					return oci.RepositoryWithParent{}, fnerrors.InvocationError("gcp/artifactregistry", "failed: %w", err)
 				}
 			}
 
-			repo := oci.TargetRepository{
+			repo := oci.RepositoryWithAccess{
 				RegistryAccess: m.Access(),
-				ImageID: oci.ImageID{
-					Repository: fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s", location, m.cluster.ProjectID, repoID, repository),
-				},
+				Repository:     fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s", location, m.cluster.ProjectID, repoID, repository),
 			}
 
-			return oci.AllocatedRepository{
-				Parent:           m,
-				TargetRepository: repo,
+			return oci.RepositoryWithParent{
+				Parent:               m,
+				RepositoryWithAccess: repo,
 			}, nil
 		})
 }

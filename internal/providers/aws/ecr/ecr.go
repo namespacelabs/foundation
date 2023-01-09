@@ -56,7 +56,7 @@ func (em ecrManager) Access() oci.RegistryAccess {
 	}
 }
 
-func (em ecrManager) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+func (em ecrManager) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
 	keychain := keychainSession(em)
 
 	var repo compute.Computable[string] = &makeRepository{
@@ -68,18 +68,16 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Allo
 	return compute.Map(tasks.Action("ecr.allocate-repository").Category("aws"),
 		compute.Inputs().Str("repository", repository).Computable("repo", repo),
 		compute.Output{},
-		func(ctx context.Context, deps compute.Resolved) (oci.AllocatedRepository, error) {
-			imgid := oci.ImageID{
-				Repository: compute.MustGetDepValue(deps, repo, "repo"),
-			}
+		func(ctx context.Context, deps compute.Resolved) (oci.RepositoryWithParent, error) {
+			repository := compute.MustGetDepValue(deps, repo, "repo")
 
-			tasks.Attachments(ctx).AddResult("repository", imgid.Repository)
+			tasks.Attachments(ctx).AddResult("repository", repository)
 
-			return oci.AllocatedRepository{
+			return oci.RepositoryWithParent{
 				Parent: em,
-				TargetRepository: oci.TargetRepository{
+				RepositoryWithAccess: oci.RepositoryWithAccess{
 					RegistryAccess: em.Access(),
-					ImageID:        imgid,
+					Repository:     repository,
 				},
 			}, nil
 		},

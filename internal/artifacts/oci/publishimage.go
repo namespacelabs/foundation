@@ -13,7 +13,7 @@ import (
 )
 
 type TargetRewritter interface {
-	CheckRewriteLocalUse(TargetRepository) *TargetRepository
+	CheckRewriteLocalUse(RepositoryWithAccess) *RepositoryWithAccess
 }
 
 type ImageSource interface {
@@ -23,11 +23,11 @@ type ImageSource interface {
 
 var ConvertImagesToEstargz = false
 
-func PublishImage(tag compute.Computable[AllocatedRepository], image NamedImage) NamedImageID {
+func PublishImage(tag compute.Computable[RepositoryWithParent], image NamedImage) NamedImageID {
 	return MakeNamedImageID(image.Description(), &publishImage{tag: tag, label: image.Description(), image: AsResolvable(image.Image())})
 }
 
-func PublishResolvable(tag compute.Computable[AllocatedRepository], image compute.Computable[ResolvableImage], source ImageSource) compute.Computable[ImageID] {
+func PublishResolvable(tag compute.Computable[RepositoryWithParent], image compute.Computable[ResolvableImage], source ImageSource) compute.Computable[ImageID] {
 	if ConvertImagesToEstargz {
 		image = &convertToEstargz{resolvable: image}
 	}
@@ -45,7 +45,7 @@ func PublishResolvable(tag compute.Computable[AllocatedRepository], image comput
 }
 
 type publishImage struct {
-	tag         compute.Computable[AllocatedRepository]
+	tag         compute.Computable[RepositoryWithParent]
 	image       compute.Computable[ResolvableImage]
 	label       string // Does not affect the output.
 	sourceLabel string // Does not affect the output.
@@ -74,9 +74,9 @@ func (pi *publishImage) Action() *tasks.ActionEvent {
 
 func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (ImageID, error) {
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
-	tasks.Attachments(ctx).AddResult("ref", tag.ImageRef())
+	tasks.Attachments(ctx).AddResult("repository", tag.Repository)
 
-	target := tag.TargetRepository
+	target := tag.RepositoryWithAccess
 	if tag.Parent != nil {
 		if x, ok := tag.Parent.(TargetRewritter); ok {
 			if newTarget := x.CheckRewriteLocalUse(target); newTarget != nil {
@@ -91,5 +91,5 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (Ima
 	}
 
 	// Use the original name, not the rewritten one, for readability purposes.
-	return tag.TargetRepository.WithDigest(digest), nil
+	return ImageID{Repository: tag.Repository, Digest: digest.String()}, nil
 }

@@ -13,12 +13,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func PublishImage(tag compute.Computable[oci.AllocatedRepository], image compute.Computable[oci.ResolvableImage]) compute.Computable[oci.ImageID] {
+func PublishImage(tag compute.Computable[oci.RepositoryWithParent], image compute.Computable[oci.ResolvableImage]) compute.Computable[oci.ImageID] {
 	return &publishImage{tag: tag, image: image}
 }
 
 type publishImage struct {
-	tag   compute.Computable[oci.AllocatedRepository]
+	tag   compute.Computable[oci.RepositoryWithParent]
 	image compute.Computable[oci.ResolvableImage]
 
 	compute.LocalScoped[oci.ImageID]
@@ -40,7 +40,7 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci
 	tag := compute.MustGetDepValue(deps, pi.tag, "tag")
 	resolvable := compute.MustGetDepValue(deps, pi.image, "image")
 
-	tasks.Attachments(ctx).AddResult("tag", tag.ImageRef())
+	tasks.Attachments(ctx).AddResult("repository", tag.Repository)
 
 	img, err := resolvable.ImageForPlatform(HostPlatform())
 	if err != nil {
@@ -51,11 +51,15 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (oci
 	if err != nil {
 		return oci.ImageID{}, err
 	}
-	ref, err := oci.ParseTag(tag.TargetRepository, digest)
+
+	ref, err := oci.ParseTag(tag.RepositoryWithAccess, digest)
 	if err != nil {
 		return oci.ImageID{}, err
 	}
 
-	err = WriteImage(ctx, img, ref, true)
-	return tag.ImageID, err
+	if err := WriteImage(ctx, img, ref, true); err != nil {
+		return oci.ImageID{}, err
+	}
+
+	return oci.ImageID{Repository: tag.Repository, Digest: digest.String()}, nil
 }

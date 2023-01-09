@@ -56,19 +56,19 @@ func (r nscloudRegistry) Access() oci.RegistryAccess {
 	}
 }
 
-func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
 	return compute.Map(tasks.Action("nscloud.allocate-repository").Arg("repository", repository),
 		compute.Inputs().Str("repository", repository).Str("clusterID", r.clusterID),
 		compute.Output{},
-		func(ctx context.Context, _ compute.Resolved) (oci.AllocatedRepository, error) {
+		func(ctx context.Context, _ compute.Resolved) (oci.RepositoryWithParent, error) {
 			registry, err := r.fetchRegistry(ctx)
 			if err != nil {
-				return oci.AllocatedRepository{}, err
+				return oci.RepositoryWithParent{}, err
 			}
 
 			url := registry.EndpointAddress
 			if url == "" {
-				return oci.AllocatedRepository{}, fnerrors.InternalError("%s: cluster is missing registry", r.clusterID)
+				return oci.RepositoryWithParent{}, fnerrors.InternalError("%s: cluster is missing registry", r.clusterID)
 			}
 
 			if strings.HasSuffix(url, "/") {
@@ -77,10 +77,10 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 				url += "/" + repository
 			}
 
-			return oci.AllocatedRepository{
+			return oci.RepositoryWithParent{
 				Parent: r,
-				TargetRepository: oci.TargetRepository{
-					ImageID:        oci.ImageID{Repository: url},
+				RepositoryWithAccess: oci.RepositoryWithAccess{
+					Repository:     url,
 					RegistryAccess: r.Access(),
 				},
 			}, nil

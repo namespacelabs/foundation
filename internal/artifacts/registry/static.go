@@ -30,24 +30,22 @@ func (sr staticRegistry) Access() oci.RegistryAccess {
 	}
 }
 
-func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.AllocatedRepository] {
+func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
 	if sr.r.SingleRepository {
-		return StaticName(sr, oci.ImageID{Repository: sr.r.Url}, sr.Access())
+		return StaticRepository(sr, sr.r.Url, sr.Access())
 	}
 
 	return AllocateStaticName(sr, sr.r.Url, repository, sr.Access())
 }
 
-func AllocateStaticName(r Manager, url, repository string, access oci.RegistryAccess) compute.Computable[oci.AllocatedRepository] {
+func AllocateStaticName(r Manager, url, repository string, access oci.RegistryAccess) compute.Computable[oci.RepositoryWithParent] {
 	if strings.HasSuffix(url, "/") {
 		url += repository
 	} else {
 		url += "/" + repository
 	}
 
-	imgid := oci.ImageID{Repository: url}
-
-	return StaticName(r, imgid, access)
+	return StaticRepository(r, url, access)
 }
 
 func (sr staticRegistry) keychain() oci.Keychain {
@@ -58,12 +56,12 @@ func (sr staticRegistry) keychain() oci.Keychain {
 	return nil
 }
 
-func AttachStaticKeychain(r Manager, img oci.ImageID, access oci.RegistryAccess) oci.AllocatedRepository {
-	return oci.AllocatedRepository{
+func AttachStaticKeychain(r Manager, repository string, access oci.RegistryAccess) oci.RepositoryWithParent {
+	return oci.RepositoryWithParent{
 		Parent: r,
-		TargetRepository: oci.TargetRepository{
+		RepositoryWithAccess: oci.RepositoryWithAccess{
 			RegistryAccess: access,
-			ImageID:        img,
+			Repository:     repository,
 		},
 	}
 }

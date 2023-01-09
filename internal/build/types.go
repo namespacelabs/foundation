@@ -41,7 +41,7 @@ type Plan struct {
 	// to, in case the builder implementation can use this information for
 	// optimization purposes. This may be null, and an implementation can always
 	// elect to ignore it.
-	PublishName compute.Computable[oci.AllocatedRepository]
+	PublishName compute.Computable[oci.RepositoryWithParent]
 }
 
 func (p Plan) GetSourceLabel() string { return p.SourceLabel }
@@ -69,7 +69,7 @@ type BuildTarget interface {
 
 	TargetPlatform() *specs.Platform
 	// See Plan.PublishName.
-	PublishName() compute.Computable[oci.AllocatedRepository]
+	PublishName() compute.Computable[oci.RepositoryWithParent]
 }
 
 type Configuration interface {
