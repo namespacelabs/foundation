@@ -19,7 +19,6 @@ import (
 	applynetworkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
@@ -260,25 +259,4 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 	applies = append(applies, annotations.Resources...)
 
 	return applies, nil
-}
-
-func Delete(ns string, stack []planning.Server) ([]*schema.SerializedInvocation, error) {
-	var defs []*schema.SerializedInvocation
-
-	for _, srv := range stack {
-		op := kubedef.DeleteList{
-			Description: "Ingresses",
-			Resource:    "ingresses",
-			Namespace:   ns,
-			Selector:    kubedef.SelectById(srv.Proto()),
-		}
-
-		if def, err := op.ToDefinition(srv.PackageName()); err != nil {
-			return nil, err
-		} else {
-			defs = append(defs, def)
-		}
-	}
-
-	return defs, nil
 }

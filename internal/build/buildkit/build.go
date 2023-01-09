@@ -34,6 +34,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
@@ -69,7 +70,8 @@ func (cli *GatewayClient) BuildkitOpts() builtkitOpts                           
 func (cli *GatewayClient) MakeClient(_ context.Context) (*GatewayClient, error) { return cli, nil }
 
 type clientInstance struct {
-	conf *Overrides
+	conf      cfg.Configuration
+	overrides *Overrides
 
 	compute.DoScoped[*GatewayClient] // Only connect once per configuration.
 }
@@ -106,7 +108,7 @@ func MakeClient(config cfg.Configuration, targetPlatform *specs.Platform) comput
 		conf.ContainerName = DefaultContainerName
 	}
 
-	return &clientInstance{conf: conf}
+	return &clientInstance{conf: config, overrides: conf}
 }
 
 var _ compute.Computable[*GatewayClient] = &clientInstance{}
@@ -116,12 +118,12 @@ func (c *clientInstance) Action() *tasks.ActionEvent {
 }
 
 func (c *clientInstance) Inputs() *compute.In {
-	return compute.Inputs().Proto("conf", c.conf)
+	return compute.Inputs().Proto("conf", c.overrides)
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*GatewayClient, error) {
-	if c.conf.BuildkitAddr != "" {
-		cli, err := client.New(ctx, c.conf.BuildkitAddr)
+	if c.overrides.BuildkitAddr != "" {
+		cli, err := client.New(ctx, c.overrides.BuildkitAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -129,34 +131,39 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		return newClient(ctx, cli, false)
 	}
 
-	if c.conf.HostedBuildCluster != nil {
+	if c.overrides.HostedBuildCluster != nil {
 		fmt.Fprintf(console.Debug(ctx), "buildkit: connecting to nscloud %s/%d\n",
-			c.conf.HostedBuildCluster.ClusterId, c.conf.HostedBuildCluster.TargetPort)
+			c.overrides.HostedBuildCluster.ClusterId, c.overrides.HostedBuildCluster.TargetPort)
 
-		cluster, err := api.GetCluster(ctx, api.Endpoint, c.conf.HostedBuildCluster.ClusterId)
+		cluster, err := api.GetCluster(ctx, api.Endpoint, c.overrides.HostedBuildCluster.ClusterId)
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
 		}
 
-		connect := func() (*client.Client, error) {
+		return waitAndConnect(ctx, func() (*client.Client, error) {
 			return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-				return api.DialPort(ctx, cluster.Cluster, int(c.conf.HostedBuildCluster.TargetPort))
+				return api.DialPort(ctx, cluster.Cluster, int(c.overrides.HostedBuildCluster.TargetPort))
 			}))
-		}
-
-		if err := waitForBuildkit(ctx, connect); err != nil {
-			return nil, err
-		}
-
-		cli, err := connect()
-		if err != nil {
-			return nil, err
-		}
-
-		return newClient(ctx, cli, false)
+		})
 	}
 
-	localAddr, err := EnsureBuildkitd(ctx, c.conf.ContainerName)
+	if c.overrides.ColocatedBuildCluster != nil {
+		conf := c.overrides.ColocatedBuildCluster
+		fmt.Fprintf(console.Debug(ctx), "buildkit: connecting to co-located %v (port %d)\n", conf.MatchingPodLabels, conf.TargetPort)
+
+		k, err := kubernetes.ConnectToCluster(ctx, c.conf)
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to connect to co-located build cluster: %w", err)
+		}
+
+		return waitAndConnect(ctx, func() (*client.Client, error) {
+			return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+				return k.RawDialServer(ctx, conf.Namespace, conf.MatchingPodLabels, &schema.Endpoint_Port{ContainerPort: conf.TargetPort})
+			}))
+		})
+	}
+
+	localAddr, err := EnsureBuildkitd(ctx, c.overrides.ContainerName)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +182,19 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	// })
 
 	return newClient(ctx, cli, true)
+}
+
+func waitAndConnect(ctx context.Context, connect func() (*client.Client, error)) (*GatewayClient, error) {
+	if err := waitForBuildkit(ctx, connect); err != nil {
+		return nil, err
+	}
+
+	cli, err := connect()
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(ctx, cli, false)
 }
 
 func newClient(ctx context.Context, cli *client.Client, docker bool) (*GatewayClient, error) {

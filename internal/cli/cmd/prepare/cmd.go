@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/renderwait"
@@ -96,6 +97,61 @@ func NewPrepareIngressCmd() *cobra.Command {
 		}
 
 		return prepare.PrepareIngressInKube(ctx, env, kube)
+	})
+}
+
+func NewPrepareBuildClusterCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "prepare-build-cluster",
+		Hidden: true,
+	}
+
+	env := cmd.Flags().String("env", "dev", "The environment to prepare.")
+
+	return fncobra.With(cmd, func(ctx context.Context) error {
+		root, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
+		env, err := cfg.LoadContext(root, *env)
+		if err != nil {
+			return err
+		}
+
+		kube, err := kubernetes.ConnectToCluster(ctx, env.Configuration())
+		if err != nil {
+			return err
+		}
+
+		jobdef, err := prepare.PrepareBuildCluster(ctx, env, kube)
+		if err != nil {
+			return err
+		}
+
+		buildkitConfiguration, err := anypb.New(&buildkit.Overrides{
+			ColocatedBuildCluster: &buildkit.ColocatedBuildCluster{
+				Namespace:         jobdef.Namespace.Name,
+				MatchingPodLabels: jobdef.MatchingLabels,
+				TargetPort:        jobdef.Service.Spec.Ports[0].Port,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		updated, was := devhost.Update(root.LoadedDevHost, &schema.DevHost_ConfigureEnvironment{
+			Name:          env.Environment().Name,
+			Configuration: []*anypb.Any{buildkitConfiguration},
+		})
+
+		if was {
+			if err := devhost.RewriteWith(ctx, root.ReadWriteFS(), devhost.DevHostFilename, updated); err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 }
 

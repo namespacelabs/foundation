@@ -12,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
@@ -21,11 +20,21 @@ import (
 	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
+func IngressOwnedBy(allFragments []*fnschema.IngressFragment, srv fnschema.PackageName) []*fnschema.IngressFragment {
+	var frags []*fnschema.IngressFragment
+	for _, fr := range allFragments {
+		if srv.Equals(fr.Owner) {
+			frags = append(frags, fr)
+		}
+	}
+	return frags
+}
+
 func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
 	for _, srv := range stack.Entry {
-		frags := planning.IngressOwnedBy(allFragments, srv.GetPackageName())
+		frags := IngressOwnedBy(allFragments, srv.GetPackageName())
 		if len(frags) == 0 {
 			continue
 		}

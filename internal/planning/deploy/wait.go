@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
+	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -28,16 +29,20 @@ const (
 	tailLinesOnFailure = 10
 )
 
-func MaybeRenderBlock(env cfg.Context, cluster runtime.ClusterNamespace, render bool) execution.WaitHandler {
+func MaybeRenderClusterBlock(env cfg.Context, cluster runtime.Cluster, fetchDiagnostics func(context.Context) (*storage.EnvironmentDiagnostics, error), render bool) execution.WaitHandler {
 	return func(ctx context.Context) (chan *orchestration.Event, func(context.Context) error) {
 		if !render {
-			return observeContainers(ctx, env, cluster, nil), func(ctx context.Context) error { return nil }
+			return observeContainers(ctx, env, cluster, fetchDiagnostics, nil), func(ctx context.Context) error { return nil }
 		}
 
 		rwb := renderwait.NewBlock(ctx, "deploy")
 
-		return observeContainers(ctx, env, cluster, rwb.Ch()), rwb.Wait
+		return observeContainers(ctx, env, cluster, fetchDiagnostics, rwb.Ch()), rwb.Wait
 	}
+}
+
+func MaybeRenderBlock(env cfg.Context, cluster runtime.ClusterNamespace, render bool) execution.WaitHandler {
+	return MaybeRenderClusterBlock(env, cluster.Cluster(), cluster.FetchEnvironmentDiagnostics, render)
 }
 
 func shouldCheckDiagnostics(commited, last time.Time, hasCrash bool, now time.Time) bool {
@@ -54,7 +59,7 @@ func shouldCheckDiagnostics(commited, last time.Time, hasCrash bool, now time.Ti
 
 // observeContainers observes the deploy events (received from the returned channel) and updates the
 // console through the `parent` channel.
-func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, parent chan *orchestration.Event) chan *orchestration.Event {
+func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Cluster, fetchDiagnostics func(context.Context) (*storage.EnvironmentDiagnostics, error), parent chan *orchestration.Event) chan *orchestration.Event {
 	ch := make(chan *orchestration.Event)
 	t := time.NewTicker(time.Second)
 
@@ -113,7 +118,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 
 				// XXX fetching diagnostics should not block forwarding events (above).
 				for _, ws := range all {
-					diagnostics, err := cluster.Cluster().FetchDiagnostics(ctx, ws.Reference)
+					diagnostics, err := cluster.FetchDiagnostics(ctx, ws.Reference)
 					if err != nil {
 						fmt.Fprintf(out, "Failed to retrieve diagnostics for %s: %v\n", ws.Reference.HumanReference, err)
 						continue
@@ -130,7 +135,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 					switch diagnostics.State {
 					case runtimepb.Diagnostics_RUNNING:
 						fmt.Fprintf(out, "  Running, logs (last %d lines):\n", tailLinesOnFailure)
-						if err := cluster.Cluster().FetchLogsTo(ctx, ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}, w); err != nil {
+						if err := cluster.FetchLogsTo(ctx, ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure}, w); err != nil {
 							fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 						}
 
@@ -138,7 +143,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 						fmt.Fprintf(out, "  Waiting: %s\n", diagnostics.WaitingReason)
 						if diagnostics.Crashed {
 							fmt.Fprintf(out, "  Crashed, logs (last %d lines):\n", tailLinesOnFailure)
-							if err := cluster.Cluster().FetchLogsTo(ctx, ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}, w); err != nil {
+							if err := cluster.FetchLogsTo(ctx, ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}, w); err != nil {
 								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
@@ -146,7 +151,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 					case runtimepb.Diagnostics_TERMINATED:
 						if diagnostics.ExitCode > 0 {
 							fmt.Fprintf(out, "  Failed: %s (exit code %d), logs (last %d lines):\n", diagnostics.TerminatedReason, diagnostics.ExitCode, tailLinesOnFailure)
-							if err := cluster.Cluster().FetchLogsTo(ctx, ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}, w); err != nil {
+							if err := cluster.FetchLogsTo(ctx, ws.Reference, runtime.FetchLogsOpts{TailLines: tailLinesOnFailure, FetchLastFailure: true}, w); err != nil {
 								fmt.Fprintf(out, "Failed to retrieve logs for %s: %v\n", ws.Reference.HumanReference, err)
 							}
 						}
@@ -158,8 +163,8 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 						ResourceId:  resourceID,
 						WaitDetails: buf.String(),
 					}
-				} else {
-					diagnostics, err := cluster.FetchEnvironmentDiagnostics(ctx)
+				} else if fetchDiagnostics != nil {
+					diagnostics, err := fetchDiagnostics(ctx)
 					if err != nil {
 						fmt.Fprintf(out, "Failed to retrieve environment diagnostics: %v\n", err)
 					} else {
