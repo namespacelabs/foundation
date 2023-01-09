@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -39,10 +38,6 @@ func newInitCmd(runCommand func(context.Context, []string) error) *cobra.Command
 			}
 
 			moduleName := args[0]
-			if strings.ToLower(moduleName) != moduleName {
-				return fnerrors.New("invalid module name %q: may not contain uppercase letters", moduleName)
-			}
-
 			fmt.Println("Creating initial workspace.")
 			w := &schema.Workspace{
 				ModuleName: moduleName,

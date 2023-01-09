@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,13 +78,19 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 		return nil, err
 	}
 
-	return workspaceData{
+	wd := workspaceData{
 		absPath:        dir,
 		definitionFile: workspaceFile,
 		data:           data,
 		parsed:         w,
 		source:         p.Val,
-	}, nil
+	}
+
+	if err := validateWorkspace(wd); err != nil {
+		return nil, err
+	}
+
+	return wd, nil
 }
 
 func (moduleLoader) NewModule(ctx context.Context, dir string, w *schema.Workspace) (pkggraph.WorkspaceData, error) {
@@ -91,13 +98,36 @@ func (moduleLoader) NewModule(ctx context.Context, dir string, w *schema.Workspa
 	if err != nil {
 		return nil, err
 	}
-	return workspaceData{
+	wd := workspaceData{
 		absPath:        dir,
 		definitionFile: WorkspaceFile,
 		data:           nil,
 		parsed:         w,
 		source:         val,
-	}, nil
+	}
+
+	if err := validateWorkspace(wd); err != nil {
+		return nil, err
+	}
+
+	return wd, nil
+}
+
+func validateWorkspace(w workspaceData) error {
+	module := w.ModuleName()
+	if strings.ToLower(module) != module {
+		return fnerrors.NewWithLocation(w, "invalid module name %q: may not contain uppercase letters", module)
+	}
+
+	u, err := url.Parse("https://" + module)
+	if err != nil {
+		return fnerrors.NewWithLocation(w, "invalid module name %q: %w", module, err)
+	}
+	if h := u.Hostname(); !strings.Contains(h, ".") {
+		return fnerrors.NewWithLocation(w, "invalid module name %q: host %q does not contain `.`", module, h)
+	}
+
+	return nil
 }
 
 func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
