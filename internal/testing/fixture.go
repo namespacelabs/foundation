@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -50,7 +51,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, err
 	}
 
-	driverLoc, err := pl.Resolve(ctx, schema.PackageName(testDef.Driver.PackageName))
+	driverPkg, err := pl.LoadByName(ctx, testDef.Driver.AsPackageName())
 	if err != nil {
 		return nil, err
 	}
@@ -89,10 +90,15 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 
 	sealedCtx := pkggraph.MakeSealedContext(env, packages)
 
+	driverDef, err := driverDefinition(driverPkg, testDef)
+	if err != nil {
+		return nil, err
+	}
+
 	driver := &testDriver{
 		TestRef:       testRef,
-		Location:      driverLoc,
-		Definition:    testDef.Driver,
+		Location:      driverPkg.Location,
+		Definition:    driverDef,
 		Stack:         stack,
 		SealedContext: sealedCtx,
 		Planner:       planner,
@@ -153,6 +159,30 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 				Packages:          packages,
 			}, nil
 		}), nil
+}
+
+func driverDefinition(pkg *pkggraph.Package, test *schema.Test) (*schema.Binary, error) {
+	for _, bin := range pkg.Binaries {
+		if bin.Name == test.Driver.Name {
+
+			if bin.Config == nil {
+				bin.Config = &schema.BinaryConfig{}
+			}
+
+			// TODO consider if this should be a replacement.
+			bin.Config.Args = append(bin.Config.Args, test.BinaryConfig.GetArgs()...)
+
+			var err error
+			bin.Config.Env, err = support.MergeEnvs(bin.Config.Env, test.BinaryConfig.GetEnv())
+			if err != nil {
+				return nil, err
+			}
+
+			return bin, nil
+		}
+	}
+
+	return nil, fnerrors.NewWithLocation(pkg.Location, "did not find binary %q", test.Driver.Name)
 }
 
 func loadSUT(ctx context.Context, env cfg.Context, pl *parsing.PackageLoader, test *schema.Test) (*planning.Stack, error) {

@@ -9,7 +9,6 @@ import (
 
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -37,27 +36,6 @@ func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) err
 	return nil
 }
 
-func SetTestDriver(loc pkggraph.Location, test *schema.Test, driver *schema.Binary) error {
-	if test.Driver != nil {
-		// TODO: add a more meaningful error message
-		return fnerrors.NewWithLocation(loc, "test driver is set multiple times")
-	}
-
-	test.Driver = driver
-
-	if test.Driver.Config == nil {
-		test.Driver.Config = &schema.BinaryConfig{}
-	}
-
-	// TODO consider if this should be a replacement.
-	test.Driver.Config.Args = append(test.Driver.Config.Args, test.BinaryConfig.Args...)
-
-	var err error
-	test.Driver.Config.Env, err = support.MergeEnvs(test.Driver.Config.Env, test.BinaryConfig.Env)
-
-	return err
-}
-
 func GenerateBinaryAndAddToPackage(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, binaryName string, data proto.Message) (*schema.PackageRef, error) {
 	binary, err := GenerateBinary(ctx, env, pl, pkg.Location, binaryName, data)
 	if err != nil {
@@ -73,16 +51,12 @@ func GenerateBinaryAndAddToPackage(ctx context.Context, env *schema.Environment,
 type DefaultBinaryTestIntegration[ServerData proto.Message] struct{}
 
 func (DefaultBinaryTestIntegration[ServerData]) ApplyToTest(ctx context.Context, env *schema.Environment, pl pkggraph.PackageLoader, pkg *pkggraph.Package, test *schema.Test, data ServerData) error {
-	_, err := GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, test.Name, data)
+	ref, err := GenerateBinaryAndAddToPackage(ctx, env, pl, pkg, test.Name, data)
 	if err != nil {
 		return err
 	}
 
-	// TODO: use a PackageRef for the test driver binary instead of adding and then removing it from package binaries.
-	if err := SetTestDriver(pkg.Location, test, pkg.Binaries[len(pkg.Binaries)-1]); err != nil {
-		return err
-	}
-	pkg.Binaries = pkg.Binaries[:len(pkg.Binaries)-1]
+	test.Driver = ref
 
 	return nil
 

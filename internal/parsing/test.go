@@ -13,7 +13,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-const StartupTestBinary = "namespacelabs.dev/foundation/std/startup/testdriver"
+const StartupTestBinary schema.PackageName = "namespacelabs.dev/foundation/std/startup/testdriver"
 
 func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Test) error {
 	if test.PackageName != "" {
@@ -34,10 +34,6 @@ func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Te
 		test.Driver.Name = test.Name
 	}
 
-	if err := transformBinary(loc, test.Driver); err != nil {
-		return err
-	}
-
 	if server != nil && !slices.Contains(test.ServersUnderTest, server.PackageName) {
 		test.ServersUnderTest = append(test.ServersUnderTest, server.PackageName)
 	}
@@ -52,22 +48,13 @@ func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Te
 }
 
 func createServerStartupTest(ctx context.Context, pl pkggraph.PackageLoader, pkgName schema.PackageName) (*schema.Test, error) {
-	startupTest, err := pl.LoadByName(ctx, StartupTestBinary)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(startupTest.Binaries) != 1 {
-		return nil, fnerrors.InternalError("expected %q to be a single binary", StartupTestBinary)
-	}
-
 	return &schema.Test{
 		PackageName: pkgName.String(),
 		Name:        "startup-test",
 		ServersUnderTest: []string{
 			pkgName.String(),
 		},
-		Driver: startupTest.Binaries[0],
+		Driver: schema.MakePackageSingleRef(StartupTestBinary),
 		Tag:    []string{"generated"},
 	}, nil
 }

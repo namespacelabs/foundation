@@ -25,15 +25,15 @@ type cueFixture struct {
 }
 
 // Old syntax
-func parsecueTestOld(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, error) {
+func parsecueTestOld(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, *schema.Binary, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	test := cueTestOld{}
 	if err := v.Val.Decode(&test); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	testDef := &schema.Test{
@@ -42,14 +42,21 @@ func parsecueTestOld(ctx context.Context, loc pkggraph.Location, parent, v *fncu
 	}
 
 	var err error
+	var bin *schema.Binary
 	if test.Driver != nil {
-		testDef.Driver, err = test.Driver.ToSchema(loc)
+		bin, err = test.Driver.ToSchema(loc)
 	} else if test.Binary != nil {
-		testDef.Driver, err = test.Binary.ToSchema(loc)
+		bin, err = test.Binary.ToSchema(loc)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return testDef, nil
+	if bin.Name == "" {
+		bin.Name = test.Name
+	}
+
+	testDef.Driver = schema.MakePackageRef(loc.PackageName, bin.Name)
+
+	return testDef, bin, nil
 }

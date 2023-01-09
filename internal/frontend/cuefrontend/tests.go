@@ -14,7 +14,6 @@ import (
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/parsing/integration/api"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -79,13 +78,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		return nil, fnerrors.NewWithLocation(pkg.Location, "parsing test %q failed: %w", name, err)
 	}
 
-	if binaryRef != nil {
-		// TODO: use a PackageRef for the test driver binary instead of adding and then removing it from package binaries.
-		if err := api.SetTestDriver(pkg.Location, out, pkg.Binaries[len(pkg.Binaries)-1]); err != nil {
-			return nil, err
-		}
-		pkg.Binaries = pkg.Binaries[:len(pkg.Binaries)-1]
-	}
+	out.Driver = binaryRef
 
 	if i := v.LookupPath("integration"); i.Exists() {
 		integration, err := integrationparsing.IntegrationParser.ParseEntity(ctx, env, pl, pkg.Location, i)
