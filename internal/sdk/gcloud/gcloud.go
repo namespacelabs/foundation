@@ -25,12 +25,15 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+func IsOnCloudBuild() bool {
+	return os.Getenv("NS_CLOUD_BUILD") != ""
+}
+
 func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		return fnerrors.InternalError("failed to determine home")
 	}
-
 	gcloudDir := filepath.Join(dir, ".config/gcloud")
 	if err := os.MkdirAll(gcloudDir, 0755); err != nil {
 		return fnerrors.InternalError("failed to create %q: %w", gcloudDir, err)
@@ -53,14 +56,18 @@ func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 	opts.Args = args
 	opts.RunAsUser = true
 	opts.WorkingDir = "/"
-	opts.Env = append(opts.Env, &schema.BinaryConfig_EnvEntry{
-		Name:  "CLOUDSDK_CONFIG",
-		Value: "/gcloudconfig",
-	})
-	opts.Mounts = append(opts.Mounts, &rtypes.LocalMapping{
-		HostPath:      gcloudDir,
-		ContainerPath: "/gcloudconfig",
-	})
+	if IsOnCloudBuild() {
+		opts.Network = "cloudbuild"
+	} else {
+		opts.Env = append(opts.Env, &schema.BinaryConfig_EnvEntry{
+			Name:  "CLOUDSDK_CONFIG",
+			Value: "/gcloudconfig",
+		})
+		opts.Mounts = append(opts.Mounts, &rtypes.LocalMapping{
+			HostPath:      gcloudDir,
+			ContainerPath: "/gcloudconfig",
+		})
+	}
 
 	return docker.Runtime().Run(ctx, opts)
 }
