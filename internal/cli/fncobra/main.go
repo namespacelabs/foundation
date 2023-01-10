@@ -74,6 +74,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
+	"namespacelabs.dev/foundation/internal/sdk/gcloud"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -356,6 +357,8 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we ignore the orchestrator version cache and force-update to the latest version. For internal testing only.")
 	rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
 		"If set to true, we log a start event for each action, if --log_actions is also set.")
+	rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
+		"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
 
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
@@ -395,6 +398,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"buildkit_forward_keychain",
 		"use_head_orchestrator",
 		"update_orchestrator",
+		"gcloud_use_host_binary",
 		// Hidden for M0
 		"testing_use_namespace_cloud",
 		"testing_use_namespace_cloud_build",

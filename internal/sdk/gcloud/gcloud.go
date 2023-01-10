@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -25,7 +27,17 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+var UseHostGCloudBinary = false
+
 func Run(ctx context.Context, io rtypes.IO, args ...string) error {
+	if UseHostGCloudBinary {
+		cmd := exec.CommandContext(ctx, "gcloud", args...)
+		cmd.Stdin = io.Stdin
+		cmd.Stdout = io.Stdout
+		cmd.Stderr = io.Stderr
+		return localexec.RunAndPropagateCancelation(ctx, "gcloud", cmd)
+	}
+
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		return fnerrors.InternalError("failed to determine home")
