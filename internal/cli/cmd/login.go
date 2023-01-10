@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
@@ -88,7 +89,7 @@ func NewRobotLogin(use string) *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			accessToken, err := tui.AskSecret(ctx, "Which Access Token would you like to use today?", "That would be a Github access token.", "access token")
 			if err != nil {
-				return err
+				return fnerrors.New("failed to read access token: %w", err)
 			}
 
 			username, err := fnapi.LoginAsRobotAndStore(ctx, args[0], string(accessToken))

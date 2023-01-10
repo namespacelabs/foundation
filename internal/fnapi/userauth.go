@@ -14,6 +14,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/clerk"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
@@ -64,7 +65,7 @@ func StoreMarshalledUser(ctx context.Context, userAuthData []byte) error {
 	}
 
 	if err := os.WriteFile(filepath.Join(configDir, userAuthJson), userAuthData, 0600); err != nil {
-		return err
+		return fnerrors.New("failed to write user auth data: %w", err)
 	}
 
 	return nil
