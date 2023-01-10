@@ -179,6 +179,10 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 	}
 
 	networkConfig := &network.NetworkingConfig{}
+	if opts.Network != "" {
+		networkConfig.EndpointsConfig = make(map[string]*network.EndpointSettings)
+		networkConfig.EndpointsConfig[opts.Network] = &network.EndpointSettings{}
+	}
 
 	name := ""
 	if len(opts.Command) > 0 {

@@ -30,6 +30,7 @@ type RunToolOpts struct {
 	MountAbsRoot string
 	Mounts       []*LocalMapping
 	AllocateTTY  bool
+	Network      string
 	NoNetworking bool // XXX remove, too specific.
 }
 
