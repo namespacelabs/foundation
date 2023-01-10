@@ -28,12 +28,6 @@ func transformTest(loc pkggraph.Location, server *schema.Server, test *schema.Te
 		return fnerrors.NewWithLocation(loc, "driver must be set")
 	}
 
-	if test.Driver.Name != "" && test.Driver.Name != test.Name {
-		return fnerrors.NewWithLocation(loc, "driver.name must be unset or be the same as the test name")
-	} else {
-		test.Driver.Name = test.Name
-	}
-
 	if server != nil && !slices.Contains(test.ServersUnderTest, server.PackageName) {
 		test.ServersUnderTest = append(test.ServersUnderTest, server.PackageName)
 	}
