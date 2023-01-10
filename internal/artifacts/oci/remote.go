@@ -51,6 +51,8 @@ func RemoteOptsWithAuth(ctx context.Context, access RegistryAccess, writeAccess 
 		userAgent(),
 	}
 
+	authn.NewMultiKeychain()
+
 	if !access.PublicImage {
 		options = append(options, remote.WithAuthFromKeychain(keychainSequence{ctx, access.Keychain, writeAccess}))
 	}

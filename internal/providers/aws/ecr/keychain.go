@@ -27,7 +27,7 @@ type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
 	if !strings.HasSuffix(r.RegistryStr(), ".amazonaws.com") {
-		return nil, nil
+		return authn.Anonymous, nil
 	}
 
 	// XXX rethink this; we need more context in order to pick the right credentials.
@@ -49,7 +49,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 	}
 
 	// Nothing available.
-	return nil, nil
+	return authn.Anonymous, nil
 }
 
 type keychainSession struct {

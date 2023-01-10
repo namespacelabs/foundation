@@ -104,7 +104,7 @@ type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
 	if !strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") {
-		return nil, nil
+		return authn.Anonymous, nil
 	}
 
 	user, err := fnapi.LoadUser()

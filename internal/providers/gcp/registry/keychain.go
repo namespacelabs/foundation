@@ -21,7 +21,7 @@ type keychain struct {
 
 func (d keychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
 	if !strings.HasSuffix(r.RegistryStr(), ".pkg.dev") {
-		return nil, nil
+		return authn.Anonymous, nil
 	}
 
 	ts := d.ts
