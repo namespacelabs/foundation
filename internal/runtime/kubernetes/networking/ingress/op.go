@@ -10,6 +10,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
@@ -134,8 +135,19 @@ func waitAndMap(ctx context.Context, cluster kubedef.KubeCluster, op *kubedef.Op
 			return false, err
 		}
 
-		return checkMap(ctx, ingress.Status.LoadBalancer, op.Fdqn)
+		return checkMap(ctx, asCoreLBStatus(ingress.Status.LoadBalancer), op.Fdqn)
 	})
+}
+
+func asCoreLBStatus(lb netv1.IngressLoadBalancerStatus) corev1.LoadBalancerStatus {
+	var status corev1.LoadBalancerStatus
+	for _, y := range lb.Ingress {
+		status.Ingress = append(status.Ingress, corev1.LoadBalancerIngress{
+			IP:       y.IP,
+			Hostname: y.Hostname,
+		})
+	}
+	return status
 }
 
 func checkMap(ctx context.Context, lb corev1.LoadBalancerStatus, fqdn string) (bool, error) {
