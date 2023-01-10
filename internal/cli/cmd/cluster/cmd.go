@@ -59,11 +59,18 @@ func newCreateCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
+	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, *machineType, *ephemeral, "manually created", *features)
 		if err != nil {
 			return err
+		}
+
+		if *outputPath != "" {
+			if err := os.WriteFile(*outputPath, []byte(cluster.ClusterId), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+			}
 		}
 
 		stdout := console.Stdout(ctx)
@@ -171,6 +178,8 @@ func newDestroyCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
+	force := cmd.Flags().Bool("force", false, "Skip the confirmation step.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
@@ -181,16 +190,18 @@ func newDestroyCmd() *cobra.Command {
 			return nil
 		}
 
-		result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
-			fmt.Sprintf(`This is a destructive action.
+		if !*force {
+			result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
+				fmt.Sprintf(`This is a destructive action.
 
 Type %q for it to be removed.`, cluster.ClusterId), "")
-		if err != nil {
-			return err
-		}
+			if err != nil {
+				return err
+			}
 
-		if result != cluster.ClusterId {
-			return context.Canceled
+			if result != cluster.ClusterId {
+				return context.Canceled
+			}
 		}
 
 		return api.DestroyCluster(ctx, api.Endpoint, cluster.ClusterId)
