@@ -14,7 +14,7 @@ Our releases are published to:
   private repos.
 - [Homebrew TAP](https://github.com/namespacelabs/homebrew-namespace)
 
-Before releasing a new `ns` version, please verify that `ns test --include_servers` passes in other
+Before releasing a new `ns` version, please verify that `ns test --all` passes in other
 repos (e.g. examples, internal).
 
 You can test a release by running:
