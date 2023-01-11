@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/eval"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
@@ -164,6 +165,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 func driverDefinition(pkg *pkggraph.Package, test *schema.Test) (*schema.Binary, error) {
 	for _, bin := range pkg.Binaries {
 		if bin.Name == test.Driver.Name {
+			bin := protos.Clone(bin)
 
 			if bin.Config == nil {
 				bin.Config = &schema.BinaryConfig{}
