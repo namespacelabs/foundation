@@ -64,7 +64,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 	t := time.NewTicker(time.Second)
 
 	type committedState struct {
-		Commited      time.Time
+		Committed     time.Time
 		LastDiagnosis time.Time
 		Help          string
 		Waiting       []*runtimepb.ContainerWaitStatus
@@ -101,7 +101,7 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 				}
 
 				now := time.Now()
-				if !shouldCheckDiagnostics(state.Commited, state.LastDiagnosis, hasCrash, now) {
+				if !shouldCheckDiagnostics(state.Committed, state.LastDiagnosis, hasCrash, now) {
 					continue
 				}
 
@@ -192,11 +192,11 @@ func observeContainers(ctx context.Context, env cfg.Context, cluster runtime.Clu
 					state, ok := committed[ev.ResourceId]
 					if !ok {
 						state = &committedState{
-							Commited: ev.Timestamp.AsTime(),
+							Committed: ev.Timestamp.AsTime(),
 						}
 
-						if state.Commited.IsZero() {
-							state.Commited = time.Now()
+						if state.Committed.IsZero() {
+							state.Committed = time.Now()
 						}
 
 						committed[ev.ResourceId] = state

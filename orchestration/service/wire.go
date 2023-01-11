@@ -20,6 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/std/go/server"
@@ -88,6 +90,7 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	kubeops.Register()
 	iam.RegisterGraphHandlers()
 	deploy.RegisterDeployOps()
+	ingress.RegisterIngressClass("nginx", nginx.Ingress())
 
 	// Always log actions, we filter if we show them on the client.
 	tasks.LogActions = true
