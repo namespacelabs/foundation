@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -116,18 +117,41 @@ func (r *ClusterNamespace) startTerminal(ctx context.Context, cli *kubernetes.Cl
 	})
 }
 
+func shouldLog(start, lastMsg time.Time) bool {
+	if lastMsg.IsZero() {
+		return time.Since(start) > 5*time.Second
+	}
+
+	return time.Since(lastMsg) > 3*time.Second
+}
+
 func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deployable) error {
 	fmt.Fprintf(console.Debug(ctx), "wait-until-ready: asPods: %v deployable: %+v\n", deployAsPods(r.target.env), srv)
+
+	t := time.Now()
+	var lastMsg time.Time
 
 	return tasks.Action("deployable.wait-until-ready").
 		Scope(srv.GetPackageRef().AsPackageName()).
 		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
+			// Hacky output to make service readiness issues more understandable.
+			// Ideally, we'd use orchestration events for these, but we'd need to link
+			// them to the server that is waiting for the dependency, not the one that we are waited for.
+			logger := func(msg string) {
+				if shouldLog(t, lastMsg) {
+					lastMsg = time.Now()
+					fmt.Fprintf(console.TypedOutput(ctx, "service readiness", common.CatOutputTool), "%s\n", msg)
+				} else {
+					fmt.Fprintf(console.Debug(ctx), "%s\n", msg)
+				}
+			}
+
 			if ready, err := r.isDeployableReady(ctx, srv); err != nil || !ready {
 				return ready, err
 			}
 
-			return r.areServicesReady(ctx, srv)
+			return r.areServicesReady(ctx, srv, logger)
 		})
 	})
 }
@@ -178,7 +202,7 @@ func (r *ClusterNamespace) isDeployableReady(ctx context.Context, srv runtime.De
 	}
 }
 
-func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
+func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable, msg func(string)) (bool, error) {
 	if !client.IsInclusterClient(r.underlying.cli) {
 		// Emitting this debug message as only incluster deployments know how to determine service readiness.
 		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
@@ -202,8 +226,7 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 
 			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 			if err != nil {
-				fmt.Fprintf(console.Debug(ctx), "failed to dial %s:%d: %v\n", s.Name, port.Port, err)
-				// Service not ready.
+				msg(fmt.Sprintf("%q not ready: failed to dial %s:%d: %v", srv.GetName(), s.Name, port.Port, err))
 				return false, nil
 			}
 			conn.Close()
