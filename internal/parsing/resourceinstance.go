@@ -44,7 +44,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 	loc := pkg.Location
 
 	if instance.IntentFrom != nil {
-		if _, _, err := pkggraph.LoadBinary(ctx, pl, instance.IntentFrom.BinaryRef); err != nil {
+		if err := pl.Ensure(ctx, instance.IntentFrom.BinaryRef.AsPackageName()); err != nil {
 			return nil, err
 		}
 	}
@@ -132,23 +132,45 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 			}
 
 			name := expected.Name.Canonical()
-			resPkg, err := pl.LoadByName(ctx, resourceRef.AsPackageName())
-			if err != nil {
-				errs = append(errs, fnerrors.BadInputError("resource %q failed to load package: %w", name, err))
-			} else {
-				instance := resPkg.LookupResourceInstance(resourceRef.Name)
-				if instance == nil {
-					errs = append(errs, fnerrors.BadInputError("resource %q refers to non-existing resource %q", name, resourceRef.Canonical()))
-				} else if instance.Spec.Class.Ref.Canonical() != expected.Class.Ref.Canonical() {
-					errs = append(errs, fnerrors.BadInputError("resource %q is of class %q, expected %q", name,
-						instance.Spec.Class.Ref.Canonical(), expected.Class.Ref.Canonical()))
-				} else {
-					ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
-						ResourceID:  instance.ResourceID,
-						ResourceRef: expected.Name,
-						Spec:        instance.Spec,
-					})
+			var instance *pkggraph.ResourceInstance
+
+			// Special handling for resources in the same package to avoid deadlocking the package loader.
+			if resourceRef.AsPackageName() == pkg.PackageName() {
+				var ri *schema.ResourceInstance
+				for _, r := range pkg.ResourceInstanceSpecs {
+					if r.Name == resourceRef.Name {
+						ri = r
+						break
+					}
+
 				}
+
+				instance, err = loadResourceInstance(ctx, pl, pkg, parentID, ri)
+				if err != nil {
+					errs = append(errs, fnerrors.BadInputError("resource %q failed to load: %w", name, err))
+					continue
+				}
+			} else {
+				resPkg, err := pl.LoadByName(ctx, resourceRef.AsPackageName())
+				if err != nil {
+					errs = append(errs, fnerrors.BadInputError("resource %q failed to load package: %w", name, err))
+					continue
+				}
+
+				instance = resPkg.LookupResourceInstance(resourceRef.Name)
+			}
+
+			if instance == nil {
+				errs = append(errs, fnerrors.BadInputError("resource %q refers to non-existing resource %q", name, resourceRef.Canonical()))
+			} else if instance.Spec.Class.Ref.Canonical() != expected.Class.Ref.Canonical() {
+				errs = append(errs, fnerrors.BadInputError("resource %q is of class %q, expected %q", name,
+					instance.Spec.Class.Ref.Canonical(), expected.Class.Ref.Canonical()))
+			} else {
+				ri.ResourceInputs = append(ri.ResourceInputs, pkggraph.ResourceInstance{
+					ResourceID:  instance.ResourceID,
+					ResourceRef: expected.Name,
+					Spec:        instance.Spec,
+				})
 			}
 		}
 	}
