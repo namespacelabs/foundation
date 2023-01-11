@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/github"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
@@ -29,15 +30,27 @@ type UserAuth struct {
 }
 
 func (user UserAuth) GenerateToken(ctx context.Context) (string, error) {
-	if user.Clerk != nil {
+	switch {
+	case user.Clerk != nil:
 		jwt, err := clerk.JWT(ctx, user.Clerk)
 		if err != nil {
 			return "", err
 		}
 		return fmt.Sprintf("jwt:%s", jwt), nil
-	}
 
-	return base64.RawStdEncoding.EncodeToString(user.InternalOpaque), nil
+	case len(user.InternalOpaque) > 0:
+		return base64.RawStdEncoding.EncodeToString(user.InternalOpaque), nil
+
+	case os.Getenv("GITHUB_ACTIONS") == "true":
+		jwt, err := github.JWT(ctx, "") // XXX: do not set "audience" and use default one
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("gh-jwt:%s", jwt), nil
+
+	default:
+		return "", auth.ErrRelogin
+	}
 }
 
 func LoginAsRobotAndStore(ctx context.Context, repository, accessToken string) (string, error) {
