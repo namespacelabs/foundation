@@ -73,6 +73,7 @@ func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance,
 		// https://www.postgresql.org/docs/9.5/xfunc-sql.html
 		// `existsDb` already uses the database name as an SQL argument, so we already passed its validation.
 		// Still, let's do some basic sanity checking (whitespaces are forbidden), as we need to use Sprintf here.
+		// Valid database names are defined at https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
 		if len(strings.Fields(name)) > 1 || strings.Contains(name, "-") {
 			return nil, fmt.Errorf("invalid database name: %s", name)
 		}
