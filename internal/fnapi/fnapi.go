@@ -76,21 +76,30 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 }
 
+func getUserToken(ctx context.Context) (*UserAuth, string, error) {
+	user, err := LoadUser()
+	if err != nil {
+		return nil, "", err
+	}
+
+	tok, err := user.GenerateToken(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return user, tok, nil
+}
+
 func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {
 	headers := http.Header{}
 
 	if !c.Anonymous {
-		user, err := LoadUser()
+		user, tok, err := getUserToken(ctx)
 		if err != nil {
 			if !c.OptionalAuth {
 				return err
 			}
 		} else {
-			tok, err := user.GenerateToken(ctx)
-			if err != nil {
-				return err
-			}
-
 			headers.Add("Authorization", "Bearer "+tok)
 
 			if c.PreAuthenticateRequest != nil {
