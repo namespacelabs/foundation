@@ -78,6 +78,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 	}
 
 	if UseHeadOrchestrator {
+		fmt.Fprintf(console.Debug(ctx), "deploying orchestrator from head\n")
 		if err := deployHead(ctx, env, boundCluster, wait); err != nil {
 			return nil, err
 		}
@@ -91,6 +92,8 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 	}
 
 	if versions.GetCurrent() != 0 && versions.GetCurrent() == versions.GetLatest() {
+		fmt.Fprintf(console.Debug(ctx), "orchestrator is already running the latest version (%d)\n", versions.GetCurrent())
+
 		// already up to date
 		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
 	}
@@ -114,6 +117,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 			fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
 		}
 
+		fmt.Fprintf(console.Debug(ctx), "updating orchestrator to version %d\n", plan.Version)
 		if err := deployPlan(ctx, env, plan.Repository, plan.Digest, boundCluster, wait); err != nil {
 			return nil, err
 		}
