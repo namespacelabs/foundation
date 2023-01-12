@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
-	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func NewClusterCmd() *cobra.Command {
@@ -217,7 +216,7 @@ func newKubectlCmd() *cobra.Command {
 		Short: "Run kubectl on the target cluster.",
 	}
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, args, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
@@ -244,6 +243,8 @@ func newKubectlCmd() *cobra.Command {
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
 		return localexec.RunInteractive(ctx, kubectl)
 	})
+
+	return cmd
 }
 
 func newKubeconfigCmd() *cobra.Command {
@@ -254,7 +255,7 @@ func newKubeconfigCmd() *cobra.Command {
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
 
-	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
@@ -278,6 +279,8 @@ func newKubeconfigCmd() *cobra.Command {
 		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
 		return nil
 	})
+
+	return cmd
 }
 
 func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
