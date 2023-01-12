@@ -231,6 +231,8 @@ func newSdkDownloadCmd(selectedSdkList func() []sdk) *cobra.Command {
 			}
 		}
 
+		fmt.Fprintf(console.Stdout(ctx), "Downloaded %d SDKs.\n", len(r.Value))
+
 		return nil
 	})
 

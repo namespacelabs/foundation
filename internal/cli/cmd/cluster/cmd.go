@@ -245,6 +245,40 @@ func newKubectlCmd() *cobra.Command {
 	})
 }
 
+func newKubeconfigCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "kubeconfig",
+		Short: "Write Kubeconfig for the target cluster.",
+	}
+
+	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
+
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
+		cluster, _, err := selectCluster(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		if cluster == nil {
+			return nil
+		}
+
+		cfg, err := tools.WriteRawKubeconfig(ctx, nscloud.MakeConfig(cluster), false)
+		if err != nil {
+			return err
+		}
+
+		if *outputPath != "" {
+			if err := os.WriteFile(*outputPath, []byte(cfg.Kubeconfig), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+			}
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
+		return nil
+	})
+}
+
 func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
 	if len(args) > 0 {
 		response, err := api.GetCluster(ctx, api.Endpoint, args[0])
