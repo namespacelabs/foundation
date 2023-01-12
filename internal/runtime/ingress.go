@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	anypb "google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/constants"
@@ -40,6 +41,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 		}
 
 		if endpoint.IngressProvider != nil {
+			fmt.Fprintf(console.Debug(ctx), "Skipping endpoint %s/%s: has ingress provider\n", endpoint.EndpointOwner, endpoint.AllocatedName)
 			continue
 		}
 
@@ -64,6 +66,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 		}
 
 		if protocol == nil {
+			fmt.Fprintf(console.Debug(ctx), "Skipping endpoint %s/%s: no protocol\n", endpoint.EndpointOwner, endpoint.AllocatedName)
 			continue
 		}
 
@@ -253,6 +256,8 @@ func AttachComputedDomains(ctx context.Context, ws string, env cfg.Context, clus
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "%s: %s: computed domains: %v\n", sch.Server.PackageName, template.GetName(), domains)
 
 	var ingresses []*schema.IngressFragment
 	for _, domain := range domains {
