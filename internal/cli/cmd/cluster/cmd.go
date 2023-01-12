@@ -45,6 +45,7 @@ func NewClusterCmd() *cobra.Command {
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
 	cmd.AddCommand(newKubectlCmd())
+	cmd.AddCommand(newKubeconfigCmd())
 
 	return cmd
 }
