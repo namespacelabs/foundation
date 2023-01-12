@@ -26,7 +26,8 @@ type UserAuth struct {
 	Org            string `json:"org,omitempty"` // The organization this user is acting as. Only really relevant for robot accounts which authenticate against a repository.
 	InternalOpaque []byte `json:"opaque,omitempty"`
 
-	Clerk *clerk.State `json:"clerk,omitempty"`
+	Clerk          *clerk.State `json:"clerk,omitempty"`
+	IsGithubAction bool         `json:"is_github_action,omitempty"`
 }
 
 func (user UserAuth) GenerateToken(ctx context.Context) (string, error) {
@@ -41,7 +42,7 @@ func (user UserAuth) GenerateToken(ctx context.Context) (string, error) {
 	case len(user.InternalOpaque) > 0:
 		return base64.RawStdEncoding.EncodeToString(user.InternalOpaque), nil
 
-	case os.Getenv("GITHUB_ACTIONS") == "true":
+	case user.IsGithubAction:
 		jwt, err := github.JWT(ctx, "") // XXX: do not set "audience" and use default one
 		if err != nil {
 			return "", err
@@ -94,6 +95,10 @@ func LoadUser() (*UserAuth, error) {
 	data, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
+			if os.Getenv("GITHUB_ACTIONS") == "true" {
+				return &UserAuth{IsGithubAction: true}, nil
+			}
+
 			// XXX use fnerrors
 			return nil, auth.ErrRelogin
 		}
