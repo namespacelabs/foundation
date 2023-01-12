@@ -143,7 +143,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 			return auth.ErrRelogin
 		}
 
-		return status.ErrorProto(st)
+		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 	}
 
 	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
@@ -160,7 +160,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 				return fnerrors.NoAccessToLimitedFeature()
 			}
 
-			return status.ErrorProto(st)
+			return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 		}
 	}
 

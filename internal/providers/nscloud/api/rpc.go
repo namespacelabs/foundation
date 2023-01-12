@@ -96,7 +96,7 @@ func CreateCluster(ctx context.Context, api API, machineType string, ephemeral b
 
 		var response StartCreateKubernetesClusterResponse
 		if err := api.StartCreateKubernetesCluster.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, err
+			return nil, fnerrors.New("failed to create cluster: %w", err)
 		}
 
 		tasks.Attachments(ctx).AddResult("cluster_id", response.ClusterId)
