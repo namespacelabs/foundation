@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"k8s.io/utils/pointer"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -24,8 +25,8 @@ func newSetReadersCmd() *cobra.Command {
 	fromFile := cmd.Flags().String("from_file", "", "The path of the key file to read.")
 	rawtext := cmd.Flags().Bool("rawtext", false, "If set to true, the bundle is not encrypted (use for testing purposes only).")
 	_ = cmd.MarkFlagRequired("key")
-	env := envFromValue(cmd, static("dev"))
-	locs := locationsFromArgs(cmd, env)
+	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	locs := fncobra.LocationsFromArgs(cmd, env)
 	loc, bundle := bundleFromArgs(cmd, env, locs, nil)
 
 	return fncobra.With(cmd, func(ctx context.Context) error {

@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"k8s.io/utils/pointer"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 )
@@ -19,8 +20,8 @@ func newInfoCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
-	env := envFromValue(cmd, static("dev"))
-	locs := locationsFromArgs(cmd, env)
+	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	locs := fncobra.LocationsFromArgs(cmd, env)
 	_, bundle := bundleFromArgs(cmd, env, locs, nil)
 
 	return fncobra.With(cmd, func(ctx context.Context) error {

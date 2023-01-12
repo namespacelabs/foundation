@@ -2,25 +2,20 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package secrets
+package fncobra
 
 import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-func static(str string) *string {
-	return &str
-}
-
-func envFromValue(cmd *cobra.Command, env *string) *cfg.Context {
+func EnvFromValue(cmd *cobra.Command, env *string) *cfg.Context {
 	target := new(cfg.Context)
 
-	pushParse(cmd, func(ctx context.Context, args []string) error {
+	PushParse(cmd, func(ctx context.Context, args []string) error {
 		root, err := module.FindRoot(ctx, ".")
 		if err != nil {
 			return err
@@ -43,11 +38,11 @@ func envFromValue(cmd *cobra.Command, env *string) *cfg.Context {
 	return target
 }
 
-func locationsFromArgs(cmd *cobra.Command, env *cfg.Context, opts ...fncobra.ParseLocationsOpts) *fncobra.Locations {
-	target := new(fncobra.Locations)
+func LocationsFromArgs(cmd *cobra.Command, env *cfg.Context, opts ...ParseLocationsOpts) *Locations {
+	target := new(Locations)
 
-	pushParse(cmd, func(ctx context.Context, args []string) error {
-		locations, err := fncobra.ParseLocs(ctx, args, env, fncobra.MergeParseLocationOpts(opts))
+	PushParse(cmd, func(ctx context.Context, args []string) error {
+		locations, err := ParseLocs(ctx, args, env, MergeParseLocationOpts(opts))
 		if err != nil {
 			return err
 		}
@@ -58,7 +53,7 @@ func locationsFromArgs(cmd *cobra.Command, env *cfg.Context, opts ...fncobra.Par
 	return target
 }
 
-func pushParse(cmd *cobra.Command, handler func(ctx context.Context, args []string) error) {
+func PushParse(cmd *cobra.Command, handler func(ctx context.Context, args []string) error) {
 	previous := cmd.PreRunE
 	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
 		if previous != nil {

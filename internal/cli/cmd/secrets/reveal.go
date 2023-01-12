@@ -27,8 +27,8 @@ func newRevealCmd() *cobra.Command {
 	specificEnv := cmd.Flags().String("env", "", "If set, matches specified secret with the named environment (e.g. dev, or prod).")
 	_ = cmd.MarkFlagRequired("secret")
 
-	env := envFromValue(cmd, specificEnv)
-	locs := locationsFromArgs(cmd, env)
+	env := fncobra.EnvFromValue(cmd, specificEnv)
+	locs := fncobra.LocationsFromArgs(cmd, env)
 	_, bundle := bundleFromArgs(cmd, env, locs, nil)
 
 	return fncobra.With(cmd, func(ctx context.Context) error {

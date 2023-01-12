@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -31,16 +30,19 @@ import (
 	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const exitCode = 3
 
 func NewTestCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "test [path/to/package]...",
+		Short: "Run a functional end-to-end test.",
+		Args:  cobra.ArbitraryArgs,
+	}
+
 	var (
-		env                 cfg.Context
-		locs                fncobra.Locations
 		testOpts            testing.TestOpts
 		allTests            bool
 		parallel            bool
@@ -51,201 +53,196 @@ func NewTestCmd() *cobra.Command {
 		explain             bool
 	)
 
-	return fncobra.
-		Cmd(&cobra.Command{
-			Use:   "test [path/to/package]...",
-			Short: "Run a functional end-to-end test.",
-			Args:  cobra.ArbitraryArgs,
-		}).
-		WithFlags(func(flags *pflag.FlagSet) {
-			flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
-			flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
-			flags.BoolVar(&allTests, "all", allTests, "If true, runs all tests regardless of tag (e.g. it will also include generated tests).")
-			flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
-			flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
-			flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
-			flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
-			flags.BoolVar(&forceOutputProgress, "force_output_progress", forceOutputProgress, "If set to true, always output progress, regardless of whether parallel is set.")
+	flags := cmd.Flags()
+	flags.BoolVar(&testOpts.Debug, "debug", testOpts.Debug, "If true, the testing runtime produces additional information for debugging-purposes.")
+	flags.BoolVar(&ephemeral, "ephemeral", ephemeral, "If true, cleanup any runtime resources created for test (e.g. corresponding Kubernetes namespace).")
+	flags.BoolVar(&allTests, "all", allTests, "If true, runs all tests regardless of tag (e.g. it will also include generated tests).")
+	flags.BoolVar(&parallel, "parallel", parallel, "If true, run tests in parallel.")
+	flags.BoolVar(&parallelWork, "parallel_work", parallelWork, "If true, performs all work in parallel except running the actual test (e.g. builds).")
+	flags.BoolVar(&explain, "explain", explain, "If set to true, rather than applying the graph, output an explanation of what would be done.")
+	flags.BoolVar(&rocketShip, "rocket_ship", rocketShip, "If set, go full parallel without constraints.")
+	flags.BoolVar(&forceOutputProgress, "force_output_progress", forceOutputProgress, "If set to true, always output progress, regardless of whether parallel is set.")
 
-			_ = flags.MarkHidden("rocket_ship")
-			_ = flags.MarkHidden("force_output_progress")
+	_ = flags.MarkHidden("rocket_ship")
+	_ = flags.MarkHidden("force_output_progress")
 
-			// Deprecated.
-			flags.Bool("include_servers", false, "Does nothing.")
-			_ = flags.MarkHidden("include_servers")
-		}).
-		With(
-			// XXX Using `dev`'s configuration; ideally we'd run the equivalent of prepare here instead.
-			fncobra.HardcodeEnv(&env, "dev"),
-			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true, SupportPackageRef: true})).
-		Do(func(originalCtx context.Context) error {
-			ctx := prepareContext(originalCtx, parallel, rocketShip)
+	// Deprecated.
+	flags.Bool("include_servers", false, "Does nothing.")
+	_ = flags.MarkHidden("include_servers")
 
-			if rocketShip {
-				parallel = true
+	specificEnv := cmd.Flags().String("source_env", "dev", "Which environment to use as configuration base.")
+
+	env := fncobra.EnvFromValue(cmd, specificEnv)
+	locs := fncobra.LocationsFromArgs(cmd, env)
+
+	return fncobra.With(cmd, func(originalCtx context.Context) error {
+		ctx := prepareContext(originalCtx, parallel, rocketShip)
+
+		if rocketShip {
+			parallel = true
+		}
+
+		// This PackageLoader instance is only used to resolve package references from the command line arguments.
+		packageRefPl := parsing.NewPackageLoader(*env)
+
+		testRefs := []*schema.PackageRef{}
+		for _, l := range locs.Locs {
+			pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
+			if err != nil {
+				return err
 			}
 
-			// This PackageLoader instance is only used to resolve package references from the command line arguments.
-			packageRefPl := parsing.NewPackageLoader(env)
-
-			testRefs := []*schema.PackageRef{}
-			for _, l := range locs.Locs {
-				pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
-				if err != nil {
-					return err
+			for _, t := range pp.Tests {
+				if allTests || !slices.Contains(t.Tag, "generated") {
+					testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
 				}
+			}
+		}
+		// add package refernces
+		testRefs = append(testRefs, locs.Refs...)
 
-				for _, t := range pp.Tests {
-					if allTests || !slices.Contains(t.Tag, "generated") {
-						testRefs = append(testRefs, schema.MakePackageRef(l.AsPackageName(), t.Name))
+		if len(testRefs) == 0 {
+			return noTestsError(ctx, allTests, *locs)
+		}
+
+		out := console.TypedOutput(ctx, "test-results", common.CatOutputUs)
+		style := colors.Ctx(ctx)
+
+		testOpts.ParentRunID = storedrun.ParentID
+		testOpts.OutputProgress = !parallel || forceOutputProgress
+
+		var mu sync.Mutex // Protects the slices below.
+		var pending []compute.Computable[testing.StoredTestResults]
+		var incompatible []incompatibleTest
+		var completed []*storage.TestRuns_Run
+
+		if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
+			eg := executor.New(ctx, "test")
+
+			for _, testRef := range testRefs {
+				testRef := testRef // Capture testRef.
+
+				eg.Go(func(ctx context.Context) error {
+					buildEnv, err := testing.PrepareEnv(ctx, *env, ephemeral)
+					if err != nil {
+						return err
 					}
-				}
-			}
-			// add package refernces
-			testRefs = append(testRefs, locs.Refs...)
 
-			if len(testRefs) == 0 {
-				return noTestsError(ctx, allTests, locs)
-			}
+					pl := parsing.NewPackageLoader(buildEnv)
 
-			out := console.TypedOutput(ctx, "test-results", common.CatOutputUs)
-			style := colors.Ctx(ctx)
+					status := style.Header.Apply("BUILDING")
+					fmt.Fprintf(out, "%s: Test %s\n", testRef.Canonical(), status)
 
-			testOpts.ParentRunID = storedrun.ParentID
-			testOpts.OutputProgress = !parallel || forceOutputProgress
+					testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts)
+					if err != nil {
+						var inc enverr.IncompatibleEnvironmentErr
+						if errors.As(err, &inc) {
+							mu.Lock()
+							incompatible = append(incompatible, incompatibleTest{
+								Ref: testRef,
+								Err: &inc,
+							})
+							mu.Unlock()
 
-			var mu sync.Mutex // Protects the slices below.
-			var pending []compute.Computable[testing.StoredTestResults]
-			var incompatible []incompatibleTest
-			var completed []*storage.TestRuns_Run
+							if !parallel && !parallelWork {
+								printIncompatible(out, style, testRef)
+							}
 
-			if err := tasks.Action("test.prepare").Run(ctx, func(ctx context.Context) error {
-				eg := executor.New(ctx, "test")
+							return nil
+						}
 
-				for _, testRef := range testRefs {
-					testRef := testRef // Capture testRef.
+						return fnerrors.NewWithLocation(testRef.AsPackageName(), "failed to prepare test: %w", err)
+					}
 
-					eg.Go(func(ctx context.Context) error {
-						buildEnv, err := testing.PrepareEnv(ctx, env, ephemeral)
+					if parallel || parallelWork {
+						mu.Lock()
+						pending = append(pending, testComp)
+						mu.Unlock()
+					} else {
+						if explain {
+							return compute.Explain(ctx, console.Stdout(ctx), testComp)
+						}
+
+						testResults, err := compute.Get(ctx, testComp)
 						if err != nil {
 							return err
 						}
 
-						pl := parsing.NewPackageLoader(buildEnv)
-
-						status := style.Header.Apply("BUILDING")
-						fmt.Fprintf(out, "%s: Test %s\n", testRef.Canonical(), status)
-
-						testComp, err := testing.PrepareTest(ctx, pl, buildEnv, testRef, testOpts)
-						if err != nil {
-							var inc enverr.IncompatibleEnvironmentErr
-							if errors.As(err, &inc) {
-								mu.Lock()
-								incompatible = append(incompatible, incompatibleTest{
-									Ref: testRef,
-									Err: &inc,
-								})
-								mu.Unlock()
-
-								if !parallel && !parallelWork {
-									printIncompatible(out, style, testRef)
-								}
-
-								return nil
-							}
-
-							return fnerrors.NewWithLocation(testRef.AsPackageName(), "failed to prepare test: %w", err)
+						run := &storage.TestRuns_Run{
+							TestSummary: testResults.Value.TestBundleSummary,
+							TestResults: testResults.Value.Bundle,
 						}
 
-						if parallel || parallelWork {
-							mu.Lock()
-							pending = append(pending, testComp)
-							mu.Unlock()
-						} else {
-							if explain {
-								return compute.Explain(ctx, console.Stdout(ctx), testComp)
-							}
+						mu.Lock()
+						completed = append(completed, run)
+						mu.Unlock()
 
-							testResults, err := compute.Get(ctx, testComp)
-							if err != nil {
-								return err
-							}
+						printResult(out, style, testRef, run, false)
+					}
 
-							run := &storage.TestRuns_Run{
-								TestSummary: testResults.Value.TestBundleSummary,
-								TestResults: testResults.Value.Bundle,
-							}
+					return nil
+				})
+			}
 
-							mu.Lock()
-							completed = append(completed, run)
-							mu.Unlock()
+			return eg.Wait()
+		}); err != nil {
+			return err
+		}
 
-							printResult(out, style, testRef, run, false)
-						}
+		if len(pending) > 0 {
+			runTests := compute.Collect(tasks.Action("test.all-tests"), pending...)
 
-						return nil
-					})
-				}
+			if explain {
+				return compute.Explain(ctx, console.Stdout(ctx), runTests)
+			}
 
-				return eg.Wait()
-			}); err != nil {
+			results, err := compute.GetValue(ctx, runTests)
+			if err != nil {
 				return err
 			}
 
-			if len(pending) > 0 {
-				runTests := compute.Collect(tasks.Action("test.all-tests"), pending...)
-
-				if explain {
-					return compute.Explain(ctx, console.Stdout(ctx), runTests)
-				}
-
-				results, err := compute.GetValue(ctx, runTests)
-				if err != nil {
-					return err
-				}
-
-				for _, res := range results {
-					completed = append(completed, &storage.TestRuns_Run{
-						TestSummary: res.Value.TestBundleSummary,
-						TestResults: res.Value.Bundle,
-					})
-				}
+			for _, res := range results {
+				completed = append(completed, &storage.TestRuns_Run{
+					TestSummary: res.Value.TestBundleSummary,
+					TestResults: res.Value.Bundle,
+				})
 			}
+		}
 
-			// Sorting after processing results since the indices need to be synchronized with other slices.
-			slices.SortFunc(completed, func(a, b *storage.TestRuns_Run) bool {
-				return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
-			})
-
-			if len(pending) > 0 {
-				fmt.Fprintln(out)
-
-				for _, res := range completed {
-					pkgRef := schema.MakePackageRef(schema.PackageName(res.TestSummary.TestPackage), res.TestSummary.TestName)
-					printResult(out, style, pkgRef, res, true)
-				}
-
-				for _, res := range incompatible {
-					printIncompatible(out, style, res.Ref)
-				}
-			}
-
-			var failed []string
-			for _, run := range completed {
-				if !run.GetTestSummary().GetResult().Success {
-					failed = append(failed, run.GetTestSummary().GetTestPackage())
-				}
-			}
-
-			runs := &storage.TestRuns{Run: completed}
-			storedrun.Attach(runs)
-
-			if len(failed) > 0 {
-				return fnerrors.ExitWithCode(fmt.Errorf("failed tests: %s", strings.Join(failed, ", ")), exitCode)
-			}
-
-			return nil
+		// Sorting after processing results since the indices need to be synchronized with other slices.
+		slices.SortFunc(completed, func(a, b *storage.TestRuns_Run) bool {
+			return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
 		})
+
+		if len(pending) > 0 {
+			fmt.Fprintln(out)
+
+			for _, res := range completed {
+				pkgRef := schema.MakePackageRef(schema.PackageName(res.TestSummary.TestPackage), res.TestSummary.TestName)
+				printResult(out, style, pkgRef, res, true)
+			}
+
+			for _, res := range incompatible {
+				printIncompatible(out, style, res.Ref)
+			}
+		}
+
+		var failed []string
+		for _, run := range completed {
+			if !run.GetTestSummary().GetResult().Success {
+				failed = append(failed, run.GetTestSummary().GetTestPackage())
+			}
+		}
+
+		runs := &storage.TestRuns{Run: completed}
+		storedrun.Attach(runs)
+
+		if len(failed) > 0 {
+			return fnerrors.ExitWithCode(fmt.Errorf("failed tests: %s", strings.Join(failed, ", ")), exitCode)
+		}
+
+		return nil
+	})
 }
 
 func prepareContext(ctx context.Context, parallel, rocketShip bool) context.Context {

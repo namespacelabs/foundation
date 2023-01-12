@@ -51,7 +51,7 @@ func bundleFromArgs(cmd *cobra.Command, env *cfg.Context, locs *fncobra.Location
 
 	user := cmd.Flags().Bool("user", false, "If set, updates a user-owned secret database which can be more easily git-ignored.")
 
-	pushParse(cmd, func(ctx context.Context, args []string) error {
+	fncobra.PushParse(cmd, func(ctx context.Context, args []string) error {
 		loc, bundle, err := loadBundleFromArgs(ctx, *env, *locs, *user, createIfMissing)
 		if err != nil {
 			return err
