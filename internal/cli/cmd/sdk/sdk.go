@@ -5,6 +5,7 @@
 package sdk
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -196,22 +197,42 @@ func newSdkDownloadCmd(selectedSdkList func() []sdk) *cobra.Command {
 		Use:   "download",
 		Short: "Downloads a predefined set of SDKs.",
 		Args:  cobra.NoArgs,
-
-		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			_, err := module.FindRoot(ctx, ".")
-			if err != nil {
-				return err
-			}
-
-			downloads, err := makeDownloads(ctx, selectedSdkList())
-			if err != nil {
-				return err
-			}
-
-			_, err = compute.Get(ctx, compute.Collect(tasks.Action("sdk.download-all"), downloads...))
-			return err
-		}),
 	}
+
+	outputPath := cmd.Flags().String("output_to", "", "If specified, write the paths of the downloaded SDKs to this path.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		_, err := module.FindRoot(ctx, ".")
+		if err != nil {
+			return err
+		}
+
+		downloads, err := makeDownloads(ctx, selectedSdkList())
+		if err != nil {
+			return err
+		}
+
+		r, err := compute.Get(ctx, compute.Collect(tasks.Action("sdk.download-all"), downloads...))
+		if err != nil {
+			return err
+		}
+
+		if *outputPath != "" {
+			var out bytes.Buffer
+			for k, res := range r.Value {
+				if k > 0 {
+					fmt.Fprintln(&out)
+				}
+				fmt.Fprint(&out, res.Value)
+			}
+
+			if err := os.WriteFile(*outputPath, out.Bytes(), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+			}
+		}
+
+		return nil
+	})
 
 	return cmd
 }
