@@ -202,11 +202,6 @@ func newSdkDownloadCmd(selectedSdkList func() []sdk) *cobra.Command {
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the paths of the downloaded SDKs to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		_, err := module.FindRoot(ctx, ".")
-		if err != nil {
-			return err
-		}
-
 		downloads, err := makeDownloads(ctx, selectedSdkList())
 		if err != nil {
 			return err
