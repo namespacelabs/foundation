@@ -17,8 +17,8 @@ func newGkeCmd() *cobra.Command {
 	var clusterName string
 	var experimentalGCLB bool
 
-	// The subcommand `eks` does all of the work done by the parent command in addition to
-	// writing the host configuration for the EKS cluster.
+	// The subcommand `gke` does all of the work done by the parent command in addition to
+	// writing the host configuration for the GKE cluster.
 	gkeCmd := &cobra.Command{
 		Use:   "gke --cluster={cluster-name} --env={staging|prod} --project_id={project_id}",
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
