@@ -17,7 +17,10 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/go-ids"
+
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -40,7 +43,6 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/go-ids"
 )
 
 const (
@@ -159,10 +161,10 @@ func NewDoctorCmd() *cobra.Command {
 		}
 
 		if filterIncludes(testFilter, "userauth") {
-			loginI := runDiagnostic(ctx, "doctor.userauth", func(ctx context.Context) (*fnapi.UserAuth, error) {
-				return fnapi.LoadUser()
+			loginI := runDiagnostic(ctx, "doctor.userauth", func(ctx context.Context) (*auth.UserAuth, error) {
+				return auth.LoadUser()
 			})
-			printDiagnostic(ctx, "Authenticated User", loginI, &errCount, func(w io.Writer, info *fnapi.UserAuth) {
+			printDiagnostic(ctx, "Authenticated User", loginI, &errCount, func(w io.Writer, info *auth.UserAuth) {
 				fmt.Fprintf(w, "user=%s\n", info.Username)
 			})
 		}

@@ -7,14 +7,15 @@ package fnapi
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type MapRequest struct {
-	UserAuth *UserAuth `json:"userAuth"`
-	FQDN     string    `json:"fqdn"`
-	Target   string    `json:"target"`
+	UserAuth *auth.UserAuth `json:"userAuth"`
+	FQDN     string         `json:"fqdn"`
+	Target   string         `json:"target"`
 }
 
 type MapResponse struct {
@@ -27,7 +28,7 @@ func Map(ctx context.Context, fqdn, target string) error {
 		err := Call[MapRequest]{
 			Endpoint: EndpointAddress,
 			Method:   "nsl.naming.NamingService/Map",
-			PreAuthenticateRequest: func(ua *UserAuth, rt *MapRequest) error {
+			PreAuthenticateRequest: func(ua *auth.UserAuth, rt *MapRequest) error {
 				rt.UserAuth = ua
 				return nil
 			},

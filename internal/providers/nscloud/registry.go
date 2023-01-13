@@ -17,8 +17,8 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -107,7 +107,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return authn.Anonymous, nil
 	}
 
-	user, err := fnapi.LoadUser()
+	user, err := auth.LoadUser()
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return nil, err
 	}
 
-	tok, err := user.GenerateToken(ctx)
+	tok, err := auth.GenerateToken(ctx, auth.WithUserAuth(user))
 	if err != nil {
 		return nil, err
 	}

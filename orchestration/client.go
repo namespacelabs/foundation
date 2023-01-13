@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -115,10 +114,10 @@ func getAwsConf(ctx context.Context, env cfg.Context) (*awsconf.Configuration, e
 	}, nil
 }
 
-func getUserAuth(ctx context.Context) (*fnapi.UserAuth, error) {
-	x, err := fnapi.LoadUser()
+func getUserAuth(ctx context.Context) (*auth.UserAuth, error) {
+	x, err := auth.LoadUser()
 	if err != nil {
-		if errors.Is(err, auth.ErrRelogin) {
+		if errors.Is(err, auth.ErrNoCredentials) {
 			// Don't require login yet. The orchestrator will fail with the appropriate error if required.
 			return nil, nil
 		}

@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc/codes"
 	pb "google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -40,7 +40,7 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 
 	// XXX orchestrator should not write files; rather should inject authentication into session.
 	if serialized := req.GetSerializedAuth(); serialized != nil {
-		if err := fnapi.StoreMarshalledUser(ctx, req.GetSerializedAuth()); err != nil {
+		if err := auth.StoreMarshalledUser(ctx, req.GetSerializedAuth()); err != nil {
 			return nil, err
 		}
 	} else if req.Auth != nil {
@@ -49,7 +49,7 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 			return nil, err
 		}
 
-		if err := fnapi.StoreMarshalledUser(ctx, data); err != nil {
+		if err := auth.StoreMarshalledUser(ctx, data); err != nil {
 			return nil, err
 		}
 	}

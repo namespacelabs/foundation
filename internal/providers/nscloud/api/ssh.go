@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -53,7 +53,7 @@ func fetchGithubSshKeys(ctx context.Context, username string) ([]string, error) 
 }
 
 func UserSSHKeys() (compute.Computable[[]string], error) {
-	user, err := fnapi.LoadUser()
+	user, err := auth.LoadUser()
 	if err != nil {
 		return nil, err
 	}

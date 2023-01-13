@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/spf13/pflag"
@@ -53,7 +54,7 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
-	PreAuthenticateRequest func(*UserAuth, *RequestT) error
+	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
 	Anonymous              bool
 	OptionalAuth           bool // Don't fail if not authenticated.
 }
@@ -76,13 +77,16 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 }
 
-func getUserToken(ctx context.Context) (*UserAuth, string, error) {
-	user, err := LoadUser()
+func getUserToken(ctx context.Context) (*auth.UserAuth, string, error) {
+	user, err := auth.LoadUser()
 	if err != nil {
 		return nil, "", err
 	}
 
-	tok, err := user.GenerateToken(ctx)
+	tok, err := auth.GenerateToken(ctx,
+		auth.WithUserAuth(user),
+		auth.WithGithubOIDC(os.Getenv("GITHUB_ACTIONS") == "true"),
+	)
 	if err != nil {
 		return nil, "", err
 	}

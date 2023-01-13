@@ -13,8 +13,11 @@ import (
 	"sync"
 	"time"
 
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+)
+
+var (
+	ErrUnauthorized = fnerrors.New("Unauthorized")
 )
 
 type clerkResponse struct {
@@ -143,14 +146,14 @@ func JWT(ctx context.Context, st *State) (string, error) {
 	now := time.Now()
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", fnerrors.InvocationError("jwt", "failed to obtain token: %w", err)
 	}
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		if resp.StatusCode == 401 {
-			return "", auth.ErrRelogin
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUnauthorized {
+			return "", ErrUnauthorized
 		}
 
 		return "", fnerrors.InvocationError("jwt", "failed to obtain token: %v", resp.Status)
