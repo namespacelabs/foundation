@@ -28,6 +28,14 @@ func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
 	return rt, nil
 }
 
+func MustRuntimeConfig() *runtime.RuntimeConfig {
+	rt, err := LoadRuntimeConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+	return rt
+}
+
 func LoadBuildVCS() (*runtime.BuildVCS, error) {
 	serializedVCS, err := os.ReadFile("/namespace/config/buildvcs.json")
 	if err != nil {
