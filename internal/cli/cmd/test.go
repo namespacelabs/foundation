@@ -73,7 +73,10 @@ func NewTestCmd() *cobra.Command {
 	specificEnv := cmd.Flags().String("source_env", "dev", "Which environment to use as configuration base.")
 
 	env := fncobra.EnvFromValue(cmd, specificEnv)
-	locs := fncobra.LocationsFromArgs(cmd, env)
+	locs := fncobra.LocationsFromArgs(cmd, env, fncobra.ParseLocationsOpts{
+		ReturnAllIfNoneSpecified: true,
+		SupportPackageRef:        true,
+	})
 
 	return fncobra.With(cmd, func(originalCtx context.Context) error {
 		ctx := prepareContext(originalCtx, parallel, rocketShip)
