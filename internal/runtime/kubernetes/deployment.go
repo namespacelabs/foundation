@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -82,7 +83,8 @@ func getArg(c *applycorev1.ContainerApplyConfiguration, name string) (string, bo
 }
 
 type deployOpts struct {
-	secrets secrets.GroundedSecrets
+	secrets   secrets.GroundedSecrets
+	platforms []specs.Platform
 }
 
 func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, opts deployOpts, s *serverRunState) error {
@@ -125,6 +127,23 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
+
+	// Explicitly allow all pods on all available platforms.
+	// On GKE, workloads are not allowed on ARM nodes by default, even if all nodes are ARM.
+	// https://cloud.google.com/kubernetes-engine/docs/how-to/prepare-arm-workloads-for-deployment#overview
+	// TODO make node affinity configurable.
+	var archs []string
+	for _, plat := range opts.platforms {
+		archs = append(archs, plat.Architecture)
+	}
+	spec = spec.WithAffinity(applycorev1.Affinity().WithNodeAffinity(
+		applycorev1.NodeAffinity().WithRequiredDuringSchedulingIgnoredDuringExecution(
+			applycorev1.NodeSelector().WithNodeSelectorTerms(
+				applycorev1.NodeSelectorTerm().WithMatchExpressions(
+					applycorev1.NodeSelectorRequirement().
+						WithKey(kubedef.KubernetesIoArch).
+						WithOperator("In").
+						WithValues(archs...))))))
 
 	labels := kubedef.MakeLabels(target.env, deployable)
 	annotations := kubedef.MakeAnnotations(target.env, deployable.GetPackageRef().AsPackageName())

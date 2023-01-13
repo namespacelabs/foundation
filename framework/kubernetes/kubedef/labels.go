@@ -33,6 +33,7 @@ const (
 	K8sRuntimeConfigKind = "runtime-config"
 
 	AppKubernetesIoManagedBy = "app.kubernetes.io/managed-by"
+	KubernetesIoArch         = "kubernetes.io/arch"
 
 	ManagerId               = "foundation.namespace.so" // #220 Update when product name is final
 	K8sFieldManager         = ManagerId

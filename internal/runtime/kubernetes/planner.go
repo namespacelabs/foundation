@@ -65,7 +65,12 @@ func (r Planner) Ingress() runtime.IngressClass {
 }
 
 func (r Planner) PlanDeployment(ctx context.Context, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
-	return planDeployment(ctx, r.target, d)
+	platforms, err := r.TargetPlatforms(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return planDeployment(ctx, r.target, d, platforms)
 }
 
 func (r Planner) PlanIngress(ctx context.Context, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
@@ -113,14 +118,15 @@ func (r Planner) ClusterNamespaceFor(parent runtime.Cluster, underlying *Cluster
 	return &ClusterNamespace{parent: parent, underlying: underlying, target: r.target}
 }
 
-func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec, platforms []specs.Platform) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
 	for _, deployable := range d.Specs {
 		var singleState serverRunState
 
 		if err := prepareDeployment(ctx, target, deployable, deployOpts{
-			secrets: deployable.Secrets,
+			secrets:   deployable.Secrets,
+			platforms: platforms,
 		}, &singleState); err != nil {
 			return nil, err
 		}
