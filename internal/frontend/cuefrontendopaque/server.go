@@ -41,9 +41,10 @@ type cueServer struct {
 	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
 	Permissions         *cuePermissions `json:"permissions,omitempty"`
 
-	ReadinessProbe *cueProbe           `json:"probe"`  // `probe: exec: "foo-cmd"`
-	Probes         map[string]cueProbe `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
-	Security       *cueServerSecurity  `json:"security,omitempty"`
+	ReadinessProbe *cueProbe                   `json:"probe"`  // `probe: exec: "foo-cmd"`
+	Probes         map[string]cueProbe         `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
+	Security       *cueServerSecurity          `json:"security,omitempty"`
+	Tolerations    []*schema.Server_Toleration `json:"tolerations,omitempty"`
 }
 
 type cuePermissions struct {
@@ -237,6 +238,14 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.MainContainer.Security = &schema.Container_Security{
 			Privileged: bits.Security.Privileged,
 		}
+	}
+
+	if len(bits.Tolerations) > 0 {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/tolerations"); err != nil {
+			return nil, nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		out.Toleration = bits.Tolerations
 	}
 
 	return out, startupPlan, nil

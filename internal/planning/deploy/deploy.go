@@ -846,6 +846,7 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 	out.ConfigImage = imgs.Config
 
 	out.Probes = proto.Probe
+	out.Tolerations = proto.Toleration
 
 	if err := integrations.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err

@@ -234,6 +234,7 @@ type DeployableSpec struct {
 	Volumes     []*schema.Volume
 	Permissions *schema.ServerPermissions
 	Replicas    int32
+	Tolerations []*schema.Server_Toleration
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts

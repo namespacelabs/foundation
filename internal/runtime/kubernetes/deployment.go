@@ -144,6 +144,19 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		spec = spec.WithNodeSelector(labelList)
 	}
 
+	for _, toleration := range deployable.Tolerations {
+		t := applycorev1.Toleration().
+			WithEffect(v1.TaintEffect(toleration.Effect)).
+			WithKey(toleration.Key).
+			WithOperator(v1.TolerationOperator(toleration.Operator))
+
+		if toleration.Value != "" {
+			t = t.WithValue(toleration.Value)
+		}
+
+		spec = spec.WithTolerations(t)
+	}
+
 	// Explicitly allow all pods on all available platforms.
 	// On GKE, workloads are not allowed on ARM nodes by default, even if all nodes are ARM.
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/prepare-arm-workloads-for-deployment#overview

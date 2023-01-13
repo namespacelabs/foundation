@@ -28,7 +28,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 40
+// Next ID: 41
 message Server {
     reserved 9, 13, 17, 19, 20, 27, 28, 30, 32, 34;
 
@@ -98,6 +98,8 @@ message Server {
 
     repeated Probe probe = 38;
 
+    repeated Toleration toleration = 40;
+
     message ServiceSpec {
         string                   name             = 1;
         string                   label            = 5;
@@ -129,6 +131,13 @@ message Server {
         string   package                                                 = 1;
         repeated foundation.schema.Label environment_has_label           = 2;
         repeated foundation.schema.Label environment_does_not_have_label = 3;
+    }
+
+    message Toleration {
+        string key      = 1;
+        string operator = 2;
+        string value    = 3;
+        string effect   = 4;
     }
 }
 
