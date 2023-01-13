@@ -242,12 +242,11 @@ func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.Cl
 			hints = append(hints, fmt.Sprintf("Try out a stateful development session with %s.",
 				highlight.Apply(fmt.Sprintf("ns dev %s %s", envLabel, loc))))
 		}
+
 	}
 
-	hints = append(hints, plan.Hints...)
-	for _, hint := range hints {
-		fmt.Fprintf(out, "   · %s\n", hint)
-	}
+	hints = append(hints, fmt.Sprintf("Inspecting your deployment: %s",
+		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("ns t kubectl %s get pods", envLabel))))
 
 	return nil
 }

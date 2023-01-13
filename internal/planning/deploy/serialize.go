@@ -20,7 +20,6 @@ func Serialize(ws *schema.Workspace, env *schema.Environment, stack *schema.Stac
 		Stack:              stack,
 		IngressFragment:    computed.IngressFragments,
 		Program:            execution.Serialize(computed.Deployer),
-		Hints:              computed.Hints,
 		FocusServer:        focus.PackageNamesAsString(),
 		NamespaceReference: computed.NamespaceReference,
 	}

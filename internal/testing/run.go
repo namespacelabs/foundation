@@ -197,8 +197,6 @@ func (test *testRun) compute(ctx context.Context, r compute.Resolved) (*storage.
 
 	bundle.DeployPlan = deployPlan
 	bundle.ComputedConfigurations = p.Computed
-	// Clear the hints, no point storing those.
-	bundle.DeployPlan.Hints = nil
 
 	bundle.Started = timestamppb.New(started)
 	bundle.Completed = timestamppb.New(completed)

@@ -13,7 +13,6 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
@@ -181,9 +180,6 @@ func planDeployment(ctx context.Context, target clusterTarget, d runtime.Deploym
 			Impl:        cleanup,
 		})
 	}
-
-	state.Hints = append(state.Hints, fmt.Sprintf("Inspecting your deployment: %s",
-		colors.Ctx(ctx).Highlight.Apply(fmt.Sprintf("kubectl -n %s get pods", target.namespace))))
 
 	state.NamespaceReference = target.namespace
 
