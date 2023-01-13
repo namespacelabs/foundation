@@ -22,7 +22,7 @@ import (
 
 var serverFields = []string{
 	"name", "class", "args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
-	"mounts", "resources", "integration", "image", "imageFrom", "unstable_naming", "requires", "replicas",
+	"mounts", "resources", "integration", "image", "imageFrom", "unstable_naming", "requires", "replicas", "tolerations",
 	// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 	"spec",
 }

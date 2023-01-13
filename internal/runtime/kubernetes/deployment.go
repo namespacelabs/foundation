@@ -147,8 +147,11 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	for _, toleration := range deployable.Tolerations {
 		t := applycorev1.Toleration().
 			WithEffect(v1.TaintEffect(toleration.Effect)).
-			WithKey(toleration.Key).
-			WithOperator(v1.TolerationOperator(toleration.Operator))
+			WithKey(toleration.Key)
+
+		if toleration.Operator != "" {
+			t = t.WithOperator(v1.TolerationOperator(toleration.Operator))
+		}
 
 		if toleration.Value != "" {
 			t = t.WithValue(toleration.Value)
