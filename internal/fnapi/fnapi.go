@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/spf13/pflag"
@@ -53,7 +55,7 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
-	PreAuthenticateRequest func(*UserAuth, *RequestT) error
+	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
 	Anonymous              bool
 	OptionalAuth           bool // Don't fail if not authenticated.
 }
@@ -76,13 +78,20 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 }
 
-func getUserToken(ctx context.Context) (*UserAuth, string, error) {
-	user, err := LoadUser()
-	if err != nil {
+func getUserToken(ctx context.Context) (*auth.UserAuth, string, error) {
+	var authOpts []auth.AuthOpt
+
+	user, err := auth.LoadUser()
+	switch {
+	case err == nil:
+		authOpts = append(authOpts, auth.WithUserAuth(user))
+	case errors.Is(err, auth.ErrRelogin) && os.Getenv("GITHUB_ACTIONS") == "true":
+		authOpts = append(authOpts, auth.WithGithubOIDC(true))
+	default:
 		return nil, "", err
 	}
 
-	tok, err := user.GenerateToken(ctx)
+	tok, err := auth.GenerateToken(ctx, authOpts...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -95,17 +104,14 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	if !c.Anonymous {
 		user, tok, err := getUserToken(ctx)
-		if err != nil {
-			if !c.OptionalAuth {
-				return err
-			}
-		} else {
-			headers.Add("Authorization", "Bearer "+tok)
+		if err != nil && !c.OptionalAuth {
+			return err
+		}
+		headers.Add("Authorization", "Bearer "+tok)
 
-			if c.PreAuthenticateRequest != nil {
-				if err := c.PreAuthenticateRequest(user, &request); err != nil {
-					return err
-				}
+		if c.PreAuthenticateRequest != nil && user != nil {
+			if err := c.PreAuthenticateRequest(user, &request); err != nil {
+				return err
 			}
 		}
 	}

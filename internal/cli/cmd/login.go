@@ -11,6 +11,8 @@ import (
 	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
+
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
@@ -44,12 +46,12 @@ func NewLoginCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
 			}
 
-			auth, err := fnapi.CompleteLogin(ctx, res.LoginId, res.Kind, fnapi.TelemetryOn(ctx).GetClientID())
+			userAuth, err := fnapi.CompleteLogin(ctx, res.LoginId, res.Kind, fnapi.TelemetryOn(ctx).GetClientID())
 			if err != nil {
 				return err
 			}
 
-			username, err := fnapi.StoreUser(ctx, auth)
+			username, err := auth.StoreUser(ctx, userAuth)
 			if err != nil {
 				return err
 			}
@@ -87,12 +89,18 @@ func NewRobotLogin(use string) *cobra.Command {
 		Hidden: true,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			accessToken, err := tui.AskSecret(ctx, "Which Access Token would you like to use today?", "That would be a Github access token.", "access token")
+			accessToken, err := tui.AskSecret(ctx, "Which Access Token would you like to use today?",
+				"That would be a Github access token.", "access token")
 			if err != nil {
 				return fnerrors.New("failed to read access token: %w", err)
 			}
 
-			username, err := fnapi.LoginAsRobotAndStore(ctx, args[0], string(accessToken))
+			userAuth, err := fnapi.RobotLogin(ctx, args[0], string(accessToken))
+			if err != nil {
+				return err
+			}
+
+			username, err := auth.StoreUser(ctx, userAuth)
 			if err != nil {
 				return err
 			}

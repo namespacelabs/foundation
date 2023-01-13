@@ -43,7 +43,7 @@ func JWT(ctx context.Context, audience string) (string, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fnerrors.InvocationError("jwt", "failed to get github JWT: %w", err)
+		return "", fnerrors.InvocationError("jwt", "failed to request github JWT: %w", err)
 	}
 	defer resp.Body.Close()
 

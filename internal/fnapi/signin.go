@@ -8,6 +8,7 @@ import (
 	"context"
 	"time"
 
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -62,7 +63,7 @@ func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
 	return &resp, nil
 }
 
-func CompleteLogin(ctx context.Context, id, kind string, ephemeralCliId string) (*UserAuth, error) {
+func CompleteLogin(ctx context.Context, id, kind string, ephemeralCliId string) (*auth.UserAuth, error) {
 	if kind == "clerk" {
 		t, err := completeClerkLogin(ctx, id, ephemeralCliId)
 		if err != nil {
@@ -74,7 +75,7 @@ func CompleteLogin(ctx context.Context, id, kind string, ephemeralCliId string) 
 			return nil, err
 		}
 
-		return &UserAuth{
+		return &auth.UserAuth{
 			Username: n.Email,
 			Clerk:    n,
 		}, nil
@@ -87,7 +88,7 @@ func CompleteLogin(ctx context.Context, id, kind string, ephemeralCliId string) 
 
 	method := "nsl.signin.SigninService/CompleteLogin"
 
-	var resp []UserAuth
+	var resp []auth.UserAuth
 	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
 	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
@@ -125,23 +126,23 @@ func completeClerkLogin(ctx context.Context, id string, ephemeralCliId string) (
 	return &resp[0], nil
 }
 
-func CheckSignin(ctx context.Context, userData string) (*UserAuth, error) {
+func CheckSignin(ctx context.Context, userData string) (*auth.UserAuth, error) {
 	req := CheckRequest{
 		UserData: userData,
 	}
 
-	userAuth := &UserAuth{}
+	userAuth := &auth.UserAuth{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/Check", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
 }
 
-func RobotLogin(ctx context.Context, repository, accessToken string) (*UserAuth, error) {
+func RobotLogin(ctx context.Context, repository, accessToken string) (*auth.UserAuth, error) {
 	req := RobotLoginRequest{
 		Repository:  repository,
 		AccessToken: accessToken,
 	}
 
-	userAuth := &UserAuth{}
+	userAuth := &auth.UserAuth{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/RobotLogin", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
 }
