@@ -50,7 +50,11 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	var mainMessages, buildMessages []proto.Message
 
 	eg.Go(func(ctx context.Context) error {
-		cfg, err := api.CreateAndWaitCluster(ctx, api.Endpoint, machineType, ephemeral, env.Environment().Name, nil)
+		cfg, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+			MachineType: machineType,
+			Ephemeral:   ephemeral,
+			KeepAlive:   true,
+			Purpose:     env.Environment().Name})
 		if err != nil {
 			return err
 		}

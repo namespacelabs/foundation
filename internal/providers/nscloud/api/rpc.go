@@ -69,13 +69,25 @@ type CreateClusterResult struct {
 	Deadline     *time.Time
 }
 
-func CreateCluster(ctx context.Context, api API, machineType string, ephemeral bool, purpose string, features []string) (*StartCreateKubernetesClusterResponse, error) {
+type CreateClusterOpts struct {
+	MachineType string
+	Ephemeral   bool
+
+	// Whether to keep the cluster alive, regardless of it being ephemeral.
+	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
+	KeepAlive bool
+
+	Purpose  string
+	Features []string
+}
+
+func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
 		req := CreateKubernetesClusterRequest{
-			Ephemeral:         ephemeral,
-			DocumentedPurpose: purpose,
-			MachineType:       machineType,
-			Feature:           features,
+			Ephemeral:         opts.Ephemeral,
+			DocumentedPurpose: opts.Purpose,
+			MachineType:       opts.MachineType,
+			Feature:           opts.Features,
 		}
 
 		if !environment.IsRunningInCI() {
@@ -109,7 +121,7 @@ func CreateCluster(ctx context.Context, api API, machineType string, ephemeral b
 			}
 		}
 
-		if ephemeral {
+		if opts.Ephemeral && !opts.KeepAlive {
 			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
 				if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
 					// The cluster being gone is an acceptable state (it could have
@@ -127,8 +139,8 @@ func CreateCluster(ctx context.Context, api API, machineType string, ephemeral b
 	})
 }
 
-func CreateAndWaitCluster(ctx context.Context, api API, machineType string, ephemeral bool, purpose string, features []string) (*CreateClusterResult, error) {
-	cluster, err := CreateCluster(ctx, api, machineType, ephemeral, purpose, features)
+func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) (*CreateClusterResult, error) {
+	cluster, err := CreateCluster(ctx, api, opts)
 	if err != nil {
 		return nil, err
 	}

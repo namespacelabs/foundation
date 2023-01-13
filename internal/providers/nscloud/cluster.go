@@ -149,7 +149,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	}
 
 	ephemeral := env.Environment().Ephemeral
-	response, err := api.CreateCluster(ctx, api.Endpoint, defaultMachineType, ephemeral, purpose, nil)
+	response, err := api.CreateCluster(ctx, api.Endpoint, api.CreateClusterOpts{MachineType: defaultMachineType, Ephemeral: ephemeral, Purpose: purpose})
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
 	}
 
-	response, err := api.CreateCluster(ctx, api.Endpoint, "", true, purpose, nil)
+	response, err := api.CreateCluster(ctx, api.Endpoint, api.CreateClusterOpts{Ephemeral: true, Purpose: purpose})
 	if err != nil {
 		return nil, err
 	}

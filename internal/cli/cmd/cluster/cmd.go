@@ -62,7 +62,13 @@ func newCreateCmd() *cobra.Command {
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, *machineType, *ephemeral, "manually created", *features)
+		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+			MachineType: *machineType,
+			Ephemeral:   *ephemeral,
+			KeepAlive:   true,
+			Purpose:     "manually created",
+			Features:    *features,
+		})
 		if err != nil {
 			return err
 		}
