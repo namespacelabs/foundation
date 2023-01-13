@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,15 +79,19 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 }
 
 func getUserToken(ctx context.Context) (*auth.UserAuth, string, error) {
+	var authOpts []auth.AuthOpt
+
 	user, err := auth.LoadUser()
-	if err != nil {
+	switch {
+	case err == nil:
+		authOpts = append(authOpts, auth.WithUserAuth(user))
+	case errors.Is(err, auth.ErrRelogin) && os.Getenv("GITHUB_ACTIONS") == "true":
+		authOpts = append(authOpts, auth.WithGithubOIDC(true))
+	default:
 		return nil, "", err
 	}
 
-	tok, err := auth.GenerateToken(ctx,
-		auth.WithUserAuth(user),
-		auth.WithGithubOIDC(os.Getenv("GITHUB_ACTIONS") == "true"),
-	)
+	tok, err := auth.GenerateToken(ctx, authOpts...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -99,17 +104,14 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	if !c.Anonymous {
 		user, tok, err := getUserToken(ctx)
-		if err != nil {
-			if !c.OptionalAuth {
-				return err
-			}
-		} else {
-			headers.Add("Authorization", "Bearer "+tok)
+		if err != nil && !c.OptionalAuth {
+			return err
+		}
+		headers.Add("Authorization", "Bearer "+tok)
 
-			if c.PreAuthenticateRequest != nil {
-				if err := c.PreAuthenticateRequest(user, &request); err != nil {
-					return err
-				}
+		if c.PreAuthenticateRequest != nil && user != nil {
+			if err := c.PreAuthenticateRequest(user, &request); err != nil {
+				return err
 			}
 		}
 	}

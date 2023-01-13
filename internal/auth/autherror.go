@@ -6,7 +6,4 @@ package auth
 
 import "namespacelabs.dev/foundation/internal/fnerrors"
 
-var (
-	ErrRelogin       = fnerrors.New("not logged in, please run `ns login`")
-	ErrNoCredentials = fnerrors.New("no user credentials stored")
-)
+var ErrRelogin = fnerrors.New("not logged in, please run `ns login`")

@@ -21,18 +21,21 @@ type authConfig struct {
 
 type AuthOpt func(*authConfig)
 
+// WithUserAuth an option to use existing `UserAuth` credentials to get JWT.
 func WithUserAuth(userAuth *UserAuth) AuthOpt {
 	return func(c *authConfig) {
 		c.userAuth = userAuth
 	}
 }
 
+// WithGithubOIDC an option to use Github OIDC provider to generate JWT.
 func WithGithubOIDC(useGithubOIDC bool) AuthOpt {
 	return func(c *authConfig) {
 		c.githubOIDC = useGithubOIDC
 	}
 }
 
+// GenerateToken generates token based on provided options. If no options provided an error would be returned.
 func GenerateToken(ctx context.Context, opts ...AuthOpt) (string, error) {
 	cfg := &authConfig{}
 	for _, o := range opts {
