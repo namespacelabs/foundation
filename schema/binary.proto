@@ -28,7 +28,7 @@ message Binary {
     repeated Label        labels     = 9;
 }
 
-// Next ID: 15
+// Next ID: 16
 message ImageBuildPlan {
     reserved 3, 9;
 
@@ -45,6 +45,7 @@ message ImageBuildPlan {
     PackageRef        binary              = 10;  // Add another binary as a layer.
     StaticFilesServer static_files_server = 11;
     AlpineBuild       alpine_build        = 13;  // Build an alpine image that installs required packages.
+    FilesFrom         files_from          = 15;
 
     message LLBPlan {
         Binary output_of = 1;
@@ -66,6 +67,12 @@ message ImageBuildPlan {
         string dir = 1;
 
         int32 port = 2;
+    }
+
+    message FilesFrom {
+        ImageBuildPlan  from       = 1;
+        repeated string files      = 2;
+        string          target_dir = 3;
     }
 }
 

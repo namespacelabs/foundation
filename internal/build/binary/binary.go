@@ -283,6 +283,15 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 		return snapshotFiles{loc.Rel(), src.SnapshotFiles}, nil
 	}
 
+	if src.FilesFrom != nil {
+		inner, err := buildSpec(ctx, pl, env, loc, bin, src.FilesFrom.From, assets, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return filesFrom{inner, src.FilesFrom.Files, src.FilesFrom.TargetDir}, nil
+	}
+
 	return nil, fnerrors.NewWithLocation(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 

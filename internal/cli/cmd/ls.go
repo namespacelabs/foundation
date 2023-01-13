@@ -43,7 +43,7 @@ func NewLsCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			pl := parsing.NewPackageLoader(env)
 
-			for _, l := range locs.Locs {
+			for _, l := range locs.Locations {
 				fmt.Fprintf(stdout, "%s\n", l)
 
 				if locs.UserSpecified || details {

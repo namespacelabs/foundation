@@ -50,7 +50,7 @@ func (p *ServersParser) Parse(ctx context.Context, args []string) error {
 
 	var servers []planning.Server
 	pl := parsing.NewPackageLoader(*p.env)
-	for _, loc := range p.locs.Locs {
+	for _, loc := range p.locs.Locations {
 		if err := tasks.Action("package.load-server").Scope(loc.AsPackageName()).Run(ctx, func(ctx context.Context) error {
 			pp, err := pl.LoadByName(ctx, loc.AsPackageName())
 			if err != nil {

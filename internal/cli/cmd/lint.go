@@ -33,7 +33,7 @@ func NewLintCmd() *cobra.Command {
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true})).
 		Do(func(ctx context.Context) error {
-			for _, loc := range locs.Locs {
+			for _, loc := range locs.Locations {
 				fmt.Fprintln(console.Stderr(ctx), "Checking", loc.AsPackageName())
 				if _, err := parsing.LoadPackageByName(ctx, env, loc.AsPackageName()); err != nil {
 					fmt.Fprintln(console.Stderr(ctx))

@@ -72,7 +72,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 	workspaceFS := fnfs.ReadWriteLocalFS(env.Workspace().LoadedFrom().AbsPath)
 	result := &location{workspaceFS: workspaceFS}
 
-	switch len(locs.Locs) {
+	switch len(locs.Locations) {
 	case 0:
 		// Workspace
 		if user {
@@ -82,7 +82,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 		}
 
 	case 1:
-		loc := locs.Locs[0]
+		loc := locs.Locations[0]
 
 		if user {
 			return nil, nil, fnerrors.New("can use --user and %q at the same time", loc.AsPackageName())
@@ -100,7 +100,7 @@ func loadBundleFromArgs(ctx context.Context, env cfg.Context, locs fncobra.Locat
 		result.sourceFile = loc.Rel(localsecrets.ServerBundleName)
 
 	default:
-		return nil, nil, fnerrors.New("expected up to a single package to be selected, saw %d", len(locs.Locs))
+		return nil, nil, fnerrors.New("expected up to a single package to be selected, saw %d", len(locs.Locations))
 	}
 
 	contents, err := fs.ReadFile(workspaceFS, result.sourceFile)

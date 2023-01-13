@@ -47,7 +47,7 @@ func NewDescribeCmd() *cobra.Command {
 			pl := parsing.NewPackageLoader(env)
 			rs := resolver.NewResolver(ctx, pl)
 
-			for _, loc := range locs.Locs {
+			for _, loc := range locs.Locations {
 				locs.Refs = append(locs.Refs, schema.MakePackageSingleRef(loc.AsPackageName()))
 			}
 			ref := locs.Refs[0]

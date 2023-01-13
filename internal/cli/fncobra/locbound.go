@@ -23,9 +23,9 @@ import (
 )
 
 type Locations struct {
-	Locs []fnfs.Location
-	Refs []*schema.PackageRef
-	Root *parsing.Root
+	Locations []fnfs.Location
+	Refs      []*schema.PackageRef
+	Root      *parsing.Root
 	// Whether the user explicitly specified a list of locations.
 	// If true, "All" can be not empty if "DefaultToAllWhenEmpty" is true
 	UserSpecified bool
@@ -139,7 +139,7 @@ func ParseLocs(ctx context.Context, args []string, env *cfg.Context, opts ParseL
 
 	return &Locations{
 		Root:          root,
-		Locs:          locs,
+		Locations:     locs,
 		Refs:          refs,
 		UserSpecified: len(args) > 0,
 	}, nil

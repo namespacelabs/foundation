@@ -28,10 +28,6 @@ type cueLayeredImageBuildPlan struct {
 	LayerBuildPlan []*cueImageBuildPlan
 }
 
-type cueLayeredImageBuildPlanJSON struct {
-	LayerBuildPlan []*cueImageBuildPlan `json:"layer_build_plan,omitempty"`
-}
-
 var _ json.Unmarshaler = &cueLayeredImageBuildPlan{}
 
 type cueImageBuildPlan struct {
@@ -45,10 +41,18 @@ type cueImageBuildPlan struct {
 	Files                    []string                           `json:"files,omitempty"`
 	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
 	NodejsBuild              *schema.NodejsBuild                `json:"nodejs_build,omitempty"`
+	FilesFrom                *cueImageBuildPlan_FilesFrom       `json:"files_from,omitempty"`
+	ImageID                  string                             `json:"image_id,omitempty"`
 }
 
 type cueImageBuildPlan_LLBPlan struct {
 	OutputOf cueBinary `json:"output_of,omitempty"`
+}
+
+type cueImageBuildPlan_FilesFrom struct {
+	From      cueImageBuildPlan `json:"from"`
+	Files     []string          `json:"files"`
+	TargetDir string            `json:"target_dir"`
 }
 
 func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
@@ -121,7 +125,9 @@ func (lbp *cueLayeredImageBuildPlan) UnmarshalJSON(data []byte) error {
 		return json.Unmarshal(data, &lbp.LayerBuildPlan)
 
 	case json.Delim('{'):
-		var x cueLayeredImageBuildPlanJSON
+		var x struct {
+			LayerBuildPlan []*cueImageBuildPlan `json:"layer_build_plan,omitempty"`
+		}
 		if err := json.Unmarshal(data, &x); err != nil {
 			return err
 		}
@@ -201,6 +207,26 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	if bp.AlpineBuild != nil {
 		plan.AlpineBuild = bp.AlpineBuild
 		set = append(set, "alpine_build")
+	}
+
+	if bp.FilesFrom != nil {
+		from, err := bp.FilesFrom.From.ToSchema(loc)
+		if err != nil {
+			return nil, err
+		}
+
+		plan.FilesFrom = &schema.ImageBuildPlan_FilesFrom{
+			From:      from,
+			Files:     bp.FilesFrom.Files,
+			TargetDir: bp.FilesFrom.TargetDir,
+		}
+
+		set = append(set, "files_from")
+	}
+
+	if bp.ImageID != "" {
+		plan.ImageId = bp.ImageID
+		set = append(set, "image_id")
 	}
 
 	if len(set) == 0 {

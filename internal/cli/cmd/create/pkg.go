@@ -42,7 +42,7 @@ type targetPkgParser struct {
 func (p *targetPkgParser) AddFlags(cmd *cobra.Command) {}
 
 func (p *targetPkgParser) Parse(ctx context.Context, args []string) error {
-	loc := p.locs.Locs[0]
+	loc := p.locs.Locations[0]
 	if loc.RelPath == "." {
 		cmd := fmt.Sprintf("ns create %s", p.typ)
 		return fmt.Errorf(

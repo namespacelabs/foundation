@@ -42,7 +42,7 @@ func newPrintComputedCmd() *cobra.Command {
 		Do(func(ctx context.Context) error {
 			pl := parsing.NewPackageLoader(env)
 
-			sealed, err := parsing.Seal(ctx, pl, locs.Locs[0].AsPackageName(), nil)
+			sealed, err := parsing.Seal(ctx, pl, locs.Locations[0].AsPackageName(), nil)
 			if err != nil {
 				return err
 			}

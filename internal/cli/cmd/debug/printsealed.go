@@ -39,7 +39,7 @@ func newPrintSealedCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true})).
 		Do(func(ctx context.Context) error {
 			pl := parsing.NewPackageLoader(env)
-			loc := locs.Locs[0]
+			loc := locs.Locations[0]
 
 			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {

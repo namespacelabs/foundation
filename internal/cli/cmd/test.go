@@ -89,7 +89,7 @@ func NewTestCmd() *cobra.Command {
 		packageRefPl := parsing.NewPackageLoader(*env)
 
 		testRefs := []*schema.PackageRef{}
-		for _, l := range locs.Locs {
+		for _, l := range locs.Locations {
 			pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
 			if err != nil {
 				return err
@@ -352,7 +352,7 @@ func noTestsError(ctx context.Context, allTests bool, locs fncobra.Locations) er
 	where := "in this workspace"
 	if locs.UserSpecified {
 		where = "in the specified package"
-		if len(locs.Locs) > 1 {
+		if len(locs.Locations) > 1 {
 			where += "s"
 		}
 	}

@@ -81,19 +81,28 @@ const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := parsing.NewPackageLoader(env)
 
+	var pkglist schema.PackageList
+	for _, ref := range locs.Refs {
+		pkglist.Add(ref.AsPackageName())
+	}
+	for _, loc := range locs.Locations {
+		pkglist.Add(loc.AsPackageName())
+	}
+
 	var pkgs []*pkggraph.Package
-	for _, loc := range locs.Refs {
-		if !locs.UserSpecified && loc.AsPackageName().Equals(orchTool) {
+	for _, loc := range pkglist.PackageNames() {
+		if !locs.UserSpecified && loc.Equals(orchTool) {
 			// Skip the orchestration server tool by default.
 			// TODO scale this if we see a need.
 			continue
 		}
 
-		pkg, err := pl.LoadByName(ctx, loc.AsPackageName())
+		pkg, err := pl.LoadByName(ctx, loc)
 		if err != nil {
 			return err
 		}
 
+		// TODO: allow to choose what binary to build within a package.
 		if len(pkg.Binaries) > 0 {
 			pkgs = append(pkgs, pkg)
 		} else if locs.UserSpecified {

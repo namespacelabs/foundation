@@ -40,7 +40,7 @@ func newBufGenerateCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env)).
 		Do(func(ctx context.Context) error {
 			var paths []string
-			for _, loc := range locs.Locs {
+			for _, loc := range locs.Locations {
 				if loc.ModuleName != env.Workspace().ModuleName() {
 					return fnerrors.InternalError("%s: can't run codegen on files outside of the current workspace", loc.ModuleName)
 				}
