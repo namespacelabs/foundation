@@ -26,7 +26,8 @@ import (
 var (
 	ObserveInitContainerLogs = false
 
-	kubernetesEnvConfigType = cfg.DefineConfigType[*kubetool.KubernetesEnv]()
+	kubernetesEnvConfigType      = cfg.DefineConfigType[*kubetool.KubernetesEnv]()
+	kubernetesDeploymentPlanning = cfg.DefineConfigType[*client.DeploymentPlanning]()
 )
 
 const RestmapperStateKey = "kubernetes.restmapper"
@@ -105,14 +106,20 @@ func (d kubernetesClass) Planner(ctx context.Context, cfg cfg.Context, purpose s
 	return planner, nil
 }
 
-func newTarget(env cfg.Context) clusterTarget {
+func bindNamespace(env cfg.Context) BoundNamespace {
 	ns := ModuleNamespace(env.Workspace().Proto(), env.Environment())
 
 	if conf, ok := kubernetesEnvConfigType.CheckGet(env.Configuration()); ok {
 		ns = conf.Namespace
 	}
 
-	return clusterTarget{env: env.Environment(), namespace: ns}
+	b := BoundNamespace{env: env.Environment(), namespace: ns}
+
+	if conf, ok := kubernetesDeploymentPlanning.CheckGet(env.Configuration()); ok {
+		b.planning = conf
+	}
+
+	return b
 }
 
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {

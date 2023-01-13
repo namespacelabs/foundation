@@ -28,7 +28,7 @@ type Planner struct {
 	fetchSystemInfo FetchSystemInfoFunc
 	ingress         kubedef.IngressClass
 	underlying      *Cluster
-	target          clusterTarget
+	target          BoundNamespace
 	registry        registry.Manager
 }
 
@@ -55,7 +55,7 @@ func NewPlannerWithRegistry(env cfg.Context, registry registry.Manager, fetch Fe
 		Configuration:   env.Configuration(),
 		fetchSystemInfo: fetch,
 		ingress:         ingressClass,
-		target:          newTarget(env),
+		target:          bindNamespace(env),
 		registry:        registry,
 	}
 }
@@ -118,7 +118,7 @@ func (r Planner) ClusterNamespaceFor(parent runtime.Cluster, underlying *Cluster
 	return &ClusterNamespace{parent: parent, underlying: underlying, target: r.target}
 }
 
-func planDeployment(ctx context.Context, target clusterTarget, d runtime.DeploymentSpec, platforms []specs.Platform) (*runtime.DeploymentPlan, error) {
+func planDeployment(ctx context.Context, target BoundNamespace, d runtime.DeploymentSpec, platforms []specs.Platform) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
 	for _, deployable := range d.Specs {

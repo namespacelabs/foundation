@@ -30,7 +30,7 @@ func IngressOwnedBy(allFragments []*fnschema.IngressFragment, srv fnschema.Packa
 	return frags
 }
 
-func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r clusterTarget, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
+func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r BoundNamespace, stack *fnschema.Stack, allFragments []*fnschema.IngressFragment) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 
 	for _, srv := range stack.Entry {

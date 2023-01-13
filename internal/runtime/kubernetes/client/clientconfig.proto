@@ -10,6 +10,8 @@ package foundation.runtime.kubernetes;
 option go_package = "namespacelabs.dev/foundation/internal/runtime/kubernetes/client";
 
 import "framework/kubernetes/kubeclient/staticconfig.proto";
+import "schema/environment.proto";
+import "schema/package.proto";
 
 message HostEnv {
     string                                                  kubeconfig            = 1;
@@ -19,4 +21,14 @@ message HostEnv {
     string                                                  provider              = 5;  // If set, relies on the specified provider to produce a kube config.
     foundation.framework.kubernetes.kubeclient.StaticConfig static_config         = 6;
     string                                                  ingress_class         = 7;
+}
+
+message DeploymentPlanning {
+    repeated foundation.schema.Label default_node_selector  = 1;
+    repeated OverrideNodeSelector    override_node_selector = 2;
+
+    message OverrideNodeSelector {
+        foundation.schema.PackageRef deployable_package_ref = 1;
+        repeated foundation.schema.Label node_selector      = 2;
+    }
 }

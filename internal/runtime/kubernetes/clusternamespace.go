@@ -34,12 +34,13 @@ import (
 type ClusterNamespace struct {
 	parent     runtime.Cluster
 	underlying *Cluster
-	target     clusterTarget
+	target     BoundNamespace
 }
 
-type clusterTarget struct {
+type BoundNamespace struct {
 	env       *schema.Environment
 	namespace string
+	planning  *client.DeploymentPlanning
 }
 
 var _ runtime.ClusterNamespace = &ClusterNamespace{}

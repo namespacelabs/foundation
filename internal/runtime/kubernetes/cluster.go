@@ -106,7 +106,7 @@ func (r *Cluster) EnsureState(ctx context.Context, key string) (any, error) {
 }
 
 func NewClusterNamespace(env cfg.Context, parent runtime.Cluster, u *Cluster) *ClusterNamespace {
-	return &ClusterNamespace{parent: parent, underlying: u, target: newTarget(env)}
+	return &ClusterNamespace{parent: parent, underlying: u, target: bindNamespace(env)}
 }
 
 func (r *ClusterAttachedState) EnsureState(ctx context.Context, stateKey string, config cfg.Configuration, cluster runtime.Cluster, key *string) (any, error) {

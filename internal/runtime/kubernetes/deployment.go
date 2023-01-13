@@ -87,7 +87,7 @@ type deployOpts struct {
 	platforms []specs.Platform
 }
 
-func prepareDeployment(ctx context.Context, target clusterTarget, deployable runtime.DeployableSpec, opts deployOpts, s *serverRunState) error {
+func prepareDeployment(ctx context.Context, target BoundNamespace, deployable runtime.DeployableSpec, opts deployOpts, s *serverRunState) error {
 	if deployable.MainContainer.Image.Repository == "" {
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.MainContainer.Image)
 	}
@@ -128,6 +128,22 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
+	if target.planning != nil {
+		nodeSelector := target.planning.DefaultNodeSelector
+
+		for _, c := range target.planning.OverrideNodeSelector {
+			if c.DeployablePackageRef != nil && c.DeployablePackageRef.Equals(deployable.PackageRef) {
+				nodeSelector = c.NodeSelector
+			}
+		}
+
+		labelList := map[string]string{}
+		for _, v := range nodeSelector {
+			labelList[v.Name] = v.Value
+		}
+		spec = spec.WithNodeSelector(labelList)
+	}
+
 	// Explicitly allow all pods on all available platforms.
 	// On GKE, workloads are not allowed on ARM nodes by default, even if all nodes are ARM.
 	// https://cloud.google.com/kubernetes-engine/docs/how-to/prepare-arm-workloads-for-deployment#overview
@@ -136,6 +152,7 @@ func prepareDeployment(ctx context.Context, target clusterTarget, deployable run
 	for _, plat := range opts.platforms {
 		archs = append(archs, plat.Architecture)
 	}
+
 	spec = spec.WithAffinity(applycorev1.Affinity().WithNodeAffinity(
 		applycorev1.NodeAffinity().WithRequiredDuringSchedulingIgnoredDuringExecution(
 			applycorev1.NodeSelector().WithNodeSelectorTerms(
@@ -893,7 +910,7 @@ func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
 	return fmt.Sprintf("%s-%s", prefix, o.Name)
 }
 
-func deployEndpoint(ctx context.Context, r clusterTarget, deployable runtime.DeployableSpec, endpoint *schema.Endpoint, s *serverRunState) error {
+func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.DeployableSpec, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(deployable))
 
 	port := endpoint.Port
