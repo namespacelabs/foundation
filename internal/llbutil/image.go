@@ -7,8 +7,8 @@ package llbutil
 import (
 	"context"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/moby/buildkit/client/llb"
-	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -36,7 +36,15 @@ func Prebuilt(ctx context.Context, ref string, platform specs.Platform) (llb.Sta
 		return llb.State{}, err
 	}
 
-	return llb.OCILayout("cache", digest.Digest(d.String())), nil
+	return OCILayout(d), nil
+}
+
+func OCILayout(digest v1.Hash, opts ...llb.OCILayoutOption) llb.State {
+	opts = append(opts, llb.OCIStore("", "cache"))
+	// Another buildkit-ism. OCILayout resolution is digest based, but because
+	// it uses reference.Parse for parsing, it needs an arbitrary
+	// not-single-word key to parse as a host.
+	return llb.OCILayout("cache/cache@"+digest.String(), opts...)
 }
 
 func Image(image string, platform specs.Platform) llb.State {

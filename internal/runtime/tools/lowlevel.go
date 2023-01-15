@@ -10,7 +10,6 @@ import (
 	"io/fs"
 
 	"github.com/moby/buildkit/client/llb"
-	"github.com/opencontainers/go-digest"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -19,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/secrets"
@@ -87,7 +87,7 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 			return nil, fnerrors.InvocationError("buildkit", "the target buildkit does not have the required capabilities (ocilayout input), please upgrade")
 		}
 
-		base := llb.OCILayout("cache", digest.Digest(d.String()), llb.WithCustomNamef("%s: base image (%s)", pkg, d))
+		base := llbutil.OCILayout(d, llb.WithCustomNamef("%s: base image (%s)", pkg, d))
 
 		args := append(slices.Clone(opts.Command), opts.Args...)
 		args = append(args, "--inline_invocation="+method)

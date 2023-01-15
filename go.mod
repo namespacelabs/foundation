@@ -27,11 +27,11 @@ require (
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.5.0
 	github.com/cloudflare/cloudflared v0.0.0-20221214131721-99b3736cc7f7
-	github.com/containerd/containerd v1.6.10
+	github.com/containerd/containerd v1.6.14
 	github.com/containerd/stargz-snapshotter/estargz v0.13.0
 	github.com/creack/pty v1.1.11
-	github.com/docker/cli v20.10.21+incompatible
-	github.com/docker/docker v20.10.20+incompatible
+	github.com/docker/cli v23.0.0-rc.1+incompatible
+	github.com/docker/docker v23.0.0-rc.1+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.0
@@ -67,7 +67,7 @@ require (
 	github.com/maruel/panicparse/v2 v2.3.0
 	github.com/mattn/go-zglob v0.0.3
 	github.com/miekg/dns v1.1.50
-	github.com/moby/buildkit v0.11.0-rc1
+	github.com/moby/buildkit v0.11.0
 	github.com/moby/patternmatcher v0.5.0
 	github.com/morikuni/aec v1.0.0
 	github.com/muesli/cancelreader v0.2.2
@@ -85,7 +85,7 @@ require (
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
-	github.com/tonistiigi/fsutil v0.0.0-20221114235510-0127568185cf
+	github.com/tonistiigi/fsutil v0.0.0-20230105215944-fb433841cbfa
 	go.lsp.dev/jsonrpc2 v0.10.0
 	go.lsp.dev/protocol v0.12.0
 	go.lsp.dev/uri v0.3.0
@@ -104,7 +104,7 @@ require (
 	golang.org/x/crypto v0.2.0
 	golang.org/x/exp v0.0.0-20220613132600-b0d781184e0d
 	golang.org/x/mod v0.7.0
-	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10
+	golang.org/x/net v0.4.0
 	golang.org/x/oauth2 v0.1.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.3.0
@@ -142,7 +142,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.2 // indirect
 	github.com/Masterminds/squirrel v1.5.2 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
-	github.com/Microsoft/hcsshim v0.9.5 // indirect
+	github.com/Microsoft/hcsshim v0.9.6 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535 // indirect
@@ -168,7 +168,7 @@ require (
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5 // indirect
 	github.com/cncf/xds/go v0.0.0-20211011173535-cb28da3451f1 // indirect
 	github.com/cockroachdb/apd/v2 v2.0.1 // indirect
-	github.com/containerd/cgroups v1.0.3 // indirect
+	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/containerd/console v1.0.3 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/containerd/fifo v1.0.0 // indirect
@@ -220,7 +220,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
-	github.com/in-toto/in-toto-golang v0.3.4-0.20220709202702-fa494aaa0add // indirect
+	github.com/in-toto/in-toto-golang v0.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
