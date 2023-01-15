@@ -1,6 +1,6 @@
 {
 	"versions": {
-		"1.19": "1.19.3",
+		"1.19": "1.19.5",
 		"1.18": "1.18.6",
 		"1.17": "1.17.7",
 		"1.16": "1.16.14"
@@ -18,6 +18,12 @@
 			"linux/arm64": "99de2fe112a52ab748fb175edea64b313a0c8d51d6157dba683a6be163fd5eab",
 			"darwin/amd64": "7fa09a9a34cb6f794e61e9ada1d6d18796f936a2b35f22724906cad71396e590",
 			"darwin/arm64": "49e394ab92bc6fa3df3d27298ddf3e4491f99477bee9dd4934525a526f3a391c"
+		},
+		"1.19.5": {
+			"linux/amd64": "36519702ae2fd573c9869461990ae550c8c0d955cd28d2827a6b159fda81ff95",
+			"linux/arm64": "fc0aa29c933cec8d76f5435d859aaf42249aa08c74eb2d154689ae44c08d23b3",
+			"darwin/amd64": "23d22bb6571bbd60197bee8aaa10e702f9802786c2e2ddce5c84527e86b66aa0",
+			"darwin/arm64": "4a67f2bf0601afe2177eb58f825adf83509511d77ab79174db0712dc9efa16c8"
 		},
 		"1.18.6": {
 			"linux/amd64": "bb05f179a773fed60c6a454a24141aaa7e71edfd0f2d465ad610a3b8f1dc7fe8",
