@@ -42,7 +42,7 @@ var (
 func SetupFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&rpcEndpointOverride, "nscloud_endpoint", "", "Where to dial to when reaching nscloud.")
 	_ = flags.MarkHidden("nscloud_endpoint")
-	flags.StringVar(&regionName, "nscloud_region", "a", "Which region to use.")
+	flags.StringVar(&regionName, "nscloud_region", "fra1", "Which region to use.")
 	_ = flags.MarkHidden("nscloud_region")
 	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_machine_type")
@@ -51,12 +51,7 @@ func SetupFlags(flags *pflag.FlagSet) {
 func Register() {
 	rpcEndpoint := rpcEndpointOverride
 	if rpcEndpoint == "" {
-		regionSuffix := fmt.Sprintf("-%s", regionName)
-		if regionName == "a" {
-			regionSuffix = ""
-		}
-
-		rpcEndpoint = fmt.Sprintf("https://grpc-gateway-84umfjt8rm05f5dimftg.prod-metal%s.namespacelabs.nscloud.dev", regionSuffix)
+		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
 	}
 
 	api.Endpoint = api.MakeAPI(rpcEndpoint)
