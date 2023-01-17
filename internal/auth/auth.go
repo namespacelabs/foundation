@@ -14,6 +14,10 @@ import (
 	"namespacelabs.dev/foundation/internal/github"
 )
 
+const (
+	githubJWTAudience = "nscloud.dev/inline-token"
+)
+
 type authConfig struct {
 	userAuth   *UserAuth
 	githubOIDC bool
@@ -56,7 +60,7 @@ func GenerateToken(ctx context.Context, opts ...AuthOpt) (string, error) {
 		return base64.RawStdEncoding.EncodeToString(cfg.userAuth.InternalOpaque), nil
 
 	case cfg.githubOIDC:
-		jwt, err := github.JWT(ctx, "") // XXX: do not set "audience" and use default one
+		jwt, err := github.JWT(ctx, githubJWTAudience)
 		if err != nil {
 			return "", err
 		}
