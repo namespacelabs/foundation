@@ -78,6 +78,19 @@ func JobDef() *JobDefinition {
 							// Emptydir.
 						},
 					},
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+									MatchExpressions: []corev1.NodeSelectorRequirement{{
+										Key:      "app.kubernetes.io/managed-by",
+										Operator: "In",
+										Values:   []string{"linux/amd64", "linux/arm64"},
+									}},
+								}},
+							},
+						},
+					},
 				},
 			},
 		},
