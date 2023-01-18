@@ -18,6 +18,14 @@ import (
 
 func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry proto.Message) Stage {
 	return Stage{
+		Pre: func(ch chan *orchestration.Event) {
+			ch <- &orchestration.Event{
+				Category:      "Cluster",
+				ResourceId:    "existing",
+				Scope:         fmt.Sprintf("Configure existing context %q", contextName), // XXX remove soon.
+				ResourceLabel: fmt.Sprintf("Configure existing context %q", contextName),
+			}
+		},
 		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 			var confs []proto.Message
 			hostEnv := &client.HostEnv{
