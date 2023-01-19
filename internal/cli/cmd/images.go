@@ -9,9 +9,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/mattn/go-zglob"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -112,9 +114,59 @@ func NewImagesCmd() *cobra.Command {
 	_ = unpack.MarkFlagRequired("image")
 	_ = unpack.MarkFlagRequired("target")
 
+	var tarImage string
+
+	flatten := &cobra.Command{
+		Use:   "flatten --image <image-ref> --target <path/to/file>",
+		Short: "Flatten an image to a tar file in the filesystem.",
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			image, err := resolveImage(ctx, insecure, image, tarImage)
+			if err != nil {
+				return err
+			}
+
+			f, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+
+			r := mutate.Extract(image)
+			defer r.Close()
+
+			if _, err := io.Copy(f, r); err != nil {
+				return err
+			}
+
+			return nil
+		}),
+	}
+
+	flatten.Flags().StringVar(&tarImage, "tar_image", "", "Which image (as a tar file) to unpack.")
+	flatten.Flags().StringVar(&image, "image", "", "Which image to unpack.")
+	flatten.Flags().StringVar(&target, "target", "", "Where the image should be unpacked to.")
+	flatten.Flags().BoolVar(&insecure, "insecure", false, "Access to the registry is insecure.")
+
+	_ = flatten.MarkFlagRequired("target")
+
 	cmd.AddCommand(unpack)
+	cmd.AddCommand(flatten)
 
 	return cmd
+}
+
+func resolveImage(ctx context.Context, insecure bool, image, tarImage string) (oci.Image, error) {
+	if image != "" {
+		platform := docker.HostPlatform()
+
+		return compute.GetValue(ctx, oci.ImageP(image, &platform, oci.RegistryAccess{InsecureRegistry: insecure}))
+	}
+
+	if tarImage != "" {
+		return tarball.ImageFromPath(tarImage, nil)
+	}
+
+	return nil, fnerrors.New("one of --image or --tar-image is required")
 }
 
 func matchAny(globs []fnfs.HasMatch, path string) bool {
