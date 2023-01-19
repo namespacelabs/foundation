@@ -192,7 +192,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateCluster
 					}
 				}
 
-				return nil
+				return fnerrors.InvocationError("nscloud", "stream closed before cluster never became ready")
 			}); err != nil {
 				return fnerrors.InvocationError("nscloud", "cluster never became ready (last status was %q, cluster id: %s): %w", lastStatus, clusterId, err)
 			}
