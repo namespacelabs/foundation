@@ -63,10 +63,17 @@ func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf
 	goBuild := goBuildArgs(bin.GoVersion)
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
+	relPath, err := makePkg(bin.GoModulePath, bin.SourcePath)
+	if err != nil {
+		return nil, err
+	}
+
+	goBuild = append(goBuild, relPath)
+
 	state := (llbutil.RunGo{
 		Base:       prepareGoMod(base, src, conf.TargetPlatform()).Root(),
 		SrcMount:   src,
-		WorkingDir: bin.SourcePath,
+		WorkingDir: ".",
 		Platform:   conf.TargetPlatform(),
 	}).With(
 		llbutil.PrefixSh(label, conf.TargetPlatform(), "go "+strings.Join(goBuild, " "))...).

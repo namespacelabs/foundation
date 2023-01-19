@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -104,7 +105,10 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 
 	modulePath := filepath.Join(absWorkspace, bin.GoModulePath)
 	out := filepath.Join(targetDir, bin.BinaryName)
-	pkg := makePkg(bin.SourcePath)
+	pkg, err := makePkg(bin.GoModulePath, bin.SourcePath)
+	if err != nil {
+		return err
+	}
 
 	var cmd localexec.Command
 	cmd.Label = "go build"
@@ -115,12 +119,17 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	return cmd.Run(ctx)
 }
 
-func makePkg(srcPath string) string {
-	if srcPath == "" || srcPath == "." {
-		return "./"
+func makePkg(modPath, srcPath string) (string, error) {
+	rel, err := filepath.Rel(modPath, srcPath)
+	if err != nil {
+		return "", fnerrors.InternalError("failed to compute relative path from %q to %q", modPath, srcPath)
 	}
 
-	return "./" + srcPath
+	if rel == "" || rel == "." {
+		return "./", nil
+	}
+
+	return "./" + rel, nil
 }
 
 func goarm(platform specs.Platform) (string, error) {
