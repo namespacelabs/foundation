@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"golang.org/x/exp/maps"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -113,6 +114,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 	}
 
 	persistentVolumeCount := 0
+	resourceRefs := map[string]*schema.PackageRef{}
 	for _, dep := range sealed.Deps {
 		if node := dep.Node(); node != nil {
 			for _, rs := range node.Volume {
@@ -149,9 +151,20 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 				}
 
 				sealed.Proto.Server.ResourcePack.ResourceInstance = append(sealed.Proto.Server.ResourcePack.ResourceInstance, node.ResourcePack.ResourceInstance...)
-				sealed.Proto.Server.ResourcePack.ResourceRef = append(sealed.Proto.Server.ResourcePack.ResourceRef, node.ResourcePack.ResourceRef...)
+
+				for _, ref := range node.ResourcePack.ResourceRef {
+					resourceRefs[ref.Canonical()] = ref
+				}
 			}
 		}
+	}
+
+	if len(resourceRefs) > 0 {
+		if sealed.Proto.Server.ResourcePack == nil {
+			sealed.Proto.Server.ResourcePack = &schema.ResourcePack{}
+		}
+
+		sealed.Proto.Server.ResourcePack.ResourceRef = maps.Values(resourceRefs)
 	}
 
 	if persistentVolumeCount > 0 && sealed.Proto.Server.DeployableClass != string(schema.DeployableClass_STATEFUL) {
