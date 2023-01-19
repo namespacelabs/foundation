@@ -10,10 +10,12 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
+type Transformer func(*schema.SerializedInvocation)
+
 type DefList struct {
 	descriptions []string
 	impls        []proto.Message
-	transformers [][]func(*schema.SerializedInvocation)
+	transformers [][]Transformer
 }
 
 func (d *DefList) Add(description string, impl proto.Message, scope ...schema.PackageName) {
@@ -25,10 +27,16 @@ func (d *DefList) Add(description string, impl proto.Message, scope ...schema.Pa
 	})
 }
 
-func (d *DefList) AddExt(description string, impl proto.Message, transformers ...func(*schema.SerializedInvocation)) {
+func (d *DefList) AddExt(description string, impl proto.Message, transformers ...Transformer) {
 	d.descriptions = append(d.descriptions, description)
 	d.impls = append(d.impls, impl)
 	d.transformers = append(d.transformers, transformers)
+}
+
+func (d *DefList) AddProgram(p DefList) {
+	d.descriptions = append(d.descriptions, p.descriptions...)
+	d.impls = append(d.impls, p.impls...)
+	d.transformers = append(d.transformers, p.transformers...)
 }
 
 func (d *DefList) Serialize() ([]*schema.SerializedInvocation, error) {
@@ -50,37 +58,37 @@ func (d *DefList) Serialize() ([]*schema.SerializedInvocation, error) {
 	return defs, nil
 }
 
-func Category(name string) func(*schema.SerializedInvocation) {
+func Category(names ...string) Transformer {
 	return func(di *schema.SerializedInvocation) {
 		if di.Order == nil {
 			di.Order = &schema.ScheduleOrder{
-				SchedCategory: []string{name},
+				SchedCategory: names,
 			}
 		} else {
-			di.Order.SchedCategory = append(di.Order.SchedCategory, name)
+			di.Order.SchedCategory = append(di.Order.SchedCategory, names...)
 		}
 	}
 }
 
-func DependsOn(name string) func(*schema.SerializedInvocation) {
+func DependsOn(names ...string) Transformer {
 	return func(di *schema.SerializedInvocation) {
 		if di.Order == nil {
 			di.Order = &schema.ScheduleOrder{
-				SchedAfterCategory: []string{name},
+				SchedAfterCategory: names,
 			}
 		} else {
-			di.Order.SchedAfterCategory = append(di.Order.SchedAfterCategory, name)
+			di.Order.SchedAfterCategory = append(di.Order.SchedAfterCategory, names...)
 		}
 	}
 }
 
-func Consumes(name string) func(*schema.SerializedInvocation) {
+func Consumes(name string) Transformer {
 	return func(di *schema.SerializedInvocation) {
 		di.RequiredOutput = append(di.RequiredOutput, name)
 	}
 }
 
-func MinimumVersion(version int32) func(*schema.SerializedInvocation) {
+func MinimumVersion(version int32) Transformer {
 	return func(di *schema.SerializedInvocation) {
 		di.MinimumVersion = version
 	}

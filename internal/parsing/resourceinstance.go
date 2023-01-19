@@ -12,10 +12,10 @@ import (
 
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
@@ -286,7 +286,7 @@ func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner
 			return err
 		}
 
-		name := naming.StableIDN(fmt.Sprintf("%s->%s", owner.Canonical(), s.String()), 8)
+		name := kubenaming.StableIDN(fmt.Sprintf("%s->%s", owner.Canonical(), s.String()), 8)
 
 		if _, err := pl.LoadByName(ctx, schema.PackageName(s.String())); err != nil {
 			return err

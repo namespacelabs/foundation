@@ -11,9 +11,9 @@ import (
 	"sort"
 	"strings"
 
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/runtime/constants"
@@ -38,7 +38,7 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 	}
 
 	if srv.Id == "" {
-		srv.Id = naming.StableIDN(pp.Location.PackageName.String(), 16)
+		srv.Id = kubenaming.StableIDN(pp.Location.PackageName.String(), 16)
 	}
 
 	if err := ValidateServerID(srv); err != nil {

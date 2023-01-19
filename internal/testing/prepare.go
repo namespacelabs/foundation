@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
@@ -16,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/testing/testboot"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -116,7 +116,7 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 		container.Args = append(container.Args, "--debug")
 	}
 
-	pkgId := naming.StableIDN(driver.TestRef.PackageName, 8)
+	pkgId := kubenaming.StableIDN(driver.TestRef.PackageName, 8)
 
 	return deploy.PreparedDeployable{
 		Ref:       driver.TestRef,

@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -26,7 +26,7 @@ func ModuleNamespace(ws *schema.Workspace, env *schema.Environment) string {
 	parts := []string{strings.ToLower(env.Name)}
 	parts = append(parts, validChars.FindAllString(filepath.Base(ws.ModuleName), -1)...)
 
-	id := naming.StableIDN(ws.ModuleName, 5)
+	id := kubenaming.StableIDN(ws.ModuleName, 5)
 
 	parts = append(parts, id)
 	return strings.Join(parts, "-")

@@ -13,7 +13,7 @@ import (
 	diskcached "k8s.io/client-go/discovery/cached/disk"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	"namespacelabs.dev/foundation/internal/support/naming"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
@@ -45,7 +45,7 @@ func makeCacheDir(host string, ephemeral bool) (string, error) {
 		return "", err
 	}
 
-	hostID := naming.StableID(host)
+	hostID := kubenaming.StableID(host)
 
 	discoveryCacheDir := filepath.Join(cacheDir, "discovery", hostID)
 	return discoveryCacheDir, nil

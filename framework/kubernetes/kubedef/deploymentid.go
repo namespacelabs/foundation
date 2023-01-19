@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	schema "namespacelabs.dev/foundation/schema"
 )
 
@@ -24,12 +24,12 @@ func MakeDeploymentId(srv runtime.Deployable) string {
 
 func MakeVolumeName(v *schema.Volume) string {
 	if v.Inline {
-		return naming.LabelLike("vi", v.Name)
+		return kubenaming.LabelLike("vi", v.Name)
 	}
 
-	return naming.LabelLike("v", v.Name)
+	return kubenaming.LabelLike("v", v.Name)
 }
 
 func MakeResourceName(deploymentId string, suffix ...string) string {
-	return naming.DomainFragLike(append([]string{deploymentId}, suffix...)...)
+	return kubenaming.DomainFragLike(append([]string{deploymentId}, suffix...)...)
 }

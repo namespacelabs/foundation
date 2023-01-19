@@ -11,9 +11,9 @@ import (
 
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/library/kubernetes/rbac"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -32,7 +32,7 @@ func main() {
 			return err
 		}
 
-		roleName := "ns:user:" + naming.DomainFragLikeN("-", filepath.Base(source.ResourceInstance.PackageName), source.ResourceInstance.Name, naming.StableIDN(source.ResourceInstanceId, 8))
+		roleName := "ns:user:" + kubenaming.DomainFragLikeN("-", filepath.Base(source.ResourceInstance.PackageName), source.ResourceInstance.Name, kubenaming.StableIDN(source.ResourceInstanceId, 8))
 		labels := map[string]string{}
 
 		clusterRole := rbacv1.ClusterRole(roleName).

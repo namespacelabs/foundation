@@ -9,9 +9,9 @@ import (
 	"strings"
 	"text/template"
 
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -184,11 +184,11 @@ var (
 		"makeProvisionProtoName": makeProvisionProtoName,
 
 		"longPackageType": func(pkg schema.PackageName) string {
-			return "Package__" + naming.StableIDN(pkg.String(), 6)
+			return "Package__" + kubenaming.StableIDN(pkg.String(), 6)
 		},
 
 		"longProviderType": func(pkg schema.PackageName, typ string) string {
-			l := naming.StableIDN(pkg.String(), 6)
+			l := kubenaming.StableIDN(pkg.String(), 6)
 			if typ != "" {
 				l += "__" + typ
 			}
@@ -196,12 +196,12 @@ var (
 		},
 
 		"longInitializerType": func(pkg schema.PackageName) string {
-			l := naming.StableIDN(pkg.String(), 6)
+			l := kubenaming.StableIDN(pkg.String(), 6)
 			return "Initializers__" + l
 		},
 
 		"longMakeDeps": func(pkg schema.PackageName, typ string) string {
-			l := naming.StableIDN(pkg.String(), 6)
+			l := kubenaming.StableIDN(pkg.String(), 6)
 			if typ != "" {
 				l += "__" + typ
 			}

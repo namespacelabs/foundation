@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"google.golang.org/protobuf/encoding/protojson"
-	"namespacelabs.dev/foundation/internal/support/naming"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	runtimepb "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -21,7 +21,7 @@ type Serialized struct {
 }
 
 func RelPath(res *schema.PackageRef) string {
-	return naming.DomainFragLike(res.PackageName, res.Name)
+	return kubenaming.DomainFragLike(res.PackageName, res.Name)
 }
 
 func Serialize(res *schema.PackageRef) (*Serialized, error) {

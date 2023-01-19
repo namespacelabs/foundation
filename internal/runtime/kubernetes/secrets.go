@@ -14,9 +14,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 )
@@ -49,7 +49,7 @@ func (s *secretCollector) allocate(ctx context.Context, ref *schema.PackageRef) 
 	}
 
 	if contents.Value != nil {
-		key := naming.DomainFragLike(ref.PackageName, ref.Name)
+		key := kubenaming.DomainFragLike(ref.PackageName, ref.Name)
 		s.items.set(key, contents.Value)
 
 		return &secretReference{Name: s.secretId, Key: key}, nil

@@ -10,12 +10,12 @@ import (
 	"strings"
 
 	anypb "google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
@@ -345,7 +345,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 				return nil, fnerrors.NamespaceTooOld("domain allocation", 0, 0)
 			}
 
-			x := naming.StableIDN(fmt.Sprintf("%s:%s", env.Name, computed.MainModuleName), 6)
+			x := kubenaming.StableIDN(fmt.Sprintf("%s:%s", env.Name, computed.MainModuleName), 6)
 			name := fmt.Sprintf("%s-%s", allocatedName.Alias, x)
 
 			if computed.DomainFragmentSuffix != "" {

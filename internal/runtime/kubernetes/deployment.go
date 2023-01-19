@@ -25,12 +25,12 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/support"
-	"namespacelabs.dev/foundation/internal/support/naming"
 	"namespacelabs.dev/foundation/library/kubernetes/rbac"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
@@ -913,7 +913,7 @@ func (cm *collector) set(key string, rsc []byte) {
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {
-	key := naming.DomainFragLike(entry.Path, rsc.Path)
+	key := kubenaming.DomainFragLike(entry.Path, rsc.Path)
 	fmt.Fprintf(hash, "%s:", key)
 	_, _ = hash.Write(rsc.Contents)
 	fmt.Fprintln(hash)
