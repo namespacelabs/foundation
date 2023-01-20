@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/mattn/go-zglob"
@@ -200,6 +202,15 @@ func runNixShell(ctx context.Context, io rtypes.IO, pkg, command string, args []
 func resolveImage(ctx context.Context, image string, env cfg.Context, pl *parsing.PackageLoader) (oci.Image, error) {
 	if strings.HasPrefix(image, "tar:") {
 		return tarball.ImageFromPath(strings.TrimPrefix(image, "tar:"), nil)
+	}
+
+	if strings.HasPrefix(image, "docker:") {
+		n, err := name.ParseReference(strings.TrimPrefix(image, "docker:"))
+		if err != nil {
+			return nil, err
+		}
+
+		return daemon.Image(n, daemon.WithContext(ctx), daemon.WithBufferedOpener())
 	}
 
 	if strings.HasPrefix(image, "binary:") {
