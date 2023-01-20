@@ -12,6 +12,7 @@ import (
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -41,6 +42,7 @@ type cueImageBuildPlan struct {
 	Files                    []string                           `json:"files,omitempty"`
 	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
 	NodejsBuild              *schema.NodejsBuild                `json:"nodejs_build,omitempty"`
+	Binary                   string                             `json:"binary,omitempty"`
 	FilesFrom                *cueImageBuildPlan_FilesFrom       `json:"files_from,omitempty"`
 	MakeSquashFS             *cueImageBuildPlan_MakeSquashFS    `json:"make_squashfs,omitempty"`
 	ImageID                  string                             `json:"image_id,omitempty"`
@@ -61,7 +63,7 @@ type cueImageBuildPlan_MakeSquashFS struct {
 	Target string            `json:"target"`
 }
 
-func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
+func parseCueBinary(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, err
@@ -72,7 +74,7 @@ func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue
 		return nil, err
 	}
 
-	bin, err := srcBin.ToSchema(loc)
+	bin, err := srcBin.ToSchema(ctx, pl, loc)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +82,7 @@ func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue
 	return bin, nil
 }
 
-func (srcBin cueBinary) ToSchema(loc fnerrors.Location) (*schema.Binary, error) {
+func (srcBin cueBinary) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc fnerrors.Location) (*schema.Binary, error) {
 	bin := &schema.Binary{
 		Name:   srcBin.Name,
 		Config: srcBin.Config,
@@ -88,7 +90,7 @@ func (srcBin cueBinary) ToSchema(loc fnerrors.Location) (*schema.Binary, error) 
 
 	if srcBin.BuildPlan != nil {
 		var err error
-		bin.BuildPlan, err = srcBin.BuildPlan.ToSchema(loc)
+		bin.BuildPlan, err = srcBin.BuildPlan.ToSchema(ctx, pl, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -99,7 +101,7 @@ func (srcBin cueBinary) ToSchema(loc fnerrors.Location) (*schema.Binary, error) 
 			return nil, fnerrors.NewWithLocation(loc, "from and build_plan are exclusive -- only one can be set")
 		}
 
-		parsed, err := srcBin.From.ToSchema(loc)
+		parsed, err := srcBin.From.ToSchema(ctx, pl, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -145,10 +147,10 @@ func (lbp *cueLayeredImageBuildPlan) UnmarshalJSON(data []byte) error {
 	}
 }
 
-func (lbp *cueLayeredImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.LayeredImageBuildPlan, error) {
+func (lbp *cueLayeredImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc fnerrors.Location) (*schema.LayeredImageBuildPlan, error) {
 	plan := &schema.LayeredImageBuildPlan{}
 	for _, def := range lbp.LayerBuildPlan {
-		parsed, err := def.ToSchema(loc)
+		parsed, err := def.ToSchema(ctx, pl, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +159,7 @@ func (lbp *cueLayeredImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.La
 	return plan, nil
 }
 
-func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildPlan, error) {
+func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc fnerrors.Location) (*schema.ImageBuildPlan, error) {
 	plan := &schema.ImageBuildPlan{}
 
 	var set []string
@@ -187,7 +189,7 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	}
 
 	if bp.LlbPlan != nil {
-		p, err := bp.LlbPlan.OutputOf.ToSchema(loc)
+		p, err := bp.LlbPlan.OutputOf.ToSchema(ctx, pl, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +218,7 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	}
 
 	if bp.FilesFrom != nil {
-		from, err := bp.FilesFrom.From.ToSchema(loc)
+		from, err := bp.FilesFrom.From.ToSchema(ctx, pl, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +233,7 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 	}
 
 	if bp.MakeSquashFS != nil {
-		from, err := bp.MakeSquashFS.From.ToSchema(loc)
+		from, err := bp.MakeSquashFS.From.ToSchema(ctx, pl, loc)
 		if err != nil {
 			return nil, err
 		}
@@ -242,6 +244,20 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 		}
 
 		set = append(set, "make_squashfs")
+	}
+
+	if bp.Binary != "" {
+		ref, err := schema.StrictParsePackageRef(bp.Binary)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := pl.LoadByName(ctx, ref.AsPackageName()); err != nil {
+			return nil, err
+		}
+
+		plan.Binary = ref
+		set = append(set, "binary")
 	}
 
 	if bp.ImageID != "" {

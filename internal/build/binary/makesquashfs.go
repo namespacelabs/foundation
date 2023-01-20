@@ -41,6 +41,10 @@ func (m makeSquashFS) BuildImage(ctx context.Context, env pkggraph.SealedContext
 
 		x := filepath.Join(dir, m.target)
 
+		if err := os.MkdirAll(filepath.Dir(x), 0755); err != nil {
+			return nil, err
+		}
+
 		defer os.RemoveAll(dir)
 
 		if err := ToLocalSquashFS(ctx, img, x); err != nil {

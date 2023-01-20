@@ -130,7 +130,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	}
 
 	if test := v.LookupPath("test"); test.Exists() {
-		parsedTest, binary, err := parsecueTestOld(ctx, loc, v, test)
+		parsedTest, binary, err := parsecueTestOld(ctx, ft.loader, loc, v, test)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "parsing test: %w", err)
 		}

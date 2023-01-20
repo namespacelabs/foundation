@@ -9,6 +9,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -25,7 +26,7 @@ type cueFixture struct {
 }
 
 // Old syntax
-func parsecueTestOld(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, *schema.Binary, error) {
+func parsecueTestOld(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Test, *schema.Binary, error) {
 	// Ensure all fields are bound.
 	if err := v.Val.Validate(cue.Concrete(true)); err != nil {
 		return nil, nil, err
@@ -44,9 +45,9 @@ func parsecueTestOld(ctx context.Context, loc pkggraph.Location, parent, v *fncu
 	var err error
 	var bin *schema.Binary
 	if test.Driver != nil {
-		bin, err = test.Driver.ToSchema(loc)
+		bin, err = test.Driver.ToSchema(ctx, pl, loc)
 	} else if test.Binary != nil {
-		bin, err = test.Binary.ToSchema(loc)
+		bin, err = test.Binary.ToSchema(ctx, pl, loc)
 	}
 	if err != nil {
 		return nil, nil, err
