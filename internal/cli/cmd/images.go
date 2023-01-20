@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/utils/pointer"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -276,6 +277,7 @@ func imageFromArgs(cmd *cobra.Command) *oci.Image {
 	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
 
 	targetImage := new(oci.Image)
+	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Which platforms to build the binary for.")
 
 	fncobra.PushParse(cmd, func(ctx context.Context, args []string) error {
 		if len(args) != 1 {
