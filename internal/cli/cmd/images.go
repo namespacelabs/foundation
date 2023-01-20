@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -32,7 +31,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
-	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -164,40 +162,8 @@ func makeSquash() *cobra.Command {
 	_ = makeSquash.MarkFlagRequired("target")
 
 	return fncobra.With(makeSquash, func(ctx context.Context) error {
-		r := mutate.Extract(*image)
-		defer r.Close()
-
-		if err := runCommandMaybeNixShell(ctx, rtypes.IO{Stdin: r, Stdout: console.Stdout(ctx), Stderr: console.Stderr(ctx)}, "squashfs-tools-ng", "tar2sqfs", *target); err != nil {
-			return err
-		}
-
-		return nil
+		return binary.ToLocalSquashFS(ctx, *image, *target)
 	})
-}
-
-func runCommandMaybeNixShell(ctx context.Context, io rtypes.IO, pkg, command string, args ...string) error {
-	if _, err := exec.LookPath("nix-shell"); err == nil {
-		return runNixShell(ctx, io, pkg, command, args)
-	}
-
-	loc, err := exec.LookPath(command)
-	if err != nil {
-		return err
-	}
-
-	return runRawCommand(ctx, io, loc, args...)
-}
-
-func runRawCommand(ctx context.Context, io rtypes.IO, command string, args ...string) error {
-	cmd := exec.CommandContext(ctx, command, args...)
-	cmd.Stdin = io.Stdin
-	cmd.Stdout = io.Stdout
-	cmd.Stderr = io.Stderr
-	return cmd.Run()
-}
-
-func runNixShell(ctx context.Context, io rtypes.IO, pkg, command string, args []string) error {
-	return runRawCommand(ctx, io, "nix-shell", "-p", pkg, "--run", strings.Join(append([]string{command}, args...), " "))
 }
 
 func resolveImage(ctx context.Context, image string, env cfg.Context, pl *parsing.PackageLoader) (oci.Image, error) {

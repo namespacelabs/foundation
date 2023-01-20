@@ -46,6 +46,7 @@ message ImageBuildPlan {
     StaticFilesServer static_files_server = 11;
     AlpineBuild       alpine_build        = 13;  // Build an alpine image that installs required packages.
     FilesFrom         files_from          = 15;
+    MakeSquashFS      make_squashfs       = 16;
 
     message LLBPlan {
         Binary output_of = 1;
@@ -73,6 +74,11 @@ message ImageBuildPlan {
         ImageBuildPlan  from       = 1;
         repeated string files      = 2;
         string          target_dir = 3;
+    }
+
+    message MakeSquashFS {
+        ImageBuildPlan from   = 1;
+        string         target = 2;
     }
 }
 

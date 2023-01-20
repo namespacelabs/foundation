@@ -286,6 +286,19 @@ _#ConfigureBase: {
 		alpine_build?: {package?: [...string]}
 		files?: [...string]
 		snapshot_files?: [...string]
+		files_from:    #FilesFrom
+		make_squashfs: #MakeSquashFS
+
+		#FilesFrom: {
+			from: #BuildPlan
+			files: [...string]
+			target_dir: string
+		}
+
+		#MakeSquashFS: {
+			from:   #BuildPlan
+			target: string
+		}
 	}
 
 	config?: {

@@ -42,6 +42,7 @@ type cueImageBuildPlan struct {
 	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
 	NodejsBuild              *schema.NodejsBuild                `json:"nodejs_build,omitempty"`
 	FilesFrom                *cueImageBuildPlan_FilesFrom       `json:"files_from,omitempty"`
+	MakeSquashFS             *cueImageBuildPlan_MakeSquashFS    `json:"make_squashfs,omitempty"`
 	ImageID                  string                             `json:"image_id,omitempty"`
 }
 
@@ -53,6 +54,11 @@ type cueImageBuildPlan_FilesFrom struct {
 	From      cueImageBuildPlan `json:"from"`
 	Files     []string          `json:"files"`
 	TargetDir string            `json:"target_dir"`
+}
+
+type cueImageBuildPlan_MakeSquashFS struct {
+	From   cueImageBuildPlan `json:"from"`
+	Target string            `json:"target"`
 }
 
 func parseCueBinary(ctx context.Context, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
@@ -222,6 +228,20 @@ func (bp cueImageBuildPlan) ToSchema(loc fnerrors.Location) (*schema.ImageBuildP
 		}
 
 		set = append(set, "files_from")
+	}
+
+	if bp.MakeSquashFS != nil {
+		from, err := bp.MakeSquashFS.From.ToSchema(loc)
+		if err != nil {
+			return nil, err
+		}
+
+		plan.MakeSquashfs = &schema.ImageBuildPlan_MakeSquashFS{
+			From:   from,
+			Target: bp.MakeSquashFS.Target,
+		}
+
+		set = append(set, "make_squashfs")
 	}
 
 	if bp.ImageID != "" {

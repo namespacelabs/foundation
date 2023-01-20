@@ -49,4 +49,4 @@ func (m filesFrom) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 	}), nil
 }
 
-func (m filesFrom) PlatformIndependent() bool { return false }
+func (m filesFrom) PlatformIndependent() bool { return m.spec.PlatformIndependent() }

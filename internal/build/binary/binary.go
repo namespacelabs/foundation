@@ -292,6 +292,15 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 		return filesFrom{inner, src.FilesFrom.Files, src.FilesFrom.TargetDir}, nil
 	}
 
+	if src.MakeSquashfs != nil {
+		inner, err := buildSpec(ctx, pl, env, loc, bin, src.MakeSquashfs.From, assets, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		return makeSquashFS{inner, src.MakeSquashfs.Target}, nil
+	}
+
 	return nil, fnerrors.NewWithLocation(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 
