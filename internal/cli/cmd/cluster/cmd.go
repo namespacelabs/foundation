@@ -388,7 +388,7 @@ func ssh(ctx context.Context, cluster *api.KubernetesCluster, args []string) err
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "UpdateHostKeys no",
-		"-p", fmt.Sprintf("%d", localPort), "janitor@127.0.0.1")
+		"-p", fmt.Sprintf("%d", localPort), "root@127.0.0.1")
 
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	return localexec.RunInteractive(ctx, cmd)
