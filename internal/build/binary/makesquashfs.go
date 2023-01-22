@@ -6,6 +6,7 @@ package binary
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -76,6 +77,8 @@ func runCommandMaybeNixShell(ctx context.Context, io rtypes.IO, pkg, command str
 }
 
 func runRawCommand(ctx context.Context, io rtypes.IO, command string, args ...string) error {
+	fmt.Fprintf(console.Debug(ctx), "Running: %s %s\n", command, strings.Join(args, " "))
+
 	cmd := exec.CommandContext(ctx, command, args...)
 	cmd.Stdin = io.Stdin
 	cmd.Stdout = io.Stdout

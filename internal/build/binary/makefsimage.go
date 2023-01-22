@@ -80,7 +80,7 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 		return err
 	}
 
-	f, err := os.Create(target)
+	f, err := os.Create(tmpFile)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 		return err
 	}
 
-	if err := os.Truncate(target, size); err != nil {
+	if err := os.Truncate(tmpFile, size); err != nil {
 		return err
 	}
 
@@ -105,15 +105,10 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 		return err
 	}
 
-	defer func() {
-		_ = runRawCommand(ctx, io, "umount", mount)
-	}()
+	tarErr := runRawCommand(ctx, io, "tar", "xf", tmpFile, "-C", mount)
+	umountErr := runRawCommand(ctx, io, "umount", mount)
 
-	if err := runRawCommand(ctx, io, "tar", "xf", target, "-C", mount); err != nil {
-		return err
-	}
-
-	return nil
+	return multierr.New(tarErr, umountErr)
 }
 
 func writeFile(ctx context.Context, filepath string, image oci.Image) error {
