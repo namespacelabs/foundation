@@ -107,8 +107,9 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 
 	tarErr := runRawCommand(ctx, io, "tar", "xf", tmpFile, "-C", mount)
 	umountErr := runRawCommand(ctx, io, "umount", mount)
+	fsckErr := runCommandMaybeNixShell(ctx, io, "e2fsprogs", "e2fsck", "-f", target)
 
-	return multierr.New(tarErr, umountErr)
+	return multierr.New(tarErr, umountErr, fsckErr)
 }
 
 func writeFile(ctx context.Context, filepath string, image oci.Image) error {
