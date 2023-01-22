@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 
 	"cuelang.org/go/cue"
+	"github.com/docker/go-units"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -32,20 +33,21 @@ type cueLayeredImageBuildPlan struct {
 var _ json.Unmarshaler = &cueLayeredImageBuildPlan{}
 
 type cueImageBuildPlan struct {
-	Prebuilt                 string                             `json:"prebuilt,omitempty"`
-	GoPackage                string                             `json:"go_package,omitempty"`
-	GoBuild                  *schema.ImageBuildPlan_GoBuild     `json:"go_build,omitempty"`
-	Dockerfile               string                             `json:"dockerfile,omitempty"`
-	LlbPlan                  *cueImageBuildPlan_LLBPlan         `json:"llb_plan,omitempty"`
-	NixFlake                 string                             `json:"nix_flake,omitempty"`
-	Deprecated_SnapshotFiles []string                           `json:"snapshot_files,omitempty"` // Use `files` instead.
-	Files                    []string                           `json:"files,omitempty"`
-	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild `json:"alpine_build,omitempty"`
-	NodejsBuild              *schema.NodejsBuild                `json:"nodejs_build,omitempty"`
-	Binary                   string                             `json:"binary,omitempty"`
-	FilesFrom                *cueImageBuildPlan_FilesFrom       `json:"files_from,omitempty"`
-	MakeSquashFS             *cueImageBuildPlan_MakeSquashFS    `json:"make_squashfs,omitempty"`
-	ImageID                  string                             `json:"image_id,omitempty"`
+	Prebuilt                 string                                 `json:"prebuilt,omitempty"`
+	GoPackage                string                                 `json:"go_package,omitempty"`
+	GoBuild                  *schema.ImageBuildPlan_GoBuild         `json:"go_build,omitempty"`
+	Dockerfile               string                                 `json:"dockerfile,omitempty"`
+	LlbPlan                  *cueImageBuildPlan_LLBPlan             `json:"llb_plan,omitempty"`
+	NixFlake                 string                                 `json:"nix_flake,omitempty"`
+	Deprecated_SnapshotFiles []string                               `json:"snapshot_files,omitempty"` // Use `files` instead.
+	Files                    []string                               `json:"files,omitempty"`
+	AlpineBuild              *schema.ImageBuildPlan_AlpineBuild     `json:"alpine_build,omitempty"`
+	NodejsBuild              *schema.NodejsBuild                    `json:"nodejs_build,omitempty"`
+	Binary                   string                                 `json:"binary,omitempty"`
+	FilesFrom                *cueImageBuildPlan_FilesFrom           `json:"files_from,omitempty"`
+	MakeSquashFS             *cueImageBuildPlan_MakeSquashFS        `json:"make_squashfs,omitempty"`
+	MakeFilesystemImage      *cueImageBuildPlan_MakeFilesystemImage `json:"make_fs_image,omitempty"`
+	ImageID                  string                                 `json:"image_id,omitempty"`
 }
 
 type cueImageBuildPlan_LLBPlan struct {
@@ -61,6 +63,13 @@ type cueImageBuildPlan_FilesFrom struct {
 type cueImageBuildPlan_MakeSquashFS struct {
 	From   cueImageBuildPlan `json:"from"`
 	Target string            `json:"target"`
+}
+
+type cueImageBuildPlan_MakeFilesystemImage struct {
+	From   cueImageBuildPlan `json:"from"`
+	Target string            `json:"target"`
+	Kind   string            `json:"kind"`
+	Size   string            `json:"size"`
 }
 
 func parseCueBinary(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
@@ -244,6 +253,30 @@ func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackag
 		}
 
 		set = append(set, "make_squashfs")
+	}
+
+	if bp.MakeFilesystemImage != nil {
+		from, err := bp.MakeFilesystemImage.From.ToSchema(ctx, pl, loc)
+		if err != nil {
+			return nil, err
+		}
+
+		plan.MakeFsImage = &schema.ImageBuildPlan_MakeFilesystemImage{
+			From:   from,
+			Target: bp.MakeFilesystemImage.Target,
+			Kind:   bp.MakeFilesystemImage.Kind,
+		}
+
+		if bp.MakeFilesystemImage.Size != "" {
+			sizeBytes, err := units.FromHumanSize(bp.MakeFilesystemImage.Size)
+			if err != nil {
+				return nil, err
+			}
+
+			plan.MakeFsImage.Size = sizeBytes
+		}
+
+		set = append(set, "make_fs_image")
 	}
 
 	if bp.Binary != "" {

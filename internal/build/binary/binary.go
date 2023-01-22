@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -299,6 +300,24 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 		}
 
 		return makeSquashFS{inner, src.MakeSquashfs.Target}, nil
+	}
+
+	if src.MakeFsImage != nil {
+		inner, err := buildSpec(ctx, pl, env, loc, bin, src.MakeFsImage.From, assets, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		switch strings.ToLower(src.MakeFsImage.Kind) {
+		case "squashfs", "squash":
+			return makeSquashFS{inner, src.MakeFsImage.Target}, nil
+
+		case "ext4fs", "ext4":
+			return makeExt4Image{inner, src.MakeFsImage.Target, src.MakeFsImage.Size}, nil
+
+		default:
+			return nil, fnerrors.BadInputError("make_fs_image: unsupported filesystem %q", src.MakeFsImage.Kind)
+		}
 	}
 
 	return nil, fnerrors.NewWithLocation(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
