@@ -80,7 +80,7 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 		return err
 	}
 
-	f, err := os.Create(tmpFile)
+	f, err := os.Create(target)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 		return err
 	}
 
-	if err := os.Truncate(tmpFile, size); err != nil {
+	if err := os.Truncate(target, size); err != nil {
 		return err
 	}
 
