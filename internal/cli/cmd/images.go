@@ -185,7 +185,7 @@ func makeFSImage() *cobra.Command {
 			return binary.MakeExt4Image(ctx, *image, dir, *target, sz)
 		}
 
-		return fnerrors.BadInputError("make_fs_image: unsupported filesystem %q", kind)
+		return fnerrors.BadInputError("make_fs_image: unsupported filesystem %q", *kind)
 	})
 }
 
