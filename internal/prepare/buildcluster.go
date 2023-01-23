@@ -7,6 +7,7 @@ package prepare
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
@@ -26,6 +27,34 @@ func PrepareBuildCluster(ctx context.Context, env cfg.Context, cluster *kubernet
 		Description: "Buildkit Namespace",
 		Resource:    jobdef.Namespace,
 	})
+
+	platforms, err := cluster.UnmatchedTargetPlatforms(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Explicitly allow all pods on all available platforms.
+	// On GKE, workloads are not allowed on ARM nodes by default, even if all nodes are ARM.
+	// https://cloud.google.com/kubernetes-engine/docs/how-to/prepare-arm-workloads-for-deployment#overview
+	// TODO make node affinity configurable.
+	var archs []string
+	for _, plat := range platforms {
+		archs = append(archs, plat.Architecture)
+	}
+
+	jobdef.StatefulSet.Spec.Template.Spec.Affinity = &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      "kubernetes.io/arch",
+						Operator: "In",
+						Values:   archs,
+					}},
+				}},
+			},
+		},
+	}
 
 	resources = append(resources, kubedef.Apply{
 		Description: "Buildkit Server",
