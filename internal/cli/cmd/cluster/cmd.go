@@ -59,7 +59,9 @@ func newCreateCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
+
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
+	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
@@ -76,6 +78,12 @@ func newCreateCmd() *cobra.Command {
 		if *outputPath != "" {
 			if err := os.WriteFile(*outputPath, []byte(cluster.ClusterId), 0644); err != nil {
 				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+			}
+		}
+
+		if *outputRegistryPath != "" {
+			if err := os.WriteFile(*outputRegistryPath, []byte(cluster.Registry.EndpointAddress), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
 			}
 		}
 
