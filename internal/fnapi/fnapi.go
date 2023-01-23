@@ -25,8 +25,9 @@ import (
 )
 
 var (
-	EndpointAddress = "https://api.namespacelabs.net"
-	AdminMode       = false
+	EndpointAddress             = "https://api.namespacelabs.net"
+	AdminMode                   = false
+	ExchangeGithubToTenantToken = false
 )
 
 func SetupFlags(flags *pflag.FlagSet) {
@@ -89,6 +90,10 @@ func getUserToken(ctx context.Context) (*auth.UserAuth, string, error) {
 		authOpts = append(authOpts, auth.WithGithubOIDC(true))
 	default:
 		return nil, "", err
+	}
+
+	if ExchangeGithubToTenantToken {
+		authOpts = append(authOpts, auth.WithGithubTokenExchange(ExchangeGithubToken))
 	}
 
 	tok, err := auth.GenerateToken(ctx, authOpts...)

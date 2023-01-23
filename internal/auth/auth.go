@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/github"
 )
@@ -19,8 +21,9 @@ const (
 )
 
 type authConfig struct {
-	userAuth   *UserAuth
-	githubOIDC bool
+	userAuth            *UserAuth
+	githubOIDC          bool
+	githubTokenExchange func(context.Context, string) (string, error)
 }
 
 type AuthOpt func(*authConfig)
@@ -36,6 +39,13 @@ func WithUserAuth(userAuth *UserAuth) AuthOpt {
 func WithGithubOIDC(useGithubOIDC bool) AuthOpt {
 	return func(c *authConfig) {
 		c.githubOIDC = useGithubOIDC
+	}
+}
+
+// WithGithubTokenExchange an option to exchange GitHub JWTs for Namespace JWTs.
+func WithGithubTokenExchange(githubTokenExchange func(context.Context, string) (string, error)) AuthOpt {
+	return func(c *authConfig) {
+		c.githubTokenExchange = githubTokenExchange
 	}
 }
 
@@ -64,6 +74,18 @@ func GenerateToken(ctx context.Context, opts ...AuthOpt) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		if cfg.githubTokenExchange != nil {
+			_, err := cfg.githubTokenExchange(ctx, jwt)
+			if err != nil {
+				return "", err
+			}
+
+			// Consider storing and reusing our JWT.
+			// TODO use token once accepted by API servers
+			return "", rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
+		}
+
 		return fmt.Sprintf("gh-jwt:%s", jwt), nil
 
 	default:
