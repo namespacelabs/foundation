@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -45,7 +46,7 @@ func NewImagesCmd() *cobra.Command {
 
 	cmd.AddCommand(unpack())
 	cmd.AddCommand(flatten())
-	cmd.AddCommand(makeSquash())
+	cmd.AddCommand(makeFSImage())
 
 	return cmd
 }
@@ -150,19 +151,41 @@ func flatten() *cobra.Command {
 	})
 }
 
-func makeSquash() *cobra.Command {
-	makeSquash := &cobra.Command{
-		Use:   "mksquash <image-ref> --target <path/to/file>",
-		Short: "Flatten an image to a squashfs in the filesystem.",
+func makeFSImage() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "mkfsimage <image-ref> --kind ext4|squashfs --target <path/to/file>",
+		Short: "Flatten an image to a filesystem in the filesystem.",
 	}
 
-	image := imageFromArgs(makeSquash)
-	target := makeSquash.Flags().String("target", "", "Where the image should be unpacked to.")
+	image := imageFromArgs(cmd)
+	kind := cmd.Flags().String("kind", "ext4", "The filesystem kind.")
+	target := cmd.Flags().String("target", "", "Where the image should be unpacked to.")
+	size := cmd.Flags().String("size", "0", "The size of the resulting image.")
 
-	_ = makeSquash.MarkFlagRequired("target")
+	_ = cmd.MarkFlagRequired("target")
 
-	return fncobra.With(makeSquash, func(ctx context.Context) error {
-		return binary.ToLocalSquashFS(ctx, *image, *target)
+	return fncobra.With(cmd, func(ctx context.Context) error {
+		sz, err := units.FromHumanSize(*size)
+		if err != nil {
+			return err
+		}
+
+		switch strings.ToLower(*kind) {
+		case "squashfs", "squash":
+			return binary.ToLocalSquashFS(ctx, *image, *target)
+
+		case "ext4fs", "ext4":
+			dir, err := os.MkdirTemp("", "ext4")
+			if err != nil {
+				return err
+			}
+
+			defer os.RemoveAll(dir)
+
+			return binary.MakeExt4Image(ctx, *image, dir, *target, sz)
+		}
+
+		return fnerrors.BadInputError("make_fs_image: unsupported filesystem %q", kind)
 	})
 }
 

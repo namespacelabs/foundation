@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -30,13 +31,25 @@ type makeExt4Image struct {
 	size   int64
 }
 
-func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	if m.size == 0 {
-		return nil, fnerrors.BadInputError("size must be specified")
+func validateExt4(size int64) error {
+	if size == 0 {
+		return fnerrors.BadInputError("size must be specified")
 	}
 
+	if runtime.GOOS != "linux" {
+		return fnerrors.New("mkfs.ext4 only supported in linux")
+	}
+
+	return nil
+}
+
+func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	inner, err := m.spec.BuildImage(ctx, env, conf)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := validateExt4(m.size); err != nil {
 		return nil, err
 	}
 
@@ -48,18 +61,9 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 
 		defer os.RemoveAll(dir)
 
-		mount := filepath.Join(dir, "mount")
-		if err := os.Mkdir(mount, 0755); err != nil {
-			return nil, err
-		}
-
 		out := filepath.Join(dir, "out")
 		x := filepath.Join(out, m.target)
-		if err := os.MkdirAll(filepath.Dir(x), 0755); err != nil {
-			return nil, err
-		}
-
-		if err := toExt4Image(ctx, dir, img, x, m.size); err != nil {
+		if err := MakeExt4Image(ctx, img, dir, x, m.size); err != nil {
 			return nil, err
 		}
 
@@ -74,8 +78,8 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 
 func (m makeExt4Image) PlatformIndependent() bool { return m.spec.PlatformIndependent() }
 
-func toExt4Image(ctx context.Context, dir string, image oci.Image, target string, size int64) error {
-	tmpFile := filepath.Join(dir, "image.tar")
+func toExt4Image(ctx context.Context, tmpdir string, image oci.Image, target string, size int64) error {
+	tmpFile := filepath.Join(tmpdir, "image.tar")
 	if err := writeFile(ctx, tmpFile, image); err != nil {
 		return err
 	}
@@ -110,7 +114,7 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 		return err
 	}
 
-	mount := filepath.Join(dir, "mount")
+	mount := filepath.Join(tmpdir, "mount")
 	if err := runRawCommand(ctx, io, "mount", "-o", "loop", target, mount); err != nil {
 		return err
 	}
@@ -136,4 +140,26 @@ func writeFile(ctx context.Context, filepath string, image oci.Image) error {
 
 		return multierr.New(copyErr, rErr, fErr)
 	})
+}
+
+func MakeExt4Image(ctx context.Context, image oci.Image, tmpdir, target string, size int64) error {
+	if err := validateExt4(size); err != nil {
+		return err
+	}
+
+	mount := filepath.Join(tmpdir, "mount")
+
+	if err := os.Mkdir(mount, 0755); err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+		return err
+	}
+
+	if err := toExt4Image(ctx, tmpdir, image, target, size); err != nil {
+		return err
+	}
+
+	return nil
 }
