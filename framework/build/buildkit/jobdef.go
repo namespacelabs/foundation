@@ -83,9 +83,9 @@ func JobDef() *JobDefinition {
 							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
 								NodeSelectorTerms: []corev1.NodeSelectorTerm{{
 									MatchExpressions: []corev1.NodeSelectorRequirement{{
-										Key:      "app.kubernetes.io/managed-by",
+										Key:      "kubernetes.io/arch",
 										Operator: "In",
-										Values:   []string{"linux/amd64", "linux/arm64"},
+										Values:   []string{"amd64", "arm64"},
 									}},
 								}},
 							},
