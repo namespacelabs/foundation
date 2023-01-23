@@ -96,7 +96,17 @@ func toExt4Image(ctx context.Context, dir string, image oci.Image, target string
 	out := console.TypedOutput(ctx, "write-ext4-image", common.CatOutputTool)
 	io := rtypes.IO{Stdout: out, Stderr: out}
 
-	if err := runCommandMaybeNixShell(ctx, io, "e2fsprogs", "mkfs.ext4", target); err != nil {
+	if err := runCommandMaybeNixShell(ctx, io, "e2fsprogs", "mkfs.ext4", target,
+		// Most images we create are small, but then can be extended. These base
+		// images are created with the same parameters as a larger image would, so
+		// we can get by resize2fsing them later.
+		// Block size: 4k
+		"-b", "4096",
+		// Inode size: 256
+		"-I", "256",
+		// Don't defer work to first mount, do it now.
+		"-E", "lazy_itable_init=0,lazy_journal_init=0",
+	); err != nil {
 		return err
 	}
 
