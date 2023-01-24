@@ -514,7 +514,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			}
 
 			if len(configmapItems) > 0 {
-				configId := "ns-static-" + ids.EncodeToBase32String(configHash.Sum(nil))[6:]
+				configId := "ns-static-" + ids.EncodeToBase32String(configHash.Sum(nil))
 
 				projected = projected.WithSources(applycorev1.VolumeProjection().WithConfigMap(
 					applycorev1.ConfigMapProjection().WithName(configId).WithItems(configmapItems...)))
@@ -528,7 +528,6 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 						WithLabels(map[string]string{
 							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
 						}).
-						WithImmutable(true).
 						WithData(configs.data).
 						WithBinaryData(configs.binaryData),
 				})
