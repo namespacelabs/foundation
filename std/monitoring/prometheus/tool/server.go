@@ -98,6 +98,13 @@ func (configureServer) Apply(ctx context.Context, r provisioning.StackRequest, o
 				ReadOnly:  true,
 				MountPath: "/etc/prometheus/",
 			}},
+			Args: []string{
+				"--config.file=/etc/prometheus/prometheus.yml",
+				"--storage.tsdb.path=/prometheus",
+				"--web.console.libraries=/usr/share/prometheus/console_libraries",
+				"--web.console.templates=/usr/share/prometheus/consoles",
+				"--web.enable-remote-write-receiver",
+			},
 		},
 	})
 

@@ -5,7 +5,7 @@ server: fn.#OpaqueServer & {
 	name: "prometheus"
 
 	binary: {
-		image: "prom/prometheus:v2.31.1@sha256:a8779cfe553e0331e9046268e26c539fa39ecf90d59836d828163e65e8f4fa35"
+		image: "prom/prometheus:v2.37.5@sha256:8fa63fdd8d48e12bc8cd5e84b3e39e8ebf3cbd3580fb2c6449167917aaf0f04e"
 	}
 
 	service: "prometheus": {
