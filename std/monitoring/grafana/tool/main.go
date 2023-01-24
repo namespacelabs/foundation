@@ -51,10 +51,17 @@ func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisi
 	if err != nil {
 		return err
 	}
-	configs["dashboard"] = string(data)
+	configs["default-dashboard"] = string(data)
+
 	items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
-		Key:  "dashboard",
-		Path: dashboard,
+		Key:  "default-dashboard",
+		Path: "default-dashboards/default.json",
+	})
+
+	configs["provision-dashboards"] = dashboardTmpl
+	items = append(items, &kubedef.SpecExtension_Volume_ConfigMap_Item{
+		Key:  "provision-dashboards",
+		Path: fmt.Sprintf("provisioning/dashboards/%s", "default.yml"),
 	})
 
 	var b bytes.Buffer
@@ -168,9 +175,20 @@ datasources:
     editable: false
 `))
 
-	iniTmpl = template.Must(template.New("grafana.ini").Parse(`[auth]
-	disable_login_form = false
-	[dashboards]
-	default_home_dashboard_path = {{.MountPath}}/{{.DashboardPath}}
+	dashboardTmpl = `apiVersion: 1
+
+providers:
+  - name: default
+    orgId: 1
+    disableDeletion: true
+    options:
+      path: /etc/grafana/default-dashboards
+      foldersFromFilesStructure: true
+`
+
+	iniTmpl = template.Must(template.New("grafana.ini").Parse(`
+[auth.anonymous]
+	enabled = true
+	org_role = Admin
 `))
 )

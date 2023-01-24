@@ -7,7 +7,7 @@ server: fn.#OpaqueServer & {
 	name: "Grafana"
 
 	binary: {
-		image: "grafana/grafana-enterprise:8.2.3@sha256:436c264303bb2cc03ba91912ee2711f1bf029f12ba5a7ec1db1a6e1f8774d9c8"
+		image: "grafana/grafana-enterprise:9.3.2@sha256:b7e2a549ccbb51319c792559df720af1398db5a89a1405a159bdfa6bbad382fb"
 	}
 
 	service: "web": {
