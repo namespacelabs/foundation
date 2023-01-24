@@ -10,15 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"google.golang.org/grpc/codes"
-	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/github"
 )
 
-const (
-	githubJWTAudience = "nscloud.dev/inline-token"
-)
+const githubJWTAudience = "nscloud.dev/inline-token"
 
 type authConfig struct {
 	userAuth            *UserAuth
@@ -70,20 +66,18 @@ func GenerateToken(ctx context.Context, opts ...AuthOpt) (string, error) {
 		return base64.RawStdEncoding.EncodeToString(cfg.userAuth.InternalOpaque), nil
 
 	case cfg.githubOIDC:
-		jwt, err := github.JWT(ctx, githubJWTAudience)
-		if err != nil {
-			return "", err
-		}
-
 		if cfg.githubTokenExchange != nil {
-			_, err := cfg.githubTokenExchange(ctx, jwt)
+			token, err := fetchTokenForGithub(ctx, cfg.githubTokenExchange)
 			if err != nil {
 				return "", err
 			}
+			return fmt.Sprintf("ns-jwt:%s", token), nil
+		}
 
-			// Consider storing and reusing our JWT.
-			// TODO use token once accepted by API servers
-			return "", rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
+		// TODO: remove this path
+		jwt, err := github.JWT(ctx, githubJWTAudience)
+		if err != nil {
+			return "", err
 		}
 
 		return fmt.Sprintf("gh-jwt:%s", jwt), nil
