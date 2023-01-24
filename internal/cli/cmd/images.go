@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/docker/go-units"
+	"github.com/dustin/go-humanize"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -21,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/utils/pointer"
 	"k8s.io/utils/strings/slices"
+	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
@@ -35,6 +37,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewImagesCmd() *cobra.Command {
@@ -96,17 +99,18 @@ func unpack() *cobra.Command {
 					return err
 				}
 
-				w, err := dst.OpenWrite(clean, h.FileInfo().Mode().Perm())
-				if err != nil {
-					return err
+				var writeErr error
+				if h.FileInfo().Size() > 1024*1024 {
+					writeErr = tasks.Action("extract").Arg("path", clean).Arg("size", humanize.Bytes(uint64(h.FileInfo().Size()))).
+						Run(ctx, func(ctx context.Context) error {
+							return writeFile(ctx, dst, clean, tr, h, true)
+						})
+				} else {
+					writeErr = writeFile(ctx, dst, clean, tr, h, false)
 				}
-				_, copyErr := io.Copy(w, tr)
-				closeErr := w.Close()
-				if copyErr == nil {
-					copyErr = closeErr
-				}
-				if copyErr != nil {
-					return copyErr
+
+				if writeErr != nil {
+					return writeErr
 				}
 
 			default:
@@ -116,6 +120,32 @@ func unpack() *cobra.Command {
 
 		return nil
 	})
+}
+
+func writeFile(ctx context.Context, dst fnfs.WriteFS, clean string, tr *tar.Reader, h *tar.Header, progress bool) error {
+	w, err := dst.OpenWrite(clean, h.FileInfo().Mode().Perm())
+	if err != nil {
+		return err
+	}
+
+	var r io.Reader
+	if progress {
+		x := artifacts.NewProgressReader(io.NopCloser(tr), uint64(h.FileInfo().Size()))
+		r = x
+		tasks.Attachments(ctx).SetProgress(x)
+	} else {
+		r = tr
+	}
+
+	_, copyErr := io.Copy(w, r)
+	closeErr := w.Close()
+	if copyErr == nil {
+		copyErr = closeErr
+	}
+	if copyErr != nil {
+		return copyErr
+	}
+	return nil
 }
 
 func flatten() *cobra.Command {
