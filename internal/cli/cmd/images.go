@@ -18,9 +18,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/daemon"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/mattn/go-zglob"
 	"github.com/spf13/cobra"
 	"k8s.io/utils/pointer"
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
@@ -65,15 +65,6 @@ func unpack() *cobra.Command {
 	_ = unpack.MarkFlagRequired("target")
 
 	return fncobra.With(unpack, func(ctx context.Context) error {
-		var globs []fnfs.HasMatch
-		for _, glob := range *extract {
-			x, err := zglob.New(glob)
-			if err != nil {
-				return err
-			}
-			globs = append(globs, x)
-		}
-
 		dst := fnfs.ReadWriteLocalFS(*target, fnfs.AnnounceWrites(console.Stdout(ctx)))
 
 		if err := dst.MkdirAll(".", 0700); err != nil {
@@ -90,7 +81,7 @@ func unpack() *cobra.Command {
 			}
 
 			clean := filepath.Clean(h.Name)
-			if !matchAny(globs, clean) {
+			if !matchAny(*extract, clean) {
 				continue
 			}
 
@@ -249,17 +240,12 @@ func resolveImage(ctx context.Context, image string, env cfg.Context, pl *parsin
 	return compute.GetValue(ctx, oci.ImageP(image, &platform, oci.RegistryAccess{InsecureRegistry: insecure}))
 }
 
-func matchAny(globs []fnfs.HasMatch, path string) bool {
-	if len(globs) == 0 {
+func matchAny(files []string, path string) bool {
+	if len(files) == 0 {
 		return true
 	}
 
-	for _, glob := range globs {
-		if glob.Match(path) {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(files, path)
 }
 
 func imageFromArgs(cmd *cobra.Command) *oci.Image {
