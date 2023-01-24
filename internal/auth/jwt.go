@@ -140,7 +140,8 @@ func loadToken() (string, error) {
 	p := filepath.Join(dir, tokenTxt)
 	data, err := os.ReadFile(p)
 	if err != nil {
-		if !os.IsNotExist(err) {
+		if os.IsNotExist(err) {
+			// No cached token.
 			return "", nil
 		}
 
