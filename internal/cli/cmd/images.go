@@ -92,6 +92,10 @@ func unpack() *cobra.Command {
 				}
 
 			case tar.TypeReg:
+				if err := dst.MkdirAll(filepath.Dir(clean), 0700); err != nil {
+					return err
+				}
+
 				w, err := dst.OpenWrite(clean, h.FileInfo().Mode().Perm())
 				if err != nil {
 					return err
