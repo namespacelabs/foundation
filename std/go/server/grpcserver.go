@@ -138,6 +138,7 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 
 	// Export standard metrics.
 	grpc_prometheus.Register(grpcServer)
+	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	// XXX keep track of per-service health.
 	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
