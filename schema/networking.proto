@@ -65,14 +65,15 @@ message InternalEndpoint {
 
 // Next ID: 10
 message IngressFragment {
-    string                      name               = 1;
-    string                      owner              = 2;  // Server package name.
-    Domain                      domain             = 3;
-    Certificate                 domain_certificate = 9;
-    Endpoint                    endpoint           = 6;
-    repeated IngressHttpPath    http_path          = 4;
-    repeated IngressGrpcService grpc_service       = 7;
-    string                      manager            = 8;  // If this is a specialized ingress, it may be annotated as such. E.g. with namespacelabs.dev/foundation/std/grp/httptranscoding.
+    reserved 9;
+
+    string                      name         = 1;
+    string                      owner        = 2;  // Server package name.
+    Domain                      domain       = 3;
+    Endpoint                    endpoint     = 6;
+    repeated IngressHttpPath    http_path    = 4;
+    repeated IngressGrpcService grpc_service = 7;
+    string                      manager      = 8;  // If this is a specialized ingress, it may be annotated as such. E.g. with namespacelabs.dev/foundation/std/grp/httptranscoding.
 
     // Accepted: HttpCors, ProxyBodySize.
     repeated google.protobuf.Any extension = 5;

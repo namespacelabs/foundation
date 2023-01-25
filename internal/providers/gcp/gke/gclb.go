@@ -14,14 +14,11 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/shared"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 )
 
-type gclb struct {
-	shared.MapPublicLoadBalancer
-}
+type gclb struct{}
 
 func (gclb) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
 	if naming.GetWithOrg() != "" {
@@ -37,6 +34,10 @@ func (gclb) Ensure(context.Context) ([]*schema.SerializedInvocation, error) {
 }
 func (gclb) Service() *kubedef.IngressSelector             { return nil }
 func (gclb) Waiter(*rest.Config) kubedef.KubeIngressWaiter { return nil }
+
+func (gclb) PrepareRoute(ctx context.Context, _ *schema.Environment, _ *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
+	return nil, nil
+}
 
 func (gclb) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
 	ann := &kubedef.IngressAnnotations{

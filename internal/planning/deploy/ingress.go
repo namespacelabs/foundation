@@ -10,8 +10,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/executor"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -33,41 +31,6 @@ func DeferredIngress(planner planning.Planner, stack *schema.Stack) compute.Comp
 
 func MergeIngresses(block ...compute.Computable[[]*schema.IngressFragment]) compute.Computable[[]*schema.IngressFragment] {
 	return compute.Merge("flatten", compute.Collect(tasks.Action("ingress.merge"), block...))
-}
-
-func MaybeAllocateDomainCertificates(ingresses compute.Computable[[]*schema.IngressFragment], env *schema.Environment, stack *schema.Stack, allocate bool) compute.Computable[*ComputeIngressResult] {
-	return compute.Transform("allocate-domains", ingresses, func(ctx context.Context, allFragments []*schema.IngressFragment) (*ComputeIngressResult, error) {
-		eg := executor.New(ctx, "compute.ingress")
-		for _, fragment := range allFragments {
-			fragment := fragment // Close fragment.
-
-			eg.Go(func(ctx context.Context) error {
-				sch := stack.GetServer(schema.PackageName(fragment.Owner))
-				if sch == nil {
-					return fnerrors.BadInputError("%s: not present in the stack", fragment.Owner)
-				}
-
-				if allocate {
-					var err error
-					fragment.DomainCertificate, err = runtime.MaybeAllocateDomainCertificate(ctx, env, sch, fragment.Domain)
-					if err != nil {
-						return err
-					}
-				}
-
-				return nil
-			})
-		}
-
-		if err := eg.Wait(); err != nil {
-			return nil, err
-		}
-
-		return &ComputeIngressResult{
-			stack:     stack,
-			Fragments: allFragments,
-		}, nil
-	})
 }
 
 func PlanIngressDeployment(rc runtime.Planner, c compute.Computable[*ComputeIngressResult]) compute.Computable[*runtime.DeploymentPlan] {
@@ -123,5 +86,10 @@ func computeIngressWithHandlerResult(planner planning.Planner, stack *planning.S
 
 	merged := MergeIngresses(all...)
 
-	return MaybeAllocateDomainCertificates(merged, planner.Context.Environment(), stack.Proto(), AlsoDeployIngress)
+	return compute.Transform("compute-ingress", merged, func(ctx context.Context, allFragments []*schema.IngressFragment) (*ComputeIngressResult, error) {
+		return &ComputeIngressResult{
+			stack:     stack.Proto(),
+			Fragments: allFragments,
+		}, nil
+	})
 }

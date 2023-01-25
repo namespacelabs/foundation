@@ -13,14 +13,25 @@ import (
 
 type MapPublicLoadBalancer struct{}
 
-func (MapPublicLoadBalancer) Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*kubedef.OpMapAddress, error) {
-	if domain.Managed == schema.Domain_CLOUD_MANAGED && domain.TlsInclusterTermination {
-		return []*kubedef.OpMapAddress{{
+func (MapPublicLoadBalancer) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
+	var route kubedef.IngressAllocatedRoute
+
+	if domain.TlsFrontend {
+		cert, err := AllocateDomainCertificate(ctx, env, srv, domain)
+		if err != nil {
+			return nil, err
+		}
+
+		route.Certificates = MakeCertificateSecrets(ns, domain, cert)
+	}
+
+	if domain.Managed == schema.Domain_CLOUD_MANAGED {
+		route.Map = []*kubedef.OpMapAddress{{
 			Fdqn:        domain.Fqdn,
 			IngressNs:   ns,
 			IngressName: name,
-		}}, nil
+		}}
 	}
 
-	return nil, nil
+	return &route, nil
 }

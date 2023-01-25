@@ -294,7 +294,7 @@ func (d ingressClass) ComputeNaming(_ *schema.Environment, source *schema.Naming
 	}, nil
 }
 
-func (d ingressClass) Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*kubedef.OpMapAddress, error) {
+func (d ingressClass) PrepareRoute(ctx context.Context, _ *schema.Environment, _ *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
 	return nil, nil
 }
 

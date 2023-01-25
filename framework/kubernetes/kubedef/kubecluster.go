@@ -45,8 +45,18 @@ type IngressClass interface {
 	Ensure(context.Context) ([]*schema.SerializedInvocation, error)
 	Service() *IngressSelector
 	Waiter(*rest.Config) KubeIngressWaiter
-	Map(ctx context.Context, domain *schema.Domain, ns, name string) ([]*OpMapAddress, error)
+	PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*IngressAllocatedRoute, error)
 	Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any) (*IngressAnnotations, error)
+}
+
+type IngressAllocatedRoute struct {
+	Certificates map[string]IngressCertificate
+	Map          []*OpMapAddress
+}
+
+type IngressCertificate struct {
+	SecretName string
+	Defs       []defs.MakeDefinition
 }
 
 type IngressAnnotations struct {

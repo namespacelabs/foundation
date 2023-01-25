@@ -13,20 +13,17 @@ import (
 
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
-	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
-	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applynetworkingv1 "k8s.io/client-go/applyconfigurations/networking/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
 )
 
 const IngressControllerCat = "kube:ingress:controller"
 
-func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, deployable runtime.Deployable, fragments []*schema.IngressFragment) ([]defs.MakeDefinition, error) {
+func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns string, env *schema.Environment, srv *schema.Stack_Entry, fragments []*schema.IngressFragment) ([]defs.MakeDefinition, error) {
 	var applies []defs.MakeDefinition
 
 	groups := groupByName(fragments)
@@ -36,7 +33,7 @@ func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns st
 	})
 
 	for _, g := range groups {
-		apply, err := generateForSrv(ctx, ingressPlanner, env, deployable, ns, g)
+		apply, err := generateForSrv(ctx, ingressPlanner, env, srv, ns, g)
 		if err != nil {
 			return nil, err
 		}
@@ -45,49 +42,6 @@ func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns st
 	}
 
 	return applies, nil
-}
-
-type Cert struct {
-	SecretName string
-	Defs       []defs.MakeDefinition
-}
-
-func MakeCertificateSecrets(ns string, fragments []*schema.IngressFragment) map[string]Cert {
-	domains := map[string]*schema.Domain{}
-	domainCerts := map[string]*schema.Certificate{}
-
-	for _, frag := range fragments {
-		if frag.Domain != nil && frag.Domain.Fqdn != "" && frag.DomainCertificate != nil {
-			// XXX check they're consistent.
-			domains[frag.Domain.Fqdn] = frag.Domain
-			domainCerts[frag.Domain.Fqdn] = frag.DomainCertificate
-		}
-	}
-
-	certSecrets := map[string]Cert{} // Map fqdn->secret name.
-	for _, domain := range domains {
-		name := fmt.Sprintf("tls-%s", strings.ReplaceAll(domain.Fqdn, ".", "-"))
-		cert := domainCerts[domain.Fqdn]
-		certSecrets[domain.Fqdn] = Cert{
-			SecretName: name,
-			Defs: []defs.MakeDefinition{
-				kubedef.Apply{
-					Description: fmt.Sprintf("Certificate for %s", domain.Fqdn),
-					Resource: applycorev1.
-						Secret(name, ns).
-						WithType(corev1.SecretTypeTLS).
-						WithLabels(kubedef.ManagedByUs()).
-						WithAnnotations(kubedef.BaseAnnotations()).
-						WithData(map[string][]byte{
-							"tls.key": cert.PrivateKey,
-							"tls.crt": cert.CertificateBundle,
-						}),
-				},
-			},
-		}
-	}
-
-	return certSecrets
 }
 
 type IngressGroup struct {
@@ -128,11 +82,10 @@ func groupByName(ngs []*schema.IngressFragment) []IngressGroup {
 	return groups
 }
 
-func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *schema.Environment, deployable runtime.Deployable, ns string, g IngressGroup) ([]defs.MakeDefinition, error) {
+func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *schema.Environment, srv *schema.Stack_Entry, ns string, g IngressGroup) ([]defs.MakeDefinition, error) {
 	var clearTextGrpcCount, grpcCount, nonGrpcCount int
 
-	certSecrets := MakeCertificateSecrets(ns, g.Fragments)
-	labels := kubedef.MakeLabels(env, deployable)
+	labels := kubedef.MakeLabels(env, srv.Server)
 
 	spec := applynetworkingv1.IngressSpec()
 
@@ -200,26 +153,28 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 			applynetworkingv1.HTTPIngressRuleValue().WithPaths(
 				paths...)))
 
-		if tlsSecret, ok := certSecrets[ng.Domain.Fqdn]; ok {
-			spec = spec.WithTLS(applynetworkingv1.IngressTLS().WithHosts(ng.Domain.Fqdn).WithSecretName(tlsSecret.SecretName))
-			applies = append(applies, tlsSecret.Defs...)
-			tlsCount++
-		}
-
 		domains = append(domains, ng.Domain)
 
-		ops, err := ingress.Map(ctx, ng.Domain, ns, g.Name)
+		route, err := ingress.PrepareRoute(ctx, env, srv, ng.Domain, ns, g.Name)
 		if err != nil {
 			return nil, err
 		}
 
-		for _, frag := range ops {
-			desc := frag.Description
-			if desc == "" {
-				desc = fmt.Sprintf("Update %s's address", frag.Fdqn)
+		if route != nil {
+			for _, frag := range route.Map {
+				desc := frag.Description
+				if desc == "" {
+					desc = fmt.Sprintf("Update %s's address", frag.Fdqn)
+				}
+
+				applies = append(applies, defs.Static(desc, frag))
 			}
 
-			applies = append(applies, defs.Static(desc, frag))
+			if tlsSecret, ok := route.Certificates[ng.Domain.Fqdn]; ok {
+				spec = spec.WithTLS(applynetworkingv1.IngressTLS().WithHosts(ng.Domain.Fqdn).WithSecretName(tlsSecret.SecretName))
+				applies = append(applies, tlsSecret.Defs...)
+				tlsCount++
+			}
 		}
 	}
 
@@ -251,7 +206,7 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 			WithAnnotations(annotations.Annotations).
 			WithSpec(spec),
 		SchedAfterCategory: append([]string{
-			kubedef.MakeServicesCat(deployable),
+			kubedef.MakeServicesCat(srv.Server),
 			IngressControllerCat,
 		}, annotations.SchedAfter...),
 	})

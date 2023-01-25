@@ -12,15 +12,12 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/tools/maketlscert"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/types"
 )
 
 const LocalIngressPort = 40080
@@ -166,12 +163,12 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			HttpPath:    paths,
 			GrpcService: grpc,
 		}, DomainsRequest{
-			ServerID:                sch.Server.Id,
-			ServiceName:             endpoint.ServiceName,
-			Key:                     endpoint.AllocatedName,
-			Alias:                   endpoint.ServiceName,
-			TlsInclusterTermination: clearTextGrpcCount > 0,
-			UserSpecified:           endpoint.GetIngressSpec().GetDomain(),
+			ServerID:      sch.Server.Id,
+			ServiceName:   endpoint.ServiceName,
+			Key:           endpoint.AllocatedName,
+			Alias:         endpoint.ServiceName,
+			RequiresTLS:   clearTextGrpcCount > 0,
+			UserSpecified: endpoint.GetIngressSpec().GetDomain(),
 		})
 		if err != nil {
 			return nil, err
@@ -270,29 +267,6 @@ func AttachComputedDomains(ctx context.Context, ws string, env cfg.Context, clus
 	return ingresses, nil
 }
 
-func MaybeAllocateDomainCertificate(ctx context.Context, env *schema.Environment, entry *schema.Stack_Entry, template *schema.Domain) (*schema.Certificate, error) {
-	if template.TlsInclusterTermination {
-		if env.Purpose == schema.Environment_PRODUCTION {
-			return allocateName(ctx, entry.Server, fnapi.AllocateOpts{
-				FQDN: template.Fqdn,
-				// XXX remove org -- it should be parsed from fqdn.
-				Org: entry.ServerNaming.GetWithOrg(),
-			})
-		} else {
-			bundle, err := maketlscert.CreateSelfSignedCertificateChain(ctx, env, &types.TLSCertificateSpec{
-				Description: entry.Server.PackageName,
-				DnsName:     []string{template.Fqdn},
-			})
-			if err != nil {
-				return nil, err
-			}
-			return bundle.Server, nil
-		}
-	}
-
-	return nil, nil
-}
-
 func computeDomains(ctx context.Context, ws string, env cfg.Context, cluster Planner, serverNaming *schema.Naming, allocatedName DomainsRequest) ([]*schema.Domain, error) {
 	computed, err := ComputeNaming(ctx, ws, env, cluster, serverNaming)
 	if err != nil {
@@ -311,7 +285,7 @@ type DomainsRequest struct {
 	// Set to true if the service we're allocating a domain for should be TLS
 	// terminated, regardless of whether we can emit a public-CA rooted
 	// certificate or not. E.g. for gRPC.
-	TlsInclusterTermination bool
+	RequiresTLS bool
 
 	UserSpecified []*schema.DomainSpec
 }
@@ -322,15 +296,14 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 	if computed.GetManaged() == schema.Domain_CLOUD_MANAGED ||
 		computed.GetManaged() == schema.Domain_CLOUD_TERMINATION ||
 		computed.GetManaged() == schema.Domain_LOCAL_MANAGED {
-		inclusterTls := allocatedName.TlsInclusterTermination || env.Purpose == schema.Environment_PRODUCTION
+		inclusterTls := allocatedName.RequiresTLS || env.Purpose == schema.Environment_PRODUCTION
 
 		computedDomain := &schema.Domain{
 			Managed: computed.Managed,
 			// If we have TLS termination at an upstream ingress (e.g. in nscloud's
 			// ingress), then still emit https (etc) addresses regardless of whether
 			// the in-cluster ingress has TLS termination or not.
-			TlsFrontend:             computed.UpstreamTlsTermination || inclusterTls,
-			TlsInclusterTermination: inclusterTls,
+			TlsFrontend: computed.UpstreamTlsTermination || inclusterTls,
 		}
 
 		if computed.UseShortAlias {
@@ -363,7 +336,7 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 
 		baseDomain := computed.BaseDomain
 		// XXX make these runtime calls?
-		if allocatedName.TlsInclusterTermination && computed.TlsPassthroughBaseDomain != "" {
+		if allocatedName.RequiresTLS && computed.TlsPassthroughBaseDomain != "" {
 			baseDomain = computed.TlsPassthroughBaseDomain
 		}
 
@@ -376,10 +349,9 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 		d := d // Capture d.
 		if d.AllocatedName == allocatedName.Key {
 			domains = append(domains, &schema.Domain{
-				Fqdn:                    d.Fqdn,
-				Managed:                 schema.Domain_USER_SPECIFIED_TLS_MANAGED,
-				TlsFrontend:             true,
-				TlsInclusterTermination: true,
+				Fqdn:        d.Fqdn,
+				Managed:     schema.Domain_USER_SPECIFIED_TLS_MANAGED,
+				TlsFrontend: true,
 			})
 		}
 	}
@@ -387,20 +359,18 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 	for _, d := range computed.GetSource().GetAdditionalUserSpecified() {
 		if d.AllocatedName == allocatedName.Key {
 			domains = append(domains, &schema.Domain{
-				Fqdn:                    d.Fqdn,
-				Managed:                 schema.Domain_USER_SPECIFIED,
-				TlsFrontend:             true,
-				TlsInclusterTermination: false,
+				Fqdn:        d.Fqdn,
+				Managed:     schema.Domain_USER_SPECIFIED,
+				TlsFrontend: true,
 			})
 		}
 	}
 
 	for _, d := range allocatedName.UserSpecified {
 		domains = append(domains, &schema.Domain{
-			Fqdn:                    d.Fqdn,
-			Managed:                 schema.Domain_USER_SPECIFIED,
-			TlsFrontend:             d.TlsFrontend,
-			TlsInclusterTermination: false,
+			Fqdn:        d.Fqdn,
+			Managed:     schema.Domain_USER_SPECIFIED,
+			TlsFrontend: d.TlsFrontend,
 		})
 	}
 

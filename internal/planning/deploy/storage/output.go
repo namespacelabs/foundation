@@ -65,10 +65,9 @@ func convertDomain(d *fnschema.Domain) *storage.Domain {
 
 	managedType, _ := convertManagedType(d.Managed)
 	return &storage.Domain{
-		Fqdn:                    d.Fqdn,
-		Managed:                 managedType,
-		TlsFrontend:             d.TlsFrontend,
-		TlsInclusterTermination: d.TlsInclusterTermination,
+		Fqdn:        d.Fqdn,
+		Managed:     managedType,
+		TlsFrontend: d.TlsFrontend,
 	}
 }
 

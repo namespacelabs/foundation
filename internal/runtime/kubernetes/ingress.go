@@ -39,7 +39,7 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r Bou
 			continue
 		}
 
-		defs, err := ingress.PlanIngress(ctx, ingressPlanner, r.namespace, r.env, srv.Server, frags)
+		defs, err := ingress.PlanIngress(ctx, ingressPlanner, r.namespace, r.env, srv, frags)
 		if err != nil {
 			return nil, err
 		}
