@@ -226,6 +226,9 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 		annotations["nginx.ingress.kubernetes.io/proxy-body-size"] = entityLimit.Limit
 	}
 
+	annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "3600"
+	annotations["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "3600"
+
 	return &kubedef.IngressAnnotations{Annotations: annotations}, nil
 }
 
