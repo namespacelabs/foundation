@@ -19,6 +19,7 @@ message ClusterIntent {
 }
 
 message DatabaseIntent {
+    // The database name is applied as is (e.g. it is case-sensitive).
     string   name                                  = 1;
     repeated foundation.schema.FileContents schema = 2;
 }

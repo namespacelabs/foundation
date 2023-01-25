@@ -78,7 +78,7 @@ func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance,
 			return nil, fmt.Errorf("invalid database name: %s", name)
 		}
 
-		if _, err := conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE %s;", name)); err != nil {
+		if _, err := conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE \"%s\";", name)); err != nil {
 			return nil, fmt.Errorf("failed to create database %q: %w", name, err)
 		}
 	}
