@@ -4,9 +4,6 @@ import (
 )
 
 extension: fn.#Extension & {
-	import: [
-		"namespacelabs.dev/foundation/std/monitoring/grafana",
-	]
 }
 
 $promServer: inputs.#Server & {
