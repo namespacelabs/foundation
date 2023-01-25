@@ -28,6 +28,10 @@ type API struct {
 	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
+
+	// Admin only:
+	BlockTenant   fnapi.Call[BlockTenantRequest]
+	UnblockTenant fnapi.Call[UnblockTenantRequest]
 }
 
 var Endpoint API
@@ -57,6 +61,16 @@ func MakeAPI(endpoint string) API {
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
 			Endpoint: endpoint,
 			Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
+		},
+
+		BlockTenant: fnapi.Call[BlockTenantRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/BlockTenant",
+		},
+
+		UnblockTenant: fnapi.Call[UnblockTenantRequest]{
+			Endpoint: endpoint,
+			Method:   "nsl.vm.api.VMService/UnblockTenant",
 		},
 	}
 }
@@ -249,6 +263,18 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 
 		return &list, nil
 	})
+}
+
+func BlockTenant(ctx context.Context, api API, tenantId string) error {
+	return api.BlockTenant.Do(ctx, BlockTenantRequest{
+		TenantId: tenantId,
+	}, nil)
+}
+
+func UnblockTenant(ctx context.Context, api API, tenantId string) error {
+	return api.UnblockTenant.Do(ctx, UnblockTenantRequest{
+		TenantId: tenantId,
+	}, nil)
 }
 
 type clusterCreateProgress struct {

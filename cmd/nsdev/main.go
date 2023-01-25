@@ -7,6 +7,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
+	"namespacelabs.dev/foundation/internal/cli/cmd/admin"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/debug"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
@@ -25,5 +26,6 @@ func main() {
 		root.AddCommand(cmd.NewLintCmd())
 		root.AddCommand(source.NewSourceCmd())
 		root.AddCommand(cmd.NewUseCmd())
+		root.AddCommand(admin.NewAdminCmd())
 	})
 }
