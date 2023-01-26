@@ -21,6 +21,7 @@ message SpecExtension {
     bool                ensure_service_account     = 4;
     repeated Annotation service_account_annotation = 5;
     SecurityContext     security_context           = 6;
+    repeated Toleration toleration     = 7;
 
     message Volume {
         string name = 1;
@@ -56,6 +57,14 @@ message SpecExtension {
         int64 run_as_group = 2;
         int64 fs_group     = 3;
     }
+
+    message Toleration {
+        string key      = 1;
+        string operator = 2;
+        string value    = 3;
+        string effect   = 4;
+    }
+
 }
 
 // Next ID: 8
