@@ -260,6 +260,20 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				spec = spec.WithVolumes(k8svol)
 			}
 
+			for _, toleration := range specExt.Toleration {
+				t := applycorev1.Toleration().WithEffect(v1.TaintEffect(toleration.Effect)).WithKey(toleration.Key)
+
+				if toleration.Operator != "" {
+					t = t.WithOperator(v1.TolerationOperator(toleration.Operator))
+				}
+
+				if toleration.Value != "" {
+					t = t.WithValue(toleration.Value)
+				}
+
+				spec = spec.WithTolerations(t)
+			}
+
 			if len(specExt.Annotation) > 0 {
 				m := map[string]string{}
 				for _, annotation := range specExt.Annotation {
