@@ -8,6 +8,7 @@ const (
 	InputKeyword      = "input"
 	AllocKeyword      = "alloc"
 	PackageIKW        = "package"
+	PackageRefIKW     = "package_ref"
 	ServerDepIKw      = "server_dep"
 	ImageIKw          = "image"
 	VCSIKw            = "vcs"
@@ -18,6 +19,6 @@ const (
 )
 
 var (
-	knownInputs = []string{ServerDepIKw, ImageIKw, WorkspaceIKw, ProtoloadIKw, ResourceIKw, PackageIKW, VCSIKw}
+	knownInputs = []string{ServerDepIKw, ImageIKw, WorkspaceIKw, ProtoloadIKw, ResourceIKw, PackageIKW, PackageRefIKW, VCSIKw}
 	knownAllocs = []string{ServerPortAllocKw}
 )

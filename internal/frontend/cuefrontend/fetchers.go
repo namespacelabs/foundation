@@ -217,3 +217,25 @@ func FetchPackage(pl pkggraph.PackageLoader) FetcherFunc {
 		return ConsumeNoValue, pl.Ensure(ctx, schema.PackageName(packageName))
 	}
 }
+
+func FetchPackageRef(pl pkggraph.PackageLoader) FetcherFunc {
+	return func(ctx context.Context, v cue.Value) (interface{}, error) {
+		s, err := v.String()
+		if err != nil {
+			return nil, fnerrors.New("expected a string when loading a package: %w", err)
+		}
+
+		ref, err := schema.ParsePackageRef("", s)
+		if err != nil {
+			return nil, err
+		}
+
+		if ref.PackageName != "" {
+			if err := pl.Ensure(ctx, schema.PackageName(ref.PackageName)); err != nil {
+				return nil, err
+			}
+		}
+
+		return ConsumeNoValue, nil
+	}
+}

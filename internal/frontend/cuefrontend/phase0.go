@@ -41,7 +41,8 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl parsing.EarlyP
 		inputs := newFuncs().
 			WithFetcher(fncue.ProtoloadIKw, FetchProto(pl, fsys, loc)).
 			WithFetcher(fncue.ResourceIKw, FetchResource(fsys, loc)).
-			WithFetcher(fncue.PackageIKW, FetchPackage(pl))
+			WithFetcher(fncue.PackageIKW, FetchPackage(pl)).
+			WithFetcher(fncue.PackageRefIKW, FetchPackageRef(pl))
 
 		// Load packages without the serialization lock held.
 		for _, k := range firstPass.Left {

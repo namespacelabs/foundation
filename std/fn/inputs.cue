@@ -14,6 +14,11 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	string
 }
 
+#PackageRef: {
+	@fn(input=package_ref)
+	string
+}
+
 #Server: {
 	@fn(input=server_dep)
 

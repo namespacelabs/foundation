@@ -210,7 +210,7 @@ _#ConfigureBase: {
 
 	#Startup: {
 		args?: #Args | [...string]
-		env?: [string]: string | {fromSecret: string} | {fromServiceEndpoint: string} | {fromResourceField: string} | {experimentalFromDownwardsFieldPath: string}
+		env?: [string]: string | {fromSecret: inputs.#PackageRef} | {fromServiceEndpoint: inputs.#PackageRef} | {fromResourceField: string} | {experimentalFromDownwardsFieldPath: string}
 	}
 
 	#Container: {
