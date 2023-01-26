@@ -107,6 +107,7 @@ _#Node: {
 
 	framework: #Framework | "OPAQUE"
 
+	perNode?:    bool
 	isStateful?: bool
 	testonly?:   bool
 
