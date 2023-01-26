@@ -147,14 +147,17 @@ func (b *Bundle) match(key *ValueKey) (*valueDatabase, *ValueDatabase_Value) {
 
 	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
-			if equalKey(v.Key, key) {
-				// If the key is not bound to an environment, keep looking as there may be one that is.
-				if v.Key.EnvironmentName == "" {
-					sel = &sec
-					nonSpecific = v
-				} else if v.Key.EnvironmentName == key.EnvironmentName {
-					return &sec, v
-				}
+			if v.Key.PackageName != key.PackageName || v.Key.Key != key.Key {
+				continue
+			}
+
+			// If the key is not bound to an environment, keep looking as there may be one that is.
+			if v.Key.EnvironmentName == "" {
+				sec := sec
+				sel = &sec
+				nonSpecific = v
+			} else if v.Key.EnvironmentName == key.EnvironmentName {
+				return &sec, v
 			}
 		}
 	}
