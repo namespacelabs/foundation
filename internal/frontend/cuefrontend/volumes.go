@@ -8,6 +8,7 @@ import (
 	"context"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -258,7 +259,7 @@ func parseConfigurableEntry(ctx context.Context, pl parsing.EarlyPackageLoader, 
 			}
 
 			set.Resource = append(set.Resource, &schema.FileContents{
-				Path:     loc.Rel(path),
+				Path:     loc.Rel(filepath.Join(bits.FromDir, path)),
 				Contents: contents,
 			})
 

@@ -121,31 +121,45 @@ func (b *Bundle) Delete(packageName, key string) bool {
 }
 
 func (b *Bundle) Lookup(ctx context.Context, key *ValueKey) ([]byte, error) {
-	for _, sec := range b.values {
-		for _, v := range sec.m.Value {
-			if keyMatches(v.Key, key) {
-				if v.FromPath != "" {
-					return fs.ReadFile(sec.files, v.FromPath)
-				}
-
-				return v.Value, nil
-			}
-		}
+	sel, v := b.match(key)
+	if v == nil {
+		return nil, nil
 	}
 
-	return nil, nil
+	if v.FromPath != "" {
+		return fs.ReadFile(sel.files, v.FromPath)
+	}
+
+	return v.Value, nil
 }
 
 func (b *Bundle) WasEncrypted(key *ValueKey) (bool, bool) {
+	v, _ := b.match(key)
+	if v == nil {
+		return false, false
+	}
+	return v.wasEncrypted, true
+}
+
+func (b *Bundle) match(key *ValueKey) (*valueDatabase, *ValueDatabase_Value) {
+	var sel *valueDatabase
+	var nonSpecific *ValueDatabase_Value
+
 	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
-			if keyMatches(v.Key, key) {
-				return sec.wasEncrypted, true
+			if equalKey(v.Key, key) {
+				// If the key is not bound to an environment, keep looking as there may be one that is.
+				if v.Key.EnvironmentName == "" {
+					sel = &sec
+					nonSpecific = v
+				} else if v.Key.EnvironmentName == key.EnvironmentName {
+					return &sec, v
+				}
 			}
 		}
 	}
 
-	return false, false
+	return sel, nonSpecific
 }
 
 type LookupResult struct {
@@ -157,7 +171,7 @@ func (b *Bundle) LookupValues(ctx context.Context, key *ValueKey) ([]LookupResul
 	var results []LookupResult
 	for _, sec := range b.values {
 		for _, v := range sec.m.Value {
-			if keyMatches(key, v.Key) {
+			if key.PackageName == v.Key.PackageName && key.Key == v.Key.Key && (key.EnvironmentName == "" || key.EnvironmentName == v.Key.EnvironmentName) {
 				contents := v.Value
 				if v.FromPath != "" {
 					var err error
@@ -393,10 +407,6 @@ func DescribeKey(out io.Writer, key *ValueKey) {
 
 func equalKey(a, b *ValueKey) bool {
 	return a.PackageName == b.PackageName && a.Key == b.Key && a.EnvironmentName == b.EnvironmentName
-}
-
-func keyMatches(a, b *ValueKey) bool {
-	return a.PackageName == b.PackageName && a.Key == b.Key && (a.EnvironmentName == "" || a.EnvironmentName == b.EnvironmentName)
 }
 
 func NewBundle(ctx context.Context, keyID string) (*Bundle, error) {
