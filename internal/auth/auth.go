@@ -71,7 +71,8 @@ func GenerateToken(ctx context.Context, opts ...AuthOpt) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("ns-jwt:%s", token), nil
+
+			return fmt.Sprintf("nsct_%s", token), nil
 		}
 
 		// TODO: remove this path

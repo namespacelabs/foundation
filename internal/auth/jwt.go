@@ -18,7 +18,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/github"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -33,7 +32,7 @@ var (
 	//go:embed ns-jwt.pub
 	lib embed.FS
 
-	NamspaceJwtPublicKeyFile string
+	NamespaceJwtPublicKeyFile string
 )
 
 type ed25519PubKey struct {
@@ -43,22 +42,8 @@ type ed25519PubKey struct {
 	PublicKey asn1.BitString
 }
 
-func getPublicKey() (ed25519.PublicKey, error) {
-	fsys := fs.FS(lib)
-	file := "ns-jwt.pub"
-
-	if NamspaceJwtPublicKeyFile != "" {
-		file = NamspaceJwtPublicKeyFile
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-
-		fsys = fnfs.ReadWriteLocalFS(cwd)
-	}
-
-	key, err := fs.ReadFile(fsys, file)
+func publicKey() (ed25519.PublicKey, error) {
+	key, err := publicKeyData()
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +61,14 @@ func getPublicKey() (ed25519.PublicKey, error) {
 	return ed25519.PublicKey(asn1PubKey.PublicKey.Bytes), nil
 }
 
+func publicKeyData() ([]byte, error) {
+	if NamespaceJwtPublicKeyFile != "" {
+		return os.ReadFile(NamespaceJwtPublicKeyFile)
+	}
+
+	return fs.ReadFile(lib, "ns-jwt.pub")
+}
+
 func fetchTokenForGithub(ctx context.Context, githubTokenExchange func(context.Context, string) (string, error)) (string, error) {
 	token, err := loadToken()
 	if err != nil {
@@ -88,7 +81,7 @@ func fetchTokenForGithub(ctx context.Context, githubTokenExchange func(context.C
 	} else {
 		var claims jwt.RegisteredClaims
 		tok, err := jwt.ParseWithClaims(token, &claims, func(token *jwt.Token) (interface{}, error) {
-			return getPublicKey()
+			return publicKey()
 		})
 		if err != nil {
 			return "", fnerrors.New("failed to parse JWT: %w", err)

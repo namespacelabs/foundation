@@ -362,7 +362,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
 	rootCmd.PersistentFlags().BoolVar(&fnapi.ExchangeGithubToTenantToken, "exchange_github_to_tenant_token", fnapi.ExchangeGithubToTenantToken,
 		"If set to true, exchange GitHub JWTs for Namespace JWTs.")
-	rootCmd.PersistentFlags().StringVar(&auth.NamspaceJwtPublicKeyFile, "namespace_jwt_public_key", auth.NamspaceJwtPublicKeyFile,
+	rootCmd.PersistentFlags().StringVar(&auth.NamespaceJwtPublicKeyFile, "namespace_jwt_public_key", auth.NamespaceJwtPublicKeyFile,
 		"If set, validate Namespace JWTs with the public key read from this location.")
 
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
