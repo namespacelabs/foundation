@@ -35,7 +35,7 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 		return nil, err
 	}
 
-	envVars, err := bits.Env.Parsed(loc.PackageName)
+	envVars, err := bits.Env.Parsed(ctx, pl, loc.PackageName)
 	if err != nil {
 		return nil, err
 	}

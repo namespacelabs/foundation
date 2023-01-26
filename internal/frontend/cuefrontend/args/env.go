@@ -6,13 +6,16 @@ package args
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strings"
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type EnvMap struct {
@@ -40,7 +43,7 @@ func (cem *EnvMap) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvEntry, error) {
+func (cem *EnvMap) Parsed(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName) ([]*schema.BinaryConfig_EnvEntry, error) {
 	if cem == nil {
 		return nil, nil
 	}
@@ -59,6 +62,10 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 			if err != nil {
 				return nil, err
 			}
+			if err := invariants.EnsurePackageLoaded(ctx, pl, owner, secretRef); err != nil {
+				return nil, err
+			}
+
 			out.FromSecretRef = secretRef
 
 		case value.fromServiceEndpoint != "":
@@ -66,6 +73,10 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 			if err != nil {
 				return nil, err
 			}
+			if err := invariants.EnsurePackageLoaded(ctx, pl, owner, serviceRef); err != nil {
+				return nil, err
+			}
+
 			out.FromServiceEndpoint = &schema.ServiceRef{
 				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
 				ServiceName: serviceRef.Name,
@@ -76,6 +87,9 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 			if err != nil {
 				return nil, err
 			}
+			if err := invariants.EnsurePackageLoaded(ctx, pl, owner, serviceRef); err != nil {
+				return nil, err
+			}
 			out.FromServiceIngress = &schema.ServiceRef{
 				ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
 				ServiceName: serviceRef.Name,
@@ -84,6 +98,9 @@ func (cem *EnvMap) Parsed(owner schema.PackageName) ([]*schema.BinaryConfig_EnvE
 		case value.fromResourceField != nil:
 			resourceRef, err := schema.ParsePackageRef(owner, value.fromResourceField.Resource)
 			if err != nil {
+				return nil, err
+			}
+			if err := invariants.EnsurePackageLoaded(ctx, pl, owner, resourceRef); err != nil {
 				return nil, err
 			}
 

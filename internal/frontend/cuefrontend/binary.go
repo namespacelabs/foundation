@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -91,7 +92,7 @@ func parseCueBinary(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	return bin, nil
 }
 
-func (srcBin cueBinary) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc fnerrors.Location) (*schema.Binary, error) {
+func (srcBin cueBinary) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*schema.Binary, error) {
 	bin := &schema.Binary{
 		Name:   srcBin.Name,
 		Config: srcBin.Config,
@@ -156,7 +157,7 @@ func (lbp *cueLayeredImageBuildPlan) UnmarshalJSON(data []byte) error {
 	}
 }
 
-func (lbp *cueLayeredImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc fnerrors.Location) (*schema.LayeredImageBuildPlan, error) {
+func (lbp *cueLayeredImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*schema.LayeredImageBuildPlan, error) {
 	plan := &schema.LayeredImageBuildPlan{}
 	for _, def := range lbp.LayerBuildPlan {
 		parsed, err := def.ToSchema(ctx, pl, loc)
@@ -168,7 +169,7 @@ func (lbp *cueLayeredImageBuildPlan) ToSchema(ctx context.Context, pl parsing.Ea
 	return plan, nil
 }
 
-func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc fnerrors.Location) (*schema.ImageBuildPlan, error) {
+func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location) (*schema.ImageBuildPlan, error) {
 	plan := &schema.ImageBuildPlan{}
 
 	var set []string
@@ -285,7 +286,7 @@ func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackag
 			return nil, err
 		}
 
-		if _, err := pl.LoadByName(ctx, ref.AsPackageName()); err != nil {
+		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, ref); err != nil {
 			return nil, err
 		}
 

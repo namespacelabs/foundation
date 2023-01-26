@@ -134,7 +134,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		Args: bits.Args.Parsed(),
 	}
 
-	startupPlan.Env, err = bits.Env.Parsed(loc.PackageName)
+	startupPlan.Env, err = bits.Env.Parsed(ctx, pl, loc.PackageName)
 	if err != nil {
 		return nil, nil, err
 	}

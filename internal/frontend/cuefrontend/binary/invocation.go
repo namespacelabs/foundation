@@ -54,7 +54,7 @@ func parseBinaryInvocation(ctx context.Context, env *schema.Environment, pl pars
 		}
 	}
 
-	return completeParsingInvocation(pkg.Location.PackageName, cib, binRef)
+	return completeParsingInvocation(ctx, pl, pkg.Location.PackageName, cib, binRef)
 }
 
 func ParseBinaryInvocationForBinaryRef(ctx context.Context, owner schema.PackageName, binRef *schema.PackageRef, v *fncue.CueV) (*schema.Invocation, error) {
@@ -63,11 +63,11 @@ func ParseBinaryInvocationForBinaryRef(ctx context.Context, owner schema.Package
 		return nil, err
 	}
 
-	return completeParsingInvocation(owner, cib, binRef)
+	return completeParsingInvocation(ctx, nil, owner, cib, binRef)
 }
 
-func completeParsingInvocation(owner schema.PackageName, cib cueInvokeBinary, binRef *schema.PackageRef) (*schema.Invocation, error) {
-	envVars, err := cib.Env.Parsed(owner)
+func completeParsingInvocation(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, cib cueInvokeBinary, binRef *schema.PackageRef) (*schema.Invocation, error) {
+	envVars, err := cib.Env.Parsed(ctx, pl, owner)
 	if err != nil {
 		return nil, err
 	}

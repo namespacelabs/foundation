@@ -61,7 +61,7 @@ func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info 
 			return nil, err
 		}
 
-		envVar, err := raw.Env.Parsed(s.owner)
+		envVar, err := raw.Env.Parsed(ctx, nil, s.owner)
 		if err != nil {
 			return nil, err
 		}
