@@ -28,6 +28,7 @@ type cueServer struct {
 	Description *schema.Server_Description `json:"description"`
 	Framework   string                     `json:"framework"`
 	IsStateful  bool                       `json:"isStateful"`
+	PerNode     bool                       `json:"perNode"`
 	TestOnly    bool                       `json:"testonly"`
 	Import      []string                   `json:"import"`
 	Services    map[string]cueServiceSpec  `json:"service"`
@@ -122,7 +123,13 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		}
 	}
 
-	if bits.IsStateful {
+	if bits.IsStateful && bits.PerNode {
+		return nil, nil, fnerrors.NewWithLocation(loc, "can't be both stateful and perNode")
+	}
+
+	if bits.PerNode {
+		out.DeployableClass = string(schema.DeployableClass_DAEMONSET)
+	} else if bits.IsStateful {
 		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
 	} else {
 		out.DeployableClass = string(schema.DeployableClass_STATELESS)
