@@ -12,7 +12,7 @@ server: {
 	// production, so that tests pass. In fact, what we should do instead is
 	// disable the startup test for this server, as anyway it doesn't have any
 	// readiness probes so we can't verify that it does indeed start.
-	if $env.purpose == "PRODUCTION" {
+	if $env.purpose == "PRODUCTION" || $env.name == "dev-cluster" {
 		env: CF_API_TOKEN: fromSecret: ":cfApiToken"
 	}
 
