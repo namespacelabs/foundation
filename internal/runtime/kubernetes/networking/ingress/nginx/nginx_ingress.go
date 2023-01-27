@@ -121,6 +121,8 @@ func Ingress() kubedef.IngressClass {
 	return nginx{}
 }
 
+func (nginx) Name() string { return "nginx" }
+
 func (nginx) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
 	return nsingress.ComputeNaming(env, naming)
 }

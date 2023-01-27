@@ -82,13 +82,13 @@ func Register() {
 		},
 	})
 
-	execution.RegisterHandlerFunc(func(ctx context.Context, _ *fnschema.SerializedInvocation, _ *kubedef.OpEnsureIngressController) (*execution.HandleResult, error) {
+	execution.RegisterHandlerFunc(func(ctx context.Context, _ *fnschema.SerializedInvocation, op *kubedef.OpEnsureIngressController) (*execution.HandleResult, error) {
 		cluster, err := kubedef.InjectedKubeCluster(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		if err := EnsureState(ctx, cluster); err != nil {
+		if err := EnsureState(ctx, cluster, op.IngressClass); err != nil {
 			return nil, err
 		}
 

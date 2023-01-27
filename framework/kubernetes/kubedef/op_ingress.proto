@@ -24,4 +24,6 @@ message OpCleanupMigration {
     string namespace = 1;
 }
 
-message OpEnsureIngressController {}
+message OpEnsureIngressController {
+    string ingress_class = 1;
+}

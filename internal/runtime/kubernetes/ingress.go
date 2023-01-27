@@ -61,7 +61,9 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r Bou
 	if len(state.Definitions) > 0 && !r.env.Ephemeral {
 		var d defs.DefList
 
-		d.AddExt("Ensure Ingress Controller", &kubedef.OpEnsureIngressController{},
+		d.AddExt("Ensure Ingress Controller", &kubedef.OpEnsureIngressController{
+			IngressClass: ingressPlanner.Name(),
+		},
 			defs.Category(ingress.IngressControllerCat),
 			// Lets make sure that we verify the controller after deployments and services are in place.
 			defs.DependsOn(kubedef.MakeSchedCat(schema.GroupKind{Kind: "Service"})),

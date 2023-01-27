@@ -267,6 +267,12 @@ func (d *cluster) EnsureState(ctx context.Context, key string) (any, error) {
 	return d.cluster.ClusterAttachedState.EnsureState(ctx, key, d.cluster.Configuration, d, nil)
 }
 
+func (d *cluster) EnsureKeyedState(ctx context.Context, key, secondary string) (any, error) {
+	// It's important that we don't defer to d.cluster.EnsureState() as it would
+	// then pass `d.cluster` as `runtime.Cluster`, rather than `d`.
+	return d.cluster.ClusterAttachedState.EnsureState(ctx, key, d.cluster.Configuration, d, &secondary)
+}
+
 func (d *cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	return d.cluster.DeleteAllRecursively(ctx, wait, progress)
 }

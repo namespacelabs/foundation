@@ -20,6 +20,8 @@ import (
 
 type gclb struct{}
 
+func (gclb) Name() string { return "gclb" }
+
 func (gclb) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
 	if naming.GetWithOrg() != "" {
 		return nil, fnerrors.InternalError("nscloud tls allocation not supported with gclb")

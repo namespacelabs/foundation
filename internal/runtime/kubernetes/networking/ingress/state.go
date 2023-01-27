@@ -17,15 +17,15 @@ import (
 const ingressStateKey = "kubernetes.ingress-state"
 
 func RegisterRuntimeState() {
-	runtime.RegisterPrepare(ingressStateKey, func(ctx context.Context, cfg cfg.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterKeyedPrepare(ingressStateKey, func(ctx context.Context, cfg cfg.Configuration, cluster runtime.Cluster, ingressClass string) (any, error) {
 		kube, ok := cluster.(kubedef.KubeCluster)
 		if !ok {
 			return nil, fnerrors.InternalError("%s: only supported with Kubernetes clusters", ingressStateKey)
 		}
 
-		ingress := kube.Ingress()
-		if ingress == nil {
-			return nil, nil
+		ingress, err := Class(ingressClass)
+		if err != nil {
+			return nil, err
 		}
 
 		w := ingress.Waiter(kube.PreparedClient().RESTConfig)
@@ -43,7 +43,7 @@ func RegisterRuntimeState() {
 	})
 }
 
-func EnsureState(ctx context.Context, cluster kubedef.KubeCluster) error {
-	_, err := cluster.EnsureState(ctx, ingressStateKey)
+func EnsureState(ctx context.Context, cluster kubedef.KubeCluster, ingressClass string) error {
+	_, err := cluster.EnsureKeyedState(ctx, ingressStateKey, ingressClass)
 	return err
 }

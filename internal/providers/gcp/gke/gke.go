@@ -27,7 +27,11 @@ var clusterConfigType = cfg.DefineConfigType[*gkepb.Cluster]()
 func Register() {
 	client.RegisterConfigurationProvider("gke", provideGKE)
 	client.RegisterConfigurationProvider("gcp/gke", provideGKE)
-	ingress.RegisterIngressClass("gclb", gclb{})
+	RegisterIngressClass()
+}
+
+func RegisterIngressClass() {
+	ingress.RegisterIngressClass(gclb{})
 }
 
 func provideGKE(ctx context.Context, config cfg.Configuration) (client.ClusterConfiguration, error) {

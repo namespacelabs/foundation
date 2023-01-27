@@ -260,7 +260,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		nscloud.Register()
 		k3dp.Register()
 		k3s.Register()
-		ingress.RegisterIngressClass("nginx", nginx.Ingress())
+		ingress.RegisterIngressClass(nginx.Ingress())
 
 		// Runtimes.
 		kubernetes.Register()

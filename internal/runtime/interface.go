@@ -72,6 +72,9 @@ type Cluster interface {
 	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
 	EnsureState(context.Context, string) (any, error)
 
+	// EnsureState ensures that a cluster-specific bit of initialization is done once per instance.
+	EnsureKeyedState(context.Context, string, string) (any, error)
+
 	// Deletes any runtime resource deployed by this runtime, regardless of
 	// environment. If wait is true, waits until the target resources have been
 	// removed. Returns true if resources were deleted.
@@ -148,6 +151,8 @@ type Planner interface {
 }
 
 type IngressClass interface {
+	Name() string
+
 	// ComputeBaseNaming returns a base naming configuration that is specific
 	// to the target runtime (e.g. kubernetes cluster).
 	ComputeNaming(*schema.Environment, *schema.Naming) (*schema.ComputedNaming, error)

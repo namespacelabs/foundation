@@ -15,8 +15,16 @@ import (
 
 var classes = map[string]kubedef.IngressClass{}
 
-func RegisterIngressClass(name string, class kubedef.IngressClass) {
-	classes[name] = class
+func RegisterIngressClass(class kubedef.IngressClass) {
+	classes[class.Name()] = class
+}
+
+func Class(name string) (kubedef.IngressClass, error) {
+	if class, ok := classes[name]; ok {
+		return class, nil
+	}
+
+	return nil, fnerrors.BadInputError("ingress class %q is not registered", name)
 }
 
 func FromConfig(config *client.Prepared, acceptedClasses []string) (kubedef.IngressClass, error) {
@@ -33,9 +41,5 @@ func FromConfig(config *client.Prepared, acceptedClasses []string) (kubedef.Ingr
 		return nil, fnerrors.BadInputError("ingress class %q is not supported by this cluster type (support: %s)", requestedClass, strings.Join(acceptedClasses, ", "))
 	}
 
-	if class, ok := classes[requestedClass]; ok {
-		return class, nil
-	}
-
-	return nil, fnerrors.BadInputError("ingress class %q is not registered", requestedClass)
+	return Class(requestedClass)
 }
