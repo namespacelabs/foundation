@@ -63,14 +63,27 @@ func newCreateCmd() *cobra.Command {
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 
+	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+		opts := api.CreateClusterOpts{
 			MachineType: *machineType,
 			Ephemeral:   *ephemeral,
 			KeepAlive:   true,
 			Purpose:     "manually created",
 			Features:    *features,
-		})
+		}
+
+		if *userSshey != "" {
+			keyData, err := os.ReadFile(*userSshey)
+			if err != nil {
+				return fnerrors.New("failed to load key: %w", err)
+			}
+
+			opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, string(keyData))
+		}
+
+		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
 		if err != nil {
 			return err
 		}

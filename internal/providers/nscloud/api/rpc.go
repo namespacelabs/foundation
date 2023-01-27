@@ -77,8 +77,9 @@ type CreateClusterOpts struct {
 	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
 	KeepAlive bool
 
-	Purpose  string
-	Features []string
+	Purpose           string
+	Features          []string
+	AuthorizedSshKeys []string
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
@@ -88,6 +89,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			DocumentedPurpose: opts.Purpose,
 			MachineType:       opts.MachineType,
 			Feature:           opts.Features,
+			AuthorizedSshKeys: opts.AuthorizedSshKeys,
 		}
 
 		if !environment.IsRunningInCI() {
@@ -102,7 +104,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 					return nil, err
 				}
 
-				req.AuthorizedSshKeys = actualKeys
+				req.AuthorizedSshKeys = append(req.AuthorizedSshKeys, actualKeys...)
 			}
 		}
 
