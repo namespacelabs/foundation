@@ -59,7 +59,7 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 		extra = append(extra, req.Aws)
 	}
 
-	env := orchestration.MakeSyntheticContext(req.Plan.Workspace, req.Plan.Environment, &client.HostEnv{Incluster: true}, extra...)
+	env := orchestration.MakeSyntheticContext(req.Plan.Workspace, req.Plan.Environment, prepareHostEnv(req.HostEnv), extra...)
 
 	// TODO store target state (req.Plan + merged with history) ?
 	id, err := svc.deployer.Schedule(req.Plan, env, now)
@@ -77,6 +77,20 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 
 func (svc *Service) GetOrchestratorVersion(ctx context.Context, req *proto.GetOrchestratorVersionRequest) (*proto.GetOrchestratorVersionResponse, error) {
 	return svc.versionChecker.GetOrchestratorVersion(req.SkipCache)
+}
+
+func prepareHostEnv(template *client.HostEnv) *client.HostEnv {
+	res := template
+
+	// Orchestrator runs in the same cluster as the deployment target
+	// Pin incluster client and reset host-sepecific configuration
+	res.Incluster = true
+
+	res.Kubeconfig = ""
+	res.Context = ""
+	res.StaticConfig = nil
+
+	return res
 }
 
 func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {

@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -156,6 +157,12 @@ func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, pla
 			Opaque:   auth.InternalOpaque,
 		}
 	}
+
+	hostEnv, err := client.CheckGetHostEnv(env.Configuration())
+	if err != nil {
+		return "", err
+	}
+	req.HostEnv = hostEnv
 
 	ctx, cancel := context.WithTimeout(ctx, connTimeout)
 	defer cancel()
