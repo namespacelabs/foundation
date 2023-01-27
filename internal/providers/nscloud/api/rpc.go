@@ -15,11 +15,11 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/tenants"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -34,7 +34,7 @@ type API struct {
 var Endpoint API
 
 func fetchTenantToken(context.Context) (string, error) {
-	return auth.LoadToken()
+	return tenants.LoadToken()
 }
 
 func MakeAPI(endpoint string) API {

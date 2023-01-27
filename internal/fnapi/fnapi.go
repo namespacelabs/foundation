@@ -8,11 +8,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/spf13/pflag"
@@ -77,31 +75,6 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	if AdminMode {
 		headers.Add("NS-API-Mode", "admin")
 	}
-}
-
-func getUserToken(ctx context.Context) (*auth.UserAuth, string, error) {
-	var authOpts []auth.AuthOpt
-
-	user, err := auth.LoadUser()
-	switch {
-	case err == nil:
-		authOpts = append(authOpts, auth.WithUserAuth(user))
-	case errors.Is(err, auth.ErrRelogin) && os.Getenv("GITHUB_ACTIONS") == "true":
-		authOpts = append(authOpts, auth.WithGithubOIDC(true))
-	default:
-		return nil, "", err
-	}
-
-	if ExchangeGithubToTenantToken {
-		authOpts = append(authOpts, auth.WithGithubTokenExchange(ExchangeGithubToken))
-	}
-
-	tok, err := auth.GenerateToken(ctx, authOpts...)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return user, tok, nil
 }
 
 func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {

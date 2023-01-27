@@ -6,17 +6,11 @@ package cmd
 
 import (
 	"context"
-	"os"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/github"
+	"namespacelabs.dev/foundation/internal/tenants"
 )
-
-const githubJWTAudience = "nscloud.dev/inline-token"
 
 func NewExchangeGithubTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -27,24 +21,6 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 	}
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		if os.Getenv("GITHUB_ACTIONS") != "true" {
-			return fnerrors.New("not running in a GitHub action")
-		}
-
-		jwt, err := github.JWT(ctx, githubJWTAudience)
-		if err != nil {
-			return err
-		}
-
-		token, err := fnapi.ExchangeGithubToken(ctx, jwt)
-		if err != nil {
-			return err
-		}
-
-		if err := auth.StoreToken(token); err != nil {
-			return err
-		}
-
-		return nil
+		return tenants.RefreshTokenForGithubAction(ctx)
 	})
 }

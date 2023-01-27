@@ -2,19 +2,26 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package auth
+package tenants
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
+	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/github"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-const tokenTxt = "token.txt"
+const (
+	tokenTxt          = "tenant_token.txt"
+	githubJWTAudience = "nscloud.dev/inline-token"
+)
 
-func StoreToken(token string) error {
+func storeToken(token string) error {
 	configDir, err := dirs.Ensure(dirs.Config())
 	if err != nil {
 		return err
@@ -38,11 +45,29 @@ func LoadToken() (string, error) {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// TODO should we suggest Github token exchange, too?
-			return "", ErrRelogin
+			return "", auth.ErrRelogin
 		}
 
 		return "", err
 	}
 
 	return string(data), nil
+}
+
+func RefreshTokenForGithubAction(ctx context.Context) error {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		return fnerrors.New("not running in a GitHub action")
+	}
+
+	jwt, err := github.JWT(ctx, githubJWTAudience)
+	if err != nil {
+		return err
+	}
+
+	token, err := fnapi.ExchangeGithubToken(ctx, jwt)
+	if err != nil {
+		return err
+	}
+
+	return storeToken(token)
 }
