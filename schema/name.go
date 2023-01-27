@@ -13,8 +13,9 @@ import (
 
 type PackageName string
 
-func (p PackageName) String() string       { return string(p) }
-func (p PackageName) Equals(s string) bool { return string(p) == s }
+func (p PackageName) String() string         { return string(p) }
+func (p PackageName) Equals(s string) bool   { return string(p) == s }
+func (p PackageName) GetPackageName() string { return string(p) }
 
 // Implements fnerrors.Location.
 func (p PackageName) ErrorLocation() string { return string(p) }

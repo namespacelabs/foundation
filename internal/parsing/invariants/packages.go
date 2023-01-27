@@ -11,10 +11,15 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func EnsurePackageLoaded(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, ref *schema.PackageRef) error {
+type PackageNameLike interface {
+	GetPackageName() string
+}
+
+func EnsurePackageLoaded(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, target PackageNameLike) error {
 	// We allow a nil pl because this is also used in phase1 + phase2 where there's no pl.
-	if pl != nil && ref.AsPackageName() != owner {
-		if _, err := pl.LoadByName(ctx, ref.AsPackageName()); err != nil {
+	t := schema.PackageName(target.GetPackageName())
+	if pl != nil && t != owner {
+		if _, err := pl.LoadByName(ctx, t); err != nil {
 			return err
 		}
 	}

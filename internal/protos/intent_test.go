@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package parsing
+package protos
 
 import (
 	"embed"
@@ -89,7 +89,8 @@ func TestAllocateMessage(t *testing.T) {
 			},
 		},
 	} {
-		msg, err := allocateWellKnownMessage(parseContext{FS: testData}, test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
+		msg, err := AllocateWellKnownMessage(ParseContext{FS: testData, SupportWellKnownMessages: true},
+			test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
 		if err != nil {
 			t.Error(err)
 		} else {

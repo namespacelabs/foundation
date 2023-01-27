@@ -11,7 +11,7 @@ import (
 
 // JSON decoder that maps numbers to json.Number.
 // This allows us to recover integer types with native error checking as JSON uses float64 for all numbers by default.
-func JsonNumberDecoder(s string) *json.Decoder {
+func NewJsonNumberDecoder(s string) *json.Decoder {
 	dec := json.NewDecoder(bytes.NewReader([]byte(s)))
 	dec.UseNumber()
 	return dec

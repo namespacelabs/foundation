@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -86,7 +87,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 
 	if instance.SerializedIntentJson != "" {
 		var raw any
-		if err := JsonNumberDecoder(instance.SerializedIntentJson).Decode(&raw); err != nil {
+		if err := NewJsonNumberDecoder(instance.SerializedIntentJson).Decode(&raw); err != nil {
 			return nil, fnerrors.InternalError("failed to unmarshal serialized intent: %w", err)
 		}
 
@@ -193,15 +194,12 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 func parseRawIntent(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, loc pkggraph.Location, intentType *pkggraph.UserType, value any) (*anypb.Any, error) {
 	subFsys := loc.Module.ReadOnlyFS(loc.Rel())
 
-	msg, err := allocateWellKnownMessage(parseContext{
-		FS:          subFsys,
-		PackageName: loc.PackageName,
+	msg, err := protos.AllocateWellKnownMessage(protos.ParseContext{
+		SupportWellKnownMessages: true,
+		FS:                       subFsys,
+		PackageName:              loc.PackageName,
 		EnsurePackage: func(requested schema.PackageName) error {
-			if requested == pkg.PackageName() {
-				return nil
-			}
-			_, err := pl.LoadByName(ctx, requested)
-			return err
+			return invariants.EnsurePackageLoaded(ctx, pl, pkg.PackageName(), requested)
 		},
 	}, intentType.Descriptor, value)
 	if err != nil {

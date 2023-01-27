@@ -18,11 +18,13 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/format"
 	"golang.org/x/exp/slices"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -73,7 +75,7 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 		return nil, err
 	}
 
-	w, err := parseWorkspaceValue(p.Val)
+	parsed, err := parseWorkspaceValue(p.Val)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +84,7 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 		absPath:        dir,
 		definitionFile: workspaceFile,
 		data:           data,
-		parsed:         w,
+		parsed:         parsed,
 		source:         p.Val,
 	}
 
@@ -275,6 +277,20 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 			}
 			return strings.Compare(a.GetName(), b.GetName()) < 0
 		})
+
+		for _, kv := range env.Configuration {
+			msg, err := protos.AllocateFrom(protos.ParseContext{}, kv)
+			if err != nil {
+				return nil, err
+			}
+
+			// This is a bit sad, but alas.
+			packed, err := anypb.New(msg)
+			if err != nil {
+				return nil, fnerrors.New("failed to repack message: %w", err)
+			}
+			out.Configuration = append(out.Configuration, packed)
+		}
 
 		w.EnvSpec = append(w.EnvSpec, out)
 	}
@@ -585,7 +601,8 @@ type cueWorkspacePrebuilts struct {
 }
 
 type cueEnvironment struct {
-	Runtime string            `json:"runtime"`
-	Purpose string            `json:"purpose"`
-	Labels  map[string]string `json:"labels"`
+	Runtime       string            `json:"runtime"`
+	Purpose       string            `json:"purpose"`
+	Labels        map[string]string `json:"labels"`
+	Configuration []map[string]any  `json:"configuration"`
 }
