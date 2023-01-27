@@ -33,8 +33,8 @@ func Prepare(ctx context.Context, key string, env cfg.Configuration, cluster Clu
 }
 
 func PrepareKeyed(ctx context.Context, stateKey string, env cfg.Configuration, cluster Cluster, key string) (any, error) {
-	if prepareRegistrations[stateKey] == nil {
-		return nil, fnerrors.InternalError("%s: no such runtime support", key)
+	if keyedPrepareRegistrations[stateKey] == nil {
+		return nil, fnerrors.InternalError("%s: no runtime support", stateKey)
 	}
 
 	return keyedPrepareRegistrations[stateKey](ctx, env, cluster, key)
