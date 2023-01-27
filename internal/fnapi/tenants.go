@@ -26,23 +26,3 @@ func ExchangeGithubToken(ctx context.Context, jwt string) (string, error) {
 
 	return resp.TenantToken, nil
 }
-
-type BlockTenantRequest struct {
-	TenantId string `json:"tenant_id,omitempty"`
-}
-
-func BlockTenant(ctx context.Context, id string) error {
-	req := BlockTenantRequest{TenantId: id}
-
-	return AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/BlockTenant", req, nil)
-}
-
-type UnblockTenantRequest struct {
-	TenantId string `json:"tenant_id,omitempty"`
-}
-
-func UnblockTenant(ctx context.Context, id string) error {
-	req := BlockTenantRequest{TenantId: id}
-
-	return AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/UnblockTenant", req, nil)
-}

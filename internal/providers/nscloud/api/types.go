@@ -103,11 +103,3 @@ type BuildCluster_ColocatedPort struct {
 	TargetPort int32  `json:"target_port,omitempty"`
 	ClusterId  string `json:"cluster_id,omitempty"`
 }
-
-type BlockTenantRequest struct {
-	TenantId string `json:"tenant_id,omitempty"`
-}
-
-type UnblockTenantRequest struct {
-	TenantId string `json:"tenant_id,omitempty"`
-}
