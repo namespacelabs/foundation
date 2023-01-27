@@ -37,7 +37,7 @@ func EnsureBucket(ctx context.Context, instance *s3.BucketInstance) error {
 	return nil
 }
 
-func FromStatic(r *resources.Parsed, secretValue []byte) func() ([]byte, error) {
+func FromStatic(secretValue []byte) func() ([]byte, error) {
 	return func() ([]byte, error) { return secretValue, nil }
 }
 
