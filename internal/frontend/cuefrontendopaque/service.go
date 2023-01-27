@@ -45,9 +45,10 @@ type cueIngress struct {
 }
 
 type CueIngressDetails struct {
-	HttpRoutes    map[string][]string `json:"httpRoutes"`
-	ProviderClass string              `json:"provider"`
-	Domains       []string            `json:"domains"`
+	HttpRoutes     map[string][]string `json:"httpRoutes"`
+	ProviderClass  string              `json:"provider"`
+	Domains        []string            `json:"domains"`
+	AllowedOrigins []string            `json:"allowed_origins"`
 }
 
 var _ json.Unmarshaler = &cueIngress{}
@@ -154,6 +155,23 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{Protocol: svc.Kind, Details: details})
 	} else if details != nil {
 		return nil, nil, fnerrors.New("service metadata is specified without kind")
+	}
+
+	if len(svc.Ingress.Details.AllowedOrigins) > 0 {
+		if svc.Kind != schema.HttpProtocol {
+			return nil, nil, fnerrors.New("can only specify CORS when protocol is http")
+		}
+
+		cors := &schema.HttpCors{Enabled: true, AllowedOrigin: svc.Ingress.Details.AllowedOrigins}
+		packedCors, err := anypb.New(cors)
+		if err != nil {
+			return nil, nil, fnerrors.New("failed to pack CORS' configuration: %v", err)
+		}
+
+		parsed.Metadata = append(parsed.Metadata, &schema.ServiceMetadata{
+			Kind:    "http-extension",
+			Details: packedCors,
+		})
 	}
 
 	if svc.Ingress.Details.ProviderClass != "" {
