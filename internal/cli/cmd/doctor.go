@@ -278,11 +278,7 @@ func NewDoctorCmd() *cobra.Command {
 			serialized, err := json.Marshal(results)
 			if err == nil {
 				var response recordDoctorResponse
-				if err := (fnapi.Call[recordDoctorRequest]{
-					Endpoint:  fnapi.EndpointAddress,
-					Method:    "nsl.support.SupportService/RecordDoctor",
-					Anonymous: true,
-				}).Do(ctx, recordDoctorRequest{ResultsBlob: serialized}, func(r io.Reader) error {
+				if err := fnapi.AnonymousCall(ctx, fnapi.EndpointAddress, "nsl.support.SupportService/RecordDoctor", recordDoctorRequest{ResultsBlob: serialized}, func(r io.Reader) error {
 					return json.NewDecoder(r).Decode(&response)
 				}); err != nil {
 					fmt.Fprintf(console.Warnings(ctx), "Failed to push results: %v\n", err)
