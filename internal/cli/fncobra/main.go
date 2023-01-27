@@ -362,8 +362,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, we log a start event for each action, if --log_actions is also set.")
 	rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
 		"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
-	rootCmd.PersistentFlags().BoolVar(&fnapi.ExchangeGithubToTenantToken, "exchange_github_to_tenant_token", fnapi.ExchangeGithubToTenantToken,
-		"If set to true, exchange GitHub JWTs for Namespace JWTs.")
 	rootCmd.PersistentFlags().StringVar(&auth.NamespaceJwtPublicKeyFile, "namespace_jwt_public_key", auth.NamespaceJwtPublicKeyFile,
 		"If set, validate Namespace JWTs with the public key read from this location.")
 
@@ -406,7 +404,6 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"use_head_orchestrator",
 		"update_orchestrator",
 		"gcloud_use_host_binary",
-		"exchange_github_to_tenant_token",
 		"namespace_jwt_public_key",
 		// Hidden for M0
 		"testing_use_namespace_cloud",

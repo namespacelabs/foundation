@@ -40,9 +40,9 @@ func SetupFlags(flags *pflag.FlagSet) {
 // A nil handle indicates that the caller wants to discard the response.
 func AnonymousCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Endpoint:  endpoint,
-		Method:    method,
-		Anonymous: true, // Callers of this API do not assume that credentials are injected.
+		Endpoint:   endpoint,
+		Method:     method,
+		FetchToken: nil, // Callers of this API do not assume that credentials are injected.
 	}.Do(ctx, req, handle)
 }
 
@@ -57,8 +57,8 @@ type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
 	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
-	Anonymous              bool
 	OptionalAuth           bool // Don't fail if not authenticated.
+	FetchToken             func(context.Context) (string, error)
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -107,14 +107,19 @@ func getUserToken(ctx context.Context) (*auth.UserAuth, string, error) {
 func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {
 	headers := http.Header{}
 
-	if !c.Anonymous {
-		user, tok, err := getUserToken(ctx)
+	if c.FetchToken != nil {
+		tok, err := c.FetchToken(ctx)
 		if err != nil && !c.OptionalAuth {
 			return err
 		}
 		headers.Add("Authorization", "Bearer "+tok)
 
-		if c.PreAuthenticateRequest != nil && user != nil {
+		if c.PreAuthenticateRequest != nil {
+			user, err := auth.LoadUser()
+			if err != nil {
+				return err
+			}
+
 			if err := c.PreAuthenticateRequest(user, &request); err != nil {
 				return err
 			}

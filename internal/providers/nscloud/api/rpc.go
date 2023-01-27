@@ -15,6 +15,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -32,31 +33,40 @@ type API struct {
 
 var Endpoint API
 
+func fetchTenantToken(context.Context) (string, error) {
+	return auth.LoadToken()
+}
+
 func MakeAPI(endpoint string) API {
 	return API{
 		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
-			Endpoint: endpoint,
-			Method:   "nsl.vm.api.VMService/StartCreateKubernetesCluster",
+			Endpoint:   endpoint,
+			FetchToken: fetchTenantToken,
+			Method:     "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		},
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
-			Endpoint: endpoint,
-			Method:   "nsl.vm.api.VMService/GetKubernetesCluster",
+			Endpoint:   endpoint,
+			FetchToken: fetchTenantToken,
+			Method:     "nsl.vm.api.VMService/GetKubernetesCluster",
 		},
 
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
-			Endpoint: endpoint,
-			Method:   "nsl.vm.api.VMService/WaitKubernetesCluster",
+			Endpoint:   endpoint,
+			FetchToken: fetchTenantToken,
+			Method:     "nsl.vm.api.VMService/WaitKubernetesCluster",
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
-			Endpoint: endpoint,
-			Method:   "nsl.vm.api.VMService/ListKubernetesClusters",
+			Endpoint:   endpoint,
+			FetchToken: fetchTenantToken,
+			Method:     "nsl.vm.api.VMService/ListKubernetesClusters",
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
-			Endpoint: endpoint,
-			Method:   "nsl.vm.api.VMService/DestroyKubernetesCluster",
+			Endpoint:   endpoint,
+			FetchToken: fetchTenantToken,
+			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
 	}
 }
