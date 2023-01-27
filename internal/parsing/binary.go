@@ -19,6 +19,10 @@ func transformBinary(loc pkggraph.Location, bin *schema.Binary) error {
 		return fnerrors.NewWithLocation(loc, "binary name can't be empty")
 	}
 
+	if bin.BuildPlan == nil {
+		return fnerrors.NewWithLocation(loc, "a build plan is required")
+	}
+
 	bin.PackageName = loc.PackageName.String()
 
 	if len(bin.GetConfig().GetCommand()) == 0 {
