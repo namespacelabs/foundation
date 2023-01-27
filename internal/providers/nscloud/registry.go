@@ -107,11 +107,6 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return authn.Anonymous, nil
 	}
 
-	user, err := auth.LoadUser()
-	if err != nil {
-		return nil, err
-	}
-
 	ref, err := name.ParseReference(r.String())
 	if err != nil {
 		return nil, err
@@ -126,7 +121,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return nil, err
 	}
 
-	tok, err := auth.GenerateToken(ctx, auth.WithUserAuth(user))
+	tok, err := auth.GenerateToken(ctx)
 	if err != nil {
 		return nil, err
 	}
