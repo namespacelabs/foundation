@@ -8,6 +8,7 @@ import (
 	"context"
 	"path/filepath"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
@@ -43,6 +44,32 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 		return fnerrors.NewWithLocation(pkg.Location, "web servers can't have services")
 	}
 
+	m := &schema.HttpUrlMap{
+		Entry: []*schema.HttpUrlMap_Entry{{
+			PathPrefix: "/",
+		}},
+	}
+
+	var servers schema.PackageList
+	for _, x := range data.IngressHttpRoute {
+		m.Entry = append(m.Entry, &schema.HttpUrlMap_Entry{
+			PathPrefix:     x.Path,
+			BackendService: x.BackendService,
+		})
+		servers.Add(x.BackendService.AsPackageName())
+	}
+
+	if len(servers.PackageNames()) > 0 {
+		if err := nodejs.InjectBackends(ctx, pl, pkg, servers); err != nil {
+			return err
+		}
+	}
+
+	urlMap, err := anypb.New(m)
+	if err != nil {
+		return err
+	}
+
 	// Generating a public service for the frontend.
 	// Use-case for private Web servers is unclear, we can add a field in the syntax later if needed.
 	servicePort := data.DevPort
@@ -54,6 +81,7 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 		},
 		Metadata: []*schema.ServiceMetadata{{
 			Protocol: "http",
+			Details:  urlMap,
 		}},
 	})
 

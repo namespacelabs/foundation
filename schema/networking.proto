@@ -118,8 +118,9 @@ message HttpUrlMap {
     repeated Entry entry = 1;
 
     message Entry {
-        string path_prefix = 1;
-        string kind        = 2;
+        string            path_prefix     = 1;
+        string            kind            = 2;
+        schema.PackageRef backend_service = 3;
     }
 }
 

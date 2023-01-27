@@ -90,9 +90,16 @@ message NodejsBuild {
 }
 
 message WebIntegration {
-    NodejsBuild nodejs = 1;
+    reserved 2, 3;
 
-    int32 dev_port = 4;
+    NodejsBuild        nodejs             = 1;
+    int32              dev_port           = 4;
+    repeated HttpRoute ingress_http_route = 5;
+
+    message HttpRoute {
+        string            path            = 1;
+        schema.PackageRef backend_service = 2;
+    }
 }
 
 message WebBuild {

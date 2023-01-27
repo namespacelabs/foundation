@@ -104,6 +104,10 @@ func InjectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader
 		servers.Add(b.Service.AsPackageName())
 	}
 
+	return InjectBackends(ctx, pl, pkg, servers)
+}
+
+func InjectBackends(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, servers schema.PackageList) error {
 	if pkg.Server.ResourcePack == nil {
 		pkg.Server.ResourcePack = &schema.ResourcePack{}
 	}

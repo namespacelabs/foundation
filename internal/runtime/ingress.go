@@ -83,13 +83,23 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 				if err := details.UnmarshalTo(p); err != nil {
 					return nil, err
 				}
+
 				for _, entry := range p.Entry {
+					target := endpoint
+					if entry.BackendService != nil {
+						for _, nd := range allEndpoints {
+							if nd.EndpointOwner == entry.BackendService.PackageName && nd.ServiceName == entry.BackendService.Name {
+								target = nd
+							}
+						}
+					}
+
 					paths = append(paths, &schema.IngressFragment_IngressHttpPath{
 						Path:        entry.PathPrefix,
 						Kind:        kind,
-						Owner:       endpoint.EndpointOwner,
-						Service:     endpoint.AllocatedName,
-						ServicePort: endpoint.ExportedPort,
+						Owner:       target.EndpointOwner,
+						Service:     target.AllocatedName,
+						ServicePort: target.ExportedPort,
 					})
 				}
 			}

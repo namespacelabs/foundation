@@ -45,6 +45,7 @@ type cueIngress struct {
 }
 
 type CueIngressDetails struct {
+	// Key is domain.
 	HttpRoutes     map[string][]string `json:"httpRoutes"`
 	ProviderClass  string              `json:"provider"`
 	Domains        []string            `json:"domains"`
@@ -116,7 +117,11 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 	}
 
 	urlMap := &schema.HttpUrlMap{}
-	for _, routes := range svc.Ingress.Details.HttpRoutes {
+	for domain, routes := range svc.Ingress.Details.HttpRoutes {
+		if domain != "*" {
+			return nil, nil, fnerrors.New("unsupported domain, only support * for now")
+		}
+
 		for _, route := range routes {
 			urlMap.Entry = append(urlMap.Entry, &schema.HttpUrlMap_Entry{
 				PathPrefix: route,

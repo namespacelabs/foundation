@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -22,7 +23,16 @@ func (i *Parser) Url() string      { return "namespace.so/from-web" }
 func (i *Parser) Shortcut() string { return "web" }
 
 type cueIntegrationWeb struct {
-	DevPort int32 `json:"devPort"`
+	DevPort int32         `json:"devPort"`
+	Ingress cueWebIngress `json:"ingress"`
+}
+
+type cueWebIngress struct {
+	HttpRoutes map[string]map[string]cueRouteDefinition `json:"httpRoutes"`
+}
+
+type cueRouteDefinition struct {
+	ServeFrom string `json:"serveFrom"`
 }
 
 func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, v *fncue.CueV) (proto.Message, error) {
@@ -61,8 +71,34 @@ func (i *Parser) Parse(ctx context.Context, env *schema.Environment, pl parsing.
 		return nil, fnerrors.NewWithLocation(loc, "web integration requires `devPort`")
 	}
 
-	return &schema.WebIntegration{
+	web := &schema.WebIntegration{
 		Nodejs:  nodejsBuild,
 		DevPort: bits.DevPort,
-	}, nil
+	}
+
+	for domain, d := range bits.Ingress.HttpRoutes {
+		if domain != "*" {
+			return nil, fnerrors.NewWithLocation(loc, "domain selector must be * for now")
+		}
+
+		for path, x := range d {
+			if x.ServeFrom != "" {
+				ref, err := schema.ParsePackageRef(loc.PackageName, x.ServeFrom)
+				if err != nil {
+					return nil, fnerrors.AttachLocation(loc, err)
+				}
+
+				if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, ref); err != nil {
+					return nil, fnerrors.AttachLocation(loc, err)
+				}
+
+				web.IngressHttpRoute = append(web.IngressHttpRoute, &schema.WebIntegration_HttpRoute{
+					Path:           path,
+					BackendService: ref,
+				})
+			}
+		}
+	}
+
+	return web, nil
 }
