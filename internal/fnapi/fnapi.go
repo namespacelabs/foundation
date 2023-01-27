@@ -46,8 +46,9 @@ func AnonymousCall(ctx context.Context, endpoint string, method string, req inte
 
 func AuthenticatedCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Endpoint: endpoint,
-		Method:   method,
+		Endpoint:   endpoint,
+		Method:     method,
+		FetchToken: auth.GenerateToken,
 	}.Do(ctx, req, handle)
 }
 

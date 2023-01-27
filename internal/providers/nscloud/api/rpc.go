@@ -15,6 +15,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -33,8 +34,16 @@ type API struct {
 
 var Endpoint API
 
-func fetchTenantToken(context.Context) (string, error) {
-	return tenants.LoadToken()
+func fetchTenantToken(ctx context.Context) (string, error) {
+	token, err := tenants.LoadToken()
+
+	if err != nil {
+		// Pass user auth for now.
+		// TODO exchange user auth for tenant tokens.
+		return auth.GenerateToken(ctx)
+	}
+
+	return token, nil
 }
 
 func MakeAPI(endpoint string) API {
