@@ -17,8 +17,12 @@ import (
 )
 
 func EnsureBucket(ctx context.Context, instance *s3.BucketInstance) error {
+	if instance.PrivateEndpointUrl == "" {
+		return fnerrors.New("PrivateEndpointUrl must be set")
+	}
+
 	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{PartitionID: "aws", URL: instance.Url, SigningRegion: region}, nil
+		return aws.Endpoint{PartitionID: "aws", URL: instance.PrivateEndpointUrl, SigningRegion: region}, nil
 	})
 
 	cfg, err := config.LoadDefaultConfig(ctx,
