@@ -1,7 +1,13 @@
 <p>
   <a href="https://namespace.so">
-    <img src="https://storage.googleapis.com/namespacelabs-docs-assets/gh/intro.svg" height="300">
+    <img src="https://storage.googleapis.com/namespacelabs-docs-assets/gh/banner.svg" height="100">
   </a>
+</p>
+
+<p>
+<b>
+Namespace is a work in progress! Our feature set and APIs are still evolving and breaking changes are still expected. Please join us on <a href="https://namespace.so/discord">Discord</a> or <a href="https://github.com/namespacelabs/foundation/issues">Issues</a> for feedback.
+</b>
 </p>
 
 <div>
