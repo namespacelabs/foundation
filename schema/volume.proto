@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/schema";
 
 import "google/protobuf/any.proto";
 import "schema/package.proto";
+import "schema/filecontents.proto";
 
 message Mount {
     string     owner      = 1;  // Package that declared the mount.
@@ -75,11 +76,4 @@ message ConfigurableVolume {
 
 message ResourceSet {
     repeated FileContents resource = 1;
-}
-
-// TODO reconcile with std.types.Resource.
-message FileContents {
-    string path     = 1;
-    bool   utf8     = 3;  // Is the content text?
-    bytes  contents = 2;
 }

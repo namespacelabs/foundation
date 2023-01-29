@@ -25,7 +25,12 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error) {
+type ParsedManifest struct {
+	kubedef.Apply
+	Parsed Parsed
+}
+
+func MultipleFromReader(description string, r io.Reader) ([]ParsedManifest, error) {
 	br := bufio.NewReader(r)
 
 	var sections [][]byte
@@ -53,7 +58,7 @@ func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error
 	// For simplicity, we do a two pass parse, first we walk through all resource
 	// types to instantiate the appropriate types, and then we actually parse them.
 
-	var actuals []kubedef.Apply
+	var actuals []ParsedManifest
 
 	for _, sec := range sections {
 		p, err := Single(sec)
@@ -61,9 +66,13 @@ func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error
 			return nil, err
 		}
 
-		actuals = append(actuals, kubedef.Apply{
-			Description: fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
-			Resource:    p.Resource,
+		actuals = append(actuals, ParsedManifest{
+			Apply: kubedef.Apply{
+				SetNamespace: true,
+				Description:  fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
+				Resource:     p.Resource,
+			},
+			Parsed: p,
 		})
 	}
 
@@ -71,7 +80,7 @@ func MultipleFromReader(description string, r io.Reader) ([]kubedef.Apply, error
 }
 
 type Parsed struct {
-	Kind      string
+	metav1.TypeMeta
 	Name      string
 	Namespace string
 	Resource  runtime.Object
@@ -109,7 +118,7 @@ func Single(contents []byte) (Parsed, error) {
 	}
 
 	parsed := Parsed{
-		Kind:      m.Kind,
+		TypeMeta:  m.TypeMeta,
 		Name:      m.Name,
 		Namespace: m.Namespace,
 		Resource:  msg,

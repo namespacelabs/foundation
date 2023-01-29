@@ -9,7 +9,7 @@ package library.oss.postgres;
 option go_package = "namespacelabs.dev/foundation/library/oss/postgres";
 
 import "schema/package.proto";
-import "schema/volume.proto";
+import "schema/filecontents.proto";
 
 message ClusterIntent {
     // If set, overrides the server package used to instantiate the local database cluster.

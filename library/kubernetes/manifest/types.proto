@@ -1,0 +1,30 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package library.kubernetes.manifest;
+
+option go_package = "namespacelabs.dev/foundation/library/kubernetes/manifest";
+
+import "schema/filecontents.proto";
+
+message ManifestIntent {
+    repeated foundation.schema.FileContents sources = 1;
+}
+
+message ManifestInstance {
+    repeated ParsedFile file = 1;
+
+    message ParsedFile {
+        repeated ParsedManifest manifest = 1;
+    }
+
+    message ParsedManifest {
+        string api_version = 1;
+        string kind = 2;
+        string namespace = 3;
+        string name = 4;
+    }
+}

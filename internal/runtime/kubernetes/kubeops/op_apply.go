@@ -81,7 +81,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		Arg("name", obj.GetName())
 
 	ns := obj.GetNamespace()
-	if spec.SetNamespace {
+	if spec.SetNamespace && ns == "" {
 		c, err := kubedef.InjectedKubeClusterNamespace(ctx)
 		if err != nil {
 			return nil, err
