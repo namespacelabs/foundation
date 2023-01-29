@@ -5,6 +5,7 @@
 package protos
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"log"
@@ -89,7 +90,7 @@ func TestAllocateMessage(t *testing.T) {
 			},
 		},
 	} {
-		msg, err := AllocateWellKnownMessage(ParseContext{FS: testData, SupportWellKnownMessages: true},
+		msg, err := AllocateWellKnownMessage(context.Background(), ParseContext{FS: testData, SupportWellKnownMessages: true},
 			test.Expected.ProtoReflect().Descriptor(), unmarshal(test.JSON))
 		if err != nil {
 			t.Error(err)

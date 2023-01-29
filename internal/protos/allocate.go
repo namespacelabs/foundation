@@ -5,6 +5,7 @@
 package protos
 
 import (
+	"context"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -13,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func AllocateFrom(pctx ParseContext, value map[string]any) (proto.Message, error) {
+func AllocateFrom(ctx context.Context, pctx ParseContext, value map[string]any) (proto.Message, error) {
 	typeUrl, ok := value["@type"].(string)
 	if !ok {
 		return nil, fnerrors.New("@type is missing")
@@ -33,7 +34,7 @@ func AllocateFrom(pctx ParseContext, value map[string]any) (proto.Message, error
 	}
 
 	if msgDesc, ok := desc.(protoreflect.MessageDescriptor); ok {
-		msg, err := AllocateWellKnownMessage(pctx, msgDesc, value)
+		msg, err := AllocateWellKnownMessage(ctx, pctx, msgDesc, value)
 		if err != nil {
 			return nil, fnerrors.New("%s: failed to allocate message: %w", fullName, err)
 		}

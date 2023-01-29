@@ -5,14 +5,19 @@
 package protos
 
 import (
+	"context"
 	"encoding/json"
 	"io/fs"
+	"io/ioutil"
 	"reflect"
 	"unicode/utf8"
 
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"namespacelabs.dev/foundation/internal/artifacts"
+	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 )
@@ -24,7 +29,7 @@ type ParseContext struct {
 	EnsurePackage            func(schema.PackageName) error
 }
 
-func allocateValue(pctx ParseContext, parent protoreflect.Message, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
+func allocateValue(ctx context.Context, pctx ParseContext, parent protoreflect.Message, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
 	if field.IsMap() {
 		return protoreflect.Value{}, fnerrors.New("maps not supported")
 	}
@@ -35,7 +40,7 @@ func allocateValue(pctx ParseContext, parent protoreflect.Message, field protore
 		switch x := value.(type) {
 		case []any:
 			for k, v := range x {
-				allocated, err := allocateSingleValue(pctx, field, v)
+				allocated, err := allocateSingleValue(ctx, pctx, field, v)
 				if err != nil {
 					return protoreflect.Value{}, fnerrors.New("[%d]: %w", k, err)
 				}
@@ -48,10 +53,10 @@ func allocateValue(pctx ParseContext, parent protoreflect.Message, field protore
 		return protoreflect.Value{}, fnerrors.New("expected []any, got %s", reflect.TypeOf(value).String())
 	}
 
-	return allocateSingleValue(pctx, field, value)
+	return allocateSingleValue(ctx, pctx, field, value)
 }
 
-func allocateSingleValue(pctx ParseContext, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
+func allocateSingleValue(ctx context.Context, pctx ParseContext, field protoreflect.FieldDescriptor, value any) (protoreflect.Value, error) {
 	switch field.Kind() {
 	case protoreflect.BoolKind:
 		switch x := value.(type) {
@@ -169,7 +174,7 @@ func allocateSingleValue(pctx ParseContext, field protoreflect.FieldDescriptor, 
 		return protoreflect.Value{}, fnerrors.New("expected string or int32, got %s", reflect.TypeOf(value).String())
 
 	case protoreflect.MessageKind:
-		msg, err := AllocateWellKnownMessage(pctx, field.Message(), value)
+		msg, err := AllocateWellKnownMessage(ctx, pctx, field.Message(), value)
 		if err != nil {
 			return protoreflect.Value{}, err
 		}
@@ -181,15 +186,15 @@ func allocateSingleValue(pctx ParseContext, field protoreflect.FieldDescriptor, 
 	}
 }
 
-func AllocateWellKnownMessage(pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
+func AllocateWellKnownMessage(ctx context.Context, pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
 	if pctx.SupportWellKnownMessages {
 		// Handle well-known types.
 		switch messageType.FullName() {
 		case "foundation.schema.FileContents":
-			return allocateFileContents(pctx, value)
+			return allocateFileContents(ctx, pctx, value)
 
 		case "foundation.schema.PackageRef":
-			pkgref, err := allocatePackageRef(pctx, messageType, value)
+			pkgref, err := allocatePackageRef(ctx, pctx, messageType, value)
 			if err != nil {
 				return nil, err
 			}
@@ -208,15 +213,15 @@ func AllocateWellKnownMessage(pctx ParseContext, messageType protoreflect.Messag
 		}
 	}
 
-	return AllocateDynamicMessage(pctx, messageType, value)
+	return AllocateDynamicMessage(ctx, pctx, messageType, value)
 }
 
-func AllocateDynamicMessage(pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
+func AllocateDynamicMessage(ctx context.Context, pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
 	msg := dynamicpb.NewMessage(messageType)
-	return allocateMessage(pctx, msg, value)
+	return allocateMessage(ctx, pctx, msg, value)
 }
 
-func allocateMessage(pctx ParseContext, msg protoreflect.Message, value any) (protoreflect.ProtoMessage, error) {
+func allocateMessage(ctx context.Context, pctx ParseContext, msg protoreflect.Message, value any) (protoreflect.ProtoMessage, error) {
 	switch x := value.(type) {
 	case map[string]interface{}:
 		fields := msg.Descriptor().Fields()
@@ -231,7 +236,7 @@ func allocateMessage(pctx ParseContext, msg protoreflect.Message, value any) (pr
 				return nil, fnerrors.New("{%s}.%q: no such field", msg.Descriptor().FullName(), key)
 			}
 
-			newValue, err := allocateValue(pctx, msg, f, v)
+			newValue, err := allocateValue(ctx, pctx, msg, f, v)
 			if err != nil {
 				return nil, fnerrors.New("{%s}.%q: %w", msg.Descriptor().FullName(), key, err)
 			}
@@ -245,7 +250,7 @@ func allocateMessage(pctx ParseContext, msg protoreflect.Message, value any) (pr
 	return nil, fnerrors.New("%s: expected map, got %s", msg.Descriptor().FullName(), reflect.TypeOf(value).String())
 }
 
-func allocatePackageRef(pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
+func allocatePackageRef(ctx context.Context, pctx ParseContext, messageType protoreflect.MessageDescriptor, value any) (protoreflect.ProtoMessage, error) {
 	switch x := value.(type) {
 	case string:
 		if pctx.PackageName == "" {
@@ -255,10 +260,10 @@ func allocatePackageRef(pctx ParseContext, messageType protoreflect.MessageDescr
 		return schema.ParsePackageRef(pctx.PackageName, x)
 	}
 
-	return allocateMessage(pctx, (&schema.PackageRef{}).ProtoReflect(), value)
+	return allocateMessage(ctx, pctx, (&schema.PackageRef{}).ProtoReflect(), value)
 }
 
-func allocateFileContents(pctx ParseContext, value any) (protoreflect.ProtoMessage, error) {
+func allocateFileContents(ctx context.Context, pctx ParseContext, value any) (protoreflect.ProtoMessage, error) {
 	if pctx.FS == nil {
 		return nil, fnerrors.New("failed to handle resource, no workspace access available")
 	}
@@ -295,6 +300,47 @@ func allocateFileContents(pctx ParseContext, value any) (protoreflect.ProtoMessa
 			}
 
 			return nil, fnerrors.New("failed to handle inline resource, got %s", reflect.TypeOf(x[keys[0]]).String())
+
+		case "fromURL":
+			switch y := x[keys[0]].(type) {
+			case map[string]string:
+				if url, ok := y["url"]; ok {
+					if rawDigest, ok := y["digest"]; ok {
+						digest, err := schema.ParseDigest(rawDigest)
+						if err != nil {
+							return nil, err
+						}
+
+						d := download.URL(artifacts.Reference{
+							URL:    url,
+							Digest: digest,
+						})
+
+						res, err := compute.GetValue(ctx, d)
+						if err != nil {
+							return nil, err
+						}
+
+						r, err := res.Reader()
+						if err != nil {
+							return nil, err
+						}
+
+						defer r.Close()
+
+						contents, err := ioutil.ReadAll(r)
+						if err != nil {
+							return nil, err
+						}
+
+						return &schema.FileContents{Contents: contents}, nil
+					}
+				}
+
+				return nil, fnerrors.New("failed to handle url resource, expected url and digest keys")
+			}
+
+			return nil, fnerrors.New("failed to handle url resource, got %s", reflect.TypeOf(x[keys[0]]).String())
 		}
 
 		return nil, fnerrors.New("failed to handle inline resource, expected %q got %q", "inline", keys[0])

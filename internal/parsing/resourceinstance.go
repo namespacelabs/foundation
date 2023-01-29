@@ -194,7 +194,7 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 func parseRawIntent(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, loc pkggraph.Location, intentType *pkggraph.UserType, value any) (*anypb.Any, error) {
 	subFsys := loc.Module.ReadOnlyFS(loc.Rel())
 
-	msg, err := protos.AllocateWellKnownMessage(protos.ParseContext{
+	msg, err := protos.AllocateWellKnownMessage(ctx, protos.ParseContext{
 		SupportWellKnownMessages: true,
 		FS:                       subFsys,
 		PackageName:              loc.PackageName,

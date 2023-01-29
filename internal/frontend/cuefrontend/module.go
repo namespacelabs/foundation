@@ -75,7 +75,7 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 		return nil, err
 	}
 
-	parsed, err := parseWorkspaceValue(p.Val)
+	parsed, err := parseWorkspaceValue(ctx, p.Val)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
 	return val, nil
 }
 
-func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
+func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace, error) {
 	var m cueModule
 	if err := val.Decode(&m); err != nil {
 		return nil, fnerrors.New("failed to decode workspace contents: %w", err)
@@ -279,7 +279,7 @@ func parseWorkspaceValue(val cue.Value) (*schema.Workspace, error) {
 		})
 
 		for _, kv := range env.Configuration {
-			msg, err := protos.AllocateFrom(protos.ParseContext{}, kv)
+			msg, err := protos.AllocateFrom(ctx, protos.ParseContext{}, kv)
 			if err != nil {
 				return nil, err
 			}
