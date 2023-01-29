@@ -193,6 +193,13 @@ func AllocateWellKnownMessage(ctx context.Context, pctx ParseContext, messageTyp
 		case "foundation.schema.FileContents":
 			return allocateFileContents(ctx, pctx, value)
 
+		case "foundation.schema.InlineJson":
+			serialized, err := json.Marshal(value)
+			if err != nil {
+				return nil, fnerrors.New("value is not serializable as json: %w", err)
+			}
+			return &schema.InlineJson{InlineJson: string(serialized)}, nil
+
 		case "foundation.schema.PackageRef":
 			pkgref, err := allocatePackageRef(ctx, pctx, messageType, value)
 			if err != nil {
@@ -303,9 +310,9 @@ func allocateFileContents(ctx context.Context, pctx ParseContext, value any) (pr
 
 		case "fromURL":
 			switch y := x[keys[0]].(type) {
-			case map[string]string:
-				if url, ok := y["url"]; ok {
-					if rawDigest, ok := y["digest"]; ok {
+			case map[string]any:
+				if url, ok := str(y, "url"); ok {
+					if rawDigest, ok := str(y, "digest"); ok {
 						digest, err := schema.ParseDigest(rawDigest)
 						if err != nil {
 							return nil, err
@@ -347,4 +354,12 @@ func allocateFileContents(ctx context.Context, pctx ParseContext, value any) (pr
 	}
 
 	return nil, fnerrors.New("failed to handle resource type, got %s", reflect.TypeOf(value).String())
+}
+
+func str(m map[string]any, key string) (string, bool) {
+	if v, ok := m[key]; ok {
+		str, ok := v.(string)
+		return str, ok
+	}
+	return "", false
 }

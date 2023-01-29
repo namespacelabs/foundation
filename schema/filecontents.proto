@@ -14,3 +14,7 @@ message FileContents {
     bool   utf8     = 3;  // Is the content text?
     bytes  contents = 2;
 }
+
+message InlineJson {
+    string inline_json = 1;
+}

@@ -10,11 +10,11 @@ option go_package = "namespacelabs.dev/foundation/library/kubernetes/manifest";
 
 import "schema/filecontents.proto";
 
-message ManifestIntent {
+message AppliedManifestIntent {
     repeated foundation.schema.FileContents sources = 1;
 }
 
-message ManifestInstance {
+message AppliedManifestInstance {
     repeated ParsedFile file = 1;
 
     message ParsedFile {
@@ -23,8 +23,8 @@ message ManifestInstance {
 
     message ParsedManifest {
         string api_version = 1;
-        string kind = 2;
-        string namespace = 3;
-        string name = 4;
+        string kind        = 2;
+        string namespace   = 3;
+        string name        = 4;
     }
 }

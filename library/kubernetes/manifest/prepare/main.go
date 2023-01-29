@@ -18,14 +18,14 @@ func main() {
 	h := provisioning.NewHandlers()
 	henv := h.MatchEnv(&schema.Environment{Runtime: "kubernetes"})
 	henv.HandleApply(func(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
-		intent := &manifest.ManifestIntent{}
+		intent := &manifest.AppliedManifestIntent{}
 		if err := req.UnpackInput(intent); err != nil {
 			return err
 		}
 
-		instance := &manifest.ManifestInstance{}
+		instance := &manifest.AppliedManifestInstance{}
 		for _, src := range intent.Sources {
-			p := &manifest.ManifestInstance_ParsedFile{}
+			p := &manifest.AppliedManifestInstance_ParsedFile{}
 
 			applies, err := kubeparser.MultipleFromReader(req.PackageOwner(), bytes.NewReader(src.Contents))
 			if err != nil {
@@ -36,7 +36,7 @@ func main() {
 				apply.Creator = schema.MakePackageSingleRef(schema.MakePackageName(req.PackageOwner()))
 
 				out.Invocations = append(out.Invocations, apply)
-				p.Manifest = append(p.Manifest, &manifest.ManifestInstance_ParsedManifest{
+				p.Manifest = append(p.Manifest, &manifest.AppliedManifestInstance_ParsedManifest{
 					ApiVersion: apply.Parsed.APIVersion,
 					Kind:       apply.Parsed.Kind,
 					Namespace:  apply.Parsed.Namespace,

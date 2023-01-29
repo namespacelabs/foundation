@@ -72,6 +72,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/helm"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
@@ -265,6 +266,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		// Runtimes.
 		kubernetes.Register()
 		kubeops.Register()
+		helm.Register()
 		orchestration.RegisterPrepare()
 
 		cfg.ValidateNoConfigTypeCollisions()
