@@ -20,7 +20,7 @@ import (
 )
 
 // Bumping this value leads to an orchestrator upgrade.
-const orchestratorVersion = 18
+const orchestratorVersion = 19
 
 func ExecuteOpts() execution.ExecuteOpts {
 	return execution.ExecuteOpts{
