@@ -46,33 +46,25 @@ func WaitForCondition[Client any](ctx context.Context, cli Client, action *tasks
 
 func PrepareEvent(gvk kubeschema.GroupVersionKind, namespace, name, desc string, deployable *runtime.Deployable) *orchestration.Event {
 	ev := &orchestration.Event{
-		ResourceId:          fmt.Sprintf("%s/%s", namespace, name),
+		ResourceId:          fmt.Sprintf("%s:%s/%s", gvk.String(), namespace, name),
 		RuntimeSpecificHelp: fmt.Sprintf("kubectl -n %s describe %s %s", namespace, strings.ToLower(gvk.Kind), name),
 		Ready:               orchestration.Event_NOT_READY,
 		Timestamp:           timestamppb.Now(),
 	}
 
-	switch {
-	case isServer(gvk, deployable):
+	if isServer(gvk, deployable) {
 		ev.Category = "Servers deployed"
 		if deployable != nil {
 			// Servers are singletons per package, so only display the pkg for brevity.
-			ev.Scope = deployable.GetPackageRef().GetPackageName()
 			ev.ResourceLabel = deployable.GetPackageRef().GetPackageName()
+		} else {
+			ev.ResourceLabel = desc
 		}
-	default:
+	} else {
 		ev.Category = desc
 		if deployable != nil {
-			ev.Scope = deployable.GetPackageRef().Canonical()
 			ev.ResourceLabel = deployable.GetPackageRef().Canonical()
 		}
-	}
-
-	// TODO remove fallback when CLI always sets package ref.
-	if deployable != nil && ev.Scope == "" {
-		// nolint directives: stylecheck:sa1019
-		ev.Scope = deployable.GetPackageName()
-		ev.ResourceLabel = deployable.GetPackageName()
 	}
 
 	return ev
@@ -117,7 +109,6 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 	return ev.Run(ctx, func(ctx context.Context) error {
 		ev := PrepareEvent(w.GroupVersionKind, w.Namespace, w.Name, w.Description, nil)
 		ev.Stage = orchestration.Event_WAITING
-		ev.Scope = w.Scope.String()
 		ev.ResourceLabel = w.Scope.String()
 		if w.PreviousGen > 0 && w.PreviousGen == w.ExpectedGen {
 			ev.AlreadyExisted = true

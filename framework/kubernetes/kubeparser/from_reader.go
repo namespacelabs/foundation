@@ -163,6 +163,8 @@ func messageTypeFromKind(kind string) runtime.Object {
 		return &apiextensionsv1.CustomResourceDefinition{}
 	case "Job":
 		return &batchv1.Job{}
+	case "Pod":
+		return &corev1.Pod{}
 	}
 
 	return nil

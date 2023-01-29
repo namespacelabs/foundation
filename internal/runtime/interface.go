@@ -428,7 +428,6 @@ func (e ErrContainerFailed) Error() string {
 
 func DeployableToProto(spec Deployable) *runtimepb.Deployable {
 	return &runtimepb.Deployable{
-		PackageName:     spec.GetPackageRef().GetPackageName(), // TODO Remove after Orchestrator has been updated to use PackageRef instead.
 		PackageRef:      spec.GetPackageRef(),
 		Id:              spec.GetId(),
 		Name:            spec.GetName(),

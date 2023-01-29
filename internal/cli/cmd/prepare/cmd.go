@@ -218,7 +218,6 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 					ch <- &orchestration.Event{
 						Category:      "Preparing cluster",
 						ResourceId:    "connect-to-cluster",
-						Scope:         "Connect to cluster", // XXX remove soon.
 						ResourceLabel: "Connect to cluster",
 						Stage:         orchestration.Event_WAITING,
 					}

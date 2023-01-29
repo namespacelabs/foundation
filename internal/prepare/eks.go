@@ -21,7 +21,6 @@ func PrepareEksCluster(clusterName string) Stage {
 			ch <- &orchestration.Event{
 				Category:      "AWS",
 				ResourceId:    "eks-profile",
-				Scope:         fmt.Sprintf("Configure EKS Cluster %q", clusterName), // XXX remove soon.
 				ResourceLabel: fmt.Sprintf("Configure EKS Cluster %q", clusterName),
 			}
 		},

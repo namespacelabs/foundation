@@ -162,7 +162,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		return &execution.HandleResult{
 			Waiter: kobs.WaitOnGenerationCondition{
 				RestConfig:         restcfg,
-				Namespace:          obj.GetNamespace(),
+				Namespace:          ns,
 				Name:               obj.GetName(),
 				ExpectedGeneration: generation,
 				ConditionType:      spec.CheckGenerationCondition.Type,
@@ -178,7 +178,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 	if ch != nil {
 		switch {
 		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj), kubedef.IsDaemonSet(obj):
-			ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+			ev := kobs.PrepareEvent(obj.GroupVersionKind(), ns, obj.GetName(), desc, spec.Deployable)
 			ev.Stage = orchestration.Event_COMMITTED
 			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
 				Description: "Committed...",
@@ -209,6 +209,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 			if spec.Deployable != nil {
 				w.Scope = spec.Deployable.GetPackageRef().AsPackageName()
+			} else if spec.Creator != nil {
+				w.Scope = spec.Creator.AsPackageName()
 			}
 
 			return &execution.HandleResult{Waiter: w.WaitUntilReady}, nil
@@ -225,17 +227,17 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				}
 
 				return kobs.WaitForCondition(ctx, cluster.PreparedClient().Clientset, tasks.Action("pod.wait").Scope(scope...),
-					kobs.WaitForPodConditition(obj.GetNamespace(), kobs.PickPod(obj.GetName()),
+					kobs.WaitForPodConditition(ns, kobs.PickPod(obj.GetName()),
 						func(ps v1.PodStatus) (bool, error) {
 							meta, err := json.Marshal(ps)
 							if err != nil {
 								return false, fnerrors.InternalError("failed to marshal pod status: %w", err)
 							}
 
-							ev := kobs.PrepareEvent(obj.GroupVersionKind(), obj.GetNamespace(), obj.GetName(), desc, spec.Deployable)
+							ev := kobs.PrepareEvent(obj.GroupVersionKind(), ns, obj.GetName(), desc, spec.Deployable)
 							ev.Stage = orchestration.Event_WAITING
 							ev.ImplMetadata = meta
-							ev.WaitStatus = append(ev.WaitStatus, kobs.PodStatusToWaitStatus(obj.GetNamespace(), obj.GetName(), ps))
+							ev.WaitStatus = append(ev.WaitStatus, kobs.PodStatusToWaitStatus(ns, obj.GetName(), ps))
 							ev.Timestamp = timestamppb.Now()
 
 							var done bool

@@ -18,11 +18,19 @@ import "std/types/certificates.proto";
 message OpApply {
     reserved 6;
 
-    string                               body_json                  = 4;
-    bool                                 set_namespace              = 8;
-    CheckGenerationCondition             check_generation_condition = 7;
-    bool                                 inhibit_events             = 9;
-    foundation.schema.runtime.Deployable deployable                 = 10;
+    // The serialized resource that is being applied.
+    string body_json = 4;
+    // If true, sets the namespace of the resource to that of the deployment's scope.
+    // The namespace must not be set in the serialized resource above.
+    bool set_namespace = 8;
+    // If true, creates resources without emitting user-visible events.
+    bool inhibit_events = 9;
+    // If this apply is done in the scope of a planned deployment, deployable will be set.
+    foundation.schema.runtime.Deployable deployable = 10;
+    // If set, specifies which package yielded this apply. Used for presentation purposes.
+    foundation.schema.PackageRef creator = 11;
+
+    CheckGenerationCondition check_generation_condition = 7;
 
     message CheckGenerationCondition {
         string type = 1;

@@ -21,7 +21,6 @@ func PrepareGcpProjectID(projectID string) Stage {
 			ch <- &orchestration.Event{
 				Category:      "Google Cloud",
 				ResourceId:    "gcp-projectid",
-				Scope:         fmt.Sprintf("Configure Project ID %q", projectID), // XXX remove soon.
 				ResourceLabel: fmt.Sprintf("Configure Project ID %q", projectID),
 			}
 		},

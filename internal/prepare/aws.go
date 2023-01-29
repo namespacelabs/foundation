@@ -21,7 +21,6 @@ func PrepareAWSProfile(profileName string) Stage {
 			ch <- &orchestration.Event{
 				Category:      "AWS",
 				ResourceId:    "aws-profile",
-				Scope:         fmt.Sprintf("Configure AWS profile %q", profileName), // XXX remove soon.
 				ResourceLabel: fmt.Sprintf("Configure AWS profile %q", profileName),
 			}
 		},

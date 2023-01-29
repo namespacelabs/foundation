@@ -123,10 +123,7 @@ func (rwb consRenderer) Loop(ctx context.Context) {
 func title(ev *orchestration.Event) string {
 	title := ev.ResourceLabel
 	if title == "" {
-		title = ev.Scope
-		if title == "" {
-			title = ev.ResourceId
-		}
+		title = ev.ResourceId
 	}
 	return title
 }

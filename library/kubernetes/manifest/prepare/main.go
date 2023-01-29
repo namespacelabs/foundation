@@ -33,6 +33,8 @@ func main() {
 			}
 
 			for _, apply := range applies {
+				apply.Creator = schema.MakePackageSingleRef(schema.MakePackageName(req.PackageOwner()))
+
 				out.Invocations = append(out.Invocations, apply)
 				p.Manifest = append(p.Manifest, &manifest.ManifestInstance_ParsedManifest{
 					ApiVersion: apply.Parsed.APIVersion,

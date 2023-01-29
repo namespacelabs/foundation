@@ -20,7 +20,6 @@ func Ingress() ClusterStage {
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
 				ResourceId:    "ingress",
-				Scope:         "Setup Ingress Controller", // XXX remove soon.
 				ResourceLabel: "Setup Ingress Controller",
 				Category:      "Preparing cluster",
 				Ready:         orchestration.Event_NOT_READY,

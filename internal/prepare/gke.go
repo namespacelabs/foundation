@@ -23,7 +23,6 @@ func PrepareGkeCluster(clusterName string, experimentalGCLB bool) Stage {
 			ch <- &orchestration.Event{
 				Category:      "Google Cloud",
 				ResourceId:    "gke-cluster",
-				Scope:         fmt.Sprintf("Configure GKE Cluster %q", clusterName), // XXX remove soon.
 				ResourceLabel: fmt.Sprintf("Configure GKE Cluster %q", clusterName),
 			}
 		},

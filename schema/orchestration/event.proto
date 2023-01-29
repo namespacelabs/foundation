@@ -13,7 +13,7 @@ import "google/protobuf/timestamp.proto";
 
 // Next ID: 14
 message Event {
-    reserved 2;
+    reserved 2, 4;
 
     // Opaque value that uniquely identifies the resource.
     string resource_id = 1;
@@ -23,9 +23,6 @@ message Event {
 
     // A human-readable label that describes the resource.
     string category = 3;
-
-    // Scope acts as a label. But this will be eventually removed. Used label instead.
-    string scope = 4;
 
     // A human-readable description of the resource that is being modified. Only needs to
     // be set on the first event observed.

@@ -24,7 +24,6 @@ func NamespaceCluster(machineType string, ephemeral, withBuild bool) Stage {
 			ch <- &orchestration.Event{
 				Category:      "Namespace Cloud",
 				ResourceId:    "new-cluster",
-				Scope:         "New cluster", // XXX remove soon.
 				ResourceLabel: "New cluster",
 			}
 
@@ -32,7 +31,6 @@ func NamespaceCluster(machineType string, ephemeral, withBuild bool) Stage {
 				ch <- &orchestration.Event{
 					Category:      "Namespace Cloud",
 					ResourceId:    "build-cluster",
-					Scope:         "Setup build cluster", // XXX remove soon.
 					ResourceLabel: "Setup build cluster",
 				}
 			}
@@ -72,7 +70,6 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 			ch <- &orchestration.Event{
 				Category:      "Namespace Cloud",
 				ResourceId:    "build-cluster",
-				Scope:         "Setup build cluster", // XXX remove soon.
 				ResourceLabel: "Setup build cluster",
 				Ready:         orchestration.Event_READY,
 				Stage:         orchestration.Event_DONE,
@@ -90,7 +87,6 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	ch <- &orchestration.Event{
 		Category:      "Namespace Cloud",
 		ResourceId:    "new-cluster",
-		Scope:         "New cluster", // XXX remove soon.
 		ResourceLabel: "New cluster",
 		Ready:         orchestration.Event_READY,
 		Stage:         orchestration.Event_DONE,

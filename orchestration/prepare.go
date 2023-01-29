@@ -46,7 +46,6 @@ var (
 	RenderOrchestratorDeployment = false
 
 	stateless = &runtimepb.Deployable{
-		PackageName:     constants.ServerPkg.String(),
 		PackageRef:      schema.MakePackageSingleRef(constants.ServerPkg),
 		Id:              constants.ServerId,
 		Name:            constants.ServerName,

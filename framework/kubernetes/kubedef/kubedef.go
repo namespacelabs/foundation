@@ -38,6 +38,8 @@ type Apply struct {
 	// If set, we wait until a status.conditions entry of matching type exists,
 	// that matches the resource's generation.
 	CheckGenerationCondition *CheckGenerationCondition
+
+	Creator *schema.PackageRef
 }
 
 type CheckGenerationCondition struct {
@@ -130,6 +132,7 @@ func (a Apply) ToDefinitionImpl(scope ...schema.PackageName) (*schema.Serialized
 		BodyJson:      string(body), // We use strings for better debuggability.
 		SetNamespace:  a.SetNamespace,
 		InhibitEvents: a.InhibitEvents,
+		Creator:       a.Creator,
 	}
 
 	if a.CheckGenerationCondition != nil {
