@@ -17,10 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/discovery"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	kobs "namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	fnschema "namespacelabs.dev/foundation/schema"
@@ -82,11 +84,33 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 	ns := obj.GetNamespace()
 	if spec.SetNamespace && ns == "" {
-		c, err := kubedef.InjectedKubeClusterNamespace(ctx)
+		// Don't know if the resource is namespace scoped or not -- need to go find out.
+		rawDisco, err := cluster.EnsureState(ctx, kubernetes.DiscoveryStateKey)
 		if err != nil {
 			return nil, err
 		}
-		ns = c.KubeConfig().Namespace
+
+		disco := rawDisco.(discovery.DiscoveryInterface)
+		res, err := disco.ServerResourcesForGroupVersion(obj.GroupVersionKind().GroupVersion().String())
+		if err != nil {
+			return nil, err
+		}
+
+		namespaced := false
+		for _, resource := range res.APIResources {
+			if resource.Kind == obj.GroupVersionKind().Kind && resource.Namespaced {
+				c, err := kubedef.InjectedKubeClusterNamespace(ctx)
+				if err != nil {
+					return nil, err
+				}
+				ns = c.KubeConfig().Namespace
+				namespaced = true
+				break
+			}
+		}
+
+		fmt.Fprintf(console.Debug(ctx), "kubernetes: apply: namespace is not set, checking if %q in %q is namespaced: %v\n",
+			obj.GroupVersionKind().Kind, obj.GroupVersionKind().GroupKind().String(), namespaced)
 	}
 
 	if ns != "" {

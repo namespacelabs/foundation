@@ -12,7 +12,6 @@ import (
 	"k8s.io/client-go/discovery"
 	diskcached "k8s.io/client-go/discovery/cached/disk"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -24,15 +23,6 @@ func NewDiscoveryClient(config *rest.Config, ephemeral bool) (discovery.CachedDi
 	}
 
 	return diskcached.NewCachedDiscoveryClientForConfig(config, cacheDir, "", time.Duration(6*time.Hour))
-}
-
-func NewRESTMapper(config *rest.Config, ephemeral bool) (*restmapper.DeferredDiscoveryRESTMapper, error) {
-	discoveryClient, err := NewDiscoveryClient(config, ephemeral)
-	if err != nil {
-		return nil, err
-	}
-
-	return restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient), nil
 }
 
 func makeCacheDir(host string, ephemeral bool) (string, error) {

@@ -9,6 +9,8 @@ import (
 	"fmt"
 
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/internal/console"
@@ -30,7 +32,10 @@ var (
 	kubernetesDeploymentPlanning = cfg.DefineConfigType[*client.DeploymentPlanning]()
 )
 
-const RestmapperStateKey = "kubernetes.restmapper"
+const (
+	DiscoveryStateKey  = "kubernetes.discovery"
+	RestmapperStateKey = "kubernetes.restmapper"
+)
 
 type ProvideOverrideFunc func(context.Context, cfg.Configuration) (runtime.Class, error)
 
@@ -65,7 +70,7 @@ func Register() {
 		return kubernetesClass{}, nil
 	})
 
-	runtime.RegisterPrepare(RestmapperStateKey, func(ctx context.Context, _ cfg.Configuration, cluster runtime.Cluster) (any, error) {
+	runtime.RegisterPrepare(DiscoveryStateKey, func(ctx context.Context, _ cfg.Configuration, cluster runtime.Cluster) (any, error) {
 		unwrap, ok := cluster.(UnwrapCluster)
 		if !ok {
 			return nil, fnerrors.InternalError("expected kubernetes cluster")
@@ -73,7 +78,16 @@ func Register() {
 
 		kube := unwrap.KubernetesCluster()
 
-		return client.NewRESTMapper(kube.RESTConfig(), kube.Prepared.Configuration.Ephemeral)
+		return client.NewDiscoveryClient(kube.RESTConfig(), kube.Prepared.Configuration.Ephemeral)
+	})
+
+	runtime.RegisterPrepare(RestmapperStateKey, func(ctx context.Context, _ cfg.Configuration, cluster runtime.Cluster) (any, error) {
+		discoveryClient, err := cluster.EnsureState(ctx, DiscoveryStateKey)
+		if err != nil {
+			return nil, err
+		}
+
+		return restmapper.NewDeferredDiscoveryRESTMapper(discoveryClient.(discovery.CachedDiscoveryInterface)), nil
 	})
 
 	planninghooks.RegisterPrepareHook("namespacelabs.dev/foundation/std/runtime/kubernetes.ApplyServerExtensions", prepareApplyServerExtensions)
