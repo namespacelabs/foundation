@@ -377,11 +377,16 @@ func CalculateDomains(env *schema.Environment, computed *schema.ComputedNaming, 
 	}
 
 	for _, d := range allocatedName.UserSpecified {
-		domains = append(domains, &schema.Domain{
-			Fqdn:        d.Fqdn,
-			Managed:     schema.Domain_USER_SPECIFIED,
-			TlsFrontend: d.TlsFrontend,
-		})
+		domain := &schema.Domain{
+			Fqdn:    d.Fqdn,
+			Managed: d.Managed,
+		}
+
+		if d.Managed == schema.Domain_USER_SPECIFIED_TLS_MANAGED {
+			domain.TlsFrontend = true
+		}
+
+		domains = append(domains, domain)
 	}
 
 	return domains, nil

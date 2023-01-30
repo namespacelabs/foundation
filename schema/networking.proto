@@ -52,11 +52,6 @@ message Endpoint {
     reserved 9;
 }
 
-message DomainSpec {
-    string fqdn         = 1;
-    bool   tls_frontend = 2;
-}
-
 message InternalEndpoint {
     string                   server_owner     = 1;  // Package name.
     Endpoint.Port            port             = 2;

@@ -25,6 +25,12 @@ message Domain {
     }
 }
 
+
+message DomainSpec {
+    string fqdn                = 1;
+    Domain.ManagedType managed = 2;
+}
+
 message Certificate {
     bytes private_key        = 1;
     bytes certificate_bundle = 2;

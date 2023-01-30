@@ -190,8 +190,8 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 
 	for _, domain := range svc.Ingress.Details.Domains {
 		parsed.IngressDomain = append(parsed.IngressDomain, &schema.DomainSpec{
-			Fqdn:        domain,
-			TlsFrontend: true,
+			Fqdn:    domain,
+			Managed: schema.Domain_USER_SPECIFIED_TLS_MANAGED,
 		})
 	}
 

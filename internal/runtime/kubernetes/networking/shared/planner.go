@@ -16,7 +16,7 @@ type MapPublicLoadBalancer struct{}
 func (MapPublicLoadBalancer) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
 	var route kubedef.IngressAllocatedRoute
 
-	if domain.TlsFrontend {
+	if domain.Managed == schema.Domain_CLOUD_MANAGED || domain.Managed == schema.Domain_USER_SPECIFIED_TLS_MANAGED {
 		cert, err := AllocateDomainCertificate(ctx, env, srv, domain)
 		if err != nil {
 			return nil, err

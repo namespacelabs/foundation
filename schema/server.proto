@@ -17,6 +17,7 @@ import "schema/probe.proto";
 import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/volume.proto";
+import "schema/domain.proto";
 
 enum Framework {
     reserved 2, 3;
