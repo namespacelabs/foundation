@@ -8,6 +8,7 @@ package nsl.orchestration;
 
 option go_package = "namespacelabs.dev/foundation/orchestration/proto";
 
+import "google/protobuf/any.proto";
 import "universe/aws/configuration/aws.proto";
 import "schema/orchestration/event.proto";
 import "schema/serialized.proto";
@@ -16,11 +17,13 @@ import "internal/runtime/kubernetes/client/clientconfig.proto";
 
 message DeployRequest {
     foundation.schema.DeployPlan                        plan            = 1;
-    foundation.universe.aws.configuration.Configuration aws             = 4;
-    InternalUserAuth                                    auth            = 5;  // Time-limited Namespace session.
+    foundation.universe.aws.configuration.Configuration aws             = 4 [deprecated = true];  // Use cfg instead.
+    InternalUserAuth                                    auth            = 5;                      // Time-limited Namespace session.
     bytes                                               serialized_auth = 6;
 
     foundation.runtime.kubernetes.HostEnv host_env = 7;
+    repeated google.protobuf.Any cfg               = 8;
+
     reserved 2, 3;
 }
 

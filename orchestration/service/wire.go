@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	pb "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
@@ -58,6 +59,13 @@ func (svc *Service) Deploy(ctx context.Context, req *proto.DeployRequest) (*prot
 	var extra []pb.Message
 	if req.Aws != nil {
 		extra = append(extra, req.Aws)
+	}
+	for _, cfg := range req.Cfg {
+		msg, err := anypb.UnmarshalNew(cfg, pb.UnmarshalOptions{})
+		if err != nil {
+			return nil, err
+		}
+		extra = append(extra, msg)
 	}
 
 	env := orchestration.MakeSyntheticContext(req.Plan.Workspace, req.Plan.Environment, prepareHostEnv(req.HostEnv), extra...)
@@ -106,7 +114,7 @@ func WireService(ctx context.Context, srv server.Registrar, deps ServiceDeps) {
 	iam.RegisterGraphHandlers()
 	deploy.RegisterDeployOps()
 	ingress.RegisterIngressClass(nginx.Ingress())
-	gke.RegisterIngressClass()
+	gke.Register()
 
 	// Always log actions, we filter if we show them on the client.
 	tasks.LogActions = true

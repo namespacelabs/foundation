@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -25,6 +26,8 @@ import (
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
+	"namespacelabs.dev/foundation/internal/providers/gcp"
+	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/orchestration/proto"
@@ -133,9 +136,30 @@ func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, pla
 		Plan: plan,
 	}
 
-	var err error
-	if req.Aws, err = getAwsConf(ctx, env); err != nil {
+	if aws, err := getAwsConf(ctx, env); err != nil {
 		return "", err
+	} else if aws != nil {
+		any := &anypb.Any{}
+		if err := any.MarshalFrom(aws); err != nil {
+			return "", err
+		}
+		req.Cfg = append(req.Cfg, any)
+	}
+
+	if cluster, ok := gke.ClusterConfigType.CheckGet(env.Configuration()); ok {
+		any := &anypb.Any{}
+		if err := any.MarshalFrom(cluster); err != nil {
+			return "", err
+		}
+		req.Cfg = append(req.Cfg, any)
+	}
+
+	if project, ok := gcp.ProjectConfigType.CheckGet(env.Configuration()); ok {
+		any := &anypb.Any{}
+		if err := any.MarshalFrom(project); err != nil {
+			return "", err
+		}
+		req.Cfg = append(req.Cfg, any)
 	}
 
 	auth, err := getUserAuth(ctx)

@@ -70,10 +70,6 @@ func (conf ClusterConfiguration) AsResult() *configResult {
 }
 
 func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*configResult, error) {
-	if c.Incluster {
-		return nil, nil
-	}
-
 	if c.Provider != "" {
 		provider := providers[c.Provider]
 		if provider == nil {
@@ -92,6 +88,10 @@ func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*
 		return &configResult{
 			ClientConfig: clientcmd.NewDefaultClientConfig(*kubeclient.MakeApiConfig(c.StaticConfig), nil),
 		}, nil
+	}
+
+	if c.Incluster {
+		return nil, nil
 	}
 
 	if c.GetKubeconfig() == "" {
