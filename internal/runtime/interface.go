@@ -310,6 +310,7 @@ type ContainerRunOpts struct {
 	RunAs              *RunAs
 	ReadOnlyFilesystem bool
 	Privileged         bool
+	HostNetwork        bool
 	Mounts             []*schema.Mount
 	AllocatedPorts     []*schema.Endpoint_Port
 }

@@ -30,6 +30,7 @@ message Container {
 
     message Security {
         bool privileged = 1;
+        bool host_network = 2;
     }
 }
 
