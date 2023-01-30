@@ -12,17 +12,25 @@ type ExchangeGithubTokenRequest struct {
 	GithubToken string `json:"github_token,omitempty"`
 }
 
+type ExchangeGithubTokenResponse_UserError int32
+
+const (
+	ExchangeGithubTokenResponse_USER_ERROR_UNKNOWN ExchangeGithubTokenResponse_UserError = 0
+	ExchangeGithubTokenResponse_NO_INSTALLATION    ExchangeGithubTokenResponse_UserError = 1
+)
+
 type ExchangeGithubTokenResponse struct {
-	TenantToken string `json:"tenant_token,omitempty"`
+	TenantToken string                                `json:"tenant_token,omitempty"`
+	UserError   ExchangeGithubTokenResponse_UserError `json:"user_error,omitempty"`
 }
 
-func ExchangeGithubToken(ctx context.Context, jwt string) (string, error) {
+func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenResponse, error) {
 	req := ExchangeGithubTokenRequest{GithubToken: jwt}
 
-	var resp ExchangeGithubTokenResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeGithubToken", req, DecodeJSONResponse(&resp)); err != nil {
-		return "", err
+	var res ExchangeGithubTokenResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeGithubToken", req, DecodeJSONResponse(&res)); err != nil {
+		return ExchangeGithubTokenResponse{}, err
 	}
 
-	return resp.TenantToken, nil
+	return res, nil
 }
