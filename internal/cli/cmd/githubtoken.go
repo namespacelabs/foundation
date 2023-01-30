@@ -40,12 +40,12 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 		}
 
 		switch res.UserError {
-		case fnapi.ExchangeGithubTokenResponse_USER_ERROR_UNKNOWN:
+		case "USER_ERROR_UNKNOWN":
 			return auth.StoreTenantToken(res.TenantToken)
-		case fnapi.ExchangeGithubTokenResponse_NO_INSTALLATION:
+		case "NO_INSTALLATION":
 			return fnerrors.UsageError("Please follow https://github.com/apps/namespace-cloud/installations/new", "Namespace Cloud App is not installed for %q.", os.Getenv("GITHUB_REPOSITORY_OWNER"))
 		default:
-			return fnerrors.InvocationError("nsapi", "Failed to exchange Github token: Unknown user error %d", res.UserError)
+			return fnerrors.InvocationError("nsapi", "Failed to exchange Github token: Unknown user error %q", res.UserError)
 		}
 	})
 }

@@ -12,16 +12,9 @@ type ExchangeGithubTokenRequest struct {
 	GithubToken string `json:"github_token,omitempty"`
 }
 
-type ExchangeGithubTokenResponse_UserError int32
-
-const (
-	ExchangeGithubTokenResponse_USER_ERROR_UNKNOWN ExchangeGithubTokenResponse_UserError = 0
-	ExchangeGithubTokenResponse_NO_INSTALLATION    ExchangeGithubTokenResponse_UserError = 1
-)
-
 type ExchangeGithubTokenResponse struct {
-	TenantToken string                                `json:"tenant_token,omitempty"`
-	UserError   ExchangeGithubTokenResponse_UserError `json:"user_error,omitempty"`
+	TenantToken string `json:"tenant_token,omitempty"`
+	UserError   string `json:"user_error,omitempty"`
 }
 
 func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenResponse, error) {
