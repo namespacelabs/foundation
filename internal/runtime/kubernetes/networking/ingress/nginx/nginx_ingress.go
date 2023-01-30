@@ -134,7 +134,7 @@ func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error)
 	}
 	defer f.Close()
 
-	applies, err := kubeparser.MultipleFromReader("nginx Ingress", f)
+	applies, err := kubeparser.MultipleFromReader("nginx Ingress", f, true)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error)
 		return nil, err
 	}
 
-	webhook, err := kubeparser.Single(webhookDef)
+	webhook, err := kubeparser.Single(webhookDef, true)
 	if err != nil {
 		return nil, err
 	}

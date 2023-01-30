@@ -29,6 +29,8 @@ type Apply struct {
 	Description  string
 	SetNamespace bool
 	Resource     any
+	// An alternative to `Resource`, a serialized version of the resource, in json.
+	SerializedResource string
 
 	InhibitEvents bool
 
@@ -119,17 +121,22 @@ type ExtendInitContainer struct {
 }
 
 func (a Apply) ToDefinitionImpl(scope ...schema.PackageName) (*schema.SerializedInvocation, *OpApply, error) {
-	if a.Resource == nil {
+	if a.Resource == nil && a.SerializedResource == "" {
 		return nil, nil, fnerrors.InternalError("body is missing")
 	}
 
-	body, err := json.Marshal(a.Resource)
-	if err != nil {
-		return nil, nil, err
+	serialized := a.SerializedResource
+	if serialized == "" {
+		body, err := json.Marshal(a.Resource)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		serialized = string(body) // We use strings for better debuggability.
 	}
 
 	op := &OpApply{
-		BodyJson:      string(body), // We use strings for better debuggability.
+		BodyJson:      serialized,
 		SetNamespace:  a.SetNamespace,
 		InhibitEvents: a.InhibitEvents,
 		Creator:       a.Creator,

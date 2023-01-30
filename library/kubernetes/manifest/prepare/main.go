@@ -27,7 +27,7 @@ func main() {
 		for _, src := range intent.Sources {
 			p := &manifest.AppliedManifestInstance_ParsedFile{}
 
-			applies, err := kubeparser.MultipleFromReader(req.PackageOwner(), bytes.NewReader(src.Contents))
+			applies, err := kubeparser.MultipleFromReader(req.PackageOwner(), bytes.NewReader(src.Contents), false)
 			if err != nil {
 				return err
 			}

@@ -30,7 +30,7 @@ type ParsedManifest struct {
 	Parsed Parsed
 }
 
-func MultipleFromReader(description string, r io.Reader) ([]ParsedManifest, error) {
+func MultipleFromReader(description string, r io.Reader, parse bool) ([]ParsedManifest, error) {
 	br := bufio.NewReader(r)
 
 	var sections [][]byte
@@ -61,16 +61,17 @@ func MultipleFromReader(description string, r io.Reader) ([]ParsedManifest, erro
 	var actuals []ParsedManifest
 
 	for _, sec := range sections {
-		p, err := Single(sec)
+		p, err := Single(sec, parse)
 		if err != nil {
 			return nil, err
 		}
 
 		actuals = append(actuals, ParsedManifest{
 			Apply: kubedef.Apply{
-				SetNamespace: true,
-				Description:  fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
-				Resource:     p.Resource,
+				SetNamespace:       true,
+				Description:        fmt.Sprintf("%s: %s %s", description, p.Kind, p.Name),
+				Resource:           p.Resource,
+				SerializedResource: p.SerializedResource,
 			},
 			Parsed: p,
 		})
@@ -81,9 +82,10 @@ func MultipleFromReader(description string, r io.Reader) ([]ParsedManifest, erro
 
 type Parsed struct {
 	metav1.TypeMeta
-	Name      string
-	Namespace string
-	Resource  runtime.Object
+	Name               string
+	Namespace          string
+	Resource           runtime.Object
+	SerializedResource string // JSON serialization of the resource.
 }
 
 func headerJsonOrYaml(contents []byte) (ObjHeader, error) {
@@ -102,7 +104,7 @@ func headerJsonOrYaml(contents []byte) (ObjHeader, error) {
 	return m, nil
 }
 
-func Single(contents []byte) (Parsed, error) {
+func Single(contents []byte, parse bool) (Parsed, error) {
 	// For simplicity, we do a two pass parse, first we walk through all resource
 	// types to instantiate the appropriate types, and then we actually parse them.
 
@@ -111,21 +113,28 @@ func Single(contents []byte) (Parsed, error) {
 		return Parsed{}, err
 	}
 
-	msg := messageTypeFromKind(m.Kind)
-
-	if msg == nil {
-		return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", m.Kind)
-	}
-
 	parsed := Parsed{
 		TypeMeta:  m.TypeMeta,
 		Name:      m.Name,
 		Namespace: m.Namespace,
-		Resource:  msg,
 	}
 
-	if err := yaml.Unmarshal(contents, parsed.Resource); err != nil {
-		return Parsed{}, err
+	if parse {
+		msg := messageTypeFromKind(m.Kind)
+		if msg == nil {
+			return Parsed{}, fnerrors.BadInputError("don't know how to handle %q", m.Kind)
+		}
+
+		parsed.Resource = msg
+		if err := yaml.Unmarshal(contents, parsed.Resource); err != nil {
+			return Parsed{}, err
+		}
+	} else {
+		asjson, err := yaml.YAMLToJSON(contents)
+		if err != nil {
+			return Parsed{}, err
+		}
+		parsed.SerializedResource = string(asjson)
 	}
 
 	return parsed, nil
