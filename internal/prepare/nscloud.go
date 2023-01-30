@@ -56,6 +56,7 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 		if err != nil {
 			return err
 		}
+
 		mainMessages = append(mainMessages, &configuration.Cluster{ClusterId: cfg.ClusterId})
 		return nil
 	})
