@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"os"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -20,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/tenants"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -35,15 +35,18 @@ type API struct {
 var Endpoint API
 
 func fetchTenantToken(ctx context.Context) (string, error) {
-	token, err := tenants.LoadToken()
-
+	token, err := auth.LoadToken()
 	if err != nil {
-		// Pass user auth for now.
-		// TODO exchange user auth for tenant tokens.
-		return auth.GenerateToken(ctx)
+		if os.IsNotExist(err) {
+			// Pass user auth for now.
+			// TODO exchange user auth for tenant tokens.
+			return auth.GenerateToken(ctx)
+		}
+
+		return "", err
 	}
 
-	return token, nil
+	return token.TenantToken, nil
 }
 
 func MakeAPI(endpoint string) API {

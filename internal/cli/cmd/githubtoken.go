@@ -6,21 +6,39 @@ package cmd
 
 import (
 	"context"
+	"os"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/tenants"
+	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/github"
 )
 
 func NewExchangeGithubTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "exchange-github-token", // TODO find better name & group commands - hidden cmd for now.
-		Short:  "Generate a Namspace Cloud token from a GitHub JWT.",
+		Short:  "Generate a Namespace Cloud token from a GitHub JWT.",
 		Args:   cobra.NoArgs,
 		Hidden: true,
 	}
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		return tenants.RefreshTokenForGithubAction(ctx)
+		if os.Getenv("GITHUB_ACTIONS") != "true" {
+			return fnerrors.New("not running in a GitHub action")
+		}
+
+		jwt, err := github.JWT(ctx, auth.GithubJWTAudience)
+		if err != nil {
+			return err
+		}
+
+		token, err := fnapi.ExchangeGithubToken(ctx, jwt)
+		if err != nil {
+			return err
+		}
+
+		return auth.StoreToken(token)
 	})
 }
