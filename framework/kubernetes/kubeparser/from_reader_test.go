@@ -21,7 +21,7 @@ func TestFromReader(t *testing.T) {
 	}
 	defer one.Close()
 
-	list, err := MultipleFromReader("nginx", one)
+	list, err := MultipleFromReader("nginx", one, true)
 	if err != nil {
 		t.Error(err)
 	}

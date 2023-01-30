@@ -110,7 +110,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 		return fnerrors.InternalError("failed to read the HTTP gRPC Transcoder CRD: %w", err)
 	}
 
-	apply, err := kubeparser.Single(body)
+	apply, err := kubeparser.Single(body, true)
 	if err != nil {
 		return fnerrors.InternalError("failed to parse the HTTP gRPC Transcoder CRD: %w", err)
 	}
