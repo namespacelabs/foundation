@@ -71,7 +71,12 @@ func (conf ClusterConfiguration) AsResult() *configResult {
 
 func computeConfig(ctx context.Context, c *HostEnv, config cfg.Configuration) (*configResult, error) {
 	if c.Incluster {
-		return nil, nil
+		return &configResult{
+			ClusterConfiguration: ClusterConfiguration{
+				// Hack! Permit all ingress classes for incluster deployments (e.g. orchestrator)
+				SupportedIngressClasses: []string{"*"},
+			},
+		}, nil
 	}
 
 	if c.Provider != "" {
