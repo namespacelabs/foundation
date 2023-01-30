@@ -130,12 +130,10 @@ func makeServiceIngress(stack serverStack, endpoint *schema.Endpoint, env *schem
 		d := fragment.Domain
 		if d.Managed == schema.Domain_LOCAL_MANAGED {
 			domain.BaseUrl = fmt.Sprintf("http://%s:%d", d.Fqdn, internalruntime.LocalIngressPort)
+		} else if d.TlsFrontend {
+			domain.BaseUrl = fmt.Sprintf("https://%s", d.Fqdn)
 		} else {
-			if d.TlsFrontend {
-				domain.BaseUrl = fmt.Sprintf("https://%s", d.Fqdn)
-			} else {
-				domain.BaseUrl = fmt.Sprintf("http://%s", d.Fqdn)
-			}
+			domain.BaseUrl = fmt.Sprintf("http://%s", d.Fqdn)
 		}
 
 		ingress.Domain = append(ingress.Domain, domain)

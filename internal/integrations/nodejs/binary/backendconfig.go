@@ -141,14 +141,10 @@ func resolveBackend(loc pkggraph.Location, backend *schema.NodejsBuild_Backend, 
 			d := fragment.Domain
 			if d.Managed == schema.Domain_LOCAL_MANAGED {
 				bd.Managed = fmt.Sprintf("http://%s:%d", d.Fqdn, runtime.LocalIngressPort)
-			} else if d.Managed == schema.Domain_CLOUD_MANAGED || d.Managed == schema.Domain_CLOUD_TERMINATION {
-				if d.TlsFrontend {
-					bd.Managed = fmt.Sprintf("https://%s", d.Fqdn)
-				} else {
-					bd.Managed = fmt.Sprintf("http://%s", d.Fqdn)
-				}
+			} else if d.TlsFrontend {
+				bd.Managed = fmt.Sprintf("https://%s", d.Fqdn)
 			} else {
-				bd.Unmanaged = append(bd.Unmanaged, d.Fqdn)
+				bd.Managed = fmt.Sprintf("http://%s", d.Fqdn)
 			}
 		}
 	}
