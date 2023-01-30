@@ -885,6 +885,7 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 	out.MainContainer.Env = append(out.MainContainer.Env, main.Env...)
 	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
 	out.MainContainer.Privileged = main.GetSecurity().GetPrivileged()
+	out.MainContainer.HostNetwork = main.GetSecurity().GetHostNetwork()
 
 	return nil
 }
