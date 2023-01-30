@@ -165,6 +165,8 @@ func messageTypeFromKind(kind string) runtime.Object {
 		return &batchv1.Job{}
 	case "Pod":
 		return &corev1.Pod{}
+	case "MutatingWebhookConfiguration":
+		return &admissionregistrationv1.MutatingWebhookConfiguration{}
 	}
 
 	return nil
