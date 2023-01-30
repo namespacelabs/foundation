@@ -35,7 +35,7 @@ type API struct {
 var Endpoint API
 
 func fetchTenantToken(ctx context.Context) (string, error) {
-	token, err := auth.LoadToken()
+	token, err := auth.LoadTenantToken()
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Pass user auth for now.

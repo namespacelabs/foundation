@@ -22,7 +22,7 @@ type Token struct {
 	TenantToken string `json:"tenant_token,omitempty"`
 }
 
-func StoreToken(token string) error {
+func StoreTenantToken(token string) error {
 	data, err := json.Marshal(Token{TenantToken: token})
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func StoreToken(token string) error {
 	return nil
 }
 
-func LoadToken() (*Token, error) {
+func LoadTenantToken() (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err

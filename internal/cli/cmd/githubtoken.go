@@ -39,6 +39,6 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 			return err
 		}
 
-		return auth.StoreToken(token)
+		return auth.StoreTenantToken(token)
 	})
 }
