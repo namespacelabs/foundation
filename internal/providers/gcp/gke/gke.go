@@ -22,7 +22,7 @@ import (
 	gkepb "namespacelabs.dev/foundation/universe/gcp/gke"
 )
 
-var clusterConfigType = cfg.DefineConfigType[*gkepb.Cluster]()
+var ClusterConfigType = cfg.DefineConfigType[*gkepb.Cluster]()
 
 func Register() {
 	client.RegisterConfigurationProvider("gke", provideGKE)
@@ -71,7 +71,7 @@ type Cluster struct {
 }
 
 func ConfiguredCluster(ctx context.Context, config cfg.Configuration) (*Cluster, error) {
-	conf, ok := clusterConfigType.CheckGet(config)
+	conf, ok := ClusterConfigType.CheckGet(config)
 	if !ok {
 		return nil, fnerrors.BadInputError("gke provider configured, but missing gke.Cluster")
 	}
