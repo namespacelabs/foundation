@@ -56,6 +56,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewGenerateCmd())
 	root.AddCommand(NewConfigCmd())
 	root.AddCommand(cluster.NewClusterCmd())
+	root.AddCommand(NewExchangeGithubTokenCmd())
 }
 
 // Programmatically trigger an `ns` command.
