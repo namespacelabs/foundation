@@ -40,7 +40,7 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 		}
 
 		switch res.UserError {
-		case "USER_ERROR_UNKNOWN":
+		case "":
 			return auth.StoreTenantToken(res.TenantToken)
 		case "NO_INSTALLATION":
 			return fnerrors.UsageError("Please follow https://github.com/apps/namespace-cloud/installations/new", "Namespace Cloud App is not installed for %q.", os.Getenv("GITHUB_REPOSITORY_OWNER"))
