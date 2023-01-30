@@ -83,7 +83,10 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 		Arg("name", obj.GetName())
 
 	ns := obj.GetNamespace()
-	if spec.SetNamespace && ns == "" {
+
+	// We don't try to set namespaces to Namespaces. But for other resources, we use discovery to determine
+	// whether the resource is namespaced or not.
+	if spec.SetNamespace && ns == "" && !kubedef.IsGVKNamespace(obj.GroupVersionKind()) {
 		// Don't know if the resource is namespace scoped or not -- need to go find out.
 		rawDisco, err := cluster.EnsureState(ctx, kubernetes.DiscoveryStateKey)
 		if err != nil {

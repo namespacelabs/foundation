@@ -36,6 +36,10 @@ func IsService(obj Object) bool {
 	return IsGVKService(obj.GroupVersionKind())
 }
 
+func IsGVKNamespace(gvk schema.GroupVersionKind) bool {
+	return gvk.GroupVersion().String() == "v1" && gvk.Kind == "Namespace"
+}
+
 func IsGVKDeployment(gvk schema.GroupVersionKind) bool {
 	return gvk.GroupVersion().String() == "apps/v1" && gvk.Kind == "Deployment"
 }
