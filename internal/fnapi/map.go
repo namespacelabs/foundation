@@ -32,6 +32,7 @@ func Map(ctx context.Context, fqdn, target string) error {
 				rt.UserAuth = ua
 				return nil
 			},
+			FetchToken: auth.GenerateToken,
 		}.Do(ctx, MapRequest{
 			FQDN:   fqdn,
 			Target: target,
