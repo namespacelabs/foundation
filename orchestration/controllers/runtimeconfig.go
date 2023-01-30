@@ -52,9 +52,11 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 	if err := r.client.List(ctx, pods, client.InNamespace(req.Namespace), managedByUs); err != nil {
 		return reconcile.Result{}, fmt.Errorf("unable to list pods in namespace %s: %w", req.Namespace, err)
 	}
-	for _, d := range pods.Items {
-		if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
-			usedConfigs[v] = struct{}{}
+	for _, p := range pods.Items {
+		for _, v := range p.Spec.Volumes {
+			if v.ConfigMap != nil {
+				usedConfigs[v.ConfigMap.Name] = struct{}{}
+			}
 		}
 	}
 
@@ -64,8 +66,10 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 		return reconcile.Result{}, fmt.Errorf("unable to list deployments in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range deployments.Items {
-		if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
-			usedConfigs[v] = struct{}{}
+		for _, v := range d.Spec.Template.Spec.Volumes {
+			if v.ConfigMap != nil {
+				usedConfigs[v.ConfigMap.Name] = struct{}{}
+			}
 		}
 	}
 
@@ -74,8 +78,10 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 		return reconcile.Result{}, fmt.Errorf("unable to list stateful sets in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range statefulSets.Items {
-		if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
-			usedConfigs[v] = struct{}{}
+		for _, v := range d.Spec.Template.Spec.Volumes {
+			if v.ConfigMap != nil {
+				usedConfigs[v.ConfigMap.Name] = struct{}{}
+			}
 		}
 	}
 
@@ -84,8 +90,10 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 		return reconcile.Result{}, fmt.Errorf("unable to list daemon sets in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range daemonSets.Items {
-		if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
-			usedConfigs[v] = struct{}{}
+		for _, v := range d.Spec.Template.Spec.Volumes {
+			if v.ConfigMap != nil {
+				usedConfigs[v.ConfigMap.Name] = struct{}{}
+			}
 		}
 	}
 
