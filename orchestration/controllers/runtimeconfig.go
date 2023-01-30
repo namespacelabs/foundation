@@ -58,7 +58,7 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 		}
 	}
 
-	// Also check deployments/stateful sets for what version will be in use next
+	// Also check deployments/stateful sets/daemon sets for what version will be in use next
 	deployments := &appsv1.DeploymentList{}
 	if err := r.client.List(ctx, deployments, client.InNamespace(req.Namespace), managedByUs); err != nil {
 		return reconcile.Result{}, fmt.Errorf("unable to list deployments in namespace %s: %w", req.Namespace, err)
@@ -74,6 +74,16 @@ func (r *RuntimeConfigReconciler) Reconcile(ctx context.Context, req reconcile.R
 		return reconcile.Result{}, fmt.Errorf("unable to list stateful sets in namespace %s: %w", req.Namespace, err)
 	}
 	for _, d := range statefulSets.Items {
+		if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
+			usedConfigs[v] = struct{}{}
+		}
+	}
+
+	daemonSets := &appsv1.DaemonSetList{}
+	if err := r.client.List(ctx, daemonSets, client.InNamespace(req.Namespace), managedByUs); err != nil {
+		return reconcile.Result{}, fmt.Errorf("unable to list daemon sets in namespace %s: %w", req.Namespace, err)
+	}
+	for _, d := range daemonSets.Items {
 		if v, ok := d.Annotations[kubedef.K8sRuntimeConfig]; ok {
 			usedConfigs[v] = struct{}{}
 		}
