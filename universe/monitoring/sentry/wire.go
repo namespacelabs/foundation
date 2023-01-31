@@ -47,7 +47,7 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 	defer recoverAndReport(ctx, hub)
 
 	result, err = handler(span.Context(), req)
-	finalizeSpan(hub, span, err)
+	finalizeSpan(hub, span, err, info.FullMethod)
 	return result, err
 }
 
@@ -65,15 +65,16 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 	defer recoverAndReport(ctx, hub)
 
 	err := handler(srv, &serverStream{ServerStream: ss, ctx: span.Context()})
-	finalizeSpan(hub, span, err)
+	finalizeSpan(hub, span, err, info.FullMethod)
 	return err
 }
 
-func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error) {
+func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error, method string) {
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			span.Status = sentry.SpanStatusCanceled
 		} else {
+			hub.Scope().SetTag("grpc-method", method)
 			hub.CaptureException(err)
 
 			if st, ok := status.FromError(err); ok {
