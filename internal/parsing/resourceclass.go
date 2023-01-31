@@ -6,7 +6,6 @@ package parsing
 
 import (
 	"context"
-	"io/fs"
 
 	"google.golang.org/protobuf/reflect/protodesc"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
@@ -21,11 +20,6 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 		return err
 	}
 
-	fsys, err := pl.WorkspaceOf(ctx, pp.Location.Module)
-	if err != nil {
-		return err
-	}
-
 	for _, rc := range pp.ResourceClassSpecs {
 		if rc.Name == "" {
 			return fnerrors.NewWithLocation(pp.Location, "resource class name can't be empty")
@@ -33,7 +27,7 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 
 		rc.PackageName = pp.Location.PackageName.String()
 
-		instanceType, err := loadUserType(parseOpts, fsys, pp.Location, rc.InstanceType)
+		instanceType, err := loadUserType(ctx, pl, parseOpts, pp.Location, rc.InstanceType)
 		if err != nil {
 			return err
 		}
@@ -51,7 +45,7 @@ func transformResourceClasses(ctx context.Context, pl EarlyPackageLoader, pp *pk
 	return nil
 }
 
-func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location, spec *schema.ResourceType) (pkggraph.UserType, error) {
+func loadUserType(ctx context.Context, pl EarlyPackageLoader, parseOpts protos.ParseOpts, loc pkggraph.Location, spec *schema.ResourceType) (pkggraph.UserType, error) {
 	switch spec.ProtoType {
 	case "foundation.schema.PackageRef":
 		md := (&schema.PackageRef{}).ProtoReflect().Descriptor()
@@ -68,7 +62,12 @@ func loadUserType(parseOpts protos.ParseOpts, fsys fs.FS, loc pkggraph.Location,
 		return pkggraph.UserType{Descriptor: md, Sources: fds, Registry: files}, nil
 	}
 
-	fds, err := parseOpts.ParseAtLocation(fsys, loc, []string{spec.ProtoSource})
+	protoLoc, err := pl.Resolve(ctx, schema.PackageName(spec.ProtoPackage))
+	if err != nil {
+		return pkggraph.UserType{}, fnerrors.AttachLocation(loc, err)
+	}
+
+	fds, err := parseOpts.ParseAtLocation(protoLoc.Module.ReadOnlyFS(), protoLoc, []string{spec.ProtoSource})
 	if err != nil {
 		return pkggraph.UserType{}, fnerrors.NewWithLocation(loc, "failed to parse proto sources %v: %v", spec.ProtoSource, err)
 	}

@@ -10,6 +10,8 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -25,11 +27,12 @@ type cueResourceClass struct {
 }
 
 type cueResourceType struct {
-	Type   string `json:"type"`
-	Source string `json:"source"`
+	Type    string `json:"type"`
+	Source  string `json:"source"`
+	Package string `json:"package"`
 }
 
-func parseResourceClass(ctx context.Context, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceClass, error) {
+func parseResourceClass(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, name string, v *fncue.CueV) (*schema.ResourceClass, error) {
 	if err := ValidateNoExtraFields(loc, fmt.Sprintf("resource class %q:", name) /* messagePrefix */, v, resourceClassFields); err != nil {
 		return nil, err
 	}
@@ -47,21 +50,39 @@ func parseResourceClass(ctx context.Context, loc pkggraph.Location, name string,
 		return nil, fnerrors.NewWithLocation(loc, "Resource class %q may not specify an intent. Please specify the intent in the resource provider instead.", name)
 	}
 
+	instanceType, err := parseResourceType(ctx, pl, loc, bits.Produces)
+	if err != nil {
+		return nil, fnerrors.AttachLocation(loc, err)
+	}
+
 	return &schema.ResourceClass{
 		Name:            name,
-		InstanceType:    parseResourceType(bits.Produces),
+		InstanceType:    instanceType,
 		DefaultProvider: bits.DefaultProvider,
 		Description:     bits.Description,
 	}, nil
 }
 
-func parseResourceType(t *cueResourceType) *schema.ResourceType {
+func parseResourceType(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, t *cueResourceType) (*schema.ResourceType, error) {
 	if t == nil {
-		return nil
+		return nil, nil
 	}
 
-	return &schema.ResourceType{
+	rt := &schema.ResourceType{
 		ProtoType:   t.Type,
 		ProtoSource: t.Source,
 	}
+
+	if t.Package == "" {
+		rt.ProtoPackage = loc.PackageName.String()
+	} else {
+		rt.ProtoPackage = t.Package
+
+		target := schema.PackageName(t.Package)
+		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, target); err != nil {
+			return nil, err
+		}
+	}
+
+	return rt, nil
 }

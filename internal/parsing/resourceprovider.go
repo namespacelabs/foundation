@@ -45,16 +45,11 @@ func transformResourceProvider(ctx context.Context, pl EarlyPackageLoader, pkg *
 		if err != nil {
 			errs = append(errs, err)
 		} else {
-			fsys, err := pl.WorkspaceOf(ctx, pkg.Location.Module)
+			intentType, err := loadUserType(ctx, pl, parseOpts, pkg.Location, provider.IntentType)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
-				intentType, err := loadUserType(parseOpts, fsys, pkg.Location, provider.IntentType)
-				if err != nil {
-					errs = append(errs, err)
-				} else {
-					rp.IntentType = &intentType
-				}
+				rp.IntentType = &intentType
 			}
 		}
 	}

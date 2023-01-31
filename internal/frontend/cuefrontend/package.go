@@ -37,7 +37,7 @@ func ParsePackage(ctx context.Context, env *schema.Environment, pl parsing.Early
 
 		for it.Next() {
 			val := &fncue.CueV{Val: it.Value()}
-			parsedRc, err := parseResourceClass(ctx, loc, it.Label(), val)
+			parsedRc, err := parseResourceClass(ctx, pl, loc, it.Label(), val)
 			if err != nil {
 				return nil, err
 			}

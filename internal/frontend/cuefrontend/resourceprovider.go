@@ -70,13 +70,18 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 		return nil, err
 	}
 
+	instanceType, err := parseResourceType(ctx, pl, pkg.Location, bits.Intent)
+	if err != nil {
+		return nil, fnerrors.AttachLocation(pkg.Location, err)
+	}
+
 	rp := &schema.ResourceProvider{
 		PackageName:       pkg.PackageName().String(),
 		ProvidesClass:     classRef,
 		InitializedWith:   initializedWithInvocation,
 		ResourcesFrom:     resourcesFrom,
 		AvailablePackages: bits.AvailablePackages,
-		IntentType:        parseResourceType(bits.Intent),
+		IntentType:        instanceType,
 	}
 
 	for _, x := range bits.AvailableClasses {

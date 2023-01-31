@@ -47,8 +47,9 @@ message ResourceClass {
 }
 
 message ResourceType {
-    string proto_source = 1;
-    string proto_type   = 2;
+    string proto_package = 3; // Namespace package where the proto_source lives.
+    string proto_source  = 1;
+    string proto_type    = 2;
 }
 
 message ResourceProvider {
