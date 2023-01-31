@@ -23,11 +23,12 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const (
-	kubeSystem       = "kube-system"
-	coredns          = "coredns"
-	localProvisioner = "local-path-provisioner"
-)
+const kubeSystem = "kube-system"
+
+var deployments = map[string]struct{}{
+	"coredns":                {},
+	"local-path-provisioner": {},
+}
 
 func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 	return tasks.Action("cluster.wait-kube-system").
@@ -44,7 +45,7 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 		}
 
 		var list *appsv1.DeploymentList
-		// First wait until at least coredns and local-path-provisioner deployments exist.
+		// First wait until all critical deployments exist.
 		if err := client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (done bool, err error) {
 			list, err = cli.AppsV1().Deployments(kubeSystem).List(ctx, metav1.ListOptions{})
 			if err != nil {
@@ -56,12 +57,10 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 				names[d.Name] = struct{}{}
 			}
 
-			if _, ok := names[coredns]; !ok {
-				return false, nil
-			}
-
-			if _, ok := names[localProvisioner]; !ok {
-				return false, nil
+			for d := range deployments {
+				if _, ok := names[d]; !ok {
+					return false, nil
+				}
 			}
 
 			return true, nil
@@ -69,12 +68,16 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 			return fnerrors.New("failed to wait for deployments in namespace %q: %w", kubeSystem, err)
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "got %d kube-system deployments\n", len(list.Items))
-
 		eg := executor.New(ctx, "wait")
 
 		for _, d := range list.Items {
 			d := d
+
+			if _, ok := deployments[d.Name]; !ok {
+				fmt.Fprintf(console.Debug(ctx), "skipping non-critical kube-system deployment %s\n", d.Name)
+				continue
+			}
+
 			eg.Go(func(ctx context.Context) error {
 				fmt.Fprintf(console.Debug(ctx), "will wait for %s version %d\n", d.Name, d.Generation)
 
