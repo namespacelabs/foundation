@@ -27,12 +27,13 @@ func Class(name string) (kubedef.IngressClass, error) {
 	return nil, fnerrors.BadInputError("ingress class %q is not registered", name)
 }
 
-func FromConfig(config *client.Prepared, acceptedClasses []string) (kubedef.IngressClass, error) {
+func FromConfig(config client.Prepared) (kubedef.IngressClass, error) {
 	requestedClass := config.HostEnv.IngressClass
 	if requestedClass == "" {
 		requestedClass = "nginx"
 	}
 
+	acceptedClasses := config.Configuration.SupportedIngressClasses
 	if acceptedClasses == nil {
 		acceptedClasses = []string{"nginx"}
 	}

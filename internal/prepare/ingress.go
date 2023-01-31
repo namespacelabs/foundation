@@ -40,9 +40,9 @@ func Ingress() ClusterStage {
 }
 
 func PrepareIngressInKube(ctx context.Context, env cfg.Context, kube *kubernetes.Cluster) error {
-	ingress := kube.Ingress()
-	if ingress == nil {
-		return nil
+	ingress, err := kubernetes.ClusterIngress(kube)
+	if err != nil {
+		return err
 	}
 
 	ingressDefs, err := ingress.Ensure(ctx)

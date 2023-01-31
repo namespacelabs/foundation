@@ -18,6 +18,13 @@ message OpMapAddress {
     string ingress_name = 3;
     // If specified, will map to the specified target.
     string cname_target = 4;
+
+    ServiceRef ingress_service = 6;
+
+    message ServiceRef {
+        string namespace    = 1;
+        string service_name = 2;
+    }
 }
 
 message OpCleanupMigration {

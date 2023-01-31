@@ -29,7 +29,6 @@ type Cluster struct {
 	Configuration cfg.Configuration
 
 	FetchSystemInfo FetchSystemInfoFunc
-	IngressClass    kubedef.IngressClass
 
 	ClusterAttachedState
 }
@@ -59,32 +58,25 @@ func ConnectToCluster(ctx context.Context, config cfg.Configuration) (*Cluster, 
 	})
 
 	return NewCluster(cli, config, NewClusterOpts{
-		FetchSystemInfo:         deferredSystemInfo.Get,
-		SupportedIngressClasses: cli.Configuration.SupportedIngressClasses,
+		FetchSystemInfo: deferredSystemInfo.Get,
 	})
 }
 
 func NewCluster(cli *client.Prepared, config cfg.Configuration, opts NewClusterOpts) (*Cluster, error) {
-	ingress, err := ingress.FromConfig(cli, opts.SupportedIngressClasses)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Cluster{
 		cli:             cli.Clientset,
 		Prepared:        *cli,
 		Configuration:   config,
 		FetchSystemInfo: opts.FetchSystemInfo,
-		IngressClass:    ingress,
 	}, nil
+}
+
+func ClusterIngress(cluster *Cluster) (kubedef.IngressClass, error) {
+	return ingress.FromConfig(cluster.Prepared)
 }
 
 func (u *Cluster) Class() runtime.Class {
 	return kubernetesClass{}
-}
-
-func (u *Cluster) Ingress() kubedef.IngressClass {
-	return u.IngressClass
 }
 
 func (u *Cluster) RESTConfig() *rest.Config {

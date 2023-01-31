@@ -37,8 +37,7 @@ var _ runtime.Planner = Planner{}
 type FetchSystemInfoFunc func(context.Context) (*kubedef.SystemInfo, error)
 
 type NewClusterOpts struct {
-	FetchSystemInfo         FetchSystemInfoFunc
-	SupportedIngressClasses []string
+	FetchSystemInfo FetchSystemInfoFunc
 }
 
 func NewPlanner(ctx context.Context, env cfg.Context, fetch FetchSystemInfoFunc, ingressClass kubedef.IngressClass) (Planner, error) {

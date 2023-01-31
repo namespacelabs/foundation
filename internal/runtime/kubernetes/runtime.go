@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -111,7 +112,12 @@ func (d kubernetesClass) Planner(ctx context.Context, cfg cfg.Context, purpose s
 		return nil, err
 	}
 
-	planner, err := NewPlanner(ctx, cfg, cluster.FetchSystemInfo, cluster.IngressClass)
+	ingressClass, err := ingress.FromConfig(cluster.Prepared)
+	if err != nil {
+		return nil, err
+	}
+
+	planner, err := NewPlanner(ctx, cfg, cluster.FetchSystemInfo, ingressClass)
 	if err != nil {
 		return nil, err
 	}

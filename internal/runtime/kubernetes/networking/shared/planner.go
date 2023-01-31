@@ -11,9 +11,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type MapPublicLoadBalancer struct{}
-
-func (MapPublicLoadBalancer) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
+func PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string, ingressSvc *kubedef.OpMapAddress_ServiceRef) (*kubedef.IngressAllocatedRoute, error) {
 	var route kubedef.IngressAllocatedRoute
 
 	if domain.Managed == schema.Domain_CLOUD_MANAGED || domain.Managed == schema.Domain_USER_SPECIFIED_TLS_MANAGED {
@@ -27,9 +25,10 @@ func (MapPublicLoadBalancer) PrepareRoute(ctx context.Context, env *schema.Envir
 
 	if domain.Managed == schema.Domain_CLOUD_MANAGED {
 		route.Map = []*kubedef.OpMapAddress{{
-			Fdqn:        domain.Fqdn,
-			IngressNs:   ns,
-			IngressName: name,
+			Fdqn:           domain.Fqdn,
+			IngressNs:      ns,
+			IngressName:    name,
+			IngressService: ingressSvc,
 		}}
 	}
 

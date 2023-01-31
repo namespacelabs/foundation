@@ -81,9 +81,9 @@ func planIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, r Bou
 }
 
 func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, localPort int, notify runtime.PortForwardedFunc) (io.Closer, error) {
-	ingress := r.Ingress()
-	if ingress == nil {
-		return nil, nil
+	ingress, err := ClusterIngress(r)
+	if err != nil {
+		return nil, err
 	}
 
 	svc := ingress.Service()

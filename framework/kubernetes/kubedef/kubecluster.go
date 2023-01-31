@@ -21,7 +21,6 @@ import (
 type KubeCluster interface {
 	runtime.Cluster
 
-	Ingress() IngressClass
 	PreparedClient() client.Prepared
 }
 

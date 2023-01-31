@@ -88,7 +88,7 @@ func Register() {
 			return nil, err
 		}
 
-		if err := EnsureState(ctx, cluster, op.IngressClass); err != nil {
+		if _, err := EnsureState(ctx, cluster, op.IngressClass); err != nil {
 			return nil, err
 		}
 
@@ -105,17 +105,11 @@ func waitAndMap(ctx context.Context, cluster kubedef.KubeCluster, op *kubedef.Op
 
 	cli := cluster.PreparedClient().Clientset
 
-	var ingressSvc *kubedef.IngressSelector
-	ingress := cluster.Ingress()
-	if ingress != nil {
-		ingressSvc = ingress.Service()
-	}
-
 	return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 1*time.Minute, func(ctx context.Context) (bool, error) {
 		// If the ingress declares there's a load balancer service that backs itself, then look
 		// for the LB address instead of waiting for the ingress to be mapped.
-		if ingressSvc != nil {
-			svc, err := cli.CoreV1().Services(ingressSvc.Namespace).Get(ctx, ingressSvc.ServiceName, metav1.GetOptions{})
+		if op.IngressService != nil {
+			svc, err := cli.CoreV1().Services(op.IngressService.Namespace).Get(ctx, op.IngressService.ServiceName, metav1.GetOptions{})
 			if err != nil {
 				return false, err
 			}

@@ -43,7 +43,10 @@ func RegisterRuntimeState() {
 	})
 }
 
-func EnsureState(ctx context.Context, cluster kubedef.KubeCluster, ingressClass string) error {
-	_, err := cluster.EnsureKeyedState(ctx, ingressStateKey, ingressClass)
-	return err
+func EnsureState(ctx context.Context, cluster kubedef.KubeCluster, ingressClass string) (kubedef.IngressClass, error) {
+	ingress, err := cluster.EnsureKeyedState(ctx, ingressStateKey, ingressClass)
+	if err != nil {
+		return nil, err
+	}
+	return ingress.(kubedef.IngressClass), nil
 }

@@ -113,9 +113,7 @@ func RegisterGraphHandlers() {
 	})
 }
 
-type nginx struct {
-	shared.MapPublicLoadBalancer
-}
+type nginx struct{}
 
 func Ingress() kubedef.IngressClass {
 	return nginx{}
@@ -173,6 +171,13 @@ func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error)
 
 	// It's important that we create the webhook + CAbundle first, so it's available to the nginx deployment.
 	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
+}
+
+func (n nginx) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
+	return shared.PrepareRoute(ctx, env, srv, domain, ns, name, &kubedef.OpMapAddress_ServiceRef{
+		Namespace:   n.Service().Namespace,
+		ServiceName: n.Service().ServiceName,
+	})
 }
 
 func (nginx) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
