@@ -59,6 +59,7 @@ func newCreateCmd() *cobra.Command {
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
+	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
@@ -86,6 +87,12 @@ func newCreateCmd() *cobra.Command {
 		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
 		if err != nil {
 			return err
+		}
+
+		if *waitKubeSystem {
+			if err := nscloud.WaitKubeSystem(ctx, cluster.Cluster); err != nil {
+				return err
+			}
 		}
 
 		if *outputPath != "" {
