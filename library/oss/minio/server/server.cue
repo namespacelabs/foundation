@@ -25,6 +25,7 @@ server: {
 		api: {
 			port: 9000
 			kind: "http"
+			probe: http: "/minio/health/ready"
 		}
 		console: {
 			port: 9001

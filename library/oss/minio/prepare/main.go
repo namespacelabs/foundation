@@ -37,7 +37,12 @@ func main() {
 		bucket.PublicUrl = endpoint.PublicEndpointUrl + "/" + p.Intent.BucketName
 	}
 
-	if err := minio.EnsureBucket(ctx, bucket); err != nil {
+	if err := minio.EnsureBucket(ctx, minio.EnsureBucketOptions{
+		AccessKey:       bucket.AccessKey,
+		SecretAccessKey: bucket.SecretAccessKey,
+		BucketName:      bucket.BucketName,
+		Endpoint:        endpoint.PrivateEndpoint,
+	}); err != nil {
 		log.Fatal(err)
 	}
 

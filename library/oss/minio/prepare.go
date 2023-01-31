@@ -7,34 +7,79 @@ package minio
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/library/storage/s3"
 )
 
-func EnsureBucket(ctx context.Context, instance *s3.BucketInstance) error {
-	if instance.PrivateEndpointUrl == "" {
-		return fnerrors.New("PrivateEndpointUrl must be set")
+type EnsureBucketOptions struct {
+	AccessKey       string
+	SecretAccessKey string
+	BucketName      string
+	Endpoint        string
+	Region          string
+}
+
+func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
+	if instance.Endpoint == "" {
+		return fnerrors.New("Endpoint must be set")
 	}
 
-	resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-		return aws.Endpoint{PartitionID: "aws", URL: instance.PrivateEndpointUrl, SigningRegion: region}, nil
+	creds := credentials.NewStaticV4(instance.AccessKey, instance.SecretAccessKey, "")
+
+	client, err := minio.New(instance.Endpoint, &minio.Options{
+		Creds:        creds,
+		Secure:       false,
+		Region:       instance.Region,
+		BucketLookup: minio.BucketLookupPath,
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				dialer := &net.Dialer{
+					Timeout:   10 * time.Second,
+					KeepAlive: 15 * time.Second,
+				}
+
+				conn, err := dialer.DialContext(ctx, network, addr)
+				if err != nil {
+					return nil, err
+				}
+
+				return conn, nil
+			},
+			MaxIdleConnsPerHost:   1024,
+			WriteBufferSize:       32 << 10, // 32KiB moving up from 4KiB default
+			ReadBufferSize:        32 << 10, // 32KiB moving up from 4KiB default
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 10 * time.Second,
+			// Set this value so that the underlying transport round-tripper
+			// doesn't try to auto decode the body of objects with
+			// content-encoding set to `gzip`.
+			//
+			// Refer:
+			//    https://golang.org/src/net/http/transport.go?h=roundTrip#L1843
+			DisableCompression: true,
+		},
 	})
-
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(instance.Region),
-		config.WithEndpointResolverWithOptions(resolver),
-		config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(instance.AccessKey, instance.SecretAccessKey, "" /* session */)))
 	if err != nil {
-		return fnerrors.New("failed to load aws config: %v", err)
+		return fnerrors.New("failed to create client: %w", err)
 	}
 
-	if err := s3.CreateBucket(ctx, cfg, instance.BucketName); err != nil {
+	if err := client.MakeBucket(ctx, instance.BucketName, minio.MakeBucketOptions{
+		Region:        instance.Region,
+		ObjectLocking: false,
+	}); err != nil {
+		if merr, ok := err.(minio.ErrorResponse); ok {
+			if merr.Code == "BucketAlreadyOwnedByYou" {
+				return nil
+			}
+		}
 		return fnerrors.New("failed to create bucket: %w", err)
 	}
 
