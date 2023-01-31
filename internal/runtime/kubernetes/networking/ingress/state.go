@@ -39,7 +39,7 @@ func RegisterRuntimeState() {
 			return nil, err
 		}
 
-		return nil, nil
+		return ingress, nil
 	})
 }
 
