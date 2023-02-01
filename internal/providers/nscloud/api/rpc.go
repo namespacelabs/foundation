@@ -7,7 +7,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -47,7 +46,7 @@ func fetchTenantToken(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("nsct_%s", token.TenantToken), nil
+	return token.TenantToken, nil
 }
 
 func MakeAPI(endpoint string) API {

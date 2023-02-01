@@ -6,7 +6,9 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/auth"
@@ -41,7 +43,13 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 
 		switch res.UserError {
 		case "":
-			return auth.StoreTenantToken(res.TenantToken)
+			tok := res.TenantToken
+			// TODO remove once server migration is complete.
+			if !strings.HasPrefix(tok, "nsct_") {
+				tok = fmt.Sprintf("nsct_%s", res.TenantToken)
+			}
+
+			return auth.StoreTenantToken(tok)
 		case "NO_INSTALLATION":
 			return fnerrors.UsageError("Please follow https://github.com/apps/namespace-cloud/installations/new", "Namespace Cloud App is not installed for %q.", os.Getenv("GITHUB_REPOSITORY_OWNER"))
 		default:
