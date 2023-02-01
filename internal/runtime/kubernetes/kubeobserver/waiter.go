@@ -216,10 +216,10 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			ev.Ready = orchestration.Event_NOT_READY
 			ev.Stage = orchestration.Event_WAITING
 			ev.Timestamp = timestamppb.Now()
-			if observedGeneration > w.ExpectedGen {
+			if observedGeneration > w.ExpectedGen && w.ExpectedGen != 0 {
 				ev.Ready = orchestration.Event_READY
 				ev.Stage = orchestration.Event_DONE
-			} else if observedGeneration == w.ExpectedGen {
+			} else if observedGeneration == w.ExpectedGen || w.ExpectedGen == 0 {
 				if AreReplicasReady(replicas, readyReplicas, updatedReplicas) {
 					ev.Ready = orchestration.Event_READY
 					ev.Stage = orchestration.Event_DONE
