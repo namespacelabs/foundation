@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"time"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
@@ -49,6 +50,8 @@ const (
 	kubeNode schema.PackageName = "namespacelabs.dev/foundation/std/runtime/kubernetes"
 
 	revisionHistoryLimit int32 = 10
+
+	defaultOneShotDeadline = time.Hour
 )
 
 type definitions []definition
@@ -822,6 +825,9 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		desc := fmt.Sprintf("Server %s", deployable.Name)
 		if isOneShotLike(deployable.Class) {
 			desc = fmt.Sprintf("One-shot %s", deployable.Name)
+
+			// TODO make this configurable
+			tmpl.Spec = tmpl.Spec.WithActiveDeadlineSeconds(int64(defaultOneShotDeadline.Seconds()))
 		}
 
 		ensure.Description = firstStr(deployable.Description, desc)
