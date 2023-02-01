@@ -22,7 +22,7 @@ type Server struct {
 	Package  *pkggraph.Package
 
 	Provisioning pkggraph.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
-	Startup      pkggraph.PreStartup
+	EvalStartup  func(context.Context, pkggraph.Context, pkggraph.StartupInputs, []pkggraph.ValueWithPath) (*schema.StartupPlan, error)
 
 	env   pkggraph.SealedContext // The environment this server instance is bound to.
 	entry *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
@@ -108,7 +108,14 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		return Server{}, fnerrors.AttachLocation(t.Location, err)
 	}
 
-	t.Startup = pdata.Startup
+	if pdata.StartupPlan != nil {
+		t.EvalStartup = func(_ context.Context, _ pkggraph.Context, _ pkggraph.StartupInputs, _ []pkggraph.ValueWithPath) (*schema.StartupPlan, error) {
+			return pdata.StartupPlan, nil
+		}
+	} else {
+		t.EvalStartup = pdata.Startup.EvalStartup
+	}
+
 	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming
 

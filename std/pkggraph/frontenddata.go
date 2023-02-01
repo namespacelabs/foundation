@@ -53,7 +53,8 @@ func (p *PreparedProvisionPlan) AppendWith(rhs PreparedProvisionPlan) {
 }
 
 type ProvisionPlan struct {
-	Startup PreStartup
+	Startup     PreStartup
+	StartupPlan *schema.StartupPlan
 
 	// All fields on Nodes. Servers only allow specifying `Provisioning`.
 	PreparedProvisionPlan

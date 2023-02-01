@@ -23,8 +23,7 @@ type phase1plan struct {
 func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
 	var pdata pkggraph.ProvisionPlan
 
-	pdata.Startup = phase2plan{startupPlan: p1.startupPlan}
-
+	pdata.StartupPlan = p1.startupPlan
 	pdata.DeclaredStack = p1.declaredStack
 	pdata.Sidecars = p1.sidecars
 	pdata.Inits = p1.initContainers

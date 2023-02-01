@@ -66,7 +66,7 @@ func newComputeConfigCmd() *cobra.Command {
 				ServerRootAbs: server.Location.Abs(),
 			}
 
-			serverStartupPlan, err := ps.Server.Startup.EvalStartup(ctx, ps.Server.SealedContext(), sargs, nil)
+			serverStartupPlan, err := ps.Server.EvalStartup(ctx, ps.Server.SealedContext(), sargs, nil)
 			if err != nil {
 				return err
 			}

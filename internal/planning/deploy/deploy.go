@@ -858,7 +858,7 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 		ServerRootAbs: srv.Location.Abs(),
 	}
 
-	serverStartupPlan, err := srv.Startup.EvalStartup(ctx, srv.SealedContext(), inputs, nil)
+	serverStartupPlan, err := srv.EvalStartup(ctx, srv.SealedContext(), inputs, nil)
 	if err != nil {
 		return err
 	}

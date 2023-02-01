@@ -9,6 +9,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -32,6 +33,11 @@ func ComputeConfig(ctx context.Context, env pkggraph.Context, serverStartupPlan 
 }
 
 func loadStartupPlan(ctx context.Context, env pkggraph.Context, dep *planning.ParsedNode, info pkggraph.StartupInputs, merged *schema.BinaryConfig) error {
+	if dep.ProvisionPlan.StartupPlan != nil {
+		plan := protos.Clone(dep.ProvisionPlan.StartupPlan)
+		return mergePlan(plan, merged)
+	}
+
 	plan, err := dep.ProvisionPlan.Startup.EvalStartup(ctx, env, info, dep.Allocations)
 	if err != nil {
 		return fnerrors.AttachLocation(dep.Package.Location, err)
