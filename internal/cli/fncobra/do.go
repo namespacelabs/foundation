@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
+	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/cli/versioncheck"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -37,10 +38,20 @@ func CheckVersion(ctx context.Context) func() {
 	// BUT IT RELIES ON INTERNAL DETAILS! compute.Do invokes the callback in
 	// the same executor where Detach() runs. So we're guaranteed to observe
 	// cancelation here.
+	ver, err := version.Current()
+	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to check current version: %v\n", err)
+		return nil
+	}
+
+	if !version.ShouldCheckUpdate(ver) {
+		return nil
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 
 	compute.On(ctx).Detach(tasks.Action("ns.check-updated"), func(_ context.Context) error {
-		status, err := versioncheck.CheckRemote(ctx, nil)
+		status, err := versioncheck.CheckRemote(ctx, ver, nil)
 		if err != nil {
 			fmt.Fprintf(console.Debug(ctx), "failed to check remote version: %v\n", err)
 			return nil

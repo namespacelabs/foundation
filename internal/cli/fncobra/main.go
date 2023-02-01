@@ -116,7 +116,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
 	if ver, err := version.Current(); err == nil {
-		if !nsboot.SpawnedFromBoot() && !version.IsDevelopmentBuild(ver) {
+		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
 			cached, ns, err := nsboot.CheckUpdate(rootCtx, true, ver.Version)
 			if err == nil && cached != nil {
 				flushLogs()

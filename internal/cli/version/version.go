@@ -5,6 +5,7 @@
 package version
 
 import (
+	"os"
 	"runtime/debug"
 	"time"
 
@@ -62,6 +63,15 @@ func VersionFrom(info *debug.BuildInfo) (*storage.NamespaceBinaryVersion, error)
 	return v, nil
 }
 
-func IsDevelopmentBuild(ver *storage.NamespaceBinaryVersion) bool {
+func isDevelopmentBuild(ver *storage.NamespaceBinaryVersion) bool {
 	return ver.BuildTime == nil || ver.Version == DevelopmentBuildVersion
+}
+
+func ShouldCheckUpdate(ver *storage.NamespaceBinaryVersion) bool {
+	if isDevelopmentBuild(ver) {
+		return false
+	}
+
+	_, have := os.LookupEnv("NS_DO_NOT_UPDATE")
+	return have
 }

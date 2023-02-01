@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"golang.org/x/mod/semver"
-	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/schema/storage"
 )
 
 type Status struct {
@@ -26,16 +26,7 @@ type Status struct {
 
 // Checks for updates and messages from Namespace developers.
 // Does nothing if a check for remote status failed
-func CheckRemote(ctx context.Context, computeRequirements func(context.Context) (*schema.Workspace_FoundationRequirements, error)) (*Status, error) {
-	ver, err := version.Current()
-	if err != nil {
-		return nil, fnerrors.InternalError("failed to obtain version information: %w", err)
-	}
-
-	if version.IsDevelopmentBuild(ver) {
-		return nil, nil // Nothing to check.
-	}
-
+func CheckRemote(ctx context.Context, current *storage.NamespaceBinaryVersion, computeRequirements func(context.Context) (*schema.Workspace_FoundationRequirements, error)) (*Status, error) {
 	var fnReqs *schema.Workspace_FoundationRequirements
 	if computeRequirements != nil {
 		reqs, err := computeRequirements(ctx)
@@ -47,14 +38,14 @@ func CheckRemote(ctx context.Context, computeRequirements func(context.Context) 
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "version check: current %s, build time %v, min API %d\n",
-		ver.Version, ver.BuildTime, fnReqs.GetMinimumApi())
+		current.Version, current.BuildTime, fnReqs.GetMinimumApi())
 
 	resp, err := fnapi.GetLatestVersion(ctx, fnReqs)
 	if err != nil {
 		return nil, fnerrors.InternalError("version check failed: %w", err)
 	}
 
-	newVersion := semver.Compare(resp.Version, ver.Version) > 0
+	newVersion := semver.Compare(resp.Version, current.Version) > 0
 
 	fmt.Fprintf(console.Debug(ctx), "version check: got %s, build time: %v, new: %v\n",
 		resp.Version, resp.BuildTime, newVersion)
