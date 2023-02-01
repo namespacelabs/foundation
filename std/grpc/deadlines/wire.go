@@ -6,11 +6,11 @@ package deadlines
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
+	nsgrpc "namespacelabs.dev/foundation/std/grpc"
 )
 
 var (
@@ -21,7 +21,7 @@ var (
 type interceptor struct{}
 
 func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	service, method := splitMethodName(info.FullMethod)
+	service, method := nsgrpc.SplitMethodName(info.FullMethod)
 
 	var selected *Deadline_Configuration
 	if service != "" && method != "" {
@@ -58,12 +58,4 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	var interceptor interceptor
 	deps.Interceptors.ForServer(interceptor.unary, interceptor.streaming)
 	return nil
-}
-
-func splitMethodName(fullMethodName string) (string, string) {
-	fullMethodName = strings.TrimPrefix(fullMethodName, "/")
-	if i := strings.Index(fullMethodName, "/"); i >= 0 {
-		return fullMethodName[:i], fullMethodName[i+1:]
-	}
-	return "", ""
 }

@@ -14,7 +14,12 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	nsgrpc "namespacelabs.dev/foundation/std/grpc"
+	"namespacelabs.dev/foundation/std/grpc/logging"
+	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
@@ -46,6 +51,7 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 
 	defer recoverAndReport(ctx, hub)
 
+	configureScope(ctx, hub, info.FullMethod)
 	result, err = handler(span.Context(), req)
 	finalizeSpan(hub, span, err, info.FullMethod)
 	return result, err
@@ -64,9 +70,41 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 
 	defer recoverAndReport(ctx, hub)
 
+	configureScope(ctx, hub, info.FullMethod)
 	err := handler(srv, &serverStream{ServerStream: ss, ctx: span.Context()})
 	finalizeSpan(hub, span, err, info.FullMethod)
 	return err
+}
+
+func configureScope(ctx context.Context, hub *sentry.Hub, fullMethod string) {
+	scope := hub.Scope()
+
+	service, method := nsgrpc.SplitMethodName(fullMethod)
+	scope.SetTags(map[string]string{
+		"grpc.service": service,
+		"grpc.method":  method,
+	})
+
+	rdata, has := requestid.RequestDataFromContext(ctx)
+	if has {
+		scope.SetContext("request_id", map[string]any{
+			"request_id": rdata.RequestID,
+		})
+	}
+
+	p, _ := peer.FromContext(ctx)
+	md, _ := metadata.FromIncomingContext(ctx)
+	peerAddr, originalAddr := logging.ParsePeerAddress(p, md)
+
+	grpcData := map[string]any{
+		"peer": peerAddr,
+	}
+
+	if originalAddr != "" {
+		grpcData["original_peer"] = originalAddr
+	}
+
+	scope.SetContext("grpc", grpcData)
 }
 
 func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error, method string) {
@@ -74,7 +112,6 @@ func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error, method string) 
 		if errors.Is(err, context.Canceled) {
 			span.Status = sentry.SpanStatusCanceled
 		} else {
-			hub.Scope().SetTag("grpc-method", method)
 			hub.CaptureException(err)
 
 			if st, ok := status.FromError(err); ok {

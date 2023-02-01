@@ -57,17 +57,38 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 	return err
 }
 
-func logHeader(ctx context.Context, reqid, what, fullMethod string, req interface{}) {
+func ParsePeerAddress(p *peer.Peer, md metadata.MD) (string, string) {
 	peerAddr := "unknown"
-	authType := "none"
-	deadline := "none"
-	if p, has := peer.FromContext(ctx); has {
-		peerAddr = p.Addr.String()
-		if p.AuthInfo != nil {
-			authType = p.AuthInfo.AuthType()
-		}
+	originalAddr := ""
+
+	if realIp := single(md, "x-real-ip"); realIp != "" {
+		peerAddr = fmt.Sprintf("%s (saw %s)", realIp, peerAddr)
+		originalAddr = peerAddr
+		peerAddr = realIp
+
+		// XXX use conditional printing instead.
+		delete(md, "x-real-ip")
+		delete(md, "x-forwarded-for")
+		delete(md, "x-forwarded-host")
+		delete(md, "x-forwarded-port")
+		delete(md, "x-forwarded-proto")
+		delete(md, "x-forwarded-scheme")
+		delete(md, "x-scheme")
 	}
 
+	return peerAddr, originalAddr
+}
+
+func logHeader(ctx context.Context, reqid, what, fullMethod string, req interface{}) {
+	authType := "none"
+	deadline := "none"
+
+	p, _ := peer.FromContext(ctx)
+	if p != nil && p.AuthInfo != nil {
+		authType = p.AuthInfo.AuthType()
+	}
+
+	// It's OK to modify the map below, because `FromIncomingContext` returns a copy.
 	md, _ := metadata.FromIncomingContext(ctx)
 
 	delete(md, "accept-encoding")
@@ -81,17 +102,9 @@ func logHeader(ctx context.Context, reqid, what, fullMethod string, req interfac
 		deadline = fmt.Sprintf("%v", left)
 	}
 
-	if realIp := single(md, "x-real-ip"); realIp != "" {
-		peerAddr = fmt.Sprintf("%s (saw %s)", realIp, peerAddr)
-
-		// XXX use conditional printing instead.
-		delete(md, "x-real-ip")
-		delete(md, "x-forwarded-for")
-		delete(md, "x-forwarded-host")
-		delete(md, "x-forwarded-port")
-		delete(md, "x-forwarded-proto")
-		delete(md, "x-forwarded-scheme")
-		delete(md, "x-scheme")
+	peerAddr, wasAddr := ParsePeerAddress(p, md)
+	if wasAddr != "" {
+		peerAddr += fmt.Sprintf(" (saw %s)", wasAddr)
 	}
 
 	if _, ok := md["authorization"]; ok {
