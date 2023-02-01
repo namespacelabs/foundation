@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
@@ -34,7 +35,9 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(mod.NewModCmd(RunCommand))
 	root.AddCommand(mod.NewTidyCmd()) // register `ns tidy` as an alias for `ns mod tidy`
 	root.AddCommand(NewLogsCmd())
-	root.AddCommand(NewLoginCmd())
+	root.AddCommand(auth.NewAuthCmd())
+	root.AddCommand(auth.NewLoginCmd())               // register `ns login` as an alias for `ns auth login`
+	root.AddCommand(auth.NewExchangeGithubTokenCmd()) // register `ns exchange-github-token` as an alias for `ns auth exchange-github-token` to support old nscloud action versions. TODO remove
 	root.AddCommand(NewKeysCmd())
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
@@ -56,7 +59,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewGenerateCmd())
 	root.AddCommand(NewConfigCmd())
 	root.AddCommand(cluster.NewClusterCmd())
-	root.AddCommand(NewExchangeGithubTokenCmd())
 }
 
 // Programmatically trigger an `ns` command.
