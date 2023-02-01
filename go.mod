@@ -22,7 +22,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/charmbracelet/bubbles v0.14.0
-	github.com/charmbracelet/bubbletea v0.22.2-0.20221103165531-2d10416631fa
+	github.com/charmbracelet/bubbletea v0.23.1
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/cloudflare/cloudflared v0.0.0-20221214131721-99b3736cc7f7
