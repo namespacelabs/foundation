@@ -22,7 +22,7 @@ func main() {
 		root.AddCommand(debug.NewFnServicesCmd())
 		root.AddCommand(eks.NewEksCmd())
 		root.AddCommand(cmd.NewImagesCmd())
-		root.AddCommand(cluster.NewClusterCmd())
+		root.AddCommand(cluster.NewClusterCmd(false))
 		root.AddCommand(cmd.NewLintCmd())
 		root.AddCommand(source.NewSourceCmd())
 		root.AddCommand(cmd.NewUseCmd())
