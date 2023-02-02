@@ -14,7 +14,6 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
@@ -40,26 +39,28 @@ type cueContainer struct {
 	Args   *args.ArgsListOrMap `json:"args"`
 }
 
-func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
-	if env.Environment() == nil {
-		return pkggraph.ProvisionPlan{}, fnerrors.InternalError("env is missing .. env")
-	}
+type evalProvisionResult struct {
+	pkggraph.ProvisionPlan
+	Sidecars       []*schema.Container
+	InitContainers []*schema.Container
+}
 
+func (p1 phase1plan) EvalProvision(ctx context.Context, env *schema.Environment, inputs pkggraph.ProvisionInputs) (*evalProvisionResult, error) {
 	vv, left, err := fncue.SerializedEval3(p1.partial, func() (*fncue.CueV, []fncue.KeyAndPath, error) {
-		return applyInputs(ctx, provisionFuncs(env.Environment(), inputs), p1.Value, p1.Left)
+		return applyInputs(ctx, provisionFuncs(env, inputs), p1.Value, p1.Left)
 	})
 	if err != nil {
-		return pkggraph.ProvisionPlan{}, err
+		return nil, err
 	}
 
-	var pdata pkggraph.ProvisionPlan
+	var pdata evalProvisionResult
 
 	pdata.Startup = phase2plan{owner: p1.owner, partial: p1.partial, Value: vv, Left: left}
 
 	if stackVal := lookupTransition(vv, "stack"); stackVal.Exists() {
 		var stack cueStack
 		if err := stackVal.Val.Decode(&stack); err != nil {
-			return pdata, err
+			return nil, err
 		}
 
 		for _, p := range stack.Append {
@@ -72,16 +73,16 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 	if with := vv.LookupPath("configure.with"); with.Exists() {
 		binName, err := with.LookupPath("binary").Val.String()
 		if err != nil {
-			return pdata, err
+			return nil, err
 		}
 		binRef, err := schema.ParsePackageRef(p1.owner, binName)
 		if err != nil {
-			return pdata, err
+			return nil, err
 		}
 
 		inv, err := binary.ParseBinaryInvocationForBinaryRef(ctx, p1.owner, binRef, with)
 		if err != nil {
-			return pdata, err
+			return nil, err
 		}
 		pdata.ComputePlanWith = append(pdata.ComputePlanWith, inv)
 	}
@@ -89,25 +90,25 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs 
 	if sidecar := lookupTransition(vv, "sidecar"); sidecar.Exists() {
 		pdata.Sidecars, err = parseContainers(p1.owner, "sidecar", sidecar.Val)
 		if err != nil {
-			return pdata, err
+			return nil, err
 		}
 	}
 
 	if init := lookupTransition(vv, "init"); init.Exists() {
-		pdata.Inits, err = parseContainers(p1.owner, "init", init.Val)
+		pdata.InitContainers, err = parseContainers(p1.owner, "init", init.Val)
 		if err != nil {
-			return pdata, err
+			return nil, err
 		}
 	}
 
 	if naming := lookupTransition(vv, "naming"); naming.Exists() {
 		pdata.Naming, err = ParseNaming(naming)
 		if err != nil {
-			return pdata, err
+			return nil, err
 		}
 	}
 
-	return pdata, nil
+	return &pdata, nil
 }
 
 func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*schema.Container, error) {

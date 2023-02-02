@@ -69,21 +69,21 @@ type cueServerSecurity struct {
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
-func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, *phase1plan, error) {
+func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, error) {
 	loc := pkg.Location
 
 	if err := cuefrontend.ValidateNoExtraFields(loc, "server" /* messagePrefix */, v, serverFields); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var bits cueServer
 	if err := v.Val.Decode(&bits); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	fragment, phase1plan, err := parseServerExtension(ctx, env, pl, pkg, bits.cueServerExtension, v)
+	fragment, err := parseServerExtension(ctx, env, pl, pkg, bits.cueServerExtension, v)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	out := &schema.Server{
@@ -102,31 +102,31 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 	case "daemonset", string(schema.DeployableClass_DAEMONSET):
 		out.DeployableClass = string(schema.DeployableClass_DAEMONSET)
 		if bits.Replicas > 0 {
-			return nil, nil, fnerrors.NewWithLocation(loc, "daemon set deployments do not support custom replica counts")
+			return nil, fnerrors.NewWithLocation(loc, "daemon set deployments do not support custom replica counts")
 		}
 	default:
-		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
+		return nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}
 
-	return out, phase1plan, nil
+	return out, nil
 }
 
-func parseCueServerExtension(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.ServerFragment, *phase1plan, error) {
+func parseCueServerExtension(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.ServerFragment, error) {
 	loc := pkg.Location
 
 	if err := cuefrontend.ValidateNoExtraFields(loc, "extension" /* messagePrefix */, v, extensionFields); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var bits cueServerExtension
 	if err := v.Val.Decode(&bits); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	return parseServerExtension(ctx, env, pl, pkg, bits, v)
 }
 
-func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, bits cueServerExtension, v *fncue.CueV) (*schema.ServerFragment, *phase1plan, error) {
+func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, bits cueServerExtension, v *fncue.CueV) (*schema.ServerFragment, error) {
 	loc := pkg.Location
 
 	out := &schema.ServerFragment{
@@ -137,12 +137,12 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	if services := v.LookupPath("services"); services.Exists() {
 		it, err := services.Val.Fields()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		for it.Next() {
 			if err := cuefrontend.ValidateNoExtraFields(loc, fmt.Sprintf("service %q:", it.Label()) /* messagePrefix */, &fncue.CueV{Val: it.Value()}, serviceFields); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 		}
 	}
@@ -151,7 +151,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	for name, svc := range bits.Services {
 		parsed, probes, err := parseService(ctx, pl, loc, name, svc)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if parsed.EndpointType == schema.Endpoint_INTERNET_FACING {
@@ -161,7 +161,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		}
 
 		if parsed.EndpointType != schema.Endpoint_INTERNET_FACING && len(svc.Ingress.Details.HttpRoutes) > 0 {
-			return nil, nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
+			return nil, fnerrors.NewWithLocation(loc, "http routes are not supported for a private service %q", name)
 		}
 
 		serviceProbes = append(serviceProbes, probes...)
@@ -170,45 +170,40 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	var err error
 	out.Probe, err = parseProbes(loc, serviceProbes, bits)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	startupPlan := &schema.StartupPlan{
-		Args: bits.Args.Parsed(),
-	}
-
-	startupPlan.Env, err = bits.Env.Parsed(ctx, pl, loc.PackageName)
+	out.MainContainer.Args = bits.Args.Parsed()
+	out.MainContainer.Env, err = bits.Env.Parsed(ctx, pl, loc.PackageName)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	var parsedSidecars []*schema.Container
-	var parsedInitContainers []*schema.Container
 	if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
 		it, err := sidecars.Val.Fields()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		for it.Next() {
 			val := &fncue.CueV{Val: it.Value()}
 
 			if err := cuefrontend.ValidateNoExtraFields(loc, fmt.Sprintf("sidecar %q:", it.Label()) /* messagePrefix */, val, sidecarFields); err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			parsedContainer, err := parseCueContainer(ctx, env, pl, pkg, it.Label(), loc, val)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			out.Volume = append(out.Volume, parsedContainer.volumes...)
 			pkg.Binaries = append(pkg.Binaries, parsedContainer.inlineBinaries...)
 
 			if v, _ := val.LookupPath("init").Val.Bool(); v {
-				parsedInitContainers = append(parsedInitContainers, parsedContainer.container)
+				out.InitContainer = append(out.InitContainer, parsedContainer.container)
 			} else {
-				parsedSidecars = append(parsedSidecars, parsedContainer.container)
+				out.Sidecar = append(out.Sidecar, parsedContainer.container)
 			}
 		}
 	}
@@ -216,7 +211,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		parsedMounts, volumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
-			return nil, nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "parsing volumes failed: %w", err)
 		}
 
 		out.Volume = append(out.Volume, volumes...)
@@ -229,12 +224,12 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	if resources := v.LookupPath("resources"); resources.Exists() {
 		resourceList, err := cuefrontend.ParseResourceList(resources)
 		if err != nil {
-			return nil, nil, fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)
+			return nil, fnerrors.NewWithLocation(loc, "parsing resources failed: %w", err)
 		}
 
 		pack, err := resourceList.ToPack(ctx, env, pl, pkg)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		out.ResourcePack = pack
@@ -246,7 +241,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	if requires := v.LookupPath("requires"); requires.Exists() {
 		declaredStack, err := parseRequires(ctx, pl, loc, requires)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if len(declaredStack) > 0 && out.ResourcePack == nil {
@@ -256,11 +251,11 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		availableServers.AddMultiple(declaredStack...)
 
 		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), declaredStack, out.ResourcePack); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	for _, env := range startupPlan.Env {
+	for _, env := range out.MainContainer.Env {
 		var dep schema.PackageName
 		var builtinName string
 		if env.FromServiceEndpoint != nil {
@@ -274,14 +269,14 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 
 		if builtinName != "" && !availableServers.Has(dep) {
 			// TODO reconcider if we want to implicitly add the dependency NSL-357
-			return nil, nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled:\nserver %q is referenced in %q but it is not in the server stack. Please explitly add this server to the `requires` list.\n", env.Name, dep, builtinName)
+			return nil, fnerrors.NewWithLocation(loc, "environment variable %s cannot be fulfilled:\nserver %q is referenced in %q but it is not in the server stack. Please explitly add this server to the `requires` list.\n", env.Name, dep, builtinName)
 		}
 	}
 
 	permissions := bits.UnstablePermissions
 	if bits.Permissions != nil {
 		if err := parsing.RequireFeature(loc.Module, "experimental/kubernetes/permissions"); err != nil {
-			return nil, nil, fnerrors.AttachLocation(loc, err)
+			return nil, fnerrors.AttachLocation(loc, err)
 		}
 		permissions = bits.Permissions
 	}
@@ -292,7 +287,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		for _, clusterRole := range permissions.ClusterRoles {
 			parsed, err := pkggraph.ParseAndLoadRef(ctx, pl, pkg.Location, clusterRole)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 
 			out.Permissions.ClusterRole = append(out.Permissions.ClusterRole, &schema.ServerPermissions_ClusterRole{
@@ -309,7 +304,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 
 	if bits.Security != nil {
 		if err := parsing.RequireFeature(loc.Module, "experimental/container/security"); err != nil {
-			return nil, nil, fnerrors.AttachLocation(loc, err)
+			return nil, fnerrors.AttachLocation(loc, err)
 		}
 
 		out.MainContainer.Security = &schema.Container_Security{
@@ -320,7 +315,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 
 	if len(bits.Tolerations) > 0 {
 		if err := parsing.RequireFeature(loc.Module, "experimental/container/tolerations"); err != nil {
-			return nil, nil, fnerrors.AttachLocation(loc, err)
+			return nil, fnerrors.AttachLocation(loc, err)
 		}
 
 		out.Toleration = bits.Tolerations
@@ -329,58 +324,12 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	for _, ext := range bits.Extensions {
 		pkg := schema.PackageName(ext)
 		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, pkg); err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		out.Extension = append(out.Extension, ext)
 	}
 
-	phase1plan := &phase1plan{
-		StartupPlan:    startupPlan,
-		Sidecars:       parsedSidecars,
-		InitContainers: parsedInitContainers,
-	}
-
-	return out, phase1plan, nil
-}
-
-func validateStartupPlan(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, startupPlan *schema.StartupPlan) error {
-	return validateEnvironment(ctx, pl, pkg, startupPlan.Env)
-}
-
-func validateEnvironment(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, env []*schema.BinaryConfig_EnvEntry) error {
-	// Ensure each ref is loaded.
-	for _, e := range env {
-		switch {
-		case e.FromSecretRef != nil:
-			if _, err := ensureLoad(ctx, pl, pkg, e.FromSecretRef); err != nil {
-				return err
-			}
-
-		case e.FromServiceEndpoint.GetServerRef() != nil:
-			if _, err := ensureLoad(ctx, pl, pkg, e.FromServiceEndpoint.GetServerRef()); err != nil {
-				return err
-			}
-
-		case e.FromServiceIngress.GetServerRef() != nil:
-			if _, err := ensureLoad(ctx, pl, pkg, e.FromServiceIngress.GetServerRef()); err != nil {
-				return err
-			}
-
-		case e.FromResourceField.GetResource() != nil:
-			targetPkg, err := ensureLoad(ctx, pl, pkg, e.FromResourceField.GetResource())
-			if err != nil {
-				return err
-			}
-
-			selector, err := canonicalizeFieldSelector(ctx, pl, pkg.Location, e.FromResourceField, targetPkg)
-			if err != nil {
-				return err
-			}
-			e.FromResourceField.FieldSelector = selector
-		}
-	}
-
-	return nil
+	return out, nil
 }
 
 func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) (string, error) {

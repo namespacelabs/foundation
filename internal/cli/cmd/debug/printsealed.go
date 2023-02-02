@@ -53,7 +53,11 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				return output(ctx, pl, &schema.Stack_Entry{Server: sealed.Result.Server, Node: sealed.Result.Nodes}, outputType)
+				return output(ctx, pl, &schema.Stack_Entry{
+					Server:         sealed.Result.Server,
+					Node:           sealed.Result.Nodes,
+					ServerFragment: sealed.Result.ServerFragments,
+				}, outputType)
 			} else {
 				t, err := planning.RequireServer(ctx, env, loc.AsPackageName())
 				if err != nil {

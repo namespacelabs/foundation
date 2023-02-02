@@ -67,9 +67,10 @@ type sealer struct {
 	loader pkggraph.PackageLoader
 	helper *SealHelper
 
-	mu             sync.Mutex
-	seen           schema.PackageList
-	result         *SealerResult
+	mu   sync.Mutex
+	seen schema.PackageList
+	// result         *SealerResult
+	server         *schema.Server
 	parsed         []*pkggraph.Package
 	serverPackage  *pkggraph.Package
 	serverIncludes []schema.PackageName
@@ -132,29 +133,24 @@ func (g *sealer) DoServer(loc pkggraph.Location, srv *schema.Server, pp *pkggrap
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if g.result.Server != nil {
-		return fnerrors.InternalError("%v: server already defined (%v)", srv.PackageName, g.result.Server.PackageName)
+	if g.server != nil {
+		return fnerrors.InternalError("%v: server already defined (%v)", srv.PackageName, g.server.PackageName)
 	}
 
-	g.result.Server = srv
-	if srv.Self != nil {
-		g.result.ServerFragments = append(g.result.ServerFragments, srv.Self)
-	}
+	g.server = srv
 	g.serverPackage = pp
 	g.serverIncludes = include
 
 	return nil
 }
 
-func (g *sealer) DoNode(loc pkggraph.Location, n *schema.Node, parsed *pkggraph.Package) error {
+func (g *sealer) DoNode(loc pkggraph.Location, n *schema.Node, frag *schema.ServerFragment, parsed *pkggraph.Package) error {
 	g.Do(n.GetImportedPackages()...)
+	g.Do(schema.PackageNames(frag.GetExtension()...)...)
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
-
-	g.result.Nodes = append(g.result.Nodes, n)
 	g.parsed = append(g.parsed, parsed)
-
 	return nil
 }
 
@@ -163,10 +159,7 @@ func (g *sealer) DoServerFragment(loc pkggraph.Location, n *schema.ServerFragmen
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
-
-	g.result.ServerFragments = append(g.result.ServerFragments, n)
 	g.parsed = append(g.parsed, parsed)
-
 	return nil
 }
 
@@ -198,7 +191,7 @@ func (g *sealer) Do(pkgs ...schema.PackageName) {
 			case p.Server != nil:
 				return g.DoServer(p.Location, p.Server, p)
 			case p.Node() != nil:
-				return g.DoNode(p.Location, p.Node(), p)
+				return g.DoNode(p.Location, p.Node(), p.ServerFragment, p)
 			case p.ServerFragment != nil:
 				return g.DoServerFragment(p.Location, p.ServerFragment, p)
 			default:
@@ -218,7 +211,6 @@ func newSealer(ctx context.Context, loader pkggraph.PackageLoader, focus schema.
 		focus:  focus,
 		loader: loader,
 		helper: helper,
-		result: &SealerResult{},
 	}
 }
 
@@ -234,16 +226,41 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		return Sealed{}, err
 	}
 
-	slices.SortFunc(s.result.Nodes, func(a, b *schema.Node) bool {
+	result := &SealerResult{
+		Server: s.server,
+	}
+	if frag := s.server.GetSelf(); frag != nil {
+		result.ServerFragments = append(result.ServerFragments, frag)
+	}
+
+	for _, p := range s.parsed {
+		if n := p.Node(); n != nil {
+			result.Nodes = append(result.Nodes, n)
+		}
+		if frag := p.ServerFragment; frag != nil {
+			result.ServerFragments = append(result.ServerFragments, frag)
+		}
+	}
+
+	slices.SortFunc(result.Nodes, func(a, b *schema.Node) bool {
 		return strings.Compare(a.PackageName, b.PackageName) < 0
 	})
 
-	slices.SortFunc(s.result.ServerFragments, func(a, b *schema.ServerFragment) bool {
-		return strings.Compare(a.PackageName, b.PackageName) < 0
+	digest := make([]schema.Digest, len(result.ServerFragments))
+	for k, frag := range result.ServerFragments {
+		d, err := schema.DigestOf(frag)
+		if err != nil {
+			return Sealed{}, fnerrors.InternalError("failed to digest ServerFragment: %w", err)
+		}
+		digest[k] = d
+	}
+
+	sort.Slice(result.ServerFragments, func(i, j int) bool {
+		return strings.Compare(digest[i].Hex, digest[j].Hex) < 0
 	})
 
 	var deps []*pkggraph.Package
-	for _, n := range s.result.ExtsAndServices() {
+	for _, n := range result.ExtsAndServices() {
 		var parsed *pkggraph.Package
 		for _, pp := range s.parsed {
 			if pp.Location.PackageName.Equals(n.PackageName) {
@@ -261,13 +278,12 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 
 	m := map[string]int{}
 
-	stackEntry := s.result
-	for k, pkg := range stackEntry.ImportsOf(s.focus) {
+	for k, pkg := range result.ImportsOf(s.focus) {
 		m[pkg.String()] = k + 1
 	}
 
-	sort.Slice(stackEntry.Nodes, func(i, j int) bool {
-		pkgI, pkgJ := stackEntry.Nodes[i].PackageName, stackEntry.Nodes[j].PackageName
+	sort.Slice(result.Nodes, func(i, j int) bool {
+		pkgI, pkgJ := result.Nodes[i].PackageName, result.Nodes[j].PackageName
 		a, ok1 := m[pkgI]
 		b, ok2 := m[pkgJ]
 
@@ -286,7 +302,7 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 	})
 
 	res := Sealed{
-		Result:        stackEntry,
+		Result:        result,
 		Deps:          deps,
 		ParsedPackage: s.serverPackage,
 	}

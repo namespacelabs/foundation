@@ -48,7 +48,11 @@ func newPrintComputedCmd() *cobra.Command {
 				return err
 			}
 
-			return output(ctx, pl, &schema.Stack_Entry{Server: sealed.Result.Server, Node: sealed.Result.Nodes}, outputType)
+			return output(ctx, pl, &schema.Stack_Entry{
+				Server:         sealed.Result.Server,
+				Node:           sealed.Result.Nodes,
+				ServerFragment: sealed.Result.ServerFragments,
+			}, outputType)
 		})
 }
 

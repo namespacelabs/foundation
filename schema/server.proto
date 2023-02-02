@@ -131,17 +131,17 @@ message Server {
 }
 
 message ServerFragment {
-    // The package name (computed).
-    string package_name                   = 1;
-    Container main_container              = 2;
-    repeated Server.ServiceSpec service   = 3;
-    repeated Server.ServiceSpec ingress   = 4;
-    repeated Probe probe                  = 5;
-    repeated Volume volume                = 6;
-    ResourcePack resource_pack            = 7;
-    ServerPermissions permissions         = 8;
-    repeated Server.Toleration toleration = 9;
-    repeated string extension             = 10; // Package name.
+    Container main_container              = 1;
+    repeated Server.ServiceSpec service   = 2;
+    repeated Server.ServiceSpec ingress   = 3;
+    repeated Probe probe                  = 4;
+    repeated Volume volume                = 5;
+    ResourcePack resource_pack            = 6;
+    ServerPermissions permissions         = 7;
+    repeated Server.Toleration toleration = 8;
+    repeated string extension             = 9; // Package name.
+    repeated Container sidecar            = 10;
+    repeated Container init_container     = 11;
 }
 
 // Allocations for a tree of instanced values.

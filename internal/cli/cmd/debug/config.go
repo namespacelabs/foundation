@@ -15,9 +15,9 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
-	"namespacelabs.dev/foundation/internal/planning/startup"
+	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func newComputeConfigCmd() *cobra.Command {
@@ -60,24 +60,16 @@ func newComputeConfigCmd() *cobra.Command {
 				return fnerrors.InternalError("expected to find %s in the stack, but didn't", server.PackageName())
 			}
 
-			sargs := pkggraph.StartupInputs{
-				Stack:         stack.Proto(),
-				ServerImage:   "imageversion",
-				ServerRootAbs: server.Location.Abs(),
-			}
-
-			serverStartupPlan, err := ps.Server.EvalStartup(ctx, ps.Server.SealedContext(), sargs, nil)
-			if err != nil {
-				return err
-			}
-
-			c, err := startup.ComputeConfig(ctx, ps.Server.SealedContext(), serverStartupPlan, ps.ParsedDeps, sargs)
-			if err != nil {
+			out := &runtime.DeployableSpec{}
+			if err := deploy.PrepareRunOpts(ctx, stack, ps, nil, out); err != nil {
 				return err
 			}
 
 			j := json.NewEncoder(console.Stdout(ctx))
 			j.SetIndent("", "  ")
-			return j.Encode(c)
+			return j.Encode(&schema.StartupPlan{
+				Args: out.MainContainer.Args,
+				Env:  out.MainContainer.Env,
+			})
 		})
 }

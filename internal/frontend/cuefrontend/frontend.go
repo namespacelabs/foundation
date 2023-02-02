@@ -101,7 +101,6 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	}
 
 	parsed.PackageSources = partial.Package.Snapshot
-	parsed.Parsed = phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left}
 
 	var count int
 	if extension := v.LookupPath("extension"); extension.Exists() {
@@ -141,6 +140,31 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 
 	if count > 1 {
 		return nil, fnerrors.New("package must only define one of: server, service, extension, binary or test")
+	}
+
+	p := phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left}
+	plan, err := p.EvalProvision(ctx, ft.env, pkggraph.ProvisionInputs{ServerLocation: loc})
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed.Server != nil {
+		parsed.ProvisionPlan = plan.ProvisionPlan
+		parsed.Server.Self.Sidecar = append(parsed.Server.Self.Sidecar, plan.Sidecars...)
+		parsed.Server.Self.InitContainer = append(parsed.Server.Self.InitContainer, plan.InitContainers...)
+	} else if node := parsed.Node(); node != nil {
+		parsed.ProvisionPlan = plan.ProvisionPlan
+		if len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 {
+			parsed.ServerFragment = &schema.ServerFragment{
+				MainContainer: &schema.Container{},
+				Sidecar:       plan.Sidecars,
+				InitContainer: plan.InitContainers,
+			}
+		}
+	} else {
+		if len(plan.ComputePlanWith) > 0 || len(plan.DeclaredStack) > 0 || len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 {
+			return nil, fnerrors.New("configuration block is only usable with servers, services or extensions")
+		}
 	}
 
 	return parsed, nil

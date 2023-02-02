@@ -31,5 +31,6 @@ message Stack {
         Server         server          = 1;
         Naming         server_naming   = 3;
         repeated Node  node            = 2;
+        repeated ServerFragment server_fragment = 4;
     }
 }

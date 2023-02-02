@@ -23,9 +23,9 @@ import (
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
-	"namespacelabs.dev/foundation/internal/planning/startup"
 	"namespacelabs.dev/foundation/internal/planning/tool/protocol"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/support"
 	runtimelibrary "namespacelabs.dev/foundation/library/runtime"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -405,11 +405,12 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 			}
 		}
 
-		if err := prepareRunOpts(ctx, &stack.Stack, srv, resolved, &deployable); err != nil {
+		if err := PrepareRunOpts(ctx, &stack.Stack, srv, &resolved, &deployable); err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
-		sidecars, inits := stack.Servers[k].SidecarsAndInits()
+		sidecars := stack.Servers[k].MergedFragment.Sidecar
+		inits := stack.Servers[k].MergedFragment.InitContainer
 
 		if err := prepareContainerRunOpts(sidecars, resolved, &deployable.Sidecars); err != nil {
 			return runtime.DeploymentSpec{}, err
@@ -427,14 +428,26 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 
 				for _, cext := range ext.ExtendContainer {
 					if cext.Name == "" && cext.BinaryRef == nil {
-						extendContainer(&deployable.MainContainer, cext)
+						if err := extendContainer(&deployable.MainContainer, cext); err != nil {
+							return runtime.DeploymentSpec{}, err
+						}
 					} else {
-						if updatedSidecars, ok := checkExtend(deployable.Sidecars, cext); ok {
+						updatedSidecars, ok, err := checkExtend(deployable.Sidecars, cext)
+						if err != nil {
+							return runtime.DeploymentSpec{}, err
+						}
+						if ok {
 							deployable.Sidecars = updatedSidecars
-						} else if updatedInits, ok := checkExtend(deployable.Inits, cext); ok {
-							deployable.Inits = updatedInits
 						} else {
-							return runtime.DeploymentSpec{}, fnerrors.BadInputError("%s: no such container", cext.Name)
+							updatedInits, ok, err := checkExtend(deployable.Inits, cext)
+							if err != nil {
+								return runtime.DeploymentSpec{}, err
+							}
+							if ok {
+								deployable.Inits = updatedInits
+							} else {
+								return runtime.DeploymentSpec{}, fnerrors.BadInputError("%s: no such container", cext.Name)
+							}
 						}
 					}
 				}
@@ -548,22 +561,26 @@ func httpProbes(endpoints []*schema.Endpoint, internalEndpoints []*schema.Intern
 	return probes, nil
 }
 
-func extendContainer(target *runtime.ContainerRunOpts, cext *schema.ContainerExtension) {
+func extendContainer(target *runtime.ContainerRunOpts, cext *schema.ContainerExtension) error {
 	target.Mounts = append(target.Mounts, cext.Mount...)
 	target.Args = append(target.Args, cext.Args...)
-	target.Env = append(target.Env, cext.Env...)
+	var err error
+	target.Env, err = support.MergeEnvs(target.Env, cext.Env)
+	return err
 }
 
-func checkExtend(sidecars []runtime.SidecarRunOpts, cext *schema.ContainerExtension) ([]runtime.SidecarRunOpts, bool) {
+func checkExtend(sidecars []runtime.SidecarRunOpts, cext *schema.ContainerExtension) ([]runtime.SidecarRunOpts, bool, error) {
 	for k, sidecar := range sidecars {
 		if (cext.Name != "" && sidecar.Name == cext.Name) || (cext.BinaryRef != nil && cext.BinaryRef.Equals(sidecar.BinaryRef)) {
-			extendContainer(&sidecar.ContainerRunOpts, cext)
+			if err := extendContainer(&sidecar.ContainerRunOpts, cext); err != nil {
+				return nil, false, err
+			}
 			sidecars[k] = sidecar
-			return sidecars, true
+			return sidecars, true, nil
 		}
 	}
 
-	return nil, false
+	return nil, false, nil
 }
 
 type serverImagesOpts struct {
@@ -691,7 +708,8 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 			return nil, err
 		}
 
-		sidecars, inits := stack.Servers[k].SidecarsAndInits()
+		sidecars := stack.Servers[k].MergedFragment.Sidecar
+		inits := stack.Servers[k].MergedFragment.InitContainer
 		sidecars = append(sidecars, inits...) // For our purposes, they are the same.
 
 		for _, container := range sidecars {
@@ -831,7 +849,7 @@ func computeStackAndImages(ctx context.Context, planner planning.Planner, stack 
 	return pkgs, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.PlannedServer, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
+func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.PlannedServer, imgs *ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
 	frag := srv.MergedFragment
 
@@ -844,8 +862,10 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.Volumes = append(out.Volumes, frag.Volume...)
 	out.MainContainer.Mounts = append(out.MainContainer.Mounts, frag.MainContainer.Mount...)
 
-	out.MainContainer.Image = imgs.Binary
-	out.ConfigImage = imgs.Config
+	if imgs != nil {
+		out.MainContainer.Image = imgs.Binary
+		out.ConfigImage = imgs.Config
+	}
 
 	out.Probes = frag.Probe
 	out.Tolerations = frag.Toleration
@@ -856,13 +876,24 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 
 	inputs := pkggraph.StartupInputs{
 		Stack:         stack.Proto(),
-		ServerImage:   imgs.Binary.RepoAndDigest(),
 		ServerRootAbs: srv.Location.Abs(),
 	}
 
-	serverStartupPlan, err := srv.EvalStartup(ctx, srv.SealedContext(), inputs, nil)
-	if err != nil {
-		return err
+	if imgs != nil {
+		inputs.ServerImage = imgs.Binary.RepoAndDigest()
+	}
+
+	if srv.EvalStartup != nil {
+		serverStartupPlan, err := srv.EvalStartup(ctx, srv.SealedContext(), inputs, nil)
+		if err != nil {
+			return err
+		}
+
+		out.MainContainer.Args = append(out.MainContainer.Args, serverStartupPlan.Args...)
+		out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, serverStartupPlan.Env)
+		if err != nil {
+			return err
+		}
 	}
 
 	stackEntry, ok := stack.Get(srv.PackageName())
@@ -872,22 +903,29 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 
 	out.MainContainer.AllocatedPorts = append(out.MainContainer.AllocatedPorts, stackEntry.AllocatedPorts...)
 
-	merged, err := startup.ComputeConfig(ctx, srv.SealedContext(), serverStartupPlan, stackEntry.ParsedDeps, inputs)
-	if err != nil {
-		return err
-	}
+	for _, dep := range stackEntry.ParsedDeps {
+		plan, err := dep.ProvisionPlan.Startup.EvalStartup(ctx, srv.SealedContext(), inputs, dep.Allocations)
+		if err != nil {
+			return err
+		}
 
-	if merged.WorkingDir != "" {
-		out.MainContainer.WorkingDir = merged.WorkingDir
+		out.MainContainer.Args = append(out.MainContainer.Args, plan.Args...)
+		out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, plan.Env)
+		if err != nil {
+			return err
+		}
 	}
 
 	main := srv.MergedFragment.MainContainer
-
-	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
-	out.MainContainer.Env = append(out.MainContainer.Env, main.Env...)
-	out.MainContainer.Env = append(out.MainContainer.Env, merged.Env...)
+	out.MainContainer.Args = append(out.MainContainer.Args, main.Args...)
 	out.MainContainer.Privileged = main.GetSecurity().GetPrivileged()
 	out.MainContainer.HostNetwork = main.GetSecurity().GetHostNetwork()
+
+	var err error
+	out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, main.Env)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -927,27 +965,16 @@ func prepareContainerRunOpts(containers []*schema.Container, resolved ResolvedSe
 			},
 		}
 
-		mergeEnv(&opts.ContainerRunOpts.Env, sidecarBinary.BinaryConfig.GetEnv())
-		mergeEnv(&opts.ContainerRunOpts.Env, container.Env)
+		transformed, err := support.MergeEnvs(opts.ContainerRunOpts.Env, sidecarBinary.BinaryConfig.GetEnv())
+		if err != nil {
+			return err
+		}
+		opts.ContainerRunOpts.Env, err = support.MergeEnvs(transformed, container.Env)
+		if err != nil {
+			return err
+		}
 
 		*out = append(*out, opts)
 	}
 	return nil
-}
-
-func mergeEnv(target *[]*schema.BinaryConfig_EnvEntry, src []*schema.BinaryConfig_EnvEntry) {
-	index := map[string]int{}
-
-	for k, x := range *target {
-		index[x.Name] = k
-	}
-
-	for _, x := range src {
-		if k, has := index[x.Name]; has {
-			// XXX replacing here without warning.
-			(*target)[k] = x
-		} else {
-			*target = append(*target, x)
-		}
-	}
 }

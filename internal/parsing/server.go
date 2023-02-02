@@ -147,10 +147,6 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 }
 
 func TransformServerFragment(ctx context.Context, pl pkggraph.PackageLoader, frag *schema.ServerFragment, pp *pkggraph.Package) (*schema.ServerFragment, error) {
-	loc := pp.Location
-
-	frag.PackageName = loc.PackageName.String()
-
 	// Make services and endpoints order stable.
 	sortServices(frag.Service)
 	sortServices(frag.Ingress)
@@ -158,13 +154,7 @@ func TransformServerFragment(ctx context.Context, pl pkggraph.PackageLoader, fra
 	return frag, nil
 }
 
-type nodeLike interface {
-	GetPackageName() string
-	GetVolume() []*schema.Volume
-	GetResourcePack() *schema.ResourcePack
-}
-
-func mergeNodeLike(node nodeLike, out *schema.ServerFragment) error {
+func mergeNodeLike(node *schema.Node, out *schema.ServerFragment) error {
 	for _, rs := range node.GetVolume() {
 		if rs.Owner != node.GetPackageName() {
 			return fnerrors.BadInputError("%s: volume: didn't expect owner to be %q", node.GetPackageName(), rs.Owner)

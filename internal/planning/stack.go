@@ -32,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/runtime/tools"
 	is "namespacelabs.dev/foundation/internal/secrets"
+	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/library/kubernetes/ingress"
 	"namespacelabs.dev/foundation/schema"
@@ -90,25 +91,12 @@ type PlannedServer struct {
 	InternalEndpoints []*schema.InternalEndpoint
 }
 
-func (p PlannedServer) SidecarsAndInits() ([]*schema.Container, []*schema.Container) {
-	var sidecars, inits []*schema.Container
-
-	sidecars = append(sidecars, p.Server.Provisioning.Sidecars...)
-	inits = append(inits, p.Server.Provisioning.Inits...)
-
-	for _, dep := range p.ParsedDeps {
-		sidecars = append(sidecars, dep.ProvisionPlan.Sidecars...)
-		inits = append(inits, dep.ProvisionPlan.Inits...)
-	}
-
-	return sidecars, inits
-}
-
 type ParsedNode struct {
-	Package       *pkggraph.Package
-	ProvisionPlan pkggraph.ProvisionPlan
-	Allocations   []pkggraph.ValueWithPath
-	PrepareProps  planninghooks.ProvisionResult
+	Package         *pkggraph.Package
+	ServerFragments []*schema.ServerFragment
+	ProvisionPlan   pkggraph.ProvisionPlan
+	Allocations     []pkggraph.ValueWithPath
+	PrepareProps    planninghooks.ProvisionResult
 }
 
 func (stack *Stack) AllPackageList() schema.PackageList {
@@ -299,19 +287,23 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
-		if len(server.fragments) == 0 {
+		allFragments := server.fragments
+		for _, n := range parsedDeps {
+			allFragments = append(allFragments, n.ServerFragments...)
+		}
+
+		if len(allFragments) == 0 {
 			return fnerrors.InternalError("list of server fragments should never be empty")
 		}
 
-		ps.MergedFragment = protos.Clone(server.fragments[0])
-		ps.MergedFragment.PackageName = server.PackageName().String()
+		ps.MergedFragment = protos.Clone(allFragments[0])
 		ps.MergedFragment.MainContainer.Owner = nil
 
 		var extensionList schema.PackageList
 		extensionList.AddMultiple(schema.PackageNames(ps.MergedFragment.Extension...)...)
 
-		for i := 1; i < len(server.fragments); i++ {
-			frag := server.fragments[i]
+		for i := 1; i < len(allFragments); i++ {
+			frag := allFragments[i]
 
 			if frag.MainContainer.BinaryRef != nil {
 				if ps.MergedFragment.MainContainer.BinaryRef != nil {
@@ -328,8 +320,13 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			}
 
 			ps.MergedFragment.MainContainer.Args = append(ps.MergedFragment.MainContainer.Args, frag.MainContainer.Args...)
-			ps.MergedFragment.MainContainer.Env = append(ps.MergedFragment.MainContainer.Env, frag.MainContainer.Env...)
 			ps.MergedFragment.MainContainer.Mount = append(ps.MergedFragment.MainContainer.Mount, frag.MainContainer.Mount...)
+
+			var err error
+			ps.MergedFragment.MainContainer.Env, err = support.MergeEnvs(ps.MergedFragment.MainContainer.Env, frag.MainContainer.Env)
+			if err != nil {
+				return err
+			}
 
 			if frag.MainContainer.Security != nil {
 				if ps.MergedFragment.MainContainer.Security != nil {
@@ -337,6 +334,9 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				}
 				ps.MergedFragment.MainContainer.Security = frag.MainContainer.Security
 			}
+
+			ps.MergedFragment.Sidecar = append(ps.MergedFragment.Sidecar, frag.Sidecar...)
+			ps.MergedFragment.InitContainer = append(ps.MergedFragment.InitContainer, frag.InitContainer...)
 
 			ps.MergedFragment.Service = append(ps.MergedFragment.Service, frag.Service...)
 			ps.MergedFragment.Ingress = append(ps.MergedFragment.Ingress, frag.Ingress...)
@@ -578,6 +578,7 @@ func EvalProvision(ctx context.Context, secrets is.SecretsSource, server Server,
 
 func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, node *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps planninghooks.InternalPrepareProps
+	var fragments []*schema.ServerFragment
 	for _, hook := range node.PrepareHooks {
 		if hook.InvokeInternal != "" {
 			props, err := planninghooks.InvokeInternalPrepareHook(ctx, hook.InvokeInternal, server.SealedContext(), server.StackEntry())
@@ -644,8 +645,6 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 				PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
 					DeclaredStack:   pl.PackageNames(),
 					ComputePlanWith: resp.GetPreparedProvisionPlan().GetProvisioning(),
-					Sidecars:        resp.GetPreparedProvisionPlan().GetSidecar(),
-					Inits:           resp.GetPreparedProvisionPlan().GetInit(),
 				},
 				ProvisionResult: planninghooks.ProvisionResult{
 					SerializedProvisionInput: resp.ProvisionInput,
@@ -654,34 +653,36 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 				},
 			}
 
+			if len(resp.GetPreparedProvisionPlan().GetSidecar()) > 0 || len(resp.GetPreparedProvisionPlan().GetInit()) > 0 {
+				frag := &schema.ServerFragment{
+					MainContainer: &schema.Container{},
+				}
+
+				for _, sidecar := range resp.GetPreparedProvisionPlan().GetSidecar() {
+					sidecar.Owner = schema.MakePackageSingleRef(node.PackageName())
+					frag.Sidecar = append(frag.Sidecar, sidecar)
+				}
+
+				for _, init := range resp.GetPreparedProvisionPlan().GetInit() {
+					init.Owner = schema.MakePackageSingleRef(node.PackageName())
+					frag.InitContainer = append(frag.InitContainer, init)
+				}
+
+				fragments = append(fragments, frag)
+			}
+
 			combinedProps.AppendWith(props)
 		}
 	}
 
-	// We need to make sure that `env` is available before we read extend.stack, as env is often used
-	// for branching.
-	pdata, err := node.Parsed.EvalProvision(ctx, server.SealedContext(), pkggraph.ProvisionInputs{
-		ServerLocation: server.Location,
-	})
-	if err != nil {
-		return nil, fnerrors.AttachLocation(node.Location, err)
-	}
-
+	pdata := node.ProvisionPlan
 	if pdata.Naming != nil {
 		return nil, fnerrors.NewWithLocation(node.Location, "nodes can't provide naming specifications")
 	}
 
-	for _, sidecar := range combinedProps.PreparedProvisionPlan.Sidecars {
-		sidecar.Owner = schema.MakePackageSingleRef(node.PackageName())
-	}
-
-	for _, sidecar := range combinedProps.PreparedProvisionPlan.Inits {
-		sidecar.Owner = schema.MakePackageSingleRef(node.PackageName())
-	}
-
 	pdata.AppendWith(combinedProps.PreparedProvisionPlan)
 
-	parsed := &ParsedNode{Package: node, ProvisionPlan: pdata}
+	parsed := &ParsedNode{Package: node, ProvisionPlan: pdata, ServerFragments: fragments}
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
 	parsed.PrepareProps.Extension = combinedProps.Extension
 	parsed.PrepareProps.ServerExtension = combinedProps.ServerExtension

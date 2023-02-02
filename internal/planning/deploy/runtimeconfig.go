@@ -80,7 +80,7 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 	server := srv.MergedFragment
 
 	current := &runtime.Server{
-		PackageName: server.PackageName,
+		PackageName: srv.PackageName().String(),
 		ModuleName:  srv.Module().ModuleName(),
 	}
 
@@ -92,7 +92,7 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 		current.Port = append(current.Port, makePort(service))
 	}
 
-	endpoints, _ := stack.GetEndpoints(schema.PackageName(server.PackageName))
+	endpoints, _ := stack.GetEndpoints(srv.PackageName())
 	for _, endpoint := range endpoints {
 		current.Service = append(current.Service, &runtime.Server_Service{
 			Owner:    endpoint.EndpointOwner,

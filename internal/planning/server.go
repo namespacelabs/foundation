@@ -94,8 +94,9 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 
 	t.Package = sealed.ParsedPackage
 	t.entry = &schema.Stack_Entry{
-		Server: sealed.Result.Server,
-		Node:   sealed.Result.Nodes,
+		Server:         sealed.Result.Server,
+		Node:           sealed.Result.Nodes,
+		ServerFragment: sealed.Result.ServerFragments,
 	}
 	t.deps = sealed.Deps
 	t.fragments = sealed.Result.ServerFragments
@@ -106,21 +107,10 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 
 	// XXX consolidate with other EvalProvision calls. This is only invoked here
 	// for convenience but it's not quite right.
-	pdata, err := t.Package.Parsed.EvalProvision(ctx, t.SealedContext(), pkggraph.ProvisionInputs{
-		ServerLocation: t.Location,
-	})
-	if err != nil {
-		return Server{}, fnerrors.AttachLocation(t.Location, err)
-	}
-
-	if pdata.StartupPlan != nil {
-		t.EvalStartup = func(_ context.Context, _ pkggraph.Context, _ pkggraph.StartupInputs, _ []pkggraph.ValueWithPath) (*schema.StartupPlan, error) {
-			return pdata.StartupPlan, nil
-		}
-	} else {
+	pdata := t.Package.ProvisionPlan
+	if pdata.Startup != nil {
 		t.EvalStartup = pdata.Startup.EvalStartup
 	}
-
 	t.Provisioning = pdata.PreparedProvisionPlan
 	t.entry.ServerNaming = pdata.Naming
 
@@ -130,10 +120,6 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		t.entry.ServerNaming = protos.Clone(t.entry.ServerNaming)
 	}
 	t.entry.ServerNaming.EnableNamespaceManaged = true
-
-	// for _, frag := range sealed.Result.ServerFragments {
-
-	// }
 
 	return t, nil
 }

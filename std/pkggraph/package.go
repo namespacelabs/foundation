@@ -22,7 +22,7 @@ type Package struct {
 
 	PackageSources fs.FS // Filenames included will be relative to the module root, not the package.
 	NewFrontend    bool  // If set to true, the new frontend parser was used to load this package.
-	Parsed         PreProvision
+	ProvisionPlan  ProvisionPlan
 
 	// One of.
 	Extension      *schema.Node

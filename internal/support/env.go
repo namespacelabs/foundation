@@ -11,6 +11,10 @@ import (
 )
 
 func MergeEnvs(base []*schema.BinaryConfig_EnvEntry, additional []*schema.BinaryConfig_EnvEntry) ([]*schema.BinaryConfig_EnvEntry, error) {
+	if len(additional) == 0 {
+		return base, nil
+	}
+
 	merged := append(base, additional...)
 
 	// Check for collisions.

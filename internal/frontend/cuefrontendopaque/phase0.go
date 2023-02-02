@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"cuelang.org/go/cue"
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/binary"
@@ -62,18 +61,11 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		return nil, err
 	}
 
-	var validators []func() error
-
 	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, phase1plan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
+		parsedSrv, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "parsing server failed: %w", err)
 		}
-
-		// Defer validating the startup plan until the rest of the package is loaded.
-		validators = append(validators, func() error {
-			return validateStartupPlan(ctx, ft.loader, parsedPkg, phase1plan.StartupPlan)
-		})
 
 		parsedPkg.Server = parsedSrv
 
@@ -98,43 +90,28 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 
 		if naming := server.LookupPath("unstable_naming"); naming.Exists() {
-			phase1plan.Naming, err = cuefrontend.ParseNaming(naming)
+			parsedPkg.ProvisionPlan.Naming, err = cuefrontend.ParseNaming(naming)
 			if err != nil {
 				return nil, err
 			}
 		}
-
-		parsedPkg.Parsed = phase1plan
 	}
 
 	if extension := v.LookupPath("extension"); extension.Exists() {
-		parsed, phase1plan, err := parseCueServerExtension(ctx, ft.env, ft.loader, parsedPkg, extension)
+		parsed, err := parseCueServerExtension(ctx, ft.env, ft.loader, parsedPkg, extension)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "parsing server failed: %w", err)
 		}
-
-		// Defer validating the startup plan until the rest of the package is loaded.
-		validators = append(validators, func() error {
-			return validateStartupPlan(ctx, ft.loader, parsedPkg, phase1plan.StartupPlan)
-		})
 
 		if parsedPkg.Server != nil {
 			return nil, fnerrors.NewWithLocation(loc, "it is not yet possible to declare a server and an extension in the same package")
 		}
 
 		parsedPkg.ServerFragment = parsed
-		parsedPkg.Parsed = phase1plan
 	}
 
 	parsedPkg.NewFrontend = true
 	parsedPkg.PackageSources = partial.Package.Snapshot
 
-	var errs []error
-	for _, validator := range validators {
-		if err := validator(); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
-	return parsedPkg, multierr.New(errs...)
+	return parsedPkg, nil
 }
