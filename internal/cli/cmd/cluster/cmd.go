@@ -368,7 +368,7 @@ func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, 
 	case 0:
 		return nil, args[1:], nil
 	default:
-		return nil, nil, fnerrors.InternalError("")
+		return nil, nil, fnerrors.InternalError("got %d clusters - expected one", len(clusters))
 	}
 }
 
