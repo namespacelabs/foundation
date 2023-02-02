@@ -33,8 +33,8 @@ func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pg
 }
 
 func (db DB) BeginTxFunc(ctx context.Context, txOptions pgx.TxOptions, callback func(pgx.Tx) error) error {
-	return withSpan(ctx, db.t, "db.BeginFunc", "", func(ctx context.Context) error {
-		return db.base.BeginFunc(ctx, func(newtx pgx.Tx) error {
+	return withSpan(ctx, db.t, "db.BeginTxFunc", "", func(ctx context.Context) error {
+		return db.base.BeginTxFunc(ctx, txOptions, func(newtx pgx.Tx) error {
 			return callback(tracingTx{base: newtx, t: db.t})
 		})
 	})
