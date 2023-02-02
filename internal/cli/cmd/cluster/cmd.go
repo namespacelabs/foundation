@@ -209,36 +209,38 @@ func newDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "destroy {cluster-id}",
 		Short: "Destroys an existing cluster.",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ArbitraryArgs,
 	}
 
 	force := cmd.Flags().Bool("force", false, "Skip the confirmation step.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectCluster(ctx, args)
+		clusters, err := selectClusters(ctx, args)
 		if err != nil {
 			return err
 		}
 
-		if cluster == nil {
-			return nil
-		}
+		for _, cluster := range clusters {
+			if !*force {
+				result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
+					fmt.Sprintf(`This is a destructive action.
 
-		if !*force {
-			result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
-				fmt.Sprintf(`This is a destructive action.
+	Type %q for it to be removed.`, cluster.ClusterId), "")
+				if err != nil {
+					return err
+				}
 
-Type %q for it to be removed.`, cluster.ClusterId), "")
-			if err != nil {
+				if result != cluster.ClusterId {
+					return context.Canceled
+				}
+			}
+
+			if err := api.DestroyCluster(ctx, api.Endpoint, cluster.ClusterId); err != nil {
 				return err
 			}
-
-			if result != cluster.ClusterId {
-				return context.Canceled
-			}
 		}
 
-		return api.DestroyCluster(ctx, api.Endpoint, cluster.ClusterId)
+		return nil
 	})
 
 	return cmd
@@ -317,18 +319,23 @@ func newKubeconfigCmd() *cobra.Command {
 	return cmd
 }
 
-func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
-	if len(args) > 0 {
-		response, err := api.GetCluster(ctx, api.Endpoint, args[0])
+func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesCluster, error) {
+	var res []*api.KubernetesCluster
+	for _, name := range names {
+		response, err := api.GetCluster(ctx, api.Endpoint, name)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		return response.Cluster, args[1:], nil
+		res = append(res, response.Cluster)
+	}
+
+	if len(res) > 0 {
+		return res, nil
 	}
 
 	clusters, err := api.ListClusters(ctx, api.Endpoint)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	var cls []cluster
@@ -338,15 +345,31 @@ func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, 
 
 	cl, err := tui.Select(ctx, "Which cluster would you like to connect to?", cls)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if cl == nil {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	d := cl.(cluster).Cluster()
-	return &d, nil, nil
+	return []*api.KubernetesCluster{&d}, nil
+}
+
+func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
+	clusters, err := selectClusters(ctx, args[:0])
+	if err != nil {
+		return nil, nil, err
+	}
+
+	switch len(clusters) {
+	case 1:
+		return clusters[0], args[1:], nil
+	case 0:
+		return nil, args[1:], nil
+	default:
+		return nil, nil, fnerrors.InternalError("")
+	}
 }
 
 type cluster api.KubernetesCluster
