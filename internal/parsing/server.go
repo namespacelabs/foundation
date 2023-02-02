@@ -11,13 +11,11 @@ import (
 	"sort"
 	"strings"
 
-	"golang.org/x/exp/maps"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/runtime/constants"
 )
 
 func ValidateServerID(n *schema.Server) error {
@@ -46,15 +44,17 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		return nil, err
 	}
 
+	if srv.Self != nil {
+		if _, err := TransformServerFragment(ctx, pl, srv.Self, pp); err != nil {
+			return nil, err
+		}
+	}
+
 	loc := pp.Location
 
 	srv.PackageName = loc.PackageName.String()
 	srv.ModuleName = loc.Module.ModuleName()
 	srv.UserImports = srv.Import
-
-	// Make services and endpoints order stable.
-	sortServices(srv.Service)
-	sortServices(srv.Ingress)
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
 		var ext ServerFrameworkExt
@@ -78,17 +78,13 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		return nil, err
 	}
 
-	if err := validateServer(ctx, pl, pp.Location, srv); err != nil {
-		return nil, err
-	}
-
 	if err := validatePackage(ctx, pp); err != nil {
 		return nil, err
 	}
 
 	var sorted schema.PackageList
-	likeTopoSort(sealed.Proto, s.serverIncludes, &sorted)
-	sealed.Proto.Server.Import = sorted.PackageNamesAsString()
+	flattenNodeDeps(sealed.Result, s.serverIncludes, &sorted)
+	sealed.Result.Server.Import = sorted.PackageNamesAsString()
 
 	var ida depVisitor
 	for _, dep := range sealed.Deps {
@@ -113,63 +109,32 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		}
 	}
 
-	persistentVolumeCount := 0
-	resourceRefs := map[string]*schema.PackageRef{}
+	if sealed.Result.Server.Self == nil {
+		sealed.Result.Server.Self = &schema.ServerFragment{}
+	}
+
 	for _, dep := range sealed.Deps {
 		if node := dep.Node(); node != nil {
-			for _, rs := range node.Volume {
-				if rs.Owner != node.PackageName {
-					return nil, fnerrors.BadInputError("%s: volume: didn't expect owner to be %q", node.PackageName, rs.Owner)
-				}
-
-				sealed.Proto.Server.Volume = append(sealed.Proto.Server.Volume, rs)
-
-				if rs.Kind == constants.VolumeKindPersistent {
-					persistentVolumeCount++
-				}
+			if err := mergeNodeLike(node, sealed.Result.Server.Self); err != nil {
+				return nil, err
 			}
 
-			for _, rs := range node.Mount {
-				if rs.Owner != node.PackageName {
+			for _, rs := range node.GetMount() {
+				if rs.Owner != node.GetPackageName() {
 					return nil, fnerrors.BadInputError("%s: mount: didn't expect owner to be %q", node.PackageName, rs.Owner)
 				}
 
-				sealed.Proto.Server.MainContainer.Mount = append(sealed.Proto.Server.MainContainer.Mount, rs)
+				srv.Self.MainContainer.Mount = append(srv.Self.MainContainer.Mount, rs)
 			}
 
 			if node.EnvironmentRequirement != nil {
-				sealed.Proto.Server.EnvironmentRequirement = append(sealed.Proto.Server.EnvironmentRequirement, &schema.Server_EnvironmentRequirement{
+				sealed.Result.Server.EnvironmentRequirement = append(sealed.Result.Server.EnvironmentRequirement, &schema.Server_EnvironmentRequirement{
 					Package:                     node.PackageName,
 					EnvironmentHasLabel:         node.EnvironmentRequirement.EnvironmentHasLabel,
 					EnvironmentDoesNotHaveLabel: node.EnvironmentRequirement.EnvironmentDoesNotHaveLabel,
 				})
 			}
-
-			if node.ResourcePack != nil {
-				if sealed.Proto.Server.ResourcePack == nil {
-					sealed.Proto.Server.ResourcePack = &schema.ResourcePack{}
-				}
-
-				sealed.Proto.Server.ResourcePack.ResourceInstance = append(sealed.Proto.Server.ResourcePack.ResourceInstance, node.ResourcePack.ResourceInstance...)
-
-				for _, ref := range node.ResourcePack.ResourceRef {
-					resourceRefs[ref.Canonical()] = ref
-				}
-			}
 		}
-	}
-
-	if len(resourceRefs) > 0 {
-		if sealed.Proto.Server.ResourcePack == nil {
-			sealed.Proto.Server.ResourcePack = &schema.ResourcePack{}
-		}
-
-		sealed.Proto.Server.ResourcePack.ResourceRef = maps.Values(resourceRefs)
-	}
-
-	if persistentVolumeCount > 0 && sealed.Proto.Server.DeployableClass != string(schema.DeployableClass_STATEFUL) {
-		return nil, fnerrors.BadInputError("%s: servers that use persistent storage are required to be of class %q",
-			sealed.Proto.Server.Name, schema.DeployableClass_STATEFUL)
 	}
 
 	if handler, ok := FrameworkHandlers[srv.Framework]; ok {
@@ -178,7 +143,66 @@ func TransformServer(ctx context.Context, pl pkggraph.PackageLoader, srv *schema
 		}
 	}
 
-	return sealed.Proto.Server, nil
+	return sealed.Result.Server, nil
+}
+
+func TransformServerFragment(ctx context.Context, pl pkggraph.PackageLoader, frag *schema.ServerFragment, pp *pkggraph.Package) (*schema.ServerFragment, error) {
+	loc := pp.Location
+
+	frag.PackageName = loc.PackageName.String()
+
+	// Make services and endpoints order stable.
+	sortServices(frag.Service)
+	sortServices(frag.Ingress)
+
+	return frag, nil
+}
+
+type nodeLike interface {
+	GetPackageName() string
+	GetVolume() []*schema.Volume
+	GetResourcePack() *schema.ResourcePack
+}
+
+func mergeNodeLike(node nodeLike, out *schema.ServerFragment) error {
+	for _, rs := range node.GetVolume() {
+		if rs.Owner != node.GetPackageName() {
+			return fnerrors.BadInputError("%s: volume: didn't expect owner to be %q", node.GetPackageName(), rs.Owner)
+		}
+
+		out.Volume = append(out.Volume, rs)
+	}
+
+	if node.GetResourcePack() != nil {
+		if out.ResourcePack == nil {
+			out.ResourcePack = &schema.ResourcePack{}
+		}
+
+		MergeResourcePack(node.GetResourcePack(), out.ResourcePack)
+	}
+
+	return nil
+}
+
+func MergeResourcePack(src, out *schema.ResourcePack) {
+	out.ResourceInstance = append(out.ResourceInstance, src.ResourceInstance...)
+	mergeResourceRefs(src, out)
+}
+
+func mergeResourceRefs(src, out *schema.ResourcePack) {
+	// O(n^2)
+	for _, ref := range src.ResourceRef {
+		existing := false
+		for _, x := range out.ResourceRef {
+			if x.Canonical() == ref.Canonical() {
+				existing = true
+				break
+			}
+		}
+		if !existing {
+			out.ResourceRef = append(out.ResourceRef, ref)
+		}
+	}
 }
 
 func sortServices(services []*schema.Server_ServiceSpec) {
@@ -199,42 +223,6 @@ func validatePackage(ctx context.Context, pp *pkggraph.Package) error {
 		binaryNames[binary.Name] = true
 	}
 
-	return nil
-}
-
-func validateServer(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, srv *schema.Server) error {
-	filesyncControllerMounts := 0
-	for _, m := range srv.MainContainer.Mount {
-		// Only supporting volumes within the same package for now.
-		volume := findVolume(srv.Volume, m.VolumeRef)
-		if volume == nil {
-			return fnerrors.NewWithLocation(loc, "volume %q does not exist", m.VolumeRef.Canonical())
-		}
-		if volume.Kind == constants.VolumeKindWorkspaceSync {
-			filesyncControllerMounts++
-		}
-	}
-	if filesyncControllerMounts > 1 {
-		return fnerrors.NewWithLocation(loc, "only one workspace sync mount is allowed per server")
-	}
-
-	volumeNames := map[string]struct{}{}
-	for _, v := range srv.Volume {
-		if _, ok := volumeNames[v.Name]; ok {
-			return fnerrors.NewWithLocation(loc, "volume %q is defined multiple times", v.Name)
-		}
-		volumeNames[v.Name] = struct{}{}
-	}
-
-	return nil
-}
-
-func findVolume(volumes []*schema.Volume, ref *schema.PackageRef) *schema.Volume {
-	for _, v := range volumes {
-		if v.Owner == ref.PackageName && v.Name == ref.Name {
-			return v
-		}
-	}
 	return nil
 }
 

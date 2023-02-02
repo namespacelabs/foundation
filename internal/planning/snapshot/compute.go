@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
+	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -44,8 +45,8 @@ type requiredServers struct {
 }
 
 type ServerSnapshot struct {
-	servers []planning.Server
-	sealed  pkggraph.SealedPackageLoader
+	stack  *planning.Stack
+	sealed pkggraph.SealedPackageLoader
 	// Used in Observe()
 	env      cfg.Context
 	packages []schema.PackageName
@@ -82,23 +83,23 @@ func computeSnapshot(ctx context.Context, env cfg.Context, packages []schema.Pac
 		servers = append(servers, server)
 	}
 
-	return &ServerSnapshot{servers: servers, sealed: pl.Seal(), env: env, packages: packages}, nil
-}
-
-func (snap *ServerSnapshot) Get(pkgs ...schema.PackageName) ([]planning.Server, error) {
-	var servers []planning.Server
-
-start:
-	for _, pkg := range pkgs {
-		for _, srv := range snap.servers {
-			if srv.PackageName() == pkg {
-				servers = append(servers, srv)
-				continue start
-			}
-		}
-		return nil, fnerrors.InternalError("%s: not present in the snapshot", pkg)
+	stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+	if err != nil {
+		return nil, err
 	}
 
+	return &ServerSnapshot{stack: stack, sealed: pl.Seal(), env: env, packages: packages}, nil
+}
+
+func (snap *ServerSnapshot) Get(pkgs ...schema.PackageName) ([]planning.PlannedServer, error) {
+	var servers []planning.PlannedServer
+	for _, pkg := range pkgs {
+		srv, ok := snap.stack.Get(pkg)
+		if !ok {
+			return nil, fnerrors.InternalError("%s: not present in the snapshot", pkg)
+		}
+		servers = append(servers, srv)
+	}
 	return servers, nil
 }
 
@@ -112,6 +113,10 @@ func (snap *ServerSnapshot) Env() pkggraph.Context {
 
 func (snap *ServerSnapshot) Equals(rhs *ServerSnapshot) bool {
 	return false // XXX optimization.
+}
+
+func (snap *ServerSnapshot) Stack() *planning.Stack {
+	return snap.stack
 }
 
 func (snap *ServerSnapshot) Observe(ctx context.Context, onChange func(compute.ResultWithTimestamp[any], compute.ObserveNote)) (func(), error) {

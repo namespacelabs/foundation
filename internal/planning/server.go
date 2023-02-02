@@ -24,9 +24,10 @@ type Server struct {
 	Provisioning pkggraph.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
 	EvalStartup  func(context.Context, pkggraph.Context, pkggraph.StartupInputs, []pkggraph.ValueWithPath) (*schema.StartupPlan, error)
 
-	env   pkggraph.SealedContext // The environment this server instance is bound to.
-	entry *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
-	deps  []*pkggraph.Package    // List of parsed deps.
+	env       pkggraph.SealedContext // The environment this server instance is bound to.
+	entry     *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
+	deps      []*pkggraph.Package    // List of parsed deps.
+	fragments []*schema.ServerFragment
 }
 
 func (t Server) Module() *pkggraph.Module              { return t.Location.Module }
@@ -92,8 +93,12 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 	}
 
 	t.Package = sealed.ParsedPackage
-	t.entry = sealed.Proto
+	t.entry = &schema.Stack_Entry{
+		Server: sealed.Result.Server,
+		Node:   sealed.Result.Nodes,
+	}
 	t.deps = sealed.Deps
+	t.fragments = sealed.Result.ServerFragments
 
 	if err := compatibility.CheckCompatible(env, t.entry.Server); err != nil {
 		return Server{}, err
@@ -125,6 +130,10 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		t.entry.ServerNaming = protos.Clone(t.entry.ServerNaming)
 	}
 	t.entry.ServerNaming.EnableNamespaceManaged = true
+
+	// for _, frag := range sealed.Result.ServerFragments {
+
+	// }
 
 	return t, nil
 }

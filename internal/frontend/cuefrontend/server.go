@@ -80,7 +80,9 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	var outBinaries []*schema.Binary
 
 	out := &schema.Server{
-		MainContainer: &schema.Container{},
+		Self: &schema.ServerFragment{
+			MainContainer: &schema.Container{},
+		},
 	}
 	out.Id = bits.ID
 	out.Name = bits.Name
@@ -104,7 +106,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 				return nil, nil, fnerrors.NewWithLocation(loc, "invalid package reference: %s", x)
 			}
 
-			out.MainContainer.BinaryRef = pkgRef
+			out.Self.MainContainer.BinaryRef = pkgRef
 		case map[string]interface{}:
 			if image, ok := x["image"]; ok {
 				// For prebuilt images, generating a binary in the server package and referring to it from the "Server.MainContainer".
@@ -114,7 +116,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 						LayerBuildPlan: []*schema.ImageBuildPlan{{ImageId: fmt.Sprintf("%s", image)}},
 					},
 				})
-				out.MainContainer.BinaryRef = schema.MakePackageRef(loc.PackageName, bits.Name)
+				out.Self.MainContainer.BinaryRef = schema.MakePackageRef(loc.PackageName, bits.Name)
 			} else {
 				return nil, nil, fnerrors.NewWithLocation(loc, "binary: must either specify an image, or be a pointer to a binary package")
 			}
@@ -152,7 +154,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		return strings.Compare(x, y) < 0
 	})
 
-	out.MainContainer.Env = env
+	out.Self.MainContainer.Env = env
 
 	var webServices schema.PackageList
 	for _, entry := range bits.URLMap {
@@ -173,7 +175,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 			return nil, nil, err
 		}
 
-		out.Service = append(out.Service, parsed)
+		out.Self.Service = append(out.Self.Service, parsed)
 	}
 
 	for name, svc := range bits.Ingress {
@@ -186,7 +188,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 			return nil, nil, err
 		}
 
-		out.Ingress = append(out.Ingress, parsed)
+		out.Self.Ingress = append(out.Self.Ingress, parsed)
 	}
 
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {

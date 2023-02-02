@@ -37,6 +37,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
+	"namespacelabs.dev/foundation/std/runtime/constants"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -79,9 +80,10 @@ type ProvisionOpts struct {
 type PlannedServer struct {
 	Server
 
-	DeclaredStack schema.PackageList
-	ParsedDeps    []*ParsedNode
-	Resources     []pkggraph.ResourceInstance
+	DeclaredStack  schema.PackageList
+	ParsedDeps     []*ParsedNode
+	Resources      []pkggraph.ResourceInstance
+	MergedFragment *schema.ServerFragment
 
 	AllocatedPorts    []*schema.Endpoint_Port
 	Endpoints         []*schema.Endpoint
@@ -140,10 +142,10 @@ func (stack *Stack) Get(srv schema.PackageName) (PlannedServer, bool) {
 	return PlannedServer{}, false
 }
 
-func (stack *Stack) GetServerProto(srv schema.PackageName) (*schema.Server, bool) {
+func (stack *Stack) GetStackEntry(srv schema.PackageName) (*schema.Stack_Entry, bool) {
 	server, ok := stack.Get(srv)
 	if ok {
-		return server.Proto(), true
+		return server.entry, true
 	}
 
 	return nil, false
@@ -297,8 +299,88 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 		ps.ParsedDeps = parsedDeps
 		ps.DeclaredStack = declaredStack
 
+		if len(server.fragments) == 0 {
+			return fnerrors.InternalError("list of server fragments should never be empty")
+		}
+
+		ps.MergedFragment = protos.Clone(server.fragments[0])
+		ps.MergedFragment.PackageName = server.PackageName().String()
+		ps.MergedFragment.MainContainer.Owner = nil
+
+		var extensionList schema.PackageList
+		extensionList.AddMultiple(schema.PackageNames(ps.MergedFragment.Extension...)...)
+
+		for i := 1; i < len(server.fragments); i++ {
+			frag := server.fragments[i]
+
+			if frag.MainContainer.BinaryRef != nil {
+				if ps.MergedFragment.MainContainer.BinaryRef != nil {
+					return fnerrors.New("main_container.binary_ref set more than once")
+				}
+				ps.MergedFragment.MainContainer.BinaryRef = frag.MainContainer.BinaryRef
+			}
+
+			if frag.MainContainer.Name != "" {
+				if ps.MergedFragment.MainContainer.Name != "" {
+					return fnerrors.New("main_container.Name set more than once")
+				}
+				ps.MergedFragment.MainContainer.Name = frag.MainContainer.Name
+			}
+
+			ps.MergedFragment.MainContainer.Args = append(ps.MergedFragment.MainContainer.Args, frag.MainContainer.Args...)
+			ps.MergedFragment.MainContainer.Env = append(ps.MergedFragment.MainContainer.Env, frag.MainContainer.Env...)
+			ps.MergedFragment.MainContainer.Mount = append(ps.MergedFragment.MainContainer.Mount, frag.MainContainer.Mount...)
+
+			if frag.MainContainer.Security != nil {
+				if ps.MergedFragment.MainContainer.Security != nil {
+					return fnerrors.New("main_container.security set more than once")
+				}
+				ps.MergedFragment.MainContainer.Security = frag.MainContainer.Security
+			}
+
+			ps.MergedFragment.Service = append(ps.MergedFragment.Service, frag.Service...)
+			ps.MergedFragment.Ingress = append(ps.MergedFragment.Ingress, frag.Ingress...)
+			ps.MergedFragment.Probe = append(ps.MergedFragment.Probe, frag.Probe...)
+			// XXX dedup
+			ps.MergedFragment.Volume = append(ps.MergedFragment.Volume, frag.Volume...)
+			ps.MergedFragment.Toleration = append(ps.MergedFragment.Toleration, frag.Toleration...)
+
+			if frag.Permissions != nil {
+				if ps.MergedFragment.Permissions == nil {
+					ps.MergedFragment.Permissions = &schema.ServerPermissions{}
+				}
+				ps.MergedFragment.Permissions.ClusterRole = append(ps.MergedFragment.Permissions.ClusterRole, frag.Permissions.ClusterRole...)
+			}
+
+			if frag.ResourcePack != nil {
+				if ps.MergedFragment.ResourcePack == nil {
+					ps.MergedFragment.ResourcePack = &schema.ResourcePack{}
+				}
+				parsing.MergeResourcePack(frag.ResourcePack, ps.MergedFragment.ResourcePack)
+			}
+
+			extensionList.AddMultiple(schema.PackageNames(frag.Extension...)...)
+		}
+
+		// XXX NSL-533
+		// for _, vol := range ps.MergedFragment.Volume {
+		// 	if vol.Kind == constants.VolumeKindPersistent {
+		// 		if server.Proto().DeployableClass != string(schema.DeployableClass_STATEFUL) {
+		// 			return fnerrors.BadInputError("%s: servers that use persistent storage are required to be of class %q",
+		// 				server.PackageName(), schema.DeployableClass_STATEFUL)
+		// 		}
+		// 		break
+		// 	}
+		// }
+
+		if err := validateServer(ctx, server.Location, ps.MergedFragment); err != nil {
+			return err
+		}
+
+		ps.MergedFragment.Extension = extensionList.PackageNamesAsString()
+
 		computed, err := parsing.LoadResources(ctx, server.SealedContext(), server.Package,
-			server.PackageName().String(), server.Proto().GetResourcePack())
+			server.PackageName().String(), ps.MergedFragment.ResourcePack)
 		if err != nil {
 			return err
 		}
@@ -306,7 +388,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 		ps.Resources = append(ps.Resources, computed...)
 
 		// Fill in env-bound data now, post ports allocation.
-		endpoints, internal, err := ComputeEndpoints(server, allocatedPorts.Ports)
+		endpoints, internal, err := ComputeEndpoints(server, ps.MergedFragment, allocatedPorts.Ports)
 		if err != nil {
 			return err
 		}
@@ -445,6 +527,42 @@ func traverseResources(sealedctx pkggraph.SealedContext, parentID string, r *res
 	}
 
 	return multierr.New(errs...)
+}
+
+func validateServer(ctx context.Context, loc pkggraph.Location, srv *schema.ServerFragment) error {
+	filesyncControllerMounts := 0
+	for _, m := range srv.GetMainContainer().Mount {
+		// Only supporting volumes within the same package for now.
+		volume := findVolume(srv.GetVolume(), m.VolumeRef)
+		if volume == nil {
+			return fnerrors.NewWithLocation(loc, "volume %q does not exist", m.VolumeRef.Canonical())
+		}
+		if volume.Kind == constants.VolumeKindWorkspaceSync {
+			filesyncControllerMounts++
+		}
+	}
+	if filesyncControllerMounts > 1 {
+		return fnerrors.NewWithLocation(loc, "only one workspace sync mount is allowed per server")
+	}
+
+	volumeNames := map[string]struct{}{}
+	for _, v := range srv.GetVolume() {
+		if _, ok := volumeNames[v.Name]; ok {
+			return fnerrors.NewWithLocation(loc, "volume %q is defined multiple times", v.Name)
+		}
+		volumeNames[v.Name] = struct{}{}
+	}
+
+	return nil
+}
+
+func findVolume(volumes []*schema.Volume, ref *schema.PackageRef) *schema.Volume {
+	for _, v := range volumes {
+		if v.Owner == ref.PackageName && v.Name == ref.Name {
+			return v
+		}
+	}
+	return nil
 }
 
 func EvalProvision(ctx context.Context, secrets is.SecretsSource, server Server, n *pkggraph.Package) (*ParsedNode, error) {

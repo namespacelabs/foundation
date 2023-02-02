@@ -38,7 +38,7 @@ func (sc *Schema) ExtsAndServices() []*Node {
 }
 
 func (n *Node) GetImportedPackages() []PackageName {
-	return asPackages(n.GetImport()...)
+	return PackageNames(n.GetImport()...)
 }
 
 func (n *Node) ErrorLocation() string { return n.PackageName }
@@ -93,18 +93,10 @@ func (n *Node) ProvidedInFrameworks() map[Framework]bool {
 }
 
 func (s *Server) GetImportedPackages() []PackageName {
-	return asPackages(s.GetImport()...)
+	return PackageNames(s.GetImport()...)
 }
 
 func (s *Server) ErrorLocation() string { return s.PackageName }
-
-func asPackages(strs ...string) []PackageName {
-	r := make([]PackageName, len(strs))
-	for k, s := range strs {
-		r[k] = PackageName(s)
-	}
-	return r
-}
 
 func (s *Stack) GetServer(pkg PackageName) *Stack_Entry {
 	if s == nil {
@@ -146,10 +138,6 @@ func (se *Stack_Entry) GetPackageName() PackageName {
 	return PackageName(se.GetServer().GetPackageName())
 }
 
-func (se *Stack_Entry) ExtsAndServices() []*Node {
-	return se.Node
-}
-
 func (se *Stack_Entry) Extensions() []*Node {
 	var services []*Node
 	for _, n := range se.Node {
@@ -168,20 +156,6 @@ func (se *Stack_Entry) Services() []*Node {
 		}
 	}
 	return services
-}
-
-func (se *Stack_Entry) ImportsOf(pkg PackageName) []PackageName {
-	for _, n := range se.ExtsAndServices() {
-		if pkg.Equals(n.GetPackageName()) {
-			return asPackages(n.GetImport()...)
-		}
-	}
-
-	if pkg.Equals(se.Server.GetPackageName()) {
-		return asPackages(se.Server.GetImport()...)
-	}
-
-	return nil
 }
 
 func (p *Provides_AvailableIn) ProvidedInFrameworks() map[Framework]bool {

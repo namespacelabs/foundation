@@ -390,7 +390,7 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 		deployable.ResourceDeps = resources[srv.PackageRef().Canonical()].Dependencies
 		deployable.PlannedResourceDeps = resources[srv.PackageRef().Canonical()].PlannedDependencies
 		deployable.SecretResources = resources[srv.PackageRef().Canonical()].Secrets
-		deployable.Permissions = srv.Proto().Permissions
+		deployable.Permissions = srv.MergedFragment.Permissions
 
 		for _, x := range resources[srv.PackageRef().Canonical()].PlannedDependencies {
 			found := false
@@ -405,7 +405,7 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 			}
 		}
 
-		if err := prepareRunOpts(ctx, &stack.Stack, srv.Server, resolved, &deployable); err != nil {
+		if err := prepareRunOpts(ctx, &stack.Stack, srv, resolved, &deployable); err != nil {
 			return runtime.DeploymentSpec{}, err
 		}
 
@@ -594,13 +594,13 @@ func prepareServerImages(ctx context.Context, planner planning.Planner, stack *p
 		if prebuilt != nil {
 			spec = build.PrebuiltPlan(*prebuilt, false /* platformIndependent */, build.PrebuiltResolveOpts())
 		} else {
-			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, makeBuildAssets(opts.IngressFragments), srv.Server, stack.Focus.Has(srv.PackageName()))
+			spec, err = integrations.IntegrationFor(srv.Framework()).PrepareBuild(ctx, makeBuildAssets(opts.IngressFragments), srv, stack.Focus.Has(srv.PackageName()))
 		}
 		if err != nil {
 			return nil, err
 		}
 
-		p, err := MakeBuildPlan(ctx, planner.Runtime, srv.Server, stack.Focus.Has(srv.PackageName()), spec)
+		p, err := MakeBuildPlan(ctx, planner.Runtime, srv, stack.Focus.Has(srv.PackageName()), spec)
 		if err != nil {
 			return nil, err
 		}
@@ -831,22 +831,24 @@ func computeStackAndImages(ctx context.Context, planner planning.Planner, stack 
 	return pkgs, images, nil
 }
 
-func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Server, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
+func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.PlannedServer, imgs ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
+	frag := srv.MergedFragment
+
 	out.ErrorLocation = srv.Location
 	out.PackageRef = srv.Proto().GetPackageRef()
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Replicas = proto.Replicas
 	out.Id = proto.Id
 	out.Name = proto.Name
-	out.Volumes = append(out.Volumes, proto.Volume...)
-	out.MainContainer.Mounts = append(out.MainContainer.Mounts, proto.MainContainer.Mount...)
+	out.Volumes = append(out.Volumes, frag.Volume...)
+	out.MainContainer.Mounts = append(out.MainContainer.Mounts, frag.MainContainer.Mount...)
 
 	out.MainContainer.Image = imgs.Binary
 	out.ConfigImage = imgs.Config
 
-	out.Probes = proto.Probe
-	out.Tolerations = proto.Toleration
+	out.Probes = frag.Probe
+	out.Tolerations = frag.Toleration
 
 	if err := integrations.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err
@@ -879,7 +881,7 @@ func prepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Ser
 		out.MainContainer.WorkingDir = merged.WorkingDir
 	}
 
-	main := srv.Proto().MainContainer
+	main := srv.MergedFragment.MainContainer
 
 	out.MainContainer.Args = append(out.MainContainer.Args, merged.Args...)
 	out.MainContainer.Env = append(out.MainContainer.Env, main.Env...)

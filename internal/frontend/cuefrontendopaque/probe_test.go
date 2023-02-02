@@ -19,7 +19,7 @@ func TestParseProbes(t *testing.T) {
 			{Kind: runtime.FnServiceReadyz, Http: &schema.Probe_Http{Path: "/"}},
 			{Kind: runtime.FnServiceReadyz, Exec: &schema.Probe_Exec{Command: []string{"foo"}}},
 		},
-		cueServer{},
+		cueServerExtension{},
 	); err == nil {
 		t.Fatalf("expected parse to fail")
 	}
@@ -29,7 +29,7 @@ func TestParseProbes(t *testing.T) {
 		[]*schema.Probe{
 			{Kind: runtime.FnServiceReadyz, Http: &schema.Probe_Http{Path: "/"}},
 		},
-		cueServer{
+		cueServerExtension{
 			ReadinessProbe: &cueProbe{Exec: &cueExecProbe{Command: []string{"foo"}}},
 		},
 	); err == nil {
@@ -41,7 +41,7 @@ func TestParseProbes(t *testing.T) {
 		[]*schema.Probe{
 			{Kind: runtime.FnServiceReadyz, Http: &schema.Probe_Http{Path: "/"}},
 		},
-		cueServer{
+		cueServerExtension{
 			Probes: map[string]cueProbe{
 				"readiness": {Exec: &cueExecProbe{Command: []string{"foo"}}},
 			},
@@ -53,7 +53,7 @@ func TestParseProbes(t *testing.T) {
 	if _, err := parseProbes(
 		pkggraph.Location{},
 		[]*schema.Probe{},
-		cueServer{
+		cueServerExtension{
 			ReadinessProbe: &cueProbe{Exec: &cueExecProbe{Command: []string{"foo"}}},
 			Probes: map[string]cueProbe{
 				"liveness": {Exec: &cueExecProbe{Command: []string{"foo"}}},
@@ -68,7 +68,7 @@ func TestParseProbes(t *testing.T) {
 		[]*schema.Probe{
 			{Kind: runtime.FnServiceReadyz, Http: &schema.Probe_Http{Path: "/"}},
 		},
-		cueServer{
+		cueServerExtension{
 			Probes: map[string]cueProbe{
 				"liveness": {Exec: &cueExecProbe{Command: []string{"foo"}}},
 			},

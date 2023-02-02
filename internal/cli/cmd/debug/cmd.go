@@ -21,7 +21,6 @@ func NewDebugCmd() *cobra.Command {
 	cmd.AddCommand(newImageIndexCmd())
 	cmd.AddCommand(newImageCmd())
 	cmd.AddCommand(newActionDemoCmd())
-	cmd.AddCommand(newGoSourcesCmd())
 	cmd.AddCommand(newDownloadCmd())
 	cmd.AddCommand(newPrepareCmd())
 	cmd.AddCommand(newDnsQuery())

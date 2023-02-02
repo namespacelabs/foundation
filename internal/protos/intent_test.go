@@ -42,22 +42,26 @@ func TestAllocateMessage(t *testing.T) {
 		{
 			JSON: `{
 				"import": ["1", "2"],
-				"main_container": {
-					"binary_ref": {
-						"package_name": "foobar"
-					},
-					"name": "sidecar",
-					"args": ["a", "b"]
+				"self": {
+					"main_container": {
+						"binary_ref": {
+							"package_name": "foobar"
+						},
+						"name": "sidecar",
+						"args": ["a", "b"]
+					}
 				}
 			}`,
 			Expected: &schema.Server{
 				Import: []string{"1", "2"},
-				MainContainer: &schema.Container{
-					BinaryRef: &schema.PackageRef{
-						PackageName: "foobar",
+				Self: &schema.ServerFragment{
+					MainContainer: &schema.Container{
+						BinaryRef: &schema.PackageRef{
+							PackageName: "foobar",
+						},
+						Name: "sidecar",
+						Args: []string{"a", "b"},
 					},
-					Name: "sidecar",
-					Args: []string{"a", "b"},
 				},
 			},
 		},

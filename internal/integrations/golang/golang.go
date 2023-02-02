@@ -80,7 +80,7 @@ type impl struct {
 	integrations.NoDev
 }
 
-func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
+func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, server planning.PlannedServer, isFocus bool) (build.Spec, error) {
 	ext := &FrameworkExt{}
 	if err := parsing.MustExtension(server.Proto().Ext, ext); err != nil {
 		return nil, fnerrors.AttachLocation(server.Location, err)
@@ -98,7 +98,7 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 	return bin, nil
 }
 
-func (impl) PrepareRun(ctx context.Context, t planning.Server, run *runtime.ContainerRunOpts) error {
+func (impl) PrepareRun(ctx context.Context, t planning.PlannedServer, run *runtime.ContainerRunOpts) error {
 	run.Command = []string{"/server"}
 	run.ReadOnlyFilesystem = true
 	run.RunAs = production.NonRootRunAs(production.Distroless)
@@ -246,7 +246,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 
 		// XXX this should be done upstream.
 		for _, p := range svc.ExportHttp {
-			sealed.Proto.Server.UrlMap = append(sealed.Proto.Server.UrlMap, &schema.Server_URLMapEntry{
+			sealed.Result.Server.UrlMap = append(sealed.Result.Server.UrlMap, &schema.Server_URLMapEntry{
 				PathPrefix:  p.Path,
 				IngressName: svc.IngressServiceName,
 				Kind:        p.Kind,
@@ -255,7 +255,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 		}
 	}
 
-	if len(sealed.Proto.Server.UrlMap) > 0 && !sealed.HasDep(httpNode) {
+	if len(sealed.Result.Server.UrlMap) > 0 && !sealed.HasDep(httpNode) {
 		return fnerrors.NewWithLocation(sealed.Location, "server exposes HTTP paths, it must depend on %s", httpNode)
 	}
 

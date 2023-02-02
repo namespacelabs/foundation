@@ -24,8 +24,8 @@ type Integration interface {
 	parsing.FrameworkHandler
 
 	// Called on `ns build`, `ns deploy`.
-	PrepareBuild(context.Context, assets.AvailableBuildAssets, planning.Server, bool /*isFocus*/) (build.Spec, error)
-	PrepareRun(context.Context, planning.Server, *runtime.ContainerRunOpts) error
+	PrepareBuild(context.Context, assets.AvailableBuildAssets, planning.PlannedServer, bool /*isFocus*/) (build.Spec, error)
+	PrepareRun(context.Context, planning.PlannedServer, *runtime.ContainerRunOpts) error
 
 	// Called on `ns tidy`
 	TidyWorkspace(context.Context, cfg.Context, []*pkggraph.Package) error
@@ -37,8 +37,8 @@ type Integration interface {
 	GenerateServer(*pkggraph.Package, []*schema.Node) ([]*schema.SerializedInvocation, error)
 
 	// Called on `ns dev`.
-	PrepareDev(context.Context, runtime.ClusterNamespace, planning.Server) (context.Context, DevObserver, error)
-	PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.Server) *HotReloadOpts
+	PrepareDev(context.Context, runtime.ClusterNamespace, planning.PlannedServer) (context.Context, DevObserver, error)
+	PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.PlannedServer) *HotReloadOpts
 }
 
 type DevObserver interface {
@@ -101,10 +101,10 @@ func (MaybeTidy) TidyServer(context.Context, cfg.Context, pkggraph.PackageLoader
 
 type NoDev struct{}
 
-func (NoDev) PrepareDev(ctx context.Context, _ runtime.ClusterNamespace, _ planning.Server) (context.Context, DevObserver, error) {
+func (NoDev) PrepareDev(ctx context.Context, _ runtime.ClusterNamespace, _ planning.PlannedServer) (context.Context, DevObserver, error) {
 	return ctx, nil, nil
 }
 
-func (NoDev) PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.Server) *HotReloadOpts {
+func (NoDev) PrepareHotReload(context.Context, *wsremote.SinkRegistrar, planning.PlannedServer) *HotReloadOpts {
 	return nil
 }

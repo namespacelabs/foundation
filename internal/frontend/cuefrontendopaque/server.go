@@ -10,22 +10,28 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/resources"
 )
 
-var serverFields = []string{
-	"name", "class", "args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
-	"mounts", "resources", "integration", "image", "imageFrom", "unstable_naming", "requires", "replicas", "tolerations",
-	// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
-	"spec",
-}
+var (
+	extensionFields = []string{
+		"args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
+		"mounts", "resources", "requires", "tolerations",
+		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
+		"spec"}
+
+	serverFields = append(slices.Clone(extensionFields),
+		"name", "class", "integration", "image", "imageFrom", "unstable_naming", "replicas", "spec")
+)
 
 type cueServer struct {
 	Name  string `json:"name"`
@@ -33,6 +39,10 @@ type cueServer struct {
 
 	Replicas int32 `json:"replicas"`
 
+	cueServerExtension
+}
+
+type cueServerExtension struct {
 	Args *args.ArgsListOrMap `json:"args"`
 	Env  *args.EnvMap        `json:"env"`
 
@@ -45,6 +55,8 @@ type cueServer struct {
 	Probes         map[string]cueProbe         `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
 	Security       *cueServerSecurity          `json:"security,omitempty"`
 	Tolerations    []*schema.Server_Toleration `json:"tolerations,omitempty"`
+
+	Extensions []string `json:"extensions,omitempty"`
 }
 
 type cuePermissions struct {
@@ -57,7 +69,7 @@ type cueServerSecurity struct {
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
-func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, *schema.StartupPlan, error) {
+func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.Server, *phase1plan, error) {
 	loc := pkg.Location
 
 	if err := cuefrontend.ValidateNoExtraFields(loc, "server" /* messagePrefix */, v, serverFields); err != nil {
@@ -69,12 +81,17 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		return nil, nil, err
 	}
 
+	fragment, phase1plan, err := parseServerExtension(ctx, env, pl, pkg, bits.cueServerExtension, v)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	out := &schema.Server{
-		MainContainer: &schema.Container{},
-		Name:          bits.Name,
-		Framework:     schema.Framework_OPAQUE,
-		RunByDefault:  true,
-		Replicas:      bits.Replicas,
+		Name:         bits.Name,
+		Framework:    schema.Framework_OPAQUE,
+		RunByDefault: true,
+		Replicas:     bits.Replicas,
+		Self:         fragment,
 	}
 
 	switch bits.Class {
@@ -89,6 +106,31 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		}
 	default:
 		return nil, nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
+	}
+
+	return out, phase1plan, nil
+}
+
+func parseCueServerExtension(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, v *fncue.CueV) (*schema.ServerFragment, *phase1plan, error) {
+	loc := pkg.Location
+
+	if err := cuefrontend.ValidateNoExtraFields(loc, "extension" /* messagePrefix */, v, extensionFields); err != nil {
+		return nil, nil, err
+	}
+
+	var bits cueServerExtension
+	if err := v.Val.Decode(&bits); err != nil {
+		return nil, nil, err
+	}
+
+	return parseServerExtension(ctx, env, pl, pkg, bits, v)
+}
+
+func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, bits cueServerExtension, v *fncue.CueV) (*schema.ServerFragment, *phase1plan, error) {
+	loc := pkg.Location
+
+	out := &schema.ServerFragment{
+		MainContainer: &schema.Container{},
 	}
 
 	// Field validation needs to be done separately, because after parsing to JSON extra fields are lost.
@@ -140,6 +182,37 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		return nil, nil, err
 	}
 
+	var parsedSidecars []*schema.Container
+	var parsedInitContainers []*schema.Container
+	if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
+		it, err := sidecars.Val.Fields()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		for it.Next() {
+			val := &fncue.CueV{Val: it.Value()}
+
+			if err := cuefrontend.ValidateNoExtraFields(loc, fmt.Sprintf("sidecar %q:", it.Label()) /* messagePrefix */, val, sidecarFields); err != nil {
+				return nil, nil, err
+			}
+
+			parsedContainer, err := parseCueContainer(ctx, env, pl, pkg, it.Label(), loc, val)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			out.Volume = append(out.Volume, parsedContainer.volumes...)
+			pkg.Binaries = append(pkg.Binaries, parsedContainer.inlineBinaries...)
+
+			if v, _ := val.LookupPath("init").Val.Bool(); v {
+				parsedInitContainers = append(parsedInitContainers, parsedContainer.container)
+			} else {
+				parsedSidecars = append(parsedSidecars, parsedContainer.container)
+			}
+		}
+	}
+
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
 		parsedMounts, volumes, err := cuefrontend.ParseMounts(ctx, pl, loc, mounts)
 		if err != nil {
@@ -149,6 +222,9 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.Volume = append(out.Volume, volumes...)
 		out.MainContainer.Mount = parsedMounts
 	}
+
+	// XXX Hm, if anything this should be other way around.
+	out.Volume = append(out.Volume, pkg.Volumes...)
 
 	if resources := v.LookupPath("resources"); resources.Exists() {
 		resourceList, err := cuefrontend.ParseResourceList(resources)
@@ -179,7 +255,7 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 
 		availableServers.AddMultiple(declaredStack...)
 
-		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageRef(pkg.PackageName(), out.Name), declaredStack, out.ResourcePack); err != nil {
+		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), declaredStack, out.ResourcePack); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -250,7 +326,21 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.Toleration = bits.Tolerations
 	}
 
-	return out, startupPlan, nil
+	for _, ext := range bits.Extensions {
+		pkg := schema.PackageName(ext)
+		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, pkg); err != nil {
+			return nil, nil, err
+		}
+		out.Extension = append(out.Extension, ext)
+	}
+
+	phase1plan := &phase1plan{
+		StartupPlan:    startupPlan,
+		Sidecars:       parsedSidecars,
+		InitContainers: parsedInitContainers,
+	}
+
+	return out, phase1plan, nil
 }
 
 func validateStartupPlan(ctx context.Context, pl parsing.EarlyPackageLoader, pkg *pkggraph.Package, startupPlan *schema.StartupPlan) error {
@@ -304,7 +394,8 @@ func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoade
 		// Maybe it's an inline resource?
 		// XXX rethink how scoped resource instances should work.
 
-		for _, pack := range []*schema.ResourcePack{targetPkg.Extension.GetResourcePack(), targetPkg.Service.GetResourcePack(), targetPkg.Server.GetResourcePack()} {
+		for _, pack := range []*schema.ResourcePack{targetPkg.Extension.GetResourcePack(),
+			targetPkg.Service.GetResourcePack(), targetPkg.Server.GetSelf().GetResourcePack()} {
 			for _, r := range pack.GetResourceInstance() {
 				if r.Name == resource.Name && r.PackageName == resource.PackageName {
 					return canonicalizeClassInstanceFieldRef(ctx, pl, loc, r.Class, field.GetFieldSelector())

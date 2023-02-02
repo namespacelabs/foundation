@@ -34,8 +34,8 @@ type OpaqueIntegration struct {
 	integrations.MaybeTidy // TODO implement tidy per parser.
 }
 
-func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.AvailableBuildAssets, server planning.Server, isFocus bool) (build.Spec, error) {
-	binRef := server.Proto().GetMainContainer().GetBinaryRef()
+func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.AvailableBuildAssets, server planning.PlannedServer, isFocus bool) (build.Spec, error) {
+	binRef := server.MergedFragment.GetMainContainer().GetBinaryRef()
 
 	if binRef == nil {
 		return nil, fnerrors.InternalError("server binary is not set at %s", server.Location)
@@ -77,8 +77,8 @@ func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.Availab
 	}
 }
 
-func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server, run *runtime.ContainerRunOpts) error {
-	binRef := server.Proto().GetMainContainer().GetBinaryRef()
+func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.PlannedServer, run *runtime.ContainerRunOpts) error {
+	binRef := server.MergedFragment.GetMainContainer().GetBinaryRef()
 	if binRef != nil {
 		_, binary, err := pkggraph.LoadBinary(ctx, server.SealedContext(), binRef)
 		if err != nil {
@@ -114,14 +114,14 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Server,
 	return nil
 }
 
-func (OpaqueIntegration) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, server planning.Server) (context.Context, integrations.DevObserver, error) {
+func (OpaqueIntegration) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, server planning.PlannedServer) (context.Context, integrations.DevObserver, error) {
 	filesyncConfig, err := getFilesyncWorkspacePath(server)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if filesyncConfig != nil {
-		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, server)
+		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, server.Server)
 	}
 
 	return ctx, nil, nil
@@ -139,7 +139,7 @@ func (OpaqueIntegration) DevelopmentPackages() []schema.PackageName {
 	return nil
 }
 
-func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
+func (OpaqueIntegration) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.PlannedServer) *integrations.HotReloadOpts {
 	if remote == nil {
 		return nil
 	}
@@ -180,14 +180,14 @@ type filesyncConfig struct {
 }
 
 // If not nil, filesync is requested and enabled.
-func getFilesyncWorkspacePath(server planning.Server) (*filesyncConfig, error) {
+func getFilesyncWorkspacePath(server planning.PlannedServer) (*filesyncConfig, error) {
 	if !UseDevBuild(server.SealedContext().Environment()) {
 		return nil, nil
 	}
 
-	for _, m := range server.Proto().MainContainer.Mount {
+	for _, m := range server.MergedFragment.GetMainContainer().GetMount() {
 		// Only supporting volumes within the same package for now.
-		v, err := findVolume(server.Proto().Volume, m.VolumeRef.Name)
+		v, err := findVolume(server.Proto().GetSelf().Volume, m.VolumeRef.Name)
 		if err != nil {
 			return nil, err
 		}

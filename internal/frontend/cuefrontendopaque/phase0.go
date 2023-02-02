@@ -6,7 +6,6 @@ package cuefrontendopaque
 
 import (
 	"context"
-	"fmt"
 
 	"cuelang.org/go/cue"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -52,6 +51,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	if loc.Module.ModuleName() == string(loc.PackageName) {
 		allowedFields = append(allowedFields, cuefrontend.ModuleFields...)
 	}
+
 	// Is this too strict? What if there is non-Namespace CUE in a package?
 	if err := cuefrontend.ValidateNoExtraFields(loc, "top level" /* messagePrefix */, v, allowedFields); err != nil {
 		return nil, err
@@ -65,48 +65,15 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 	var validators []func() error
 
 	if server := v.LookupPath("server"); server.Exists() {
-		parsedSrv, startupPlan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
+		parsedSrv, phase1plan, err := parseCueServer(ctx, ft.env, ft.loader, parsedPkg, server)
 		if err != nil {
 			return nil, fnerrors.NewWithLocation(loc, "parsing server failed: %w", err)
 		}
 
 		// Defer validating the startup plan until the rest of the package is loaded.
 		validators = append(validators, func() error {
-			return validateStartupPlan(ctx, ft.loader, parsedPkg, startupPlan)
+			return validateStartupPlan(ctx, ft.loader, parsedPkg, phase1plan.StartupPlan)
 		})
-
-		parsedSrv.Volume = append(parsedSrv.Volume, parsedPkg.Volumes...)
-
-		var parsedSidecars []*schema.Container
-		var parsedInitContainers []*schema.Container
-		if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
-			it, err := sidecars.Val.Fields()
-			if err != nil {
-				return nil, err
-			}
-
-			for it.Next() {
-				val := &fncue.CueV{Val: it.Value()}
-
-				if err := cuefrontend.ValidateNoExtraFields(loc, fmt.Sprintf("sidecar %q:", it.Label()) /* messagePrefix */, val, sidecarFields); err != nil {
-					return nil, err
-				}
-
-				parsedContainer, err := parseCueContainer(ctx, ft.env, ft.loader, parsedPkg, it.Label(), loc, val)
-				if err != nil {
-					return nil, err
-				}
-
-				parsedSrv.Volume = append(parsedSrv.Volume, parsedContainer.volumes...)
-				parsedPkg.Binaries = append(parsedPkg.Binaries, parsedContainer.inlineBinaries...)
-
-				if v, _ := val.LookupPath("init").Val.Bool(); v {
-					parsedInitContainers = append(parsedInitContainers, parsedContainer.container)
-				} else {
-					parsedSidecars = append(parsedSidecars, parsedContainer.container)
-				}
-			}
-		}
 
 		parsedPkg.Server = parsedSrv
 
@@ -124,26 +91,38 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		binRef, err := binary.ParseImage(ctx, ft.env, ft.loader, parsedPkg, "server" /* binaryName */, server, binary.ParseImageOpts{})
 		if err != nil {
 			return nil, err
-		}
-		if binRef != nil {
+		} else if binRef != nil {
 			if err := integrationapplying.SetServerBinaryRef(parsedPkg, binRef); err != nil {
 				return nil, err
 			}
 		}
 
-		phase1plan := &phase1plan{
-			startupPlan:    startupPlan,
-			sidecars:       parsedSidecars,
-			initContainers: parsedInitContainers,
-		}
-
 		if naming := server.LookupPath("unstable_naming"); naming.Exists() {
-			phase1plan.naming, err = cuefrontend.ParseNaming(naming)
+			phase1plan.Naming, err = cuefrontend.ParseNaming(naming)
 			if err != nil {
 				return nil, err
 			}
 		}
 
+		parsedPkg.Parsed = phase1plan
+	}
+
+	if extension := v.LookupPath("extension"); extension.Exists() {
+		parsed, phase1plan, err := parseCueServerExtension(ctx, ft.env, ft.loader, parsedPkg, extension)
+		if err != nil {
+			return nil, fnerrors.NewWithLocation(loc, "parsing server failed: %w", err)
+		}
+
+		// Defer validating the startup plan until the rest of the package is loaded.
+		validators = append(validators, func() error {
+			return validateStartupPlan(ctx, ft.loader, parsedPkg, phase1plan.StartupPlan)
+		})
+
+		if parsedPkg.Server != nil {
+			return nil, fnerrors.NewWithLocation(loc, "it is not yet possible to declare a server and an extension in the same package")
+		}
+
+		parsedPkg.ServerFragment = parsed
 		parsedPkg.Parsed = phase1plan
 	}
 

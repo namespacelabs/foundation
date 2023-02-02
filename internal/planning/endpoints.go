@@ -27,9 +27,8 @@ func RegisterEndpointProvider(fmwk schema.Framework, f EndpointProvider) {
 	endpointProviderByFramework[fmwk.String()] = f
 }
 
-func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
 	sch := srv.StackEntry()
-
 	serverPorts := append([]*schema.Endpoint_Port{}, sch.Server.StaticPort...)
 	serverPorts = append(serverPorts, allocatedPorts...)
 
@@ -64,7 +63,7 @@ func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*sc
 
 	// Handle statically defined services.
 	server := sch.Server
-	for _, s := range server.GetService() {
+	for _, s := range merged.GetService() {
 		t := schema.Endpoint_PRIVATE
 		if s.EndpointType != schema.Endpoint_INGRESS_UNSPECIFIED {
 			t = s.EndpointType
@@ -77,7 +76,7 @@ func ComputeEndpoints(srv Server, allocatedPorts []*schema.Endpoint_Port) ([]*sc
 		endpoints = append(endpoints, spec)
 	}
 
-	for _, s := range server.GetIngress() {
+	for _, s := range merged.GetIngress() {
 		if s.EndpointType != schema.Endpoint_INGRESS_UNSPECIFIED && s.EndpointType != schema.Endpoint_INTERNET_FACING {
 			return nil, nil, fnerrors.InternalError("ingress endpoint type is incompatible, saw %v", s.EndpointType)
 		}

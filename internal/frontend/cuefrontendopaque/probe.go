@@ -50,7 +50,7 @@ func (e *cueExecProbe) UnmarshalJSON(data []byte) error {
 	return fnerrors.BadInputError("failed to parse exec probe, unexpected token %v", tok)
 }
 
-func parseProbes(loc pkggraph.Location, base []*schema.Probe, server cueServer) ([]*schema.Probe, error) {
+func parseProbes(loc pkggraph.Location, base []*schema.Probe, server cueServerExtension) ([]*schema.Probe, error) {
 	if server.ReadinessProbe != nil && server.Probes != nil {
 		return nil, fnerrors.AttachLocation(loc, fnerrors.BadInputError("probes and probe are exclusive"))
 	}

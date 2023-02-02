@@ -40,7 +40,8 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 		}
 	}
 
-	if len(pkg.Server.Ingress) > 0 || len(pkg.Server.Service) > 0 {
+	// XXX this is insufficient -- this check needs to be made at planning time when the whole graph has been computed.
+	if len(pkg.Server.GetSelf().Ingress) > 0 || len(pkg.Server.GetSelf().Service) > 0 {
 		return fnerrors.NewWithLocation(pkg.Location, "web servers can't have services")
 	}
 
@@ -73,7 +74,13 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	// Generating a public service for the frontend.
 	// Use-case for private Web servers is unclear, we can add a field in the syntax later if needed.
 	servicePort := data.DevPort
-	pkg.Server.Ingress = append(pkg.Server.Ingress, &schema.Server_ServiceSpec{
+
+	if pkg.Server.Self == nil {
+		pkg.Server.Self = &schema.ServerFragment{}
+	}
+
+	// Make this an extension instead.
+	pkg.Server.Self.Ingress = append(pkg.Server.Self.Ingress, &schema.Server_ServiceSpec{
 		Name: pkg.Server.Name,
 		Port: &schema.Endpoint_Port{
 			Name:          pkg.Server.Name,

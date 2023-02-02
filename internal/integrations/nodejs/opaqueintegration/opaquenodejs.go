@@ -27,15 +27,15 @@ type impl struct {
 	opaque.OpaqueIntegration
 }
 
-func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, integrations.DevObserver, error) {
+func (impl) PrepareDev(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.PlannedServer) (context.Context, integrations.DevObserver, error) {
 	if opaque.UseDevBuild(srv.SealedContext().Environment()) {
-		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv)
+		return hotreload.ConfigureFileSyncDevObserver(ctx, cluster, srv.Server)
 	}
 
 	return ctx, nil, nil
 }
 
-func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.Server) *integrations.HotReloadOpts {
+func (impl) PrepareHotReload(ctx context.Context, remote *wsremote.SinkRegistrar, srv planning.PlannedServer) *integrations.HotReloadOpts {
 	if remote == nil {
 		return nil
 	}

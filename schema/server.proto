@@ -29,7 +29,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 41
+// Next ID: 42
 message Server {
     reserved 9, 13, 17, 19, 20, 27, 28, 30, 32, 34;
 
@@ -70,11 +70,6 @@ message Server {
     // E.g. `ns deploy` should not deploy test only servers, unless explicitly mentioned.
     bool run_by_default = 29;
 
-    Container main_container = 33;
-
-    repeated ServiceSpec service = 10;
-    repeated ServiceSpec ingress = 11;
-
     repeated Reference reference = 12;
 
     // Set of dependencies specified explicitly by the user.
@@ -86,20 +81,13 @@ message Server {
     // A set of ports that this server exports and require no configuration.
     repeated Endpoint.Port static_port = 16;
 
-    reserved 18, 22, 36;
+    reserved 10, 11, 18, 22, 36, 26, 33, 35, 37, 38, 40;
 
     repeated EnvironmentRequirement environment_requirement = 24;
 
-    // Includes file-level and inlined volumes.
-    repeated Volume volume = 26;
+    // This duplicates some of the fields above while we work on a transition.
+    ServerFragment self = 41;
 
-    ResourcePack resource_pack = 35;
-
-    ServerPermissions permissions = 37;
-
-    repeated Probe probe = 38;
-
-    repeated Toleration toleration = 40;
 
     message ServiceSpec {
         string                   name             = 1;
@@ -140,6 +128,20 @@ message Server {
         string value    = 3;
         string effect   = 4;
     }
+}
+
+message ServerFragment {
+    // The package name (computed).
+    string package_name                   = 1;
+    Container main_container              = 2;
+    repeated Server.ServiceSpec service   = 3;
+    repeated Server.ServiceSpec ingress   = 4;
+    repeated Probe probe                  = 5;
+    repeated Volume volume                = 6;
+    ResourcePack resource_pack            = 7;
+    ServerPermissions permissions         = 8;
+    repeated Server.Toleration toleration = 9;
+    repeated string extension             = 10; // Package name.
 }
 
 // Allocations for a tree of instanced values.

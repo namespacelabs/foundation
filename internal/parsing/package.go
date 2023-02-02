@@ -9,7 +9,6 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/integration/api"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -26,6 +25,13 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 
 	if pp.Server != nil {
 		pp.Server, err = TransformServer(ctx, pl, pp.Server, pp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if pp.ServerFragment != nil {
+		pp.ServerFragment, err = TransformServerFragment(ctx, pl, pp.ServerFragment, pp)
 		if err != nil {
 			return nil, err
 		}
@@ -82,21 +88,6 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	return pp, nil
 }
 
-func hasReadinessProbe(server *schema.Server) bool {
-	for _, probe := range server.Probe {
-		if probe.Kind == runtime.FnServiceReadyz {
-			return true
-		}
-	}
-
-	// This ignores Namespace-generated readiness checks (e.g. for Go application framework)
-	// TODO refactor their modeling.
-	return false
-}
-
 func shouldCreateStartupTest(server *schema.Server) bool {
-	// XXX startup tests are disabled until we rethink the modeling. There are
-	// various servers that have side-effect initialization, which can't be
-	// easily be tested.
-	return false && server.RunByDefault && hasReadinessProbe(server)
+	return false
 }

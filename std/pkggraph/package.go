@@ -25,9 +25,10 @@ type Package struct {
 	Parsed         PreProvision
 
 	// One of.
-	Extension *schema.Node
-	Service   *schema.Node
-	Server    *schema.Server
+	Extension      *schema.Node
+	Service        *schema.Node
+	Server         *schema.Server
+	ServerFragment *schema.ServerFragment
 
 	// Includes auto-generated (e.g. server startup) tests.
 	Tests []*schema.Test

@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
-func serverToRuntimeConfig(stack serverStack, ps planning.PlannedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
+func serverToRuntimeConfig(stack *planning.StackWithIngress, ps planning.PlannedServer, serverImage oci.ImageID) (*runtime.RuntimeConfig, error) {
 	srv := ps.Server
 	env := srv.SealedContext().Environment()
 	config := &runtime.RuntimeConfig{
 		Environment: makeEnv(env),
-		Current:     makeServerConfig(stack, srv.Proto(), env),
+		Current:     makeServerConfig(stack, ps, env),
 	}
 
 	config.Current.ImageRef = serverImage.String()
@@ -30,7 +30,7 @@ func serverToRuntimeConfig(stack serverStack, ps planning.PlannedServer, serverI
 			continue
 		}
 
-		ref, ok := stack.GetServerProto(pkg)
+		ref, ok := stack.Get(pkg)
 		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
@@ -52,7 +52,7 @@ func TestStackToRuntimeConfig(stack *planning.StackWithIngress, sutServers []str
 	}
 
 	for _, pkg := range sutServers {
-		ref, ok := stack.GetServerProto(schema.MakePackageName(pkg))
+		ref, ok := stack.Get(schema.MakePackageName(pkg))
 		if !ok {
 			return nil, fnerrors.InternalError("%s: missing in the stack", pkg)
 		}
@@ -76,10 +76,12 @@ func makeEnv(env *schema.Environment) *runtime.RuntimeConfig_Environment {
 	return res
 }
 
-func makeServerConfig(stack serverStack, server *schema.Server, env *schema.Environment) *runtime.Server {
+func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServer, env *schema.Environment) *runtime.Server {
+	server := srv.MergedFragment
+
 	current := &runtime.Server{
 		PackageName: server.PackageName,
-		ModuleName:  server.ModuleName,
+		ModuleName:  srv.Module().ModuleName(),
 	}
 
 	for _, service := range server.Service {
@@ -111,7 +113,7 @@ func makePort(service *schema.Server_ServiceSpec) *runtime.Server_Port {
 }
 
 // TODO: consolidate with "resolveBackend" from Node.js build
-func makeServiceIngress(stack serverStack, endpoint *schema.Endpoint, env *schema.Environment) *runtime.Server_Ingress {
+func makeServiceIngress(stack *planning.StackWithIngress, endpoint *schema.Endpoint, env *schema.Environment) *runtime.Server_Ingress {
 	// There is often no ingress in tests so we use the in-cluster address.
 	// In the future we could allow the user to annotate domains which would
 	// be accessible from the test environment.

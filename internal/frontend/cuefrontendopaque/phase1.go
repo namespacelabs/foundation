@@ -13,21 +13,21 @@ import (
 )
 
 type phase1plan struct {
-	startupPlan    *schema.StartupPlan
-	declaredStack  []schema.PackageName
-	sidecars       []*schema.Container
-	initContainers []*schema.Container
-	naming         *schema.Naming
+	StartupPlan    *schema.StartupPlan
+	DeclaredStack  []schema.PackageName
+	Sidecars       []*schema.Container
+	InitContainers []*schema.Container
+	Naming         *schema.Naming
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env cfg.Context, inputs pkggraph.ProvisionInputs) (pkggraph.ProvisionPlan, error) {
 	var pdata pkggraph.ProvisionPlan
 
-	pdata.StartupPlan = p1.startupPlan
-	pdata.DeclaredStack = p1.declaredStack
-	pdata.Sidecars = p1.sidecars
-	pdata.Inits = p1.initContainers
-	pdata.Naming = p1.naming
+	pdata.StartupPlan = p1.StartupPlan
+	pdata.DeclaredStack = p1.DeclaredStack
+	pdata.Sidecars = p1.Sidecars
+	pdata.Inits = p1.InitContainers
+	pdata.Naming = p1.Naming
 
 	return pdata, nil
 }

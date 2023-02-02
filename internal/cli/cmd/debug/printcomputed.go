@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos/resolver"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -47,7 +48,7 @@ func newPrintComputedCmd() *cobra.Command {
 				return err
 			}
 
-			return output(ctx, pl, sealed.Proto, outputType)
+			return output(ctx, pl, &schema.Stack_Entry{Server: sealed.Result.Server, Node: sealed.Result.Nodes}, outputType)
 		})
 }
 

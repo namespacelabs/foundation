@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -52,7 +53,7 @@ func newPrintSealedCmd() *cobra.Command {
 					return err
 				}
 
-				return output(ctx, pl, sealed.Proto, outputType)
+				return output(ctx, pl, &schema.Stack_Entry{Server: sealed.Result.Server, Node: sealed.Result.Nodes}, outputType)
 			} else {
 				t, err := planning.RequireServer(ctx, env, loc.AsPackageName())
 				if err != nil {

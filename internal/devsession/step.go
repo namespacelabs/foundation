@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
-	"namespacelabs.dev/foundation/internal/planning/eval"
 	"namespacelabs.dev/foundation/internal/planning/snapshot"
 	"namespacelabs.dev/foundation/internal/portforward"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -127,10 +126,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 			}
 		}
 
-		stack, err := planning.ComputeStack(ctx, focus, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
-		if err != nil {
-			return err
-		}
+		stack := snapshot.Stack()
 
 		do.session.updateStackInPlace(func(s *Stack) {
 			s.Stack = stack.Proto()
@@ -190,7 +186,7 @@ func (do *buildAndDeploy) Updated(ctx context.Context, r compute.Resolved) error
 					return err
 				}
 
-				s, err := config.Rehydrate(ctx, server, buildID)
+				s, err := config.Rehydrate(ctx, server.Server, buildID)
 				if err != nil {
 					return err
 				}
@@ -234,7 +230,7 @@ func (do *buildAndDeploy) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func resetStack(out *Stack, env cfg.Context, availableEnvs []*schema.Environment, focus []planning.Server) {
+func resetStack(out *Stack, env cfg.Context, availableEnvs []*schema.Environment, focus []planning.PlannedServer) {
 	workspace := protos.Clone(env.Workspace().Proto())
 
 	out.AbsRoot = env.Workspace().LoadedFrom().AbsPath

@@ -29,7 +29,7 @@ import (
 
 var RunCodegen = true
 
-func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Server, focused bool, spec build.Spec) (build.Plan, error) {
+func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.PlannedServer, focused bool, spec build.Spec) (build.Plan, error) {
 	return tasks.Return(ctx, tasks.Action("planning.prepare-server-image").Scope(server.PackageName()),
 		func(ctx context.Context) (build.Plan, error) {
 			platforms, err := rc.TargetPlatforms(ctx)
@@ -60,7 +60,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Serv
 				SourcePackage: server.PackageName(),
 				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
-				Workspace:     hotreload.NewDevModule(ws, observeChanges, remote != nil, *opts, &codegenTrigger{srv: server}),
+				Workspace:     hotreload.NewDevModule(ws, observeChanges, remote != nil, *opts, &codegenTrigger{srv: server.Server}),
 				Platforms:     platforms,
 			}, nil
 		})

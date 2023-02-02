@@ -108,9 +108,13 @@ func InjectBackendsAsResourceDeps(ctx context.Context, pl pkggraph.PackageLoader
 }
 
 func InjectBackends(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph.Package, servers schema.PackageList) error {
-	if pkg.Server.ResourcePack == nil {
-		pkg.Server.ResourcePack = &schema.ResourcePack{}
+	if pkg.Server.Self == nil {
+		pkg.Server.Self = &schema.ServerFragment{}
 	}
 
-	return parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), servers.PackageNames(), pkg.Server.ResourcePack)
+	if pkg.Server.Self.ResourcePack == nil {
+		pkg.Server.Self.ResourcePack = &schema.ResourcePack{}
+	}
+
+	return parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), servers.PackageNames(), pkg.Server.Self.ResourcePack)
 }

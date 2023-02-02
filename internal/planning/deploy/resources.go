@@ -54,13 +54,6 @@ type plannedResource struct {
 	Invocations []*schema.SerializedInvocation
 }
 
-type serverStack interface {
-	GetServerProto(srv schema.PackageName) (*schema.Server, bool)
-	GetEndpoints(srv schema.PackageName) ([]*schema.Endpoint, bool)
-	GetComputedResources(resourceID string) []pkggraph.ResourceInstance
-	GetIngressesForService(endpointOwner string, serviceName string) []*schema.IngressFragment
-}
-
 type resourcePlanInvocation struct {
 	Env                  pkggraph.SealedContext
 	Secrets              is.GroundedSecrets
@@ -75,7 +68,7 @@ type resourcePlanInvocation struct {
 	Image                oci.ResolvableImage
 }
 
-func planResources(ctx context.Context, planner planning.Planner, stack serverStack, rp resourceList) (*resourcePlan, error) {
+func planResources(ctx context.Context, planner planning.Planner, stack *planning.StackWithIngress, rp resourceList) (*resourcePlan, error) {
 	platforms, err := planner.Runtime.TargetPlatforms(ctx)
 	if err != nil {
 		return nil, err
@@ -124,7 +117,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 				return nil, fnerrors.InternalError("failed to unmarshal serverintent: %w", err)
 			}
 
-			target, has := stack.GetServerProto(serverIntent.AsPackageName())
+			target, has := stack.Get(serverIntent.AsPackageName())
 			if !has {
 				return nil, fnerrors.InternalError("%s: target server is not in the stack", serverIntent.PackageName)
 			}
@@ -136,7 +129,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 						resources.ResourceInstanceCategory(resource.ID),
 					},
 					SchedAfterCategory: []string{
-						runtime.OwnedByDeployable(target),
+						runtime.OwnedByDeployable(target.Proto()),
 					},
 				},
 			}
@@ -144,7 +137,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack serverSt
 			wrapped, err := anypb.New(&resources.OpCaptureServerConfig{
 				ResourceInstanceId: resource.ID,
 				ServerConfig:       makeServerConfig(stack, target, sealedCtx.Environment()),
-				Deployable:         runtime.DeployableToProto(target),
+				Deployable:         runtime.DeployableToProto(target.Proto()),
 			})
 			if err != nil {
 				return nil, err
@@ -477,7 +470,7 @@ type resourceOwner interface {
 	PackageRef() *schema.PackageRef
 }
 
-func (rp *resourceList) checkAddOwnedResources(ctx context.Context, stack serverStack, owner resourceOwner, instances []pkggraph.ResourceInstance) error {
+func (rp *resourceList) checkAddOwnedResources(ctx context.Context, stack *planning.StackWithIngress, owner resourceOwner, instances []pkggraph.ResourceInstance) error {
 	var instance resourceInstance
 
 	if err := rp.checkAddTo(ctx, stack, owner.SealedContext(), "", instances, &instance); err != nil {
@@ -497,7 +490,7 @@ func (rp *resourceList) checkAddOwnedResources(ctx context.Context, stack server
 	return nil
 }
 
-func (rp *resourceList) checkAddResource(ctx context.Context, stack serverStack, sealedCtx pkggraph.SealedContext, resourceID string, resource pkggraph.ResourceSpec) error {
+func (rp *resourceList) checkAddResource(ctx context.Context, stack *planning.StackWithIngress, sealedCtx pkggraph.SealedContext, resourceID string, resource pkggraph.ResourceSpec) error {
 	if existing, has := rp.resources[resourceID]; has {
 		existing.ParentContexts = append(existing.ParentContexts, sealedCtx)
 		return nil
@@ -548,7 +541,7 @@ func (rp *resourceList) checkAddResource(ctx context.Context, stack serverStack,
 	return nil
 }
 
-func (rp *resourceList) checkAddTo(ctx context.Context, stack serverStack, sealedCtx pkggraph.SealedContext, parentID string, inputs []pkggraph.ResourceInstance, instance *resourceInstance) error {
+func (rp *resourceList) checkAddTo(ctx context.Context, stack *planning.StackWithIngress, sealedCtx pkggraph.SealedContext, parentID string, inputs []pkggraph.ResourceInstance, instance *resourceInstance) error {
 	regular, secrets, err := splitRegularAndSecretResources(ctx, inputs)
 	if err != nil {
 		return err
