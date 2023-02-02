@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/orchestration/proto";
 
 import "universe/aws/configuration/aws.proto";
 import "schema/orchestration/event.proto";
+import "schema/runtime/deployable.proto";
 import "schema/serialized.proto";
 import "std/tasks/protolog/log.proto";
 import "internal/runtime/kubernetes/client/clientconfig.proto";
@@ -57,8 +58,19 @@ message GetOrchestratorVersionResponse {
     reserved 1 to 4;
 }
 
+message AreServicesReadyRequest {
+    foundation.schema.runtime.Deployable deployable = 1;
+    string namespace                                = 2;
+}
+
+message AreServicesReadyResponse {
+    bool   ready   = 1;
+    string message = 2;
+}
+
 service OrchestrationService {
     rpc Deploy(DeployRequest) returns (DeployResponse);
     rpc DeploymentStatus(DeploymentStatusRequest) returns (stream DeploymentStatusResponse);
     rpc GetOrchestratorVersion(GetOrchestratorVersionRequest) returns (GetOrchestratorVersionResponse);
+    rpc AreServicesReady(AreServicesReadyRequest) returns (AreServicesReadyResponse);
 }
