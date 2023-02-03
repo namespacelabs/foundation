@@ -663,15 +663,10 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 		}
 	}
 
-	pdata := node.ProvisionPlan
-	if pdata.Naming != nil {
-		return nil, fnerrors.NewWithLocation(node.Location, "nodes can't provide naming specifications")
-	}
-
 	parsed := &ParsedNode{
 		Package:         node,
 		Startup:         node.ProvisionPlan.Startup,
-		ComputePlanWith: append(pdata.ComputePlanWith, combinedProps.ComputePlanWith...),
+		ComputePlanWith: append(node.ProvisionPlan.ComputePlanWith, combinedProps.ComputePlanWith...),
 		ServerFragments: fragments,
 	}
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput

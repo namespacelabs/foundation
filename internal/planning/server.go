@@ -112,7 +112,7 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		t.EvalStartup = pdata.Startup.EvalStartup
 	}
 	t.Provisioning = pdata.PreparedProvisionPlan
-	t.entry.ServerNaming = pdata.Naming
+	t.entry.ServerNaming = sealed.Result.Server.ServerNaming
 
 	if t.entry.ServerNaming == nil {
 		t.entry.ServerNaming = &schema.Naming{}

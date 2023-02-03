@@ -18,6 +18,7 @@ import "schema/reference.proto";
 import "schema/resource.proto";
 import "schema/volume.proto";
 import "schema/domain.proto";
+import "schema/naming.proto";
 
 enum Framework {
     reserved 2, 3;
@@ -29,7 +30,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 42
+// Next ID: 43
 message Server {
     reserved 9, 13, 17, 19, 20, 27, 28, 30, 32, 34;
 
@@ -87,6 +88,8 @@ message Server {
 
     // This duplicates some of the fields above while we work on a transition.
     ServerFragment self = 41;
+
+    Naming server_naming = 42;
 
 
     message ServiceSpec {

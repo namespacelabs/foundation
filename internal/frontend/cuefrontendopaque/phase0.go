@@ -90,7 +90,7 @@ func (ft Frontend) ParsePackage(ctx context.Context, partial *fncue.Partial, loc
 		}
 
 		if naming := server.LookupPath("unstable_naming"); naming.Exists() {
-			parsedPkg.ProvisionPlan.Naming, err = cuefrontend.ParseNaming(naming)
+			parsedPkg.Server.ServerNaming, err = cuefrontend.ParseNaming(naming)
 			if err != nil {
 				return nil, err
 			}

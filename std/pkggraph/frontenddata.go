@@ -42,7 +42,4 @@ type ProvisionPlan struct {
 
 	// All fields on Nodes. Servers only allow specifying `Provisioning`.
 	PreparedProvisionPlan
-
-	// Server only.
-	Naming *schema.Naming
 }

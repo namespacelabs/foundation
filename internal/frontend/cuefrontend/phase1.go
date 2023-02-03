@@ -44,6 +44,8 @@ type evalProvisionResult struct {
 	DeclaredStack  []schema.PackageName
 	Sidecars       []*schema.Container
 	InitContainers []*schema.Container
+	// Server only.
+	Naming *schema.Naming
 }
 
 func (p1 phase1plan) EvalProvision(ctx context.Context, env *schema.Environment, inputs pkggraph.ProvisionInputs) (*evalProvisionResult, error) {
