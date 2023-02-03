@@ -7,9 +7,7 @@ package cuefrontendopaque
 import (
 	"context"
 	"fmt"
-	"strings"
 
-	"google.golang.org/protobuf/reflect/protoreflect"
 	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
@@ -326,87 +324,6 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	}
 
 	return out, nil
-}
-
-func canonicalizeFieldSelector(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, field *schema.ResourceConfigFieldSelector, targetPkg *pkggraph.Package) (string, error) {
-	resource := field.GetResource()
-
-	topLevelInstance := targetPkg.LookupResourceInstance(resource.Name)
-
-	if topLevelInstance != nil {
-		return canonicalizeClassInstanceFieldRef(ctx, pl, loc, topLevelInstance.Spec.Class.Ref, field.GetFieldSelector())
-	} else {
-		// Maybe it's an inline resource?
-		// XXX rethink how scoped resource instances should work.
-
-		for _, pack := range []*schema.ResourcePack{targetPkg.Extension.GetResourcePack(),
-			targetPkg.Service.GetResourcePack(), targetPkg.Server.GetSelf().GetResourcePack()} {
-			for _, r := range pack.GetResourceInstance() {
-				if r.Name == resource.Name && r.PackageName == resource.PackageName {
-					return canonicalizeClassInstanceFieldRef(ctx, pl, loc, r.Class, field.GetFieldSelector())
-				}
-			}
-		}
-
-		return "", fnerrors.NewWithLocation(loc, "%s: no such resource", resource.Canonical())
-	}
-
-}
-
-func canonicalizeClassInstanceFieldRef(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, classRef *schema.PackageRef, fieldSelector string) (string, error) {
-	class, err := pkggraph.LookupResourceClass(ctx, pl, nil, classRef)
-	if err != nil {
-		return "", err
-	}
-
-	return canonicalizeJsonPath(loc, class.InstanceType.Descriptor, class.InstanceType.Descriptor, fieldSelector, fieldSelector)
-}
-
-func canonicalizeJsonPath(loc pkggraph.Location, originalDesc, desc protoreflect.MessageDescriptor, originalSel, fieldSel string) (string, error) {
-	parts := strings.SplitN(fieldSel, ".", 2)
-
-	f := desc.Fields().ByTextName(parts[0])
-	if f == nil {
-		f = desc.Fields().ByJSONName(parts[0])
-	}
-
-	if f == nil {
-		return "", fnerrors.NewWithLocation(loc, "%s: %q is not a valid field selector (%q doesn't match anything)", originalDesc.FullName(), originalSel, parts[0])
-	}
-
-	if len(parts) == 1 {
-		if isSupportedProtoPrimitive(f) {
-			return string(f.Name()), nil
-		} else {
-			return "", fnerrors.NewWithLocation(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)", originalDesc.FullName(), originalSel, parts[0], f.Kind())
-		}
-	}
-
-	if f.Kind() != protoreflect.MessageKind {
-		var hint string
-		if isSupportedProtoPrimitive(f) {
-			hint = ": cannot select fields inside primitive types"
-		}
-
-		return "", fnerrors.NewWithLocation(loc, "%s: %q is not a valid field selector (%q picks unsupported %v)%s", originalDesc.FullName(), originalSel, parts[0], f.Kind(), hint)
-	}
-
-	selector, err := canonicalizeJsonPath(loc, originalDesc, f.Message(), originalSel, parts[1])
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%s.%s", f.Name(), selector), nil
-}
-
-func isSupportedProtoPrimitive(f protoreflect.FieldDescriptor) bool {
-	switch f.Kind() {
-	case protoreflect.StringKind, protoreflect.Int32Kind, protoreflect.Uint32Kind, protoreflect.Int64Kind, protoreflect.Uint64Kind:
-		return true
-
-	default:
-		return false
-	}
 }
 
 func ensureLoad(ctx context.Context, pl parsing.EarlyPackageLoader, parent *pkggraph.Package, ref *schema.PackageRef) (*pkggraph.Package, error) {

@@ -143,7 +143,6 @@ func loadResourceInstance(ctx context.Context, pl pkggraph.PackageLoader, pkg *p
 						ri = r
 						break
 					}
-
 				}
 
 				instance, err = loadResourceInstance(ctx, pl, pkg, parentID, ri)

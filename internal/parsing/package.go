@@ -85,9 +85,56 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 		}
 	}
 
+	if err := fixFragment(ctx, pl, pp, pp.Server.GetSelf()); err != nil {
+		return nil, err
+	}
+
+	if err := fixFragment(ctx, pl, pp, pp.ServerFragment); err != nil {
+		return nil, err
+	}
+
 	return pp, nil
 }
 
 func shouldCreateStartupTest(server *schema.Server) bool {
 	return false
+}
+
+func fixFragment(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, frag *schema.ServerFragment) error {
+	if frag == nil {
+		return nil
+	}
+
+	var envs []*schema.BinaryConfig_EnvEntry
+	envs = append(envs, frag.GetMainContainer().GetEnv()...)
+	for _, ctr := range frag.Sidecar {
+		envs = append(envs, ctr.Env...)
+	}
+	for _, ctr := range frag.InitContainer {
+		envs = append(envs, ctr.Env...)
+	}
+
+	// Mutable changes, yikes.
+	return fixEnv(ctx, pl, pp, envs)
+}
+
+func fixEnv(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, env []*schema.BinaryConfig_EnvEntry) error {
+	for _, x := range env {
+		if x.FromResourceField != nil {
+			instance, err := pkggraph.LookupResource(ctx, pl, pp, x.FromResourceField.Resource)
+			if err != nil {
+				return fnerrors.New("%s: %w", x.FromResourceField.Resource.Canonical())
+			}
+
+			sel := x.FromResourceField.FieldSelector
+			newSel, err := canonicalizeJsonPath(pp.Location, instance.Spec.Class.InstanceType.Descriptor, instance.Spec.Class.InstanceType.Descriptor, sel, sel)
+			if err != nil {
+				return fnerrors.New("%s: %s", x.FromResourceField.Resource.Canonical(), err)
+			}
+
+			x.FromResourceField.FieldSelector = newSel
+		}
+	}
+
+	return nil
 }
