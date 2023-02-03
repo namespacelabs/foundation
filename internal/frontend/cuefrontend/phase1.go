@@ -63,9 +63,12 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env *schema.Environment,
 			return nil, err
 		}
 
+		var packages schema.PackageList
 		for _, p := range stack.Append {
-			pdata.DeclaredStack = append(pdata.DeclaredStack, schema.PackageName(p.PackageName))
+			packages.Add(schema.PackageName(p.PackageName))
 		}
+
+		pdata.DeclaredStack = packages.PackageNames()
 	}
 
 	// Not using parseBinaryInvocation because it may modify the Package which is not allowed in phase1.

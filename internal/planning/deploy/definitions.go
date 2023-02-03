@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/philopon/go-toposort"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -18,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/tool"
@@ -293,7 +291,7 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 		}
 	}
 
-	orderedOps, err := ensureInvocationOrder(ctx, r.stack, perServerOps)
+	orderedOps, err := flattenInvocationOrder(ctx, r.stack, perServerOps)
 	if err != nil {
 		return nil, err
 	}
@@ -303,56 +301,9 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	return &handlerResult{OrderedInvocations: allOps, ProvisionOutput: perServer}, nil
 }
 
-func sortServers(ctx context.Context, stack *planning.Stack) ([]schema.PackageName, error) {
-	graph := toposort.NewGraph(0)
-
-	// First ensure all nodes exist.
-	for _, srv := range stack.Servers {
-		fmt.Fprintf(console.Debug(ctx), "adding server: %s\n", srv.PackageName())
-		if !graph.AddNode(srv.PackageName().String()) {
-			return nil, fnerrors.InternalError("server %s appears multiple times in the stack", srv.PackageName())
-		}
-	}
-
-	// Add edges for each server dep.
-	for k, srv := range stack.Servers {
-		for _, dep := range stack.Servers[k].ParsedDeps {
-			for _, backend := range dep.ProvisionPlan.DeclaredStack {
-				if backend == srv.PackageName() {
-					return nil, fnerrors.InternalError("unexpected loop: %s depends on itself", srv.PackageName())
-				}
-
-				fmt.Fprintf(console.Debug(ctx), "adding edge: %s -> %s\n", backend, srv.PackageName())
-				if !graph.AddEdge(backend.String(), srv.PackageName().String()) {
-					return nil, fnerrors.InternalError("server dependency %s -> %s appears multiple times", backend, srv.PackageName())
-				}
-			}
-		}
-	}
-
-	sortedServers, ok := graph.Toposort()
-	if !ok {
-		return nil, fnerrors.InternalError("failed to sort servers by dependency order")
-	}
-
-	fmt.Fprintf(console.Debug(ctx), "invocation sorted: %v\n", sortedServers)
-
-	return schema.PackageNames(sortedServers...), nil
-}
-
-func ensureInvocationOrder(ctx context.Context, stack *planning.Stack, perServer map[schema.PackageName][]*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
-	// We make sure that serialized invocations produced by a server A, that
-	// depends on server B, are always run after B's serialized invocations.
-	// This guarantees the pattern where B is a provider of an API -- and A is
-	// the consumer, works. For example, B may create a CRD definition, and A
-	// may instantiate that CRD.
-	orderedServers, err := sortServers(ctx, stack)
-	if err != nil {
-		return nil, err
-	}
-
+func flattenInvocationOrder(ctx context.Context, stack *planning.Stack, perServer map[schema.PackageName][]*schema.SerializedInvocation) ([]*schema.SerializedInvocation, error) {
 	var allOps []*schema.SerializedInvocation
-	for _, pkg := range orderedServers {
+	for _, pkg := range stack.AllPackageList().PackageNames() {
 		allOps = append(allOps, perServer[schema.PackageName(pkg)]...)
 	}
 
