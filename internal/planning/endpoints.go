@@ -217,17 +217,7 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		ingressSpec.Domain = spec.IngressDomain
 	}
 
-	if len(spec.IngressAnnotation) > 0 {
-		annotations := &schema.ServiceAnnotations{}
-		for _, a := range spec.IngressAnnotation {
-			annotations.KeyValue = append(annotations.KeyValue, &schema.ServiceAnnotations_KeyValue{
-				Key:   a.Key,
-				Value: a.Value,
-			})
-		}
-		ingressSpec.Annotations = annotations
-	}
-
+	ingressSpec.Annotations = spec.IngressAnnotations
 	endpoint.IngressSpec = ingressSpec
 
 	if endpoint.ExportedPort == 0 {

@@ -104,12 +104,7 @@ message Server {
         Endpoint.Type            endpoint_type    = 7;
         PackageRef               ingress_provider = 8;
         repeated DomainSpec      ingress_domain   = 10;  // Only has a meaning if this is an ingress.
-        repeated IngressAnnotation ingress_annotation = 11;
-        
-        message IngressAnnotation {
-            string key   = 1;
-            string value = 2;
-        }
+        ServiceAnnotations       ingress_annotations = 11;
     }
 
     message URLMapEntry {
