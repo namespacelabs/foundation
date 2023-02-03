@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/orchestration/client"
 	orchestrationpb "namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
@@ -34,13 +35,11 @@ import (
 )
 
 const (
-	orchestratorStateKey = "foundation.orchestration"
-	orchDialTimeout      = 5 * time.Second
-	deployPlanFile       = "deployplan.binarypb"
+	orchDialTimeout = 5 * time.Second
+	deployPlanFile  = "deployplan.binarypb"
 )
 
 var (
-	UseOrchestrator              = true
 	UseHeadOrchestrator          = false
 	SkipVersionCache             = false
 	RenderOrchestratorDeployment = false
@@ -54,11 +53,7 @@ var (
 )
 
 func RegisterPrepare() {
-	if !UseOrchestrator {
-		return
-	}
-
-	runtime.RegisterPrepare(orchestratorStateKey, func(ctx context.Context, target cfg.Configuration, cluster runtime.Cluster) (any, error) {
+	client.RegisterOrchestrator(func(ctx context.Context, target cfg.Configuration, cluster runtime.Cluster) (any, error) {
 		return tasks.Return(ctx, tasks.Action("orchestrator.prepare"), func(ctx context.Context) (any, error) {
 			return PrepareOrchestrator(ctx, target, cluster, true)
 		})
@@ -82,7 +77,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 			return nil, err
 		}
 
-		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
+		return client.RemoteOrchestrator(boundCluster, stateless), nil
 	}
 
 	versions, err := getVersions(ctx, env, boundCluster)
@@ -94,7 +89,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		fmt.Fprintf(console.Debug(ctx), "orchestrator is already running the latest version (%d)\n", versions.GetCurrent())
 
 		// already up to date
-		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
+		return client.RemoteOrchestrator(boundCluster, stateless), nil
 	}
 
 	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
@@ -121,7 +116,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 			return nil, err
 		}
 
-		return &RemoteOrchestrator{cluster: boundCluster, server: stateless}, nil
+		return client.RemoteOrchestrator(boundCluster, stateless), nil
 	}
 
 	return nil, fnerrors.InternalError("Did not receive any pinned deployment plan for Namespace orchestrator")
@@ -155,7 +150,7 @@ func deployHead(ctx context.Context, env cfg.Context, boundCluster runtime.Clust
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, connTimeout)
+	ctx, cancel := context.WithTimeout(ctx, client.ConnTimeout)
 	defer cancel()
 
 	return execute(ctx, env, boundCluster, computed.Deployer, wait)
@@ -212,7 +207,7 @@ func getVersions(ctx context.Context, env cfg.Context, boundCluster runtime.Clus
 		defer cancel()
 
 		// Only dial once.
-		conn, err := boundCluster.DialServer(ctx, stateless, &schema.Endpoint_Port{Name: portName})
+		conn, err := boundCluster.DialServer(ctx, stateless, &schema.Endpoint_Port{Name: constants.PortName})
 		if err != nil {
 			return nil, err
 		}

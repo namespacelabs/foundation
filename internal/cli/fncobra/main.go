@@ -84,6 +84,7 @@ import (
 	"namespacelabs.dev/foundation/internal/welcome"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/orchestration"
+	"namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/cfg/knobs"
@@ -349,8 +350,10 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"If set to true, allocate a build cluster for tests.")
 	rootCmd.PersistentFlags().BoolVar(&runtime.WorkInProgressUseShortAlias, "runtime_wip_use_short_alias", runtime.WorkInProgressUseShortAlias,
 		"If set to true, uses the new ingress name allocator.")
-	rootCmd.PersistentFlags().BoolVar(&orchestration.UseOrchestrator, "use_orchestrator", orchestration.UseOrchestrator,
-		"If set to true, enables the new incluster deployment orchestrator.")
+	rootCmd.PersistentFlags().BoolVar(&client.UseOrchestrator, "use_orchestrator", client.UseOrchestrator,
+		"If set to true, enables the incluster Namespace orchestrator (used for deployments, resource management and service readiness probing).")
+	rootCmd.PersistentFlags().BoolVar(&orchestration.DeployWithOrchestrator, "deploy_with_orchestrator", orchestration.DeployWithOrchestrator,
+		"If set to true, ns uses the incluster orchestrator for deployment.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 		"If set to true, we print a render wait block while deploying the orchestrator itself.")
 	rootCmd.PersistentFlags().BoolVar(&orchestration.UseHeadOrchestrator, "use_head_orchestrator", orchestration.UseHeadOrchestrator,
@@ -395,6 +398,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 		"oci_convert_images_to_estargz",
 		"runtime_wip_use_short_alias",
 		"use_orchestrator",
+		"deploy_with_orchestrator",
 		"render_orchestrator_deployment",
 		"also_report_start_events",
 		"buildkit_forward_keychain",

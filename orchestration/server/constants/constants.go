@@ -11,4 +11,5 @@ const (
 	ServerPkg  schema.PackageName = "namespacelabs.dev/foundation/orchestration/server"
 	ToolPkg    schema.PackageName = "namespacelabs.dev/foundation/orchestration/server/tool"
 	ServerName                    = "orchestration-api-server"
+	PortName                      = "server-port"
 )
