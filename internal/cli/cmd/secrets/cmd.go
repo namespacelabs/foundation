@@ -12,13 +12,13 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/framework/secrets/localsecrets"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/secrets/localsecrets"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

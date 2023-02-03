@@ -14,10 +14,10 @@ import (
 	"strings"
 	"sync"
 
+	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/keys"
-	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -26,6 +26,7 @@ import (
 type localSecrets struct {
 	keyDir          fnfs.LocalFS
 	workspaceModule string
+	workspaceFS     fs.FS
 	env             *schema.Environment
 
 	mu    sync.Mutex
@@ -47,7 +48,13 @@ func NewLocalSecrets(env SecretsContext) (secrets.SecretsSource, error) {
 		}
 	}
 
-	return &localSecrets{keyDir: keyDir, workspaceModule: env.Workspace().ModuleName(), env: env.Environment(), cache: map[string]*Bundle{}}, nil
+	return &localSecrets{
+		keyDir:          keyDir,
+		workspaceModule: env.Workspace().ModuleName(),
+		workspaceFS:     env.Workspace().ReadOnlyFS(),
+		env:             env.Environment(),
+		cache:           map[string]*Bundle{},
+	}, nil
 }
 
 func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
@@ -119,9 +126,15 @@ func (l *localSecrets) loadSecretsFor(ctx context.Context, modules pkggraph.Modu
 }
 
 func (l *localSecrets) moduleFS(modules pkggraph.Modules, moduleName string) fs.FS {
-	for _, mod := range modules.Modules() {
-		if mod.ModuleName() == moduleName {
-			return mod.ReadOnlyFS()
+	if l.workspaceModule == moduleName {
+		return l.workspaceFS
+	}
+
+	if modules != nil {
+		for _, mod := range modules.Modules() {
+			if mod.ModuleName() == moduleName {
+				return mod.ReadOnlyFS()
+			}
 		}
 	}
 

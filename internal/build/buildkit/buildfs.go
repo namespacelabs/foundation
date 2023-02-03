@@ -9,11 +9,11 @@ import (
 	"io/fs"
 
 	"github.com/moby/buildkit/client/llb"
+	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
 )

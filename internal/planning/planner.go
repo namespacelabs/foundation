@@ -7,10 +7,10 @@ package planning
 import (
 	"context"
 
+	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/framework/secrets/localsecrets"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/secrets"
-	"namespacelabs.dev/foundation/internal/secrets/localsecrets"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

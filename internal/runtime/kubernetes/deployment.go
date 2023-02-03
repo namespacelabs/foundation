@@ -27,10 +27,11 @@ import (
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
+	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/secrets"
+	xsecrets "namespacelabs.dev/foundation/internal/secrets"
 	"namespacelabs.dev/foundation/internal/support"
 	"namespacelabs.dev/foundation/library/kubernetes/rbac"
 	"namespacelabs.dev/foundation/schema"
@@ -596,7 +597,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			return err
 		}
 
-		serialized, err := secrets.Serialize(res.ResourceRef)
+		serialized, err := xsecrets.Serialize(res.ResourceRef)
 		if err != nil {
 			return err
 		}
@@ -638,7 +639,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		spec = spec.WithVolumes(applycorev1.Volume().WithName(projectedSecretsVolName).WithProjected(src))
 		mainContainer = mainContainer.WithVolumeMounts(applycorev1.VolumeMount().
 			WithName(projectedSecretsVolName).
-			WithMountPath(secrets.SecretBaseMountPath).
+			WithMountPath(xsecrets.SecretBaseMountPath).
 			WithReadOnly(true))
 	}
 
