@@ -123,7 +123,7 @@ func fixEnv(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, en
 		if x.FromResourceField != nil {
 			instance, err := pkggraph.LookupResource(ctx, pl, pp, x.FromResourceField.Resource)
 			if err != nil {
-				return fnerrors.New("%s: %w", x.FromResourceField.Resource.Canonical())
+				return fnerrors.New("%s: %w", x.FromResourceField.Resource.Canonical(), err)
 			}
 
 			sel := x.FromResourceField.FieldSelector
