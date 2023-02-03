@@ -21,8 +21,8 @@ type Server struct {
 	Location pkggraph.Location
 	Package  *pkggraph.Package
 
-	Provisioning pkggraph.PreparedProvisionPlan // A provisioning plan that is attached to the server itself.
-	EvalStartup  func(context.Context, pkggraph.Context, pkggraph.StartupInputs, []pkggraph.ValueWithPath) (*schema.StartupPlan, error)
+	ComputePlanWith []*schema.Invocation
+	EvalStartup     func(context.Context, pkggraph.Context, pkggraph.StartupInputs, []pkggraph.ValueWithPath) (*schema.StartupPlan, error)
 
 	env       pkggraph.SealedContext // The environment this server instance is bound to.
 	entry     *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
@@ -105,13 +105,10 @@ func makeServer(ctx context.Context, loader pkggraph.PackageLoader, env *schema.
 		return Server{}, err
 	}
 
-	// XXX consolidate with other EvalProvision calls. This is only invoked here
-	// for convenience but it's not quite right.
-	pdata := t.Package.ProvisionPlan
-	if pdata.Startup != nil {
-		t.EvalStartup = pdata.Startup.EvalStartup
+	if t.Package.LegacyComputeStartup != nil {
+		t.EvalStartup = t.Package.LegacyComputeStartup.EvalStartup
 	}
-	t.Provisioning = pdata.PreparedProvisionPlan
+	t.ComputePlanWith = t.Package.ComputePlanWith
 	t.entry.ServerNaming = sealed.Result.Server.ServerNaming
 
 	if t.entry.ServerNaming == nil {

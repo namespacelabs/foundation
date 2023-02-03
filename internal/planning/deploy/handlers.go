@@ -37,7 +37,7 @@ func computeHandlers(ctx context.Context, in *planning.Stack) ([]*tool.Definitio
 		sources = append(sources, handlerSource{
 			Server:          srv,
 			Package:         srv.PackageName(),
-			ComputePlanWith: srv.Provisioning.ComputePlanWith,
+			ComputePlanWith: srv.ComputePlanWith,
 		})
 	}
 

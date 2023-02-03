@@ -149,14 +149,19 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	}
 
 	if parsed.Server != nil {
-		parsed.ProvisionPlan = plan.ProvisionPlan
+		parsed.ComputePlanWith = plan.ComputePlanWith
+		parsed.LegacyComputeStartup = plan.Startup
 		parsed.Server.Self.Sidecar = append(parsed.Server.Self.Sidecar, plan.Sidecars...)
 		parsed.Server.Self.InitContainer = append(parsed.Server.Self.InitContainer, plan.InitContainers...)
 		if err := parsing.AddServersAsResources(ctx, ft.loader, schema.MakePackageSingleRef(loc.PackageName), plan.DeclaredStack, parsed.Server.Self); err != nil {
 			return nil, err
 		}
 	} else if node := parsed.Node(); node != nil {
-		parsed.ProvisionPlan = plan.ProvisionPlan
+		if plan.Naming != nil {
+			return nil, fnerrors.New("naming can only be set on servers")
+		}
+		parsed.ComputePlanWith = plan.ComputePlanWith
+		parsed.LegacyComputeStartup = plan.Startup
 		if len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 || len(plan.DeclaredStack) > 0 {
 			parsed.ServerFragment = &schema.ServerFragment{
 				MainContainer: &schema.Container{},
@@ -168,8 +173,8 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 			}
 		}
 	} else {
-		if len(plan.ComputePlanWith) > 0 || len(plan.DeclaredStack) > 0 || len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 {
-			return nil, fnerrors.New("configuration block is only usable with servers, services or extensions")
+		if len(plan.ComputePlanWith) > 0 || len(plan.DeclaredStack) > 0 || len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 || plan.Naming != nil {
+			return nil, fnerrors.NewWithLocation(loc, "configuration block is only usable with servers, services or extensions")
 		}
 	}
 

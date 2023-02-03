@@ -32,14 +32,3 @@ type ValueWithPath struct {
 	Need  *schema.Need
 	Value any
 }
-
-type PreparedProvisionPlan struct {
-	ComputePlanWith []*schema.Invocation // Will generate further plan contents.
-}
-
-type ProvisionPlan struct {
-	Startup PreStartup
-
-	// All fields on Nodes. Servers only allow specifying `Provisioning`.
-	PreparedProvisionPlan
-}

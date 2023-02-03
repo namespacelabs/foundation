@@ -40,10 +40,11 @@ type cueContainer struct {
 }
 
 type evalProvisionResult struct {
-	pkggraph.ProvisionPlan
-	DeclaredStack  []schema.PackageName
-	Sidecars       []*schema.Container
-	InitContainers []*schema.Container
+	Startup         pkggraph.PreStartup
+	ComputePlanWith []*schema.Invocation // Will generate further plan contents.
+	DeclaredStack   []schema.PackageName
+	Sidecars        []*schema.Container
+	InitContainers  []*schema.Container
 	// Server only.
 	Naming *schema.Naming
 }

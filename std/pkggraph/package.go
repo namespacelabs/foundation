@@ -22,7 +22,6 @@ type Package struct {
 
 	PackageSources fs.FS // Filenames included will be relative to the module root, not the package.
 	NewFrontend    bool  // If set to true, the new frontend parser was used to load this package.
-	ProvisionPlan  ProvisionPlan
 
 	// One of.
 	Extension      *schema.Node
@@ -57,7 +56,9 @@ type Package struct {
 	ResourceProviders []ResourceProvider
 
 	// Hooks
-	PrepareHooks []PrepareHook
+	PrepareHooks         []PrepareHook
+	LegacyComputeStartup PreStartup
+	ComputePlanWith      []*schema.Invocation // Will generate further plan contents.
 
 	// Raw resources definitions within a package.
 	ResourceClassSpecs     []*schema.ResourceClass

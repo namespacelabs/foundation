@@ -665,8 +665,8 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 
 	parsed := &ParsedNode{
 		Package:         node,
-		Startup:         node.ProvisionPlan.Startup,
-		ComputePlanWith: append(node.ProvisionPlan.ComputePlanWith, combinedProps.ComputePlanWith...),
+		Startup:         node.LegacyComputeStartup,
+		ComputePlanWith: append(slices.Clone(node.ComputePlanWith), combinedProps.ComputePlanWith...),
 		ServerFragments: fragments,
 	}
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
