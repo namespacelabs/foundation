@@ -45,7 +45,7 @@ type IngressClass interface {
 	Service() *IngressSelector
 	Waiter(*rest.Config) KubeIngressWaiter
 	PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*IngressAllocatedRoute, error)
-	Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any) (*IngressAnnotations, error)
+	Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any, userAnnotation *schema.ServiceAnnotations) (*IngressAnnotations, error)
 }
 
 type IngressAllocatedRoute struct {

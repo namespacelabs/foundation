@@ -93,6 +93,8 @@ message Server {
 
 
     message ServiceSpec {
+        reserved 2;
+
         string                   name             = 1;
         string                   label            = 5;
         repeated ServiceMetadata metadata         = 6;
@@ -102,8 +104,12 @@ message Server {
         Endpoint.Type            endpoint_type    = 7;
         PackageRef               ingress_provider = 8;
         repeated DomainSpec      ingress_domain   = 10;  // Only has a meaning if this is an ingress.
-
-        reserved 2;
+        repeated IngressAnnotation ingress_annotation = 11;
+        
+        message IngressAnnotation {
+            string key   = 1;
+            string value = 2;
+        }
     }
 
     message URLMapEntry {
@@ -131,6 +137,8 @@ message Server {
         string value    = 3;
         string effect   = 4;
     }
+
+   
 }
 
 message ServerFragment {
