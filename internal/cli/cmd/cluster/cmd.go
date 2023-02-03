@@ -29,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func NewClusterCmd() *cobra.Command {
@@ -155,7 +156,7 @@ func newListCmd() *cobra.Command {
 
 func newSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh {cluster-id}",
+		Use:   "ssh [cluster-id]",
 		Short: "Start an SSH session.",
 		Args:  cobra.MaximumNArgs(1),
 	}
@@ -170,7 +171,7 @@ func newSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return ssh(ctx, cluster, nil)
+		return dossh(ctx, cluster, nil)
 	})
 
 	return cmd
@@ -178,7 +179,7 @@ func newSshCmd() *cobra.Command {
 
 func newPortForwardCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "port-forward {cluster-id}",
+		Use:   "port-forward [cluster-id]",
 		Short: "Opens a local port which connects to the cluster.",
 		Args:  cobra.MaximumNArgs(1),
 	}
@@ -207,7 +208,7 @@ func newPortForwardCmd() *cobra.Command {
 
 func newDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "destroy {cluster-id}",
+		Use:   "destroy [cluster-id]",
 		Short: "Destroys an existing cluster.",
 		Args:  cobra.ArbitraryArgs,
 	}
@@ -357,7 +358,7 @@ func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesClust
 }
 
 func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
-	clusters, err := selectClusters(ctx, args[:0])
+	clusters, err := selectClusters(ctx, args)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -396,7 +397,7 @@ func formatDescription(cluster api.KubernetesCluster) string {
 		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
 }
 
-func ssh(ctx context.Context, cluster *api.KubernetesCluster, args []string) error {
+func dossh(ctx context.Context, cluster *api.KubernetesCluster, args []string) error {
 	lst, err := fnnet.ListenPort(ctx, "127.0.0.1", 0, 0)
 	if err != nil {
 		return err
@@ -440,6 +441,21 @@ func ssh(ctx context.Context, cluster *api.KubernetesCluster, args []string) err
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "UpdateHostKeys no",
 		"-p", fmt.Sprintf("%d", localPort), "root@127.0.0.1")
+
+	if cluster.SshPrivateKey != nil {
+		f, err := dirs.CreateUserTemp("ssh", "privatekey")
+		if err != nil {
+			return err
+		}
+
+		defer os.Remove(f.Name())
+
+		if _, err := f.Write(cluster.SshPrivateKey); err != nil {
+			return err
+		}
+
+		args = append(args, "-i", f.Name())
+	}
 
 	cmd := exec.CommandContext(ctx, "ssh", args...)
 	return localexec.RunInteractive(ctx, cmd)
