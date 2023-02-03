@@ -47,6 +47,7 @@ message Endpoint {
 
     message IngressSpec {
         repeated DomainSpec domain = 1;  // If set, exposes this endpoint in the specified domains.
+        ServiceAnnotations annotations = 2;
     }
 
     reserved 9;

@@ -180,11 +180,11 @@ func (n nginx) PrepareRoute(ctx context.Context, env *schema.Environment, srv *s
 	})
 }
 
-func (nginx) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
-	return Annotate(hasTLS, backendProtocol, extensions)
+func (nginx) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any, userAnnotations *schema.ServiceAnnotations) (*kubedef.IngressAnnotations, error) {
+	return Annotate(hasTLS, backendProtocol, extensions, userAnnotations)
 }
 
-func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
+func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any, userAnnotations *schema.ServiceAnnotations) (*kubedef.IngressAnnotations, error) {
 	annotations := kubedef.BaseAnnotations()
 
 	annotations["kubernetes.io/ingress.class"] = "nginx"
@@ -196,6 +196,10 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 	} else {
 		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "false"
 		annotations["nginx.ingress.kubernetes.io/force-ssl-redirect"] = "false"
+	}
+
+	for _, a := range userAnnotations.KeyValue {
+		annotations[a.Key] = a.Value
 	}
 
 	var cors *schema.HttpCors

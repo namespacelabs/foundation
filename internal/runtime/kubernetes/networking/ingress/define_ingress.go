@@ -93,7 +93,10 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 	var extensions []*anypb.Any
 	var applies []defs.MakeDefinition
 	var domains []*schema.Domain
+	ingressAnnotations := &schema.ServiceAnnotations{}
+
 	for _, ng := range g.Fragments {
+		ingressAnnotations.KeyValue = append(ingressAnnotations.KeyValue, ng.Endpoint.IngressSpec.Annotations.KeyValue...)
 		extensions = append(extensions, ng.Extension...)
 
 		var paths []*applynetworkingv1.HTTPIngressPathApplyConfiguration
@@ -194,7 +197,7 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 		backendProtocol = kubedef.BackendProtocol_GRPCS
 	}
 
-	annotations, err := ingress.Annotate(ns, g.Name, domains, tlsCount > 0, backendProtocol, extensions)
+	annotations, err := ingress.Annotate(ns, g.Name, domains, tlsCount > 0, backendProtocol, extensions, ingressAnnotations)
 	if err != nil {
 		return nil, err
 	}

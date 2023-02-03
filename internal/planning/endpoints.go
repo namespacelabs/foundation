@@ -207,15 +207,28 @@ func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, 
 		IngressProvider: spec.IngressProvider,
 	}
 
+	ingressSpec := &schema.Endpoint_IngressSpec{}
+
 	if len(spec.IngressDomain) > 0 {
 		if t != schema.Endpoint_INTERNET_FACING {
 			return nil, fnerrors.InternalError("ingress domain is specified in non-ingress endpoint")
 		}
 
-		endpoint.IngressSpec = &schema.Endpoint_IngressSpec{
-			Domain: spec.IngressDomain,
-		}
+		ingressSpec.Domain = spec.IngressDomain
 	}
+
+	if len(spec.IngressAnnotation) > 0 {
+		annotations := &schema.ServiceAnnotations{}
+		for _, a := range spec.IngressAnnotation {
+			annotations.KeyValue = append(annotations.KeyValue, &schema.ServiceAnnotations_KeyValue{
+				Key:   a.Key,
+				Value: a.Value,
+			})
+		}
+		ingressSpec.Annotations = annotations
+	}
+
+	endpoint.IngressSpec = ingressSpec
 
 	if endpoint.ExportedPort == 0 {
 		endpoint.ExportedPort = spec.GetPort().GetContainerPort()

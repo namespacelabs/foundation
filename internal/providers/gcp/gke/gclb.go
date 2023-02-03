@@ -41,12 +41,16 @@ func (gclb) PrepareRoute(ctx context.Context, _ *schema.Environment, _ *schema.S
 	return nil, nil
 }
 
-func (gclb) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any) (*kubedef.IngressAnnotations, error) {
+func (gclb) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any, userAnnotation *schema.ServiceAnnotations) (*kubedef.IngressAnnotations, error) {
 	ann := &kubedef.IngressAnnotations{
 		Annotations: kubedef.BaseAnnotations(),
 	}
 
 	ann.Annotations["kubernetes.io/ingress.class"] = "gce"
+
+	for _, a := range userAnnotation.KeyValue {
+		ann.Annotations[a.Key] = a.Value
+	}
 
 	if backendProtocol != kubedef.BackendProtocol_HTTP {
 		return nil, fnerrors.BadInputError("only support backend protocol %q, got %q", kubedef.BackendProtocol_HTTP, backendProtocol)
