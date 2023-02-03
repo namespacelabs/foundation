@@ -105,6 +105,14 @@ func fixFragment(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Packag
 		return nil
 	}
 
+	for _, r := range frag.ResourcePack.GetResourceInstance() {
+		if parsed, err := loadResourceInstance(ctx, pl, pp, "", r); err != nil {
+			return err
+		} else {
+			pp.Resources = append(pp.Resources, *parsed)
+		}
+	}
+
 	var envs []*schema.BinaryConfig_EnvEntry
 	envs = append(envs, frag.GetMainContainer().GetEnv()...)
 	for _, ctr := range frag.Sidecar {
