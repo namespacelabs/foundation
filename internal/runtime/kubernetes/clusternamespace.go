@@ -12,6 +12,8 @@ import (
 	"net"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -216,8 +218,6 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 
 	if !orchclient.UseOrchestrator {
 		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
-
-		// Assume service is always ready for now.
 		return ServiceReadiness{Ready: true}, nil
 	}
 
@@ -228,6 +228,11 @@ func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Dep
 
 	res, err := orchclient.CallAreServicesReady(ctx, conn, srv, r.target.namespace)
 	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			fmt.Fprintf(console.Debug(ctx), "old orchestrator version, will not wait for services of server %s...\n", srv.GetName())
+			return ServiceReadiness{Ready: true}, nil
+		}
+
 		return ServiceReadiness{}, err
 	}
 
