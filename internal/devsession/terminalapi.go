@@ -74,6 +74,6 @@ func serveTerminal(s sessionLike, w http.ResponseWriter, r *http.Request, server
 			TTY:   true,
 			Stdin: inr, Stdout: w, Stderr: w,
 			ResizeQueue: resizeCh,
-		}, "bash")
+		}, "sh")
 	})
 }
