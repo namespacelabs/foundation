@@ -96,7 +96,7 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 	ingressAnnotations := &schema.ServiceAnnotations{}
 
 	for _, ng := range g.Fragments {
-		if ng.Endpoint.IngressSpec.Annotations != nil {
+		if ng.Endpoint.IngressSpec != nil && ng.Endpoint.IngressSpec.Annotations != nil {
 			ingressAnnotations.KeyValue = append(ingressAnnotations.KeyValue, ng.Endpoint.IngressSpec.Annotations.KeyValue...)
 		}
 		extensions = append(extensions, ng.Extension...)
