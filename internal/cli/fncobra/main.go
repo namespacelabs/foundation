@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/binary/genbinary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
+	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/codegen"
@@ -293,6 +294,7 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	consolesink.SetupFlags(rootCmd.PersistentFlags())
 	fnapi.SetupFlags(rootCmd.PersistentFlags())
 	nscloud.SetupFlags(rootCmd.PersistentFlags())
+	clerk.SetupFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 		"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")
