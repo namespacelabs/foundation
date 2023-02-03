@@ -13,12 +13,35 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 var (
 	ErrUnauthorized = fnerrors.New("Unauthorized")
+
+	devClerk = false
 )
+
+const (
+	prodAddress = "https://clerk.namespace.so/"
+	devAddress  = "https://clerk.firm.hare-7.lcl.dev"
+)
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&devClerk, "dev_clerk", devClerk, "Use DEV Clerk instance.")
+	_ = flags.MarkHidden("dev_clerk")
+}
+
+type devBrowserResponse struct {
+	ID         string `json:"id"`
+	InstanceID string `json:"instance_id"`
+	Token      string `json:"token"`
+	ClientID   string `json:"client_id"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+	HomeOrigin string `json:"home_origin"`
+}
 
 type clerkResponse struct {
 	Response struct {
@@ -44,6 +67,7 @@ type State struct {
 	Name           string `json:"name,omitempty"`
 	ClerkClient    string `json:"clerk_client,omitempty"`
 	GithubUsername string `json:"github_username,omitempty"`
+	DevSession     string `json:"dev_session,omitempty"` // Only for DEV instance
 }
 
 func Login(ctx context.Context, ticket string) (*State, error) {
@@ -51,7 +75,35 @@ func Login(ctx context.Context, ticket string) (*State, error) {
 	form.Add("strategy", "ticket")
 	form.Add("ticket", ticket)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://clerk.namespace.so/v1/client/sign_ins", strings.NewReader(form.Encode()))
+	devSession := ""
+	signinsURL := prodAddress + "/v1/client/sign_ins"
+	if devClerk {
+		req, err := http.NewRequestWithContext(ctx, "POST", devAddress+"/v1/dev_browser", nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Add("Origin", "https://accounts.namespace.so")
+		req.Header.Add("User-Agent", "NamespaceCLI/1.0")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			return nil, fnerrors.InvocationError("login", "failed to authenticate client: %v", resp.Status)
+		}
+
+		var x devBrowserResponse
+		if err := json.NewDecoder(resp.Body).Decode(&x); err != nil {
+			return nil, fnerrors.InvocationError("login", "bad response for client authentication: %w", err)
+		}
+		devSession = x.Token
+		signinsURL = devAddress + "/v1/client/sign_ins?__dev_session=" + devSession
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", signinsURL, strings.NewReader(form.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +123,17 @@ func Login(ctx context.Context, ticket string) (*State, error) {
 		return nil, fnerrors.InvocationError("login", "failed to authenticate: %v", resp.Status)
 	}
 
-	var client *http.Cookie
+	var client string
 	for _, k := range resp.Cookies() {
 		if k.Name == "__client" {
-			client = k
+			client = k.Value
 		}
 	}
+	if k := resp.Header.Get("Clerk-Cookie"); devClerk && k != "" {
+		client = k
+	}
 
-	if client == nil {
+	if client == "" {
 		return nil, fnerrors.InvocationError("login", "missing client cookie")
 	}
 
@@ -89,7 +144,8 @@ func Login(ctx context.Context, ticket string) (*State, error) {
 
 	state := &State{
 		Email:       x.Response.Identifier,
-		ClerkClient: client.Value,
+		ClerkClient: client,
+		DevSession:  devSession,
 	}
 
 	for _, session := range x.Client.Sessions {
@@ -129,7 +185,11 @@ func JWT(ctx context.Context, st *State) (string, error) {
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", "https://clerk.namespace.so/v1/me/tokens", nil)
+	url := prodAddress + "/v1/me/tokens"
+	if devClerk {
+		url = devAddress + "/v1/me/tokens?__dev_session=" + st.DevSession
+	}
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
 	if err != nil {
 		return "", err
 	}
