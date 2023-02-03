@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 )
 
-func serveStack(s *Session, w http.ResponseWriter, r *http.Request) {
+func serveStack(s sessionLike, w http.ResponseWriter, r *http.Request) {
 	upgrader := newWebsocketUpgrader(r)
 
 	ws, err := upgrader.Upgrade(w, r, nil)

@@ -71,7 +71,7 @@ func (s *Session) DeferRequest(req *DevWorkflowRequest) {
 	s.requestCh <- req
 }
 
-func (s *Session) NewClient(needsHistory bool) (*Observer, error) {
+func (s *Session) NewClient(needsHistory bool) (ObserverLike, error) {
 	const maxTaskUpload = 1000
 	var taskHistory []*protocol.Task
 

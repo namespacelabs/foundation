@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/runtime"
 )
 
 func RegisterEndpoints(s *Session, r *mux.Router) {
@@ -24,6 +25,25 @@ func RegisterEndpoints(s *Session, r *mux.Router) {
 	r.HandleFunc("/ws/fn/build.json", fwd("build", func() io.ReadCloser {
 		return s.BuildJSONOutput()
 	}))
+	RegisterSomeEndpoints(s, r)
+	r.HandleFunc("/ws/fn/task/{id}/output/{name}", func(rw http.ResponseWriter, r *http.Request) {
+		v := mux.Vars(r)
+		serveTaskOutput(s, rw, r, v["id"], v["name"])
+	})
+}
+
+type sessionLike interface {
+	ResolveServer(ctx context.Context, serverID string) (runtime.ClusterNamespace, runtime.Deployable, error)
+	NewClient(needsHistory bool) (ObserverLike, error)
+	DeferRequest(req *DevWorkflowRequest)
+}
+
+type ObserverLike interface {
+	Events() chan *Update
+	Close()
+}
+
+func RegisterSomeEndpoints(s sessionLike, r *mux.Router) {
 	r.HandleFunc("/ws/fn/stack", func(rw http.ResponseWriter, r *http.Request) {
 		serveStack(s, rw, r)
 	})
@@ -32,10 +52,6 @@ func RegisterEndpoints(s *Session, r *mux.Router) {
 	})
 	r.HandleFunc("/ws/fn/server/{id}/terminal", func(rw http.ResponseWriter, r *http.Request) {
 		serveTerminal(s, rw, r, mux.Vars(r)["id"])
-	})
-	r.HandleFunc("/ws/fn/task/{id}/output/{name}", func(rw http.ResponseWriter, r *http.Request) {
-		v := mux.Vars(r)
-		serveTaskOutput(s, rw, r, v["id"], v["name"])
 	})
 }
 

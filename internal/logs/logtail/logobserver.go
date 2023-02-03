@@ -27,6 +27,7 @@ import (
 
 type Keybinding struct {
 	LoadEnvironment func(name string) (cfg.Context, error)
+	DefaultPaused   bool
 }
 
 type logState struct {
@@ -39,6 +40,13 @@ type logState struct {
 func (l Keybinding) Key() string { return "l" }
 
 func (l Keybinding) States() []keyboard.HandlerState {
+	if l.DefaultPaused {
+		return []keyboard.HandlerState{
+			{State: "notlogging", Label: "stream logs"},
+			{State: "logging", Label: "pause logs "},
+		}
+	}
+
 	return []keyboard.HandlerState{
 		{State: "logging", Label: "pause logs "}, // Additional space at the end for a better allignment.
 		{State: "notlogging", Label: "stream logs"},
@@ -48,7 +56,7 @@ func (l Keybinding) States() []keyboard.HandlerState {
 func (l Keybinding) Handle(ctx context.Context, ch chan keyboard.Event, control chan<- keyboard.Control) {
 	defer close(control)
 
-	logging := true
+	logging := !l.DefaultPaused
 
 	var previousStack *schema.Stack
 	var previousEnv string

@@ -17,7 +17,7 @@ import (
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
-func serveLogs(s *Session, w http.ResponseWriter, r *http.Request, serverID string) {
+func serveLogs(s sessionLike, w http.ResponseWriter, r *http.Request, serverID string) {
 	serveStream("server.logs", w, r, func(ctx context.Context, conn *websocket.Conn, wsWriter io.Writer) error {
 		// XXX rather than obtaining the current one, it should be encoded in the request to logs.
 		cluster, server, err := s.ResolveServer(ctx, serverID)
