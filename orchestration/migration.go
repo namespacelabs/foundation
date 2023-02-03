@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	orchpb "namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -20,7 +21,9 @@ import (
 )
 
 // Bumping this value leads to an orchestrator upgrade.
-const orchestratorVersion = 23
+const orchestratorVersion = 24
+
+var DeployWithOrchestrator = false
 
 func ExecuteOpts() execution.ExecuteOpts {
 	return execution.ExecuteOpts{
@@ -30,7 +33,7 @@ func ExecuteOpts() execution.ExecuteOpts {
 }
 
 func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, wait, outputProgress bool) error {
-	if !UseOrchestrator {
+	if !DeployWithOrchestrator {
 		if !wait {
 			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
 		}
@@ -55,19 +58,14 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 					inv.GetOrder().GetSchedAfterCategory())
 			}
 
-			raw, err := cluster.Cluster().EnsureState(ctx, orchestratorStateKey)
-			if err != nil {
-				return err
-			}
-
-			conn, err := raw.(*RemoteOrchestrator).Connect(ctx)
+			conn, err := client.ConnectToOrchestrator(ctx, cluster.Cluster())
 			if err != nil {
 				return err
 			}
 
 			defer conn.Close()
 
-			id, err := CallDeploy(ctx, env, conn, plan)
+			id, err := client.CallDeploy(ctx, env, conn, plan)
 			if err != nil {
 				return err
 			}
@@ -80,7 +78,7 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 					ch, cleanup = deploy.MaybeRenderBlock(env, cluster, true)(ctx)
 				}
 
-				err := WireDeploymentStatus(ctx, conn, id, ch)
+				err := client.WireDeploymentStatus(ctx, conn, id, ch)
 				if cleanup != nil {
 					cleanupErr := cleanup(ctx)
 					if err == nil {

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package orchestration
+package client
 
 import (
 	"context"
@@ -28,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/orchestration/proto"
+	"namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -37,16 +38,22 @@ import (
 )
 
 const (
-	portName    = "server-port"
-	connTimeout = time.Minute // TODO reduce - we've seen slow connections in CI
+	orchestratorStateKey = "foundation.orchestration"
+	ConnTimeout          = time.Minute // TODO reduce - we've seen slow connections in CI
 )
 
-type RemoteOrchestrator struct {
+var UseOrchestrator = true
+
+type remoteOrchestrator struct {
 	cluster runtime.ClusterNamespace
 	server  runtime.Deployable
 }
 
-func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, error) {
+func RemoteOrchestrator(cluster runtime.ClusterNamespace, server runtime.Deployable) *remoteOrchestrator {
+	return &remoteOrchestrator{cluster: cluster, server: server}
+}
+
+func (c *remoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, error) {
 	orch := compute.On(ctx)
 	sink := tasks.SinkFrom(ctx)
 
@@ -56,7 +63,7 @@ func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, err
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			patchedContext := compute.AttachOrch(tasks.WithSink(ctx, sink), orch)
 
-			conn, err := c.cluster.DialServer(patchedContext, c.server, &schema.Endpoint_Port{Name: portName})
+			conn, err := c.cluster.DialServer(patchedContext, c.server, &schema.Endpoint_Port{Name: constants.PortName})
 			if err != nil {
 				fmt.Fprintf(console.Debug(patchedContext), "failed to dial orchestrator: %v\n", err)
 				return nil, err
@@ -65,6 +72,23 @@ func (c *RemoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, err
 			return conn, nil
 		}),
 	)
+}
+
+func RegisterOrchestrator(prepare func(ctx context.Context, target cfg.Configuration, cluster runtime.Cluster) (any, error)) {
+	if !UseOrchestrator {
+		return
+	}
+
+	runtime.RegisterPrepare(orchestratorStateKey, prepare)
+}
+
+func ConnectToOrchestrator(ctx context.Context, cluster runtime.Cluster) (*grpc.ClientConn, error) {
+	raw, err := cluster.EnsureState(ctx, orchestratorStateKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return raw.(*remoteOrchestrator).Connect(ctx)
 }
 
 func getAwsConf(ctx context.Context, env cfg.Context) (*awsconf.Configuration, error) {
@@ -128,6 +152,18 @@ func getUserAuth(ctx context.Context) (*auth.UserAuth, error) {
 	return x, nil
 }
 
+func CallAreServicesReady(ctx context.Context, conn *grpc.ClientConn, srv runtime.Deployable, ns string) (*proto.AreServicesReadyResponse, error) {
+	req := &proto.AreServicesReadyRequest{
+		Deployable: runtime.DeployableToProto(srv),
+		Namespace:  ns,
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, ConnTimeout)
+	defer cancel()
+
+	return proto.NewOrchestrationServiceClient(conn).AreServicesReady(ctx, req)
+}
+
 func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, plan *schema.DeployPlan) (string, error) {
 	req := &proto.DeployRequest{
 		Plan: plan,
@@ -164,7 +200,7 @@ func CallDeploy(ctx context.Context, env cfg.Context, conn *grpc.ClientConn, pla
 	}
 	req.HostEnv = hostEnv
 
-	ctx, cancel := context.WithTimeout(ctx, connTimeout)
+	ctx, cancel := context.WithTimeout(ctx, ConnTimeout)
 	defer cancel()
 
 	resp, err := proto.NewOrchestrationServiceClient(conn).Deploy(ctx, req)

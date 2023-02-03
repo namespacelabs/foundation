@@ -25,6 +25,7 @@ type OrchestrationServiceClient interface {
 	Deploy(ctx context.Context, in *DeployRequest, opts ...grpc.CallOption) (*DeployResponse, error)
 	DeploymentStatus(ctx context.Context, in *DeploymentStatusRequest, opts ...grpc.CallOption) (OrchestrationService_DeploymentStatusClient, error)
 	GetOrchestratorVersion(ctx context.Context, in *GetOrchestratorVersionRequest, opts ...grpc.CallOption) (*GetOrchestratorVersionResponse, error)
+	AreServicesReady(ctx context.Context, in *AreServicesReadyRequest, opts ...grpc.CallOption) (*AreServicesReadyResponse, error)
 }
 
 type orchestrationServiceClient struct {
@@ -85,6 +86,15 @@ func (c *orchestrationServiceClient) GetOrchestratorVersion(ctx context.Context,
 	return out, nil
 }
 
+func (c *orchestrationServiceClient) AreServicesReady(ctx context.Context, in *AreServicesReadyRequest, opts ...grpc.CallOption) (*AreServicesReadyResponse, error) {
+	out := new(AreServicesReadyResponse)
+	err := c.cc.Invoke(ctx, "/nsl.orchestration.OrchestrationService/AreServicesReady", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // OrchestrationServiceServer is the server API for OrchestrationService service.
 // All implementations should embed UnimplementedOrchestrationServiceServer
 // for forward compatibility
@@ -92,6 +102,7 @@ type OrchestrationServiceServer interface {
 	Deploy(context.Context, *DeployRequest) (*DeployResponse, error)
 	DeploymentStatus(*DeploymentStatusRequest, OrchestrationService_DeploymentStatusServer) error
 	GetOrchestratorVersion(context.Context, *GetOrchestratorVersionRequest) (*GetOrchestratorVersionResponse, error)
+	AreServicesReady(context.Context, *AreServicesReadyRequest) (*AreServicesReadyResponse, error)
 }
 
 // UnimplementedOrchestrationServiceServer should be embedded to have forward compatible implementations.
@@ -106,6 +117,9 @@ func (UnimplementedOrchestrationServiceServer) DeploymentStatus(*DeploymentStatu
 }
 func (UnimplementedOrchestrationServiceServer) GetOrchestratorVersion(context.Context, *GetOrchestratorVersionRequest) (*GetOrchestratorVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrchestratorVersion not implemented")
+}
+func (UnimplementedOrchestrationServiceServer) AreServicesReady(context.Context, *AreServicesReadyRequest) (*AreServicesReadyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AreServicesReady not implemented")
 }
 
 // UnsafeOrchestrationServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -176,6 +190,24 @@ func _OrchestrationService_GetOrchestratorVersion_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _OrchestrationService_AreServicesReady_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AreServicesReadyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrchestrationServiceServer).AreServicesReady(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/nsl.orchestration.OrchestrationService/AreServicesReady",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrchestrationServiceServer).AreServicesReady(ctx, req.(*AreServicesReadyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // OrchestrationService_ServiceDesc is the grpc.ServiceDesc for OrchestrationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +222,10 @@ var OrchestrationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrchestratorVersion",
 			Handler:    _OrchestrationService_GetOrchestratorVersion_Handler,
+		},
+		{
+			MethodName: "AreServicesReady",
+			Handler:    _OrchestrationService_AreServicesReady_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

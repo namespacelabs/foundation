@@ -7,12 +7,15 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"google.golang.org/grpc/codes"
 	pb "google.golang.org/protobuf/proto"
+	k8s "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
@@ -78,6 +81,27 @@ func (svc *Service) DeploymentStatus(req *proto.DeploymentStatusRequest, stream 
 
 func (svc *Service) GetOrchestratorVersion(ctx context.Context, req *proto.GetOrchestratorVersionRequest) (*proto.GetOrchestratorVersionResponse, error) {
 	return svc.versionChecker.GetOrchestratorVersion(req.SkipCache)
+}
+
+func (svc *Service) AreServicesReady(ctx context.Context, req *proto.AreServicesReadyRequest) (*proto.AreServicesReadyResponse, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create incluster config: %w", err)
+	}
+	clientset, err := k8s.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create incluster clientset: %w", err)
+	}
+
+	res, err := kubernetes.AreServicesReady(ctx, clientset, req.Namespace, req.Deployable)
+	if err != nil {
+		return nil, err
+	}
+
+	return &proto.AreServicesReadyResponse{
+		Ready:   res.Ready,
+		Message: res.Message,
+	}, nil
 }
 
 func prepareHostEnv(template *client.HostEnv) *client.HostEnv {

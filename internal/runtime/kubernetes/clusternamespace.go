@@ -12,6 +12,8 @@ import (
 	"net"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
+	orchclient "namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -136,23 +139,28 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 		Scope(srv.GetPackageRef().AsPackageName()).
 		Arg("id", srv.GetId()).Run(ctx, func(ctx context.Context) error {
 		return client.PollImmediateWithContext(ctx, 500*time.Millisecond, 5*time.Minute, func(ctx context.Context) (bool, error) {
-			// Hacky output to make service readiness issues more understandable.
-			// Ideally, we'd use orchestration events for these, but we'd need to link
-			// them to the server that is waiting for the dependency, not the one that we are waited for.
-			logger := func(msg string) {
-				if shouldLog(t, lastMsg) {
-					lastMsg = time.Now()
-					fmt.Fprintf(console.TypedOutput(ctx, "service readiness", common.CatOutputTool), "%s\n", msg)
-				} else {
-					fmt.Fprintf(console.Debug(ctx), "%s\n", msg)
-				}
-			}
-
 			if ready, err := r.isDeployableReady(ctx, srv); err != nil || !ready {
 				return ready, err
 			}
 
-			return r.areServicesReady(ctx, srv, logger)
+			res, err := r.areServicesReady(ctx, srv)
+			if err != nil {
+				return false, err
+			}
+
+			// Hacky output to make service readiness issues more understandable.
+			// Ideally, we'd use orchestration events for these, but we'd need to link
+			// them to the server that is waiting for the dependency, not the one that we are waited for.
+			if res.Message != "" {
+				if shouldLog(t, lastMsg) {
+					lastMsg = time.Now()
+					fmt.Fprintf(console.TypedOutput(ctx, "service readiness", common.CatOutputTool), "%s\n", res.Message)
+				} else {
+					fmt.Fprintf(console.Debug(ctx), "%s\n", res.Message)
+				}
+			}
+
+			return res.Ready, nil
 		})
 	})
 }
@@ -203,38 +211,32 @@ func (r *ClusterNamespace) isDeployableReady(ctx context.Context, srv runtime.De
 	}
 }
 
-func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable, msg func(string)) (bool, error) {
-	if !client.IsInclusterClient(r.underlying.cli) {
-		// Emitting this debug message as only incluster deployments know how to determine service readiness.
+func (r *ClusterNamespace) areServicesReady(ctx context.Context, srv runtime.Deployable) (ServiceReadiness, error) {
+	if client.IsInclusterClient(r.underlying.cli) {
+		return AreServicesReady(ctx, r.underlying.cli, r.target.namespace, srv)
+	}
+
+	if !orchclient.UseOrchestrator {
 		fmt.Fprintf(console.Debug(ctx), "will not wait for services of server %s...\n", srv.GetName())
-
-		// Assume service is always ready for now.
-		// TODO implement readiness check that also supports non-incluster deployments.
-		return true, nil
+		return ServiceReadiness{Ready: true}, nil
 	}
 
-	// TODO only check services that are required
-	services, err := r.underlying.cli.CoreV1().Services(r.target.namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
-	})
+	conn, err := orchclient.ConnectToOrchestrator(ctx, r.parent)
 	if err != nil {
-		return false, err
+		return ServiceReadiness{}, err
 	}
 
-	for _, s := range services.Items {
-		for _, port := range s.Spec.Ports {
-			addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, port.Port)
-
-			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-			if err != nil {
-				msg(fmt.Sprintf("%q not ready: failed to dial %s:%d: %v", srv.GetName(), s.Name, port.Port, err))
-				return false, nil
-			}
-			conn.Close()
+	res, err := orchclient.CallAreServicesReady(ctx, conn, srv, r.target.namespace)
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			fmt.Fprintf(console.Debug(ctx), "old orchestrator version, will not wait for services of server %s...\n", srv.GetName())
+			return ServiceReadiness{Ready: true}, nil
 		}
+
+		return ServiceReadiness{}, err
 	}
 
-	return true, nil
+	return ServiceReadiness{Ready: res.Ready, Message: res.Message}, nil
 }
 
 func (r *ClusterNamespace) isPodReady(ctx context.Context, srv runtime.Deployable) (bool, error) {
