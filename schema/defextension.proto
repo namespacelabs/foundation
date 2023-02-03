@@ -11,8 +11,9 @@ option go_package = "namespacelabs.dev/foundation/schema";
 import "google/protobuf/any.proto";
 
 message DefExtension {
+    reserved 2;
+
     string description       = 1;
-    string for = 2;
     google.protobuf.Any impl = 3;
 }
 

@@ -78,7 +78,7 @@ func (r Planner) PlanIngress(ctx context.Context, stack *fnschema.Stack, allFrag
 
 func (r Planner) KubernetesNamespace() string { return r.target.namespace }
 
-func (r Planner) PrepareProvision(ctx context.Context) (*rtypes.ProvisionProps, error) {
+func (r Planner) PrepareProvision(ctx context.Context) (*rtypes.RuntimeProvisionProps, error) {
 	systemInfo, err := r.fetchSystemInfo(ctx)
 	if err != nil {
 		return nil, err

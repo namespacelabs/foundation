@@ -35,7 +35,7 @@ func computeHandlers(ctx context.Context, in *planning.Stack) ([]*tool.Definitio
 	}
 
 	for _, src := range sources {
-		h, err := parseHandlers(ctx, src.Server, src.Package, src.Plan)
+		h, err := parseHandlers(ctx, src.Server, src.Plan)
 		if err != nil {
 			return nil, err
 		}
@@ -53,17 +53,10 @@ func computeHandlers(ctx context.Context, in *planning.Stack) ([]*tool.Definitio
 	return handlers, nil
 }
 
-func parseHandlers(ctx context.Context, server planning.Server, pkg schema.PackageName, pr pkggraph.PreparedProvisionPlan) ([]*tool.Definition, error) {
+func parseHandlers(ctx context.Context, server planning.Server, pr pkggraph.PreparedProvisionPlan) ([]*tool.Definition, error) {
 	source := tool.Source{
-		PackageName: pkg,
-		// The server in context is always implicitly declared.
-		DeclaredStack: append([]schema.PackageName{server.PackageName()}, pr.DeclaredStack...),
+		PackageName: server.PackageName(),
 	}
-
-	// Determinism.
-	sort.Slice(source.DeclaredStack, func(i, j int) bool {
-		return strings.Compare(source.DeclaredStack[i].String(), source.DeclaredStack[j].String()) < 0
-	})
 
 	var handlers []*tool.Definition
 	for _, dec := range pr.ComputePlanWith {

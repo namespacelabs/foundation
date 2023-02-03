@@ -148,7 +148,7 @@ func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApp
 		WithAnnotations(kubedef.MakeAnnotations(env, ""))
 }
 
-func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.ProvisionProps, error) {
+func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.RuntimeProvisionProps, error) {
 	// Ensure the namespace exist, before we go and apply definitions to it. Also, deployServer
 	// assumes that a namespace already exists.
 	def, err := (kubedef.Apply{
@@ -160,7 +160,7 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 	}
 
 	// Pass the computed namespace to the provisioning tool.
-	return &rtypes.ProvisionProps{
+	return &rtypes.RuntimeProvisionProps{
 		ProvisionInput: []rtypes.ProvisionInput{
 			{Message: &kubetool.KubernetesEnv{Namespace: ns}},
 			{Message: systemInfo},

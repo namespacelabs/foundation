@@ -10,21 +10,11 @@ import (
 )
 
 type Source struct {
-	PackageName   schema.PackageName
-	DeclaredStack []schema.PackageName // Handlers can only configure servers that were configured by the source.
+	PackageName schema.PackageName
 }
 
 type Definition struct {
 	TargetServer schema.PackageName
 	Source       Source // Where the invocation was declared.
 	Invocation   *invocation.Invocation
-}
-
-func (s Source) Contains(pkg schema.PackageName) bool {
-	for _, d := range s.DeclaredStack {
-		if d == pkg {
-			return true
-		}
-	}
-	return false
 }

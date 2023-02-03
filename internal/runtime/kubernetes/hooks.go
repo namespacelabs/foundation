@@ -49,7 +49,6 @@ func prepareApplyServerExtensions(_ context.Context, _ cfg.Context, srv *schema.
 		{Message: &kubedef.ServiceAccountDetails{ServiceAccountName: serviceAccount}},
 	}
 	props.Extension = []*schema.DefExtension{{
-		For:  srv.Server.PackageName,
 		Impl: packedExt,
 	}}
 	return &props, nil

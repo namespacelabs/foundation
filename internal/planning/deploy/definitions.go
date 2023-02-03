@@ -41,9 +41,8 @@ func prepareInvokeHandlers(ctx context.Context, planner planning.Planner, stack 
 	propsPerServer := map[schema.PackageName]tool.InvokeProps{}
 
 	definitions := props.Invocation
-	extensions := props.Extension
-	serverExtensions := props.ServerExtension
 
+	var extensions []serverExtensions
 	for k, srv := range stack.Servers {
 		invokeProps := tool.InvokeProps{Event: event}
 		anys, err := expandAnys(props.ProvisionInput)
@@ -52,6 +51,7 @@ func prepareInvokeHandlers(ctx context.Context, planner planning.Planner, stack 
 		}
 		invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, anys...)
 
+		ext := serverExtensions{TargetServer: srv.PackageName()}
 		for _, dep := range srv.ParsedDeps {
 			// XXX breaks isolation.
 			for _, input := range dep.PrepareProps.SerializedProvisionInput {
@@ -69,11 +69,12 @@ func prepareInvokeHandlers(ctx context.Context, planner planning.Planner, stack 
 			}
 			invokeProps.ProvisionInput = append(invokeProps.ProvisionInput, anys...)
 
-			extensions = append(extensions, dep.PrepareProps.Extension...)
-			serverExtensions = append(serverExtensions, dep.PrepareProps.ServerExtension...)
+			ext.Extensions = append(ext.Extensions, dep.PrepareProps.Extension...)
+			ext.ServerExtensions = append(ext.ServerExtensions, dep.PrepareProps.ServerExtension...)
 		}
 
 		propsPerServer[stack.Servers[k].PackageName()] = invokeProps
+		extensions = append(extensions, ext)
 	}
 
 	var invocations []compute.Computable[*protocol.ToolResponse]
@@ -91,13 +92,12 @@ func prepareInvokeHandlers(ctx context.Context, planner planning.Planner, stack 
 	}
 
 	return &finishInvokeHandlers{
-		stack:            stack,
-		handlers:         handlers,
-		invocations:      invocations,
-		event:            event,
-		definitions:      definitions,
-		extensions:       extensions,
-		serverExtensions: serverExtensions,
+		stack:       stack,
+		handlers:    handlers,
+		invocations: invocations,
+		event:       event,
+		definitions: definitions,
+		extensions:  extensions,
 	}, nil
 }
 
@@ -147,14 +147,19 @@ type provisionOutput struct {
 	Extensions             []*schema.DefExtension
 }
 
+type serverExtensions struct {
+	TargetServer     schema.PackageName
+	Extensions       []*schema.DefExtension
+	ServerExtensions []*schema.ServerExtension
+}
+
 type finishInvokeHandlers struct {
-	stack            *planning.Stack
-	handlers         []*tool.Definition
-	invocations      []compute.Computable[*protocol.ToolResponse]
-	event            protocol.Lifecycle
-	definitions      []*schema.SerializedInvocation
-	extensions       []*schema.DefExtension
-	serverExtensions []*schema.ServerExtension
+	stack       *planning.Stack
+	handlers    []*tool.Definition
+	invocations []compute.Computable[*protocol.ToolResponse]
+	event       protocol.Lifecycle
+	definitions []*schema.SerializedInvocation
+	extensions  []serverExtensions
 
 	compute.LocalScoped[*handlerResult]
 }
@@ -169,8 +174,7 @@ func (r *finishInvokeHandlers) Inputs() *compute.In {
 		Indigestible("handlers", r.handlers).
 		JSON("event", r.event).
 		JSON("definitions", r.definitions).
-		JSON("extensions", r.extensions).
-		JSON("serverExtensions", r.serverExtensions)
+		JSON("extensions", r.extensions)
 	for k, invocation := range r.invocations {
 		in = in.Computable(fmt.Sprintf("invocation%d", k), invocation)
 	}
@@ -196,13 +200,9 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 	}
 
 	for _, ext := range r.extensions {
-		targetServer := ensure(schema.PackageName(ext.For))
-		targetServer.Extensions = append(targetServer.Extensions, ext)
-	}
-
-	for _, ext := range r.serverExtensions {
 		targetServer := ensure(schema.PackageName(ext.TargetServer))
-		targetServer.ServerExtensions = append(targetServer.ServerExtensions, ext)
+		targetServer.Extensions = append(targetServer.Extensions, ext.Extensions...)
+		targetServer.ServerExtensions = append(targetServer.ServerExtensions, ext.ServerExtensions...)
 	}
 
 	for k, handler := range r.handlers {
@@ -221,36 +221,11 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 				return nil, fnerrors.InternalError("legacy provision tools can't produce outputs")
 			}
 
-			// XXX this needs revisiting as there's little to no isolation.
-			// Probably lifecycle handlers should declare which servers they
-			// apply to.
 			for _, si := range resp.ApplyResponse.Extension {
-				server, ok := r.stack.Get(schema.PackageName(si.For))
-				if !ok {
-					return nil, fnerrors.InternalError("%s: received startup input for %s, which is not in our stack",
-						s.PackageName(), si.For)
-				}
-
-				if !handler.Source.Contains(server.PackageName()) {
-					return nil, fnerrors.InternalError("%s: attempted to configure %q, which is not declared by the package",
-						handler.Source.PackageName, si.For)
-				}
-
 				sr.Extensions = append(sr.Extensions, si)
 			}
 
 			for _, si := range resp.ApplyResponse.ServerExtension {
-				server, ok := r.stack.Get(schema.PackageName(si.TargetServer))
-				if !ok {
-					return nil, fnerrors.InternalError("%s: received startup input for %s, which is not in our stack",
-						s.PackageName(), si.TargetServer)
-				}
-
-				if !handler.Source.Contains(server.PackageName()) {
-					return nil, fnerrors.InternalError("%s: attempted to configure %q, which is not declared by the package",
-						handler.Source.PackageName, si.TargetServer)
-				}
-
 				if si.Owner != "" && si.Owner != handler.Source.PackageName.String() {
 					return nil, fnerrors.BadInputError("%s: unexpected Owner %q", handler.Source.PackageName, si.Owner)
 				}

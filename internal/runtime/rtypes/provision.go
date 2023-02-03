@@ -18,6 +18,11 @@ type LocalMapping struct {
 	ContainerPath string `json:"container_path,omitempty"`
 }
 
+type RuntimeProvisionProps struct {
+	ProvisionInput []ProvisionInput
+	Invocation     []*schema.SerializedInvocation
+}
+
 type ProvisionProps struct {
 	ProvisionInput  []ProvisionInput
 	Invocation      []*schema.SerializedInvocation

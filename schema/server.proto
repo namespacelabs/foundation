@@ -192,8 +192,9 @@ message ServerPermissions {
 
 // Server extensions which are dynamically provided by tools.
 message ServerExtension {
+    reserved 2;
+
     string owner         = 1;  // Package name.
-    string target_server = 2;  // Package name.
 
     repeated Volume             volume           = 3;
     repeated ContainerExtension extend_container = 5;

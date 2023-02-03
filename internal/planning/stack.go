@@ -632,18 +632,12 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 				return nil, err
 			}
 
-			var pl schema.PackageList
-			for _, p := range resp.GetPreparedProvisionPlan().GetDeclaredStack() {
-				pl.Add(schema.PackageName(p))
-			}
-
 			if len(resp.DeprecatedProvisionInput) > 0 {
 				return nil, fnerrors.BadInputError("setting provision inputs is deprecated, use serialized message")
 			}
 
 			props := planninghooks.InternalPrepareProps{
 				PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
-					DeclaredStack:   pl.PackageNames(),
 					ComputePlanWith: resp.GetPreparedProvisionPlan().GetProvisioning(),
 				},
 				ProvisionResult: planninghooks.ProvisionResult{
@@ -653,7 +647,7 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 				},
 			}
 
-			if len(resp.GetPreparedProvisionPlan().GetSidecar()) > 0 || len(resp.GetPreparedProvisionPlan().GetInit()) > 0 {
+			if len(resp.GetPreparedProvisionPlan().GetSidecar()) > 0 || len(resp.GetPreparedProvisionPlan().GetInit()) > 0 || len(resp.GetPreparedProvisionPlan().GetDeclaredStack()) > 0 {
 				frag := &schema.ServerFragment{
 					MainContainer: &schema.Container{},
 				}
@@ -666,6 +660,16 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 				for _, init := range resp.GetPreparedProvisionPlan().GetInit() {
 					init.Owner = schema.MakePackageSingleRef(node.PackageName())
 					frag.InitContainer = append(frag.InitContainer, init)
+				}
+
+				if len(resp.GetPreparedProvisionPlan().GetDeclaredStack()) > 0 {
+					frag.ResourcePack = &schema.ResourcePack{}
+
+					if err := parsing.AddServersAsResources(ctx, server.SealedContext(), server.PackageRef(),
+						schema.PackageNames(resp.GetPreparedProvisionPlan().GetDeclaredStack()...),
+						frag.ResourcePack); err != nil {
+						return nil, err
+					}
 				}
 
 				fragments = append(fragments, frag)

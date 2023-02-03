@@ -136,7 +136,7 @@ type Planner interface {
 	// PrepareProvision is called before invoking a provisioning tool, to offer
 	// the runtime implementation a way to pass runtime-specific information to
 	// the tool. E.g. what's the Kubernetes namespace we're working with.
-	PrepareProvision(context.Context) (*rtypes.ProvisionProps, error)
+	PrepareProvision(context.Context) (*rtypes.RuntimeProvisionProps, error)
 
 	// Returns the set of platforms that the target runtime operates on, e.g. linux/amd64.
 	TargetPlatforms(context.Context) ([]specs.Platform, error)
