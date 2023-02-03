@@ -46,12 +46,11 @@ type cueIngress struct {
 
 type CueIngressDetails struct {
 	// Key is domain.
-	HttpRoutes    map[string][]string `json:"httpRoutes"`
-	ProviderClass string              `json:"provider"`
-	Domains       []string            `json:"domains"`
-	// Certificates   map[string]secretRef   `json:"certificates,omitempty"`
-	AllowedOrigins []string          `json:"allowed_origins"`
-	Annotations    map[string]string `json:"annotations,omitempty"`
+	HttpRoutes     map[string][]string `json:"httpRoutes"`
+	ProviderClass  string              `json:"provider"`
+	Domains        []string            `json:"domains"`
+	AllowedOrigins []string            `json:"allowed_origins"`
+	Annotations    map[string]string   `json:"annotations,omitempty"`
 }
 
 var _ json.Unmarshaler = &cueIngress{}
@@ -201,12 +200,14 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		if err := parsing.RequireFeature(loc.Module, "experimental/service/ingress_annotations"); err != nil {
 			return nil, nil, err
 		}
+		ingressAnnotations := &schema.ServiceAnnotations{}
 		for key, value := range svc.Ingress.Details.Annotations {
-			parsed.IngressAnnotation = append(parsed.IngressAnnotation, &schema.Server_ServiceSpec_IngressAnnotation{
+			ingressAnnotations.KeyValue = append(ingressAnnotations.KeyValue, &schema.ServiceAnnotations_KeyValue{
 				Key:   key,
 				Value: value,
 			})
 		}
+		parsed.IngressAnnotations = ingressAnnotations
 	}
 
 	if len(svc.Annotations) > 0 {
