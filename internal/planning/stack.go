@@ -96,7 +96,8 @@ type PlannedServer struct {
 type ParsedNode struct {
 	Package         *pkggraph.Package
 	ServerFragments []*schema.ServerFragment
-	ProvisionPlan   pkggraph.ProvisionPlan
+	Startup         pkggraph.PreStartup
+	ComputePlanWith []*schema.Invocation
 	Allocations     []pkggraph.ValueWithPath
 	PrepareProps    planninghooks.ProvisionResult
 }
@@ -625,9 +626,7 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 			}
 
 			props := planninghooks.InternalPrepareProps{
-				PreparedProvisionPlan: pkggraph.PreparedProvisionPlan{
-					ComputePlanWith: resp.GetPreparedProvisionPlan().GetProvisioning(),
-				},
+				ComputePlanWith: resp.GetPreparedProvisionPlan().GetProvisioning(),
 				ProvisionResult: planninghooks.ProvisionResult{
 					SerializedProvisionInput: resp.ProvisionInput,
 					Extension:                resp.Extension,
@@ -669,9 +668,12 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 		return nil, fnerrors.NewWithLocation(node.Location, "nodes can't provide naming specifications")
 	}
 
-	pdata.AppendWith(combinedProps.PreparedProvisionPlan)
-
-	parsed := &ParsedNode{Package: node, ProvisionPlan: pdata, ServerFragments: fragments}
+	parsed := &ParsedNode{
+		Package:         node,
+		Startup:         node.ProvisionPlan.Startup,
+		ComputePlanWith: append(pdata.ComputePlanWith, combinedProps.ComputePlanWith...),
+		ServerFragments: fragments,
+	}
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
 	parsed.PrepareProps.Extension = combinedProps.Extension
 	parsed.PrepareProps.ServerExtension = combinedProps.ServerExtension

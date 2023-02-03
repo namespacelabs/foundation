@@ -37,10 +37,6 @@ type PreparedProvisionPlan struct {
 	ComputePlanWith []*schema.Invocation // Will generate further plan contents.
 }
 
-func (p *PreparedProvisionPlan) AppendWith(rhs PreparedProvisionPlan) {
-	p.ComputePlanWith = append(p.ComputePlanWith, rhs.ComputePlanWith...)
-}
-
 type ProvisionPlan struct {
 	Startup PreStartup
 

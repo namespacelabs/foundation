@@ -12,7 +12,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -28,12 +27,12 @@ type ProvisionResult struct {
 }
 
 type InternalPrepareProps struct {
-	pkggraph.PreparedProvisionPlan
+	ComputePlanWith []*schema.Invocation // Will generate further plan contents.
 	ProvisionResult
 }
 
 func (p *InternalPrepareProps) AppendWith(rhs InternalPrepareProps) {
-	p.PreparedProvisionPlan.AppendWith(rhs.PreparedProvisionPlan)
+	p.ComputePlanWith = append(p.ComputePlanWith, rhs.ComputePlanWith...)
 	p.ProvisionResult.AppendWith(rhs.ProvisionResult)
 }
 

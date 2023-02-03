@@ -904,7 +904,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.MainContainer.AllocatedPorts = append(out.MainContainer.AllocatedPorts, stackEntry.AllocatedPorts...)
 
 	for _, dep := range stackEntry.ParsedDeps {
-		plan, err := dep.ProvisionPlan.Startup.EvalStartup(ctx, srv.SealedContext(), inputs, dep.Allocations)
+		plan, err := dep.Startup.EvalStartup(ctx, srv.SealedContext(), inputs, dep.Allocations)
 		if err != nil {
 			return err
 		}

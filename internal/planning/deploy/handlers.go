@@ -13,13 +13,12 @@ import (
 	"namespacelabs.dev/foundation/internal/planning/invocation"
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type handlerSource struct {
-	Server  planning.Server
-	Package schema.PackageName
-	Plan    pkggraph.PreparedProvisionPlan
+	Server          planning.Server
+	Package         schema.PackageName
+	ComputePlanWith []*schema.Invocation
 }
 
 func computeHandlers(ctx context.Context, in *planning.Stack) ([]*tool.Definition, error) {
@@ -29,13 +28,21 @@ func computeHandlers(ctx context.Context, in *planning.Stack) ([]*tool.Definitio
 	for _, ps := range in.Servers {
 		srv := ps.Server
 		for _, n := range ps.ParsedDeps {
-			sources = append(sources, handlerSource{srv, n.Package.PackageName(), n.ProvisionPlan.PreparedProvisionPlan})
+			sources = append(sources, handlerSource{
+				Server:          srv,
+				Package:         n.Package.PackageName(),
+				ComputePlanWith: n.ComputePlanWith,
+			})
 		}
-		sources = append(sources, handlerSource{srv, srv.PackageName(), srv.Provisioning})
+		sources = append(sources, handlerSource{
+			Server:          srv,
+			Package:         srv.PackageName(),
+			ComputePlanWith: srv.Provisioning.ComputePlanWith,
+		})
 	}
 
 	for _, src := range sources {
-		h, err := parseHandlers(ctx, src.Server, src.Plan)
+		h, err := prepareToolInvocations(ctx, src.Server, src.ComputePlanWith)
 		if err != nil {
 			return nil, err
 		}
@@ -53,13 +60,13 @@ func computeHandlers(ctx context.Context, in *planning.Stack) ([]*tool.Definitio
 	return handlers, nil
 }
 
-func parseHandlers(ctx context.Context, server planning.Server, pr pkggraph.PreparedProvisionPlan) ([]*tool.Definition, error) {
+func prepareToolInvocations(ctx context.Context, server planning.Server, invocations []*schema.Invocation) ([]*tool.Definition, error) {
 	source := tool.Source{
 		PackageName: server.PackageName(),
 	}
 
 	var handlers []*tool.Definition
-	for _, dec := range pr.ComputePlanWith {
+	for _, dec := range invocations {
 		invocation, err := invocation.BuildAndPrepare(ctx, server.SealedContext(), server.SealedContext(), &server.Location, dec)
 		if err != nil {
 			return nil, err
