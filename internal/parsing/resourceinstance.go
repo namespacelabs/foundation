@@ -271,7 +271,19 @@ func LoadResources(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggraph
 	return resources, nil
 }
 
-func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
+func AddServersAsResources(ctx context.Context, pl pkggraph.PackageLoader, owner *schema.PackageRef, servers []schema.PackageName, frag *schema.ServerFragment) error {
+	if len(servers) == 0 {
+		return nil
+	}
+
+	if frag.ResourcePack == nil {
+		frag.ResourcePack = &schema.ResourcePack{}
+	}
+
+	return AddServersAsResourcesToPack(ctx, pl, owner, servers, frag.ResourcePack)
+}
+
+func AddServersAsResourcesToPack(ctx context.Context, pl pkggraph.PackageLoader, owner *schema.PackageRef, servers []schema.PackageName, pack *schema.ResourcePack) error {
 	if owner.PackageName == "" {
 		return fnerrors.InternalError("owner.package_name is missing")
 	}

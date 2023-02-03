@@ -81,7 +81,9 @@ type ProvisionOpts struct {
 type PlannedServer struct {
 	Server
 
-	DeclaredStack  schema.PackageList
+	// Transitive set of servers this server depends on.
+	DeclaredStack schema.PackageList
+	// Post-processed set of `node` dependencies.
 	ParsedDeps     []*ParsedNode
 	Resources      []pkggraph.ResourceInstance
 	MergedFragment *schema.ServerFragment
@@ -214,13 +216,6 @@ func (cs *computeState) recursivelyComputeServerContents(ctx context.Context, rp
 		return err
 	}
 
-	for _, pkg := range ps.DeclaredStack.PackageNames() {
-		pkg := pkg // Close pkg.
-		cs.exec.Go(func(ctx context.Context) error {
-			return cs.recursivelyComputeServerContents(ctx, rp, pkgs, pkg, opts)
-		})
-	}
-
 	return nil
 }
 
@@ -277,15 +272,8 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			dwn.Allocations = allocs
 		}
 
-		var declaredStack schema.PackageList
-		declaredStack.AddMultiple(server.Provisioning.DeclaredStack...)
-		for _, p := range parsedDeps {
-			declaredStack.AddMultiple(p.ProvisionPlan.DeclaredStack...)
-		}
-
 		ps.Server = server
 		ps.ParsedDeps = parsedDeps
-		ps.DeclaredStack = declaredStack
 
 		allFragments := server.fragments
 		for _, n := range parsedDeps {
@@ -663,11 +651,8 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 				}
 
 				if len(resp.GetPreparedProvisionPlan().GetDeclaredStack()) > 0 {
-					frag.ResourcePack = &schema.ResourcePack{}
-
 					if err := parsing.AddServersAsResources(ctx, server.SealedContext(), server.PackageRef(),
-						schema.PackageNames(resp.GetPreparedProvisionPlan().GetDeclaredStack()...),
-						frag.ResourcePack); err != nil {
+						schema.PackageNames(resp.GetPreparedProvisionPlan().GetDeclaredStack()...), frag); err != nil {
 						return nil, err
 					}
 				}

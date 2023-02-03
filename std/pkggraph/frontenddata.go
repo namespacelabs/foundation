@@ -34,12 +34,10 @@ type ValueWithPath struct {
 }
 
 type PreparedProvisionPlan struct {
-	DeclaredStack   []schema.PackageName
 	ComputePlanWith []*schema.Invocation // Will generate further plan contents.
 }
 
 func (p *PreparedProvisionPlan) AppendWith(rhs PreparedProvisionPlan) {
-	p.DeclaredStack = append(p.DeclaredStack, rhs.DeclaredStack...)
 	p.ComputePlanWith = append(p.ComputePlanWith, rhs.ComputePlanWith...)
 }
 

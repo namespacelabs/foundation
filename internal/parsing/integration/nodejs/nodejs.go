@@ -112,9 +112,5 @@ func InjectBackends(ctx context.Context, pl pkggraph.PackageLoader, pkg *pkggrap
 		pkg.Server.Self = &schema.ServerFragment{}
 	}
 
-	if pkg.Server.Self.ResourcePack == nil {
-		pkg.Server.Self.ResourcePack = &schema.ResourcePack{}
-	}
-
-	return parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), servers.PackageNames(), pkg.Server.Self.ResourcePack)
+	return parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), servers.PackageNames(), pkg.Server.Self)
 }

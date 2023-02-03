@@ -152,13 +152,19 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 		parsed.ProvisionPlan = plan.ProvisionPlan
 		parsed.Server.Self.Sidecar = append(parsed.Server.Self.Sidecar, plan.Sidecars...)
 		parsed.Server.Self.InitContainer = append(parsed.Server.Self.InitContainer, plan.InitContainers...)
+		if err := parsing.AddServersAsResources(ctx, ft.loader, schema.MakePackageSingleRef(loc.PackageName), plan.DeclaredStack, parsed.Server.Self); err != nil {
+			return nil, err
+		}
 	} else if node := parsed.Node(); node != nil {
 		parsed.ProvisionPlan = plan.ProvisionPlan
-		if len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 {
+		if len(plan.Sidecars) > 0 || len(plan.InitContainers) > 0 || len(plan.DeclaredStack) > 0 {
 			parsed.ServerFragment = &schema.ServerFragment{
 				MainContainer: &schema.Container{},
 				Sidecar:       plan.Sidecars,
 				InitContainer: plan.InitContainers,
+			}
+			if err := parsing.AddServersAsResources(ctx, ft.loader, schema.MakePackageSingleRef(loc.PackageName), plan.DeclaredStack, parsed.ServerFragment); err != nil {
+				return nil, err
 			}
 		}
 	} else {

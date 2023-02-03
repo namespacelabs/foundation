@@ -244,13 +244,9 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 			return nil, err
 		}
 
-		if len(declaredStack) > 0 && out.ResourcePack == nil {
-			out.ResourcePack = &schema.ResourcePack{}
-		}
-
 		availableServers.AddMultiple(declaredStack...)
 
-		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), declaredStack, out.ResourcePack); err != nil {
+		if err := parsing.AddServersAsResources(ctx, pl, schema.MakePackageSingleRef(pkg.PackageName()), declaredStack, out); err != nil {
 			return nil, err
 		}
 	}

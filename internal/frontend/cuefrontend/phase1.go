@@ -41,6 +41,7 @@ type cueContainer struct {
 
 type evalProvisionResult struct {
 	pkggraph.ProvisionPlan
+	DeclaredStack  []schema.PackageName
 	Sidecars       []*schema.Container
 	InitContainers []*schema.Container
 }
