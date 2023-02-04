@@ -112,7 +112,6 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 			return "", err
 		}
 
-		// TODO exchange user auth for tenant tokens.
 		userToken, err := auth.GenerateToken(ctx)
 		if err != nil {
 			return "", err
