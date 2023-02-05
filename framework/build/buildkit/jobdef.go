@@ -56,7 +56,7 @@ func JobDef() *JobDefinition {
 					Containers: []corev1.Container{
 						{
 							Name:  "buildkitd",
-							Image: "moby/buildkit:v0.11.0",
+							Image: "moby/buildkit:v0.11.2",
 							Args: []string{
 								"--addr", "unix:///run/buildkit/buildkitd.sock",
 								"--addr", "tcp://0.0.0.0:10000",

@@ -26,7 +26,7 @@ require (
 	github.com/charmbracelet/glamour v0.5.0
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/cloudflare/cloudflared v0.0.0-20221214131721-99b3736cc7f7
-	github.com/containerd/containerd v1.6.14
+	github.com/containerd/containerd v1.6.16-0.20230124210447-1709cfe273d9
 	github.com/containerd/stargz-snapshotter/estargz v0.13.0
 	github.com/creack/pty v1.1.11
 	github.com/docker/cli v23.0.0-rc.1+incompatible
@@ -66,7 +66,7 @@ require (
 	github.com/mattn/go-zglob v0.0.3
 	github.com/miekg/dns v1.1.50
 	github.com/minio/minio-go/v7 v7.0.47
-	github.com/moby/buildkit v0.11.0
+	github.com/moby/buildkit v0.11.2
 	github.com/moby/patternmatcher v0.5.0
 	github.com/morikuni/aec v1.0.0
 	github.com/muesli/cancelreader v0.2.2
@@ -108,7 +108,6 @@ require (
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.3.0
 	golang.org/x/term v0.3.0
-	golang.org/x/tools v0.3.0
 	google.golang.org/api v0.100.0
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c
 	google.golang.org/grpc v1.50.1
@@ -309,6 +308,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20221126150942-6ab00d035af9 // indirect
 	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/tools v0.3.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
