@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"k8s.io/utils/pointer"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -16,40 +17,35 @@ import (
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 )
 
 func newGoCmd(goVersion string) *cobra.Command {
-	var (
-		env cfg.Context
-	)
+	cmd := &cobra.Command{
+		Use:                "go -- ...",
+		Short:              "Run Go.",
+		Hidden:             true,
+		DisableFlagParsing: true,
+	}
 
-	return fncobra.Cmd(
-		&cobra.Command{
-			Use:                "go -- ...",
-			Short:              "Run Go.",
-			Hidden:             true,
-			DisableFlagParsing: true,
-		}).
-		With(
-			fncobra.HardcodeEnv(&env, "dev")).
-		DoWithArgs(func(ctx context.Context, args []string) error {
-			pl := parsing.NewPackageLoader(env)
-			loc, err := pl.Resolve(ctx, schema.MakePackageName(env.Workspace().ModuleName()))
-			if err != nil {
-				return err
-			}
+	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		pl := parsing.NewPackageLoader(*env)
+		loc, err := pl.Resolve(ctx, schema.MakePackageName((*env).Workspace().ModuleName()))
+		if err != nil {
+			return err
+		}
 
-			sdk, err := golangsdk.MatchSDK(goVersion, host.HostPlatform())
-			if err != nil {
-				return fnerrors.AttachLocation(loc, err)
-			}
+		sdk, err := golangsdk.MatchSDK(goVersion, host.HostPlatform())
+		if err != nil {
+			return fnerrors.AttachLocation(loc, err)
+		}
 
-			localSDK, err := compute.GetValue(ctx, sdk)
-			if err != nil {
-				return fnerrors.AttachLocation(loc, err)
-			}
+		localSDK, err := compute.GetValue(ctx, sdk)
+		if err != nil {
+			return fnerrors.AttachLocation(loc, err)
+		}
 
-			return golang.RunGo(ctx, loc, localSDK, args...)
-		})
+		return golang.RunGo(ctx, loc, localSDK, args...)
+	})
+	return cmd
 }
