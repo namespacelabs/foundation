@@ -25,16 +25,22 @@ type VersionConfiguration struct {
 type ArtifactList map[string]string // platform --> digest
 
 type ParsedVersions struct {
-	Name string
-	FS   fs.FS
+	Name     string
+	FS       fs.FS
+	Filename string
 
 	v    VersionConfiguration
 	once sync.Once
 }
 
 func (p *ParsedVersions) Get() *VersionConfiguration {
+	filename := p.Filename
+	if filename == "" {
+		filename = "versions.json"
+	}
+
 	p.once.Do(func() {
-		data, err := fs.ReadFile(p.FS, "versions.json")
+		data, err := fs.ReadFile(p.FS, filename)
 		if err != nil {
 			panic(err)
 		}

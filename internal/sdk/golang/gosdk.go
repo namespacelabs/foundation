@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	//go:embed versions.json
+	//go:embed gosdk.json
 	lib embed.FS
 
-	v = &host.ParsedVersions{Name: "go", FS: lib}
+	v = &host.ParsedVersions{Name: "go", FS: lib, Filename: "gosdk.json"}
 )
 
 type LocalSDK = host.LocalSDK

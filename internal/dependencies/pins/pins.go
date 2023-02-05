@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	//go:embed versions.json
+	//go:embed pins.json
 	lib embed.FS
 )
 
@@ -79,7 +79,7 @@ func CheckImage(image string) (string, error) {
 }
 
 func init() {
-	versionData, err := fs.ReadFile(lib, "versions.json")
+	versionData, err := fs.ReadFile(lib, "pins.json")
 	if err != nil {
 		panic(err)
 	}
