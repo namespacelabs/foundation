@@ -1,9 +1,16 @@
 {
 	"versions": {
+		"18": "18.14.0",
 		"16": "16.18.0"
 	},
 
 	"artifacts": {
+		"18.14.0": {
+			"linux/amd64": "bcdfd28bb7ab9a53c7045e0862556f77c250580c6d3d6cb960843895e024cac6",
+			"linux/arm64": "29b38346f6b01e14a7582adf0132fae83410a8da21cdba936357010a065290a6",
+			"darwin/amd64": "274a62f2f1c21e6216a9be1445c53ef63814db4a3ffeea8028b507fb6453c0ac",
+			"darwin/arm64": "514438c258ee87e3083c21359f6d5e84988946db8a5ed5fa8bb0485276ea99f0"
+		},
 		"16.18.0": {
 			"linux/amd64": "faca6476cb5b41aa995370fd856d16fcfbbef5c18718a6fa44cc1bae4140849d",
 			"linux/arm64": "7d495b6e26d26dd3dba64b567383f843f3d6211810182a22973fb83c32b5920b",

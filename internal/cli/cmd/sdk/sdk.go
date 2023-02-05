@@ -36,8 +36,8 @@ import (
 func NewSdkCmd() *cobra.Command {
 	sdks := []string{"go", "nodejs", "k3d", "kubectl", "grpcurl", "deno"}
 
-	goSdkVersion := "1.19"
-	nodejsVersion := "16"
+	goSdkVersion := "1.20"
+	nodejsVersion := "18"
 
 	cmd := &cobra.Command{
 		Use:   "sdk",

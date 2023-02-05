@@ -14,7 +14,6 @@
 	},
 	"defaults": {
 		"node": "docker.io/library/node:16.13-alpine",
-		"golang": "docker.io/library/golang:1.17-alpine",
 		"alpine": "docker.io/library/alpine:3.14",
 		"fullstorydev/grpcurl": "docker.io/fullstorydev/grpcurl:v1.8.5"
 	},
