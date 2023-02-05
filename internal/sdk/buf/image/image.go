@@ -19,6 +19,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/production"
 )
 
 var (
@@ -84,11 +85,15 @@ func baseCopies(platform specs.Platform) []llb.StateOption {
 	return copies
 }
 
-func ImagePlan(platform specs.Platform) llb.State {
+func ImagePlan(platform specs.Platform) (llb.State, error) {
 	copies := baseCopies(platform)
 
-	target := llbutil.Image(pins.Image("gcr.io/distroless/static:nonroot"), platform)
-	return target.With(copies...)
+	target, err := production.ServerImageLLB(production.StaticBase, platform)
+	if err != nil {
+		return llb.State{}, nil
+	}
+
+	return target.With(copies...), nil
 }
 
 func ImagePlanWithNodeJS(platform specs.Platform) llb.State {

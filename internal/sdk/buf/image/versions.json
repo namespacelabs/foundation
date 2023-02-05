@@ -1,6 +1,6 @@
 {
 	"buf": {
-		"go": "docker.io/library/golang:1.17-alpine",
+		"go": "docker.io/library/golang:1.20-alpine",
 		"prebuilt": "us-docker.pkg.dev/foundation-344819/prebuilts/namespacelabs.dev/foundation/internal/sdk/buf/image/prebuilt@sha256:a0928f663167eff2ec998083f04885656587abb2ff998f666ca4a6e48e6d8d19"
 	},
 	"goPackages": {
