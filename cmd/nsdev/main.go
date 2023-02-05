@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/debug"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
+	"namespacelabs.dev/foundation/internal/cli/cmd/nsbuild"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 )
@@ -25,5 +26,6 @@ func main() {
 		root.AddCommand(cmd.NewLintCmd())
 		root.AddCommand(source.NewSourceCmd())
 		root.AddCommand(cmd.NewUseCmd())
+		root.AddCommand(nsbuild.NewNsBuildCmd())
 	})
 }

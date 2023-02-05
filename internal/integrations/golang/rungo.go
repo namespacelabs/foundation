@@ -20,13 +20,13 @@ func RunGo(ctx context.Context, loc pkggraph.Location, sdk golang.LocalSDK, args
 		var cmd localexec.Command
 		cmd.Command = golang.GoBin(sdk)
 		cmd.Args = args
-		cmd.AdditionalEnv = makeGoEnv(sdk)
+		cmd.AdditionalEnv = MakeGoEnv(sdk)
 		cmd.Dir = loc.Abs()
 		cmd.Label = "go " + strings.Join(cmd.Args, " ")
 		return cmd.Run(ctx)
 	})
 }
 
-func makeGoEnv(sdk golang.LocalSDK) []string {
+func MakeGoEnv(sdk golang.LocalSDK) []string {
 	return append([]string{golang.GoRootEnv(sdk), goPrivate()}, git.NoPromptEnv().Serialize()...)
 }
