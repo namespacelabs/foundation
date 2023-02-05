@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	Distroless = "distroless"
+	StaticBase = "chainguard-static"
 	Alpine     = "alpine"
 
 	DefaultNonRootUserID = 65000

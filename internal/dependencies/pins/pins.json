@@ -8,6 +8,7 @@
 		"docker.io/fullstorydev/grpcurl:v1.8.5": "69afacd15afc7533c7c926b62585efbeb03e2889ce76f346da12288baff99a91",
 		"docker.io/library/node:16.13-alpine": "2f50f4a428f8b5280817c9d4d896dbee03f072e93f4e0c70b90cc84bd1fcfe0d",
 		"gcr.io/distroless/static:nonroot": "80c956fb0836a17a565c43a4026c9c80b2013c83bea09f74fa4da195a59b7a99",
+		"cgr.dev/chainguard/static:latest": "2ea44d9bdd177a07e6fba8a60f7d45cb8a7358586a5f740187866566e6df310d",
 		"nixos/nix:2.6.0": "f0c68f870c655d8d96658ca762a0704a30704de22d16b4956e762a2ddfbccb09",
 		"postgres:14.0": "db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd",
 		"hello-world": "995efde2e81b21d1ea7066aa77a59298a62a9e9fbb4b77f36c189774ec9b1089"
@@ -18,6 +19,11 @@
 		"fullstorydev/grpcurl": "docker.io/fullstorydev/grpcurl:v1.8.5"
 	},
 	"serverBases": {
+		"chainguard-static": {
+			"base": "cgr.dev/chainguard/static:latest",
+			"nonRootUserId": 65532,
+			"fsGroup": 65532
+		},
 		"distroless": {
 			"base": "gcr.io/distroless/static:nonroot",
 			"nonRootUserId": 65532,

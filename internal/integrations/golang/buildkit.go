@@ -47,7 +47,7 @@ func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf
 
 	if !bin.BinaryOnly {
 		var err error
-		prodBase, err = production.ServerImageLLB(production.Distroless, *conf.TargetPlatform())
+		prodBase, err = production.ServerImageLLB(production.StaticBase, *conf.TargetPlatform())
 		if err != nil {
 			return nil, err
 		}

@@ -101,7 +101,7 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 func (impl) PrepareRun(ctx context.Context, t planning.PlannedServer, run *runtime.ContainerRunOpts) error {
 	run.Command = []string{"/server"}
 	run.ReadOnlyFilesystem = true
-	run.RunAs = production.NonRootRunAs(production.Distroless)
+	run.RunAs = production.NonRootRunAs(production.StaticBase)
 	return nil
 }
 

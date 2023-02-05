@@ -85,7 +85,7 @@ func baseImage(ctx context.Context, env cfg.Context, target build.BuildTarget) (
 		return production.DevelopmentImage(ctx, production.Alpine, buildkit.DeferClient(env.Configuration(), target.TargetPlatform()), target)
 	}
 
-	return production.ServerImage(production.Distroless, *target.TargetPlatform())
+	return production.ServerImage(production.StaticBase, *target.TargetPlatform())
 }
 
 func platformToEnv(platform specs.Platform, cgo int) []string {
