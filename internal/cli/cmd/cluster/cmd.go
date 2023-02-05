@@ -251,17 +251,19 @@ func newKubectlCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubectl -- ...",
 		Short: "Run kubectl on the target cluster.",
+		Args:  cobra.MinimumNArgs(1),
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, args, err := selectCluster(ctx, args)
+		clusterName := args[0]
+		args = args[1:]
+
+		response, err := api.GetCluster(ctx, api.Endpoint, clusterName)
 		if err != nil {
 			return err
 		}
 
-		if cluster == nil {
-			return nil
-		}
+		cluster := response.Cluster
 
 		cfg, err := tools.WriteRawKubeconfig(ctx, nscloud.MakeConfig(cluster), false)
 		if err != nil {
