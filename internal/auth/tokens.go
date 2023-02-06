@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -61,7 +62,7 @@ func LoadTenantToken() (*Token, error) {
 	}
 
 	claims := jwt.RegisteredClaims{}
-	if _, _, err := new(jwt.Parser).ParseUnverified(token.TenantToken, claims); err != nil {
+	if _, _, err := new(jwt.Parser).ParseUnverified(strings.TrimPrefix("nsct_", token.TenantToken), claims); err != nil {
 		return nil, err
 	}
 
