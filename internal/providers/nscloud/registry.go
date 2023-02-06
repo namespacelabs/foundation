@@ -6,15 +6,12 @@ package nscloud
 
 import (
 	"context"
-	"os"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -97,35 +94,7 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return authn.Anonymous, nil
 	}
 
-	exchangeToken := func(ctx context.Context) (string, error) {
-		tenantToken, err := auth.LoadTenantToken()
-		if err == nil {
-			resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, []string{"image-registry-access"})
-			if err != nil {
-				return "", err
-			}
-
-			return resp.TenantToken, nil
-		}
-
-		if !os.IsNotExist(err) {
-			return "", err
-		}
-
-		userToken, err := auth.GenerateToken(ctx)
-		if err != nil {
-			return "", err
-		}
-
-		resp, err := fnapi.ExchangeUserToken(ctx, userToken, []string{"image-registry-access"})
-		if err != nil {
-			return "", err
-		}
-
-		return resp.TenantToken, nil
-	}
-
-	token, err := exchangeToken(ctx)
+	token, err := api.ExchangeToken(ctx, "image-registry-access")
 	if err != nil {
 		return nil, err
 	}
