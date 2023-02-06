@@ -30,7 +30,7 @@ func RegisterRuntimeState() {
 
 		w := ingress.Waiter(kube.PreparedClient().RESTConfig)
 		if w == nil {
-			return nil, nil
+			return ingress, nil
 		}
 
 		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller is ready").Run(ctx, func(ctx context.Context) error {
