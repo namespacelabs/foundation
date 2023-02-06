@@ -101,7 +101,7 @@ var (
 	disableCommandBundle = false
 )
 
-func DoMain(name string, registerCommands func(*cobra.Command)) {
+func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
@@ -114,20 +114,12 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	compute.RegisterBytesCacheable()
 	fscache.RegisterFSCacheable()
 
-	rootCtx, style, flushLogs := SetupContext(context.Background())
-
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
-	if ver, err := version.Current(); err == nil {
-		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
-			cached, ns, err := nsboot.CheckUpdate(rootCtx, true, ver.Version)
-			if err == nil && cached != nil {
-				flushLogs()
-
-				ns.ExecuteAndForwardExitCode(rootCtx, style)
-				// Never gets here.
-			}
-		}
+	if autoUpdate {
+		ensureLatest()
 	}
+
+	rootCtx, style, flushLogs := SetupContext(context.Background())
 
 	var cleanupTracer func()
 	if tracerEndpoint := viper.GetString("jaeger_endpoint"); tracerEndpoint != "" && viper.GetBool("enable_tracing") {
@@ -420,9 +412,14 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 	debugLog := console.Debug(rootCtx)
 	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))
 
+	checkVersion := CheckVersion
+	if !autoUpdate {
+		checkVersion = nil
+	}
+
 	err := RunInContext(cmdCtx, func(ctx context.Context) error {
 		return rootCmd.ExecuteContext(ctx)
-	}, CheckVersion)
+	}, checkVersion)
 
 	if run != nil {
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.
@@ -454,6 +451,22 @@ func DoMain(name string, registerCommands func(*cobra.Command)) {
 
 		// Ensures graceful invocation of deferred routines in the block above before we exit.
 		panic(exitWithCode{exitCode})
+	}
+}
+
+func ensureLatest() {
+	if ver, err := version.Current(); err == nil {
+		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
+			rootCtx, style, flushLogs := SetupContext(context.Background())
+
+			cached, ns, err := nsboot.CheckUpdate(rootCtx, true, ver.Version)
+			if err == nil && cached != nil {
+				flushLogs()
+
+				ns.ExecuteAndForwardExitCode(rootCtx, style)
+				// Never gets here.
+			}
+		}
 	}
 }
 

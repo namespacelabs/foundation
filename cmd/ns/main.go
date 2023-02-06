@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	fncobra.DoMain("ns", func(root *cobra.Command) {
+	fncobra.DoMain("ns", true, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 	})
 }

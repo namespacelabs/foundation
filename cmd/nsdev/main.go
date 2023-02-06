@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	fncobra.DoMain("nsdev", func(root *cobra.Command) {
+	fncobra.DoMain("nsdev", false, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 		root.AddCommand(debug.NewDebugCmd())
 		root.AddCommand(debug.NewFnServicesCmd())

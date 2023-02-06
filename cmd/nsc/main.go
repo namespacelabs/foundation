@@ -12,7 +12,8 @@ import (
 )
 
 func main() {
-	fncobra.DoMain("nsc", func(root *cobra.Command) {
+	// Consider adding auto updates if we frequently change nsc.
+	fncobra.DoMain("nsc", false, func(root *cobra.Command) {
 		root.AddCommand(auth.NewLoginCmd())
 		root.AddCommand(cluster.NewClusterCmd(false))
 	})
