@@ -27,3 +27,43 @@ func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenRe
 
 	return res, nil
 }
+
+type ExchangeUserTokenRequest struct {
+	Token  string   `json:"token,omitempty"`
+	Scopes []string `json:"scopes,omitempty"`
+}
+
+type ExchangeUserTokenResponse struct {
+	TenantToken string `json:"tenant_token,omitempty"`
+}
+
+func ExchangeUserToken(ctx context.Context, token string, scopes []string) (ExchangeUserTokenResponse, error) {
+	req := ExchangeUserTokenRequest{Token: token, Scopes: scopes}
+
+	var res ExchangeUserTokenResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeUserToken", req, DecodeJSONResponse(&res)); err != nil {
+		return ExchangeUserTokenResponse{}, err
+	}
+
+	return res, nil
+}
+
+type ExchangeTenantTokenRequest struct {
+	TenantToken string   `json:"tenant_token,omitempty"`
+	Scopes      []string `json:"scopes,omitempty"`
+}
+
+type ExchangeTenantTokenResponse struct {
+	TenantToken string `json:"tenant_token,omitempty"`
+}
+
+func ExchangeTenantToken(ctx context.Context, token string, scopes []string) (ExchangeTenantTokenResponse, error) {
+	req := ExchangeTenantTokenRequest{TenantToken: token, Scopes: scopes}
+
+	var res ExchangeTenantTokenResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeTenantToken", req, DecodeJSONResponse(&res)); err != nil {
+		return ExchangeTenantTokenResponse{}, err
+	}
+
+	return res, nil
+}

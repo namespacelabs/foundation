@@ -144,9 +144,8 @@ jobs:
       - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
-      - name: Login
-        # Consider using secrets.GITHUB_TOKEN
-        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
+      - name: Exchange Github token
+        run: /tmp/ns auth exchange-github-token
 
       - name: Run tests
         # Consider removing --also_report_start_events
@@ -280,9 +279,8 @@ jobs:
       - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
-      - name: Login
-        # Consider using secrets.GITHUB_TOKEN
-        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/${{ matrix.repo }}
+      - name: Exchange Github token
+        run: /tmp/ns auth exchange-github-token
 
       - name: Run tests
         run: |

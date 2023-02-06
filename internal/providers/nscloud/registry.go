@@ -6,18 +6,11 @@ package nscloud
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/name"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -27,14 +20,10 @@ import (
 
 var DefaultKeychain oci.Keychain = defaultKeychain{}
 
-const loginEndpoint = "login.namespace.so/token"
-
 type nscloudRegistry struct {
 	clusterID string
 	registry  *api.ImageRegistry
 }
-
-const registryAddr = "registry-fgfo23t6gn9jd834s36g.prod-metal.namespacelabs.nscloud.dev"
 
 func RegisterRegistry() {
 	registry.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
@@ -45,8 +34,6 @@ func RegisterRegistry() {
 
 		return nscloudRegistry{clusterID: conf.ClusterId}, nil
 	})
-
-	oci.RegisterDomainKeychain(registryAddr, DefaultKeychain, oci.Keychain_UseAlways)
 }
 
 func (r nscloudRegistry) Access() oci.RegistryAccess {
@@ -107,52 +94,13 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return authn.Anonymous, nil
 	}
 
-	ref, err := name.ParseReference(r.String())
+	token, err := api.ExchangeToken(ctx, "image-registry-access")
 	if err != nil {
 		return nil, err
 	}
 
-	values := url.Values{}
-	values.Add("scope", fmt.Sprintf("repository:%s:push,pull", ref.Context().RepositoryStr()))
-	values.Add("service", "Authentication")
-
-	req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("https://%s?%s", loginEndpoint, values.Encode()), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	tok, err := auth.GenerateToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("X-Namespace-Token", tok)
-	req.Header.Add("Authorization", "Bearer "+tok)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fnerrors.InvocationError("nscloud", "%s: unexpected status when fetching an access token: %d", r, resp.StatusCode)
-	}
-
-	tokenData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fnerrors.InvocationError("nscloud", "%s: unexpected error when fetching an access token: %w", r, err)
-	}
-
-	var t Token
-	if err := json.Unmarshal(tokenData, &t); err != nil {
-		return nil, fnerrors.InvocationError("nscloud", "%s: unexpected error when unmarshalling an access token: %w", r, err)
-	}
-
-	return &authn.Bearer{Token: t.Token}, nil
-}
-
-type Token struct {
-	Token string `json:"token"`
+	return &authn.Basic{
+		Username: "tenant-token", // XXX: hardcoded as image-registry expects static username.
+		Password: token,
+	}, nil
 }
