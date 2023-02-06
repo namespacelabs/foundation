@@ -79,7 +79,7 @@ func ParsePeerAddress(p *peer.Peer, md metadata.MD) (string, string) {
 	return peerAddr, originalAddr
 }
 
-func logHeader(ctx context.Context, reqid, what, fullMethod string, req interface{}) {
+func logHeader(ctx context.Context, reqid requestid.RequestID, what, fullMethod string, req interface{}) {
 	authType := "none"
 	deadline := "none"
 
