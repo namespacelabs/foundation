@@ -296,6 +296,13 @@ func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 		return "", err
 	}
 
+	// Cache unscoped token.
+	if len(scopes) == 0 {
+		if err := auth.StoreTenantToken(resp.TenantToken); err != nil {
+			return "", err
+		}
+	}
+
 	return resp.TenantToken, nil
 }
 

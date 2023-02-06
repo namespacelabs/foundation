@@ -6,9 +6,12 @@ package auth
 
 import (
 	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -55,6 +58,19 @@ func LoadTenantToken() (*Token, error) {
 	token := &Token{}
 	if err := json.Unmarshal(data, token); err != nil {
 		return nil, err
+	}
+
+	claims := jwt.RegisteredClaims{}
+	if _, _, err := new(jwt.Parser).ParseUnverified(token.TenantToken, claims); err != nil {
+		return nil, err
+	}
+
+	// If stored token is expired, we remove it and return [fs.ErrNotExist].
+	if !claims.VerifyExpiresAt(time.Now(), true) {
+		if err := os.Remove(p); err != nil {
+			return nil, err
+		}
+		return nil, fs.ErrNotExist
 	}
 
 	return token, nil
