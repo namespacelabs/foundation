@@ -67,12 +67,7 @@ func isDevelopmentBuild(ver *storage.NamespaceBinaryVersion) bool {
 	return ver.BuildTime == nil || ver.Version == DevelopmentBuildVersion
 }
 
-func ShouldCheckUpdate(name string, ver *storage.NamespaceBinaryVersion) bool {
-	if name != "ns" {
-		// TODO enable updates for nsc, when API service supports it.
-		return false
-	}
-
+func ShouldCheckUpdate(ver *storage.NamespaceBinaryVersion) bool {
 	if isDevelopmentBuild(ver) {
 		return false
 	}

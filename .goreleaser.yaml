@@ -48,7 +48,7 @@ builds:
 
   - id: macos-nsc
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     main: ./cmd/nsc
     binary: nsc
     flags:
