@@ -34,22 +34,11 @@ type API struct {
 
 var Endpoint API
 
-func fetchTenantToken(ctx context.Context) (string, error) {
-	token, err := auth.LoadTenantToken()
-	if err != nil {
-		if os.IsNotExist(err) {
-			// Pass user auth for now.
-			// TODO exchange user auth for tenant tokens.
-			return auth.GenerateToken(ctx)
-		}
-
-		return "", err
+func MakeAPI(endpoint string) API {
+	fetchTenantToken := func(ctx context.Context) (string, error) {
+		return ExchangeToken(ctx)
 	}
 
-	return token.TenantToken, nil
-}
-
-func MakeAPI(endpoint string) API {
 	return API{
 		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
 			Endpoint:   endpoint,
@@ -276,8 +265,14 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 }
 
 func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
+	// Check if there is already tenant token stored.
 	tenantToken, err := auth.LoadTenantToken()
 	if err == nil {
+		// If no scopes provided we can immediately return the token.
+		if len(scopes) == 0 {
+			return tenantToken.TenantToken, nil
+		}
+
 		resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
 		if err != nil {
 			return "", err
@@ -290,6 +285,7 @@ func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 		return "", err
 	}
 
+	// No tenant token stored, so use user token and exchange it to a tenant token.
 	userToken, err := auth.GenerateToken(ctx)
 	if err != nil {
 		return "", err
