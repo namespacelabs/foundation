@@ -62,7 +62,8 @@ func LoadTenantToken() (*Token, error) {
 	}
 
 	claims := jwt.RegisteredClaims{}
-	if _, _, err := new(jwt.Parser).ParseUnverified(strings.TrimPrefix("nsct_", token.TenantToken), claims); err != nil {
+	parser := jwt.Parser{}
+	if _, _, err := parser.ParseUnverified(strings.TrimPrefix(token.TenantToken, "nsct_"), &claims); err != nil {
 		return nil, err
 	}
 
