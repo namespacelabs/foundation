@@ -32,11 +32,11 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-func NewClusterCmd() *cobra.Command {
+func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "cluster",
 		Short:  "Cluster-related activities (internal only).",
-		Hidden: true,
+		Hidden: hidden,
 	}
 
 	cmd.AddCommand(newCreateCmd())

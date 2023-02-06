@@ -16,13 +16,13 @@ import (
 )
 
 func main() {
-	fncobra.DoMain("nsdev", func(root *cobra.Command) {
+	fncobra.DoMain("nsdev", false, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 		root.AddCommand(debug.NewDebugCmd())
 		root.AddCommand(debug.NewFnServicesCmd())
 		root.AddCommand(eks.NewEksCmd())
 		root.AddCommand(cmd.NewImagesCmd())
-		root.AddCommand(cluster.NewClusterCmd())
+		root.AddCommand(cluster.NewClusterCmd(false))
 		root.AddCommand(cmd.NewLintCmd())
 		root.AddCommand(source.NewSourceCmd())
 		root.AddCommand(cmd.NewUseCmd())

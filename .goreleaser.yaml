@@ -1,7 +1,7 @@
 project_name: ns
 
 builds:
-  - id: linux
+  - id: linux-ns
     env:
       - CGO_ENABLED=0
     main: ./cmd/ns
@@ -16,7 +16,7 @@ builds:
       - amd64
       - arm64
 
-  - id: macos
+  - id: macos-ns
     env:
       - CGO_ENABLED=1
     main: ./cmd/ns
@@ -30,6 +30,49 @@ builds:
     goarch:
       - amd64
       - arm64
+
+  - id: linux-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/nsc
+    binary: nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+  - id: macos-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/nsc
+    binary: nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: ns
+    builds:
+      - linux-ns
+      - macos-ns
+    name_template: "ns_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+  - id: nsc
+    builds:
+      - linux-nsc
+      - macos-nsc
+    name_template: "nsc_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 # signs:
 #   - signature: "${artifact}_macos.dmg"
@@ -64,19 +107,19 @@ changelog:
       - "^Merge branch"
 
 brews:
-  -
-    tap:
+  - tap:
       owner: namespacelabs
       name: homebrew-repo
     name: ns
+    ids:
+      - ns
     description: "Developer platform with a unified experience from development to production."
     homepage: "https://namespacelabs.com/"
     caveats: |
-      Note: Note: ns collects usage telemetry. This data helps us build a better
+      Note: ns collects usage telemetry. This data helps us build a better
       platform for you. You can learn more at https://namespace.so/telemetry.
 
       Check out our examples at https://namespace.so/docs#examples to get started.
-    # Point to the publicly-accessible S3 builds instead of GitHub releases (which are in a private repo).
     url_template: "https://get.namespace.so/packages/{{.ProjectName}}/v{{.Version}}/{{.ArtifactName}}"
     install: |
       bin.install "ns"

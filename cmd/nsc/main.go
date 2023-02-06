@@ -6,12 +6,15 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/cmd"
+	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 )
 
 func main() {
-	fncobra.DoMain("ns", true, func(root *cobra.Command) {
-		cmd.RegisterCommands(root)
+	// Consider adding auto updates if we frequently change nsc.
+	fncobra.DoMain("nsc", false, func(root *cobra.Command) {
+		root.AddCommand(auth.NewLoginCmd())
+		root.AddCommand(cluster.NewClusterCmd(false))
 	})
 }
