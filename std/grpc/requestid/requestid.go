@@ -15,21 +15,27 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
+type RequestID string
+
 type contextKey string
 
 var ck contextKey = "ns.ctx.request-id"
 
 type RequestData struct {
 	Started   time.Time
-	RequestID string
+	RequestID RequestID
 }
 
-func RequestIDFromContext(ctx context.Context) string {
+func NewID() RequestID {
+	return RequestID(ids.NewRandomBase32ID(16))
+}
+
+func RequestIDFromContext(ctx context.Context) (RequestID, bool) {
 	if data, has := RequestDataFromContext(ctx); has {
-		return data.RequestID
+		return data.RequestID, true
 	}
 
-	return "<unknown>"
+	return "", false
 }
 
 func RequestDataFromContext(ctx context.Context) (RequestData, bool) {
@@ -44,18 +50,18 @@ func RequestDataFromContext(ctx context.Context) (RequestData, bool) {
 func allocateRequestID(ctx context.Context) (context.Context, RequestData) {
 	rdata := RequestData{
 		Started:   time.Now(),
-		RequestID: ids.NewRandomBase32ID(16),
+		RequestID: NewID(),
 	}
 	return context.WithValue(ctx, ck, rdata), rdata
 }
 
-func attachRequestIDToError(err error, reqid string) error {
+func AttachRequestIDToError(err error, reqid RequestID) error {
 	if err == nil {
 		return nil
 	}
 
 	st, _ := status.FromError(err)
-	tSt, tErr := st.WithDetails(&protocol.RequestID{Id: reqid})
+	tSt, tErr := st.WithDetails(&protocol.RequestID{Id: string(reqid)})
 	if tErr == nil {
 		return tSt.Err()
 	}
@@ -69,13 +75,13 @@ type Interceptor struct{}
 func (Interceptor) Unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	ctx, rdata := allocateRequestID(ctx)
 	resp, unaryErr := handler(ctx, req)
-	return resp, attachRequestIDToError(unaryErr, rdata.RequestID)
+	return resp, AttachRequestIDToError(unaryErr, rdata.RequestID)
 }
 
 func (Interceptor) Streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx, rdata := allocateRequestID(stream.Context())
 	streamErr := handler(srv, serverStream{stream, ctx})
-	return attachRequestIDToError(streamErr, rdata.RequestID)
+	return AttachRequestIDToError(streamErr, rdata.RequestID)
 }
 
 type serverStream struct {
