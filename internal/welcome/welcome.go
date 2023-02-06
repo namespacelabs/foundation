@@ -38,29 +38,43 @@ const logo = `
                ':=*#%@@@@@@@%#*+-'
 `
 
-func WelcomeMessage(firstRun bool) string {
+func WelcomeMessage(firstRun bool, cmd string) string {
 	var b strings.Builder
 
 	b.WriteString(logo)
-	b.WriteString("\n\nThank you for trying Namespace!\n\n")
+
+	product := "Namespace"
+	if cmd == "nsc" {
+		product = "Namespace Cloud"
+	}
+
+	b.WriteString(fmt.Sprintf("\n\nThank you for trying %s!\n\n", product))
 
 	if firstRun {
 		// Add this to make clear that this large help won't be printed on every command.
-		b.WriteString("It appears this is your first run of `ns`. Let us provide some help on how to interact with it:\n")
+		b.WriteString(fmt.Sprintf("It appears this is your first run of `%s`. Let us provide some help on how to interact with it:\n", cmd))
 	}
 
-	// TODO add more content.
-	b.WriteString("We have assembled some canonical examples at https://namespacelabs.dev/examples.\n")
+	switch cmd {
+	case "ns":
+		// TODO add more content.
+		b.WriteString("We have assembled some canonical examples at https://namespacelabs.dev/examples.\n")
+		b.WriteString("Our full documentation is located at https://namespace.so/docs.\n")
+
+	case "nsc":
+		b.WriteString("Get started at https://cloud.namespace.so/.\n")
+		// TODO
+	}
+
 	b.WriteString("Tell us what you think on https://community.namespace.so/discord/.\n")
-	b.WriteString("Our full documentation is located at https://namespace.so/docs.\n")
 
 	if firstRun {
-		b.WriteString("To see this message again at a later point, just run `ns --help`.\n")
+		b.WriteString(fmt.Sprintf("To see this message again at a later point, just run `%s --help`.\n", cmd))
 	}
 
 	return b.String()
 }
 
-func PrintWelcome(ctx context.Context, firstRun bool) {
-	fmt.Fprint(console.TypedOutput(ctx, "welcome", console.CatOutputUs), WelcomeMessage(firstRun))
+func PrintWelcome(ctx context.Context, firstRun bool, cmd string) {
+	fmt.Fprint(console.TypedOutput(ctx, "welcome", console.CatOutputUs), WelcomeMessage(firstRun, cmd))
 }

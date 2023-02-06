@@ -35,7 +35,7 @@ import (
 func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "cluster",
-		Short:  "Cluster-related activities (internal only).",
+		Short:  "Cluster-related activities.",
 		Hidden: hidden,
 	}
 

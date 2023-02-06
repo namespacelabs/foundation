@@ -145,7 +145,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		// XXX move id management out of telemetry, it's used for other purposes too.
 		if tel.IsFirstRun() && !environment.IsRunningInCI() {
 			// First NS run - print a welcome message.
-			welcome.PrintWelcome(ctx, true /* firstRun */)
+			welcome.PrintWelcome(ctx, true /* firstRun */, name)
 		}
 
 		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
@@ -496,7 +496,7 @@ func handleExitError(style colors.Style, err error) int {
 }
 
 func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error) *cobra.Command {
-	return &cobra.Command{
+	root := &cobra.Command{
 		Use: name,
 
 		SilenceUsage:     true,
@@ -515,13 +515,23 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 			return fmt.Errorf("%s: '%s' is not a %s command.\nSee '%s --help'", name, args[0], name, name)
 		},
 
-		Example: `  ns prepare local  Prepares the local workspace for development or production.
-  ns test           Run all functional end-to-end tests in the current workspace.
-  ns dev            Starts a development session, continuously building and deploying servers.`,
-
 		// adds the welcome message to `ns`, `ns help` and `ns --help`
-		Long: welcome.WelcomeMessage(false /* firstRun*/),
+		Long: welcome.WelcomeMessage(false /* firstRun*/, name),
 	}
+
+	switch name {
+	case "ns":
+		root.Example = `  ns prepare local  Prepares the local workspace for development or production.
+  ns test           Run all functional end-to-end tests in the current workspace.
+  ns dev            Starts a development session, continuously building and deploying servers.`
+
+	case "nsc":
+		root.Example = `  nsc login            Log in to use Namespace Cloud.
+  nsc cluster create   Create a new cluster.
+  nsc cluster kubectl  Run kubectl in your cluster.`
+	}
+
+	return root
 }
 
 func SetupViper() {
