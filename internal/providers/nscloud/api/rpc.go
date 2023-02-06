@@ -265,45 +265,47 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 }
 
 func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
-	// Check if there is already tenant token stored.
-	tenantToken, err := auth.LoadTenantToken()
-	if err == nil {
-		// If no scopes provided we can immediately return the token.
-		if len(scopes) == 0 {
-			return tenantToken.TenantToken, nil
+	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (string, error) {
+		// Check if there is already tenant token stored.
+		tenantToken, err := auth.LoadTenantToken()
+		if err == nil {
+			// If no scopes provided we can immediately return the token.
+			if len(scopes) == 0 {
+				return tenantToken.TenantToken, nil
+			}
+
+			resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
+			if err != nil {
+				return "", err
+			}
+
+			return resp.TenantToken, nil
 		}
 
-		resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+
+		// No tenant token stored, so use user token and exchange it to a tenant token.
+		userToken, err := auth.GenerateToken(ctx)
 		if err != nil {
 			return "", err
 		}
 
-		return resp.TenantToken, nil
-	}
-
-	if !os.IsNotExist(err) {
-		return "", err
-	}
-
-	// No tenant token stored, so use user token and exchange it to a tenant token.
-	userToken, err := auth.GenerateToken(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := fnapi.ExchangeUserToken(ctx, userToken, scopes)
-	if err != nil {
-		return "", err
-	}
-
-	// Cache unscoped token.
-	if len(scopes) == 0 {
-		if err := auth.StoreTenantToken(resp.TenantToken); err != nil {
+		resp, err := fnapi.ExchangeUserToken(ctx, userToken, scopes)
+		if err != nil {
 			return "", err
 		}
-	}
 
-	return resp.TenantToken, nil
+		// Cache unscoped token.
+		if len(scopes) == 0 {
+			if err := auth.StoreTenantToken(resp.TenantToken); err != nil {
+				return "", err
+			}
+		}
+
+		return resp.TenantToken, nil
+	})
 }
 
 type clusterCreateProgress struct {
