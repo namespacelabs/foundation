@@ -162,7 +162,7 @@ func newSshCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectCluster(ctx, args)
+		cluster, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -191,7 +191,7 @@ func newPortForwardCmd() *cobra.Command {
 			return fnerrors.New("--target_port is required")
 		}
 
-		cluster, _, err := selectCluster(ctx, args)
+		cluster, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -295,7 +295,7 @@ func newKubeconfigCmd() *cobra.Command {
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectCluster(ctx, args)
+		cluster, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -359,19 +359,19 @@ func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesClust
 	return []*api.KubernetesCluster{&d}, nil
 }
 
-func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
+func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
 	clusters, err := selectClusters(ctx, args)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	switch len(clusters) {
 	case 1:
-		return clusters[0], args[1:], nil
+		return clusters[0], nil
 	case 0:
-		return nil, args[1:], nil
+		return nil, nil
 	default:
-		return nil, nil, fnerrors.InternalError("got %d clusters - expected one", len(clusters))
+		return nil, fnerrors.InternalError("got %d clusters - expected one", len(clusters))
 	}
 }
 
