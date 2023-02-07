@@ -47,7 +47,10 @@ type StartCreateKubernetesClusterResponse struct {
 }
 
 type ListKubernetesClustersRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
+	OpaqueUserAuth      []byte `json:"opaque_user_auth,omitempty"`
+	IncludePreviousRuns bool   `json:"include_previous_runs,omitempty"`
+	PaginationCursor    []byte `json:"pagination_cursor,omitempty"`
+	MaxEntries          int64  `json:"max_entries,omitempty"`
 }
 
 type KubernetesClusterList struct {
