@@ -150,10 +150,9 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 		return
 	}
 
-	g.DetachWith(Detach{
-		Action:     c.Action().Clone(func(name string) string { return fmt.Sprintf("cache.store (%s)", name) }).LogLevel(1).Arg("digests", pointers),
-		BestEffort: true,
-		Do: func(ctx context.Context) error {
+	g.BestEffort(
+		c.Action().Clone(func(name string) string { return fmt.Sprintf("cache.store (%s)", name) }).LogLevel(1).Arg("digests", pointers),
+		func(ctx context.Context) error {
 			result, err := cacheable.Cache(ctx, g.cache, v)
 			if err != nil {
 				return err
@@ -181,8 +180,7 @@ func deferStore(ctx context.Context, g *Orch, c hasAction, cacheable *cacheable,
 			}
 
 			return g.cache.StoreEntry(ctx, pointers, entry)
-		},
-	})
+		})
 }
 
 func cacheableFor(outputType interface{}) *cacheable {

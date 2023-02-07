@@ -14,8 +14,9 @@ import (
 
 func NewUpdateNSCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "upgrade",
-		Short:   "Updates ns to the latest version.",
+		Use:   "upgrade",
+		Short: "Updates ns to the latest version.",
+		// There's an implicit contract with DoMain, that it doesn't perform version updates when a `update-ns` alias is present.
 		Aliases: []string{"update-ns"},
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {

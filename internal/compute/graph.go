@@ -43,9 +43,10 @@ var (
 )
 
 type Orch struct {
-	cache   cache.Cache
-	origctx context.Context
-	exec    executor.ExecutorLike
+	cache      cache.Cache
+	origctx    context.Context
+	exec       executor.ExecutorLike
+	bestEffort executor.ExecutorLike
 
 	mu       sync.Mutex
 	promises map[string]*Promise[any]
@@ -394,9 +395,8 @@ func (g *Orch) Detach(ev *tasks.ActionEvent, f func(context.Context) error) {
 }
 
 type Detach struct {
-	Action     *tasks.ActionEvent
-	BestEffort bool
-	Do         func(context.Context) error
+	Action *tasks.ActionEvent
+	Do     func(context.Context) error
 }
 
 func (g *Orch) DetachWith(d Detach) {
@@ -411,12 +411,32 @@ func (g *Orch) DetachWith(d Detach) {
 			return nil
 		}
 
-		if err != nil && d.BestEffort {
+		if err != nil {
 			fmt.Fprintf(console.Warnings(ctx), "detach failed: %v\n", err)
 			return nil // Ignore errors.
 		}
 
 		return err
+	})
+}
+
+func (g *Orch) BestEffort(ev *tasks.ActionEvent, do func(context.Context) error) {
+	if g == nil {
+		// We panic because this is unexpected.
+		panic("running outside of a compute.Do block")
+	}
+
+	g.bestEffort.Go(func(ctx context.Context) error {
+		err := ev.Run(ctx, do)
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+
+		if err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "best effort task failed: %v\n", err)
+		}
+
+		return nil // Ignore errors.
 	})
 }
 
@@ -489,6 +509,7 @@ func DoWithCache(parent context.Context, cache cache.Cache, do func(context.Cont
 	exec := executor.New(ctx, "compute.Do")
 	g.origctx = ctx
 	g.exec = exec
+	g.bestEffort = executor.New(ctx, "compute.Do.BestEffort")
 
 	// We execute do in the executor instead of directly, to ensure that error
 	// propagation is correct; i.e. if a separate branch ends up failing, we
@@ -498,6 +519,8 @@ func DoWithCache(parent context.Context, cache cache.Cache, do func(context.Cont
 
 	// Importantly, call `wait` before returning to make sure that any deferred work gets concluded.
 	errResult := exec.Wait()
+
+	_ = g.bestEffort.CancelAndWait()
 
 	g.mu.Lock()
 	cleaners := g.cleaners

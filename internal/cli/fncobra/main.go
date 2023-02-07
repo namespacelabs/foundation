@@ -18,6 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/version"
@@ -95,6 +96,11 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
+		// This is a bit of an hack. But don't run version checks when doing an update.
+		if autoUpdate && !slices.Contains(cmd.Aliases, "update-ns") {
+			DeferCheckVersion(ctx)
+		}
+
 		tel := fnapi.TelemetryOn(ctx)
 
 		// XXX move id management out of telemetry, it's used for other purposes too.
@@ -170,14 +176,9 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	debugLog := console.Debug(rootCtx)
 	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))
 
-	checkVersion := CheckVersion
-	if !autoUpdate {
-		checkVersion = nil
-	}
-
 	err := RunInContext(cmdCtx, func(ctx context.Context) error {
 		return rootCmd.ExecuteContext(ctx)
-	}, checkVersion)
+	})
 
 	if run != nil {
 		runErr := run.Output(cmdCtx, err) // If requested, store the run results.

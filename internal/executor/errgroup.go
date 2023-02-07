@@ -17,6 +17,7 @@ type ExecutorLike interface {
 	Go(func(context.Context) error)
 	GoCancelable(func(context.Context) error) func()
 	Wait() error
+	CancelAndWait() error
 }
 
 func New(ctx context.Context, name string) *Executor {
@@ -47,6 +48,12 @@ type Executor struct {
 func (exec *Executor) Wait() error {
 	exec.wg.Wait()
 	exec.cancel()
+	return exec.err
+}
+
+func (exec *Executor) CancelAndWait() error {
+	exec.cancel()
+	exec.wg.Wait()
 	return exec.err
 }
 
