@@ -34,7 +34,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/environment"
-	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
@@ -101,7 +100,7 @@ var (
 	disableCommandBundle = false
 )
 
-func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
+func DoMain(name string, autoUpdate bool, opts ...func(*cobra.Command)) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
@@ -166,8 +165,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
 			return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
 		}
-
-		filewatcher.SetupFileWatcher()
 
 		binary.BuildGo = golang.GoBuilder
 		binary.BuildLLBGen = genbinary.LLBBinary
@@ -330,8 +327,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		"The set of platforms that we build production images for.")
 	rootCmd.PersistentFlags().BoolVar(&fnapi.NamingForceStored, "fnapi_naming_force_stored",
 		fnapi.NamingForceStored, "If set to true, if there's a stored certificate, use it without checking the server.")
-	rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
-		filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 	rootCmd.PersistentFlags().BoolVar(&kubernetes.DeployAsPodsInTests, "kubernetes_deploy_as_pods_in_tests", kubernetes.DeployAsPodsInTests,
 		"If true, servers in tests are deployed as pods instead of deployments.")
 	rootCmd.PersistentFlags().BoolVar(&compute.ExplainIndentValues, "compute_explain_indent_values", compute.ExplainIndentValues,
@@ -370,7 +365,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		"buildkit_secrets",
 		"debug_to_console",
 		"disable_command_bundle",
-		"filewatcher_use_polling",
 		"verify_compute_caching",
 		"also_compute_ingress",
 		"golang_buildkit_git_credentials_secret",
@@ -407,7 +401,9 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
-	registerCommands(rootCmd)
+	for _, opt := range opts {
+		opt(rootCmd)
+	}
 
 	debugLog := console.Debug(rootCtx)
 	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))

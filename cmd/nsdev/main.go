@@ -12,11 +12,12 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/nsbuild"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
+	"namespacelabs.dev/foundation/internal/cli/filewatch"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 )
 
 func main() {
-	fncobra.DoMain("nsdev", false, func(root *cobra.Command) {
+	fncobra.DoMain("nsdev", false, filewatch.WithFileWatch, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 		root.AddCommand(debug.NewDebugCmd())
 		root.AddCommand(debug.NewFnServicesCmd())
