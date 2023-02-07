@@ -26,7 +26,7 @@ server: {
 			kind: "http"
 
 			ingress: {
-				domains: ["www.example.com"]
+				domains: ["test2.namespacelabs.net"]
 				httpRoutes: "*": ["/mypath"]
 			}
 
