@@ -51,6 +51,14 @@ var (
 )
 
 func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
+	style, err := doMain(name, autoUpdate, registerCommands)
+
+	if err != nil && !errors.Is(err, context.Canceled) {
+		os.Exit(handleExitError(style, err))
+	}
+}
+
+func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) (colors.Style, error) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
@@ -187,21 +195,17 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		cleanupTracer()
 	}
 
-	// Ensures deferred routines after invoked gracefully before os.Exit.
-	defer handleExit(rootCtx)
-
 	if err != nil && !errors.Is(err, context.Canceled) {
-		exitCode := handleExitError(style, err)
-
 		if tel := fnapi.TelemetryOn(rootCtx); tel != nil {
 			// Record errors only after the user sees them to hide potential latency implications.
 			// We pass the original ctx without sink since logs have already been flushed.
 			tel.RecordError(rootCtx, err)
 		}
 
-		// Ensures graceful invocation of deferred routines in the block above before we exit.
-		panic(exitWithCode{exitCode})
+		return style, err
 	}
+
+	return style, err
 }
 
 func ensureLatest() {
@@ -217,18 +221,6 @@ func ensureLatest() {
 				// Never gets here.
 			}
 		}
-	}
-}
-
-type exitWithCode struct{ Code int }
-
-// exit code handler
-func handleExit(ctx context.Context) {
-	if e := recover(); e != nil {
-		if exit, ok := e.(exitWithCode); ok {
-			os.Exit(exit.Code)
-		}
-		panic(e) // not an Exit, bubble up
 	}
 }
 
