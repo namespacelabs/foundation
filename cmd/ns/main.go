@@ -7,12 +7,11 @@ package main
 import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd"
-	"namespacelabs.dev/foundation/internal/cli/filewatch"
-	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/ns"
 )
 
 func main() {
-	fncobra.DoMain("ns", true, filewatch.WithFileWatch, func(root *cobra.Command) {
+	ns.DoMain("ns", true, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 	})
 }
