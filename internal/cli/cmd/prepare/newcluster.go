@@ -21,7 +21,6 @@ func newNewClusterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "new-cluster",
 		Args:   cobra.NoArgs,
-		Hidden: true,
 	}
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
