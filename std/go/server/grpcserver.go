@@ -144,11 +144,11 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 
 	// XXX configurable logging.
-	core.Log.Printf("Starting to listen on %v", lis.Addr())
+	core.ZLog.Info().Msgf("Starting to listen on %v", lis.Addr())
 
 	// Set runtime.GOMAXPROCS to respect container limits if the env var GOMAXPROCS is not set or is invalid, preventing CPU throttling.
-	if _, err := maxprocs.Set(maxprocs.Logger(core.Log.Printf)); err != nil {
-		core.Log.Printf("Failed to reset GOMAXPROCS: %v", err)
+	if _, err := maxprocs.Set(maxprocs.Logger(core.ZLog.Printf)); err != nil {
+		core.ZLog.Debug().Msgf("Failed to reset GOMAXPROCS: %v", err)
 	}
 
 	debugMux := mux.NewRouter()
@@ -166,7 +166,7 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 			return err
 		}
 
-		core.Log.Printf("Starting HTTP listen on %v", gwLis.Addr())
+		core.ZLog.Info().Msgf("Starting HTTP listen on %v", gwLis.Addr())
 
 		go func() { checkReturn("http", httpServer.Serve(gwLis)) }()
 	}
@@ -197,6 +197,6 @@ func interceptorsAsOpts() []grpc.ServerOption {
 
 func checkReturn(what string, err error) {
 	if err != nil {
-		core.Log.Fatalf("%s: serving failed: %v", what, err)
+		core.ZLog.Fatal().Err(err).Str("what", what).Msg("serving failed")
 	}
 }

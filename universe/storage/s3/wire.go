@@ -100,7 +100,7 @@ func createClient(ctx context.Context, factory client.ClientFactory, minioCreds 
 	var cfg aws.Config
 	var err error
 	if *minioEndpoint != "" {
-		core.Log.Printf("[storage/s3] creating minio client: %s", *minioEndpoint)
+		core.ZLog.Info().Msgf("[storage/s3] creating minio client: %s", *minioEndpoint)
 
 		resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 			return aws.Endpoint{

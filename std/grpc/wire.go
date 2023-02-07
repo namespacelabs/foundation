@@ -51,7 +51,7 @@ func parseConn(src string) map[string]string {
 
 		kvs := strings.SplitN(v, "=", 2)
 		if len(kvs) < 2 {
-			core.Log.Fatalf("expected key=value format in --%s", grpcConnMapKeyword)
+			core.ZLog.Fatal().Msgf("expected key=value format in --%s", grpcConnMapKeyword)
 		}
 
 		m[kvs[0]] = kvs[1]

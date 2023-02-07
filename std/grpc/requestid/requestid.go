@@ -66,7 +66,7 @@ func AttachRequestIDToError(err error, reqid RequestID) error {
 		return tSt.Err()
 	}
 
-	core.Log.Printf("[warning] failed to attach %q to error: %v", reqid, tErr)
+	core.ZLog.Warn().Msgf("failed to attach %q to error: %v", reqid, tErr)
 	return err
 }
 

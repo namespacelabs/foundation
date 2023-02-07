@@ -8,19 +8,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	nsgrpc "namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
 const maxOutputToTerminal = 1024
 
-var Log = log.New(os.Stderr, "[grpclog] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+func init() {
+	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
+}
+
+var Log = zerolog.New(os.Stderr).With().Timestamp().Str("kind", "grpclog").Logger().Level(zerolog.DebugLevel)
 
 type interceptor struct{}
 
@@ -30,29 +35,38 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 		return handler(ctx, req)
 	}
 
-	logHeader(ctx, rdata.RequestID, "request", info.FullMethod, req)
+	w := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
+	logger := w.Logger()
+
+	attachDeadline(ctx, logger.Info().Str("what", "request")).Str("request_body", serializeMessage(req)).Send()
 
 	resp, err := handler(ctx, req)
 	if err == nil {
-		Log.Printf("%s: id=%s: took %v; response: %s", info.FullMethod, rdata.RequestID, time.Since(rdata.Started), serializeMessage(resp))
+		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("request_body", serializeMessage(resp)).Send()
 	} else {
-		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, rdata.RequestID, time.Since(rdata.Started), err)
+		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
 	}
 	return resp, err
 }
 
 func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	rdata, has := requestid.RequestDataFromContext(stream.Context())
+	ctx := stream.Context()
+
+	rdata, has := requestid.RequestDataFromContext(ctx)
 	if !has {
 		return handler(srv, stream)
 	}
 
-	logHeader(stream.Context(), rdata.RequestID, "stream", info.FullMethod, nil)
+	w := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
+	logger := w.Logger()
+
+	attachDeadline(ctx, logger.Info().Str("what", "stream_start")).Send()
+
 	err := handler(srv, stream)
 	if err == nil {
-		Log.Printf("%s: id=%s: took %v, finished ok", info.FullMethod, rdata.RequestID, time.Since(rdata.Started))
+		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Send()
 	} else {
-		Log.Printf("%s: id=%s: took %v; error: %v", info.FullMethod, rdata.RequestID, time.Since(rdata.Started), err)
+		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Err(err).Send()
 	}
 	return err
 }
@@ -79,9 +93,10 @@ func ParsePeerAddress(p *peer.Peer, md metadata.MD) (string, string) {
 	return peerAddr, originalAddr
 }
 
-func logHeader(ctx context.Context, reqid requestid.RequestID, what, fullMethod string, req interface{}) {
+func prepareLogger(ctx context.Context, reqid requestid.RequestID, fullMethod string) zerolog.Context {
+	service, method := nsgrpc.SplitMethodName(fullMethod)
+
 	authType := "none"
-	deadline := "none"
 
 	p, _ := peer.FromContext(ctx)
 	if p != nil && p.AuthInfo != nil {
@@ -97,26 +112,26 @@ func logHeader(ctx context.Context, reqid requestid.RequestID, what, fullMethod 
 	authority := single(md, ":authority")
 	delete(md, ":authority")
 
-	if t, ok := ctx.Deadline(); ok {
-		left := time.Until(t)
-		deadline = fmt.Sprintf("%v", left)
-	}
-
 	peerAddr, wasAddr := ParsePeerAddress(p, md)
-	if wasAddr != "" {
-		peerAddr += fmt.Sprintf(" (saw %s)", wasAddr)
-	}
 
 	if _, ok := md["authorization"]; ok {
 		authType = fmt.Sprintf("bearer (was %s)", authType)
 		delete(md, "authorization")
 	}
 
-	if req != nil {
-		Log.Printf("%s: id=%s: request from %s to %s (auth: %s, deadline: %s, metadata: %+v): %s", fullMethod, reqid, peerAddr, authority, authType, deadline, md, serializeMessage(req))
-	} else {
-		Log.Printf("%s: id=%s: request from %s to %s (auth: %s, deadline: %s, metadata: %+v)", fullMethod, reqid, peerAddr, authority, authType, deadline, md)
+	return Log.With().Str("service", service).Str("method", method).
+		Str("request_id", string(reqid)).
+		Str("peer", peerAddr).Str("original_peer", wasAddr).
+		Str("auth_type", authType).Str("authority", authority)
+}
+
+func attachDeadline(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
+	if t, ok := ctx.Deadline(); ok {
+		left := time.Until(t)
+		return ev.Dur("deadline_left", left)
 	}
+
+	return ev
 }
 
 func single(md metadata.MD, key string) string {

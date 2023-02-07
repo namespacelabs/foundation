@@ -15,12 +15,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/encoding/prototext"
 	"namespacelabs.dev/foundation/framework/runtime"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/core/types"
 )
+
+func init() {
+	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
+}
 
 var (
 	debug = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
@@ -31,25 +36,29 @@ var (
 	initialized uint32
 )
 
-var Log = log.New(os.Stderr, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+var (
+	// Deprecated: use ZLog.
+	Log  = log.New(os.Stderr, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	ZLog = zerolog.New(os.Stderr).With().Timestamp().Str("kind", "corelog").Logger().Level(zerolog.DebugLevel)
+)
 
 func PrepareEnv(specifiedServerName string) *ServerResources {
 	if !atomic.CompareAndSwapUint32(&initialized, 0, 1) {
-		Log.Fatal("already initialized")
+		log.Fatal("already initialized")
 	}
-
-	Log.Println("Initializing server...")
 
 	var err error
 	rt, err = runtime.LoadRuntimeConfig()
 	if err != nil {
-		Log.Fatal(err)
+		log.Fatal(err)
 	}
 
 	rtVcs, err = runtime.LoadBuildVCS()
 	if err != nil {
-		Log.Fatal(err)
+		log.Fatal(err)
 	}
+
+	ZLog.Info().Msg("Initializing server...")
 
 	serverName = specifiedServerName
 

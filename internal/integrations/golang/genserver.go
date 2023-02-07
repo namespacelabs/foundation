@@ -335,17 +335,14 @@ func main() {
 	depgraph := core.NewDependencyGraph()
 	RegisterInitializers(depgraph)
 	if err := depgraph.RunInitializers(ctx); err != nil {
-		core.Log.Fatal(err)
+		core.ZLog.Fatal().Err(err).Send()
 	}
 
 	server.InitializationDone()
 
 	server.Listen(ctx, func(srv server.Server) {
 		if errs := WireServices(ctx, srv, depgraph); len(errs) > 0 {
-			for _, err := range errs {
-				core.Log.Println(err)
-			}
-			core.Log.Fatalf("%d services failed to initialize.", len(errs))
+			core.ZLog.Fatal().Errs("errors", errs).Msgf("%d services failed to initialize.", len(errs))
 		}
 	})
 }
