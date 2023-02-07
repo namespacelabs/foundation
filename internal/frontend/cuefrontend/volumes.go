@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
-	"namespacelabs.dev/foundation/internal/hotreload"
+	hrconstants "namespacelabs.dev/foundation/internal/hotreload/constants"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -158,7 +158,7 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 		}
 
 		// Making sure that the controller package is loaded.
-		_, err := pl.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
+		_, err := pl.LoadByName(ctx, hrconstants.ControllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}

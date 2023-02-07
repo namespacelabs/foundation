@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/hotreload"
+	hrconstants "namespacelabs.dev/foundation/internal/hotreload/constants"
 	"namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/parsing"
@@ -74,20 +74,20 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 
 	if opaque.UseDevBuild(env) {
 		// Making sure that the controller package is loaded.
-		_, err := pl.LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
+		_, err := pl.LoadByName(ctx, hrconstants.ControllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}
 
 		layers = append(layers, &schema.ImageBuildPlan{
-			Description: hotreload.ControllerPkg.PackageName,
-			Binary:      hotreload.ControllerPkg,
+			Description: hrconstants.ControllerPkg.PackageName,
+			Binary:      hrconstants.ControllerPkg,
 		})
 
-		config.Command = []string{hotreload.ControllerCommand}
+		config.Command = []string{hrconstants.ControllerCommand}
 		// Existence of the "dev" script is not checked, because this code is executed during package loading,
 		// and for "ns test" it happens initially with the "DEV" environment.
-		config.Args = []string{binary.AppRootPath, fmt.Sprint(hotreload.FileSyncPort), packageManager.CLI, "run", data.RunScript}
+		config.Args = []string{binary.AppRootPath, fmt.Sprint(hrconstants.FileSyncPort), packageManager.CLI, "run", data.RunScript}
 	} else {
 		config.Args = []string{"run", data.RunScript}
 	}

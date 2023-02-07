@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
+	hrconstants "namespacelabs.dev/foundation/internal/hotreload/constants"
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -43,7 +44,7 @@ func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNa
 		return nil, nil, fnerrors.NewWithLocation(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
 	}
 
-	devObserver := newFileSyncDevObserver(ctx, cluster, srv, FileSyncPort)
+	devObserver := newFileSyncDevObserver(ctx, cluster, srv, hrconstants.FileSyncPort)
 
 	newCtx, _ := wsremote.BufferAndSinkTo(ctx, devObserver.Deposit)
 

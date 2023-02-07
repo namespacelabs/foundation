@@ -15,6 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs/workspace/wsremote"
 	"namespacelabs.dev/foundation/internal/hotreload"
+	hrconstants "namespacelabs.dev/foundation/internal/hotreload/constants"
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -58,12 +59,12 @@ func (OpaqueIntegration) PrepareBuild(ctx context.Context, assets assets.Availab
 	}
 
 	if filesyncConfig != nil {
-		pkg, err := server.SealedContext().LoadByName(ctx, hotreload.ControllerPkg.AsPackageName())
+		pkg, err := server.SealedContext().LoadByName(ctx, hrconstants.ControllerPkg.AsPackageName())
 		if err != nil {
 			return nil, err
 		}
 
-		ctrlBin, err := binary.Plan(ctx, pkg, hotreload.ControllerPkg.Name, server.SealedContext(), assets, binary.BuildImageOpts{UsePrebuilts: false})
+		ctrlBin, err := binary.Plan(ctx, pkg, hrconstants.ControllerPkg.Name, server.SealedContext(), assets, binary.BuildImageOpts{UsePrebuilts: false})
 		if err != nil {
 			return nil, err
 		}
@@ -104,10 +105,10 @@ func (OpaqueIntegration) PrepareRun(ctx context.Context, server planning.Planned
 			}
 
 			run.Args = append(append(
-				[]string{filesyncConfig.mountPath, fmt.Sprint(hotreload.FileSyncPort)},
+				[]string{filesyncConfig.mountPath, fmt.Sprint(hrconstants.FileSyncPort)},
 				run.Command...),
 				run.Args...)
-			run.Command = []string{hotreload.ControllerCommand}
+			run.Command = []string{hrconstants.ControllerCommand}
 		}
 	}
 
