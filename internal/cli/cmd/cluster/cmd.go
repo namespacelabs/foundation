@@ -44,7 +44,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newKubectlCmd())
+	cmd.AddCommand(NewKubectlCmd())
 	cmd.AddCommand(newKubeconfigCmd())
 
 	return cmd
@@ -247,7 +247,7 @@ func newDestroyCmd() *cobra.Command {
 	return cmd
 }
 
-func newKubectlCmd() *cobra.Command {
+func NewKubectlCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubectl -- ...",
 		Short: "Run kubectl on the target cluster.",

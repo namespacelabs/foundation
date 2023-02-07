@@ -16,5 +16,6 @@ func main() {
 	fncobra.DoMain("nsc", false, func(root *cobra.Command) {
 		root.AddCommand(auth.NewLoginCmd())
 		root.AddCommand(cluster.NewClusterCmd(false))
+		root.AddCommand(cluster.NewKubectlCmd()) // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
 	})
 }
