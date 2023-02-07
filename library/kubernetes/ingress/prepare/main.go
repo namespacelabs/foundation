@@ -179,7 +179,7 @@ func main() {
 				}
 
 				// XXX make nginx configurable.
-				annotations, err := nginx.Annotate(false, backendProtocol, httpExtensions, endpoint.IngressSpec.Annotations)
+				annotations, err := nginx.Annotate(false, backendProtocol, httpExtensions, endpoint.GetIngressSpec().GetAnnotations())
 				if err != nil {
 					return err
 				}

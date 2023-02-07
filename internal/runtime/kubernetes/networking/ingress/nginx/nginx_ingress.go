@@ -198,7 +198,7 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 		annotations["nginx.ingress.kubernetes.io/force-ssl-redirect"] = "false"
 	}
 
-	for _, a := range userAnnotations.KeyValue {
+	for _, a := range userAnnotations.GetKeyValue() {
 		annotations[a.Key] = a.Value
 	}
 
