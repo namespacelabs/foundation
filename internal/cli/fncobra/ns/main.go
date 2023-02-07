@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
+	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
@@ -86,6 +87,8 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
 				return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
 			}
+
+			filewatcher.SetupFileWatcher()
 
 			binary.BuildGo = golang.GoBuilder
 			binary.BuildLLBGen = genbinary.LLBBinary
@@ -245,6 +248,8 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"If set to true, we log a start event for each action, if --log_actions is also set.")
 		rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
 			"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
+		rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
+			filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
 
 		// We have too many flags, hide some of them from --help so users can focus on what's important.
 		for _, noisy := range []string{
@@ -278,6 +283,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"use_head_orchestrator",
 			"update_orchestrator",
 			"gcloud_use_host_binary",
+			"filewatcher_use_polling",
 			// Hidden for M0
 			"testing_use_namespace_cloud",
 			"testing_use_namespace_cloud_build",
