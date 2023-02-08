@@ -13,7 +13,10 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	"go.opentelemetry.io/otel/trace"
 )
+
+var Tracer trace.Tracer
 
 func SetupTracing(ctx context.Context, jaegerEndpoint string) (context.Context, func()) {
 	tp, err := createTracer(jaegerEndpoint)
@@ -25,7 +28,9 @@ func SetupTracing(ctx context.Context, jaegerEndpoint string) (context.Context, 
 	// instrumentation in the future will default to using it.
 	otel.SetTracerProvider(tp)
 
-	spanCtx, span := tp.Tracer("ns").Start(ctx, "ns (cli invocation)")
+	Tracer = tp.Tracer("ns")
+
+	spanCtx, span := Tracer.Start(ctx, "ns (cli invocation)")
 
 	return spanCtx, func() {
 		span.End()

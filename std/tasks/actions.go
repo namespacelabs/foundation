@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -19,6 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/tasks/actiontracing"
 	"namespacelabs.dev/foundation/std/tasks/protocol"
 	"namespacelabs.dev/go-ids"
 )
@@ -75,6 +75,7 @@ type ActionEvent struct {
 	data     EventData
 	progress ActionProgress
 	onDone   OnDoneFunc
+	tracer   trace.Tracer
 }
 
 type ResultData struct {
@@ -90,6 +91,7 @@ type RunningAction struct {
 	span        trace.Span
 	attachments *EventAttachments
 	onDone      OnDoneFunc
+	tracer      trace.Tracer
 }
 
 type ActionArgument struct {
@@ -105,6 +107,12 @@ func Action(name string) *ActionEvent {
 	ev := allocEvent()
 	ev.data.Name = name
 	ev.data.State = ActionCreated
+	ev.tracer = actiontracing.Tracer
+	return ev
+}
+
+func (ev *ActionEvent) WithTracer(tracer trace.Tracer) *ActionEvent {
+	ev.tracer = tracer
 	return ev
 }
 
@@ -243,6 +251,7 @@ func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *Running
 		Progress:    ev.progress,
 		attachments: &EventAttachments{actionID: ev.data.ActionID, sink: sink},
 		onDone:      ev.onDone,
+		tracer:      ev.tracer,
 	}
 }
 
@@ -563,12 +572,17 @@ func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *Runnin
 	}
 }
 
-func startSpan(ctx context.Context, data EventData) trace.Span {
+func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) trace.Span {
+	if tracer == nil {
+		return nil
+	}
+
 	name := data.Name
 	if data.Category != "" {
 		name = data.Category + "::" + name
 	}
-	_, span := otel.Tracer("fn").Start(ctx, name)
+
+	_, span := tracer.Start(ctx, name)
 
 	if span.IsRecording() {
 		span.SetAttributes(attribute.String("actionID", data.ActionID.String()))
@@ -608,7 +622,7 @@ func (af *RunningAction) markStarted(ctx context.Context) {
 	}
 	af.Data.State = ActionRunning
 	af.sink.Started(af)
-	af.span = startSpan(ctx, af.Data)
+	af.span = startSpan(ctx, af.tracer, af.Data)
 	runningActionsSink.Sink().Started(af)
 }
 
