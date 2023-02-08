@@ -293,7 +293,7 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (string, error) {
 		// Check if there is already tenant token stored.
-		tenantToken, err := auth.LoadTenantToken()
+		tenantToken, err := auth.LoadTenantToken(ctx)
 		if err == nil {
 			// If no scopes provided we can immediately return the token.
 			if len(scopes) == 0 {

@@ -5,7 +5,9 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
@@ -44,7 +47,7 @@ func StoreTenantToken(token string) error {
 	return nil
 }
 
-func LoadTenantToken() (*Token, error) {
+func LoadTenantToken(ctx context.Context) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err
@@ -56,23 +59,30 @@ func LoadTenantToken() (*Token, error) {
 		return nil, err
 	}
 
+	// XXX: to invalidate cache if cached token has expired or corrupted - remove it and return [fs.ErrNotExist].
+	cleanTokenCache := func(f string) (*Token, error) {
+		if err := os.Remove(f); err != nil {
+			return nil, err
+		}
+		return nil, fs.ErrNotExist
+	}
+
 	token := &Token{}
 	if err := json.Unmarshal(data, token); err != nil {
-		return nil, err
+		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
+		return cleanTokenCache(p)
 	}
 
 	claims := jwt.RegisteredClaims{}
 	parser := jwt.Parser{}
 	if _, _, err := parser.ParseUnverified(strings.TrimPrefix(token.TenantToken, "nsct_"), &claims); err != nil {
-		return nil, err
+		fmt.Fprintf(console.Debug(ctx), "failed to parse tenant JWT: %v\n", err)
+		return cleanTokenCache(p)
 	}
 
-	// If stored token is expired, we remove it and return [fs.ErrNotExist].
 	if !claims.VerifyExpiresAt(time.Now(), true) {
-		if err := os.Remove(p); err != nil {
-			return nil, err
-		}
-		return nil, fs.ErrNotExist
+		fmt.Fprintf(console.Debug(ctx), "tenant JWT has expired\n")
+		return cleanTokenCache(p)
 	}
 
 	return token, nil
