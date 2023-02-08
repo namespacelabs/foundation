@@ -4,9 +4,7 @@ tmux new-session -d -s NsDevSession '/tmp/ns dev --buildkit_import_cache=type=gh
 
 COUNTER=0
 while true ; do
-    RESPONSE=`/tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc`
-
-    if [[ $RESPONSE != *"Error from server (NotFound)"* ]]; then
+    if /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc | grep -q 'NotFound'; then
         # Don't check what is missing, as we first lack "namespaces" then "deployments.apps"
         break
     fi
