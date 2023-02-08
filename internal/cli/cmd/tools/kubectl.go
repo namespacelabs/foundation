@@ -7,13 +7,10 @@ package tools
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/tools/clientcmd"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -21,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
@@ -61,14 +57,7 @@ func NewKubeCtlCmd(hidden bool) *cobra.Command {
 	})
 }
 
-type Kubeconfig struct {
-	Kubeconfig string
-	Context    string
-	Namespace  string
-	keepConfig bool
-}
-
-func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Kubeconfig, error) {
+func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*kubectl.Kubeconfig, error) {
 	cluster, err := kubernetes.ConnectToNamespace(ctx, env)
 	if err != nil {
 		return nil, err
@@ -82,7 +71,7 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Ku
 		return nil, fnerrors.New("failed to generate kubeconfig: %w", err)
 	}
 
-	c, err := WriteRawKubeconfig(ctx, rawConfig, keepConfig)
+	c, err := kubectl.WriteRawKubeconfig(ctx, rawConfig, keepConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -90,53 +79,4 @@ func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*Ku
 	c.Namespace = k8sconfig.Namespace
 	c.Context = k8sconfig.Context
 	return c, nil
-}
-
-func WriteRawKubeconfig(ctx context.Context, rawConfig clientcmdapi.Config, keepConfig bool) (*Kubeconfig, error) {
-	configBytes, err := clientcmd.Write(rawConfig)
-	if err != nil {
-		return nil, fnerrors.New("failed to serialize kubeconfig: %w", err)
-	}
-
-	tmpFile, err := dirs.CreateUserTemp("kubeconfig", "*.yaml")
-	if err != nil {
-		return nil, fnerrors.New("failed to create temp file: %w", err)
-	}
-
-	if _, err := tmpFile.Write(configBytes); err != nil {
-		return nil, fnerrors.New("failed to write kubeconfig: %w", err)
-	}
-
-	if err := tmpFile.Close(); err != nil {
-		return nil, fnerrors.New("failed to close kubeconfig: %w", err)
-	}
-
-	return &Kubeconfig{
-		Kubeconfig: tmpFile.Name(),
-		keepConfig: keepConfig,
-	}, nil
-}
-
-func (kc *Kubeconfig) BaseArgs() []string {
-	baseArgs := []string{
-		"--kubeconfig=" + kc.Kubeconfig,
-	}
-
-	if kc.Namespace != "" {
-		baseArgs = append(baseArgs, "-n", kc.Namespace)
-	}
-
-	if kc.Context != "" {
-		baseArgs = append(baseArgs, "--context", kc.Context)
-	}
-
-	return baseArgs
-}
-
-func (kc *Kubeconfig) Cleanup() error {
-	if kc.keepConfig {
-		return nil
-	}
-
-	return os.Remove(kc.Kubeconfig)
 }

@@ -4,9 +4,9 @@
 
 syntax = "proto3";
 
-package foundation.runtime.kubernetes.kubedef;
+package foundation.runtime.kubernetes.kubeobj;
 
-option go_package = "namespacelabs.dev/foundation/framework/kubernetes/kubedef";
+option go_package = "namespacelabs.dev/foundation/framework/kubernetes/kubeobj";
 
 message ContainerPodReference {
     string namespace = 1;

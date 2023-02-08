@@ -18,7 +18,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/common"
@@ -313,7 +315,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 		})
 	}
 
-	pods, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv))})
+	pods, err := r.underlying.cli.CoreV1().Pods(r.target.namespace).List(ctx, metav1.ListOptions{LabelSelector: kubeobj.SerializeSelector(kubedef.SelectById(srv))})
 	if err != nil {
 		return err
 	}
@@ -323,7 +325,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 	}
 
 	_, err = kubeobserver.WatchPods(ctx, r.underlying.cli, r.target.namespace, kubedef.SelectById(srv), func(pod corev1.Pod) (any, bool, error) {
-		instance := kubedef.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), srv)
+		instance := kubeobj.MakePodRef(r.target.namespace, pod.Name, kubedef.ServerCtrName(srv), kubedef.DecideKind(srv))
 
 		t := untrackContainer
 		if pod.Status.Phase == corev1.PodRunning {
@@ -338,7 +340,7 @@ func (r *ClusterNamespace) Observe(ctx context.Context, srv runtime.Deployable, 
 
 		if ObserveInitContainerLogs {
 			for _, container := range pod.Spec.InitContainers {
-				instance := kubedef.MakePodRef(r.target.namespace, pod.Name, container.Name, srv)
+				instance := kubeobj.MakePodRef(r.target.namespace, pod.Name, container.Name, kubedef.DecideKind(srv))
 				if done, err := t(pod, instance); err != nil {
 					return nil, false, err
 				} else if done {
@@ -362,7 +364,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 	namespace := r.target.namespace
 	podName := kubedef.MakeDeploymentId(object)
 
-	return kubeobserver.WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool, error) {
+	return WatchDeployable(ctx, "deployable.wait-until-done", cli, namespace, object, func(pod corev1.Pod) ([]runtime.ContainerStatus, bool, error) {
 		if pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
 			return nil, false, nil
 		}
@@ -374,7 +376,7 @@ func (r *ClusterNamespace) WaitForTermination(ctx context.Context, object runtim
 		var status []runtime.ContainerStatus
 		for _, container := range all {
 			st := runtime.ContainerStatus{
-				Reference: kubedef.MakePodRef(namespace, podName, container.Name, object),
+				Reference: kubeobj.MakePodRef(namespace, podName, container.Name, kubedef.DecideKind(object)),
 			}
 
 			if container.State.Terminated != nil {
@@ -403,7 +405,7 @@ func (r *ClusterNamespace) DialServer(ctx context.Context, server runtime.Deploy
 }
 
 func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime.Deployable) ([]*runtimepb.ContainerReference, error) {
-	return kubeobserver.WatchDeployable(ctx, "deployable.resolve-containers", r.underlying.cli, r.target.namespace, object,
+	return WatchDeployable(ctx, "deployable.resolve-containers", r.underlying.cli, r.target.namespace, object,
 		func(pod corev1.Pod) ([]*runtimepb.ContainerReference, bool, error) {
 			if pod.Status.Phase != corev1.PodRunning && pod.Status.Phase != corev1.PodFailed && pod.Status.Phase != corev1.PodSucceeded {
 				return nil, false, nil
@@ -412,13 +414,20 @@ func (r *ClusterNamespace) ResolveContainers(ctx context.Context, object runtime
 			var refs []*runtimepb.ContainerReference
 
 			for _, init := range pod.Status.InitContainerStatuses {
-				refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, object))
+				refs = append(refs, kubeobj.MakePodRef(pod.Namespace, pod.Name, init.Name, kubedef.DecideKind(object)))
 			}
 			for _, container := range pod.Status.ContainerStatuses {
-				refs = append(refs, kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, object))
+				refs = append(refs, kubeobj.MakePodRef(pod.Namespace, pod.Name, container.Name, kubedef.DecideKind(object)))
 			}
 
 			return refs, true, nil
+		})
+}
+
+func WatchDeployable[V any](ctx context.Context, actionName string, cli *k8s.Clientset, namespace string, object runtime.Deployable, callback func(corev1.Pod) (V, bool, error)) (V, error) {
+	return tasks.Return(ctx, tasks.Action(actionName).Arg("id", object.GetId()).Arg("name", object.GetName()),
+		func(ctx context.Context) (V, error) {
+			return kubeobserver.WatchPods(ctx, cli, namespace, kubedef.SelectById(object), callback)
 		})
 }
 
@@ -431,7 +440,7 @@ func (r *ClusterNamespace) DeployedConfigImageID(ctx context.Context, deployable
 		func(ctx context.Context) (oci.ImageID, error) {
 			name := kubedef.MakeDeploymentId(deployable)
 
-			var o kubedef.Object
+			var o kubeobj.Object
 			switch schema.DeployableClass(deployable.GetDeployableClass()) {
 			case schema.DeployableClass_STATELESS:
 				d, err := r.underlying.cli.AppsV1().Deployments(r.target.namespace).Get(ctx, name, metav1.GetOptions{})
@@ -486,7 +495,7 @@ func (r *ClusterNamespace) DeleteRecursively(ctx context.Context, wait bool) (bo
 }
 
 func (r *ClusterNamespace) DeleteDeployable(ctx context.Context, deployable runtime.Deployable) error {
-	listOpts := metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(deployable))}
+	listOpts := metav1.ListOptions{LabelSelector: kubeobj.SerializeSelector(kubedef.SelectById(deployable))}
 
 	switch deployable.GetDeployableClass() {
 	case string(schema.DeployableClass_ONESHOT), string(schema.DeployableClass_MANUAL):

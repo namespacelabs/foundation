@@ -18,15 +18,14 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/chisel/share/cnet"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnnet"
 	"namespacelabs.dev/foundation/internal/localexec"
-	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -91,7 +90,7 @@ func newCreateCmd() *cobra.Command {
 		}
 
 		if *waitKubeSystem {
-			if err := nscloud.WaitKubeSystem(ctx, cluster.Cluster); err != nil {
+			if err := ctl.WaitKubeSystem(ctx, cluster.Cluster); err != nil {
 				return err
 			}
 		}
@@ -265,7 +264,7 @@ func NewKubectlCmd() *cobra.Command {
 
 		cluster := response.Cluster
 
-		cfg, err := tools.WriteRawKubeconfig(ctx, nscloud.MakeConfig(cluster), false)
+		cfg, err := kubectl.WriteRawKubeconfig(ctx, ctl.MakeConfig(cluster), false)
 		if err != nil {
 			return err
 		}
@@ -304,7 +303,7 @@ func newKubeconfigCmd() *cobra.Command {
 			return nil
 		}
 
-		cfg, err := tools.WriteRawKubeconfig(ctx, nscloud.MakeConfig(cluster), false)
+		cfg, err := kubectl.WriteRawKubeconfig(ctx, ctl.MakeConfig(cluster), false)
 		if err != nil {
 			return err
 		}

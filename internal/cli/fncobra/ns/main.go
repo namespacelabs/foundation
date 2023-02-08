@@ -37,6 +37,7 @@ import (
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
 	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
 	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
@@ -50,6 +51,7 @@ import (
 	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/providers/k3s"
+	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/helm"
@@ -75,13 +77,9 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	fncobra.DoMain(name, autoUpdate, func(rootCmd *cobra.Command) {
 		registerCommands(rootCmd)
 
-		preRun := rootCmd.PersistentPreRunE
-		rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-			if preRun != nil {
-				if err := preRun(cmd, args); err != nil {
-					return err
-				}
-			}
+		fncobra.PushPreParse(rootCmd, func(ctx context.Context, args []string) error {
+			// Used for devhost/environment validation.
+			devhost.HasRuntime = runtime.HasRuntime
 
 			parsing.ModuleLoader = cuefrontend.ModuleLoader
 			parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
@@ -172,6 +170,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			k3dp.Register()
 			k3s.Register()
 			ingress.RegisterIngressClass(nginx.Ingress())
+			nscloud.Register()
 
 			// Runtimes.
 			kubernetes.Register()
@@ -182,11 +181,13 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			cfg.ValidateNoConfigTypeCollisions()
 
 			if deprecatedToolsInvocation {
-				fmt.Fprintf(console.Warnings(cmd.Context()), "Flag without effect: --tools_invocation_can_use_buildkit is now the default.\n")
+				fmt.Fprintf(console.Warnings(ctx), "Flag without effect: --tools_invocation_can_use_buildkit is now the default.\n")
 			}
 
 			return nil
-		}
+		})
+
+		nscloud.SetupFlags(rootCmd.PersistentFlags(), true)
 
 		rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 			"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")

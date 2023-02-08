@@ -7,13 +7,13 @@ package kubedef
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	rbacv1 "k8s.io/client-go/applyconfigurations/rbac/v1"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -209,7 +209,7 @@ func (d DeleteList) ToDefinition(scope ...schema.PackageName) (*schema.Serialize
 		Resource:      d.Resource,
 		Namespace:     d.Namespace,
 		SetNamespace:  d.SetNamespace,
-		LabelSelector: SerializeSelector(d.Selector),
+		LabelSelector: kubeobj.SerializeSelector(d.Selector),
 	})
 	if err != nil {
 		return nil, err
@@ -407,15 +407,6 @@ func (ec ExtendInitContainer) ToDefinition() (*schema.DefExtension, error) {
 	}
 
 	return &schema.DefExtension{Impl: x}, nil
-}
-
-func SerializeSelector(selector map[string]string) string {
-	var sels []string
-	for k, v := range selector {
-		sels = append(sels, fmt.Sprintf("%s=%s", k, v))
-	}
-	sort.Strings(sels)
-	return strings.Join(sels, ",")
 }
 
 func Ego() metav1.ApplyOptions {

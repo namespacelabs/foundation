@@ -6,19 +6,17 @@ package nscloud
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	k8sapi "k8s.io/client-go/tools/clientcmd/api"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubeclient"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -30,32 +28,21 @@ import (
 )
 
 var (
-	rpcEndpointOverride string
-	regionName          string
-	defaultMachineType  string
-)
-
-var (
 	clusterConfigType = cfg.DefineConfigType[*PrebuiltCluster]()
 )
 
-func SetupFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&rpcEndpointOverride, "nscloud_endpoint", "", "Where to dial to when reaching nscloud.")
-	_ = flags.MarkHidden("nscloud_endpoint")
-	flags.StringVar(&regionName, "nscloud_region", "fra1", "Which region to use.")
-	_ = flags.MarkHidden("nscloud_region")
+var (
+	defaultMachineType string
+)
+
+func SetupFlags(flags *pflag.FlagSet, hide bool) {
+	api.SetupFlags(flags, hide)
 	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_machine_type")
 }
 
 func Register() {
-	rpcEndpoint := rpcEndpointOverride
-	if rpcEndpoint == "" {
-		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
-	}
-
-	api.Endpoint = api.MakeAPI(rpcEndpoint)
-
+	api.Register()
 	RegisterRegistry()
 	RegisterClusterProvider()
 }
@@ -79,15 +66,6 @@ func RegisterClusterProvider() {
 	}, "foundation.providers.nscloud.config.Cluster")
 }
 
-func MakeConfig(cluster *api.KubernetesCluster) k8sapi.Config {
-	return *kubeclient.MakeApiConfig(&kubeclient.StaticConfig{
-		EndpointAddress:          cluster.EndpointAddress,
-		CertificateAuthorityData: cluster.CertificateAuthorityData,
-		ClientCertificateData:    cluster.ClientCertificateData,
-		ClientKeyData:            cluster.ClientKeyData,
-	})
-}
-
 func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterConfiguration, error) {
 	conf, ok := clusterConfigType.CheckGet(cfg)
 	if !ok {
@@ -107,7 +85,7 @@ func provideClusterExt(ctx context.Context, clusterId string, ephemeral bool) (c
 
 	var p client.ClusterConfiguration
 	p.Ephemeral = ephemeral
-	p.Config = MakeConfig(cluster)
+	p.Config = ctl.MakeConfig(cluster)
 	for _, lbl := range cluster.Label {
 		p.Labels = append(p.Labels, &schema.Label{Name: lbl.Name, Value: lbl.Value})
 	}

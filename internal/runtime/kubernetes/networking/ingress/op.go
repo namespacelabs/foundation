@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/framework/networking/dns"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -56,7 +57,7 @@ func Register() {
 
 			return nil, tasks.Action("kubernetes.ingress.cleanup-migration").Run(ctx, func(ctx context.Context) error {
 				ingresses, err := cluster.PreparedClient().Clientset.NetworkingV1().Ingresses(op.Namespace).List(ctx, metav1.ListOptions{
-					LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+					LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 				})
 				if err != nil {
 					return fnerrors.InvocationError("kubernetes", "unable to list ingresses: %w", err)

@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/discovery"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -61,7 +62,7 @@ type parsedApply struct {
 	spec *kubedef.OpApply
 }
 
-func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubedef.Object, spec *kubedef.OpApply, ch chan *orchestration.Event) (*execution.HandleResult, error) {
+func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj kubeobj.Object, spec *kubedef.OpApply, ch chan *orchestration.Event) (*execution.HandleResult, error) {
 	gv := obj.GroupVersionKind().GroupVersion()
 	if gv.Version == "" {
 		return nil, fnerrors.InternalError("%s: APIVersion is required", desc)
@@ -86,7 +87,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 	// We don't try to set namespaces to Namespaces. But for other resources, we use discovery to determine
 	// whether the resource is namespaced or not.
-	if spec.SetNamespace && ns == "" && !kubedef.IsGVKNamespace(obj.GroupVersionKind()) {
+	if spec.SetNamespace && ns == "" && !kubeobj.IsGVKNamespace(obj.GroupVersionKind()) {
 		// Don't know if the resource is namespace scoped or not -- need to go find out.
 		rawDisco, err := cluster.EnsureState(ctx, kubernetes.DiscoveryStateKey)
 		if err != nil {
@@ -204,7 +205,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 	if ch != nil {
 		switch {
-		case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsPod(obj), kubedef.IsDaemonSet(obj):
+		case kubeobj.IsDeployment(obj), kubeobj.IsStatefulSet(obj), kubeobj.IsPod(obj), kubeobj.IsDaemonSet(obj):
 			ev := kobs.PrepareEvent(obj.GroupVersionKind(), ns, obj.GetName(), desc, spec.Deployable)
 			ev.Stage = orchestration.Event_COMMITTED
 			ev.WaitStatus = append(ev.WaitStatus, &orchestration.Event_WaitStatus{
@@ -215,7 +216,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 	}
 
 	switch {
-	case kubedef.IsDeployment(obj), kubedef.IsStatefulSet(obj), kubedef.IsDaemonSet(obj):
+	case kubeobj.IsDeployment(obj), kubeobj.IsStatefulSet(obj), kubeobj.IsDaemonSet(obj):
 		generation, found1, err1 := unstructured.NestedInt64(res.Object, "metadata", "generation")
 		observedGen, found2, err2 := unstructured.NestedInt64(res.Object, "status", "observedGeneration")
 		if err2 != nil || !found2 {
@@ -246,7 +247,7 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				obj.GroupVersionKind().Kind, err1, err2, found1, found2)
 		}
 
-	case kubedef.IsPod(obj):
+	case kubeobj.IsPod(obj):
 		return &execution.HandleResult{
 			Waiter: func(ctx context.Context, ch chan *orchestration.Event) error {
 				if ch != nil {
@@ -296,9 +297,9 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 	return nil, nil
 }
 
-func requiresWaitForNamespace(obj kubedef.Object, spec *kubedef.OpApply) (bool, error) {
+func requiresWaitForNamespace(obj kubeobj.Object, spec *kubedef.OpApply) (bool, error) {
 	switch {
-	case kubedef.IsDeployment(obj):
+	case kubeobj.IsDeployment(obj):
 		// XXX change to unstructured lookups.
 		var d appsv1.Deployment
 		if err := json.Unmarshal([]byte(spec.BodyJson), &d); err != nil {
@@ -308,7 +309,7 @@ func requiresWaitForNamespace(obj kubedef.Object, spec *kubedef.OpApply) (bool, 
 			return true, nil
 		}
 
-	case kubedef.IsStatefulSet(obj):
+	case kubeobj.IsStatefulSet(obj):
 		var d appsv1.StatefulSet
 		if err := json.Unmarshal([]byte(spec.BodyJson), &d); err != nil {
 			return false, err
@@ -317,7 +318,7 @@ func requiresWaitForNamespace(obj kubedef.Object, spec *kubedef.OpApply) (bool, 
 			return true, nil
 		}
 
-	case kubedef.IsPod(obj):
+	case kubeobj.IsPod(obj):
 		var d v1.Pod
 		if err := json.Unmarshal([]byte(spec.BodyJson), &d); err != nil {
 			return false, err

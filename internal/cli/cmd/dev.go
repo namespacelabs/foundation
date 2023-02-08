@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -40,7 +41,7 @@ func NewDevCmd() *cobra.Command {
 		devWebServer = false
 		env          cfg.Context
 		locs         fncobra.Locations
-		servers      fncobra.Servers
+		servers      planningargs.Servers
 	)
 
 	return fncobra.
@@ -56,7 +57,7 @@ func NewDevCmd() *cobra.Command {
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env),
-			fncobra.ParseServers(&servers, &env, &locs)).
+			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			ctx, sink := tasks.WithStatefulSink(ctx)
 

@@ -7,12 +7,14 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"time"
 
 	"github.com/bcicen/jstream"
 	"github.com/dustin/go-humanize"
+	"github.com/spf13/pflag"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -33,6 +35,30 @@ type API struct {
 }
 
 var Endpoint API
+
+var (
+	rpcEndpointOverride string
+	regionName          string
+)
+
+func SetupFlags(flags *pflag.FlagSet, hide bool) {
+	flags.StringVar(&rpcEndpointOverride, "nscloud_endpoint", "", "Where to dial to when reaching nscloud.")
+	flags.StringVar(&regionName, "nscloud_region", "fra1", "Which region to use.")
+
+	if hide {
+		_ = flags.MarkHidden("nscloud_endpoint")
+		_ = flags.MarkHidden("nscloud_region")
+	}
+}
+
+func Register() {
+	rpcEndpoint := rpcEndpointOverride
+	if rpcEndpoint == "" {
+		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
+	}
+
+	Endpoint = MakeAPI(rpcEndpoint)
+}
 
 func MakeAPI(endpoint string) API {
 	fetchTenantToken := func(ctx context.Context) (string, error) {

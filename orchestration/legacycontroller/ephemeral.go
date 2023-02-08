@@ -17,6 +17,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 )
 
 const gracePeriod = 5 * time.Minute
@@ -33,7 +34,7 @@ func controlEphemeral(ctx context.Context, clientset *kubernetes.Clientset, ns *
 	}
 
 	w, err := clientset.CoreV1().Pods(ns.Name).Watch(ctx, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(kubedef.SelectNamespaceDriver()),
+		LabelSelector: kubeobj.SerializeSelector(kubedef.SelectNamespaceDriver()),
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "skipping namespace %q: failed to watch driver pod: %v", ns.Name, err)

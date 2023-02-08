@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -23,7 +24,7 @@ import (
 
 func (r *Cluster) DeleteAllRecursively(ctx context.Context, wait bool, progress io.Writer) (bool, error) {
 	namespaces, err := r.cli.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+		LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 	})
 	if err != nil {
 		return false, fnerrors.New("unable to list namespaces: %w", err)

@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -158,7 +159,7 @@ func registerCreate() {
 }
 
 func checkResetCRDCache(ctx context.Context, cluster runtime.Cluster, gvk schema.GroupVersionKind) error {
-	if kubedef.IsGVKCRD(gvk) {
+	if kubeobj.IsGVKCRD(gvk) {
 		return resetCRDCache(ctx, cluster)
 	}
 

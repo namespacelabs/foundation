@@ -12,6 +12,7 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/restmapper"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -170,7 +171,7 @@ func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubede
 }
 
 func (r *Cluster) AttachTerminal(ctx context.Context, reference *runtimepb.ContainerReference, rio runtime.TerminalIO) error {
-	cpr := &kubedef.ContainerPodReference{}
+	cpr := &kubeobj.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(cpr); err != nil {
 		return fnerrors.InternalError("invalid reference: %w", err)
 	}

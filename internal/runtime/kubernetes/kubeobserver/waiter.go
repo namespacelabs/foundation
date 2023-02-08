@@ -17,7 +17,7 @@ import (
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -75,7 +75,7 @@ func isServer(gvk kubeschema.GroupVersionKind, deployable *runtime.Deployable) b
 		return false
 	}
 
-	return kubedef.IsGVKDeployment(gvk) || kubedef.IsGVKStatefulSet(gvk) || kubedef.IsGVKPod(gvk) || kubedef.IsGVKDaemonSet(gvk)
+	return kubeobj.IsGVKDeployment(gvk) || kubeobj.IsGVKStatefulSet(gvk) || kubeobj.IsGVKPod(gvk) || kubeobj.IsGVKDaemonSet(gvk)
 }
 
 type WaitOnResource struct {
@@ -122,10 +122,10 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 			var observedGeneration int64
 			var readyReplicas, replicas, updatedReplicas int32
 
-			podOwner := w.Name
+			var podSelector map[string]string
 
 			switch {
-			case kubedef.IsGVKDeployment(w.GroupVersionKind):
+			case kubeobj.IsGVKDeployment(w.GroupVersionKind):
 				res, err := cli.AppsV1().Deployments(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
 					// If the resource is not visible yet, wait anyway, as the
@@ -149,13 +149,12 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				}
 				ev.ImplMetadata = meta
 
-				podOwner, err = fetchReplicaSetName(c, cli, w.Namespace, w.Name, w.ExpectedGen)
+				podSelector, err = determineDeploymentPodSelector(c, cli, w.Namespace, w.Name, w.ExpectedGen)
 				if err != nil {
 					fmt.Fprintf(console.Debug(ctx), "Failed to fetch replica set version %d in namespace %q owned by %q :%v\n", w.ExpectedGen, w.Namespace, w.Name, err)
-					podOwner = ""
 				}
 
-			case kubedef.IsGVKStatefulSet(w.GroupVersionKind):
+			case kubeobj.IsGVKStatefulSet(w.GroupVersionKind):
 				res, err := cli.AppsV1().StatefulSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
 					// If the resource is not visible yet, wait anyway, as the
@@ -179,7 +178,7 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				}
 				ev.ImplMetadata = meta
 
-			case kubedef.IsGVKDaemonSet(w.GroupVersionKind):
+			case kubeobj.IsGVKDaemonSet(w.GroupVersionKind):
 				res, err := cli.AppsV1().DaemonSets(w.Namespace).Get(c, w.Name, metav1.GetOptions{})
 				if err != nil {
 					// If the resource is not visible yet, wait anyway, as the
@@ -207,8 +206,8 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 				return false, fnerrors.InternalError("%s: unsupported resource type for watching", w.GroupVersionKind)
 			}
 
-			if podOwner != "" {
-				if status, err := podWaitingStatus(c, cli, w.Namespace, podOwner); err == nil {
+			if podSelector != nil {
+				if status, err := podWaitingStatus(c, cli, w.Namespace, podSelector); err == nil {
 					ev.WaitStatus = status
 				}
 			}
@@ -237,4 +236,19 @@ func (w WaitOnResource) WaitUntilReady(ctx context.Context, ch chan *orchestrati
 
 func AreReplicasReady(replicas, ready, updated int32) bool {
 	return ready == replicas && updated == replicas && replicas > 0
+}
+
+func podWaitingStatus(ctx context.Context, cli *k8s.Clientset, namespace string, selector map[string]string) ([]*orchestration.Event_WaitStatus, error) {
+	// TODO explore how to limit the list here (e.g. through labels or by using a different API)
+	pods, err := cli.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: kubeobj.SerializeSelector(selector)})
+	if err != nil {
+		return nil, fnerrors.InvocationError("kubernetes", "unable to list pods: %w", err)
+	}
+
+	var statuses []*orchestration.Event_WaitStatus
+	for _, pod := range pods.Items {
+		statuses = append(statuses, PodStatusToWaitStatus(pod.Namespace, pod.Name, pod.Status))
+	}
+
+	return statuses, nil
 }

@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -104,9 +105,9 @@ func registerEnsureDeployment() {
 	})
 }
 
-func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *kubedef.EnsureRuntimeConfigOutput, setFields []*runtimepb.SetContainerField) (any, error) {
+func patchObject(obj kubeobj.Object, spec *kubedef.OpEnsureDeployment, output *kubedef.EnsureRuntimeConfigOutput, setFields []*runtimepb.SetContainerField) (any, error) {
 	switch {
-	case kubedef.IsDeployment(obj):
+	case kubeobj.IsDeployment(obj):
 		var d specOnlyDeployment
 		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
 			return nil, err
@@ -118,7 +119,7 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 		return &d, nil
 
-	case kubedef.IsStatefulSet(obj):
+	case kubeobj.IsStatefulSet(obj):
 		var d specOnlyStatefulSet
 		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
 			return nil, err
@@ -130,7 +131,7 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 		return &d, nil
 
-	case kubedef.IsDaemonSet(obj):
+	case kubeobj.IsDaemonSet(obj):
 		var d specOnlyDaemonSet
 		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
 			return nil, err
@@ -142,7 +143,7 @@ func patchObject(obj kubedef.Object, spec *kubedef.OpEnsureDeployment, output *k
 		}
 		return &d, nil
 
-	case kubedef.IsPod(obj):
+	case kubeobj.IsPod(obj):
 		var d specOnlyPod
 		if err := json.Unmarshal([]byte(spec.SerializedResource), &d); err != nil {
 			return nil, err

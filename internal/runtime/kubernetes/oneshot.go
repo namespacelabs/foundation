@@ -13,6 +13,7 @@ import (
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	k8s "k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -50,7 +51,7 @@ func (r *Cluster) RunAttachedOpts(ctx context.Context, ns, name string, runOpts 
 	}
 
 	if io.Stdin != nil || io.Stdout != nil || io.Stderr != nil {
-		return r.attachTerminal(ctx, r.cli, &kubedef.ContainerPodReference{Namespace: ns, PodName: name}, io)
+		return r.attachTerminal(ctx, r.cli, &kubeobj.ContainerPodReference{Namespace: ns, PodName: name}, io)
 	}
 	return nil
 }

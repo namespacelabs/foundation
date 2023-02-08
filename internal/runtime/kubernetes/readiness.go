@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -30,7 +31,7 @@ func AreServicesReady(ctx context.Context, cli *kubernetes.Clientset, namespace 
 
 	// TODO only check services that are required
 	services, err := cli.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(kubedef.SelectById(srv)),
+		LabelSelector: kubeobj.SerializeSelector(kubedef.SelectById(srv)),
 	})
 	if err != nil {
 		return ServiceReadiness{}, err

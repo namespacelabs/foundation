@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -24,7 +25,7 @@ func newComputeConfigCmd() *cobra.Command {
 	var (
 		env     cfg.Context
 		locs    fncobra.Locations
-		servers fncobra.Servers
+		servers planningargs.Servers
 	)
 
 	return fncobra.
@@ -35,7 +36,7 @@ func newComputeConfigCmd() *cobra.Command {
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
-			fncobra.ParseServers(&servers, &env, &locs)).
+			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {

@@ -33,9 +33,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
-	"namespacelabs.dev/foundation/internal/providers/nscloud"
-	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/storedrun"
 	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/welcome"
@@ -120,13 +117,8 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 		run = storedrun.New()
 
-		// Used for devhost/environment validation.
-		devhost.HasRuntime = runtime.HasRuntime
-
 		// Setting up container registry logging, which is unfortunately global.
 		crlogs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
-
-		nscloud.Register()
 
 		// Telemetry.
 		tel.RecordInvocation(ctx, cmd, args)
@@ -145,7 +137,6 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	tasks.SetupFlags(rootCmd.PersistentFlags())
 	consolesink.SetupFlags(rootCmd.PersistentFlags())
 	fnapi.SetupFlags(rootCmd.PersistentFlags())
-	nscloud.SetupFlags(rootCmd.PersistentFlags())
 	clerk.SetupFlags(rootCmd.PersistentFlags())
 
 	rootCmd.PersistentFlags().BoolVar(&disableCommandBundle, "disable_command_bundle", disableCommandBundle,

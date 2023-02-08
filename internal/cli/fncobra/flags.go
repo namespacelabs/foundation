@@ -65,3 +65,16 @@ func PushParse(cmd *cobra.Command, handler func(ctx context.Context, args []stri
 		return handler(cmd.Context(), args)
 	}
 }
+
+func PushPreParse(cmd *cobra.Command, handler func(ctx context.Context, args []string) error) {
+	previous := cmd.PersistentPreRunE
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if previous != nil {
+			if err := previous(cmd, args); err != nil {
+				return err
+			}
+		}
+
+		return handler(cmd.Context(), args)
+	}
+}

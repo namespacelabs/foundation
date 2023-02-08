@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -34,7 +35,7 @@ func NewBuildCmd() *cobra.Command {
 		prebuiltBaseRepository string
 		env                    cfg.Context
 		locs                   fncobra.Locations
-		servers                fncobra.Servers
+		servers                planningargs.Servers
 	)
 
 	return fncobra.
@@ -56,7 +57,7 @@ func NewBuildCmd() *cobra.Command {
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
-			fncobra.ParseServers(&servers, &env, &locs)).
+			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			if prebuiltBaseRepository != "" {
 				if explain || continuously {

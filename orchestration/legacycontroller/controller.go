@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 )
 
 func Prepare(ctx context.Context, _ ExtensionDeps) error {
@@ -33,14 +34,14 @@ func Prepare(ctx context.Context, _ ExtensionDeps) error {
 	}
 
 	w.Add(controlEphemeral, metav1.ListOptions{
-		LabelSelector: kubedef.SerializeSelector(
+		LabelSelector: kubeobj.SerializeSelector(
 			kubedef.SelectEphemeral(),
 		),
 	})
 
 	// TODO remodel dev controller (removal of unused deps) with incluster-NS
 	// w.Add(controlDev, metav1.ListOptions{
-	// 	LabelSelector: kubedef.SerializeSelector(
+	// 	LabelSelector: kubeobj.SerializeSelector(
 	// 		kubedef.SelectByPurpose(schema.Environment_DEVELOPMENT),
 	// 	),
 	// })

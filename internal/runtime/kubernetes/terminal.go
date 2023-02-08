@@ -15,7 +15,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 )
 
-func (r *Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque *kubedef.ContainerPodReference, rio runtime.TerminalIO) error {
+func (r *Cluster) attachTerminal(ctx context.Context, cli *kubernetes.Clientset, opaque *kubeobj.ContainerPodReference, rio runtime.TerminalIO) error {
 	return r.lowLevelAttachTerm(ctx, cli, opaque.Namespace, opaque.PodName, rio, "attach", &corev1.PodAttachOptions{
 		Container: opaque.Container,
 		Stdin:     true,

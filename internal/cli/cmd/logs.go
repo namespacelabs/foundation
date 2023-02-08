@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -25,7 +26,7 @@ func NewLogsCmd() *cobra.Command {
 	var (
 		env     cfg.Context
 		locs    fncobra.Locations
-		servers fncobra.Servers
+		servers planningargs.Servers
 
 		dump bool
 	)
@@ -42,7 +43,7 @@ func NewLogsCmd() *cobra.Command {
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{RequireSingle: true}),
-			fncobra.ParseServers(&servers, &env, &locs)).
+			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			server := servers.Servers[0]
 

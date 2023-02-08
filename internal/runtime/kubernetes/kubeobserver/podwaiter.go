@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8s "k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -100,7 +100,7 @@ func CheckContainerFailed(pod corev1.Pod) error {
 	for _, init := range pod.Status.InitContainerStatuses {
 		if init.State.Terminated != nil && init.State.Terminated.ExitCode != 0 {
 			failures = append(failures, runtime.ErrContainerFailed_Failure{
-				Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, init.Name, nil),
+				Reference: kubeobj.MakePodRef(pod.Namespace, pod.Name, init.Name, nil),
 				Reason:    init.State.Terminated.Reason,
 				Message:   init.State.Terminated.Message,
 				ExitCode:  init.State.Terminated.ExitCode,
@@ -111,7 +111,7 @@ func CheckContainerFailed(pod corev1.Pod) error {
 	for _, container := range pod.Status.ContainerStatuses {
 		if container.State.Terminated != nil && container.State.Terminated.ExitCode != 0 {
 			failures = append(failures, runtime.ErrContainerFailed_Failure{
-				Reference: kubedef.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
+				Reference: kubeobj.MakePodRef(pod.Namespace, pod.Name, container.Name, nil),
 				Reason:    container.State.Terminated.Reason,
 				Message:   container.State.Terminated.Message,
 				ExitCode:  container.State.Terminated.ExitCode,

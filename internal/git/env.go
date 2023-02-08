@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
 var AssumeSSHAuth = false
@@ -18,11 +17,6 @@ var AssumeSSHAuth = false
 type EnvVars map[string]string
 
 func NoPromptEnv() TupleList {
-	if gitpod.IsGitpod() {
-		// TODO understand better why this breaks in gitpod.
-		return nil
-	}
-
 	// Disable password prompts as we don't handle them properly, yet.
 	env := EnvVars{"GIT_TERMINAL_PROMPT": "0"}
 

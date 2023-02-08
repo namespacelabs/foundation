@@ -2,12 +2,13 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package fncobra
+package planningargs
 
 import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -21,7 +22,7 @@ type Servers struct {
 	SealedPackages pkggraph.SealedPackageLoader
 }
 
-func ParseServers(serversOut *Servers, env *cfg.Context, locs *Locations) *ServersParser {
+func ParseServers(serversOut *Servers, env *cfg.Context, locs *fncobra.Locations) *ServersParser {
 	return &ServersParser{
 		serversOut: serversOut,
 		locs:       locs,
@@ -31,7 +32,7 @@ func ParseServers(serversOut *Servers, env *cfg.Context, locs *Locations) *Serve
 
 type ServersParser struct {
 	serversOut *Servers
-	locs       *Locations
+	locs       *fncobra.Locations
 	env        *cfg.Context
 }
 

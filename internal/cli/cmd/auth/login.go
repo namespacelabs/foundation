@@ -18,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/gitpod"
 )
 
 func NewLoginCmd() *cobra.Command {
@@ -71,12 +70,6 @@ func NewLoginCmd() *cobra.Command {
 }
 
 func openURL(url string) bool {
-	if gitpod.IsGitpod() {
-		// This is to avoid using www-browser (lynx) in gitpods.
-		// TODO is there a way to open a browser here?
-		return false
-	}
-
 	err := browser.OpenURL(url)
 	return err == nil
 }

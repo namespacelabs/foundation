@@ -11,6 +11,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/console"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
@@ -33,7 +34,7 @@ func registerCleanup() {
 				client := cluster.PreparedClient().Clientset
 
 				configs, err := client.CoreV1().ConfigMaps(cleanup.Namespace).List(ctx, v1.ListOptions{
-					LabelSelector: kubedef.SerializeSelector(map[string]string{
+					LabelSelector: kubeobj.SerializeSelector(map[string]string{
 						kubedef.K8sKind: kubedef.K8sRuntimeConfigKind,
 					}),
 				})
@@ -49,7 +50,7 @@ func registerCleanup() {
 
 				if cleanup.CheckPods {
 					pods, err := client.CoreV1().Pods(cleanup.Namespace).List(ctx, v1.ListOptions{
-						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+						LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
 						return nil, err
@@ -62,7 +63,7 @@ func registerCleanup() {
 					}
 				} else {
 					deployments, err := client.AppsV1().Deployments(cleanup.Namespace).List(ctx, v1.ListOptions{
-						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+						LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
 						return nil, err
@@ -75,7 +76,7 @@ func registerCleanup() {
 					}
 
 					statefulSets, err := client.AppsV1().StatefulSets(cleanup.Namespace).List(ctx, v1.ListOptions{
-						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+						LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
 						return nil, err
@@ -88,7 +89,7 @@ func registerCleanup() {
 					}
 
 					daemonSets, err := client.AppsV1().DaemonSets(cleanup.Namespace).List(ctx, v1.ListOptions{
-						LabelSelector: kubedef.SerializeSelector(kubedef.ManagedByUs()),
+						LabelSelector: kubeobj.SerializeSelector(kubedef.ManagedByUs()),
 					})
 					if err != nil {
 						return nil, err

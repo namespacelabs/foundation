@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/config"
@@ -22,7 +23,7 @@ type hydrateParser struct {
 	resultOut *hydrateResult
 
 	env     *cfg.Context
-	servers *fncobra.Servers
+	servers *planningargs.Servers
 
 	rehydrateOnly bool
 	rehydrate     bool
@@ -43,7 +44,7 @@ type hydrateResult struct {
 	Rehydrated *config.Rehydrated
 }
 
-func parseHydration(resultOut *hydrateResult, env *cfg.Context, servers *fncobra.Servers, opts *hydrateOpts) *hydrateParser {
+func parseHydration(resultOut *hydrateResult, env *cfg.Context, servers *planningargs.Servers, opts *hydrateOpts) *hydrateParser {
 	return &hydrateParser{
 		resultOut:     resultOut,
 		env:           env,
@@ -58,13 +59,13 @@ func parseHydrationWithDeps(resultOut *hydrateResult, locationsOpts *fncobra.Par
 	var (
 		env     cfg.Context
 		locs    fncobra.Locations
-		servers fncobra.Servers
+		servers planningargs.Servers
 	)
 
 	return []fncobra.ArgsParser{
 		fncobra.ParseEnv(&env),
 		fncobra.ParseLocations(&locs, &env, *locationsOpts),
-		fncobra.ParseServers(&servers, &env, &locs),
+		planningargs.ParseServers(&servers, &env, &locs),
 		parseHydration(resultOut, &env, &servers, opts),
 	}
 }

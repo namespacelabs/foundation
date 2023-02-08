@@ -8,14 +8,14 @@ import (
 	"context"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
 func (r *Cluster) FetchDiagnostics(ctx context.Context, reference *runtimepb.ContainerReference) (*runtimepb.Diagnostics, error) {
-	opaque := &kubedef.ContainerPodReference{}
+	opaque := &kubeobj.ContainerPodReference{}
 	if err := reference.Opaque.UnmarshalTo(opaque); err != nil {
 		return &runtimepb.Diagnostics{}, fnerrors.InternalError("invalid reference: %w", err)
 	}

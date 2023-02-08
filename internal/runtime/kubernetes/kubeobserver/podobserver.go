@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	k8s "k8s.io/client-go/kubernetes"
-	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/go-ids"
@@ -60,7 +60,7 @@ func (p *PodObserver) start(ctx context.Context) {
 	go func() {
 		defer p.cond.Broadcast() // On exit, wake up all waiters.
 
-		debug := text.NewIndentWriter(console.Debug(ctx), []byte(fmt.Sprintf("kube/podresolver: %s: ", kubedef.SerializeSelector(p.labels))))
+		debug := text.NewIndentWriter(console.Debug(ctx), []byte(fmt.Sprintf("kube/podresolver: %s: ", kubeobj.SerializeSelector(p.labels))))
 
 		for {
 			retry, err := p.runWatcher(ctx, debug)
@@ -82,7 +82,7 @@ func (p *PodObserver) start(ctx context.Context) {
 			}
 
 			if !retry {
-				fmt.Fprintf(console.Debug(ctx), "kube/podresolver: %s: failed: %v.\n", kubedef.SerializeSelector(p.labels), err)
+				fmt.Fprintf(console.Debug(ctx), "kube/podresolver: %s: failed: %v.\n", kubeobj.SerializeSelector(p.labels), err)
 				return
 			}
 
@@ -95,7 +95,7 @@ func (p *PodObserver) start(ctx context.Context) {
 
 // Return true for a retry.
 func (p *PodObserver) runWatcher(ctx context.Context, debug io.Writer) (bool, error) {
-	w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubedef.SerializeSelector(p.labels)})
+	w, err := p.client.CoreV1().Pods(p.namespace).Watch(ctx, metav1.ListOptions{LabelSelector: kubeobj.SerializeSelector(p.labels)})
 	if err != nil {
 		return true, err
 	}

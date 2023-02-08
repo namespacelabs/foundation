@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	buildr "namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -52,7 +53,7 @@ func NewDeployCmd() *cobra.Command {
 		deployOpts       deployOpts
 		env              cfg.Context
 		locs             fncobra.Locations
-		servers          fncobra.Servers
+		servers          planningargs.Servers
 	)
 
 	return fncobra.
@@ -74,7 +75,7 @@ func NewDeployCmd() *cobra.Command {
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
-			fncobra.ParseServers(&servers, &env, &locs)).
+			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
 			stack, err := planning.ComputeStack(ctx, servers.Servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
 			if err != nil {
