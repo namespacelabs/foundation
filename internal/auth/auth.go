@@ -27,7 +27,9 @@ func GenerateToken(ctx context.Context) (string, error) {
 			}
 			return "", err
 		}
+
 		return fmt.Sprintf("jwt:%s", jwt), nil
 	}
+
 	return base64.RawStdEncoding.EncodeToString(userAuth.InternalOpaque), nil
 }
