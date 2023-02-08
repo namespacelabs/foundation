@@ -7,10 +7,12 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -25,65 +27,98 @@ const (
 	GithubJWTAudience = "nscloud.dev/inline-token"
 )
 
+var ErrTokenNotExist = errors.New("token does not exist")
+
+type cachedTokens map[string]Token
+
 type Token struct {
-	TenantToken string `json:"tenant_token,omitempty"`
+	Scopes      []string `json:"scopes,omitempty"`
+	TenantToken string   `json:"tenant_token,omitempty"`
 }
 
-func StoreTenantToken(token string) error {
-	data, err := json.Marshal(Token{TenantToken: token})
+func StoreTenantToken(ctx context.Context, username string, token Token) error {
+	dir, err := dirs.Config()
 	if err != nil {
 		return err
 	}
 
-	configDir, err := dirs.Ensure(dirs.Config())
+	f := filepath.Join(dir, tokenTxt)
+	cache, err := getCachedTokens(ctx, f)
 	if err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(configDir, tokenTxt), data, 0600); err != nil {
-		return fnerrors.New("failed to write token data: %w", err)
+	sort.Strings(token.Scopes)
+	cache[username+strings.Join(token.Scopes, "")] = token
+
+	data, err := json.Marshal(cache)
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(f, data, 0600); err != nil {
+		return fnerrors.New("failed to write token cache: %w", err)
 	}
 
 	return nil
 }
 
-func LoadTenantToken(ctx context.Context) (*Token, error) {
+func LoadTenantToken(ctx context.Context, username string, scopes []string) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err
 	}
 
-	p := filepath.Join(dir, tokenTxt)
-	data, err := os.ReadFile(p)
+	f := filepath.Join(dir, tokenTxt)
+	cache, err := getCachedTokens(ctx, f)
 	if err != nil {
 		return nil, err
 	}
 
-	// XXX: to invalidate cache if cached token has expired or corrupted - remove it and return [fs.ErrNotExist].
-	cleanTokenCache := func(f string) (*Token, error) {
-		if err := os.Remove(f); err != nil {
-			return nil, err
-		}
-		return nil, fs.ErrNotExist
-	}
-
-	token := &Token{}
-	if err := json.Unmarshal(data, token); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
-		return cleanTokenCache(p)
+	sort.Strings(scopes)
+	token, ok := cache[username+strings.Join(scopes, "")]
+	if !ok {
+		return nil, ErrTokenNotExist
 	}
 
 	claims := jwt.RegisteredClaims{}
 	parser := jwt.Parser{}
 	if _, _, err := parser.ParseUnverified(strings.TrimPrefix(token.TenantToken, "nsct_"), &claims); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to parse tenant JWT: %v\n", err)
-		return cleanTokenCache(p)
+		if err := os.Remove(f); err != nil {
+			return nil, err
+		}
+		return nil, ErrTokenNotExist
 	}
 
 	if !claims.VerifyExpiresAt(time.Now(), true) {
 		fmt.Fprintf(console.Debug(ctx), "tenant JWT has expired\n")
-		return cleanTokenCache(p)
+		if err := os.Remove(f); err != nil {
+			return nil, err
+		}
+		return nil, ErrTokenNotExist
 	}
 
-	return token, nil
+	return &token, nil
+}
+
+func getCachedTokens(ctx context.Context, f string) (cachedTokens, error) {
+	tokens := cachedTokens{}
+
+	data, err := os.ReadFile(f)
+	switch {
+	case err == nil:
+		if err := json.Unmarshal(data, &tokens); err != nil {
+			fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant tokens: %v\n", err)
+			if err := os.Remove(f); err != nil {
+				return nil, err
+			}
+		}
+
+		return tokens, nil
+	case errors.Is(err, fs.ErrNotExist):
+		return tokens, nil
+	default:
+		return nil, err
+	}
 }

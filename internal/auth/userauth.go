@@ -22,8 +22,7 @@ type UserAuth struct {
 	Org            string `json:"org,omitempty"` // The organization this user is acting as. Only really relevant for robot accounts which authenticate against a repository.
 	InternalOpaque []byte `json:"opaque,omitempty"`
 
-	Clerk          *clerk.State `json:"clerk,omitempty"`
-	IsGithubAction bool         `json:"is_github_action,omitempty"`
+	Clerk *clerk.State `json:"clerk,omitempty"`
 }
 
 func StoreUser(ctx context.Context, userAuth *UserAuth) (string, error) {

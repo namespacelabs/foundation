@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -292,45 +291,57 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 
 func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (string, error) {
-		// Check if there is already tenant token stored.
-		tenantToken, err := auth.LoadTenantToken(ctx)
-		if err == nil {
-			// If no scopes provided we can immediately return the token.
-			if len(scopes) == 0 {
-				return tenantToken.TenantToken, nil
-			}
+		userAuth, err := auth.LoadUser()
+		if err != nil {
+			return "", err
+		}
 
+		var token string
+
+		scopedToken, err := auth.LoadTenantToken(ctx, userAuth.Username, scopes)
+		if err == nil {
+			// The tenant token with requested scopes is in cache.
+			return scopedToken.TenantToken, nil
+		}
+
+		// If no scoped token cached, then first try exchange unscoped tenant token and otherwise use user token.
+		tenantToken, err := auth.LoadTenantToken(ctx, userAuth.Username, nil)
+		switch err {
+		case nil:
 			resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
 			if err != nil {
 				return "", err
 			}
 
-			return resp.TenantToken, nil
-		}
+			token = resp.TenantToken
 
-		if !os.IsNotExist(err) {
-			return "", err
-		}
-
-		// No tenant token stored, so use user token and exchange it to a tenant token.
-		userToken, err := auth.GenerateToken(ctx)
-		if err != nil {
-			return "", err
-		}
-
-		resp, err := fnapi.ExchangeUserToken(ctx, userToken, scopes)
-		if err != nil {
-			return "", err
-		}
-
-		// Cache unscoped token.
-		if len(scopes) == 0 {
-			if err := auth.StoreTenantToken(resp.TenantToken); err != nil {
+		case auth.ErrTokenNotExist:
+			userToken, err := auth.GenerateToken(ctx)
+			if err != nil {
 				return "", err
 			}
+
+			resp, err := fnapi.ExchangeUserToken(ctx, userToken, scopes)
+			if err != nil {
+				return "", err
+			}
+
+			token = resp.TenantToken
+
+		default:
+			return "", err
 		}
 
-		return resp.TenantToken, nil
+		// Cache exchanged tenant token.
+		if err := auth.StoreTenantToken(
+			ctx,
+			userAuth.Username,
+			auth.Token{Scopes: scopes, TenantToken: token},
+		); err != nil {
+			return "", err
+		}
+
+		return token, nil
 	})
 }
 

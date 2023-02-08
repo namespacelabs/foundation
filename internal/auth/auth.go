@@ -19,17 +19,21 @@ func GenerateToken(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	if userAuth.Clerk != nil {
+	switch {
+	case userAuth.Clerk != nil:
 		jwt, err := clerk.JWT(ctx, userAuth.Clerk)
 		if err != nil {
 			if errors.Is(err, clerk.ErrUnauthorized) {
 				return "", ErrRelogin
 			}
+
 			return "", err
 		}
 
 		return fmt.Sprintf("jwt:%s", jwt), nil
+	case len(userAuth.InternalOpaque) > 0:
+		return base64.RawStdEncoding.EncodeToString(userAuth.InternalOpaque), nil
+	default:
+		return "", ErrRelogin
 	}
-
-	return base64.RawStdEncoding.EncodeToString(userAuth.InternalOpaque), nil
 }
