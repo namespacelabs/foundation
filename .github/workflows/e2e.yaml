@@ -190,32 +190,9 @@ jobs:
             --golang_use_buildkit=false \
             internal/testdata/integrations/dockerfile/complex
 
-      - name: Start ns dev internal/testdata/integrations/dockerfile/complex
+      - name: ns dev internal/testdata/integrations/dockerfile/complex
         run: |
-          tmux new-session -d -s NsDevSession '/tmp/ns dev --buildkit_import_cache=type=gha --buildkit_export_cache=type=gha,mode=max --golang_use_buildkit=false --naming_no_tls=true internal/testdata/integrations/dockerfile/complex'
-
-      - name: Sleep
-        run: |
-          sleep 10
-
-      - name: Debug
-        run: |
-          /tmp/ns kubectl get all
-
-      # Deployment ID is generated but stable (w.r.t. server package name)
-      - name: Wait until server is available
-        run: |
-          /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/mycomplexserver-mdpnh1j3smf8t83e
-
-      - name: Quit ns dev
-        if: always()
-        run: |
-          tmux send-keys -t NsDevSession -l q
-
-      - name: Attach to ns dev
-        if: always()
-        run: |
-          tmux attach-session -t NsDevSession
+          ./.github/workflows/scripts/dev.sh
 
   run_e2e_tests:
     name: e2e tests
