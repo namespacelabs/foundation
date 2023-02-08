@@ -125,7 +125,7 @@ jobs:
             internal/testdata/server/gogrpc
 
   run_dev:
-    name: Test local Namespace (deploy to k3d) os=${{ matrix.os }}
+    name: Test local Namespace dev session os=${{ matrix.os }}
     needs: build_fn
     strategy:
       matrix:
@@ -184,7 +184,7 @@ jobs:
 
       - name: Wait until server is available
         run: |
-          ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc
+          /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc
 
       - name: Quit ns dev
         run: |
