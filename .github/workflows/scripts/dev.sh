@@ -5,19 +5,26 @@ tmux new-session -d -s NsDevSession '/tmp/ns dev --buildkit_import_cache=type=gh
 
 COUNTER=0
 while true ; do
-    if /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc | grep -q 'NotFound'; then
-        # Don't check what is missing, as we first lack "namespaces" then "deployments.apps"
+    echo checking roolout status
+
+    /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc > response.txt
+
+    # Don't check what is missing, as we first lack "namespaces" then "deployments.apps"
+    if ! cat response.txt | grep -q 'NotFound'; then
+        echo rollout complete
         break
     fi
 
-    let COUNTER++
-
+    counter=$((counter+1))
     if [[ $COUNTER -ge 10 ]]; then
+        echo give up
         break
     fi
 
     sleep 5
 done
+
+cat response.txt
 
 /tmp/ns kubectl -- get all -A
 
