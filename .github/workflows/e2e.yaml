@@ -188,7 +188,6 @@ jobs:
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --golang_use_buildkit=false \
-            --naming_no_tls=true \
             internal/testdata/integrations/dockerfile/complex
 
       - name: Start ns dev internal/testdata/integrations/dockerfile/complex
