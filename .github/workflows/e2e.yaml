@@ -208,10 +208,12 @@ jobs:
           /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/mycomplexserver-mdpnh1j3smf8t83e
 
       - name: Quit ns dev
+        if: always()
         run: |
           tmux send-keys -t NsDevSession -l q
 
       - name: Attach to ns dev
+        if: always()
         run: |
           tmux attach-session -t NsDevSession
 
