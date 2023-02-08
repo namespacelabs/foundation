@@ -25,7 +25,7 @@ func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
 }
 
-var Log = zerolog.New(os.Stderr).With().Timestamp().Str("kind", "grpclog").Logger().Level(zerolog.DebugLevel)
+var Log = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 
 type interceptor struct{}
 
@@ -35,16 +35,16 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 		return handler(ctx, req)
 	}
 
-	w := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
-	logger := w.Logger()
+	zero := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
+	logger := zero.Logger()
 
-	attachDeadline(ctx, logger.Info().Str("what", "request")).Str("request_body", serializeMessage(req)).Send()
+	attachRequestData(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", serializeMessage(req)).Send()
 
-	resp, err := handler(ctx, req)
+	resp, err := handler(logger.WithContext(ctx), req)
 	if err == nil {
-		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("request_body", serializeMessage(resp)).Send()
+		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", serializeMessage(resp)).Send()
 	} else {
-		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
+		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
 	}
 	return resp, err
 }
@@ -57,16 +57,16 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 		return handler(srv, stream)
 	}
 
-	w := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
-	logger := w.Logger()
+	zero := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
+	logger := zero.Logger()
 
-	attachDeadline(ctx, logger.Info().Str("what", "stream_start")).Send()
+	attachRequestData(ctx, logger.Info().Str("kind", "grpclog").Str("what", "stream_start")).Send()
 
-	err := handler(srv, stream)
+	err := handler(srv, &serverStream{stream, logger.WithContext(ctx)})
 	if err == nil {
-		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Send()
+		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Send()
 	} else {
-		logger.Info().Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Err(err).Send()
+		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Err(err).Send()
 	}
 	return err
 }
@@ -96,8 +96,12 @@ func ParsePeerAddress(p *peer.Peer, md metadata.MD) (string, string) {
 func prepareLogger(ctx context.Context, reqid requestid.RequestID, fullMethod string) zerolog.Context {
 	service, method := nsgrpc.SplitMethodName(fullMethod)
 
-	authType := "none"
+	return Log.With().Str("service", service).Str("method", method).
+		Str("request_id", string(reqid))
+}
 
+func attachRequestData(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
+	var authType string
 	p, _ := peer.FromContext(ctx)
 	if p != nil && p.AuthInfo != nil {
 		authType = p.AuthInfo.AuthType()
@@ -119,16 +123,21 @@ func prepareLogger(ctx context.Context, reqid requestid.RequestID, fullMethod st
 		delete(md, "authorization")
 	}
 
-	return Log.With().Str("service", service).Str("method", method).
-		Str("request_id", string(reqid)).
-		Str("peer", peerAddr).Str("original_peer", wasAddr).
-		Str("auth_type", authType).Str("authority", authority)
-}
+	ev = ev.Str("peer", peerAddr)
+	if wasAddr != "" {
+		ev = ev.Str("original_peer", wasAddr)
+	}
 
-func attachDeadline(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
+	if authType != "" {
+		ev = ev.Str("auth_type", authType)
+	}
+
+	if authority != "" {
+		ev = ev.Str("authority", authority)
+	}
+
 	if t, ok := ctx.Deadline(); ok {
-		left := time.Until(t)
-		return ev.Dur("deadline_left", left)
+		ev = ev.Dur("deadline_left", time.Until(t))
 	}
 
 	return ev
@@ -158,4 +167,13 @@ func serializeMessage(msg interface{}) string {
 		return fmt.Sprintf("%s [...%d chars truncated]", reqStr[:maxOutputToTerminal], len(reqStr)-maxOutputToTerminal)
 	}
 	return reqStr
+}
+
+type serverStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (w *serverStream) Context() context.Context {
+	return w.ctx
 }

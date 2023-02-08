@@ -8,6 +8,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc/peer"
 	"namespacelabs.dev/foundation/internal/testdata/service/proto"
 	"namespacelabs.dev/foundation/std/go/server"
@@ -19,7 +20,7 @@ type Service struct {
 }
 
 func (svc *Service) Post(ctx context.Context, req *proto.PostRequest) (*proto.PostResponse, error) {
-	log.Printf("new request\n")
+	zerolog.Ctx(ctx).Info().Msg("new request")
 
 	p, ok := peer.FromContext(ctx)
 	if ok {
