@@ -174,7 +174,7 @@ jobs:
 
       - name: ns dev
         run: |
-          ./.github/workflows/scripts/dev.sh
+          ./.github/workflows/scripts/dev.sh /tmp/ns
 
   run_e2e_tests:
     name: e2e tests
