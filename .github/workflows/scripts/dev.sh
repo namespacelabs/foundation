@@ -18,8 +18,6 @@ while true ; do
     sleep 5
 done
 
-echo $RESPONSE
-
 /tmp/ns kubectl -- get all -A
 
 tmux send-keys -t NsDevSession -l q
