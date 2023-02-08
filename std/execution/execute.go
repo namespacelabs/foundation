@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/schema/orchestration"
@@ -21,8 +22,11 @@ type Waiter func(context.Context, chan *orchestration.Event) error
 
 type ExecuteOpts struct {
 	ContinueOnErrors    bool
-	WrapWithActions     bool
 	OrchestratorVersion int32
+
+	WrapWithActions bool
+	TaskTracer      trace.Tracer
+	TaskOnDone      tasks.OnDoneFunc
 
 	OnWaiter func(context.Context, Waiter)
 }
