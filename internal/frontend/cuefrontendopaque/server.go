@@ -23,7 +23,7 @@ import (
 var (
 	extensionFields = []string{
 		"args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
-		"mounts", "resources", "requires", "tolerations",
+		"sidecars", "mounts", "resources", "requires", "tolerations",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
