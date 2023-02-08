@@ -172,19 +172,29 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
-      - name: Start ns dev internal/testdata/server/gogrpc
+      # Deploy backend first to ensure most resources exist in k8s.
+      - name: Deploy internal/testdata/integrations/dockerfile/simple
+        run: |
+          /tmp/ns deploy \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --golang_use_buildkit=false \
+            --naming_no_tls=true \
+            internal/testdata/integrations/dockerfile/simple
+
+      - name: Start ns dev internal/testdata/integrations/dockerfile/complex
         run: |
           tmux new-session -d -s NsDevSession '/tmp/ns dev \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
             --golang_use_buildkit=false \
             --naming_no_tls=true \
-            --use_orchestrator=false \
-            internal/testdata/server/gogrpc'
+            internal/testdata/integrations/dockerfile/complex'
 
+      # Deployment ID is generated but stable (w.r.t. server package name)
       - name: Wait until server is available
         run: |
-          /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/gogrpcserver-7hzne001dff2rpdxav703bwqwc
+          /tmp/ns kubectl -- rollout status --watch --timeout=90s deployment/mycomplexserver-mdpnh1j3smf8t83e
 
       - name: Quit ns dev
         run: |
