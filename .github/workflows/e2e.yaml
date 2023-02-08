@@ -182,6 +182,15 @@ jobs:
             --naming_no_tls=true \
             internal/testdata/integrations/dockerfile/simple
 
+      - name: Build internal/testdata/integrations/dockerfile/complex
+        run: |
+          /tmp/ns build \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
+            --golang_use_buildkit=false \
+            --naming_no_tls=true \
+            internal/testdata/integrations/dockerfile/complex
+
       - name: Start ns dev internal/testdata/integrations/dockerfile/complex
         run: |
           tmux new-session -d -s NsDevSession '/tmp/ns dev \
@@ -190,6 +199,14 @@ jobs:
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             internal/testdata/integrations/dockerfile/complex'
+
+      - name: Sleep
+        run: |
+          sleep 10
+
+      - name: Debug
+        run: |
+          /tmp/ns kubectl get all
 
       # Deployment ID is generated but stable (w.r.t. server package name)
       - name: Wait until server is available
