@@ -206,8 +206,14 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 		invCtx := injectValues(ctx, InputsInjection.With(inputs))
 
 		var running *tasks.RunningAction
-		if opts.WrapWithActions {
-			action := tasks.Action("execute.step").Arg("typeUrl", typeUrl)
+		if opts.WrapWithActions || opts.TaskMake != nil {
+			var action *tasks.ActionEvent
+			if opts.TaskMake != nil {
+				action = opts.TaskMake(n.invocation)
+			} else {
+				action = tasks.Action("execute.step").Arg("typeUrl", typeUrl)
+			}
+
 			if n.invocation.Description != "" {
 				action = action.HumanReadablef(n.invocation.Description)
 			}

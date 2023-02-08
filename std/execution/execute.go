@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -25,6 +26,7 @@ type ExecuteOpts struct {
 	OrchestratorVersion int32
 
 	WrapWithActions bool
+	TaskMake        func(*schema.SerializedInvocation) *tasks.ActionEvent
 	TaskTracer      trace.Tracer
 	TaskOnDone      tasks.OnDoneFunc
 
