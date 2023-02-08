@@ -1,6 +1,7 @@
 #!/bin/sh
+set -e
 
-tmux new-session -d -s NsDevSession '/tmp/ns dev --buildkit_import_cache=type=gha --buildkit_export_cache=type=gha,mode=max --golang_use_buildkit=false --naming_no_tls=true internal/testdata/server/gogrpc'
+tmux new-session -d -s NsDevSession '/tmp/ns dev --buildkit_import_cache=type=gha --buildkit_export_cache=type=gha,mode=max --golang_use_buildkit=false internal/testdata/server/gogrpc'
 
 COUNTER=0
 while true ; do
