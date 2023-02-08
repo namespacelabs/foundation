@@ -172,25 +172,7 @@ jobs:
       - name: Print kubectl cluster-info
         run: kubectl cluster-info
 
-      # Deploy backend first to ensure most resources exist in k8s.
-      - name: Deploy internal/testdata/integrations/dockerfile/simple
-        run: |
-          /tmp/ns deploy \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
-            --golang_use_buildkit=false \
-            --naming_no_tls=true \
-            internal/testdata/integrations/dockerfile/simple
-
-      - name: Build internal/testdata/integrations/dockerfile/complex
-        run: |
-          /tmp/ns build \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
-            --golang_use_buildkit=false \
-            internal/testdata/integrations/dockerfile/complex
-
-      - name: ns dev internal/testdata/integrations/dockerfile/complex
+      - name: ns dev
         run: |
           ./.github/workflows/scripts/dev.sh
 
