@@ -21,7 +21,7 @@ func newNewClusterCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "new-cluster",
 		Args:   cobra.NoArgs,
-		Hidden: true,
+		Short:  "Creates and prepares a new cluster on Namespace CLoud.",
 	}
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
