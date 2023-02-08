@@ -56,23 +56,27 @@ func LoadTenantToken() (*Token, error) {
 		return nil, err
 	}
 
+	cleanTokenCache := func(f string) (*Token, error) {
+		if err := os.Remove(f); err != nil {
+			return nil, err
+		}
+		return nil, fs.ErrNotExist
+	}
+
 	token := &Token{}
 	if err := json.Unmarshal(data, token); err != nil {
-		return nil, err
+		return cleanTokenCache(p)
 	}
 
 	claims := jwt.RegisteredClaims{}
 	parser := jwt.Parser{}
 	if _, _, err := parser.ParseUnverified(strings.TrimPrefix(token.TenantToken, "nsct_"), &claims); err != nil {
-		return nil, err
+		return cleanTokenCache(p)
 	}
 
 	// If stored token is expired, we remove it and return [fs.ErrNotExist].
 	if !claims.VerifyExpiresAt(time.Now(), true) {
-		if err := os.Remove(p); err != nil {
-			return nil, err
-		}
-		return nil, fs.ErrNotExist
+		return cleanTokenCache(p)
 	}
 
 	return token, nil
