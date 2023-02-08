@@ -50,7 +50,7 @@ func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 
 	hostPlatform := docker.HostPlatform()
 
-	const imageName = "gcr.io/google.com/cloudsdktool/google-cloud-cli:412.0.0"
+	const imageName = "gcr.io/google.com/cloudsdktool/google-cloud-cli:412.0.0-alpine"
 	imageRef := oci.ImageP(imageName, &hostPlatform, oci.RegistryAccess{PublicImage: true})
 	image, err := compute.GetValue(ctx, imageRef)
 	if err != nil {
