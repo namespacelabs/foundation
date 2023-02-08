@@ -59,11 +59,15 @@ type cueVolume struct {
 	Kind string `json:"kind"`
 
 	// Shortcuts
-	Ephemeral     any                     `json:"ephemeral,omitempty"`
+	Ephemeral     *cueEphemeralVolume     `json:"ephemeral,omitempty"`
 	Persistent    *cuePersistentVolume    `json:"persistent,omitempty"`
 	WorkspaceSync *cueWorkspaceSyncVolume `json:"syncWorkspace,omitempty"`
 	Configurable  any                     `json:"configurable,omitempty"`
 	HostPath      *cueHostPathVolume      `json:"hostPath,omitempty"`
+}
+
+type cueEphemeralVolume struct {
+	Size string `json:"size"`
 }
 
 type cuePersistentVolume struct {
@@ -125,7 +129,18 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 
 	switch bits.Kind {
 	case constants.VolumeKindEphemeral:
-		definition = &schema.EphemeralVolume{}
+		var usizeBytes uint64
+		if bits.Ephemeral.Size != "" {
+			sizeBytes, err := units.FromHumanSize(bits.Ephemeral.Size)
+			if err != nil {
+				return nil, fnerrors.NewWithLocation(loc, "failed to parse value: %w", err)
+			}
+			usizeBytes = uint64(sizeBytes)
+		}
+
+		definition = &schema.EphemeralVolume{
+			SizeBytes: usizeBytes,
+		}
 
 	case constants.VolumeKindPersistent:
 		sizeBytes, err := units.FromHumanSize(bits.Size)

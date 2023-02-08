@@ -21,7 +21,7 @@ import (
 )
 
 // Bumping this value leads to an orchestrator upgrade.
-const orchestratorVersion = 24
+const orchestratorVersion = 25
 
 var DeployWithOrchestrator = false
 

@@ -12,8 +12,12 @@ service: fn.#Service & {
 	exportService: $proto.services.OrchestrationService
 
 	mounts: {
-		"/namespace/orchestration/data": ephemeral: {}
-		"/namespace/orchestration/home": ephemeral: {}
+		"/namespace/orchestration/data": ephemeral: {
+			size: "1GiB" // TODO consider raising this if we use orchestrator for deploying
+		}
+		"/namespace/orchestration/home": ephemeral: {
+			size: "1GiB"
+		}
 	}
 }
 

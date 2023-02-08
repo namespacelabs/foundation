@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	backgroundUpdateInterval = 30 * time.Minute
-	fetchLatestTimeout       = 2 * time.Second
+	updateInterval     = 12 * time.Hour
+	fetchLatestTimeout = 2 * time.Second
 )
 
 type versionChecker struct {
@@ -27,8 +27,9 @@ type versionChecker struct {
 
 	current int32
 
-	mu     sync.Mutex
-	latest int32
+	mu        sync.Mutex
+	latest    int32
+	fetchedAt time.Time
 }
 
 func newVersionChecker(ctx context.Context) *versionChecker {
@@ -37,21 +38,20 @@ func newVersionChecker(ctx context.Context) *versionChecker {
 		current:   orchestration.ExecuteOpts().OrchestratorVersion,
 	}
 
-	go func() {
-		for {
-			if err := vc.updateLatest(); err != nil {
-				log.Printf("failed to update latest: %v\n", err)
-			}
-
-			time.Sleep(backgroundUpdateInterval)
-		}
-	}()
+	if err := vc.updateLatest(); err != nil {
+		// Will retry on GetOrchestratorVersion calls.
+		log.Printf("failed to fetch latest version: %v\n", err)
+	}
 
 	return vc
 }
 
 func (vc *versionChecker) GetOrchestratorVersion(skipCache bool) (*proto.GetOrchestratorVersionResponse, error) {
-	if skipCache {
+	vc.mu.Lock()
+	runUpdate := skipCache || time.Since(vc.fetchedAt) > updateInterval
+	vc.mu.Unlock()
+
+	if runUpdate {
 		if err := vc.updateLatest(); err != nil {
 			return nil, err
 		}
@@ -84,6 +84,8 @@ func (vc *versionChecker) updateLatest() error {
 
 		vc.latest = plan.Version
 	}
+
+	vc.fetchedAt = time.Now()
 
 	return nil
 }

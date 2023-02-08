@@ -20,6 +20,7 @@ import (
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	appsv1 "k8s.io/client-go/applyconfigurations/apps/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -447,7 +448,17 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 		switch volume.Kind {
 		case constants.VolumeKindEphemeral:
-			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(applycorev1.EmptyDirVolumeSource()))
+			ev := &schema.EphemeralVolume{}
+			if err := volume.Definition.UnmarshalTo(ev); err != nil {
+				return fnerrors.InternalError("%s: failed to unmarshal hostDir volume definition: %w", volume.Name, err)
+			}
+
+			emptydir := applycorev1.EmptyDirVolumeSource()
+			if ev.SizeBytes > 0 {
+				quantity := resource.NewScaledQuantity(int64(ev.SizeBytes), 0)
+				emptydir = emptydir.WithSizeLimit(*quantity)
+			}
+			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(emptydir))
 
 		case constants.VolumeKindHostPath:
 			pv := &schema.HostPathVolume{}

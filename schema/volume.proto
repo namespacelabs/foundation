@@ -36,7 +36,9 @@ message Volume {
     google.protobuf.Any definition = 4;
 }
 
-message EphemeralVolume {}
+message EphemeralVolume {
+    uint64 size_bytes = 1;
+}
 
 message PersistentVolume {
     string id         = 1;

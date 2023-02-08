@@ -116,6 +116,8 @@ func (d *deployer) Schedule(deployPlan *schema.DeployPlan, env cfg.Context, arri
 		if err := of.writeEvent(finalEvent); err != nil {
 			log.Printf("failed to finalize task file: %v", err)
 		}
+
+		// TODO schedule deletion of event file to bound the disk usage once we use orchestrator again for deployments
 	}()
 
 	return &RunningDeployment{ID: id}, nil
