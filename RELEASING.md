@@ -72,7 +72,9 @@ nsdev build-binary std/networking/gateway/controller std/networking/gateway/serv
      --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
 ```
 
-You can then update the `prebuilt_binary` definitions in `workspace.textpb` with the values above.
+You can then update the `prebuilt_binary` definitions in `ns-workspace.cue` with the values above.
+
+Also if rebuilding `internal/sdk/buf/image/prebuilt`, update `internal/sdk/buf/image/versions.json`.
 
 ### Changing node definitions (extensions, service, server)
 
