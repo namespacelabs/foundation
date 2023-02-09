@@ -49,7 +49,11 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 				tok = fmt.Sprintf("nsct_%s", res.TenantToken)
 			}
 
-			return auth.StoreTenantToken(ctx, "github-token", auth.Token{TenantToken: tok})
+			if _, err := auth.StoreUser(ctx, &auth.UserAuth{Username: auth.GithubJWTAudience}); err != nil {
+				return err
+			}
+
+			return auth.StoreTenantToken(ctx, auth.GithubJWTAudience, auth.Token{TenantToken: tok})
 		case "NO_INSTALLATION":
 			return fnerrors.UsageError("Please follow https://github.com/apps/namespace-cloud/installations/new", "Namespace Cloud App is not installed for %q.", os.Getenv("GITHUB_REPOSITORY_OWNER"))
 		default:
