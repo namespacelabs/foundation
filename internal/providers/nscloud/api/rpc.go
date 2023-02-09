@@ -7,8 +7,10 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -291,21 +293,24 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 
 func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (string, error) {
+		var username string
 		userAuth, err := auth.LoadUser()
-		if err != nil {
+		if err == nil {
+			username = userAuth.Username
+		} else if !(errors.Is(err, auth.ErrRelogin) && os.Getenv("GITHUB_ACTIONS") != "true") {
+			// XXX: when running in Github Actions no user set otherwise return the error.
 			return "", err
 		}
 
-		var token string
-
-		scopedToken, err := auth.LoadTenantToken(ctx, userAuth.Username, scopes)
+		scopedToken, err := auth.LoadTenantToken(ctx, username, scopes)
 		if err == nil {
 			// The tenant token with requested scopes is in cache.
 			return scopedToken.TenantToken, nil
 		}
 
+		var token string
 		// If no scoped token cached, then first try exchange unscoped tenant token and otherwise use user token.
-		tenantToken, err := auth.LoadTenantToken(ctx, userAuth.Username, nil)
+		tenantToken, err := auth.LoadTenantToken(ctx, username, nil)
 		switch err {
 		case nil:
 			resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
@@ -333,11 +338,9 @@ func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 		}
 
 		// Cache exchanged tenant token.
-		if err := auth.StoreTenantToken(
-			ctx,
-			userAuth.Username,
-			auth.Token{Scopes: scopes, TenantToken: token},
-		); err != nil {
+		if err := auth.StoreTenantToken(ctx, auth.Token{
+			Username: username, Scopes: scopes, TenantToken: token,
+		}); err != nil {
 			return "", err
 		}
 
