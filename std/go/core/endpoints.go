@@ -25,7 +25,7 @@ func RegisterDebugEndpoints(mux *mux.Router) {
 	defer debugHandlers.mu.RUnlock()
 	for pkg, handler := range debugHandlers.handlers {
 		endpoint := "/debug/" + pkg + "/"
-		mux.Handle(endpoint, handler)
+		mux.PathPrefix(endpoint).Handler(handler)
 		endpoints = append(endpoints, endpoint)
 	}
 
