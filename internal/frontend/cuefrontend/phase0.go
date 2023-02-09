@@ -21,8 +21,14 @@ func parsePackage(ctx context.Context, evalctx *fncue.EvalCtx, pl parsing.EarlyP
 	return tasks.Return(ctx, tasks.Action("cue.package.parse").LogLevel(1).Scope(loc.PackageName), func(ctx context.Context) (*fncue.Partial, error) {
 		if st, err := fs.Stat(fnfs.Local(loc.Module.Abs()), loc.Rel()); err != nil {
 			if os.IsNotExist(err) {
+				if loc.Module.IsExternal() {
+					return nil, fnerrors.New("%s: package does not exist (module %q is version %q, is the module up to date?)",
+						loc.PackageName, loc.Module.ModuleName(), loc.Module.Version())
+				}
+
 				return nil, fnerrors.New("%s: package does not exist", loc.PackageName)
 			}
+
 			return nil, err
 		} else if !st.IsDir() {
 			return nil, fnerrors.NewWithLocation(loc, "expected a directory")
