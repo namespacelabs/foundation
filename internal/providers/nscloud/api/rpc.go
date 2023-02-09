@@ -297,7 +297,7 @@ func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
 		userAuth, err := auth.LoadUser()
 		if err == nil {
 			username = userAuth.Username
-		} else if !(errors.Is(err, auth.ErrRelogin) && os.Getenv("GITHUB_ACTIONS") != "true") {
+		} else if !(errors.Is(err, auth.ErrRelogin) && os.Getenv("GITHUB_ACTIONS") == "true") {
 			// XXX: when running in Github Actions no user set otherwise return the error.
 			return "", err
 		}
