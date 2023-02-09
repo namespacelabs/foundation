@@ -26,6 +26,10 @@ func Prebuilt(ctx context.Context, ref string, platform specs.Platform) (llb.Sta
 		return llb.State{}, err
 	}
 
+	return OCILayoutFromImage(ctx, image)
+}
+
+func OCILayoutFromImage(ctx context.Context, image oci.Image) (llb.State, error) {
 	cachedImage, err := oci.EnsureCached(ctx, image)
 	if err != nil {
 		return llb.State{}, err

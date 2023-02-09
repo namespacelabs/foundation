@@ -31,7 +31,7 @@ var (
 	UsePrebuilts = true // XXX make these a scoped configuration instead.
 )
 
-var BuildGo func(loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
+var BuildGo func(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
 var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
@@ -43,6 +43,7 @@ var prebuiltsConfType = cfg.DefineConfigType[*Prebuilts]()
 const LLBGenBinaryName = "llbgen"
 
 type Prepared struct {
+	Location   pkggraph.Location
 	Name       string
 	Plan       build.Plan
 	Command    []string
@@ -73,6 +74,15 @@ func Plan(ctx context.Context, pkg *pkggraph.Package, binName string, env pkggra
 	return PlanBinary(ctx, env, env, pkg.Location, binary, assets, opts)
 }
 
+func Load(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, ref *schema.PackageRef, opts BuildImageOpts) (*Prepared, error) {
+	pkg, bin, err := pkggraph.LoadBinary(ctx, pl, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	return PlanBinary(ctx, pl, env, pkg.Location, bin, assets.AvailableBuildAssets{}, opts)
+}
+
 func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, loc pkggraph.Location, binary *schema.Binary, assets assets.AvailableBuildAssets, opts BuildImageOpts) (*Prepared, error) {
 	spec, err := planImage(ctx, pl, env, loc, binary, assets, opts)
 	if err != nil {
@@ -94,7 +104,8 @@ func PlanBinary(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context,
 	}
 
 	return &Prepared{
-		Name:       loc.PackageName.String(),
+		Location:   loc,
+		Name:       binary.Name,
 		Plan:       plan,
 		Command:    binary.Config.GetCommand(),
 		Args:       binary.Config.GetArgs(),
@@ -222,14 +233,14 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	if goPackage := src.GoPackage; goPackage != "" {
 		// Note, regardless of what config.command has been set to, we always build a
 		// binary named bin.Name.
-		return BuildGo(loc, &schema.ImageBuildPlan_GoBuild{
+		return BuildGo(ctx, pl, loc, &schema.ImageBuildPlan_GoBuild{
 			RelPath:    goPackage,
 			BinaryName: bin.Name,
 		}, false)
 	}
 
 	if src.GoBuild != nil {
-		return BuildGo(loc, src.GoBuild, false)
+		return BuildGo(ctx, pl, loc, src.GoBuild, false)
 	}
 
 	if src.NodejsBuild != nil {

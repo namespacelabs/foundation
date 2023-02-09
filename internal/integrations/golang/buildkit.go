@@ -21,15 +21,14 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/production"
-	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 var (
 	useSeparateGoModPhase = false
 )
 
-func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
+func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	local := buildkit.LocalContents{
 		Module: conf.Workspace(),
 		Path:   bin.GoModulePath,
@@ -46,8 +45,17 @@ func buildUsingBuildkit(ctx context.Context, env cfg.Context, bin GoBinary, conf
 	var prodBase llb.State
 
 	if !bin.BinaryOnly {
-		var err error
-		prodBase, err = production.ServerImageLLB(production.StaticBase, *conf.TargetPlatform())
+		prodBase0, err := baseProdImage(ctx, env, *conf.TargetPlatform())
+		if err != nil {
+			return nil, err
+		}
+
+		x, err := compute.GetValue(ctx, prodBase0.Image())
+		if err != nil {
+			return nil, err
+		}
+
+		prodBase, err = llbutil.OCILayoutFromImage(ctx, x)
 		if err != nil {
 			return nil, err
 		}

@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg/knobs"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -38,7 +39,11 @@ func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 		return buildUsingBuildkit(ctx, env, gb, conf)
 	}
 
-	return Build(ctx, env, gb, conf)
+	if conf.Workspace() == nil {
+		panic(conf)
+	}
+
+	return buildLocalImage(ctx, env, conf.Workspace(), gb, conf)
 }
 
 func (gb GoBinary) PlatformIndependent() bool { return false }
@@ -64,7 +69,7 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	}, nil
 }
 
-func GoBuilder(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
+func GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error) {
 	gobin, err := FromLocation(loc, plan.RelPath)
 	if err != nil {
 		return nil, fnerrors.AttachLocation(loc, err)
@@ -73,5 +78,12 @@ func GoBuilder(loc pkggraph.Location, plan *schema.ImageBuildPlan_GoBuild, unsaf
 	gobin.BinaryOnly = plan.BinaryOnly
 	gobin.BinaryName = plan.BinaryName
 	gobin.UnsafeCacheable = unsafeCacheable
+
+	if !plan.BinaryOnly {
+		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, baseImageRef); err != nil {
+			return nil, err
+		}
+	}
+
 	return gobin, nil
 }

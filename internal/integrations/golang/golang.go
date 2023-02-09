@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
+	"k8s.io/utils/pointer"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	source "namespacelabs.dev/foundation/internal/codegen"
@@ -101,7 +102,8 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 func (impl) PrepareRun(ctx context.Context, t planning.PlannedServer, run *runtime.ContainerRunOpts) error {
 	run.Command = []string{"/server"}
 	run.ReadOnlyFilesystem = true
-	run.RunAs = production.NonRootRunAs(production.StaticBase)
+	// XXX lift this as this is done by loose contract.
+	run.RunAs = production.NonRootRunAsWithID(65532, pointer.Int(65532))
 	return nil
 }
 
@@ -228,6 +230,7 @@ func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *pars
 	}
 
 	ext.Include = append(ext.Include, grpcNode)
+	ext.Include = append(ext.Include, baseImageRef.AsPackageName())
 
 	return nil
 }

@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/moby/buildkit/client/llb"
-	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
@@ -19,27 +18,8 @@ import (
 )
 
 const (
-	StaticBase = "chainguard-static"
-	Alpine     = "alpine"
-
-	DefaultNonRootUserID = 65000
-	DefaultFSGroup       = 65000
+	Alpine = "alpine"
 )
-
-// Returns a Computable[v1.Image]
-func ServerImage(name string, target specs.Platform) (oci.NamedImage, error) {
-	base := pins.Server(name)
-	if base == nil || base.Base == "" {
-		return nil, fnerrors.InternalError("missing base server definition for %q", name)
-	}
-
-	serverBase, err := pins.CheckImage(base.Base)
-	if err != nil {
-		return nil, err
-	}
-
-	return oci.ResolveImage(serverBase, target), nil
-}
 
 // DevelopmentImage returns a minimal base image where we add tools for development. Use of
 // development images is temporary, and likely to only be used when ephemeral containers
@@ -60,7 +40,7 @@ func DevelopmentImage(ctx context.Context, name string, makeClient buildkit.Clie
 	}
 
 	state := llbutil.Image(serverBase, *target.TargetPlatform()).
-		With(WithNonRootUserWithUserID(*base.NonRootUserID)).
+		With(withNonRootUserWithUserID(*base.NonRootUserID)).
 		Run(llb.Shlex("apk add --no-cache bash")).Root()
 
 	t := build.NewBuildTarget(target.TargetPlatform()).WithTargetName(target.PublishName())
@@ -73,25 +53,7 @@ func DevelopmentImage(ctx context.Context, name string, makeClient buildkit.Clie
 	return oci.MakeNamedImage(fmt.Sprintf("%s + dev tools", serverBase), img), nil
 }
 
-func ServerImageLLB(name string, target specs.Platform) (llb.State, error) {
-	base := pins.Server(name)
-	if base == nil || base.Base == "" {
-		return llb.State{}, fnerrors.InternalError("missing base server definition for %q", name)
-	}
-
-	serverBase, err := pins.CheckImage(base.Base)
-	if err != nil {
-		return llb.State{}, err
-	}
-
-	return llbutil.Image(serverBase, target), nil
-}
-
-func NonRootUser() func(llb.State) llb.State {
-	return WithNonRootUserWithUserID(DefaultNonRootUserID)
-}
-
-func WithNonRootUserWithUserID(userid int) func(llb.State) llb.State {
+func withNonRootUserWithUserID(userid int) func(llb.State) llb.State {
 	return func(base llb.State) llb.State {
 		return base.
 			Run(llb.Shlexf("addgroup -g %d nonroot", userid)).

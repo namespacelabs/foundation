@@ -27,19 +27,11 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func Build(ctx context.Context, env cfg.Context, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	if conf.Workspace() == nil {
-		panic(conf)
-	}
-
-	return buildLocalImage(ctx, env, conf.Workspace(), bin, conf)
-}
-
-func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
+func buildLocalImage(ctx context.Context, env pkggraph.SealedContext, workspace build.Workspace, bin GoBinary, target build.BuildTarget) (compute.Computable[oci.Image], error) {
 	sdk, err := golang.MatchSDK(bin.GoVersion, host.HostPlatform())
 	if err != nil {
 		return nil, err
@@ -74,7 +66,7 @@ func buildLocalImage(ctx context.Context, env cfg.Context, workspace build.Works
 		oci.MakeImage(fmt.Sprintf("Go binary %s", bin.PackageName), base, layers...).Image()), nil
 }
 
-func baseImage(ctx context.Context, env cfg.Context, target build.BuildTarget) (oci.NamedImage, error) {
+func baseImage(ctx context.Context, env pkggraph.SealedContext, target build.BuildTarget) (oci.NamedImage, error) {
 	// We use a different base for development because most Kubernetes installations don't
 	// yet support ephemeral containers, which would allow us to side-load into the same
 	// namespace as the running server, for debugging. So we instead add a base with some
@@ -85,7 +77,7 @@ func baseImage(ctx context.Context, env cfg.Context, target build.BuildTarget) (
 		return production.DevelopmentImage(ctx, production.Alpine, buildkit.DeferClient(env.Configuration(), target.TargetPlatform()), target)
 	}
 
-	return production.ServerImage(production.StaticBase, *target.TargetPlatform())
+	return baseProdImage(ctx, env, *target.TargetPlatform())
 }
 
 func platformToEnv(platform specs.Platform, cgo int) []string {

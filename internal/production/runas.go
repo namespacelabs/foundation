@@ -7,18 +7,8 @@ package production
 import (
 	"fmt"
 
-	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/runtime"
 )
-
-func NonRootRunAs(server string) *runtime.RunAs {
-	srv := pins.Server(server)
-	if srv == nil || srv.NonRootUserID == nil {
-		return nil
-	}
-
-	return NonRootRunAsWithID(*srv.NonRootUserID, srv.FSGroup)
-}
 
 func NonRootRunAsWithID(id int, fsGroup *int) *runtime.RunAs {
 	runAs := &runtime.RunAs{

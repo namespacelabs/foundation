@@ -19,7 +19,6 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/llbutil"
-	"namespacelabs.dev/foundation/internal/production"
 )
 
 var (
@@ -88,10 +87,7 @@ func baseCopies(platform specs.Platform) []llb.StateOption {
 func ImagePlan(platform specs.Platform) (llb.State, error) {
 	copies := baseCopies(platform)
 
-	target, err := production.ServerImageLLB(production.StaticBase, platform)
-	if err != nil {
-		return llb.State{}, nil
-	}
+	target := llbutil.Image("cgr.dev/chainguard/static:latest@sha256:2ea44d9bdd177a07e6fba8a60f7d45cb8a7358586a5f740187866566e6df310d", platform)
 
 	return target.With(copies...), nil
 }

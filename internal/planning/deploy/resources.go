@@ -19,7 +19,6 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	is "namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	protos2 "namespacelabs.dev/foundation/internal/codegen/protos"
@@ -185,12 +184,7 @@ func planResources(ctx context.Context, planner planning.Planner, stack *plannin
 				return nil, fnerrors.InternalError("bad resource provider initialization: unsupported inputs")
 			}
 
-			pkg, bin, err := pkggraph.LoadBinary(ctx, sealedCtx, initializer.BinaryRef)
-			if err != nil {
-				return nil, err
-			}
-
-			prepared, err := binary.PlanBinary(ctx, sealedCtx, sealedCtx, pkg.Location, bin, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
+			prepared, err := binary.Load(ctx, sealedCtx, sealedCtx, initializer.BinaryRef, binary.BuildImageOpts{
 				UsePrebuilts: true,
 				Platforms:    platforms,
 			})

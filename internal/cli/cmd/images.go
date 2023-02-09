@@ -25,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
-	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -234,17 +233,7 @@ func resolveImage(ctx context.Context, image string, env cfg.Context, pl *parsin
 			return nil, err
 		}
 
-		pkg, err := pl.LoadByName(ctx, ref.AsPackageName())
-		if err != nil {
-			return nil, err
-		}
-
-		bin, err := pkg.LookupBinary(ref.Name)
-		if err != nil {
-			return nil, err
-		}
-
-		prepared, err := binary.PlanBinary(ctx, pl, env, pkg.Location, bin, assets.AvailableBuildAssets{}, binary.BuildImageOpts{})
+		prepared, err := binary.Load(ctx, pl, env, ref, binary.BuildImageOpts{})
 		if err != nil {
 			return nil, err
 		}

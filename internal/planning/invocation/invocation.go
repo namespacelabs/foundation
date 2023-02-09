@@ -15,7 +15,6 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/build/assets"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -66,12 +65,7 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 		return nil, fnerrors.New("`binary` is required to point to a binary package")
 	}
 
-	pkg, bin, err := pkggraph.LoadBinary(ctx, pl, binRef)
-	if err != nil {
-		return nil, err
-	}
-
-	prepared, err := binary.PlanBinary(ctx, pl, env, pkg.Location, bin, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
+	prepared, err := binary.Load(ctx, pl, env, binRef, binary.BuildImageOpts{
 		UsePrebuilts: true,
 		Platforms:    target,
 	})
@@ -86,7 +80,7 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 
 	invocation := &Invocation{
 		Buildkit:     cli,
-		ImageName:    bin.Name,
+		ImageName:    prepared.Name,
 		Image:        image,
 		NoCache:      with.NoCache,
 		Inject:       with.Inject,
@@ -100,7 +94,7 @@ func buildAndPrepareForPlatform(ctx context.Context, cli *buildkit.GatewayClient
 
 	invocation.Config = config
 
-	if v := pkg.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {
+	if v := prepared.Location.Module.Workspace.GetFoundation().GetToolsVersion(); v != 0 {
 		invocation.SupportedToolVersion = int(v)
 	}
 
