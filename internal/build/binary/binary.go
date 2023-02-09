@@ -34,7 +34,7 @@ var (
 var BuildGo func(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Location, _ *schema.ImageBuildPlan_GoBuild, unsafeCacheable bool) (build.Spec, error)
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
-var BuildNix func(schema.PackageName, *pkggraph.Module, fs.FS) build.Spec
+var BuildNix func(context.Context, pkggraph.PackageLoader, schema.PackageName, *pkggraph.Module, fs.FS) (build.Spec, error)
 var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.NodejsBuild, assets.AvailableBuildAssets) (build.Spec, error)
 var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
 
@@ -261,7 +261,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if nix := src.NixFlake; nix != "" {
-		return BuildNix(loc.PackageName, loc.Module, loc.Module.ReadOnlyFS()), nil
+		return BuildNix(ctx, pl, loc.PackageName, loc.Module, loc.Module.ReadOnlyFS())
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {

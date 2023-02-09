@@ -14,6 +14,7 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/baseimage"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -50,12 +51,7 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 			return nil, err
 		}
 
-		x, err := compute.GetValue(ctx, prodBase0.Image())
-		if err != nil {
-			return nil, err
-		}
-
-		prodBase, err = llbutil.OCILayoutFromImage(ctx, x)
+		prodBase, err = baseimage.State(ctx, prodBase0)
 		if err != nil {
 			return nil, err
 		}

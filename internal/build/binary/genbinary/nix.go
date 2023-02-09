@@ -11,18 +11,24 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
+	"namespacelabs.dev/foundation/internal/build/baseimage"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func NixImageBuilder(packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) build.Spec {
-	return nixImage{packageName, sources}
+var baseImageRef = schema.MakePackageRef("namespacelabs.dev/foundation/library/golang/baseimage", "baseimage")
+
+func NixImageBuilder(ctx context.Context, pl pkggraph.PackageLoader, packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) (build.Spec, error) {
+	if err := invariants.EnsurePackageLoaded(ctx, pl, packageName, baseImageRef); err != nil {
+		return nil, err
+	}
+
+	return nixImage{packageName, sources}, nil
 }
 
 type nixImage struct {
@@ -31,13 +37,13 @@ type nixImage struct {
 }
 
 func (l nixImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	return NixImage(ctx, env.Configuration(), conf, l.sources)
+	return makeNixImage(ctx, env, conf, l.sources)
 
 }
 
 func (l nixImage) PlatformIndependent() bool { return false }
 
-func NixImage(ctx context.Context, conf cfg.Configuration, target build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
+func makeNixImage(ctx context.Context, env pkggraph.SealedContext, target build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
 	if target.TargetPlatform() == nil {
 		return nil, fnerrors.BadInputError("nix: target platform is missing")
 	}
@@ -51,7 +57,12 @@ func NixImage(ctx context.Context, conf cfg.Configuration, target build.BuildTar
 		return nil, err
 	}
 
-	nixosImage, err := pins.CheckImage("nixos/nix:2.6.0")
+	x, err := baseimage.Load(ctx, env, baseImageRef, *target.TargetPlatform())
+	if err != nil {
+		return nil, err
+	}
+
+	nixosImage, err := baseimage.State(ctx, x)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +76,7 @@ experimental-features = nix-command flakes
 filter-syscalls = false
 	`
 
-	base := llbutil.Image(nixosImage, *target.TargetPlatform()).
+	base := nixosImage.
 		File(llb.Mkfile("/etc/nix/nix.conf", 0777, []byte(nixconf))).
 		AddEnv("PATH", "/root/.nix-profile/bin")
 
@@ -78,7 +89,7 @@ filter-syscalls = false
 		Run(llb.Shlexf("cp -L /tmp/result /out/" + outputImageFile))
 	out := postCopy.AddMount("/out", llb.Scratch())
 
-	fsys, err := buildkit.BuildFilesystem(ctx, buildkit.DeferClient(conf, target.TargetPlatform()), target, out)
+	fsys, err := buildkit.BuildFilesystem(ctx, buildkit.DeferClient(env.Configuration(), target.TargetPlatform()), target, out)
 	if err != nil {
 		return nil, err
 	}
