@@ -231,7 +231,6 @@ func supportsSyntaxVersionMarker(ctx context.Context, pl parsing.EarlyPackageLoa
 	}
 
 	return data.APIVersion >= Version_SyntaxVersionMarker, nil
-
 }
 
 func (ft impl) GuessPackageType(ctx context.Context, pkg schema.PackageName) (parsing.PackageType, error) {
