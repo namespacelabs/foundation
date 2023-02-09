@@ -41,3 +41,5 @@ dist/
 .vscode/launch.json
 
 user.secrets
+
+.DS_Store
