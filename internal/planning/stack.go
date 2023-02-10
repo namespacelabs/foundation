@@ -333,6 +333,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			// XXX dedup
 			ps.MergedFragment.Volume = append(ps.MergedFragment.Volume, frag.Volume...)
 			ps.MergedFragment.Toleration = append(ps.MergedFragment.Toleration, frag.Toleration...)
+			ps.MergedFragment.Annotation = append(ps.MergedFragment.Annotation, frag.Annotation...)
 
 			if frag.Permissions != nil {
 				if ps.MergedFragment.Permissions == nil {

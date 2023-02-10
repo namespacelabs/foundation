@@ -7,8 +7,9 @@ package cuefrontendopaque
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"k8s.io/utils/strings/slices"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
@@ -23,7 +24,7 @@ import (
 var (
 	extensionFields = []string{
 		"args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
-		"sidecars", "mounts", "resources", "requires", "tolerations",
+		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
@@ -53,6 +54,7 @@ type cueServerExtension struct {
 	Probes         map[string]cueProbe         `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
 	Security       *cueServerSecurity          `json:"security,omitempty"`
 	Tolerations    []*schema.Server_Toleration `json:"tolerations,omitempty"`
+	Annotations    map[string]string           `json:"annotations,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -313,6 +315,24 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		}
 
 		out.Toleration = bits.Tolerations
+	}
+
+	if len(bits.Annotations) > 0 {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/annotations"); err != nil {
+			return nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		for k, v := range bits.Annotations {
+			out.Annotation = append(out.Annotation, &schema.Label{Name: k, Value: v})
+		}
+
+		slices.SortFunc(out.Annotation, func(a, b *schema.Label) bool {
+			if a.Name == b.Name {
+				return strings.Compare(a.Value, b.Value) < 0
+			}
+
+			return strings.Compare(a.Name, b.Name) < 0
+		})
 	}
 
 	for _, ext := range bits.Extensions {

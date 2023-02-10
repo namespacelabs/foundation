@@ -869,6 +869,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 
 	out.Probes = frag.Probe
 	out.Tolerations = frag.Toleration
+	out.Annotations = frag.Annotation
 
 	if err := integrations.IntegrationFor(srv.Framework()).PrepareRun(ctx, srv, &out.MainContainer); err != nil {
 		return err

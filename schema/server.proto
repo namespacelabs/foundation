@@ -132,8 +132,6 @@ message Server {
         string value    = 3;
         string effect   = 4;
     }
-
-   
 }
 
 message ServerFragment {
@@ -148,6 +146,7 @@ message ServerFragment {
     repeated string extension             = 9; // Package name.
     repeated Container sidecar            = 10;
     repeated Container init_container     = 11;
+    repeated Label annotation = 12;
 }
 
 // Allocations for a tree of instanced values.

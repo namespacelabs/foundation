@@ -374,6 +374,14 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		}
 	}
 
+	if len(deployable.Annotations) > 0 {
+		m := map[string]string{}
+		for _, ann := range deployable.Annotations {
+			m[ann.Name] = ann.Value
+		}
+		tmpl = tmpl.WithAnnotations(m)
+	}
+
 	var readinessProbe, livenessProbe *schema.Probe
 	for _, probe := range probes {
 		switch probe.Kind {
