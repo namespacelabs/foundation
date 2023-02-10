@@ -13,9 +13,10 @@ message ClusterRoleIntent {
     repeated Rule rules = 2;
 
     message Rule {
-        repeated string api_groups = 1;
-        repeated string resources  = 2;
-        repeated string verbs      = 3;
+        repeated string api_groups        = 1;
+        repeated string resources         = 2;
+        repeated string verbs             = 3;
+        repeated string non_resource_urls = 4;
     }
 }
 

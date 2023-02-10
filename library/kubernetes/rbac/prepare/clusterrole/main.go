@@ -40,7 +40,7 @@ func main() {
 			WithAnnotations(kubedef.BaseAnnotations())
 
 		for _, rule := range intent.Rules {
-			r := rbacv1.PolicyRule().WithAPIGroups(rule.ApiGroups...).WithResources(rule.Resources...).WithVerbs(rule.Verbs...)
+			r := rbacv1.PolicyRule().WithAPIGroups(rule.ApiGroups...).WithResources(rule.Resources...).WithVerbs(rule.Verbs...).WithNonResourceURLs(rule.NonResourceUrls...)
 			clusterRole = clusterRole.WithRules(r)
 		}
 
