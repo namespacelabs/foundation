@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -62,11 +61,11 @@ func Register() {
 
 func MakeAPI(endpoint string) API {
 	fetchTenantToken := func(ctx context.Context) (string, error) {
-		t, err := ExchangeToken(ctx)
+		t, err := FetchTenantToken(ctx)
 		if err != nil {
 			return "", err
 		}
-		return t.token, nil
+		return t.Raw(), nil
 	}
 
 	return API{
@@ -100,6 +99,31 @@ func MakeAPI(endpoint string) API {
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
 	}
+}
+
+func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
+		if !fnapi.AdminMode {
+			t, err := auth.LoadTenantToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return t, nil
+		}
+
+		// In admin mode we exchange user token to a tenant token with `admin` scope.
+		userToken, err := auth.GenerateToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		t, err := fnapi.ExchangeUserToken(ctx, userToken, []string{"admin"})
+		if err != nil {
+			return nil, err
+		}
+
+		return &auth.Token{TenantToken: t.TenantToken}, nil
+	})
 }
 
 type CreateClusterResult struct {
@@ -291,57 +315,6 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 		}
 
 		return &list, nil
-	})
-}
-
-type TenantToken struct {
-	token string
-}
-
-func (tt *TenantToken) Raw() string         { return tt.token }
-func (tt *TenantToken) BearerToken() string { return "Bearer " + tt.token }
-
-func ExchangeToken(ctx context.Context, scopes ...string) (*TenantToken, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (*TenantToken, error) {
-		// Check if there is already tenant token stored.
-		tenantToken, err := auth.LoadTenantToken(ctx)
-		if err == nil {
-			// If no scopes provided we can immediately return the token.
-			if len(scopes) == 0 {
-				return &TenantToken{tenantToken.TenantToken}, nil
-			}
-
-			resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
-			if err != nil {
-				return nil, err
-			}
-
-			return &TenantToken{resp.TenantToken}, nil
-		}
-
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-
-		// No tenant token stored, so use user token and exchange it to a tenant token.
-		userToken, err := auth.GenerateToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		resp, err := fnapi.ExchangeUserToken(ctx, userToken, scopes)
-		if err != nil {
-			return nil, err
-		}
-
-		// Cache unscoped token.
-		if len(scopes) == 0 {
-			if err := auth.StoreTenantToken(resp.TenantToken); err != nil {
-				return nil, err
-			}
-		}
-
-		return &TenantToken{resp.TenantToken}, nil
 	})
 }
 

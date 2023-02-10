@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,12 +20,21 @@ import (
 )
 
 const (
-	tokenTxt          = "token.json"
 	GithubJWTAudience = "nscloud.dev/inline-token"
+
+	tokenTxt = "token.json"
 )
 
 type Token struct {
 	TenantToken string `json:"tenant_token,omitempty"`
+}
+
+func (t *Token) Raw() string {
+	return t.TenantToken
+}
+
+func (t *Token) BearerToken() string {
+	return "Bearer " + t.TenantToken
 }
 
 func StoreTenantToken(token string) error {
@@ -59,30 +67,22 @@ func LoadTenantToken(ctx context.Context) (*Token, error) {
 		return nil, err
 	}
 
-	// XXX: to invalidate cache if cached token has expired or corrupted - remove it and return [fs.ErrNotExist].
-	cleanTokenCache := func(f string) (*Token, error) {
-		if err := os.Remove(f); err != nil {
-			return nil, err
-		}
-		return nil, fs.ErrNotExist
-	}
-
 	token := &Token{}
 	if err := json.Unmarshal(data, token); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
-		return cleanTokenCache(p)
+		return nil, ErrRelogin
 	}
 
 	claims := jwt.RegisteredClaims{}
 	parser := jwt.Parser{}
 	if _, _, err := parser.ParseUnverified(strings.TrimPrefix(token.TenantToken, "nsct_"), &claims); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to parse tenant JWT: %v\n", err)
-		return cleanTokenCache(p)
+		return nil, ErrRelogin
 	}
 
 	if !claims.VerifyExpiresAt(time.Now(), true) {
 		fmt.Fprintf(console.Debug(ctx), "tenant JWT has expired\n")
-		return cleanTokenCache(p)
+		return nil, ErrRelogin
 	}
 
 	return token, nil

@@ -55,6 +55,20 @@ func NewLoginCmd() *cobra.Command {
 				return err
 			}
 
+			userToken, err := auth.GenerateTokenFromUserAuth(ctx, userAuth)
+			if err != nil {
+				return err
+			}
+
+			tt, err := fnapi.ExchangeUserToken(ctx, userToken, nil)
+			if err != nil {
+				return err
+			}
+
+			if err := auth.StoreTenantToken(tt.TenantToken); err != nil {
+				return err
+			}
+
 			fmt.Fprintf(stdout, "\nHi %s, you are now logged in, have a nice day.\n", username)
 
 			return nil

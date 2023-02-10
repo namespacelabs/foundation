@@ -123,7 +123,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		}
 
 		// We must fetch a token with our parent context, so we get a task sink etc.
-		token, err := api.ExchangeToken(ctx)
+		token, err := api.FetchTenantToken(ctx)
 		if err != nil {
 			return nil, err
 		}
