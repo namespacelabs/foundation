@@ -134,14 +134,6 @@ func dockerContext(conf build.Configuration, contextRel string, excludes []strin
 
 func makeDockerOpts(platforms []specs.Platform) map[string]string {
 	return map[string]string{
-		"platform": formatPlatforms(platforms),
+		"platform": strings.Join(platform.FormatPlatforms(platforms), ","),
 	}
-}
-
-func formatPlatforms(ps []specs.Platform) string {
-	strs := make([]string, len(ps))
-	for k, p := range ps {
-		strs[k] = platform.FormatPlatform(p)
-	}
-	return strings.Join(strs, ",")
 }

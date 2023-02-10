@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/multiplatform"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -65,6 +66,8 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 	if err != nil {
 		return deploy.PreparedDeployable{}, err
 	}
+
+	tasks.Attachments(ctx).AddResult("platforms", platform.FormatPlatforms(platforms))
 
 	testBin, err := binary.PlanBinary(ctx, driver.SealedContext, driver.SealedContext, driver.Location, driver.Definition, assets.AvailableBuildAssets{}, binary.BuildImageOpts{
 		Platforms: platforms,

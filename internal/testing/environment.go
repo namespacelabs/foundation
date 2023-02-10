@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -41,16 +42,15 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) (cfg
 	}
 
 	newCfg := sourceEnv.Configuration().Derive(testEnv.Name, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
-		previous.Configuration = append(previous.Configuration, messages...)
-
 		if UseNamespaceCloud {
-			// Prepend as this configuration should take precedence.
-			previous.Configuration = append(protos.WrapAnysOrDie(
+			messages = append(messages, protos.WrapAnysOrDie(
 				&client.HostEnv{Provider: "nscloud"},
-			), previous.Configuration...)
+				&registry.Provider{Provider: "nscloud"},
+			)...)
 		}
 
-		return previous
+		// Prepend as the testing configurations should take precedence.
+		return cfg.ConfigurationSlice{Configuration: append(messages, previous.Configuration...)}
 	})
 
 	return cfg.MakeUnverifiedContext(newCfg, testEnv), nil
