@@ -25,6 +25,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+const AdminScope = "admin"
+
 type API struct {
 	StartCreateKubernetesCluster fnapi.Call[CreateKubernetesClusterRequest]
 	GetKubernetesCluster         fnapi.Call[GetKubernetesClusterRequest]
@@ -104,11 +106,7 @@ func MakeAPI(endpoint string) API {
 func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
 		if !fnapi.AdminMode {
-			t, err := auth.LoadTenantToken(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return t, nil
+			return auth.LoadTenantToken(ctx)
 		}
 
 		// In admin mode we exchange user token to a tenant token with `admin` scope.
@@ -117,7 +115,7 @@ func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
 			return nil, err
 		}
 
-		t, err := fnapi.ExchangeUserToken(ctx, userToken, []string{"admin"})
+		t, err := fnapi.ExchangeUserToken(ctx, userToken, AdminScope)
 		if err != nil {
 			return nil, err
 		}

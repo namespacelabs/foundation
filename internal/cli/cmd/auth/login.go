@@ -60,7 +60,7 @@ func NewLoginCmd() *cobra.Command {
 				return err
 			}
 
-			tt, err := fnapi.ExchangeUserToken(ctx, userToken, nil)
+			tt, err := fnapi.ExchangeUserToken(ctx, userToken)
 			if err != nil {
 				return err
 			}

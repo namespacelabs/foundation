@@ -37,7 +37,7 @@ type ExchangeUserTokenResponse struct {
 	TenantToken string `json:"tenant_token,omitempty"`
 }
 
-func ExchangeUserToken(ctx context.Context, token string, scopes []string) (ExchangeUserTokenResponse, error) {
+func ExchangeUserToken(ctx context.Context, token string, scopes ...string) (ExchangeUserTokenResponse, error) {
 	req := ExchangeUserTokenRequest{Token: token, Scopes: scopes}
 
 	var res ExchangeUserTokenResponse
