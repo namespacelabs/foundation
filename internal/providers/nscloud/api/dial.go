@@ -29,11 +29,6 @@ func DialPortWithToken(ctx context.Context, token *TenantToken, cluster *Kuberne
 		HandshakeTimeout: 15 * time.Second,
 	}
 
-	token, err := ExchangeToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	hdrs := http.Header{}
 	hdrs.Add("Authorization", token.BearerToken())
 
