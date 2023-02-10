@@ -122,9 +122,16 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
 		}
 
+		// We must fetch a token with our parent context, so we get a task sink etc.
+		token, err := api.ExchangeToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		return waitAndConnect(ctx, func() (*client.Client, error) {
 			return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-				return api.DialPort(ctx, cluster.Cluster, int(c.overrides.HostedBuildCluster.TargetPort))
+				// Do the expirations work? We don't re-fetch tokens here yet.
+				return api.DialPortWithToken(ctx, token, cluster.Cluster, int(c.overrides.HostedBuildCluster.TargetPort))
 			}))
 		})
 	}

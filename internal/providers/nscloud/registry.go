@@ -101,6 +101,6 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 
 	return &authn.Basic{
 		Username: "tenant-token", // XXX: hardcoded as image-registry expects static username.
-		Password: token,
+		Password: token.Raw(),
 	}, nil
 }

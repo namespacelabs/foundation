@@ -62,7 +62,11 @@ func Register() {
 
 func MakeAPI(endpoint string) API {
 	fetchTenantToken := func(ctx context.Context) (string, error) {
-		return ExchangeToken(ctx)
+		t, err := ExchangeToken(ctx)
+		if err != nil {
+			return "", err
+		}
+		return t.token, nil
 	}
 
 	return API{
@@ -290,47 +294,54 @@ func ListClusters(ctx context.Context, api API) (*KubernetesClusterList, error) 
 	})
 }
 
-func ExchangeToken(ctx context.Context, scopes ...string) (string, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (string, error) {
+type TenantToken struct {
+	token string
+}
+
+func (tt *TenantToken) Raw() string         { return tt.token }
+func (tt *TenantToken) BearerToken() string { return "Bearer " + tt.token }
+
+func ExchangeToken(ctx context.Context, scopes ...string) (*TenantToken, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.exchange-token"), func(ctx context.Context) (*TenantToken, error) {
 		// Check if there is already tenant token stored.
 		tenantToken, err := auth.LoadTenantToken(ctx)
 		if err == nil {
 			// If no scopes provided we can immediately return the token.
 			if len(scopes) == 0 {
-				return tenantToken.TenantToken, nil
+				return &TenantToken{tenantToken.TenantToken}, nil
 			}
 
 			resp, err := fnapi.ExchangeTenantToken(ctx, tenantToken.TenantToken, scopes)
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 
-			return resp.TenantToken, nil
+			return &TenantToken{resp.TenantToken}, nil
 		}
 
 		if !os.IsNotExist(err) {
-			return "", err
+			return nil, err
 		}
 
 		// No tenant token stored, so use user token and exchange it to a tenant token.
 		userToken, err := auth.GenerateToken(ctx)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		resp, err := fnapi.ExchangeUserToken(ctx, userToken, scopes)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		// Cache unscoped token.
 		if len(scopes) == 0 {
 			if err := auth.StoreTenantToken(resp.TenantToken); err != nil {
-				return "", err
+				return nil, err
 			}
 		}
 
-		return resp.TenantToken, nil
+		return &TenantToken{resp.TenantToken}, nil
 	})
 }
 
