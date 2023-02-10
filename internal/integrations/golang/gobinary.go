@@ -13,14 +13,10 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/internal/parsing/invariants"
-	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg/knobs"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
-
-const Version_GolangBaseVersionMarker = 68
 
 type GoBinary struct {
 	PackageName schema.PackageName `json:"packageName"`
@@ -82,31 +78,5 @@ func GoBuilder(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Loca
 	gobin.BinaryName = plan.BinaryName
 	gobin.UnsafeCacheable = unsafeCacheable
 
-	if !plan.BinaryOnly {
-		if ok, err := hasGolangBase(ctx, pl); err != nil {
-			return nil, err
-		} else if !ok {
-			return nil, fnerrors.InternalError("the current ns version requires a namespacelabs.dev/foundation dependency with at least version %d", Version_GolangBaseVersionMarker)
-		}
-
-		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, baseImageRef); err != nil {
-			return nil, err
-		}
-	}
-
 	return gobin, nil
-}
-
-func hasGolangBase(ctx context.Context, pl pkggraph.PackageLoader) (bool, error) {
-	pkg, err := pl.Resolve(ctx, "namespacelabs.dev/foundation")
-	if err != nil {
-		return false, err
-	}
-
-	data, err := versions.LoadAtOrDefaults(pkg.Module.ReadOnlyFS(), "internal/versions/versions.json")
-	if err != nil {
-		return false, fnerrors.InternalError("failed to load namespacelabs.dev/foundation version data: %w", err)
-	}
-
-	return data.APIVersion >= Version_GolangBaseVersionMarker, nil
 }

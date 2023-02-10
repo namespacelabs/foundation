@@ -58,7 +58,7 @@ func FinalizePackage(ctx context.Context, env *schema.Environment, pl EarlyPacka
 	}
 
 	for _, binary := range pp.Binaries {
-		if err := transformBinary(pp.Location, binary); err != nil {
+		if err := transformBinary(ctx, pl, pp.Location, binary); err != nil {
 			return nil, err
 		}
 	}

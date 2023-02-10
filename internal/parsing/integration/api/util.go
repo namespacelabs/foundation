@@ -13,18 +13,6 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-func SetServerBinary(pkg *pkggraph.Package, buildPlan *schema.LayeredImageBuildPlan, commands []string) error {
-	pkg.Binaries = append(pkg.Binaries, &schema.Binary{
-		Name:      pkg.Server.Name,
-		BuildPlan: buildPlan,
-		Config: &schema.BinaryConfig{
-			Command: commands,
-		},
-	})
-
-	return SetServerBinaryRef(pkg, schema.MakePackageRef(pkg.Location.PackageName, pkg.Server.Name))
-}
-
 func SetServerBinaryRef(pkg *pkggraph.Package, binaryRef *schema.PackageRef) error {
 	if pkg.Server.Self == nil {
 		pkg.Server.Self = &schema.ServerFragment{

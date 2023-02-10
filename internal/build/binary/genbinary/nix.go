@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-var baseImageRef = schema.MakePackageRef("namespacelabs.dev/foundation/library/golang/baseimage", "baseimage")
+var baseImageRef = schema.MakePackageRef("namespacelabs.dev/foundation/library/nix/baseimage", "baseimage")
 
 func NixImageBuilder(ctx context.Context, pl pkggraph.PackageLoader, packageName schema.PackageName, module *pkggraph.Module, sources fs.FS) (build.Spec, error) {
 	if err := invariants.EnsurePackageLoaded(ctx, pl, packageName, baseImageRef); err != nil {
