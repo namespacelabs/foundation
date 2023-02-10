@@ -15,8 +15,6 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"github.com/gorilla/websocket"
-	"github.com/jpillora/chisel/share/cnet"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -414,23 +412,17 @@ func dossh(ctx context.Context, cluster *api.KubernetesCluster, args []string) e
 			go func() {
 				defer conn.Close()
 
-				d := websocket.Dialer{
-					HandshakeTimeout: 15 * time.Second,
-				}
-
-				wsConn, _, err := d.DialContext(ctx, cluster.SSHProxyEndpoint, nil)
+				peerConn, err := api.DialPort(ctx, cluster, 22)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 					return
 				}
 
-				proxyConn := cnet.NewWebSocketConn(wsConn)
-
 				go func() {
-					_, _ = io.Copy(conn, proxyConn)
+					_, _ = io.Copy(conn, peerConn)
 				}()
 
-				_, _ = io.Copy(proxyConn, conn)
+				_, _ = io.Copy(peerConn, conn)
 			}()
 		}
 	}()

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -19,7 +20,15 @@ func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (
 		HandshakeTimeout: 15 * time.Second,
 	}
 
-	wsConn, _, err := d.DialContext(ctx, fmt.Sprintf("wss://proxy-%s.int-%s/nodeport/%d", cluster.ClusterId, cluster.IngressDomain, targetPort), nil)
+	token, err := ExchangeToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	hdrs := http.Header{}
+	hdrs.Add("Authorization", "Bearer "+token)
+
+	wsConn, _, err := d.DialContext(ctx, fmt.Sprintf("wss://gate.%s/%s/%d", cluster.IngressDomain, cluster.ClusterId, targetPort), hdrs)
 	if err != nil {
 		return nil, err
 	}
