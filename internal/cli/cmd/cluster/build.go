@@ -13,12 +13,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -57,6 +59,8 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 	cmdLine := []string{"--addr", "unix://" + p.BuildkitAddr}
 	cmdLine = append(cmdLine, args...)
 
+	fmt.Fprintf(console.Debug(ctx), "buildctl %s\n", strings.Join(cmdLine, " "))
+
 	buildctl := exec.CommandContext(ctx, string(buildctlBin), cmdLine...)
 	buildctl.Env = append(buildctl.Env, fmt.Sprintf("DOCKER_CONFIG="+p.DockerConfigDir))
 
@@ -64,9 +68,10 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 }
 
 type buildProxy struct {
-	BuildkitAddr    string
-	DockerConfigDir string
-	Cleanup         func()
+	BuildkitAddr     string
+	DockerConfigDir  string
+	RegistryEndpoint string
+	Cleanup          func()
 }
 
 func runBuildProxy(ctx context.Context) (*buildProxy, error) {
@@ -113,7 +118,7 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 
 	go serveBuildProxy(ctx, listener, response)
 
-	return &buildProxy{sockFile, sockDir, func() { _ = os.RemoveAll(sockDir) }}, nil
+	return &buildProxy{sockFile, sockDir, response.Registry.EndpointAddress, func() { _ = os.RemoveAll(sockDir) }}, nil
 }
 
 func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.CreateClusterResult) {
@@ -139,4 +144,54 @@ func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.C
 			_, _ = io.Copy(peerConn, conn)
 		}()
 	}
+}
+
+func newBuildCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "build",
+		Short: "Build an image in a build cluster.",
+		Args:  cobra.MaximumNArgs(1),
+	}
+
+	dockerFile := cmd.Flags().String("dockerfile", "", "If set, specifies what Dockerfile to build.")
+	repository := cmd.Flags().String("repository", "", "How to name your image.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
+		if *repository == "" {
+			return fnerrors.New("--repository is required")
+		}
+
+		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
+		if err != nil {
+			return fnerrors.New("failed to download buildctl: %w", err)
+		}
+
+		p, err := runBuildProxy(ctx)
+		if err != nil {
+			return err
+		}
+
+		defer p.Cleanup()
+
+		contextDir := "."
+		if len(specifiedArgs) > 0 {
+			contextDir = specifiedArgs[0]
+		}
+
+		args := []string{
+			"build",
+			"--frontend=dockerfile.v0",
+			"--local", "context=" + contextDir,
+			"--local", "dockerfile=" + contextDir,
+			"--output", fmt.Sprintf("type=image,name=%s/%s,push=true", p.RegistryEndpoint, *repository),
+		}
+
+		if *dockerFile != "" {
+			args = append(args, "--opt", "filename="+*dockerFile)
+		}
+
+		return runBuildctl(ctx, buildctlBin, p, args...)
+	})
+
+	return cmd
 }
