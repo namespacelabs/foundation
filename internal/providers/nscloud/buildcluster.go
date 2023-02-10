@@ -13,7 +13,7 @@ import (
 )
 
 func EnsureBuildCluster(ctx context.Context, x api.API) (*buildkit.Overrides, error) {
-	cfg, err := api.CreateAndWaitCluster(ctx, x, api.CreateClusterOpts{MachineType: "16x32", Purpose: "build machine", Features: []string{"BUILD_CLUSTER"}})
+	cfg, err := api.EnsureBuildCluster(ctx, x)
 	if err != nil {
 		return nil, err
 	}

@@ -9,11 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -26,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
-	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -282,79 +279,6 @@ func NewKubectlCmd() *cobra.Command {
 
 		kubectl := exec.CommandContext(ctx, string(kubectlBin), cmdLine...)
 		return localexec.RunInteractive(ctx, kubectl)
-	})
-
-	return cmd
-}
-
-func newBuildctlCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "buildctl -- ...",
-		Short: "Run buildctl on the target build cluster.",
-		Args:  cobra.MinimumNArgs(1),
-	}
-
-	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusterName := args[0]
-		args = args[1:]
-
-		response, err := api.GetCluster(ctx, api.Endpoint, clusterName)
-		if err != nil {
-			return err
-		}
-
-		if response.BuildCluster == nil || response.BuildCluster.Colocated == nil {
-			return fnerrors.New("cluster is not a build cluster")
-		}
-
-		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
-		if err != nil {
-			return fnerrors.New("failed to download buildctl: %w", err)
-		}
-
-		sockDir, err := dirs.CreateUserTempDir("buildkit", clusterName)
-		if err != nil {
-			return err
-		}
-
-		defer os.RemoveAll(sockDir)
-
-		sockFile := filepath.Join(sockDir, "buildkit.sock")
-		listener, err := net.Listen("unix", sockFile)
-		if err != nil {
-			return err
-		}
-
-		go func() {
-			for {
-				conn, err := listener.Accept()
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				go func() {
-					defer conn.Close()
-
-					peerConn, err := api.DialPort(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
-						return
-					}
-
-					go func() {
-						_, _ = io.Copy(conn, peerConn)
-					}()
-
-					_, _ = io.Copy(peerConn, conn)
-				}()
-			}
-		}()
-
-		cmdLine := []string{"--addr", "unix://" + sockFile}
-		cmdLine = append(cmdLine, args...)
-
-		buildctl := exec.CommandContext(ctx, string(buildctlBin), cmdLine...)
-		return localexec.RunInteractive(ctx, buildctl)
 	})
 
 	return cmd

@@ -94,13 +94,5 @@ func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.
 		return authn.Anonymous, nil
 	}
 
-	token, err := api.FetchTenantToken(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &authn.Basic{
-		Username: "tenant-token", // XXX: hardcoded as image-registry expects static username.
-		Password: token.Raw(),
-	}, nil
+	return api.RegistryCreds(ctx)
 }

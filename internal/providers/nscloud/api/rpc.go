@@ -213,6 +213,10 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitCluster(ctx, api, cluster.ClusterId)
 }
 
+func EnsureBuildCluster(ctx context.Context, api API) (*CreateClusterResult, error) {
+	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{MachineType: "16x32", Purpose: "build machine", Features: []string{"BUILD_CLUSTER"}})
+}
+
 func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
 	defer done()
