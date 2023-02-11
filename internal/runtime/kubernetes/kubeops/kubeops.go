@@ -5,7 +5,7 @@
 package kubeops
 
 import (
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
+	"namespacelabs.dev/foundation/internal/networking/ingress"
 )
 
 var OutputKubeApiURLs = false

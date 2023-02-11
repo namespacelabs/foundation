@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/configuration/eks"
 )
 
-func PrepareEksCluster(clusterName string) Stage {
+func PrepareEksCluster(clusterName, ingressClass string) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
@@ -31,7 +31,7 @@ func PrepareEksCluster(clusterName string) Stage {
 				Stage:      orchestration.Event_DONE,
 			}
 
-			return devhost.MakeConfiguration(&eks.Cluster{Name: clusterName})
+			return devhost.MakeConfiguration(&eks.Cluster{Name: clusterName, IngressClass: ingressClass})
 		},
 	}
 }

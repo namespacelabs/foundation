@@ -16,6 +16,7 @@ import (
 
 func newLocalCmd() *cobra.Command {
 	var contextName string
+	var ingressClass string
 
 	localCmd := &cobra.Command{
 		Use:   "local",
@@ -30,11 +31,12 @@ func newLocalCmd() *cobra.Command {
 				return nil, fnerrors.BadInputError("only development environments are supported locally")
 			}
 
-			return []prepare.Stage{prepare.K3D("ns")}, nil
+			return []prepare.Stage{prepare.K3D("ns", ingressClass)}, nil
 		}),
 	}
 
 	localCmd.Flags().StringVar(&contextName, "context", "", "If set, configures Namespace to use the specific context.")
+	localCmd.Flags().StringVar(&ingressClass, "ingress_class", "", "Specify the ingress class.")
 
 	return localCmd
 }

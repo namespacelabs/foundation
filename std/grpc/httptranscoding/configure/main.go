@@ -17,8 +17,8 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubetool"
 	"namespacelabs.dev/foundation/framework/provisioning"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/runtime"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 )
 

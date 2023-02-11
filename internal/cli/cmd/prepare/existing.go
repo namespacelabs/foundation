@@ -31,6 +31,7 @@ func newExistingCmd() *cobra.Command {
 	insecure := cmd.Flags().Bool("insecure", false, "Set to true if the image registry is not accessible via TLS.")
 	useDockerCredentials := cmd.Flags().Bool("use_docker_creds", false, "If set to true, uses Docker's credentials when accessing the registry.")
 	singleRepository := cmd.Flags().Bool("use_single_repository", false, "If set to true, collapse all images onto a single repository under the configured registry (rather than a repository per image).")
+	ingressClass := cmd.Flags().String("ingress_class", "", "Specify the ingress class.")
 
 	cmd.RunE = runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
 		if *contextName == "" {
@@ -90,7 +91,7 @@ func newExistingCmd() *cobra.Command {
 		}
 		fmt.Fprintf(console.Stdout(ctx), "Setting up existing cluster configured at context %q (registry %q%s)...\n", *contextName, *registryAddr, insecureLabel)
 
-		return []prepare.Stage{prepare.PrepareExistingK8s(env, *kubeConfig, *contextName, &registry.Registry{
+		return []prepare.Stage{prepare.PrepareExistingK8s(env, *kubeConfig, *contextName, *ingressClass, &registry.Registry{
 			Url:              *registryAddr,
 			Insecure:         *insecure,
 			UseDockerAuth:    *useDockerCredentials,

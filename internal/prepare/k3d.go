@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	kubeclient "namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/internal/sdk/host"
@@ -28,7 +29,7 @@ import (
 
 const registryName = "k3d-ns-registry.nslocal.host"
 
-func K3D(clusterName string) Stage {
+func K3D(clusterName, ingressClass string) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
@@ -45,12 +46,12 @@ func K3D(clusterName string) Stage {
 		},
 
 		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
-			return PrepareK3d(ctx, clusterName, env, ch)
+			return PrepareK3d(ctx, clusterName, ingressClass, env, ch)
 		},
 	}
 }
 
-func PrepareK3d(ctx context.Context, clusterName string, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
+func PrepareK3d(ctx context.Context, clusterName, ingressClass string, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 	return tasks.Return(ctx, tasks.Action("prepare.k3s").HumanReadablef("Preparing a local Kubernetes cluster (k3s running in Docker)"),
 		func(ctx context.Context) (*schema.DevHost_ConfigureEnvironment, error) {
 			dockerclient, err := docker.NewClient()
@@ -91,6 +92,11 @@ func PrepareK3d(ctx context.Context, clusterName string, env cfg.Context, ch cha
 			}
 
 			hostEnv := kubeclient.NewLocalHostEnv("k3d-"+clusterName, env)
+			hostEnv.IngressClass = ingressClass
+			if hostEnv.IngressClass == "" {
+				hostEnv.IngressClass = nsingress.IngressClass().Name()
+			}
+
 			c, err := devhost.MakeConfiguration(r, hostEnv, &registry.Provider{Provider: "k3d"})
 			if err != nil {
 				return nil, err

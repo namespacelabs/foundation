@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/prepare"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -15,6 +16,7 @@ import (
 func newEksCmd() *cobra.Command {
 	var awsProfile string
 	var clusterName string
+	var ingressClass string
 
 	// The subcommand `eks` does all of the work done by the parent command in addition to
 	// writing the host configuration for the EKS cluster.
@@ -23,15 +25,20 @@ func newEksCmd() *cobra.Command {
 		Short: "Prepares the Elastic Kubernetes Service host config for production.",
 		Args:  cobra.NoArgs,
 		RunE: runPrepare(func(ctx context.Context, env cfg.Context) ([]prepare.Stage, error) {
+			if ingressClass == "" {
+				ingressClass = nginx.IngressClass().Name()
+			}
+
 			return []prepare.Stage{
 				prepare.PrepareAWSProfile(awsProfile),
-				prepare.PrepareEksCluster(clusterName),
+				prepare.PrepareEksCluster(clusterName, ingressClass),
 			}, nil
 		}),
 	}
 
 	eksCmd.Flags().StringVar(&clusterName, "cluster", "", "The name of the cluster we're configuring.")
 	eksCmd.Flags().StringVar(&awsProfile, "aws_profile", awsProfile, "Configures the specified AWS configuration profile.")
+	eksCmd.Flags().StringVar(&ingressClass, "ingress_class", "", "Specify the ingress class.")
 
 	_ = cobra.MarkFlagRequired(eksCmd.Flags(), "cluster")
 	_ = cobra.MarkFlagRequired(eksCmd.Flags(), "aws_profile")

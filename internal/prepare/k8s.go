@@ -16,7 +16,7 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registry proto.Message) Stage {
+func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName, ingressClass string, registry proto.Message) Stage {
 	return Stage{
 		Pre: func(ch chan *orchestration.Event) {
 			ch <- &orchestration.Event{
@@ -28,8 +28,9 @@ func PrepareExistingK8s(env cfg.Context, kubeConfig, contextName string, registr
 		Run: func(ctx context.Context, env cfg.Context, ch chan *orchestration.Event) (*schema.DevHost_ConfigureEnvironment, error) {
 			var confs []proto.Message
 			hostEnv := &client.HostEnv{
-				Kubeconfig: kubeConfig,
-				Context:    contextName,
+				Kubeconfig:   kubeConfig,
+				Context:      contextName,
+				IngressClass: ingressClass,
 			}
 			confs = append(confs, hostEnv)
 			if registry != nil {

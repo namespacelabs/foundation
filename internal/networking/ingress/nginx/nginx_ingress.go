@@ -25,9 +25,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/shared"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/execution/defs"
@@ -113,19 +111,23 @@ func RegisterGraphHandlers() {
 	})
 }
 
-type nginx struct{}
+type Ingress struct{}
 
-func Ingress() kubedef.IngressClass {
-	return nginx{}
+func IngressClass() kubedef.IngressClass {
+	return Ingress{}
 }
 
-func (nginx) Name() string { return "nginx" }
+func (Ingress) Name() string { return "nginx" }
 
-func (nginx) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
-	return nsingress.ComputeNaming(env, naming)
+func (Ingress) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
+	if naming.GetWithOrg() != "" {
+		return nil, fnerrors.InternalError("nscloud tls allocation not supported with nginx")
+	}
+
+	return &schema.ComputedNaming{Source: naming}, nil
 }
 
-func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
+func (Ingress) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error) {
 	f, err := lib.Open("ingress.yaml")
 	if err != nil {
 		return nil, err
@@ -173,14 +175,11 @@ func (nginx) Ensure(ctx context.Context) ([]*schema.SerializedInvocation, error)
 	return append([]*schema.SerializedInvocation{{Description: "nginx Ingress: Namespace + Webhook + CABundle", Impl: op}}, defs...), nil
 }
 
-func (n nginx) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
-	return shared.PrepareRoute(ctx, env, srv, domain, ns, name, &kubedef.OpMapAddress_ServiceRef{
-		Namespace:   n.Service().Namespace,
-		ServiceName: n.Service().ServiceName,
-	})
+func (n Ingress) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
+	return nil, nil
 }
 
-func (nginx) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any, userAnnotations *schema.ServiceAnnotations) (*kubedef.IngressAnnotations, error) {
+func (Ingress) Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions []*anypb.Any, userAnnotations *schema.ServiceAnnotations) (*kubedef.IngressAnnotations, error) {
 	return Annotate(hasTLS, backendProtocol, extensions, userAnnotations)
 }
 
@@ -243,7 +242,7 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 	return &kubedef.IngressAnnotations{Annotations: annotations}, nil
 }
 
-func (nginx) Service() *kubedef.IngressSelector {
+func (Ingress) Service() *kubedef.IngressSelector {
 	return &kubedef.IngressSelector{
 		Namespace:     "ingress-nginx",
 		ServiceName:   "ingress-nginx-controller",
@@ -252,13 +251,13 @@ func (nginx) Service() *kubedef.IngressSelector {
 	}
 }
 
-func (n nginx) Waiter(restcfg *rest.Config) kubedef.KubeIngressWaiter {
+func (n Ingress) Waiter(restcfg *rest.Config) kubedef.KubeIngressWaiter {
 	return kubeobserver.WaitOnResource{
 		RestConfig:       restcfg,
 		Description:      "Ingress Controller (nginx)",
 		Namespace:        n.Service().Namespace,
 		Name:             n.Service().ServiceName,
 		GroupVersionKind: kubeschema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
-		Scope:            "namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx",
+		Scope:            "namespacelabs.dev/foundation/internal/networking/ingress/nginx",
 	}
 }

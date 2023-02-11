@@ -6,7 +6,7 @@ syntax = "proto3";
 
 package foundation.schema.runtime.kubernetes.networking.ingress.nginx;
 
-option go_package = "namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx";
+option go_package = "namespacelabs.dev/foundation/internal/networking/ingress/nginx";
 
 message ProxyBodySize {
     string limit = 1;

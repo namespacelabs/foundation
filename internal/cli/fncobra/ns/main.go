@@ -36,6 +36,8 @@ import (
 	nodeopaqueintegration "namespacelabs.dev/foundation/internal/integrations/nodejs/opaqueintegration"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/networking/ingress"
+	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
@@ -52,12 +54,11 @@ import (
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/providers/k3s"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/helm"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeops"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/sdk/gcloud"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/testing"
@@ -169,7 +170,8 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			iam.RegisterGraphHandlers()
 			k3dp.Register()
 			k3s.Register()
-			ingress.RegisterIngressClass(nginx.Ingress())
+			ingress.RegisterIngressClass(nginx.IngressClass())
+			ingress.RegisterIngressClass(nsingress.IngressClass())
 			nscloud.Register()
 
 			// Runtimes.

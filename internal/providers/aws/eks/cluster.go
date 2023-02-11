@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/planning/planninghooks"
 	"namespacelabs.dev/foundation/internal/providers/aws/auth"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -46,8 +47,13 @@ func Register() {
 			return nil, fnerrors.BadInputError("cluster name must be specified")
 		}
 
+		ingressClass := cluster.IngressClass
+		if ingressClass == "" {
+			ingressClass = nginx.IngressClass().Name()
+		}
+
 		return []proto.Message{
-			&client.HostEnv{Provider: "aws/eks"},
+			&client.HostEnv{Provider: "aws/eks", IngressClass: ingressClass},
 			&registry.Provider{Provider: "aws/ecr"},
 			&fneks.EKSCluster{Name: cluster.Name},
 		}, nil

@@ -12,10 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/networking/ingress"
 	"namespacelabs.dev/foundation/internal/planning/constants"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress"
 	fnschema "namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution/defs"
 )

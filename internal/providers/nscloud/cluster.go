@@ -15,12 +15,12 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/networking/ingress/nginx"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -155,7 +155,7 @@ func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDom
 				NodePlatform:         []string{"linux/amd64"},
 				DetectedDistribution: "k3s",
 			}, nil
-		}, nginx.Ingress())
+		}, nginx.IngressClass())
 
 	return planner{Planner: base, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry, ephemeral: ephemeral}, nil
 }
@@ -188,7 +188,7 @@ func ensureCluster(ctx context.Context, cfg cfg.Configuration, clusterId, ingres
 }
 
 func newIngress(cfg cfg.Configuration, clusterId, ingressDomain string) kubedef.IngressClass {
-	return ingressClass{IngressClass: nginx.Ingress(), ingressDomain: ingressDomain, clusterId: clusterId}
+	return ingressClass{IngressClass: nginx.IngressClass(), ingressDomain: ingressDomain, clusterId: clusterId}
 }
 
 type cluster struct {

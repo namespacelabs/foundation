@@ -30,12 +30,12 @@ func Class(name string) (kubedef.IngressClass, error) {
 func FromConfig(config client.Prepared) (kubedef.IngressClass, error) {
 	requestedClass := config.HostEnv.IngressClass
 	if requestedClass == "" {
-		requestedClass = "nginx"
+		requestedClass = "nsingress-nginx"
 	}
 
 	acceptedClasses := config.Configuration.SupportedIngressClasses
 	if acceptedClasses == nil {
-		acceptedClasses = []string{"nginx"}
+		acceptedClasses = []string{"nginx", "nsingress-nginx"}
 	}
 
 	if !slices.Contains(acceptedClasses, requestedClass) {
