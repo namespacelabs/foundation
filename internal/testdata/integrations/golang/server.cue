@@ -23,3 +23,7 @@ server: {
 		}
 	}
 }
+
+extensio: {
+	foobar: {}
+}

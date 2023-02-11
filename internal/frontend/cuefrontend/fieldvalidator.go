@@ -6,19 +6,14 @@ package cuefrontend
 
 import (
 	"fmt"
+	"math"
 
+	"github.com/agext/levenshtein"
 	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
-
-var didYouMeanMap = map[string]string{
-	"test":     "tests",
-	"secret":   "secrets",
-	"resource": "resources",
-	"require":  "requires",
-}
 
 func ValidateNoExtraFields(loc pkggraph.Location, messagePrefix string, v *fncue.CueV, allowedFields []string) error {
 	it, err := v.Val.Fields()
@@ -27,14 +22,30 @@ func ValidateNoExtraFields(loc pkggraph.Location, messagePrefix string, v *fncue
 	}
 
 	for it.Next() {
-		if !slices.Contains(allowedFields, it.Label()) {
-			var didYouMean string
-			if dym, ok := didYouMeanMap[it.Label()]; ok && slices.Contains(allowedFields, dym) {
-				didYouMean = fmt.Sprintf("Did you mean %q? ", dym)
-			}
-			return fnerrors.NewWithLocation(loc, "%s field %q is not supported. %sPrefix it with \"_\" if it is intentional.", messagePrefix, it.Label(), didYouMean)
+		fieldName := it.Label()
+		if !slices.Contains(allowedFields, fieldName) {
+			return fnerrors.NewWithLocation(loc, "%s field %q is not supported. %sPrefix it with \"_\" if it is intentional.",
+				messagePrefix, fieldName, didYouMean(fieldName, allowedFields))
 		}
 	}
 
 	return nil
+}
+
+func didYouMean(given string, allowed []string) string {
+	suggestion := ""
+	lowest := math.MaxInt
+	for _, word := range allowed {
+		dist := levenshtein.Distance(given, word, nil)
+		if dist < 3 && dist < lowest {
+			suggestion = word
+			lowest = dist
+		}
+	}
+
+	if suggestion != "" {
+		return fmt.Sprintf("\n\n  Did you mean %q?\n\n", suggestion)
+	}
+
+	return suggestion
 }
