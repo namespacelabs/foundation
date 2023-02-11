@@ -24,6 +24,6 @@ server: {
 	}
 }
 
-extensio: {
+extension: {
 	foobar: {}
 }
