@@ -5,7 +5,6 @@
 package runtime
 
 import (
-	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -64,13 +63,23 @@ func SelectInstance(rt *runtimepb.RuntimeConfig, instance *schema.FieldSelector_
 	case instance.SelectInternalEndpointByKind != "":
 		var matches []*runtimepb.Server_InternalEndpoint
 		for _, m := range rt.Current.GetInternalEndpoint() {
-			if slices.Contains(m.Kinds, instance.SelectInternalEndpointByKind) {
+			matching := false
+			for _, x := range m.Exported {
+				if x.Kind == instance.SelectInternalEndpointByKind {
+					matching = true
+					break
+				}
+			}
+
+			if matching {
 				matches = append(matches, m)
 			}
 		}
+
 		if len(matches) != 1 {
 			return nil, fnerrors.BadInputError("%s: expected 1 match, got %d", instance.SelectInternalEndpointByKind, len(matches))
 		}
+
 		return matches[0], nil
 	}
 

@@ -92,14 +92,34 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 		current.Port = append(current.Port, makePort(service))
 	}
 
-	endpoints, _ := stack.GetEndpoints(srv.PackageName())
-	for _, endpoint := range endpoints {
+	s, _ := stack.Get(srv.PackageName())
+	for _, endpoint := range s.Endpoints {
 		current.Service = append(current.Service, &runtime.Server_Service{
 			Owner:    endpoint.EndpointOwner,
 			Name:     endpoint.ServiceName,
 			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
 			Ingress:  makeServiceIngress(stack, endpoint, env),
 		})
+	}
+
+	for _, endpoint := range s.InternalEndpoints {
+		ie := &runtime.Server_InternalEndpoint{
+			PortName:      endpoint.Port.Name,
+			ContainerPort: endpoint.Port.ContainerPort,
+		}
+
+		for _, md := range endpoint.ServiceMetadata {
+			exported := &schema.HttpExportedService{}
+			// XXX silent skipping.
+			if md.Details.MessageIs(exported) && md.Details.UnmarshalTo(exported) == nil {
+				ie.Exported = append(ie.Exported, &runtime.Server_InternalEndpoint_ExportedHttp{
+					Path: exported.Path,
+					Kind: md.Kind,
+				})
+			}
+		}
+
+		current.InternalEndpoint = append(current.InternalEndpoint, ie)
 	}
 
 	return current
