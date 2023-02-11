@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
@@ -90,7 +91,11 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 	} else {
 		// Old orch (or non-existing orch), lets give it a quick try to do an update.
 
-		ctx, done := context.WithTimeout(ctx, 15*time.Second)
+		timeout := 10 * time.Second
+		if environment.IsRunningInCI() {
+			timeout = time.Minute
+		}
+		ctx, done := context.WithTimeout(ctx, timeout)
 		defer done()
 
 		plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
