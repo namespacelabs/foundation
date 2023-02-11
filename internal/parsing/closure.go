@@ -129,6 +129,7 @@ func (g *sealer) DoServer(loc pkggraph.Location, srv *schema.Server, pp *pkggrap
 	include = append(include, srv.GetImportedPackages()...)
 
 	g.Do(include...)
+	g.Do(schema.PackageNames(srv.GetSelf().GetExtension()...)...)
 
 	g.mu.Lock()
 	defer g.mu.Unlock()

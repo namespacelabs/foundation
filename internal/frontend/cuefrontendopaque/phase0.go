@@ -22,7 +22,7 @@ import (
 
 var packageFields = []string{
 	"server", "sidecars", "volumes", "secrets", "tests", "binary",
-	"resources", "resourceClasses", "providers",
+	"resources", "resourceClasses", "providers", "extension",
 }
 
 var sidecarFields = []string{

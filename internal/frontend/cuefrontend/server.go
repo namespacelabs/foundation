@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/args"
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -35,6 +36,7 @@ type cueServer struct {
 	Ingress     map[string]cueServiceSpec  `json:"ingress"`
 	Env         *args.EnvMap               `json:"env"`
 	Binary      interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
+	Extensions  []string                   `json:"extensions,omitempty"`
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
@@ -189,6 +191,14 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		}
 
 		out.Self.Ingress = append(out.Self.Ingress, parsed)
+	}
+
+	for _, ext := range bits.Extensions {
+		pkg := schema.PackageName(ext)
+		if err := invariants.EnsurePackageLoaded(ctx, pl, loc.PackageName, pkg); err != nil {
+			return nil, nil, err
+		}
+		out.Self.Extension = append(out.Self.Extension, ext)
 	}
 
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {

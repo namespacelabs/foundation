@@ -121,6 +121,8 @@ _#Node: {
 
 	urlmap: [...#UrlMapEntry]
 
+	extensions?: [...string]
+
 	#ServiceSpec: {
 		name?:         string
 		label?:        string
