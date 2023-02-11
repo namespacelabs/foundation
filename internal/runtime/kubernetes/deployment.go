@@ -375,11 +375,13 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	}
 
 	if len(deployable.Annotations) > 0 {
-		m, err := fillAnnotations(ctx, deployable.RuntimeConfig, deployable.Annotations)
-		if err != nil {
+		var x runtime.ResolvableSinkMap
+
+		if err := runtime.ResolveResolvables(ctx, deployable.RuntimeConfig, nil, deployable.Annotations, &x); err != nil {
 			return err
 		}
-		tmpl = tmpl.WithAnnotations(m)
+
+		tmpl = tmpl.WithAnnotations(x)
 	}
 
 	var readinessProbe, livenessProbe *schema.Probe
@@ -611,7 +613,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	var secretProjections []*applycorev1.SecretProjectionApplyConfiguration
 	var injected []*kubedef.OpEnsureRuntimeConfig_InjectedResource
 	for _, res := range deployable.SecretResources {
-		alloc, err := seccol.allocate(ctx, res.SecretRef)
+		alloc, err := seccol.Allocate(ctx, res.SecretRef)
 		if err != nil {
 			return err
 		}

@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 
 	"cuelang.org/go/cue"
+	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -148,12 +148,8 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		return nil, nil, err
 	}
 
-	sort.Slice(env, func(i, j int) bool {
-		x, y := env[i].Name, env[j].Name
-		if x == y {
-			return strings.Compare(env[i].Value, env[j].Value) < 0
-		}
-		return strings.Compare(x, y) < 0
+	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) bool {
+		return strings.Compare(a.Name, b.Name) < 0
 	})
 
 	out.Self.MainContainer.Env = env

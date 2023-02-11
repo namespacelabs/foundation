@@ -128,19 +128,19 @@ func fixFragment(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Packag
 
 func fixEnv(ctx context.Context, pl EarlyPackageLoader, pp *pkggraph.Package, env []*schema.BinaryConfig_EnvEntry) error {
 	for _, x := range env {
-		if x.FromResourceField != nil {
-			instance, err := pkggraph.LookupResource(ctx, pl, pp, x.FromResourceField.Resource)
+		if rf := x.GetValue().GetFromResourceField(); rf != nil {
+			instance, err := pkggraph.LookupResource(ctx, pl, pp, rf.Resource)
 			if err != nil {
-				return fnerrors.New("%s: %w", x.FromResourceField.Resource.Canonical(), err)
+				return fnerrors.New("%s: %w", rf.Resource.Canonical(), err)
 			}
 
-			sel := x.FromResourceField.FieldSelector
+			sel := rf.FieldSelector
 			newSel, err := canonicalizeJsonPath(pp.Location, instance.Spec.Class.InstanceType.Descriptor, instance.Spec.Class.InstanceType.Descriptor, sel, sel)
 			if err != nil {
-				return fnerrors.New("%s: %s", x.FromResourceField.Resource.Canonical(), err)
+				return fnerrors.New("%s: %s", rf.Resource.Canonical(), err)
 			}
 
-			x.FromResourceField.FieldSelector = newSel
+			rf.FieldSelector = newSel
 		}
 	}
 

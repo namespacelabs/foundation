@@ -68,7 +68,7 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 		WorkingDir: binary.AppRootPath,
 		Command:    []string{packageManager.CLI},
 		Env: []*schema.BinaryConfig_EnvEntry{
-			{Name: "NODE_ENV", Value: binary.NodeEnv(env)},
+			{Name: "NODE_ENV", Value: &schema.Resolvable{Value: binary.NodeEnv(env)}},
 		},
 	}
 

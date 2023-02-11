@@ -59,7 +59,7 @@ func InvokeWithBinary(ctx context.Context, env pkggraph.SealedContext, inv *type
 		WorkingDir: workingDir,
 		Command:    inv.BinaryConfig.Command,
 		Args:       inv.BinaryConfig.Args,
-		Env:        append(slices.Clone(inv.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: "/tmp"}),
+		Env:        append(slices.Clone(inv.BinaryConfig.Env), &schema.BinaryConfig_EnvEntry{Name: "HOME", Value: &schema.Resolvable{Value: "/tmp"}}),
 	}
 
 	return compute.Transform("get-response",

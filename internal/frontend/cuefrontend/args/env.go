@@ -22,91 +22,8 @@ type EnvMap struct {
 	Values map[string]ResolvableValue
 }
 
-type ResolvableValue struct {
-	value                              string
-	fromSecret                         string
-	fromServiceEndpoint                string
-	fromServiceIngress                 string
-	experimentalFromDownwardsFieldPath string
-	fromField                          *fromFieldSyntax
-	fromResourceField                  *resourceFieldSyntax
-}
-
 var _ json.Unmarshaler = &EnvMap{}
 var _ json.Unmarshaler = &ResolvableValue{}
-
-func (value *ResolvableValue) ToProto(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName) (*schema.BinaryConfig_EnvEntry, error) {
-	out := &schema.BinaryConfig_EnvEntry{}
-
-	switch {
-	case value.value != "":
-		out.Value = value.value
-
-	case value.fromSecret != "":
-		secretRef, err := schema.ParsePackageRef(owner, value.fromSecret)
-		if err != nil {
-			return nil, err
-		}
-		if err := invariants.EnsurePackageLoaded(ctx, pl, owner, secretRef); err != nil {
-			return nil, err
-		}
-
-		out.FromSecretRef = secretRef
-
-	case value.fromServiceEndpoint != "":
-		serviceRef, err := schema.ParsePackageRef(owner, value.fromServiceEndpoint)
-		if err != nil {
-			return nil, err
-		}
-		if err := invariants.EnsurePackageLoaded(ctx, pl, owner, serviceRef); err != nil {
-			return nil, err
-		}
-
-		out.FromServiceEndpoint = &schema.ServiceRef{
-			ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
-			ServiceName: serviceRef.Name,
-		}
-
-	case value.fromServiceIngress != "":
-		serviceRef, err := schema.ParsePackageRef(owner, value.fromServiceIngress)
-		if err != nil {
-			return nil, err
-		}
-		if err := invariants.EnsurePackageLoaded(ctx, pl, owner, serviceRef); err != nil {
-			return nil, err
-		}
-		out.FromServiceIngress = &schema.ServiceRef{
-			ServerRef:   &schema.PackageRef{PackageName: serviceRef.PackageName},
-			ServiceName: serviceRef.Name,
-		}
-
-	case value.fromResourceField != nil:
-		resourceRef, err := schema.ParsePackageRef(owner, value.fromResourceField.Resource)
-		if err != nil {
-			return nil, err
-		}
-		if err := invariants.EnsurePackageLoaded(ctx, pl, owner, resourceRef); err != nil {
-			return nil, err
-		}
-
-		out.FromResourceField = &schema.ResourceConfigFieldSelector{
-			Resource:      resourceRef,
-			FieldSelector: value.fromResourceField.FieldRef,
-		}
-
-	case value.fromField != nil:
-		x, err := value.fromField.ToProto(ctx, pl, owner)
-		if err != nil {
-			return nil, err
-		}
-		out.FromFieldSelector = x
-
-	case value.experimentalFromDownwardsFieldPath != "":
-		out.ExperimentalFromDownwardsFieldPath = value.experimentalFromDownwardsFieldPath
-	}
-
-	return out, nil
-}
 
 func (cem *EnvMap) UnmarshalJSON(data []byte) error {
 	var values map[string]ResolvableValue
@@ -129,8 +46,7 @@ func (cem *EnvMap) Parsed(ctx context.Context, pl pkggraph.PackageLoader, owner 
 			return nil, err
 		}
 
-		out.Name = key
-		env = append(env, out)
+		env = append(env, &schema.BinaryConfig_EnvEntry{Name: key, Value: out})
 	}
 
 	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) bool {

@@ -217,8 +217,18 @@ func (provisionHook) Apply(ctx context.Context, req provisioning.StackRequest, o
 		}
 
 		initEnv = append(initEnv,
-			&schema.BinaryConfig_EnvEntry{Name: "MINIO_USER", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-user")},
-			&schema.BinaryConfig_EnvEntry{Name: "MINIO_PASSWORD", FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-password")})
+			&schema.BinaryConfig_EnvEntry{
+				Name: "MINIO_USER",
+				Value: &schema.Resolvable{
+					FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-user"),
+				},
+			},
+			&schema.BinaryConfig_EnvEntry{
+				Name: "MINIO_PASSWORD",
+				Value: &schema.Resolvable{
+					FromSecretRef: schema.MakePackageRef("namespacelabs.dev/foundation/universe/storage/minio/creds", "root-password"),
+				},
+			})
 		commonArgs = append(commonArgs, fmt.Sprintf("--%s=%s", useMinioFlag, service))
 	}
 

@@ -254,12 +254,14 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	for _, env := range out.MainContainer.Env {
 		var dep schema.PackageName
 		var builtinName string
-		if env.FromServiceEndpoint != nil {
-			dep = env.FromServiceEndpoint.ServerRef.AsPackageName()
+
+		if endpoint := env.GetValue().GetFromServiceEndpoint(); endpoint != nil {
+			dep = endpoint.GetServerRef().AsPackageName()
 			builtinName = `fromServiceEndpoint`
 		}
-		if env.FromServiceIngress != nil {
-			dep = env.FromServiceIngress.ServerRef.AsPackageName()
+
+		if ingress := env.GetValue().GetFromServiceIngress(); ingress != nil {
+			dep = ingress.GetServerRef().AsPackageName()
 			builtinName = `fromServiceIngress`
 		}
 
@@ -328,11 +330,10 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 				return nil, fnerrors.AttachLocation(loc, err)
 			}
 
-			entry.Name = k
-			out.Annotation = append(out.Annotation, entry)
+			out.Annotation = append(out.Annotation, &schema.NamedResolvable{Name: k, Value: entry})
 		}
 
-		slices.SortFunc(out.Annotation, func(a, b *schema.BinaryConfig_EnvEntry) bool {
+		slices.SortFunc(out.Annotation, func(a, b *schema.NamedResolvable) bool {
 			return strings.Compare(a.Name, b.Name) < 0
 		})
 	}

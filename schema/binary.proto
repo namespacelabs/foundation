@@ -9,6 +9,7 @@ package foundation.schema;
 import "schema/environment.proto";
 import "schema/integration.proto";
 import "schema/package.proto";
+import "schema/resolvable.proto";
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
@@ -102,29 +103,8 @@ message BinaryConfig {
     string            working_dir = 4;
 
     message EnvEntry {
-        string                      name                                   = 1;
-        string                      value                                  = 2;
-        string                      experimental_from_secret               = 3;  // Kubernetes specific.
-        string                      experimental_from_downwards_field_path = 7;  // Kubernetes specific.
-        PackageRef                  from_secret_ref                        = 4;
-        ServiceRef                  from_service_endpoint                  = 5;  // Inject the endpoint of a service in the stack.
-        ServiceRef                  from_service_ingress                   = 8;  // Inject the ingress address of a service. This is available from outside the cluster.
-        ResourceConfigFieldSelector from_resource_field                    = 6;
-        FieldSelector               from_field_selector                    = 9;
+        reserved 2, 3, 4, 5, 6, 7, 8, 9;
+        string name = 1;
+        Resolvable value = 10;
     }
-}
-
-message FieldSelector {
-    Instance instance = 1;
-    string field_selector = 2;
-
-    message Instance {
-        ServiceRef service = 1;
-        string select_internal_endpoint_by_kind = 2;
-    }
-}
-
-message ResourceConfigFieldSelector {
-    foundation.schema.PackageRef resource       = 1;
-    string                       field_selector = 2;
 }

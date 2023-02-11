@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/go-ids"
 )
@@ -37,12 +38,7 @@ func newSecretCollector(secs secrets.GroundedSecrets, secretId string) *secretCo
 	return &secretCollector{secrets: secs, secretId: secretId, items: newDataItemCollector()}
 }
 
-type secretReference struct {
-	Name string // Secret object name.
-	Key  string // Key within the Secret above that this secret refers to.
-}
-
-func (s *secretCollector) allocate(ctx context.Context, ref *schema.PackageRef) (*secretReference, error) {
+func (s *secretCollector) Allocate(ctx context.Context, ref *schema.PackageRef) (*runtime.SecretRef, error) {
 	contents, err := s.secrets.Get(ctx, ref)
 	if err != nil {
 		return nil, err
@@ -52,7 +48,7 @@ func (s *secretCollector) allocate(ctx context.Context, ref *schema.PackageRef) 
 		key := kubenaming.DomainFragLike(ref.PackageName, ref.Name)
 		s.items.set(key, contents.Value)
 
-		return &secretReference{Name: s.secretId, Key: key}, nil
+		return &runtime.SecretRef{Name: s.secretId, Key: key}, nil
 	}
 
 	if contents.Spec.Generate != nil {
@@ -63,10 +59,10 @@ func (s *secretCollector) allocate(ctx context.Context, ref *schema.PackageRef) 
 	return nil, fnerrors.InternalError("don't know how to handle secret %q", ref.Canonical())
 }
 
-func (s *secretCollector) allocateGenerated(ref *schema.PackageRef, spec *schema.SecretSpec) *secretReference {
+func (s *secretCollector) allocateGenerated(ref *schema.PackageRef, spec *schema.SecretSpec) *runtime.SecretRef {
 	s.requiredGeneratedSecrets = append(s.requiredGeneratedSecrets, secretRefAndSpec{ref, spec})
 	name, key := generatedSecretName(spec.Generate)
-	return &secretReference{Name: name, Key: key}
+	return &runtime.SecretRef{Name: name, Key: key}
 }
 
 func (s *secretCollector) planDeployment(ns string, annotations, labels map[string]string) []definition {

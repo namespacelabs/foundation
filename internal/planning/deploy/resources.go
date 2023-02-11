@@ -391,18 +391,24 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 		}
 
 		var secrets []*schema.PackageRef
-		for _, env := range opts.Env {
+		for _, entry := range opts.Env {
+			env := entry.Value
 			if env.FromSecretRef != nil {
-				runOpts = append(runOpts, llb.AddSecret(env.Name, llb.SecretAsEnv(true), llb.SecretID(env.FromSecretRef.Canonical())))
+				runOpts = append(runOpts, llb.AddSecret(entry.Name, llb.SecretAsEnv(true), llb.SecretID(env.FromSecretRef.Canonical())))
 				secrets = append(secrets, env.FromSecretRef)
 				continue
 			}
 
-			if env.ExperimentalFromSecret != "" || env.ExperimentalFromDownwardsFieldPath != "" || env.FromServiceEndpoint != nil || env.FromServiceIngress != nil || env.FromResourceField != nil {
+			if env.ExperimentalFromSecret != "" ||
+				env.ExperimentalFromDownwardsFieldPath != "" ||
+				env.FromServiceEndpoint != nil ||
+				env.FromServiceIngress != nil ||
+				env.FromResourceField != nil ||
+				env.FromFieldSelector != nil {
 				return nil, fnerrors.New("invocation: only support environment variables with static values")
 			}
 
-			runOpts = append(runOpts, llb.AddEnv(env.Name, env.Value))
+			runOpts = append(runOpts, llb.AddEnv(entry.Name, env.Value))
 		}
 
 		run := base.Run(runOpts...)

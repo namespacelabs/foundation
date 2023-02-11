@@ -71,7 +71,7 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 			// XXX security user id
 			run.Command = []string{"/" + binary.LLBGenBinaryName}
 			run.Env = []*schema.BinaryConfig_EnvEntry{
-				{Name: "TARGET_PLATFORM", Value: targetPlatform},
+				{Name: "TARGET_PLATFORM", Value: &schema.Resolvable{Value: targetPlatform}},
 			}
 
 			// XXX use buildkit to invoke.

@@ -67,7 +67,7 @@ func Run(ctx context.Context, io rtypes.IO, args ...string) error {
 	opts.WorkingDir = "/"
 	opts.Env = append(opts.Env, &schema.BinaryConfig_EnvEntry{
 		Name:  "CLOUDSDK_CONFIG",
-		Value: "/gcloudconfig",
+		Value: &schema.Resolvable{Value: "/gcloudconfig"},
 	})
 	opts.Mounts = append(opts.Mounts, &rtypes.LocalMapping{
 		HostPath:      gcloudDir,

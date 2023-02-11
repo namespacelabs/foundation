@@ -103,7 +103,8 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		containerConfig.User = fmt.Sprintf("%s:%s", uid.Uid, uid.Gid)
 	}
 
-	for _, kv := range opts.Env {
+	for _, entry := range opts.Env {
+		kv := entry.Value
 		if kv.ExperimentalFromSecret != "" {
 			return fnerrors.New("docker: doesn't support env.ExperimentalFromSecret")
 		}
@@ -128,7 +129,11 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 			return fnerrors.New("docker: doesn't support env.FromResourceField")
 		}
 
-		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", kv.Name, kv.Value))
+		if kv.FromFieldSelector != nil {
+			return fnerrors.New("docker: doesn't support env.FromFieldSelector")
+		}
+
+		containerConfig.Env = append(containerConfig.Env, fmt.Sprintf("%s=%s", entry.Name, kv.Value))
 	}
 
 	hostConfig := &container.HostConfig{

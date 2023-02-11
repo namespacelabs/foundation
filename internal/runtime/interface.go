@@ -240,7 +240,7 @@ type DeployableSpec struct {
 	Permissions *schema.ServerPermissions
 	Replicas    int32
 	Tolerations []*schema.Server_Toleration
-	Annotations []*schema.BinaryConfig_EnvEntry // Annotations that apply to individual pods.
+	Annotations []*schema.NamedResolvable // Annotations that apply to individual pods.
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts

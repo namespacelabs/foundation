@@ -294,8 +294,10 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 		Image:      psqlImage,
 		Env: []*schema.BinaryConfig_EnvEntry{
 			{
-				Name:                   "PGPASSWORD",
-				ExperimentalFromSecret: fmt.Sprintf("%s:%s", creds.SecretResourceName, creds.SecretName),
+				Name: "PGPASSWORD",
+				Value: &schema.Resolvable{
+					ExperimentalFromSecret: fmt.Sprintf("%s:%s", creds.SecretResourceName, creds.SecretName),
+				},
 			},
 		},
 		ReadOnlyFilesystem: true,

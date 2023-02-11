@@ -480,7 +480,8 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 			allEnv = append(allEnv, container.Env...)
 		}
 
-		for _, env := range allEnv {
+		for _, entry := range allEnv {
+			env := entry.Value
 			switch {
 			case env.FromServiceEndpoint != nil:
 				if err := validateServiceRef(env.FromServiceEndpoint, &stack.Stack); err != nil {
