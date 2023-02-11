@@ -13,7 +13,10 @@ import (
 	"strings"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type Parsed struct {
@@ -85,7 +88,11 @@ func (p *Parsed) SelectField(resource, field string) (any, error) {
 	return selectField(resource, field, raw, field)
 }
 
-func selectField(resource, originalSel string, value any, field string) (any, error) {
+func SelectField(description string, value any, field string) (any, error) {
+	return selectField(description, field, value, field)
+}
+
+func selectField(description, originalSel string, value any, field string) (any, error) {
 	if field == "" {
 		switch x := value.(type) {
 		// Hack! Guess the primitive number type.
@@ -110,7 +117,7 @@ func selectField(resource, originalSel string, value any, field string) (any, er
 	}
 
 	if field == "" {
-		return nil, rpcerrors.Errorf(codes.InvalidArgument, "%s: invalid field selector", resource)
+		return nil, rpcerrors.Errorf(codes.InvalidArgument, "%s: invalid field selector", description)
 	}
 
 	// XXX this field parsing is fairly simple, it only traverses maps. We should also:
@@ -118,19 +125,45 @@ func selectField(resource, originalSel string, value any, field string) (any, er
 	//  - support indexing.
 
 	switch x := value.(type) {
+	case proto.Message:
+		return selectProtoField(description, originalSel, x.ProtoReflect(), fieldName, left)
+
+	case protoreflect.Message:
+		return selectProtoField(description, originalSel, x, fieldName, left)
+
 	case map[string]interface{}:
 		if child, ok := x[fieldName]; ok {
 			if child == nil {
-				return nil, rpcerrors.Errorf(codes.NotFound, "%s: %s: no value set", resource, originalSel)
+				return nil, rpcerrors.Errorf(codes.NotFound, "%s: %s: no value set", description, originalSel)
 			}
 
-			return selectField(resource, originalSel, child, left)
+			return selectField(description, originalSel, child, left)
 		}
 
-		return nil, rpcerrors.Errorf(codes.NotFound, "%s: %s: selector doesn't match a value", resource, originalSel)
+		return nil, rpcerrors.Errorf(codes.NotFound, "%s: %s: selector doesn't match a value", description, originalSel)
 	}
 
-	return nil, rpcerrors.Errorf(codes.InvalidArgument, "%s: resource is of type %q, not supported", resource, reflect.TypeOf(value).String())
+	return nil, rpcerrors.Errorf(codes.InvalidArgument, "%s: resource is of type %q, not supported", description, reflect.TypeOf(value).String())
+}
+
+func selectProtoField(description, originalSel string, m protoreflect.Message, fieldName, left string) (any, error) {
+	desc := m.Descriptor().(protoreflect.MessageDescriptor)
+	field := byProtoOrJsonName(desc.Fields(), fieldName)
+	if field == nil {
+		return nil, rpcerrors.Errorf(codes.NotFound, "%s: %s: selector doesn't match a value", description, originalSel)
+	}
+
+	return selectField(description, originalSel, m.Get(field).Interface(), left)
+}
+
+func byProtoOrJsonName(r protoreflect.FieldDescriptors, name string) protoreflect.FieldDescriptor {
+	if field := r.ByTextName(name); field != nil {
+		return field
+	}
+	if field := r.ByJSONName(name); field != nil {
+		return field
+	}
+	return nil
 }
 
 func (p *Parsed) Unmarshal(resource string, out any) error {
@@ -149,4 +182,17 @@ func (p *Parsed) Unmarshal(resource string, out any) error {
 	}
 
 	return nil
+}
+
+func CoerceAsString(v any) (string, error) {
+	switch x := v.(type) {
+	case string:
+		return x, nil
+
+	case int32, int64, uint32, uint64, int:
+		return fmt.Sprintf("%d", x), nil
+
+	default:
+		return "", fnerrors.BadInputError("unsupported resource field value %q", reflect.TypeOf(v).String())
+	}
 }

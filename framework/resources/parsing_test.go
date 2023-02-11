@@ -5,12 +5,14 @@
 package resources
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/library/runtime"
+	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
 func TestParseResources(t *testing.T) {
@@ -68,6 +70,35 @@ func TestSelector(t *testing.T) {
 		st, _ := status.FromError(err)
 		if st.Code() != test.ErrorCode {
 			t.Errorf("expected error code %v got %v", test.ErrorCode, st.Code())
+			continue
+		}
+
+		if err == nil {
+			if d := cmp.Diff(test.Expected, got); d != "" {
+				t.Errorf("mismatch (-want +got):\n%s", d)
+			}
+		}
+	}
+}
+
+func TestSelectField(t *testing.T) {
+
+	for k, test := range []struct {
+		Resource  any
+		Selector  string
+		Expected  any
+		ErrorCode codes.Code
+	}{
+		{&runtimepb.RuntimeConfig{
+			Current: &runtimepb.Server{
+				ModuleName: "foobar.com",
+			},
+		}, "current.moduleName", "foobar.com", codes.OK},
+	} {
+		got, err := SelectField(fmt.Sprintf("%d", k), test.Resource, test.Selector)
+		st, _ := status.FromError(err)
+		if st.Code() != test.ErrorCode {
+			t.Errorf("expected error code %v got %v", test.ErrorCode, err)
 			continue
 		}
 

@@ -81,6 +81,9 @@ func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applyc
 
 			// No environment variable is injected here yet, it will be then patched in by OpEnsureDeployment.
 
+		case kv.FromFieldSelector != nil:
+			return nil, fnerrors.BadInputError("fromFieldSelector is not supported in this context")
+
 		default:
 			entry = applycorev1.EnvVar().WithName(kv.Name).WithValue(kv.Value)
 		}

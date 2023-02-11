@@ -375,9 +375,9 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	}
 
 	if len(deployable.Annotations) > 0 {
-		m := map[string]string{}
-		for _, ann := range deployable.Annotations {
-			m[ann.Name] = ann.Value
+		m, err := fillAnnotations(ctx, deployable.RuntimeConfig, deployable.Annotations)
+		if err != nil {
+			return err
 		}
 		tmpl = tmpl.WithAnnotations(m)
 	}

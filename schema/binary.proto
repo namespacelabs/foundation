@@ -110,6 +110,17 @@ message BinaryConfig {
         ServiceRef                  from_service_endpoint                  = 5;  // Inject the endpoint of a service in the stack.
         ServiceRef                  from_service_ingress                   = 8;  // Inject the ingress address of a service. This is available from outside the cluster.
         ResourceConfigFieldSelector from_resource_field                    = 6;
+        FieldSelector               from_field_selector                    = 9;
+    }
+}
+
+message FieldSelector {
+    Instance instance = 1;
+    string field_selector = 2;
+
+    message Instance {
+        ServiceRef service = 1;
+        string select_internal_endpoint_by_kind = 2;
     }
 }
 

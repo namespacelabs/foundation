@@ -7,8 +7,6 @@ package kubeops
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"reflect"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	appsv1 "k8s.io/api/apps/v1"
@@ -294,26 +292,22 @@ func selectValue(output *kubedef.EnsureRuntimeConfigOutput, set *runtimepb.SetCo
 			return nil, fnerrors.BadInputError("missing required field selector")
 		}
 
-		resources, err := resources.ParseResourceData([]byte(output.SerializedResourceJson))
+		r, err := resources.ParseResourceData([]byte(output.SerializedResourceJson))
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to unmarshal resource configuration: %w", err)
 		}
 
-		v, err := resources.SelectField(set.ResourceConfigFieldSelector.GetResource().Canonical(), set.ResourceConfigFieldSelector.GetFieldSelector())
+		v, err := r.SelectField(set.ResourceConfigFieldSelector.GetResource().Canonical(), set.ResourceConfigFieldSelector.GetFieldSelector())
 		if err != nil {
 			return nil, fnerrors.InternalError("failed to select resource value: %w", err)
 		}
 
-		switch x := v.(type) {
-		case string:
-			return &value{Inline: x}, nil
-
-		case int32, int64, uint32, uint64, int:
-			return &value{Inline: fmt.Sprintf("%d", x)}, nil
-
-		default:
-			return nil, fnerrors.BadInputError("unsupported resource field value %q", reflect.TypeOf(v).String())
+		vv, err := resources.CoerceAsString(v)
+		if err != nil {
+			return nil, err
 		}
+
+		return &value{Inline: vv}, nil
 	}
 
 	return nil, fnerrors.BadInputError("%s: don't know this value", set.Value)

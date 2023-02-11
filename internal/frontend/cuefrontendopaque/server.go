@@ -50,11 +50,11 @@ type cueServerExtension struct {
 	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
 	Permissions         *cuePermissions `json:"permissions,omitempty"`
 
-	ReadinessProbe *cueProbe                   `json:"probe"`  // `probe: exec: "foo-cmd"`
-	Probes         map[string]cueProbe         `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
-	Security       *cueServerSecurity          `json:"security,omitempty"`
-	Tolerations    []*schema.Server_Toleration `json:"tolerations,omitempty"`
-	Annotations    map[string]string           `json:"annotations,omitempty"`
+	ReadinessProbe *cueProbe                       `json:"probe"`  // `probe: exec: "foo-cmd"`
+	Probes         map[string]cueProbe             `json:"probes"` // `probes: readiness: exec: "foo-cmd"`
+	Security       *cueServerSecurity              `json:"security,omitempty"`
+	Tolerations    []*schema.Server_Toleration     `json:"tolerations,omitempty"`
+	Annotations    map[string]args.ResolvableValue `json:"annotations,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -323,14 +323,16 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		}
 
 		for k, v := range bits.Annotations {
-			out.Annotation = append(out.Annotation, &schema.Label{Name: k, Value: v})
-		}
-
-		slices.SortFunc(out.Annotation, func(a, b *schema.Label) bool {
-			if a.Name == b.Name {
-				return strings.Compare(a.Value, b.Value) < 0
+			entry, err := v.ToProto(ctx, pl, pkg.PackageName())
+			if err != nil {
+				return nil, fnerrors.AttachLocation(loc, err)
 			}
 
+			entry.Name = k
+			out.Annotation = append(out.Annotation, entry)
+		}
+
+		slices.SortFunc(out.Annotation, func(a, b *schema.BinaryConfig_EnvEntry) bool {
 			return strings.Compare(a.Name, b.Name) < 0
 		})
 	}

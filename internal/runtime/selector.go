@@ -5,6 +5,7 @@
 package runtime
 
 import (
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -53,4 +54,25 @@ func SelectServiceIngress(service *runtimepb.Server_Service) (string, error) {
 
 	// TODO: introduce a concept of the "default" ingress, use it here.
 	return service.Ingress.Domain[0].BaseUrl, nil
+}
+
+func SelectInstance(rt *runtimepb.RuntimeConfig, instance *schema.FieldSelector_Instance) (any, error) {
+	switch {
+	case instance.Service != nil:
+		return SelectService(rt, instance.Service)
+
+	case instance.SelectInternalEndpointByKind != "":
+		var matches []*runtimepb.Server_InternalEndpoint
+		for _, m := range rt.Current.GetInternalEndpoint() {
+			if slices.Contains(m.Kinds, instance.SelectInternalEndpointByKind) {
+				matches = append(matches, m)
+			}
+		}
+		if len(matches) != 1 {
+			return nil, fnerrors.BadInputError("%s: expected 1 match, got %d", instance.SelectInternalEndpointByKind, len(matches))
+		}
+		return matches[0], nil
+	}
+
+	return nil, fnerrors.BadInputError("instance: can't construct a value")
 }
