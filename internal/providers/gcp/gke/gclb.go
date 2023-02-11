@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
-	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
@@ -34,8 +34,8 @@ func (gclb) Ensure(context.Context) ([]*schema.SerializedInvocation, error) {
 	// XXX validate that cluster is gke.
 	return nil, nil
 }
-func (gclb) Service() *kubedef.IngressSelector             { return nil }
-func (gclb) Waiter(*rest.Config) kubedef.KubeIngressWaiter { return nil }
+func (gclb) Service() *kubedef.IngressSelector { return nil }
+func (gclb) Waiter() kubeobj.Object            { return nil }
 
 func (gclb) PrepareRoute(ctx context.Context, _ *schema.Environment, _ *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
 	return nil, nil

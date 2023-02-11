@@ -6,10 +6,12 @@ package ingress
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -28,9 +30,18 @@ func RegisterRuntimeState() {
 			return nil, err
 		}
 
-		w := ingress.Waiter(kube.PreparedClient().RESTConfig)
-		if w == nil {
+		z := ingress.Service()
+		if z == nil || z.InClusterController == nil {
 			return ingress, nil
+		}
+
+		w := kubeobserver.WaitOnResource{
+			RestConfig:       kube.PreparedClient().RESTConfig,
+			Description:      fmt.Sprintf("Ingress Controller (%s)", ingress.Name()),
+			Namespace:        z.InClusterController.GetNamespace(),
+			Name:             z.InClusterController.GetName(),
+			GroupVersionKind: z.InClusterController.GroupVersionKind(),
+			Scope:            "namespacelabs.dev/foundation/internal/networking/ingress",
 		}
 
 		if err := tasks.Action("ingress.wait").HumanReadablef("Waiting until Ingress controller is ready").Run(ctx, func(ctx context.Context) error {

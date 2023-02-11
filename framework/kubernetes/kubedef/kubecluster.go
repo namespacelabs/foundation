@@ -8,12 +8,11 @@ import (
 	"context"
 
 	"google.golang.org/protobuf/types/known/anypb"
-	"k8s.io/client-go/rest"
+	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/schema"
-	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/execution/defs"
 )
@@ -43,7 +42,6 @@ type IngressClass interface {
 
 	Ensure(context.Context) ([]*schema.SerializedInvocation, error)
 	Service() *IngressSelector
-	Waiter(*rest.Config) KubeIngressWaiter
 	PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*IngressAllocatedRoute, error)
 	Annotate(ns, name string, domains []*schema.Domain, hasTLS bool, backendProtocol BackendProtocol, extensions []*anypb.Any, userAnnotation *schema.ServiceAnnotations) (*IngressAnnotations, error)
 }
@@ -66,14 +64,12 @@ type IngressAnnotations struct {
 	SchedAfter []string
 }
 
-type KubeIngressWaiter interface {
-	WaitUntilReady(ctx context.Context, ch chan *orchestration.Event) error
-}
-
 type IngressSelector struct {
-	Namespace, ServiceName string
-	ContainerPort          int
-	PodSelector            map[string]string
+	InClusterController     kubeobj.Object // May be nil.
+	LoadBalancerServiceName string         // In the same namespace.
+
+	ContainerPort int
+	PodSelector   map[string]string
 }
 
 type KubeConfig struct {

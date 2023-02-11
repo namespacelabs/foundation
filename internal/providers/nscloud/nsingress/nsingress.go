@@ -55,8 +55,8 @@ func (Ingress) ComputeNaming(env *schema.Environment, source *schema.Naming) (*s
 
 func (n Ingress) PrepareRoute(ctx context.Context, env *schema.Environment, srv *schema.Stack_Entry, domain *schema.Domain, ns, name string) (*kubedef.IngressAllocatedRoute, error) {
 	return prepareRoute(ctx, env, srv, domain, ns, name, &kubedef.OpMapAddress_ServiceRef{
-		Namespace:   n.Service().Namespace,
-		ServiceName: n.Service().ServiceName,
+		Namespace:   n.Service().InClusterController.GetNamespace(),
+		ServiceName: n.Service().LoadBalancerServiceName,
 	})
 }
 

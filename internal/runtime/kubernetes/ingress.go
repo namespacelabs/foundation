@@ -87,16 +87,18 @@ func (r *Cluster) ForwardIngress(ctx context.Context, localAddrs []string, local
 	}
 
 	svc := ingress.Service()
-	if svc == nil {
+	if svc == nil || svc.InClusterController == nil {
 		return nil, nil
 	}
 
+	obj := svc.InClusterController
+
 	ctxWithCancel, cancel := context.WithCancel(ctx)
-	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, svc.Namespace, svc.PodSelector)
+	obs := kubeobserver.NewPodObserver(ctxWithCancel, r.cli, obj.GetNamespace(), svc.PodSelector)
 
 	go func() {
 		if err := r.StartAndBlockPortFwd(ctxWithCancel, StartAndBlockPortFwdArgs{
-			Namespace:     svc.Namespace,
+			Namespace:     obj.GetNamespace(),
 			Identifier:    "ingress",
 			LocalAddrs:    localAddrs,
 			LocalPort:     localPort,

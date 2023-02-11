@@ -20,12 +20,10 @@ import (
 	kubeschema "k8s.io/apimachinery/pkg/runtime/schema"
 	admissionregistrationv1 "k8s.io/client-go/applyconfigurations/admissionregistration/v1"
 	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
-	"k8s.io/client-go/rest"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeparser"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
-	"namespacelabs.dev/foundation/internal/runtime/kubernetes/kubeobserver"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/execution"
 	"namespacelabs.dev/foundation/std/execution/defs"
@@ -244,20 +242,24 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 
 func (Ingress) Service() *kubedef.IngressSelector {
 	return &kubedef.IngressSelector{
-		Namespace:     "ingress-nginx",
-		ServiceName:   "ingress-nginx-controller",
 		ContainerPort: 80,
 		PodSelector:   map[string]string{"app.kubernetes.io/component": "controller"},
+
+		InClusterController: &ObjHeader{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "ingress-nginx",
+				Name:      "ingress-nginx-controller",
+			},
+		},
+		LoadBalancerServiceName: "ingress-nginx-controller",
 	}
 }
 
-func (n Ingress) Waiter(restcfg *rest.Config) kubedef.KubeIngressWaiter {
-	return kubeobserver.WaitOnResource{
-		RestConfig:       restcfg,
-		Description:      "Ingress Controller (nginx)",
-		Namespace:        n.Service().Namespace,
-		Name:             n.Service().ServiceName,
-		GroupVersionKind: kubeschema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
-		Scope:            "namespacelabs.dev/foundation/internal/networking/ingress/nginx",
-	}
+type ObjHeader struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 }
