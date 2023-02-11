@@ -38,6 +38,10 @@ func FromConfig(config client.Prepared) (kubedef.IngressClass, error) {
 		acceptedClasses = []string{"nginx"}
 	}
 
+	if slices.Contains(acceptedClasses, "*") {
+		return Class(requestedClass)
+	}
+
 	if !slices.Contains(acceptedClasses, requestedClass) {
 		return nil, fnerrors.BadInputError("ingress class %q is not supported by this cluster type (support: %s)", requestedClass, strings.Join(acceptedClasses, ", "))
 	}
