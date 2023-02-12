@@ -15,11 +15,11 @@ type PackageNameLike interface {
 	GetPackageName() string
 }
 
-func EnsurePackageLoaded(ctx context.Context, pl pkggraph.PackageLoader, owner schema.PackageName, target PackageNameLike) error {
+func EnsurePackageLoaded(ctx context.Context, pl pkggraph.PackageLoader, owner PackageNameLike, target PackageNameLike) error {
 	// We allow a nil pl because this is also used in phase1 + phase2 where there's no pl.
-	t := schema.PackageName(target.GetPackageName())
-	if pl != nil && t != owner {
-		if _, err := pl.LoadByName(ctx, t); err != nil {
+	t := target.GetPackageName()
+	if pl != nil && t != owner.GetPackageName() {
+		if _, err := pl.LoadByName(ctx, schema.PackageName(t)); err != nil {
 			return err
 		}
 	}

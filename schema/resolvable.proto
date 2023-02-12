@@ -7,6 +7,7 @@ syntax = "proto3";
 package foundation.schema;
 
 import "schema/package.proto";
+import "schema/filecontents.proto";
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
@@ -27,13 +28,15 @@ message NamedResolvable {
 }
 
 message FieldSelector {
-    Instance instance = 1;
+    ResolvableSource instance = 1;
     string field_selector = 2;
+}
 
-    message Instance {
-        ServiceRef service = 1;
-        string select_internal_endpoint_by_kind = 2;
-    }
+message ResolvableSource {
+    PackageRef server = 1; // Resolves into a runtime.Server
+    ServiceRef service = 2; // Resolves into a runtime.Server.Service
+    string select_internal_endpoint_by_kind = 3; // Resolves into a runtime.Service.InternalEndpoint
+    FileContents untyped_json = 4;
 }
 
 message ResourceConfigFieldSelector {

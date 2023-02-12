@@ -15,18 +15,18 @@ import (
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 )
 
-type xyz struct {
+type fillContainer struct {
 	container *applycorev1.ContainerApplyConfiguration
 	ensure    *kubedef.EnsureDeployment
 }
 
-func (x *xyz) SetValue(key, value string) error {
+func (x *fillContainer) SetValue(key, value string) error {
 	entry := applycorev1.EnvVar().WithName(key).WithValue(value)
 	x.container = x.container.WithEnv(entry)
 	return nil
 }
 
-func (x *xyz) SetSecret(key string, secret *runtime.SecretRef) error {
+func (x *fillContainer) SetSecret(key string, secret *runtime.SecretRef) error {
 	entry := applycorev1.EnvVar().WithName(key).
 		WithValueFrom(applycorev1.EnvVarSource().WithSecretKeyRef(
 			applycorev1.SecretKeySelector().WithName(secret.Name).WithKey(secret.Key)))
@@ -34,7 +34,7 @@ func (x *xyz) SetSecret(key string, secret *runtime.SecretRef) error {
 	return nil
 }
 
-func (x *xyz) SetExperimentalFromDownwardsFieldPath(key, value string) error {
+func (x *fillContainer) SetExperimentalFromDownwardsFieldPath(key, value string) error {
 	entry := applycorev1.EnvVar().WithName(key).
 		WithValueFrom(applycorev1.EnvVarSource().WithFieldRef(
 			applycorev1.ObjectFieldSelector().WithFieldPath(value)))
@@ -42,7 +42,7 @@ func (x *xyz) SetExperimentalFromDownwardsFieldPath(key, value string) error {
 	return nil
 }
 
-func (x *xyz) SetLateBoundResourceFieldSelector(key string, sel runtimepb.SetContainerField_ValueSource, src *schema.ResourceConfigFieldSelector) error {
+func (x *fillContainer) SetLateBoundResourceFieldSelector(key string, sel runtimepb.SetContainerField_ValueSource, src *schema.ResourceConfigFieldSelector) error {
 	x.ensure.SetContainerFields = append(x.ensure.SetContainerFields, &rtschema.SetContainerField{
 		SetEnv: []*rtschema.SetContainerField_SetValue{
 			{
@@ -57,7 +57,7 @@ func (x *xyz) SetLateBoundResourceFieldSelector(key string, sel runtimepb.SetCon
 }
 
 func fillEnv(ctx context.Context, rt *runtimepb.RuntimeConfig, container *applycorev1.ContainerApplyConfiguration, env []*schema.BinaryConfig_EnvEntry, secrets *secretCollector, ensure *kubedef.EnsureDeployment) (*applycorev1.ContainerApplyConfiguration, error) {
-	x := xyz{container, ensure}
+	x := fillContainer{container, ensure}
 
 	if err := runtime.ResolveResolvables(ctx, rt, secrets, env, &x); err != nil {
 		return nil, err

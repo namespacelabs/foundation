@@ -18,7 +18,7 @@ import (
 )
 
 type phase1plan struct {
-	owner   schema.PackageName
+	owner   pkggraph.Location
 	partial *fncue.Partial
 
 	Value *fncue.CueV
@@ -118,7 +118,7 @@ func (p1 phase1plan) EvalProvision(ctx context.Context, env *schema.Environment,
 	return &pdata, nil
 }
 
-func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*schema.Container, error) {
+func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema.Container, error) {
 	// XXX remove ListKind version.
 	if v.Kind() == cue.ListKind {
 		var containers []cueContainer
@@ -129,7 +129,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 
 		var parsed []*schema.Container
 		for k, data := range containers {
-			binRef, err := schema.ParsePackageRef(owner, data.Binary)
+			binRef, err := schema.ParsePackageRef(loc, data.Binary)
 			if err != nil {
 				return nil, err
 			}
@@ -139,7 +139,7 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			}
 
 			parsed = append(parsed, &schema.Container{
-				Owner:     schema.MakePackageSingleRef(owner),
+				Owner:     schema.MakePackageSingleRef(loc.PackageName),
 				Name:      data.Name,
 				BinaryRef: binRef,
 				Args:      data.Args.Parsed(),
@@ -160,13 +160,13 @@ func parseContainers(owner schema.PackageName, kind string, v cue.Value) ([]*sch
 			return nil, fnerrors.New("%s: inconsistent container name %q", name, data.Name)
 		}
 
-		binRef, err := schema.ParsePackageRef(owner, data.Binary)
+		binRef, err := schema.ParsePackageRef(loc, data.Binary)
 		if err != nil {
 			return nil, err
 		}
 
 		parsed = append(parsed, &schema.Container{
-			Owner:     schema.MakePackageSingleRef(owner),
+			Owner:     schema.MakePackageSingleRef(loc.PackageName),
 			Name:      name,
 			BinaryRef: binRef,
 			Args:      data.Args.Parsed(),

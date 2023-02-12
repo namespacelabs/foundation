@@ -18,7 +18,7 @@ import (
 )
 
 type phase2plan struct {
-	owner   schema.PackageName
+	owner   pkggraph.Location
 	partial *fncue.Partial
 	Value   *fncue.CueV
 	Left    []fncue.KeyAndPath // injected values left to be filled.

@@ -7,6 +7,7 @@ require (
 	cloud.google.com/go/container v1.6.0
 	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
+	github.com/agext/levenshtein v1.2.3
 	github.com/andybalholm/brotli v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.17.1
 	github.com/aws/aws-sdk-go-v2/config v1.17.1
@@ -85,6 +86,7 @@ require (
 	github.com/spf13/cobra v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
+	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
 	github.com/tonistiigi/fsutil v0.0.0-20230105215944-fb433841cbfa
 	go.lsp.dev/jsonrpc2 v0.10.0
 	go.lsp.dev/protocol v0.12.0
@@ -140,7 +142,6 @@ require (
 	github.com/Masterminds/squirrel v1.5.2 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/Microsoft/hcsshim v0.9.6 // indirect
-	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200428143746-21a406dcc535 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect

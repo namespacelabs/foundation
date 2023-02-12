@@ -59,6 +59,10 @@ type LikeResolvable interface {
 func ResolveResolvables[V LikeResolvable](ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, resolvables []V, out ResolvableSink) error {
 	var errs []error
 	for _, entry := range resolvables {
+		if entry.GetValue() == nil {
+			continue
+		}
+
 		if err := resolve(ctx, rt, secrets, entry.GetName(), entry.GetValue(), out); err != nil {
 			errs = append(errs, err)
 		}

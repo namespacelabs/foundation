@@ -142,7 +142,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 		return nil, fnerrors.New("package must only define one of: server, service, extension, binary or test")
 	}
 
-	p := phase1plan{owner: loc.PackageName, partial: partial, Value: v, Left: partial.Left}
+	p := phase1plan{owner: loc, partial: partial, Value: v, Left: partial.Left}
 	plan, err := p.EvalProvision(ctx, ft.env, pkggraph.ProvisionInputs{ServerLocation: loc})
 	if err != nil {
 		return nil, err

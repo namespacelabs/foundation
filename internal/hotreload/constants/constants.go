@@ -7,7 +7,7 @@ package hotreload
 import "namespacelabs.dev/foundation/schema"
 
 var (
-	ControllerPkg = schema.MakePackageSingleRef("namespacelabs.dev/foundation/std/development/filesync/controller")
+	ControllerPkg = schema.MakePackageSingleRef(schema.PackageName("namespacelabs.dev/foundation/std/development/filesync/controller"))
 )
 
 const (

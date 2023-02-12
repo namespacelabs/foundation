@@ -5,6 +5,10 @@
 package runtime
 
 import (
+	"encoding/json"
+	"strings"
+
+	"github.com/tailscale/hujson"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -55,7 +59,7 @@ func SelectServiceIngress(service *runtimepb.Server_Service) (string, error) {
 	return service.Ingress.Domain[0].BaseUrl, nil
 }
 
-func SelectInstance(rt *runtimepb.RuntimeConfig, instance *schema.FieldSelector_Instance) (any, error) {
+func SelectInstance(rt *runtimepb.RuntimeConfig, instance *schema.ResolvableSource) (any, error) {
 	switch {
 	case instance.Service != nil:
 		return SelectService(rt, instance.Service)
@@ -81,6 +85,23 @@ func SelectInstance(rt *runtimepb.RuntimeConfig, instance *schema.FieldSelector_
 		}
 
 		return matches[0], nil
+
+	case instance.UntypedJson != nil:
+		contents := instance.UntypedJson.Contents
+		if strings.HasSuffix(instance.UntypedJson.Path, ".jsonc") {
+			var err error
+			contents, err = hujson.Standardize(instance.UntypedJson.Contents)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		var m any
+		if err := json.Unmarshal(contents, &m); err != nil {
+			return nil, fnerrors.BadInputError("instance: failed to parse json: %w", err)
+		}
+
+		return m, nil
 	}
 
 	return nil, fnerrors.BadInputError("instance: can't construct a value")

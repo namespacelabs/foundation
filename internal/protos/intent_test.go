@@ -71,6 +71,7 @@ func TestAllocateMessage(t *testing.T) {
 			}`,
 			Expected: &schema.ConfigurableVolume_Entry{
 				Inline: &schema.FileContents{
+					Path:     "testdata/fileresource.txt",
 					Contents: []byte("This is test data."),
 					Utf8:     true,
 				},
@@ -83,10 +84,12 @@ func TestAllocateMessage(t *testing.T) {
 			Expected: &schema.ResourceSet{
 				Resource: []*schema.FileContents{
 					{
+						Path:     "testdata/fileresource.txt",
 						Contents: []byte("This is test data."),
 						Utf8:     true,
 					},
 					{
+						Path:     "testdata/secondresource.txt",
 						Contents: []byte("Another test."),
 						Utf8:     true,
 					},

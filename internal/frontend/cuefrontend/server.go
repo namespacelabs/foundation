@@ -143,7 +143,7 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 	out.Import = bits.Import
 	out.RunByDefault = runByDefault(bits)
 
-	env, err := bits.Env.Parsed(ctx, pl, loc.PackageName)
+	env, err := bits.Env.Parsed(ctx, pl, loc)
 	if err != nil {
 		return nil, nil, err
 	}

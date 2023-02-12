@@ -47,6 +47,11 @@ func (loc Location) Abs(rel ...string) string {
 	return filepath.Join(append([]string{loc.Module.Abs(), loc.relPath}, rel...)...)
 }
 
+// GetPackageName implements the schema.PackageNameLike interface.
+func (loc Location) GetPackageName() string {
+	return loc.PackageName.String()
+}
+
 // ErrorLocation implements the fnerrors.Location interface.
 func (loc Location) ErrorLocation() string {
 	return loc.relPath

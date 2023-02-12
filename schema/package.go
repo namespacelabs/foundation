@@ -13,7 +13,7 @@ import (
 
 func MakePackageSingleRef(pkg PackageName) *PackageRef {
 	return &PackageRef{
-		PackageName: pkg.String(),
+		PackageName: pkg.GetPackageName(),
 	}
 }
 
@@ -24,8 +24,13 @@ func MakePackageRef(pkg PackageName, name string) *PackageRef {
 	}
 }
 
+type PackageNameLike interface {
+	GetPackageName() string
+	ErrorLocation() string
+}
+
 // Parses from a canonical string representation.
-func ParsePackageRef(owner PackageName, ref string) (*PackageRef, error) {
+func ParsePackageRef(owner PackageNameLike, ref string) (*PackageRef, error) {
 	if ref == "" {
 		return nil, fnerrors.NewWithLocation(owner, "empty package refs are not permitted")
 	}
@@ -40,7 +45,7 @@ func ParsePackageRef(owner PackageName, ref string) (*PackageRef, error) {
 
 	if parts[0] == "" {
 		// Ref is of form ":foo", which implicitly references a name in the owning package.
-		pr.PackageName = owner.String()
+		pr.PackageName = owner.GetPackageName()
 	} else {
 		pr.PackageName = parts[0]
 	}

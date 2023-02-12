@@ -59,7 +59,7 @@ func parseTest(ctx context.Context, env *schema.Environment, pl parsing.EarlyPac
 		return nil, err
 	}
 
-	envVars, err := bits.Env.Parsed(ctx, pl, pkg.Location.PackageName)
+	envVars, err := bits.Env.Parsed(ctx, pl, pkg.Location)
 	if err != nil {
 		return nil, err
 	}

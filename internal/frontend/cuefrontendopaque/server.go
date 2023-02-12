@@ -174,7 +174,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	}
 
 	out.MainContainer.Args = bits.Args.Parsed()
-	out.MainContainer.Env, err = bits.Env.Parsed(ctx, pl, loc.PackageName)
+	out.MainContainer.Env, err = bits.Env.Parsed(ctx, pl, loc)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +325,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		}
 
 		for k, v := range bits.Annotations {
-			entry, err := v.ToProto(ctx, pl, pkg.PackageName())
+			entry, err := v.ToProto(ctx, pl, pkg.Location)
 			if err != nil {
 				return nil, fnerrors.AttachLocation(loc, err)
 			}

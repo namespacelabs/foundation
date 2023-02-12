@@ -191,7 +191,7 @@ func AllocateWellKnownMessage(ctx context.Context, pctx ParseContext, messageTyp
 		// Handle well-known types.
 		switch messageType.FullName() {
 		case "foundation.schema.FileContents":
-			return allocateFileContents(ctx, pctx, value)
+			return AllocateFileContents(ctx, pctx, value)
 
 		case "foundation.schema.InlineJson":
 			serialized, err := json.Marshal(value)
@@ -270,7 +270,7 @@ func allocatePackageRef(ctx context.Context, pctx ParseContext, messageType prot
 	return allocateMessage(ctx, pctx, (&schema.PackageRef{}).ProtoReflect(), value)
 }
 
-func allocateFileContents(ctx context.Context, pctx ParseContext, value any) (protoreflect.ProtoMessage, error) {
+func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*schema.FileContents, error) {
 	if pctx.FS == nil {
 		return nil, fnerrors.New("failed to handle resource, no workspace access available")
 	}
@@ -283,6 +283,7 @@ func allocateFileContents(ctx context.Context, pctx ParseContext, value any) (pr
 		}
 
 		return &schema.FileContents{
+			Path:     x,
 			Utf8:     utf8.Valid(contents),
 			Contents: contents,
 		}, nil
@@ -340,7 +341,10 @@ func allocateFileContents(ctx context.Context, pctx ParseContext, value any) (pr
 							return nil, err
 						}
 
-						return &schema.FileContents{Contents: contents}, nil
+						return &schema.FileContents{
+							Utf8:     utf8.Valid(contents),
+							Contents: contents,
+						}, nil
 					}
 				}
 
