@@ -23,7 +23,3 @@ server: {
 		}
 	}
 }
-
-extension: {
-	foobar: {}
-}
