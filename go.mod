@@ -83,7 +83,7 @@ require (
 	github.com/rs/zerolog v1.20.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/soheilhy/cmux v0.1.5
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.12.0
 	github.com/tailscale/hujson v0.0.0-20221223112325-20486734a56a
