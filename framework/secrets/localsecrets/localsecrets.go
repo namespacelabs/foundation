@@ -163,7 +163,7 @@ func lookupSecret(ctx context.Context, env *schema.Environment, secretRef *schem
 		}
 
 		if value != nil {
-			return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value, Utf8: true}}, nil
+			return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
 		}
 	}
 

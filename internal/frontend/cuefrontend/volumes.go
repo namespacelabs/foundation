@@ -239,7 +239,6 @@ func parseConfigurableEntry(ctx context.Context, pl parsing.EarlyPackageLoader, 
 		return &schema.ConfigurableVolume_Entry{
 			Inline: &schema.FileContents{
 				Contents: []byte(str),
-				Utf8:     true,
 			},
 		}, nil
 	}

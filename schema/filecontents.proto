@@ -11,8 +11,9 @@ option go_package = "namespacelabs.dev/foundation/schema";
 // TODO reconcile with std.types.Resource.
 message FileContents {
     string path     = 1;
-    bool   utf8     = 3;  // Is the content text?
     bytes  contents = 2;
+
+    reserved 3;
 }
 
 message InlineJson {

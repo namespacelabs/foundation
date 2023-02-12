@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"reflect"
-	"unicode/utf8"
 
 	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -284,7 +283,6 @@ func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*s
 
 		return &schema.FileContents{
 			Path:     x,
-			Utf8:     utf8.Valid(contents),
 			Contents: contents,
 		}, nil
 
@@ -299,7 +297,6 @@ func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*s
 			switch y := x[keys[0]].(type) {
 			case string:
 				return &schema.FileContents{
-					Utf8:     true,
 					Contents: []byte(y),
 				}, nil
 
@@ -342,7 +339,6 @@ func AllocateFileContents(ctx context.Context, pctx ParseContext, value any) (*s
 						}
 
 						return &schema.FileContents{
-							Utf8:     utf8.Valid(contents),
 							Contents: contents,
 						}, nil
 					}
