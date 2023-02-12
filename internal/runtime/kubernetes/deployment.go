@@ -375,7 +375,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	}
 
 	if len(deployable.Annotations) > 0 {
-		var x runtime.ResolvableSinkMap
+		x := runtime.ResolvableSinkMap{}
 
 		if err := runtime.ResolveResolvables(ctx, deployable.RuntimeConfig, nil, deployable.Annotations, &x); err != nil {
 			return err
