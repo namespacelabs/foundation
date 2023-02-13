@@ -121,7 +121,7 @@ do_install() {
   echo
 
   case $SHELL in
-    /bin/zsh) shell_profile=".zshrc" ;;
+    /bin/bash) shell_profile=".bashrc" ;;
     *) shell_profile=".bashrc" ;;
   esac
   echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
