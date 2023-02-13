@@ -74,8 +74,7 @@ func CreateNodejsBinary(ctx context.Context, env *schema.Environment, pl pkggrap
 
 	if opaque.UseDevBuild(env) {
 		// Making sure that the controller package is loaded.
-		_, err := pl.LoadByName(ctx, hrconstants.ControllerPkg.AsPackageName())
-		if err != nil {
+		if err := pl.Ensure(ctx, hrconstants.ControllerPkg.AsPackageName()); err != nil {
 			return nil, err
 		}
 

@@ -124,7 +124,7 @@ func maybeUpdateWorkspace(ctx context.Context, env cfg.Context) error {
 	}
 
 	for _, loc := range schemas.Locations {
-		if _, err := pl.LoadByName(ctx, loc.AsPackageName()); err != nil {
+		if err := pl.Ensure(ctx, loc.AsPackageName()); err != nil {
 			return err
 		}
 	}

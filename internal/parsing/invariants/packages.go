@@ -19,7 +19,7 @@ func EnsurePackageLoaded(ctx context.Context, pl pkggraph.PackageLoader, owner P
 	// We allow a nil pl because this is also used in phase1 + phase2 where there's no pl.
 	t := target.GetPackageName()
 	if pl != nil && t != owner.GetPackageName() {
-		if _, err := pl.LoadByName(ctx, schema.PackageName(t)); err != nil {
+		if err := pl.Ensure(ctx, schema.PackageName(t)); err != nil {
 			return err
 		}
 	}

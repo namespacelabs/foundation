@@ -25,7 +25,7 @@ func ParseAndLoadRef(ctx context.Context, pl PackageLoader, loc Location, ref st
 
 func CheckLoad(ctx context.Context, pl PackageLoader, loc Location, ref *schema.PackageRef) error {
 	if loc.PackageName != ref.AsPackageName() {
-		if _, err := pl.LoadByName(ctx, ref.AsPackageName()); err != nil {
+		if err := pl.Ensure(ctx, ref.AsPackageName()); err != nil {
 			return err
 		}
 	}

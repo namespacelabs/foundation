@@ -297,7 +297,7 @@ func AddServersAsResourcesToPack(ctx context.Context, pl pkggraph.PackageLoader,
 
 		name := kubenaming.StableIDN(fmt.Sprintf("%s->%s", owner.Canonical(), s.String()), 8)
 
-		if _, err := pl.LoadByName(ctx, schema.PackageName(s.String())); err != nil {
+		if err := pl.Ensure(ctx, schema.PackageName(s.String())); err != nil {
 			return err
 		}
 
@@ -310,7 +310,7 @@ func AddServersAsResourcesToPack(ctx context.Context, pl pkggraph.PackageLoader,
 	}
 
 	if len(servers) > 0 {
-		if _, err := pl.LoadByName(ctx, "namespacelabs.dev/foundation/library/runtime"); err != nil {
+		if err := pl.Ensure(ctx, "namespacelabs.dev/foundation/library/runtime"); err != nil {
 			return err
 		}
 	}

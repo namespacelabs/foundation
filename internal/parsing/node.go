@@ -99,7 +99,7 @@ func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 			deps.AddMultiple(r.Import...)
 
 			for _, pkg := range r.LoadPackages {
-				if _, err := pl.LoadByName(ctx, pkg); err != nil {
+				if err := pl.Ensure(ctx, pkg); err != nil {
 					return err
 				}
 			}
