@@ -122,7 +122,11 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	}
 
 	ephemeral := env.Environment().Ephemeral
-	response, err := api.CreateCluster(ctx, api.Endpoint, api.CreateClusterOpts{MachineType: defaultMachineType, Ephemeral: ephemeral, Purpose: purpose})
+	response, err := api.CreateCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+		MachineType: defaultMachineType,
+		Ephemeral:   ephemeral,
+		Purpose:     purpose,
+	})
 	if err != nil {
 		return nil, err
 	}
