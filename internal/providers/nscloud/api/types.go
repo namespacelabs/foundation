@@ -60,6 +60,7 @@ type KubernetesClusterList struct {
 type KubernetesCluster struct {
 	ClusterId         string        `json:"cluster_id,omitempty"`
 	Created           string        `json:"created,omitempty"`
+	DestroyedAt       string        `json:"destroyed_at,omitempty"`
 	Deadline          string        `json:"deadline,omitempty"`
 	SSHProxyEndpoint  string        `json:"ssh_proxy_endpoint,omitempty"`
 	SshPrivateKey     []byte        `json:"ssh_private_key,omitempty"`

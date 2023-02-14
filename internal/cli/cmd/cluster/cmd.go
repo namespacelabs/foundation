@@ -45,6 +45,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newKubeconfigCmd())
 	cmd.AddCommand(newBuildctlCmd())
 	cmd.AddCommand(newBuildCmd())
+	cmd.AddCommand(newHistoryCmd())
 
 	return cmd
 }
@@ -130,7 +131,7 @@ func newListCmd() *cobra.Command {
 	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusters, err := api.ListClusters(ctx, api.Endpoint)
+		clusters, err := api.ListClusters(ctx, api.Endpoint, false)
 		if err != nil {
 			return err
 		}
@@ -143,7 +144,7 @@ func newListCmd() *cobra.Command {
 			return enc.Encode(clusters)
 		} else {
 			for _, cluster := range clusters.Clusters {
-				fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster))
+				fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster, false))
 			}
 		}
 
@@ -321,6 +322,41 @@ func newKubeconfigCmd() *cobra.Command {
 	return cmd
 }
 
+func newHistoryCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "history",
+		Short: "History of your previous running clusters.",
+		Args:  cobra.NoArgs,
+	}
+
+	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		clusters, err := api.ListClusters(ctx, api.Endpoint, true)
+		if err != nil {
+			return err
+		}
+
+		stdout := console.Stdout(ctx)
+
+		if *rawOutput {
+			enc := json.NewEncoder(stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(clusters)
+		} else {
+			for _, cluster := range clusters.Clusters {
+				if cluster.DestroyedAt != "" {
+					fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster, true))
+				}
+			}
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
 func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesCluster, error) {
 	var res []*api.KubernetesCluster
 	for _, name := range names {
@@ -335,7 +371,7 @@ func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesClust
 		return res, nil
 	}
 
-	clusters, err := api.ListClusters(ctx, api.Endpoint)
+	clusters, err := api.ListClusters(ctx, api.Endpoint, false)
 	if err != nil {
 		return nil, err
 	}
@@ -378,10 +414,10 @@ type cluster api.KubernetesCluster
 
 func (d cluster) Cluster() api.KubernetesCluster { return api.KubernetesCluster(d) }
 func (d cluster) Title() string                  { return d.ClusterId }
-func (d cluster) Description() string            { return formatDescription(api.KubernetesCluster(d)) }
+func (d cluster) Description() string            { return formatDescription(api.KubernetesCluster(d), false) }
 func (d cluster) FilterValue() string            { return d.ClusterId }
 
-func formatDescription(cluster api.KubernetesCluster) string {
+func formatDescription(cluster api.KubernetesCluster, history bool) string {
 	cpu := "<unknown>"
 	ram := "<unknown>"
 
@@ -392,7 +428,13 @@ func formatDescription(cluster api.KubernetesCluster) string {
 
 	created, _ := time.Parse(time.RFC3339, cluster.Created)
 	deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
+	destroyedAt, _ := time.Parse(time.RFC3339, cluster.DestroyedAt)
 
+	if history {
+		return fmt.Sprintf("[cpu: %s ram: %s] (created %v, destroyed %v, lasted %v, dist: %s): %s",
+			cpu, ram, created.Local(), destroyedAt.Local(), destroyedAt.Sub(created),
+			cluster.KubernetesDistribution, cluster.DocumentedPurpose)
+	}
 	return fmt.Sprintf("[cpu: %s ram: %s] (created %v, for %v, dist: %s): %s",
 		cpu, ram, created.Local(), time.Until(deadline),
 		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
