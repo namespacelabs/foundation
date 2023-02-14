@@ -8,7 +8,7 @@ package foundation.schema;
 
 option go_package = "namespacelabs.dev/foundation/schema";
 
-message GithubAttachement {
+message GitHubAttachment {
     // The owner and repository name.
 	string repository = 1;
     // The repository owner's name.

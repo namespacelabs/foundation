@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func AttachmentFromEnv(ctx context.Context) (*schema.GithubAttachement, error) {
+func AttachmentFromEnv(ctx context.Context) (*schema.GitHubAttachment, error) {
 	requiredVars := []string{
 		"GITHUB_REPOSITORY",
 		"GITHUB_REPOSITORY_OWNER",
@@ -30,7 +30,7 @@ func AttachmentFromEnv(ctx context.Context) (*schema.GithubAttachement, error) {
 		}
 	}
 
-	return &schema.GithubAttachement{
+	return &schema.GitHubAttachment{
 		Repository:      os.Getenv("GITHUB_REPOSITORY"),
 		RepositoryOwner: os.Getenv("GITHUB_REPOSITORY_OWNER"),
 		RunId:           os.Getenv("GITHUB_RUN_ID"),
