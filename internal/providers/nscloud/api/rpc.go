@@ -156,7 +156,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			AuthorizedSshKeys: opts.AuthorizedSshKeys,
 		}
 
-		if github.IsInActions() {
+		if github.IsRunningInActions() {
 			attach, err := github.AttachmentFromEnv(ctx)
 			if err != nil {
 				return nil, err

@@ -38,6 +38,6 @@ func AttachmentFromEnv(ctx context.Context) (*schema.GithubAttachement, error) {
 	}, nil
 }
 
-func IsInActions() bool {
+func IsRunningInActions() bool {
 	return os.Getenv("GITHUB_ACTIONS") != "true"
 }
