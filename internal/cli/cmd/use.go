@@ -214,7 +214,7 @@ func selectDatabase(ctx context.Context, index map[string]databaseBind, names []
 		items = append(items, databaseItem{index[name]})
 	}
 
-	item, err := tui.Select(ctx, "Which database to connect to?", items)
+	item, err := tui.ListSelect(ctx, "Which database to connect to?", items)
 	if err != nil {
 		return "", err
 	}

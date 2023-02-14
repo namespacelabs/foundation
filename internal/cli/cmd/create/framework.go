@@ -31,7 +31,7 @@ func selectFramework(ctx context.Context, title string, fmwkFlag string) (*schem
 			return nil, fnerrors.New("invalid framework: %s", fmwkFlag)
 		}
 	} else {
-		selected, err := tui.Select(ctx, title, frameworks)
+		selected, err := tui.ListSelect(ctx, title, frameworks)
 		if err != nil {
 			return nil, err
 		}

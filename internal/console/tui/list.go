@@ -17,7 +17,7 @@ import (
 
 const maxHeight = 20
 
-func Select[V list.DefaultItem](ctx context.Context, title string, items []V) (list.DefaultItem, error) {
+func ListSelect[V list.DefaultItem](ctx context.Context, title string, items []V) (list.DefaultItem, error) {
 	done := console.EnterInputMode(ctx)
 	defer done()
 

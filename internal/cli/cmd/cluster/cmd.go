@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -131,7 +132,8 @@ func newListCmd() *cobra.Command {
 	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusters, err := api.ListClusters(ctx, api.Endpoint, false)
+		history := false
+		clusters, err := api.ListClusters(ctx, api.Endpoint, history)
 		if err != nil {
 			return err
 		}
@@ -142,13 +144,8 @@ func newListCmd() *cobra.Command {
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
 			return enc.Encode(clusters)
-		} else {
-			for _, cluster := range clusters.Clusters {
-				fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster, false))
-			}
 		}
-
-		return nil
+		return staticTableClusters(ctx, clusters.Clusters, history)
 	})
 
 	return cmd
@@ -332,7 +329,8 @@ func newHistoryCmd() *cobra.Command {
 	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusters, err := api.ListClusters(ctx, api.Endpoint, true)
+		history := true
+		clusters, err := api.ListClusters(ctx, api.Endpoint, history)
 		if err != nil {
 			return err
 		}
@@ -343,15 +341,9 @@ func newHistoryCmd() *cobra.Command {
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
 			return enc.Encode(clusters)
-		} else {
-			for _, cluster := range clusters.Clusters {
-				if cluster.DestroyedAt != "" {
-					fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster, true))
-				}
-			}
 		}
 
-		return nil
+		return staticTableClusters(ctx, clusters.Clusters, history)
 	})
 
 	return cmd
@@ -359,6 +351,7 @@ func newHistoryCmd() *cobra.Command {
 
 func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesCluster, error) {
 	var res []*api.KubernetesCluster
+	previousRuns := false
 	for _, name := range names {
 		response, err := api.GetCluster(ctx, api.Endpoint, name)
 		if err != nil {
@@ -371,27 +364,17 @@ func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesClust
 		return res, nil
 	}
 
-	clusters, err := api.ListClusters(ctx, api.Endpoint, false)
+	clusters, err := api.ListClusters(ctx, api.Endpoint, previousRuns)
 	if err != nil {
 		return nil, err
 	}
 
-	var cls []cluster
-	for _, cl := range clusters.Clusters {
-		cls = append(cls, cluster(cl))
-	}
-
-	cl, err := tui.Select(ctx, "Which cluster would you like to connect to?", cls)
+	cl, err := selectTableClusters(ctx, clusters.Clusters, previousRuns)
 	if err != nil {
 		return nil, err
 	}
 
-	if cl == nil {
-		return nil, nil
-	}
-
-	d := cl.(cluster).Cluster()
-	return []*api.KubernetesCluster{&d}, nil
+	return []*api.KubernetesCluster{cl}, nil
 }
 
 func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
@@ -408,6 +391,76 @@ func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, 
 	default:
 		return nil, fnerrors.InternalError("got %d clusters - expected one", len(clusters))
 	}
+}
+
+func tableClusters(ctx context.Context,
+	clusters []api.KubernetesCluster, previousRuns, selectCluster bool) (*api.KubernetesCluster, error) {
+	clusterIdMap := map[string]api.KubernetesCluster{}
+	cols := []table.Column{
+		{Title: "Cluster ID", Width: 15},
+		{Title: "CPU", Width: 5},
+		{Title: "Memory", Width: 7},
+		{Title: "Created", Width: 15},
+	}
+	if previousRuns {
+		cols = append(cols, table.Column{Title: "Duration", Width: 10})
+	} else {
+		cols = append(cols, table.Column{Title: "Time to live", Width: 20})
+	}
+	cols = append(cols, table.Column{Title: "Purpose", Width: 10})
+
+	rows := []table.Row{}
+	for _, cluster := range clusters {
+		clusterIdMap[cluster.ClusterId] = cluster
+		if previousRuns && cluster.DestroyedAt == "" {
+			continue
+		}
+		cpu := fmt.Sprintf("%d", cluster.Shape.VirtualCpu)
+		ram := humanize.IBytes(uint64(cluster.Shape.MemoryMegabytes) * humanize.MiByte)
+		created, _ := time.Parse(time.RFC3339, cluster.Created)
+		deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
+
+		row := []string{cluster.ClusterId,
+			cpu,
+			ram,
+			humanize.Time(created.Local()),
+		}
+		if previousRuns {
+			destroyedAt, _ := time.Parse(time.RFC3339, cluster.DestroyedAt)
+			row = append(row, destroyedAt.Sub(created).Truncate(time.Second).String())
+		} else {
+			row = append(row, humanize.Time(deadline.Local()))
+		}
+		purpose := "-"
+		if cluster.DocumentedPurpose != "" {
+			purpose = cluster.DocumentedPurpose
+		}
+		row = append(row, purpose)
+		rows = append(rows, row)
+	}
+
+	if selectCluster {
+		row, err := tui.SelectTable(ctx, cols, rows)
+		if err != nil {
+			return nil, err
+		}
+		cl := clusterIdMap[row[0]]
+		return &cl, nil
+	}
+	err := tui.StaticTable(ctx, cols, rows)
+
+	return nil, err
+}
+
+func staticTableClusters(ctx context.Context,
+	clusters []api.KubernetesCluster, previousRuns bool) error {
+	_, err := tableClusters(ctx, clusters, previousRuns, false)
+	return err
+}
+
+func selectTableClusters(ctx context.Context,
+	clusters []api.KubernetesCluster, previousRuns bool) (*api.KubernetesCluster, error) {
+	return tableClusters(ctx, clusters, previousRuns, true)
 }
 
 type cluster api.KubernetesCluster
