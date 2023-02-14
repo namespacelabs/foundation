@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"namespacelabs.dev/foundation/internal/console"
 )
 
 func StaticTable(ctx context.Context, cols []table.Column, rows []table.Row) error {
@@ -22,10 +23,10 @@ func SelectTable(ctx context.Context, cols []table.Column, rows []table.Row) (ta
 }
 
 func Table(ctx context.Context, cols []table.Column, rows []table.Row, selectRow bool) (table.Row, error) {
-	height := 2 + len(rows)
-	if height > maxHeight {
-		height = maxHeight
-	}
+	done := console.EnterInputMode(ctx)
+	defer done()
+
+	height := len(rows)
 	t := table.New(
 		table.WithColumns(cols),
 		table.WithRows(rows),
