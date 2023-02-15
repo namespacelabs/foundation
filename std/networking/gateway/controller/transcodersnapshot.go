@@ -509,10 +509,8 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 					},
 				},
 				Timeout: durationpb.New(250 * time.Millisecond),
-				InitialMetadata: []*core.HeaderValue{
-					{Key: "service_name", Value: "envoy-grpc-transcoder"},
-				},
 			},
+			ServiceName: "envoy-grpc-transcoder",
 		})
 		if err != nil {
 			return nil, fnerrors.BadInputError("failed to serialize OpenTelemetryConfig")
