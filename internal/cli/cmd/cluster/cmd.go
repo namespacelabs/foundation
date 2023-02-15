@@ -46,6 +46,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newBuildctlCmd())
 	cmd.AddCommand(newBuildCmd())
 	cmd.AddCommand(newHistoryCmd())
+	cmd.AddCommand(newLogsCmd())
 
 	return cmd
 }
@@ -348,6 +349,72 @@ func newHistoryCmd() *cobra.Command {
 				if cluster.DestroyedAt != "" {
 					fmt.Fprintf(stdout, "%s %s\n", cluster.ClusterId, formatDescription(cluster, true))
 				}
+			}
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+func newLogsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "logs [cluster-id]",
+		Short: "Prints log for a cluster.",
+		Args:  cobra.MaximumNArgs(1),
+	}
+
+	follow := cmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
+	namespace := cmd.Flags().StringP("namespace", "n", "", "Print the logs of this namespace.")
+	pod := cmd.Flags().StringP("pod", "p", "", "Print the logs of this pod.")
+	container := cmd.Flags().StringP("container", "c", "", "Print the logs of this container.")
+	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). Not used for tailing logs.")
+	until := cmd.Flags().Duration("until", time.Duration(0), "Show logs until a relative timestamp (e.g. 42m for 42 minutes). Not used for tailing logs.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		cluster, err := selectCluster(ctx, args)
+		if err != nil {
+			return err
+		}
+
+		if cluster == nil {
+			return nil
+		}
+
+		stdout := console.Stdout(ctx)
+		if *follow {
+			return api.TailClusterLogs(ctx, api.Endpoint, &api.LogsOpts{
+				ClusterID: cluster.ClusterId,
+				Namespace: *namespace,
+				Pod:       *pod,
+				Container: *container,
+			}, stdout)
+		}
+
+		logOpts := &api.LogsOpts{
+			ClusterID: cluster.ClusterId,
+			Namespace: *namespace,
+			Pod:       *pod,
+			Container: *container,
+		}
+		if *since != time.Duration(0) {
+			ts := time.Now().Add(-1 * (*since))
+			logOpts.StartTs = &ts
+
+		}
+		if *until != time.Duration(0) {
+			ts := time.Now().Add(-1 * (*until))
+			logOpts.EndTs = &ts
+		}
+
+		logs, err := api.GetClusterLogs(ctx, api.Endpoint, logOpts)
+		if err != nil {
+			return fnerrors.New("failed to get cluster logs: %w", err)
+		}
+
+		for _, lb := range logs.LogBlock {
+			for _, l := range lb.Line {
+				fmt.Fprintf(stdout, "%s\n", l.String())
 			}
 		}
 

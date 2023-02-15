@@ -4,6 +4,11 @@
 
 package api
 
+import (
+	"fmt"
+	"time"
+)
+
 type CreateKubernetesClusterRequest struct {
 	OpaqueUserAuth    []byte       `json:"opaque_user_auth,omitempty"`
 	Ephemeral         bool         `json:"ephemeral,omitempty"`
@@ -79,6 +84,46 @@ type KubernetesCluster struct {
 	IngressDomain string `json:"ingress_domain,omitempty"`
 
 	Label []*LabelEntry `json:"label,omitempty"`
+}
+
+type TailLogsRequest struct {
+	ClusterID string        `json:"cluster_id,omitempty"`
+	StartTs   time.Time     `json:"start_ts,omitempty"`
+	Selector  *LogsSelector `json:"selector,omitempty"`
+}
+
+type GetLogsRequest struct {
+	ClusterID string        `json:"cluster_id,omitempty"`
+	StartTs   time.Time     `json:"start_ts,omitempty"`
+	EndTs     time.Time     `json:"end_ts,omitempty"`
+	Selector  *LogsSelector `json:"selector,omitempty"`
+}
+
+type GetLogsResponse struct {
+	LogBlock []LogBlock `json:"log_block,omitempty"`
+}
+
+type LogsSelector struct {
+	Namespace string `json:"namespace,omitempty"`
+	Pod       string `json:"pod,omitempty"`
+	Container string `json:"container,omitempty"`
+}
+
+type LogBlock struct {
+	Namespace string    `json:"namespace,omitempty"`
+	Pod       string    `json:"pod,omitempty"`
+	Container string    `json:"container,omitempty"`
+	Line      []LogLine `json:"line,omitempty"`
+}
+
+type LogLine struct {
+	Timestamp time.Time `json:"timestamp,omitempty"`
+	Content   string    `json:"content,omitempty"`
+	Stream    string    `json:"stream,omitempty"`
+}
+
+func (l LogLine) String() string {
+	return fmt.Sprintf("%s stream=%s msg=%s", l.Timestamp.Format(time.RFC3339), l.Stream, l.Content)
 }
 
 type ImageRegistry struct {
