@@ -204,7 +204,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 			out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
 				ExtendContainer: []*schema.ContainerExtension{
 					{Name: "controller", Args: []string{
-						fmt.Sprintf("--otel_endpoint=%s:%d", endpoint.AllocatedName, endpoint.Port.ContainerPort),
+						fmt.Sprintf("--otel_endpoint=%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
 					}},
 				},
 			})

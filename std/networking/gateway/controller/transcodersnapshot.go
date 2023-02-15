@@ -155,7 +155,7 @@ func NewTranscoderSnapshot(args ...SnapshotOption) (*TranscoderSnapshot, error) 
 
 	var otelCluster *cluster.Cluster
 	if opts.otelEndpoint != nil {
-		cluster, err := makeCluster(OtelClusterName, opts.otelEndpoint.addr, opts.alsClusterAddr.port, false)
+		cluster, err := makeCluster(OtelClusterName, opts.otelEndpoint.addr, opts.otelEndpoint.port, false)
 		if err != nil {
 			errs = append(errs, err)
 		} else {
