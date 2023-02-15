@@ -117,7 +117,7 @@ func IngressClass() kubedef.IngressClass {
 
 func (Ingress) Name() string { return "nginx" }
 
-func (Ingress) ComputeNaming(env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
+func (Ingress) ComputeNaming(_ context.Context, env *schema.Environment, naming *schema.Naming) (*schema.ComputedNaming, error) {
 	if naming.GetWithOrg() != "" {
 		return nil, fnerrors.InternalError("nscloud tls allocation not supported with nginx")
 	}

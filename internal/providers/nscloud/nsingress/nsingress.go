@@ -28,7 +28,7 @@ func IngressClass() kubedef.IngressClass {
 
 func (Ingress) Name() string { return "nsingress-nginx" }
 
-func (Ingress) ComputeNaming(env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+func (Ingress) ComputeNaming(ctx context.Context, env *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
 	if env.Purpose != schema.Environment_PRODUCTION {
 		return &schema.ComputedNaming{
 			Source:     source,

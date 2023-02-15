@@ -55,6 +55,7 @@ func newPrintSealedCmd() *cobra.Command {
 
 				return output(ctx, pl, &schema.Stack_Entry{
 					Server:         sealed.Result.Server,
+					ServerNaming:   sealed.Result.Server.ServerNaming,
 					Node:           sealed.Result.Nodes,
 					ServerFragment: sealed.Result.ServerFragments,
 				}, outputType)

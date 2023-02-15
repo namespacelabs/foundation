@@ -151,6 +151,7 @@ func (ft impl) ParsePackage(ctx context.Context, loc pkggraph.Location) (*pkggra
 	if parsed.Server != nil {
 		parsed.ComputePlanWith = plan.ComputePlanWith
 		parsed.LegacyComputeStartup = plan.Startup
+		parsed.Server.ServerNaming = plan.Naming
 		parsed.Server.Self.Sidecar = append(parsed.Server.Self.Sidecar, plan.Sidecars...)
 		parsed.Server.Self.InitContainer = append(parsed.Server.Self.InitContainer, plan.InitContainers...)
 		if err := parsing.AddServersAsResources(ctx, ft.loader, schema.MakePackageSingleRef(loc.PackageName), plan.DeclaredStack, parsed.Server.Self); err != nil {

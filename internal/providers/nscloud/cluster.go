@@ -270,7 +270,7 @@ type ingressClass struct {
 	clusterId     string
 }
 
-func (d ingressClass) ComputeNaming(_ *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
+func (d ingressClass) ComputeNaming(_ context.Context, _ *schema.Environment, source *schema.Naming) (*schema.ComputedNaming, error) {
 	return &schema.ComputedNaming{
 		Source:                   source,
 		BaseDomain:               d.ingressDomain,

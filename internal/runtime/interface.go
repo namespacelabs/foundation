@@ -155,7 +155,7 @@ type IngressClass interface {
 
 	// ComputeBaseNaming returns a base naming configuration that is specific
 	// to the target runtime (e.g. kubernetes cluster).
-	ComputeNaming(*schema.Environment, *schema.Naming) (*schema.ComputedNaming, error)
+	ComputeNaming(context.Context, *schema.Environment, *schema.Naming) (*schema.ComputedNaming, error)
 }
 
 // ClusterNamespace represents a target deployment environment, scoped to an application
