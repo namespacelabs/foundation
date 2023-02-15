@@ -32,4 +32,8 @@ message GitHubAttachment {
     // The name of the person or app that initiated the workflow.
     string actor = 8;
     string desc  = 9;
+    // The name of the workflow.
+    string workflow = 10;
+    // The job_id of the current job.
+    string job = 11;
 }

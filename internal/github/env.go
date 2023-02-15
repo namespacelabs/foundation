@@ -17,6 +17,8 @@ func AttachmentFromEnv(ctx context.Context) (*schema.GitHubAttachment, error) {
 		"GITHUB_REPOSITORY",
 		"GITHUB_REPOSITORY_OWNER",
 		"GITHUB_EVENT_NAME",
+		"GITHUB_WORKFLOW",
+		"GITHUB_JOB",
 		"GITHUB_RUN_ID",
 		"GITHUB_RUN_ATTEMPT",
 		"GITHUB_SHA",
@@ -33,6 +35,8 @@ func AttachmentFromEnv(ctx context.Context) (*schema.GitHubAttachment, error) {
 	return &schema.GitHubAttachment{
 		Repository:      os.Getenv("GITHUB_REPOSITORY"),
 		RepositoryOwner: os.Getenv("GITHUB_REPOSITORY_OWNER"),
+		Workflow:        os.Getenv("GITHUB_WORKFLOW"),
+		Job:             os.Getenv("GITHUB_JOB"),
 		RunId:           os.Getenv("GITHUB_RUN_ID"),
 		RunAttempt:      os.Getenv("GITHUB_RUN_ATTEMPT"),
 		Sha:             os.Getenv("GITHUB_SHA"),
