@@ -1,12 +1,13 @@
 import (
 	"namespacelabs.dev/foundation/std/fn"
+	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
 server: fn.#OpaqueServer & {
 	id:   "sun4qtee50l61888bdj0"
 	name: "gateway"
 
-	binary: image: "envoyproxy/envoy:v1.22.0@sha256:478044b54936608dd3115c89ea9fe5be670f1e78d4436927c096b4bc06eeedeb"
+	binary: image: "envoyproxy/envoy:v1.24.2@sha256:a64ee326eebcaed29118ce15bccd7753e61623f8c42c5ce2905bcb2d0dea47c8"
 
 	service: {
 		"admin": {
@@ -24,7 +25,15 @@ server: fn.#OpaqueServer & {
 	}
 }
 
+$jaegerServer: inputs.#Server & {
+	packageName: "namespacelabs.dev/foundation/std/monitoring/jaeger"
+}
+
 configure: fn.#Configure & {
+	stack: {
+		append: [$jaegerServer]
+	}
+
 	with: binary: "namespacelabs.dev/foundation/std/networking/gateway/server/configure"
 
 	sidecar: controller: {

@@ -5,22 +5,30 @@ server: fn.#OpaqueServer & {
 	name: "Jaeger"
 
 	binary: {
-		image: "jaegertracing/all-in-one:1.27@sha256:8d0bff43db3ce5c528cb6f957520511d263d7cceee012696e4afdc9087919bb9"
+		image: "jaegertracing/all-in-one:1.42@sha256:7d32a4eddec7b9a6d8265d4320a224e06ab5fe0753869715e5852401e8e7d6eb"
+	}
+
+	service: "otel-grpc": {
+		containerPort: 4317
+		metadata: protocol: "grpc"
 	}
 
 	service: "collector": {
 		containerPort: 14268
-		metadata: {
-			protocol: "thrift"
-		}
-		internal: true // Not used for development.
+		metadata: protocol: "http"
 	}
 
 	service: "web": {
 		label:         "Jaeger"
 		containerPort: 16686
-		metadata: {
-			protocol: "http"
+		metadata: protocol: "http"
+	}
+}
+
+configure: {
+	startup: {
+		env: {
+			COLLECTOR_OTLP_ENABLED: "true"
 		}
 	}
 }

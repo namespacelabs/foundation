@@ -24,6 +24,7 @@ import (
 	endpoint "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	listener "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	trace "github.com/envoyproxy/go-control-plane/envoy/config/trace/v3"
 	filev3 "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3"
 	grpcjsontranscoder "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/grpc_json_transcoder/v3"
 	routerfilter "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
@@ -44,6 +45,8 @@ const (
 	LocalRouteName   = "local_route"
 	LocalVirtualHost = "local_virtual_host"
 	StatPrefix       = "grpc_json"
+
+	OtelClusterName = "otel-cluster"
 )
 
 type httpListenerConfig struct {
@@ -76,6 +79,8 @@ type TranscoderSnapshot struct {
 	// Default clusters that should be always created. Since each envoy snapshot overrides
 	// the previous value, we need to keep a copy of the default bootstrapped clusters.
 	defaultClusters []types.Resource
+
+	otelCluster *cluster.Cluster
 }
 
 type SnapshotOptions struct {
@@ -88,6 +93,8 @@ type SnapshotOptions struct {
 
 	alsClusterName string
 	alsClusterAddr *AddressPort
+
+	otelEndpoint *AddressPort
 }
 
 type SnapshotOption func(*SnapshotOptions)
@@ -118,6 +125,12 @@ func WithAlsCluster(alsClusterName string, alsClusterAddr *AddressPort) Snapshot
 	}
 }
 
+func WithOtel(addrPort *AddressPort) SnapshotOption {
+	return func(o *SnapshotOptions) {
+		o.otelEndpoint = addrPort
+	}
+}
+
 func NewTranscoderSnapshot(args ...SnapshotOption) (*TranscoderSnapshot, error) {
 	opts := &SnapshotOptions{}
 	for _, opt := range args {
@@ -140,6 +153,16 @@ func NewTranscoderSnapshot(args ...SnapshotOption) (*TranscoderSnapshot, error) 
 		defaultClusters = append(defaultClusters, alsCluster)
 	}
 
+	var otelCluster *cluster.Cluster
+	if opts.otelEndpoint != nil {
+		cluster, err := makeCluster(OtelClusterName, opts.otelEndpoint.addr, opts.alsClusterAddr.port, false)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			otelCluster = cluster
+		}
+	}
+
 	if len(errs) > 0 {
 		return nil, multierr.New(errs...)
 	}
@@ -151,6 +174,7 @@ func NewTranscoderSnapshot(args ...SnapshotOption) (*TranscoderSnapshot, error) 
 		cache:           cache,
 		transcoders:     make(map[string]*HttpGrpcTranscoder),
 		defaultClusters: defaultClusters,
+		otelCluster:     otelCluster,
 	}, nil
 }
 
@@ -197,6 +221,12 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 	var clusters []types.Resource
 	clusters = append(clusters, t.defaultClusters...)
 
+	var otel string
+	if t.otelCluster != nil {
+		clusters = append(clusters, t.otelCluster)
+		otel = OtelClusterName
+	}
+
 	var errs []error
 	for _, transcoder := range t.transcoders {
 		clusterName := fmt.Sprintf("cluster-%s", strings.ReplaceAll(transcoder.Spec.FullyQualifiedProtoServiceName, ".", "-"))
@@ -211,7 +241,7 @@ func (t *TranscoderSnapshot) GenerateSnapshot(ctx context.Context) error {
 		return multierr.New(errs...)
 	}
 
-	httpListener, err := makeHTTPListener(t.httpConfig, transcoders)
+	httpListener, err := makeHTTPListener(t.httpConfig, transcoders, otel)
 	if err != nil {
 		return fnerrors.InternalError("failed to create the http listener: %w", err)
 	}
@@ -387,7 +417,7 @@ func makeRoute(clusterName string, transcoderSpec HttpGrpcTranscoderSpec) *route
 	}
 }
 
-func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWithCluster) (*listener.Listener, error) {
+func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWithCluster, otelCluster string) (*listener.Listener, error) {
 	var serviceNames []string
 	var routes []*route.Route
 
@@ -468,6 +498,34 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 				TypedConfig: routerconfig,
 			},
 		}},
+	}
+
+	if otelCluster != "" {
+		openTelemetryConfig, err := anypb.New(&trace.OpenTelemetryConfig{
+			GrpcService: &core.GrpcService{
+				TargetSpecifier: &core.GrpcService_EnvoyGrpc_{
+					EnvoyGrpc: &core.GrpcService_EnvoyGrpc{
+						ClusterName: otelCluster,
+					},
+				},
+				Timeout: durationpb.New(250 * time.Millisecond),
+				InitialMetadata: []*core.HeaderValue{
+					{Key: "service_name", Value: "envoy-grpc-transcoder"},
+				},
+			},
+		})
+		if err != nil {
+			return nil, fnerrors.BadInputError("failed to serialize OpenTelemetryConfig")
+		}
+
+		manager.Tracing = &hcm.HttpConnectionManager_Tracing{
+			Provider: &trace.Tracing_Http{
+				Name: "envoy.tracers.opentelemetry",
+				ConfigType: &trace.Tracing_Http_TypedConfig{
+					TypedConfig: openTelemetryConfig,
+				},
+			},
+		}
 	}
 
 	pbst, err := anypb.New(manager)

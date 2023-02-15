@@ -59,6 +59,8 @@ var (
 
 	enableLeaderElection = flag.Bool("controller_enable_leader_election", false,
 		"Enable leader election for the Kubernetes controller manager, with true guaranteeing only one active controller manager.")
+
+	otelEndpoint = flag.String("otel_endpoint", "", "Where to push metrics to.")
 )
 
 func main() {
@@ -102,12 +104,22 @@ func main() {
 		log.Fatalf("failed to parse ALS server address: %v", err)
 	}
 
-	transcoderSnapshot, err := NewTranscoderSnapshot(
-		WithEnvoyNodeId(*nodeID),
+	opts := []SnapshotOption{WithEnvoyNodeId(*nodeID),
 		WithLogger(zapLogger.Sugar()),
 		WithXdsCluster(*xdsClusterName, xdsAddrPort),
 		WithAlsCluster(*alsClusterName, alsAddrPort),
-	)
+	}
+
+	if *otelEndpoint != "" {
+		addrPort, err := ParseAddressPort(*otelEndpoint)
+		if err != nil {
+			log.Fatalf("failed to parse otel server address: %v", err)
+		}
+
+		opts = append(opts, WithOtel(addrPort))
+	}
+
+	transcoderSnapshot, err := NewTranscoderSnapshot(opts...)
 	if err != nil {
 		log.Fatalf("failed to create transcoder snapshot: %+v", err)
 	}
