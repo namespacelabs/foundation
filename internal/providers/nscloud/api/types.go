@@ -88,14 +88,13 @@ type KubernetesCluster struct {
 
 type TailLogsRequest struct {
 	ClusterID string        `json:"cluster_id,omitempty"`
-	StartTs   time.Time     `json:"start_ts,omitempty"`
 	Selector  *LogsSelector `json:"selector,omitempty"`
 }
 
 type GetLogsRequest struct {
 	ClusterID string        `json:"cluster_id,omitempty"`
-	StartTs   time.Time     `json:"start_ts,omitempty"`
-	EndTs     time.Time     `json:"end_ts,omitempty"`
+	StartTs   *time.Time    `json:"start_ts,omitempty"`
+	EndTs     *time.Time    `json:"end_ts,omitempty"`
 	Selector  *LogsSelector `json:"selector,omitempty"`
 }
 

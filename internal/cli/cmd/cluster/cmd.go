@@ -368,8 +368,7 @@ func newLogsCmd() *cobra.Command {
 	namespace := cmd.Flags().StringP("namespace", "n", "", "Print the logs of this namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "Print the logs of this pod.")
 	container := cmd.Flags().StringP("container", "c", "", "Print the logs of this container.")
-	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). Not used for tailing logs.")
-	until := cmd.Flags().Duration("until", time.Duration(0), "Show logs until a relative timestamp (e.g. 42m for 42 minutes). Not used for tailing logs.")
+	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). The flag can't be use with `--follow`.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
@@ -379,6 +378,10 @@ func newLogsCmd() *cobra.Command {
 
 		if cluster == nil {
 			return nil
+		}
+
+		if *follow && *since != time.Duration(0) {
+			return fnerrors.New("--follow flag can't be used with --since flag")
 		}
 
 		stdout := console.Stdout(ctx)
@@ -400,11 +403,6 @@ func newLogsCmd() *cobra.Command {
 		if *since != time.Duration(0) {
 			ts := time.Now().Add(-1 * (*since))
 			logOpts.StartTs = &ts
-
-		}
-		if *until != time.Duration(0) {
-			ts := time.Now().Add(-1 * (*until))
-			logOpts.EndTs = &ts
 		}
 
 		logs, err := api.GetClusterLogs(ctx, api.Endpoint, logOpts)

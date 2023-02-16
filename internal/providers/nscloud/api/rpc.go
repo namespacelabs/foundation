@@ -365,18 +365,13 @@ type LogsOpts struct {
 }
 
 func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) error {
-	var selector *LogsSelector
-	if opts.Namespace != "" || opts.Pod != "" || opts.Container != "" {
-		selector = &LogsSelector{
+	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
+		ClusterID: opts.ClusterID,
+		Selector: &LogsSelector{
 			Namespace: opts.Namespace,
 			Pod:       opts.Pod,
 			Container: opts.Container,
-		}
-	}
-
-	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
-		ClusterID: opts.ClusterID,
-		Selector:  selector,
+		},
 	}, func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
@@ -400,24 +395,15 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) 
 
 func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-cluster-logs"), func(ctx context.Context) (*GetLogsResponse, error) {
-		var selector *LogsSelector
-		if opts.Namespace != "" || opts.Pod != "" || opts.Container != "" {
-			selector = &LogsSelector{
+		req := GetLogsRequest{
+			ClusterID: opts.ClusterID,
+			StartTs:   opts.StartTs,
+			EndTs:     opts.EndTs,
+			Selector: &LogsSelector{
 				Namespace: opts.Namespace,
 				Pod:       opts.Pod,
 				Container: opts.Container,
-			}
-		}
-
-		req := GetLogsRequest{
-			ClusterID: opts.ClusterID,
-			Selector:  selector,
-		}
-		if opts.StartTs != nil {
-			req.StartTs = *opts.StartTs
-		}
-		if opts.EndTs != nil {
-			req.EndTs = *opts.EndTs
+			},
 		}
 
 		var response GetLogsResponse
