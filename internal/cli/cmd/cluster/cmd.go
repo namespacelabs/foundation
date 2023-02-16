@@ -368,7 +368,7 @@ func newLogsCmd() *cobra.Command {
 	namespace := cmd.Flags().StringP("namespace", "n", "", "Print the logs of this namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "Print the logs of this pod.")
 	container := cmd.Flags().StringP("container", "c", "", "Print the logs of this container.")
-	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). The flag can't be use with `--follow`.")
+	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
