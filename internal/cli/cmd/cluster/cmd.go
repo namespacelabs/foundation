@@ -435,7 +435,7 @@ func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesClust
 	}
 
 	cl, err := selectTableClusters(ctx, clusters.Clusters, previousRuns)
-	if err != nil {
+	if err != nil || cl == nil {
 		return nil, err
 	}
 
@@ -506,7 +506,7 @@ func tableClusters(ctx context.Context,
 
 	if selectCluster {
 		row, err := tui.SelectTable(ctx, cols, rows)
-		if err != nil {
+		if err != nil || row == nil {
 			return nil, err
 		}
 		cl := clusterIdMap[row[0]]
