@@ -5,6 +5,7 @@
 package api
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -34,6 +36,8 @@ type API struct {
 	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
+	TailClusterLogs              fnapi.Call[TailLogsRequest]
+	GetClusterLogs               fnapi.Call[GetLogsRequest]
 }
 
 var Endpoint API
@@ -100,6 +104,17 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fetchTenantToken,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
+		},
+		TailClusterLogs: fnapi.Call[TailLogsRequest]{
+			// XXX: hardcoded for now, we need to add an alias to api.<region>.nscluster.cloud
+			Endpoint:   fmt.Sprintf("https://logging.nscloud-%s.namespacelabs.nscloud.dev", regionName),
+			FetchToken: fetchTenantToken,
+			Method:     "logs/tail",
+		},
+		GetClusterLogs: fnapi.Call[GetLogsRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fetchTenantToken,
+			Method:     "nsl.vm.logging.LoggingService/GetLogs",
 		},
 	}
 }
@@ -337,6 +352,66 @@ func ListClusters(ctx context.Context, api API, previousRuns bool) (*KubernetesC
 		}
 
 		return &list, nil
+	})
+}
+
+type LogsOpts struct {
+	ClusterID string
+	StartTs   *time.Time
+	EndTs     *time.Time
+	Namespace string
+	Pod       string
+	Container string
+}
+
+func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) error {
+	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
+		ClusterID: opts.ClusterID,
+		Selector: &LogsSelector{
+			Namespace: opts.Namespace,
+			Pod:       opts.Pod,
+			Container: opts.Container,
+		},
+	}, func(r io.Reader) error {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			var logBlock LogBlock
+			if err := json.Unmarshal(scanner.Bytes(), &logBlock); err != nil {
+				fmt.Fprintf(console.Debug(ctx), "Failed to process a log entry: %v\n", err)
+				continue
+			}
+
+			for _, l := range logBlock.Line {
+				fmt.Fprintf(w, "%s\n", l.String())
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get-cluster-logs"), func(ctx context.Context) (*GetLogsResponse, error) {
+		req := GetLogsRequest{
+			ClusterID: opts.ClusterID,
+			StartTs:   opts.StartTs,
+			EndTs:     opts.EndTs,
+			Selector: &LogsSelector{
+				Namespace: opts.Namespace,
+				Pod:       opts.Pod,
+				Container: opts.Container,
+			},
+		}
+
+		var response GetLogsResponse
+		if err := api.GetClusterLogs.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+
+		return &response, nil
 	})
 }
 

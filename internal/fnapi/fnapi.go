@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 )
@@ -136,14 +137,20 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	}
 
 	st := &spb.Status{}
-	dec := json.NewDecoder(response.Body)
-	if err := dec.Decode(st); err == nil {
+	respBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return fnerrors.InvocationError("namespace api", "reading response body: %w", err)
+	}
+
+	if err := json.Unmarshal(respBody, st); err == nil {
 		if st.Code == int32(codes.Unauthenticated) {
 			return auth.ErrRelogin
 		}
 
 		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
 
 	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
 	grpcStatus := response.Header[http.CanonicalHeaderKey("grpc-status")]
