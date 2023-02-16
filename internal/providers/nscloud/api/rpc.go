@@ -382,7 +382,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) 
 			}
 
 			for _, l := range logBlock.Line {
-				fmt.Fprintf(w, "%s\n", l.String())
+				fmt.Fprintln(w, l.String())
 			}
 		}
 

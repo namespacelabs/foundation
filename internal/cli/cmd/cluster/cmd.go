@@ -404,7 +404,7 @@ func newLogsCmd() *cobra.Command {
 
 		for _, lb := range logs.LogBlock {
 			for _, l := range lb.Line {
-				fmt.Fprintf(stdout, "%s\n", l.String())
+				fmt.Fprintln(stdout, l.String())
 			}
 		}
 
