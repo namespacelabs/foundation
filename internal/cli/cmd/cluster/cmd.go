@@ -7,6 +7,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -29,6 +30,8 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
+
+var ErrEmptyClusteList = errors.New("no clusters")
 
 func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
@@ -139,12 +142,15 @@ func newListCmd() *cobra.Command {
 			return err
 		}
 
-		stdout := console.Stdout(ctx)
-
 		if *rawOutput {
+			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
 			return enc.Encode(clusters)
+		}
+		if len(clusters.Clusters) == 0 {
+			printCreateClusterMsg(ctx)
+			return nil
 		}
 		return staticTableClusters(ctx, clusters.Clusters, history)
 	})
@@ -162,6 +168,10 @@ func newSshCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
 		if err != nil {
+			if errors.Is(err, ErrEmptyClusteList) {
+				printCreateClusterMsg(ctx)
+				return nil
+			}
 			return err
 		}
 
@@ -191,6 +201,10 @@ func newPortForwardCmd() *cobra.Command {
 
 		cluster, err := selectCluster(ctx, args)
 		if err != nil {
+			if errors.Is(err, ErrEmptyClusteList) {
+				printCreateClusterMsg(ctx)
+				return nil
+			}
 			return err
 		}
 
@@ -216,6 +230,10 @@ func newDestroyCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		clusters, err := selectClusters(ctx, args)
 		if err != nil {
+			if errors.Is(err, ErrEmptyClusteList) {
+				printCreateClusterMsg(ctx)
+				return nil
+			}
 			return err
 		}
 
@@ -295,6 +313,10 @@ func newKubeconfigCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
 		if err != nil {
+			if errors.Is(err, ErrEmptyClusteList) {
+				printCreateClusterMsg(ctx)
+				return nil
+			}
 			return err
 		}
 
@@ -336,12 +358,16 @@ func newHistoryCmd() *cobra.Command {
 			return err
 		}
 
-		stdout := console.Stdout(ctx)
-
 		if *rawOutput {
+			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
 			return enc.Encode(clusters)
+		}
+
+		if len(clusters.Clusters) == 0 {
+			printCreateClusterMsg(ctx)
+			return nil
 		}
 
 		return staticTableClusters(ctx, clusters.Clusters, history)
@@ -349,6 +375,7 @@ func newHistoryCmd() *cobra.Command {
 
 	return cmd
 }
+
 func newLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logs [cluster-id]",
@@ -365,6 +392,10 @@ func newLogsCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
 		if err != nil {
+			if errors.Is(err, ErrEmptyClusteList) {
+				printCreateClusterMsg(ctx)
+				return nil
+			}
 			return err
 		}
 
@@ -432,6 +463,9 @@ func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesClust
 	clusters, err := api.ListClusters(ctx, api.Endpoint, previousRuns)
 	if err != nil {
 		return nil, err
+	}
+	if len(clusters.Clusters) == 0 {
+		return nil, ErrEmptyClusteList
 	}
 
 	cl, err := selectTableClusters(ctx, clusters.Clusters, previousRuns)
@@ -649,4 +683,9 @@ func portForward(ctx context.Context, cluster *api.KubernetesCluster, targetPort
 			_, _ = io.Copy(proxyConn, conn)
 		}()
 	}
+}
+
+func printCreateClusterMsg(ctx context.Context) {
+	stdout := console.Stdout(ctx)
+	fmt.Fprintf(stdout, "No clusters. Try creating one with %s cluster create.\n", os.Args[0])
 }
