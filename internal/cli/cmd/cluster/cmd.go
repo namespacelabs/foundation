@@ -384,10 +384,10 @@ func newLogsCmd() *cobra.Command {
 	}
 
 	follow := cmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
+	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
 	namespace := cmd.Flags().StringP("namespace", "n", "", "Print the logs of this namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "Print the logs of this pod.")
 	container := cmd.Flags().StringP("container", "c", "", "Print the logs of this container.")
-	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
@@ -407,21 +407,26 @@ func newLogsCmd() *cobra.Command {
 			return fnerrors.New("--follow flag can't be used with --since flag")
 		}
 
+		var includeSelector []*api.LogsSelector
+		if *namespace != "" || *pod != "" || *container != "" {
+			includeSelector = append(includeSelector, &api.LogsSelector{
+				Namespace: *namespace,
+				Pod:       *pod,
+				Container: *container,
+			})
+		}
+
 		stdout := console.Stdout(ctx)
 		if *follow {
 			return api.TailClusterLogs(ctx, api.Endpoint, &api.LogsOpts{
 				ClusterID: cluster.ClusterId,
-				Namespace: *namespace,
-				Pod:       *pod,
-				Container: *container,
+				Include:   includeSelector,
 			}, stdout)
 		}
 
 		logOpts := &api.LogsOpts{
 			ClusterID: cluster.ClusterId,
-			Namespace: *namespace,
-			Pod:       *pod,
-			Container: *container,
+			Include:   includeSelector,
 		}
 		if *since != time.Duration(0) {
 			ts := time.Now().Add(-1 * (*since))

@@ -87,15 +87,17 @@ type KubernetesCluster struct {
 }
 
 type TailLogsRequest struct {
-	ClusterID string        `json:"cluster_id,omitempty"`
-	Selector  *LogsSelector `json:"selector,omitempty"`
+	ClusterID string          `json:"cluster_id,omitempty"`
+	Include   []*LogsSelector `json:"include,omitempty"`
+	Exclude   []*LogsSelector `json:"exclude,omitempty"`
 }
 
 type GetLogsRequest struct {
-	ClusterID string        `json:"cluster_id,omitempty"`
-	StartTs   *time.Time    `json:"start_ts,omitempty"`
-	EndTs     *time.Time    `json:"end_ts,omitempty"`
-	Selector  *LogsSelector `json:"selector,omitempty"`
+	ClusterID string          `json:"cluster_id,omitempty"`
+	StartTs   *time.Time      `json:"start_ts,omitempty"`
+	EndTs     *time.Time      `json:"end_ts,omitempty"`
+	Include   []*LogsSelector `json:"include,omitempty"`
+	Exclude   []*LogsSelector `json:"exclude,omitempty"`
 }
 
 type GetLogsResponse struct {

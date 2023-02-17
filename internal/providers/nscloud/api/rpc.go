@@ -359,19 +359,15 @@ type LogsOpts struct {
 	ClusterID string
 	StartTs   *time.Time
 	EndTs     *time.Time
-	Namespace string
-	Pod       string
-	Container string
+	Include   []*LogsSelector
+	Exclude   []*LogsSelector
 }
 
 func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) error {
 	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
 		ClusterID: opts.ClusterID,
-		Selector: &LogsSelector{
-			Namespace: opts.Namespace,
-			Pod:       opts.Pod,
-			Container: opts.Container,
-		},
+		Include:   opts.Include,
+		Exclude:   opts.Exclude,
 	}, func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
@@ -399,11 +395,8 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 			ClusterID: opts.ClusterID,
 			StartTs:   opts.StartTs,
 			EndTs:     opts.EndTs,
-			Selector: &LogsSelector{
-				Namespace: opts.Namespace,
-				Pod:       opts.Pod,
-				Container: opts.Container,
-			},
+			Include:   opts.Include,
+			Exclude:   opts.Exclude,
 		}
 
 		var response GetLogsResponse
