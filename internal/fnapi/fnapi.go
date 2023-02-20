@@ -196,8 +196,11 @@ func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
 	case int32(codes.PermissionDenied):
 		return fnerrors.NoAccessToLimitedFeature()
 
+	case int32(codes.FailedPrecondition):
+		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).
+		return fnerrors.New("failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+
 	default:
 		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 	}
-
 }
