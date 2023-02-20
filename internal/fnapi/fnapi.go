@@ -151,7 +151,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
 
 	if grpcDetails := response.Header[http.CanonicalHeaderKey("grpc-status-details-bin")]; len(grpcDetails) > 0 {
-		data, err := base64.StdEncoding.DecodeString(grpcDetails[0])
+		data, err := base64.RawStdEncoding.DecodeString(grpcDetails[0])
 		if err != nil {
 			return fnerrors.InternalError("failed to decode grpc details: %w", err)
 		}
