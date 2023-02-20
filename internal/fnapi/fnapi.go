@@ -7,6 +7,7 @@ package fnapi
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -136,21 +138,30 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		return handle(response.Body)
 	}
 
-	st := &spb.Status{}
 	respBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		return fnerrors.InvocationError("namespace api", "reading response body: %w", err)
 	}
 
+	st := &spb.Status{}
 	if err := json.Unmarshal(respBody, st); err == nil {
-		if st.Code == int32(codes.Unauthenticated) {
-			return auth.ErrRelogin
-		}
-
-		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return c.handleGrpcStatus(st)
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
+
+	if grpcDetails := response.Header[http.CanonicalHeaderKey("grpc-status-details-bin")]; len(grpcDetails) > 0 {
+		data, err := base64.StdEncoding.DecodeString(grpcDetails[0])
+		if err != nil {
+			return fnerrors.InternalError("failed to decode grpc details: %w", err)
+		}
+
+		if err := proto.Unmarshal(data, st); err != nil {
+			return fnerrors.InternalError("failed to unmarshal grpc details: %w", err)
+		}
+
+		return c.handleGrpcStatus(st)
+	}
 
 	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
 	grpcStatus := response.Header[http.CanonicalHeaderKey("grpc-status")]
@@ -161,12 +172,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 			st.Code = int32(intVar)
 			st.Message = grpcMessage[0]
 
-			switch st.Code {
-			case int32(codes.PermissionDenied):
-				return fnerrors.NoAccessToLimitedFeature()
-			}
-
-			return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+			return c.handleGrpcStatus(st)
 		}
 	}
 
@@ -180,4 +186,18 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	default:
 		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
+}
+
+func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
+	switch st.Code {
+	case int32(codes.Unauthenticated):
+		return auth.ErrRelogin
+
+	case int32(codes.PermissionDenied):
+		return fnerrors.NoAccessToLimitedFeature()
+
+	default:
+		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+	}
+
 }
