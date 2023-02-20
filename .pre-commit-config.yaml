@@ -6,3 +6,9 @@ repos:
       - id: check-yaml
         args: [--allow-multiple-documents]
       - id: trailing-whitespace
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+      - id: go-mod-tidy-repo
+        always_run: true
+      - id: go-fmt
