@@ -9,18 +9,15 @@ We use `goreleaser` for our releases. You should have it under your `nix-shell`.
 Our releases are published to:
 
 - [GitHub releases](https://github.com/namespacelabs/foundation/releases),
-- [Public S3 bucket](https://s3.console.aws.amazon.com/s3/buckets/ns-releases). This allows
-  end-users easily download binaries without messing with GitHub authentication to access the
-  private repos.
 - [Homebrew TAP](https://github.com/namespacelabs/homebrew-namespace)
 
-Before releasing a new `ns` version, please verify that `ns test --all` passes in other
+Before releasing a new `ns` version, please rebuild `ns` and verify that `ns test --all` passes in other
 repos (e.g. examples, internal).
 
 You can test a release by running:
 
 ```bash
-goreleaser release --rm-dist --snapshot
+goreleaser release --clean --snapshot
 ```
 
 Our versioning scheme uses a ever-increasing minor version. After `0.0.23` comes `0.0.24`, and so
@@ -31,7 +28,7 @@ To issue an actual release:
 1. Create a Github PAT with `write_packages` permissions and place it in
    `~/.config/goreleaser/github_token`. This allows GoReleaser to upload to Github releases.
 2. Pick a new version (check the existing tag list): `git tag v0.0.24`
-3. Run the release `goreleaser release --rm-dist`.
+3. Run the release `goreleaser release --clean`.
 4. After the release is complete, remember to remove the `dist` directory to keep your workspace
    size small.
 
