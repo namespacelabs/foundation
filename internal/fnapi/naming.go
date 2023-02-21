@@ -83,6 +83,14 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 
 		var nr IssueResponse
 
+		fetchTenantToken := func(ctx context.Context) (string, error) {
+			t, err := FetchTenantToken(ctx)
+			if err != nil {
+				return "", err
+			}
+			return t.Raw(), nil
+		}
+
 		if err := (Call[IssueRequest]{
 			Endpoint: EndpointAddress,
 			Method:   "nsl.naming.NamingService/Issue",
@@ -90,7 +98,7 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 				rt.UserAuth = ua
 				return nil
 			},
-			FetchToken: auth.GenerateToken,
+			FetchToken: fetchTenantToken,
 		}).Do(ctx, req, DecodeJSONResponse(&nr)); err != nil {
 			return nil, err
 		}

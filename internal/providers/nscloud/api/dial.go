@@ -14,10 +14,11 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/chisel/share/cnet"
 	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
 func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (net.Conn, error) {
-	token, err := FetchTenantToken(ctx)
+	token, err := fnapi.FetchTenantToken(ctx)
 	if err != nil {
 		return nil, err
 	}

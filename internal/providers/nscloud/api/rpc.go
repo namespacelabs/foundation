@@ -18,7 +18,6 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -27,8 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/github"
 	"namespacelabs.dev/foundation/std/tasks"
 )
-
-const AdminScope = "admin"
 
 type API struct {
 	StartCreateKubernetesCluster fnapi.Call[CreateKubernetesClusterRequest]
@@ -68,7 +65,7 @@ func Register() {
 
 func MakeAPI(endpoint string) API {
 	fetchTenantToken := func(ctx context.Context) (string, error) {
-		t, err := FetchTenantToken(ctx)
+		t, err := fnapi.FetchTenantToken(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -117,27 +114,6 @@ func MakeAPI(endpoint string) API {
 			Method:     "nsl.vm.logging.LoggingService/GetLogs",
 		},
 	}
-}
-
-func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
-		if !fnapi.AdminMode {
-			return auth.LoadTenantToken(ctx)
-		}
-
-		// In admin mode we exchange user token to a tenant token with `admin` scope.
-		userToken, err := auth.GenerateToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		t, err := fnapi.ExchangeUserToken(ctx, userToken, AdminScope)
-		if err != nil {
-			return nil, err
-		}
-
-		return &auth.Token{TenantToken: t.TenantToken}, nil
-	})
 }
 
 type CreateClusterResult struct {
