@@ -18,7 +18,6 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -27,8 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/github"
 	"namespacelabs.dev/foundation/std/tasks"
 )
-
-const AdminScope = "admin"
 
 type API struct {
 	StartCreateKubernetesCluster fnapi.Call[CreateKubernetesClusterRequest]
@@ -67,77 +64,48 @@ func Register() {
 }
 
 func MakeAPI(endpoint string) API {
-	fetchTenantToken := func(ctx context.Context) (string, error) {
-		t, err := FetchTenantToken(ctx)
-		if err != nil {
-			return "", err
-		}
-		return t.Raw(), nil
-	}
-
 	return API{
 		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		},
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "nsl.vm.api.VMService/GetKubernetesCluster",
 		},
 
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "nsl.vm.api.VMService/WaitKubernetesCluster",
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "nsl.vm.api.VMService/ListKubernetesClusters",
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
 			// XXX: hardcoded for now, we need to add an alias to api.<region>.nscluster.cloud
 			Endpoint:   fmt.Sprintf("https://logging.nscloud-%s.namespacelabs.nscloud.dev", regionName),
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "logs/tail",
 		},
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fetchTenantToken,
+			FetchToken: fnapi.FetchTenantTokenRaw,
 			Method:     "nsl.vm.logging.LoggingService/GetLogs",
 		},
 	}
-}
-
-func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
-		if !fnapi.AdminMode {
-			return auth.LoadTenantToken(ctx)
-		}
-
-		// In admin mode we exchange user token to a tenant token with `admin` scope.
-		userToken, err := auth.GenerateToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		t, err := fnapi.ExchangeUserToken(ctx, userToken, AdminScope)
-		if err != nil {
-			return nil, err
-		}
-
-		return &auth.Token{TenantToken: t.TenantToken}, nil
-	})
 }
 
 type CreateClusterResult struct {

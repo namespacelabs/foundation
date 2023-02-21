@@ -16,6 +16,7 @@ import (
 	"golang.org/x/mod/semver"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -123,7 +124,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		}
 
 		// We must fetch a token with our parent context, so we get a task sink etc.
-		token, err := api.FetchTenantToken(ctx)
+		token, err := fnapi.FetchTenantToken(ctx)
 		if err != nil {
 			return nil, err
 		}

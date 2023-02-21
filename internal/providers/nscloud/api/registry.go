@@ -8,10 +8,11 @@ import (
 	"context"
 
 	"github.com/google/go-containerregistry/pkg/authn"
+	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
 func RegistryCreds(ctx context.Context) (*authn.Basic, error) {
-	token, err := FetchTenantToken(ctx)
+	token, err := fnapi.FetchTenantToken(ctx)
 	if err != nil {
 		return nil, err
 	}

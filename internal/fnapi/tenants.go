@@ -6,6 +6,9 @@ package fnapi
 
 import (
 	"context"
+
+	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type ExchangeGithubTokenRequest struct {
@@ -57,13 +60,48 @@ type ExchangeTenantTokenResponse struct {
 	TenantToken string `json:"tenant_token,omitempty"`
 }
 
-func ExchangeTenantToken(ctx context.Context, token string, scopes []string) (ExchangeTenantTokenResponse, error) {
-	req := ExchangeTenantTokenRequest{TenantToken: token, Scopes: scopes}
+func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTokenResponse, error) {
+	req := ExchangeTenantTokenRequest{Scopes: scopes}
 
 	var res ExchangeTenantTokenResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeTenantToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[any]{
+		Endpoint:   EndpointAddress,
+		Method:     "nsl.tenants.TenantsService/ExchangeTenantToken",
+		FetchToken: FetchTenantTokenRaw,
+	}).Do(ctx, req, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeTenantTokenResponse{}, err
 	}
 
 	return res, nil
+}
+
+const AdminScope = "admin"
+
+func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
+		if AdminMode {
+			// In admin mode we exchange user token to a tenant token with `admin` scope.
+			userToken, err := auth.GenerateToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			t, err := ExchangeUserToken(ctx, userToken, AdminScope)
+			if err != nil {
+				return nil, err
+			}
+
+			return &auth.Token{TenantToken: t.TenantToken}, nil
+		}
+
+		return auth.LoadTenantToken(ctx)
+	})
+}
+
+func FetchTenantTokenRaw(ctx context.Context) (string, error) {
+	t, err := FetchTenantToken(ctx)
+	if err != nil {
+		return "", err
+	}
+	return t.Raw(), nil
 }
