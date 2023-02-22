@@ -12,7 +12,11 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/encoding/prototext"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/rest"
-	"k8s.io/kubectl/pkg/scheme"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/parsing/module"
@@ -123,10 +126,14 @@ type X interface {
 }
 
 func listAndWatch(ctx context.Context, cfg *rest.Config, resource schema.GroupVersionResource) error {
-	_, client, err := MakeGroupVersionBasedClientAndConfig(ctx, cfg, resource.GroupVersion())
+	r := prepareScheme()
+
+	_, client, err := MakeGroupVersionBasedClientAndConfig(ctx, r, cfg, resource.GroupVersion())
 	if err != nil {
 		return err
 	}
+
+	parameterCodec := runtime.NewParameterCodec(r)
 
 	var opts metav1.ListOptions
 	opts.Limit = 20
@@ -142,7 +149,7 @@ func listAndWatch(ctx context.Context, cfg *rest.Config, resource schema.GroupVe
 
 	for {
 		var result unstructured.UnstructuredList
-		if err := client.Get().Resource(resource.Resource).VersionedParams(&opts, scheme.ParameterCodec).Do(ctx).Into(&result); err != nil {
+		if err := client.Get().Resource(resource.Resource).VersionedParams(&opts, parameterCodec).Do(ctx).Into(&result); err != nil {
 			return err
 		}
 
@@ -162,7 +169,7 @@ func listAndWatch(ctx context.Context, cfg *rest.Config, resource schema.GroupVe
 
 	wintf, err := client.Get().
 		Resource(resource.Resource).
-		VersionedParams(&wopts, scheme.ParameterCodec).
+		VersionedParams(&wopts, parameterCodec).
 		Watch(ctx)
 	if err != nil {
 		return err
@@ -195,26 +202,18 @@ func listAndWatch(ctx context.Context, cfg *rest.Config, resource schema.GroupVe
 	}
 }
 
-func MakeGroupVersionBasedClientAndConfig(ctx context.Context, original *rest.Config, gv schema.GroupVersion) (*rest.Config, rest.Interface, error) {
-	config := copyAndSetDefaults(*original, gv)
+func MakeGroupVersionBasedClientAndConfig(ctx context.Context, r *runtime.Scheme, original *rest.Config, gv schema.GroupVersion) (*rest.Config, rest.Interface, error) {
+	config := copyAndSetDefaults(*original, r, gv)
 	client, err := rest.RESTClientFor(config)
 	return config, client, err
 }
 
-func copyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config {
+func copyAndSetDefaults(config rest.Config, r *runtime.Scheme, gv schema.GroupVersion) *rest.Config {
 	config.GroupVersion = &gv
 	if gv.Group == "" {
 		config.APIPath = "/api"
 	} else {
 		config.APIPath = "/apis"
-	}
-
-	r := runtime.NewScheme()
-	if err := v1.AddToScheme(r); err != nil {
-		panic(err)
-	}
-	if err := appsv1.AddToScheme(r); err != nil {
-		panic(err)
 	}
 
 	// config.NegotiatedSerializer = unstructuredscheme.NewUnstructuredNegotiatedSerializer()
@@ -226,4 +225,20 @@ func copyAndSetDefaults(config rest.Config, gv schema.GroupVersion) *rest.Config
 	}
 
 	return &config
+}
+
+func prepareScheme() *runtime.Scheme {
+	r := runtime.NewScheme()
+
+	for _, add := range []func(*runtime.Scheme) error{
+		metav1.AddMetaToScheme, v1.AddToScheme, appsv1.AddToScheme,
+		networkingv1.AddToScheme, batchv1.AddToScheme, rbacv1.AddToScheme,
+		apiextensionsv1.AddToScheme,
+	} {
+		if err := add(r); err != nil {
+			panic(err)
+		}
+	}
+
+	return r
 }
