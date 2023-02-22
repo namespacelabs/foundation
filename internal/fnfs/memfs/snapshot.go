@@ -106,7 +106,7 @@ func (m *matcher) excludes(name string) bool {
 	return false
 }
 
-func (m *matcher) includes(path, name string) bool {
+func (m *matcher) includes(path string) bool {
 	if m.requiredFileMap != nil {
 		if _, ok := m.requiredFileMap[path]; ok {
 			if m.observedFileMap == nil {
@@ -121,7 +121,7 @@ func (m *matcher) includes(path, name string) bool {
 
 	if len(m.includeGlobs) > 0 {
 		for _, glob := range m.includeGlobs {
-			if glob.Match(name) {
+			if glob.Match(path) {
 				return true
 			}
 		}
@@ -161,7 +161,7 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 
 	var snapshot FS
 	if err := fnfs.WalkDir(fsys, dir, func(path string, d fs.DirEntry) error {
-		if m.excludes(d.Name()) {
+		if m.excludes(path) {
 			if d.IsDir() {
 				return fs.SkipDir
 			}
@@ -175,7 +175,7 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 			return fs.SkipDir
 		}
 
-		if !m.includes(path, d.Name()) {
+		if !m.includes(path) {
 			return nil
 		}
 
