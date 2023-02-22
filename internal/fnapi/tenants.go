@@ -69,7 +69,7 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 	if err := (Call[any]{
 		Endpoint:   EndpointAddress,
 		Method:     "nsl.tenants.TenantsService/ExchangeTenantToken",
-		FetchToken: FetchTenantTokenRaw,
+		FetchToken: FetchTenantToken,
 	}).Do(ctx, req, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeTenantTokenResponse{}, err
 	}
@@ -78,7 +78,7 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 }
 
 func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
+	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
 		if AdminMode {
 			// In admin mode we exchange user token to a tenant token with `admin` scope.
 			userToken, err := auth.GenerateToken(ctx)

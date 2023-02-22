@@ -67,42 +67,42 @@ func MakeAPI(endpoint string) API {
 	return API{
 		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		},
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesCluster",
 		},
 
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/WaitKubernetesCluster",
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/ListKubernetesClusters",
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
 			// XXX: hardcoded for now, we need to add an alias to api.<region>.nscluster.cloud
 			Endpoint:   fmt.Sprintf("https://logging.nscloud-%s.namespacelabs.nscloud.dev", regionName),
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "logs/tail",
 		},
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantTokenRaw,
+			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.logging.LoggingService/GetLogs",
 		},
 	}

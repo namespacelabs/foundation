@@ -90,7 +90,7 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 				rt.UserAuth = ua
 				return nil
 			},
-			FetchToken: FetchTenantTokenRaw,
+			FetchToken: FetchTenantToken,
 		}).Do(ctx, req, DecodeJSONResponse(&nr)); err != nil {
 			return nil, err
 		}
