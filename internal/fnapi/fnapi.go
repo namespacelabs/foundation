@@ -60,7 +60,7 @@ type Call[RequestT any] struct {
 	Method                 string
 	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
 	OptionalAuth           bool // Don't fail if not authenticated.
-	FetchToken             func(ctx context.Context) (*auth.Token, error)
+	FetchToken             func(context.Context) (*auth.Token, error)
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
