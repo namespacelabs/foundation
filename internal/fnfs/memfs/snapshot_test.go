@@ -38,14 +38,14 @@ func TestSnapshot(t *testing.T) {
 			{"foo", true},
 			{"foo/bar", false},
 		}},
-		{"include glob", nil, []string{"*.cue"}, nil, []simpleEntry{
+		{"include glob", nil, []string{"**/*.cue"}, nil, []simpleEntry{
 			{Name: "foo", IsDir: true},
 			{Name: "foo/x", IsDir: true},
 			{Name: "foo/x/z.cue", IsDir: false},
 			{Name: "quux", IsDir: true},
 			{Name: "quux/baz.cue", IsDir: false}},
 		},
-		{"exclude directory", nil, nil, []string{"x"}, []simpleEntry{
+		{"exclude directory", nil, nil, []string{"*/x"}, []simpleEntry{
 			{"foo", true},
 			{"foo/bar", false},
 			{"quux", true},
