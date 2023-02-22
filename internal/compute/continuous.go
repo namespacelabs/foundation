@@ -113,8 +113,13 @@ func (g *sinkInvocation) sink(ctx context.Context, in *In, updated func(context.
 	}
 
 	if len(requiredKeys) == 0 {
-		// XXX Make sure that the error is propagated to the caller.
-		_ = updated(ctx, Resolved{})
+		g.eg.Go(func(ctx context.Context) error {
+			err := updated(ctx, Resolved{})
+			if err == ErrDoneSinking {
+				return nil
+			}
+			return err
+		})
 		return
 	}
 

@@ -1,1 +1,4 @@
 node_modules
+
+# Ignore invalid soft link
+src/link_name

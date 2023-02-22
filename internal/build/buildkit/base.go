@@ -55,7 +55,9 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		// Local contents are added as dependencies to trigger continuous builds.
 		for k, local := range l.localDirs {
 			in = in.
-				Computable(fmt.Sprintf("local%d:contents", k), memfs.DeferSnapshot(local.Module.ReadOnlyFS(local.Path), memfs.SnapshotOpts{})).
+				Computable(fmt.Sprintf("local%d:contents", k), memfs.DeferSnapshot(local.Module.ReadOnlyFS(local.Path), memfs.SnapshotOpts{
+					ExcludeFilesGlobs: local.ExcludePatterns,
+				})).
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}
 	} else if len(l.localDirs) > 0 {
