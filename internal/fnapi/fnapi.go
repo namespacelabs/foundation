@@ -59,7 +59,6 @@ type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
 	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
-	OptionalAuth           bool // Don't fail if not authenticated.
 	FetchToken             func(context.Context) (*auth.Token, error)
 }
 
@@ -86,7 +85,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	if c.FetchToken != nil {
 		tok, err := c.FetchToken(ctx)
-		if err != nil && !c.OptionalAuth {
+		if err != nil {
 			return err
 		}
 		headers.Add("Authorization", "Bearer "+tok.Raw())

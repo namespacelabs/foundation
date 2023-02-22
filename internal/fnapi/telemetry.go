@@ -237,9 +237,8 @@ func (tel *Telemetry) postRecordInvocationRequest(ctx context.Context, req *reco
 	defer cancel()
 
 	record := Call[recordInvocationRequest]{
-		Endpoint:     tel.backendAddress,
-		Method:       fmt.Sprintf("%s/RecordInvocation", telemetryServiceName),
-		OptionalAuth: true,
+		Endpoint: tel.backendAddress,
+		Method:   fmt.Sprintf("%s/RecordInvocation", telemetryServiceName),
 	}
 
 	return record.Do(ctx, *req, nil)
