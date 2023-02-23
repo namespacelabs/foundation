@@ -255,10 +255,6 @@ jobs:
       - name: Exchange Github token
         run: /tmp/ns auth exchange-github-token
 
-      - name: Login
-        # Consider using secrets.GITHUB_TOKEN
-        run: echo ${{ secrets.NSL_GH_SERVICE }} | /tmp/ns login robot github.com/namespacelabs/foundation
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
