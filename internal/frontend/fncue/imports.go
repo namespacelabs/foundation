@@ -93,7 +93,10 @@ func CollectImports(ctx context.Context, resolver WorkspaceLoader, pkgname strin
 }
 
 func loadPackageContents(ctx context.Context, loader WorkspaceLoader, pkgName string) (*CuePackage, error) {
-	pkg, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{IncludeFilesGlobs: []string{"**/*.cue"}})
+	// Skip all files but CUE files.
+	exclude := []string{"*", "!**/*.cue"}
+
+	pkg, err := loader.SnapshotDir(ctx, schema.PackageName(pkgName), memfs.SnapshotOpts{ExcludePatterns: exclude})
 	if err != nil {
 		return nil, err
 	}
