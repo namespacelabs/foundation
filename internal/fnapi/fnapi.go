@@ -51,7 +51,7 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 	return Call[any]{
 		Endpoint:   endpoint,
 		Method:     method,
-		FetchToken: auth.GenerateToken,
+		FetchToken: FetchTenantToken,
 	}.Do(ctx, req, handle)
 }
 
@@ -59,8 +59,7 @@ type Call[RequestT any] struct {
 	Endpoint               string
 	Method                 string
 	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
-	OptionalAuth           bool // Don't fail if not authenticated.
-	FetchToken             func(context.Context) (string, error)
+	FetchToken             func(context.Context) (*auth.Token, error)
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -86,10 +85,10 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	if c.FetchToken != nil {
 		tok, err := c.FetchToken(ctx)
-		if err != nil && !c.OptionalAuth {
+		if err != nil {
 			return err
 		}
-		headers.Add("Authorization", "Bearer "+tok)
+		headers.Add("Authorization", "Bearer "+tok.Raw())
 
 		if c.PreAuthenticateRequest != nil {
 			user, err := auth.LoadUser()

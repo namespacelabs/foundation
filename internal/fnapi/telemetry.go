@@ -22,7 +22,6 @@ import (
 	"go.uber.org/atomic"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/status"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -238,10 +237,8 @@ func (tel *Telemetry) postRecordInvocationRequest(ctx context.Context, req *reco
 	defer cancel()
 
 	record := Call[recordInvocationRequest]{
-		Endpoint:     tel.backendAddress,
-		Method:       fmt.Sprintf("%s/RecordInvocation", telemetryServiceName),
-		OptionalAuth: true,
-		FetchToken:   auth.GenerateToken,
+		Endpoint: tel.backendAddress,
+		Method:   fmt.Sprintf("%s/RecordInvocation", telemetryServiceName),
 	}
 
 	return record.Do(ctx, *req, nil)

@@ -8,7 +8,6 @@ import (
 	"context"
 	"time"
 
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -44,10 +43,8 @@ func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRe
 
 	var resp GetLatestResponse
 	if err := (Call[any]{
-		Endpoint:     EndpointAddress,
-		Method:       "nsl.versions.VersionsService/GetLatest",
-		OptionalAuth: true,
-		FetchToken:   auth.GenerateToken,
+		Endpoint: EndpointAddress,
+		Method:   "nsl.versions.VersionsService/GetLatest",
 	}).Do(ctx, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
