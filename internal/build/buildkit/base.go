@@ -50,12 +50,13 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		JSON("version", buildkitIntegrationVersion).
 		Computable("req", l.req)
 
+	// XXX missing handling of Include and Exclude patterns.
 	if !PreDigestLocalInputs {
 		// Local contents are added as dependencies to trigger continuous builds.
 		for k, local := range l.localDirs {
 			in = in.
 				Computable(fmt.Sprintf("local%d:contents", k), memfs.DeferSnapshot(local.Module.ReadOnlyFS(local.Path), memfs.SnapshotOpts{
-					ExcludePatterns: local.ExcludePatterns,
+					ExcludeFilesGlobs: local.ExcludePatterns,
 				})).
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}

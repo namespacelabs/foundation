@@ -9,7 +9,8 @@ import (
 	"io/fs"
 	"sort"
 
-	"github.com/moby/patternmatcher"
+	"github.com/mattn/go-zglob"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
@@ -19,7 +20,8 @@ import (
 type SnapshotOpts struct {
 	RequireIncludeFiles bool
 	IncludeFiles        []string
-	ExcludePatterns     []string
+	IncludeFilesGlobs   []string
+	ExcludeFilesGlobs   []string
 }
 
 type SnapshotFS interface {
@@ -29,7 +31,8 @@ type SnapshotFS interface {
 type matcher struct {
 	requiredFileMap map[string]struct{}
 	observedFileMap map[string]struct{}
-	excludeMatcher  *patternmatcher.PatternMatcher
+	includeGlobs    []WithMatch
+	excludeGlobs    []WithMatch
 }
 
 func newMatcher(opts SnapshotOpts) (*matcher, error) {
@@ -42,15 +45,42 @@ func newMatcher(opts SnapshotOpts) (*matcher, error) {
 		}
 	}
 
-	if len(opts.ExcludePatterns) > 0 {
-		excludeMatcher, err := patternmatcher.New(opts.ExcludePatterns)
+	for _, glob := range opts.IncludeFilesGlobs {
+		x, err := zglob.New(glob)
 		if err != nil {
-			return nil, err
+			return m, err
 		}
-		m.excludeMatcher = excludeMatcher
+		m.includeGlobs = append(m.includeGlobs, x)
+	}
+
+	for _, glob := range opts.ExcludeFilesGlobs {
+		x, err := zglob.New(glob)
+		if err != nil {
+			return m, err
+		}
+		m.excludeGlobs = append(m.excludeGlobs, x)
 	}
 
 	return m, nil
+}
+
+func ExcludeMatcher(globs []string) (WithMatch, error) {
+	var errs []error
+	var excludeGlobs []WithMatch
+	for _, glob := range globs {
+		x, err := zglob.New(glob)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			excludeGlobs = append(excludeGlobs, x)
+		}
+	}
+
+	if err := multierr.New(errs...); err != nil {
+		return nil, err
+	}
+
+	return matchAny{excludeGlobs}, nil
 }
 
 type matchAny struct {
@@ -66,25 +96,39 @@ func (m matchAny) Match(str string) bool {
 	return false
 }
 
-func (m *matcher) includes(file string) (bool, error) {
+func (m *matcher) excludes(name string) bool {
+	for _, m := range m.excludeGlobs {
+		if m.Match(name) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (m *matcher) includes(path string) bool {
 	if m.requiredFileMap != nil {
-		if _, ok := m.requiredFileMap[file]; ok {
+		if _, ok := m.requiredFileMap[path]; ok {
 			if m.observedFileMap == nil {
 				m.observedFileMap = map[string]struct{}{}
 			}
-			m.observedFileMap[file] = struct{}{}
-			return true, nil
+			m.observedFileMap[path] = struct{}{}
+			return true
 		}
 
-		return false, nil
+		return false
 	}
 
-	if m.excludeMatcher != nil {
-		excluded, err := m.excludeMatcher.MatchesOrParentMatches(file)
-		return !excluded, err
+	if len(m.includeGlobs) > 0 {
+		for _, glob := range m.includeGlobs {
+			if glob.Match(path) {
+				return true
+			}
+		}
+		return false
 	}
 
-	return true, nil
+	return true
 }
 
 func DeferSnapshot(fsys fs.FS, opts SnapshotOpts) compute.Computable[fs.FS] {
@@ -117,6 +161,13 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 
 	var snapshot FS
 	if err := fnfs.WalkDir(fsys, dir, func(path string, d fs.DirEntry) error {
+		if m.excludes(path) {
+			if d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
 		if d.IsDir() {
 			if godeep || path == dir {
 				return nil
@@ -124,15 +175,7 @@ func snapshotWith(fsys fs.FS, opts SnapshotOpts, dir string, godeep bool, readFi
 			return fs.SkipDir
 		}
 
-		if !d.Type().IsRegular() {
-			return nil
-		}
-
-		// Only check files for inclusion.
-		// A directory might be excluded by default, but files in it may be included.
-		if included, err := m.includes(path); err != nil {
-			return err
-		} else if !included {
+		if !m.includes(path) {
 			return nil
 		}
 
