@@ -26,6 +26,8 @@ import (
 	route "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	trace "github.com/envoyproxy/go-control-plane/envoy/config/trace/v3"
 	filev3 "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3"
+	gzipv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/compression/gzip/compressor/v3"
+	compressorv3 "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/compressor/v3"
 	grpcjsontranscoder "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/grpc_json_transcoder/v3"
 	routerfilter "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/http/router/v3"
 	hcm "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
@@ -468,6 +470,20 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 		return nil, fnerrors.BadInputError("failed to create fileaccesslog anypb: %w", err)
 	}
 
+	gzipConfig, err := anypb.New(&gzipv3.Gzip{})
+	if err != nil {
+		return nil, fnerrors.BadInputError("failed to create the gzipConfig anypb: %w", err)
+	}
+	compressorConfig, err := anypb.New(&compressorv3.Compressor{
+		CompressorLibrary: &core.TypedExtensionConfig{
+			Name:        "gzip",
+			TypedConfig: gzipConfig,
+		},
+	})
+	if err != nil {
+		return nil, fnerrors.BadInputError("failed to create the compressorConfig anypb: %w", err)
+	}
+
 	// HTTP filter configuration
 	manager := &hcm.HttpConnectionManager{
 		CodecType:  hcm.HttpConnectionManager_AUTO,
@@ -488,6 +504,11 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 				},
 				}}},
 		HttpFilters: []*hcm.HttpFilter{{
+			Name: "envoy.filters.http.compressor",
+			ConfigType: &hcm.HttpFilter_TypedConfig{
+				TypedConfig: compressorConfig,
+			},
+		}, {
 			Name: wellknown.GRPCJSONTranscoder,
 			ConfigType: &hcm.HttpFilter_TypedConfig{
 				TypedConfig: transcoderpbst,
