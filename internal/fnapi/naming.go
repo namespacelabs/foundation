@@ -7,7 +7,6 @@ package fnapi
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -16,9 +15,8 @@ import (
 var NamingForceStored = false
 
 type IssueRequest struct {
-	UserAuth    *auth.UserAuth `json:"user_auth"`
-	NameRequest NameRequest    `json:"name_request"`
-	Resource    NameResource   `json:"previous"`
+	NameRequest NameRequest  `json:"name_request"`
+	Resource    NameResource `json:"previous"`
 }
 
 type NameRequest struct {
@@ -84,12 +82,8 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 		var nr IssueResponse
 
 		if err := (Call[IssueRequest]{
-			Endpoint: EndpointAddress,
-			Method:   "nsl.naming.NamingService/Issue",
-			PreAuthenticateRequest: func(ua *auth.UserAuth, rt *IssueRequest) error {
-				rt.UserAuth = ua
-				return nil
-			},
+			Endpoint:   EndpointAddress,
+			Method:     "nsl.naming.NamingService/Issue",
 			FetchToken: FetchTenantToken,
 		}).Do(ctx, req, DecodeJSONResponse(&nr)); err != nil {
 			return nil, err

@@ -26,12 +26,8 @@ func Map(ctx context.Context, fqdn, target string) error {
 	return tasks.Action("dns.map-name").Arg("fqdn", fqdn).Arg("target", target).Run(ctx, func(ctx context.Context) error {
 		var nr MapResponse
 		err := Call[MapRequest]{
-			Endpoint: EndpointAddress,
-			Method:   "nsl.naming.NamingService/Map",
-			PreAuthenticateRequest: func(ua *auth.UserAuth, rt *MapRequest) error {
-				rt.UserAuth = ua
-				return nil
-			},
+			Endpoint:   EndpointAddress,
+			Method:     "nsl.naming.NamingService/Map",
 			FetchToken: FetchTenantToken,
 		}.Do(ctx, MapRequest{
 			FQDN:   fqdn,
