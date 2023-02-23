@@ -59,25 +59,25 @@ func (op *observePath) Inputs() *compute.In {
 func (op *observePath) Compute(ctx context.Context, _ compute.Resolved) (any, error) {
 	fmt.Fprintf(console.Debug(ctx), "wsremote: starting w/ snapshotting %q (excludes: %v)\n", op.absPath, op.excludes)
 
-	matcher, err := patternmatcher.New(op.excludes)
+	excludeMatcher, err := patternmatcher.New(op.excludes)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshot, err := wscontents.SnapshotDirectory(ctx, op.absPath, matcher, op.digestMode)
+	snapshot, err := wscontents.SnapshotDirectory(ctx, op.absPath, excludeMatcher, op.digestMode)
 	if err != nil {
 		return nil, err
 	}
 
-	return localObserver{absPath: op.absPath, matcher: matcher, digestMode: op.digestMode, snapshot: snapshot, sink: op.sink}, nil
+	return localObserver{absPath: op.absPath, excludeMatcher: excludeMatcher, digestMode: op.digestMode, snapshot: snapshot, sink: op.sink}, nil
 }
 
 type localObserver struct {
-	absPath    string
-	matcher    *patternmatcher.PatternMatcher
-	digestMode bool
-	snapshot   *memfs.FS
-	sink       Sink
+	absPath        string
+	excludeMatcher *patternmatcher.PatternMatcher
+	digestMode     bool
+	snapshot       *memfs.FS
+	sink           Sink
 }
 
 func (lo localObserver) Abs() string { return lo.absPath }
@@ -105,7 +105,7 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 			case <-closeCh:
 				return
 			case <-t.C:
-				newSnapshot, deposited, err := checkSnapshot(ctx, last, lo.absPath, lo.matcher, lo.digestMode, lo.sink)
+				newSnapshot, deposited, err := checkSnapshot(ctx, last, lo.absPath, lo.excludeMatcher, lo.digestMode, lo.sink)
 				if err != nil {
 					fmt.Fprintf(console.Errors(ctx), "FileSync failed while snapshotting %q: %v\n", lo.absPath, err)
 					return
@@ -127,8 +127,8 @@ func (lo localObserver) Observe(ctx context.Context, onChange func(compute.Resul
 	return func() { close(closeCh) }, nil
 }
 
-func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, matcher *patternmatcher.PatternMatcher, digestMode bool, sink Sink) (*memfs.FS, bool, error) {
-	newSnapshot, err := wscontents.SnapshotDirectory(ctx, absPath, matcher, digestMode)
+func checkSnapshot(ctx context.Context, previous *memfs.FS, absPath string, excludeMatcher *patternmatcher.PatternMatcher, digestMode bool, sink Sink) (*memfs.FS, bool, error) {
+	newSnapshot, err := wscontents.SnapshotDirectory(ctx, absPath, excludeMatcher, digestMode)
 	if err != nil {
 		return nil, false, err
 	}

@@ -23,15 +23,15 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-func SnapshotDirectory(ctx context.Context, absPath string, matcher *patternmatcher.PatternMatcher, digest bool) (*memfs.FS, error) {
-	fsys, err := snapshotDirectory(ctx, absPath, matcher, digest)
+func SnapshotDirectory(ctx context.Context, absPath string, excludeMatcher *patternmatcher.PatternMatcher, digest bool) (*memfs.FS, error) {
+	fsys, err := snapshotDirectory(ctx, absPath, excludeMatcher, digest)
 	if err != nil {
 		return nil, fnerrors.InternalError("snapshot failed: %v", err)
 	}
 	return fsys, nil
 }
 
-func snapshotDirectory(ctx context.Context, absPath string, matcher *patternmatcher.PatternMatcher, digest bool) (*memfs.FS, error) {
+func snapshotDirectory(ctx context.Context, absPath string, excludeMatcher *patternmatcher.PatternMatcher, digest bool) (*memfs.FS, error) {
 	if err := verifyDir(absPath); err != nil {
 		return nil, err
 	}
@@ -42,8 +42,8 @@ func snapshotDirectory(ctx context.Context, absPath string, matcher *patternmatc
 			return err
 		}
 
-		if matcher != nil {
-			if matches, err := matcher.MatchesOrParentMatches(osPathname); err != nil {
+		if excludeMatcher != nil {
+			if matches, err := excludeMatcher.MatchesOrParentMatches(osPathname); err != nil {
 				return err
 			} else if matches {
 				if de.IsDir() {
