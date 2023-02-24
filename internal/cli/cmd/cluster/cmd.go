@@ -692,5 +692,5 @@ func portForward(ctx context.Context, cluster *api.KubernetesCluster, targetPort
 
 func printCreateClusterMsg(ctx context.Context) {
 	stdout := console.Stdout(ctx)
-	fmt.Fprintf(stdout, "No clusters. Try creating one with %s cluster create.\n", os.Args[0])
+	fmt.Fprintf(stdout, "No clusters. Try creating one with `%s cluster create`.\n", os.Args[0])
 }
