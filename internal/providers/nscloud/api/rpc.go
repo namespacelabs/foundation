@@ -331,7 +331,7 @@ type LogsOpts struct {
 	Exclude   []*LogsSelector
 }
 
-func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) error {
+func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(LogBlock) error) error {
 	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
 		ClusterID: opts.ClusterID,
 		Include:   opts.Include,
@@ -340,13 +340,16 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, w io.Writer) 
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			var logBlock LogBlock
-			if err := json.Unmarshal(scanner.Bytes(), &logBlock); err != nil {
-				fmt.Fprintf(console.Debug(ctx), "Failed to process a log entry: %v\n", err)
+			data := scanner.Bytes()
+			if err := json.Unmarshal(data, &logBlock); err != nil {
+				fmt.Fprintf(console.Debug(ctx), "Failed to process a log entry %s: %v\n", string(data), err)
 				continue
 			}
 
-			for _, l := range logBlock.Line {
-				fmt.Fprintln(w, l.String())
+			if handle != nil {
+				if err := handle(logBlock); err != nil {
+					return err
+				}
 			}
 		}
 

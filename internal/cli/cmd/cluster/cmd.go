@@ -388,6 +388,7 @@ func newLogsCmd() *cobra.Command {
 	namespace := cmd.Flags().StringP("namespace", "n", "", "Print the logs of this namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "Print the logs of this pod.")
 	container := cmd.Flags().StringP("container", "c", "", "Print the logs of this container.")
+	raw := cmd.Flags().Bool("raw", false, "Print the raw logs to stdout (skipping namespace/pod labels).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
@@ -416,12 +417,18 @@ func newLogsCmd() *cobra.Command {
 			})
 		}
 
-		stdout := console.Stdout(ctx)
+		lp := newLogPrinter(*raw)
+
 		if *follow {
+			handle := func(lb api.LogBlock) error {
+				lp.Print(ctx, lb)
+				return nil
+			}
+
 			return api.TailClusterLogs(ctx, api.Endpoint, &api.LogsOpts{
 				ClusterID: cluster.ClusterId,
 				Include:   includeSelector,
-			}, stdout)
+			}, handle)
 		}
 
 		logOpts := &api.LogsOpts{
@@ -439,9 +446,7 @@ func newLogsCmd() *cobra.Command {
 		}
 
 		for _, lb := range logs.LogBlock {
-			for _, l := range lb.Line {
-				fmt.Fprintln(stdout, l.String())
-			}
+			lp.Print(ctx, lb)
 		}
 
 		return nil
