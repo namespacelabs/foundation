@@ -75,8 +75,11 @@ func ParsePeerAddress(p *peer.Peer, md metadata.MD) (string, string) {
 	peerAddr := "unknown"
 	originalAddr := ""
 
+	if p != nil {
+		peerAddr = p.Addr.String()
+	}
+
 	if realIp := single(md, "x-real-ip"); realIp != "" {
-		peerAddr = fmt.Sprintf("%s (saw %s)", realIp, peerAddr)
 		originalAddr = peerAddr
 		peerAddr = realIp
 
@@ -116,13 +119,16 @@ func attachRequestData(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
 	authority := single(md, ":authority")
 	delete(md, ":authority")
 
-	peerAddr, wasAddr := ParsePeerAddress(p, md)
-
 	if _, ok := md["authorization"]; ok {
-		authType = fmt.Sprintf("bearer (was %s)", authType)
+		if authType != "" {
+			authType = fmt.Sprintf("bearer (was %s)", authType)
+		} else {
+			authType = "bearer"
+		}
 		delete(md, "authorization")
 	}
 
+	peerAddr, wasAddr := ParsePeerAddress(p, md)
 	ev = ev.Str("peer", peerAddr)
 	if wasAddr != "" {
 		ev = ev.Str("original_peer", wasAddr)
