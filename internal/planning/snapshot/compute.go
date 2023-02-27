@@ -179,9 +179,8 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 
 		packageCount++
 
-		var count int
 		if err := fnfs.VisitFiles(ctx, pkg.PackageSources, func(path string, _ bytestream.ByteStream, _ fs.DirEntry) error {
-			count++
+			fileCount++
 			abs := filepath.Join(pkg.Location.Module.Abs(), path)
 			merged[abs] = pkg
 			return watcher.AddFile(abs) // Path is relative to module root.
