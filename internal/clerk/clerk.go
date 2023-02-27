@@ -26,6 +26,9 @@ var (
 const (
 	prodAddress = "https://clerk.namespace.so/"
 	devAddress  = "https://clerk.firm.hare-7.lcl.dev"
+
+	prodTokenPrefix = "ct_"
+	devTokenPrefix  = "devct_"
 )
 
 func SetupFlags(flags *pflag.FlagSet) {
@@ -185,9 +188,11 @@ func JWT(ctx context.Context, st *State) (string, error) {
 		}
 	}
 
+	tokenPrefix := prodTokenPrefix
 	url := prodAddress + "/v1/me/tokens"
 	if devClerk {
 		url = devAddress + "/v1/me/tokens?__dev_session=" + st.DevSession
+		tokenPrefix = devTokenPrefix
 	}
 	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
 	if err != nil {
@@ -229,5 +234,5 @@ func JWT(ctx context.Context, st *State) (string, error) {
 		JWT:       x.JWT,
 	}
 
-	return x.JWT, nil
+	return tokenPrefix + x.JWT, nil
 }

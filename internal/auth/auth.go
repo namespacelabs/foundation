@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"fmt"
 
 	"namespacelabs.dev/foundation/internal/clerk"
 )
@@ -34,7 +33,7 @@ func GenerateTokenFromUserAuth(ctx context.Context, userAuth *UserAuth) (string,
 			return "", err
 		}
 
-		return fmt.Sprintf("jwt:%s", jwt), nil
+		return jwt, nil
 	case len(userAuth.InternalOpaque) > 0:
 		return base64.RawStdEncoding.EncodeToString(userAuth.InternalOpaque), nil
 	default:
