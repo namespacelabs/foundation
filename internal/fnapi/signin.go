@@ -32,11 +32,6 @@ type CheckRequest struct {
 	UserData string `json:"userData"`
 }
 
-type RobotLoginRequest struct {
-	Repository  string `json:"repository"`
-	AccessToken string `json:"accessToken"`
-}
-
 type GetSessionTokenRequest struct {
 	UserData        string `json:"user_data"`
 	DurationSeconds uint32 `json:"duration_seconds"`
@@ -133,16 +128,5 @@ func CheckSignin(ctx context.Context, userData string) (*auth.UserAuth, error) {
 
 	userAuth := &auth.UserAuth{}
 	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/Check", req, DecodeJSONResponse(userAuth))
-	return userAuth, err
-}
-
-func RobotLogin(ctx context.Context, repository, accessToken string) (*auth.UserAuth, error) {
-	req := RobotLoginRequest{
-		Repository:  repository,
-		AccessToken: accessToken,
-	}
-
-	userAuth := &auth.UserAuth{}
-	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/RobotLogin", req, DecodeJSONResponse(userAuth))
 	return userAuth, err
 }
