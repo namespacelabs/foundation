@@ -15,7 +15,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -29,9 +28,14 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/foundation/schema"
 )
 
 var ErrEmptyClusteList = errors.New("no clusters")
+
+const (
+	NsGitHubAttachmentUrlType = "namespacelabs.dev/foundation/schema.GithubAttachment"
+)
 
 func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
@@ -502,23 +506,33 @@ func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, 
 	}
 }
 
+const (
+	idColKey       = "id"
+	cpuColKey      = "cpu"
+	memColKey      = "mem"
+	createdColKey  = "created"
+	durationColKey = "duration"
+	ttlColKey      = "ttl"
+	purposeColKey  = "purpose"
+)
+
 func tableClusters(ctx context.Context,
 	clusters []api.KubernetesCluster, previousRuns, selectCluster bool) (*api.KubernetesCluster, error) {
 	clusterIdMap := map[string]api.KubernetesCluster{}
-	cols := []table.Column{
-		{Title: "Cluster ID", Width: 15},
-		{Title: "CPU", Width: 5},
-		{Title: "Memory", Width: 7},
-		{Title: "Created", Width: 15},
+	cols := []tui.Column{
+		{Key: idColKey, Title: "Cluster ID", MinWidth: 5, MaxWidth: 20},
+		{Key: cpuColKey, Title: "CPU", MinWidth: 5, MaxWidth: 20},
+		{Key: memColKey, Title: "Memory", MinWidth: 5, MaxWidth: 20},
+		{Key: createdColKey, Title: "Created", MinWidth: 10, MaxWidth: 20},
 	}
 	if previousRuns {
-		cols = append(cols, table.Column{Title: "Duration", Width: 10})
+		cols = append(cols, tui.Column{Key: durationColKey, Title: "Duration", MinWidth: 10, MaxWidth: 20})
 	} else {
-		cols = append(cols, table.Column{Title: "Time to live", Width: 20})
+		cols = append(cols, tui.Column{Key: ttlColKey, Title: "Time to live", MinWidth: 5, MaxWidth: 20})
 	}
-	cols = append(cols, table.Column{Title: "Purpose", Width: 30})
+	cols = append(cols, tui.Column{Key: purposeColKey, Title: "Purpose", MinWidth: 10, MaxWidth: 100})
 
-	rows := []table.Row{}
+	rows := []tui.Row{}
 	for _, cluster := range clusters {
 		clusterIdMap[cluster.ClusterId] = cluster
 		if previousRuns && cluster.DestroyedAt == "" {
@@ -529,22 +543,19 @@ func tableClusters(ctx context.Context,
 		created, _ := time.Parse(time.RFC3339, cluster.Created)
 		deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
 
-		row := []string{cluster.ClusterId,
-			cpu,
-			ram,
-			humanize.Time(created.Local()),
+		row := tui.Row{
+			idColKey:      cluster.ClusterId,
+			cpuColKey:     cpu,
+			memColKey:     ram,
+			createdColKey: humanize.Time(created.Local()),
 		}
 		if previousRuns {
 			destroyedAt, _ := time.Parse(time.RFC3339, cluster.DestroyedAt)
-			row = append(row, destroyedAt.Sub(created).Truncate(time.Second).String())
+			row[durationColKey] = destroyedAt.Sub(created).Truncate(time.Second).String()
 		} else {
-			row = append(row, humanize.Time(deadline.Local()))
+			row[ttlColKey] = humanize.Time(deadline.Local())
 		}
-		purpose := "-"
-		if cluster.DocumentedPurpose != "" {
-			purpose = cluster.DocumentedPurpose
-		}
-		row = append(row, purpose)
+		row[purposeColKey] = formatPurpose(cluster)
 		rows = append(rows, row)
 	}
 
@@ -559,6 +570,25 @@ func tableClusters(ctx context.Context,
 	err := tui.StaticTable(ctx, cols, rows)
 
 	return nil, err
+}
+
+func formatPurpose(cluster api.KubernetesCluster) string {
+	purpose := "-"
+	if len(cluster.Attachment) > 0 {
+		for _, att := range cluster.Attachment {
+			if att.TypeURL == NsGitHubAttachmentUrlType {
+				var ghAttach schema.GitHubAttachment
+				if err := json.Unmarshal(att.Content, &ghAttach); err == nil {
+					purpose = fmt.Sprintf("GH Action: %s %s",
+						ghAttach.Repository, ghAttach.RunId)
+					break
+				}
+			}
+		}
+	} else if cluster.DocumentedPurpose != "" {
+		purpose = cluster.DocumentedPurpose
+	}
+	return purpose
 }
 
 func staticTableClusters(ctx context.Context,

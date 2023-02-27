@@ -13,23 +13,46 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 )
 
-func StaticTable(ctx context.Context, cols []table.Column, rows []table.Row) error {
+type ColumnKey string
+
+type Column struct {
+	Key                ColumnKey
+	Title              string
+	MinWidth, MaxWidth int
+}
+
+type Row map[ColumnKey]string
+
+func StaticTable(ctx context.Context, cols []Column, rows []Row) error {
 	_, err := Table(ctx, cols, rows, false)
 	return err
 }
 
-func SelectTable(ctx context.Context, cols []table.Column, rows []table.Row) (table.Row, error) {
+func SelectTable(ctx context.Context, cols []Column, rows []Row) (table.Row, error) {
 	return Table(ctx, cols, rows, true)
 }
 
-func Table(ctx context.Context, cols []table.Column, rows []table.Row, selectRow bool) (table.Row, error) {
+func Table(ctx context.Context, cols []Column, rows []Row, selectRow bool) (table.Row, error) {
 	done := console.EnterInputMode(ctx)
 	defer done()
 
+	realCols := []table.Column{}
+	for _, col := range cols {
+		realCols = append(realCols, table.Column{Title: col.Title, Width: width(col.MinWidth, col.MaxWidth, col.Key, rows)})
+	}
+	realRows := []table.Row{}
+	for _, row := range rows {
+		realRow := table.Row{}
+		for _, col := range cols {
+			realRow = append(realRow, row[col.Key])
+		}
+		realRows = append(realRows, realRow)
+	}
+
 	height := len(rows)
 	t := table.New(
-		table.WithColumns(cols),
-		table.WithRows(rows),
+		table.WithColumns(realCols),
+		table.WithRows(realRows),
 		table.WithFocused(true),
 		table.WithHeight(height),
 	)
@@ -60,6 +83,22 @@ func Table(ctx context.Context, cols []table.Column, rows []table.Row, selectRow
 	}
 
 	return final.(tableModel).selectedRow, nil
+}
+
+func width(minWidth, maxWidth int, colKey ColumnKey, rows []Row) int {
+	m := 0
+	for _, row := range rows {
+		if len(row[colKey]) > m {
+			m = len(row[colKey])
+		}
+	}
+	if m > maxWidth {
+		return maxWidth
+	}
+	if m < minWidth {
+		return minWidth
+	}
+	return m
 }
 
 type tableModel struct {
