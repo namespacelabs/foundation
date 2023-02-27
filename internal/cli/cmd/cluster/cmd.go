@@ -77,7 +77,7 @@ func newCreateCmd() *cobra.Command {
 			MachineType: *machineType,
 			Ephemeral:   *ephemeral,
 			KeepAlive:   true,
-			Purpose:     "manually created",
+			Purpose:     "Manually created from CLI",
 			Features:    *features,
 		}
 
@@ -516,7 +516,7 @@ func tableClusters(ctx context.Context,
 	} else {
 		cols = append(cols, table.Column{Title: "Time to live", Width: 20})
 	}
-	cols = append(cols, table.Column{Title: "Purpose", Width: 10})
+	cols = append(cols, table.Column{Title: "Purpose", Width: 30})
 
 	rows := []table.Row{}
 	for _, cluster := range clusters {
