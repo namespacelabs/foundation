@@ -117,7 +117,7 @@ require (
 	google.golang.org/protobuf v1.28.1
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.9.0
-	honnef.co/go/tools v0.3.0
+	honnef.co/go/tools v0.4.2
 	k8s.io/api v0.26.0
 	k8s.io/apiextensions-apiserver v0.26.0
 	k8s.io/apimachinery v0.26.0
@@ -308,10 +308,10 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/exp/typeparams v0.0.0-20221126150942-6ab00d035af9 // indirect
+	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
 	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.3.0 // indirect
+	golang.org/x/tools v0.4.1-0.20221208213631-3f74d914ae6d // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
