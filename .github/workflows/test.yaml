@@ -36,7 +36,7 @@ jobs:
       - name: Check Go Formatting
         run: go fmt ./... && git diff --exit-code
       - name: Check Go Mod Tidyness
-        run: go mod tidy && && git diff --exit-code
+        run: go mod tidy && git diff --exit-code
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
