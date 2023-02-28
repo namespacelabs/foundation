@@ -8,7 +8,10 @@ import (
 	"context"
 	"encoding/json"
 
+	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/github"
+	nscloudpb "namespacelabs.dev/foundation/schema/nscloud"
 )
 
 func clusterAttachments(ctx context.Context) ([]Attachment, error) {
@@ -31,19 +34,22 @@ func clusterAttachments(ctx context.Context) ([]Attachment, error) {
 		})
 	}
 
-	if github.IsRunningInActions() {
-		attach, err := github.AttachmentFromEnv(ctx)
+	if !environment.IsRunningInCI() {
+		user, err := auth.LoadUser()
 		if err != nil {
 			return nil, err
 		}
 
+		attach := &nscloudpb.CreatorAttachment{
+			Username: user.Username,
+		}
 		content, err := json.Marshal(attach)
 		if err != nil {
 			return nil, err
 		}
 
 		res = append(res, Attachment{
-			TypeURL: "namespacelabs.dev/foundation/schema.GithubAttachment",
+			TypeURL: "namespacelabs.dev/foundation/schema.nscloud.CreatorAttachment",
 			Content: content,
 		})
 	}
