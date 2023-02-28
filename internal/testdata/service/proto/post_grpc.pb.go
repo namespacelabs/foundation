@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -24,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type PostServiceClient interface {
 	Post(ctx context.Context, in *PostRequest, opts ...grpc.CallOption) (*PostResponse, error)
 	Fetch(ctx context.Context, in *FetchRequest, opts ...grpc.CallOption) (*FetchResponse, error)
+	TestTranscoding(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TestTranscodingResponse, error)
 }
 
 type postServiceClient struct {
@@ -52,12 +54,22 @@ func (c *postServiceClient) Fetch(ctx context.Context, in *FetchRequest, opts ..
 	return out, nil
 }
 
+func (c *postServiceClient) TestTranscoding(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*TestTranscodingResponse, error) {
+	out := new(TestTranscodingResponse)
+	err := c.cc.Invoke(ctx, "/internal.testdata.service.proto.PostService/TestTranscoding", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations should embed UnimplementedPostServiceServer
 // for forward compatibility
 type PostServiceServer interface {
 	Post(context.Context, *PostRequest) (*PostResponse, error)
 	Fetch(context.Context, *FetchRequest) (*FetchResponse, error)
+	TestTranscoding(context.Context, *emptypb.Empty) (*TestTranscodingResponse, error)
 }
 
 // UnimplementedPostServiceServer should be embedded to have forward compatible implementations.
@@ -69,6 +81,9 @@ func (UnimplementedPostServiceServer) Post(context.Context, *PostRequest) (*Post
 }
 func (UnimplementedPostServiceServer) Fetch(context.Context, *FetchRequest) (*FetchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Fetch not implemented")
+}
+func (UnimplementedPostServiceServer) TestTranscoding(context.Context, *emptypb.Empty) (*TestTranscodingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TestTranscoding not implemented")
 }
 
 // UnsafePostServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -118,6 +133,24 @@ func _PostService_Fetch_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_TestTranscoding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).TestTranscoding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/internal.testdata.service.proto.PostService/TestTranscoding",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).TestTranscoding(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -132,6 +165,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Fetch",
 			Handler:    _PostService_Fetch_Handler,
+		},
+		{
+			MethodName: "TestTranscoding",
+			Handler:    _PostService_TestTranscoding_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
