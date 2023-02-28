@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/github"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -139,22 +138,11 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			AuthorizedSshKeys: opts.AuthorizedSshKeys,
 		}
 
-		if github.IsRunningInActions() {
-			attach, err := github.AttachmentFromEnv(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			content, err := json.Marshal(attach)
-			if err != nil {
-				return nil, err
-			}
-
-			req.Attachment = append(req.Attachment, Attachment{
-				TypeURL: "namespacelabs.dev/foundation/schema.GithubAttachment",
-				Content: content,
-			})
+		ca, err := clusterAttachments(ctx)
+		if err != nil {
+			return nil, err
 		}
+		req.Attachment = append(req.Attachment, ca...)
 
 		if !environment.IsRunningInCI() {
 			keys, err := UserSSHKeys()
