@@ -130,8 +130,6 @@ func (l LogLine) String() string {
 
 type ImageRegistry struct {
 	EndpointAddress string `json:"endpoint_address,omitempty"`
-	Username        string `json:"username,omitempty"`
-	Password        string `json:"password,omitempty"`
 }
 
 type ClusterShape struct {
