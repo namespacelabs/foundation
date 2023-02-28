@@ -42,10 +42,7 @@ func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRe
 	}
 
 	var resp GetLatestResponse
-	if err := (Call[any]{
-		Endpoint: EndpointAddress,
-		Method:   "nsl.versions.VersionsService/GetLatest",
-	}).Do(ctx, req, DecodeJSONResponse(&resp)); err != nil {
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatest", req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 

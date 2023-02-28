@@ -66,11 +66,7 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 	req := ExchangeTenantTokenRequest{Scopes: scopes}
 
 	var res ExchangeTenantTokenResponse
-	if err := (Call[any]{
-		Endpoint:   EndpointAddress,
-		Method:     "nsl.tenants.TenantsService/ExchangeTenantToken",
-		FetchToken: FetchTenantToken,
-	}).Do(ctx, req, DecodeJSONResponse(&res)); err != nil {
+	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeTenantToken", req, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeTenantTokenResponse{}, err
 	}
 

@@ -56,10 +56,9 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 }
 
 type Call[RequestT any] struct {
-	Endpoint               string
-	Method                 string
-	PreAuthenticateRequest func(*auth.UserAuth, *RequestT) error
-	FetchToken             func(context.Context) (*auth.Token, error)
+	Endpoint   string
+	Method     string
+	FetchToken func(context.Context) (*auth.Token, error)
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -89,17 +88,6 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 			return err
 		}
 		headers.Add("Authorization", "Bearer "+tok.Raw())
-
-		if c.PreAuthenticateRequest != nil {
-			user, err := auth.LoadUser()
-			if err != nil {
-				return err
-			}
-
-			if err := c.PreAuthenticateRequest(user, &request); err != nil {
-				return err
-			}
-		}
 	}
 
 	AddNamespaceHeaders(ctx, &headers)

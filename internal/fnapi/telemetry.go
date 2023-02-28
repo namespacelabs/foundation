@@ -236,12 +236,7 @@ func (tel *Telemetry) postRecordInvocationRequest(ctx context.Context, req *reco
 	ctx, cancel := context.WithTimeout(ctx, postTimeout)
 	defer cancel()
 
-	record := Call[recordInvocationRequest]{
-		Endpoint: tel.backendAddress,
-		Method:   fmt.Sprintf("%s/RecordInvocation", telemetryServiceName),
-	}
-
-	return record.Do(ctx, *req, nil)
+	return AnonymousCall(ctx, tel.backendAddress, fmt.Sprintf("%s/RecordInvocation", telemetryServiceName), *req, nil)
 }
 
 func (tel *Telemetry) recordInvocation(ctx context.Context, cmd *cobra.Command, reqID string, args []string) {

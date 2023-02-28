@@ -81,11 +81,7 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 
 		var nr IssueResponse
 
-		if err := (Call[IssueRequest]{
-			Endpoint:   EndpointAddress,
-			Method:     "nsl.naming.NamingService/Issue",
-			FetchToken: FetchTenantToken,
-		}).Do(ctx, req, DecodeJSONResponse(&nr)); err != nil {
+		if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.naming.NamingService/Issue", req, DecodeJSONResponse(&nr)); err != nil {
 			return nil, err
 		}
 
