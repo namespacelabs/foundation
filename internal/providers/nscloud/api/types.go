@@ -71,7 +71,6 @@ type KubernetesCluster struct {
 	SshPrivateKey     []byte        `json:"ssh_private_key,omitempty"`
 	DocumentedPurpose string        `json:"documented_purpose,omitempty"`
 	Shape             *ClusterShape `json:"shape,omitempty"`
-	Attachment        []*Attachment `json:"attachment,omitempty"`
 
 	EndpointAddress          string `json:"endpoint_address,omitempty"`
 	CertificateAuthorityData []byte `json:"certificate_authority_data,omitempty"`

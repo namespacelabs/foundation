@@ -6,7 +6,6 @@ package cluster
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -18,14 +17,9 @@ import (
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/schema"
 )
 
 var ErrEmptyClusteList = errors.New("no clusters")
-
-const (
-	NsGitHubAttachmentUrlType = "namespacelabs.dev/foundation/schema.GithubAttachment"
-)
 
 func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
@@ -167,18 +161,6 @@ func formatPurpose(cluster api.KubernetesCluster) string {
 	if cluster.GithubWorkflow != nil {
 		purpose = fmt.Sprintf("GH Action: %s %s",
 			cluster.GithubWorkflow.Repository, cluster.GithubWorkflow.RunId)
-	} else if len(cluster.Attachment) > 0 {
-		// TODO remove when server stops sending attachments
-		for _, att := range cluster.Attachment {
-			if att.TypeURL == NsGitHubAttachmentUrlType {
-				var ghAttach schema.GitHubAttachment
-				if err := json.Unmarshal(att.Content, &ghAttach); err == nil {
-					purpose = fmt.Sprintf("GH Action: %s %s",
-						ghAttach.Repository, ghAttach.RunId)
-					break
-				}
-			}
-		}
 	} else if cluster.DocumentedPurpose != "" {
 		purpose = cluster.DocumentedPurpose
 	}
