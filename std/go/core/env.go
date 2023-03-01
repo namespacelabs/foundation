@@ -30,11 +30,15 @@ func init() {
 var (
 	debug = flag.Bool("debug_init", false, "If set to true, emits additional initialization information.")
 
+	datamarker atomic.Pointer[data]
+)
+
+type data struct {
 	rt          *runtimepb.RuntimeConfig
 	rtVcs       *runtimepb.BuildVCS
 	serverName  string
-	initialized uint32
-)
+	startupTime time.Time
+}
 
 var (
 	// Deprecated: use ZLog.
@@ -43,39 +47,54 @@ var (
 )
 
 func PrepareEnv(specifiedServerName string) *ServerResources {
-	if !atomic.CompareAndSwapUint32(&initialized, 0, 1) {
+	d, err := loadData(specifiedServerName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !datamarker.CompareAndSwap(nil, &d) {
 		log.Fatal("already initialized")
-	}
-
-	var err error
-	rt, err = runtime.LoadRuntimeConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	rtVcs, err = runtime.LoadBuildVCS()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	ZLog.Info().Msg("Initializing server...")
 
-	serverName = specifiedServerName
-
 	return &ServerResources{startupTime: time.Now()}
 }
 
+func loadData(specifiedServerName string) (data, error) {
+	rt, err := runtime.LoadRuntimeConfig()
+	if err != nil {
+		return data{}, err
+	}
+
+	rtVcs, err := runtime.LoadBuildVCS()
+	if err != nil {
+		return data{}, err
+	}
+
+	return data{rt, rtVcs, specifiedServerName, time.Now()}, nil
+}
+
+func initializedData() data {
+	data := datamarker.Load()
+	if data == nil {
+		panic("not initialized")
+	}
+	return *data
+}
+
 func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.ServerInfo, error) {
+	data := initializedData()
 	return &types.ServerInfo{
-		ServerName: serverName,
-		EnvName:    rt.Environment.Name,
-		EnvPurpose: rt.Environment.Purpose,
-		Vcs:        rtVcs,
+		ServerName: data.serverName,
+		EnvName:    data.rt.Environment.Name,
+		EnvPurpose: data.rt.Environment.Purpose,
+		Vcs:        data.rtVcs,
 	}, nil
 }
 
 func EnvIs(purpose schema.Environment_Purpose) bool {
-	return rt.Environment.Purpose == purpose.String()
+	return initializedData().rt.Environment.Purpose == purpose.String()
 }
 
 type frameworkKey string
@@ -97,12 +116,18 @@ func ServerResourcesFrom(ctx context.Context) *ServerResources {
 
 func StatusHandler(registered []string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		data := datamarker.Load()
+		if data == nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 
-		vcsStr, _ := json.Marshal(rtVcs)
+		vcsStr, _ := json.Marshal(data.rtVcs)
 
 		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s\nimage_version=%s\n%s\n%s</pre>",
-			serverName, rt.Current.ImageRef, prototext.Format(rt.Environment), vcsStr)
+			data.serverName, data.rt.Current.ImageRef, prototext.Format(data.rt.Environment), vcsStr)
 
 		fmt.Fprintf(w, "<b>Registered endpoints</b></br><ul>")
 		for _, endpoint := range registered {
