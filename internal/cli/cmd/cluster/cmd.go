@@ -164,7 +164,11 @@ func tableClusters(ctx context.Context,
 
 func formatPurpose(cluster api.KubernetesCluster) string {
 	purpose := "-"
-	if len(cluster.Attachment) > 0 {
+	if cluster.GithubWorkflow != nil {
+		purpose = fmt.Sprintf("GH Action: %s %s",
+			cluster.GithubWorkflow.Repository, cluster.GithubWorkflow.RunId)
+	} else if len(cluster.Attachment) > 0 {
+		// TODO remove when server stops sending attachments
 		for _, att := range cluster.Attachment {
 			if att.TypeURL == NsGitHubAttachmentUrlType {
 				var ghAttach schema.GitHubAttachment

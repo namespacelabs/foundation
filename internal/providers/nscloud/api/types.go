@@ -85,6 +85,19 @@ type KubernetesCluster struct {
 	IngressDomain string `json:"ingress_domain,omitempty"`
 
 	Label []*LabelEntry `json:"label,omitempty"`
+
+	CreatorId      string              `json:"creator_id,omitempty"`
+	GithubWorkflow *GithubWorkflowInfo `json:"github_workflow,omitempty"`
+}
+
+type GithubWorkflowInfo struct {
+	Repository string `json:"repository,omitempty"`
+	RunId      string `json:"run_id,omitempty"`
+	RunAttempt string `json:"run_attempt,omitempty"`
+	Sha        string `json:"sha,omitempty"`
+	Ref        string `json:"ref,omitempty"`
+	Actor      string `json:"actor,omitempty"`
+	Workflow   string `json:"workflow,omitempty"`
 }
 
 type TailLogsRequest struct {
