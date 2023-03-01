@@ -21,6 +21,26 @@ server: {
 			kind: "http"
 			probe: http: "/healthz"
 		}
+		prometheus: {
+			port: 7777
+			kind: "http"
+		}
+	}
+
+	annotations: {
+		"prometheus.io/scrape": "true"
+		"prometheus.io/path":   "/metrics"
+		"prometheus.io/port":   "7777"
+	}
+
+	sidecars: {
+		metrics: {
+			image: "natsio/prometheus-nats-exporter@sha256:bce728062c4f2bcdb2cfa8f22266efa70122ff6c51c02e04f3a56eafd1bea001"
+
+			args: [
+				"-connz", "-routez", "-subz", "-varz", "-prefix=nats", "-use_internal_server_id", "http://localhost:9000",
+			]
+		}
 	}
 }
 
