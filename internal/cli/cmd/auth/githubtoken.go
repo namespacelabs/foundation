@@ -6,7 +6,6 @@ package auth
 
 import (
 	"context"
-	"os"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/auth"
@@ -25,7 +24,7 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 	}
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		if os.Getenv("GITHUB_ACTIONS") != "true" {
+		if !github.IsRunningInActions() {
 			return fnerrors.New("not running in a GitHub action")
 		}
 
