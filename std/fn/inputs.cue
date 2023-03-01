@@ -37,10 +37,11 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	}
 
 	#Endpoint: {
-		type:          string
-		serviceName:   string
-		allocatedName: string
-		containerPort: int
+		type:                string
+		serviceName:         string
+		allocatedName:       string
+		fullyQualifiedName?: string
+		containerPort:       int
 	}
 }
 
