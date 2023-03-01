@@ -42,8 +42,12 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Plan
 			var ws build.Workspace = server.Module()
 
 			remote := wsremote.Ctx(ctx)
-			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v focused=%v external=%v\n",
-				server.PackageName(), remote != nil, focused, server.Module().IsExternal())
+
+			// If there's no sink, we don't need to keep a full copy of the files.
+			digestMode := remote == nil
+
+			fmt.Fprintf(console.Debug(ctx), "prepare-server-image: %s: remoteSink=%v digestMode=%v focused=%v external=%v\n",
+				server.PackageName(), remote != nil, digestMode, focused, server.Module().IsExternal())
 
 			observeChanges := focused && !server.Module().IsExternal()
 
@@ -60,7 +64,7 @@ func MakeBuildPlan(ctx context.Context, rc runtime.Planner, server planning.Plan
 				SourcePackage: server.PackageName(),
 				BuildKind:     storage.Build_SERVER,
 				Spec:          spec,
-				Workspace:     hotreload.NewDevModule(ws, observeChanges, remote != nil, *opts, &codegenTrigger{srv: server.Server}),
+				Workspace:     hotreload.NewDevModule(ws, observeChanges, digestMode, *opts, &codegenTrigger{srv: server.Server}),
 				Platforms:     platforms,
 			}, nil
 		})
