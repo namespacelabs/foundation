@@ -88,58 +88,58 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 
 	if versions.GetCurrent() != 0 && versions.GetCurrent() == versions.GetLatest() {
 		fmt.Fprintf(console.Debug(ctx), "orchestrator is already running the latest version (%d)\n", versions.GetCurrent())
-	} else {
-		// Old orch (or non-existing orch), lets give it a quick try to do an update.
+		return client.RemoteOrchestrator(boundCluster, stateless), nil
+	}
 
-		timeout := 10 * time.Second
-		if environment.IsRunningInCI() {
-			timeout = time.Minute
-		}
-		ctx, done := context.WithTimeout(ctx, timeout)
-		defer done()
+	// Old orch (or non-existing orch), lets give it a quick try to do an update.
+	timeout := 10 * time.Second
+	if environment.IsRunningInCI() {
+		timeout = time.Minute
+	}
+	ctx, done := context.WithTimeout(ctx, timeout)
+	defer done()
 
-		plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
-		updated := false
-		if err == nil {
-			var matching []*fnapi.GetLatestDeployPlansResponse_Plan
-			for _, plan := range plans.Plan {
-				if plan.PackageName == constants.ServerPkg.String() {
-					matching = append(matching, plan)
-				}
-			}
-
-			if len(matching) > 0 {
-				plan := matching[0]
-
-				// Best-effort clean up old stateful set for each orchestrator update.
-				// Ideally, we'd only do so when upgrading to the first stateless version.
-				// Due to a bug, some users are left with both versions, so we need to delete more aggressively for a while.
-				stateful := stateless
-				stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
-				if err := boundCluster.DeleteDeployable(ctx, stateful); err != nil {
-					fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
-				}
-
-				fmt.Fprintf(console.Debug(ctx), "updating orchestrator to version %d\n", plan.Version)
-				if err := deployPlan(ctx, env, plan.Repository, plan.Digest, boundCluster, wait); err != nil {
-					return nil, err
-				}
-
-				updated = true
-			} else {
-				fmt.Fprintf(console.Warnings(ctx), "No matching orchestrator plan, that's unexpected.\n")
-			}
-		} else {
-			fmt.Fprintf(console.Warnings(ctx), "Fetching orchestrator versions, failed but we'll continue: %v\n", err)
+	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
+	if err != nil {
+		if versions.GetCurrent() == 0 {
+			return nil, fnerrors.InternalError("failed to install the orchestrator: failed to fetch latest version: %w", err)
 		}
 
-		if !updated {
-			if versions.GetCurrent() == 0 {
-				return nil, fnerrors.InternalError("failed to install the orchestrator")
-			} else {
-				fmt.Fprintf(console.Warnings(ctx), "Failed to check orchestrator version, moving along: %v\n", err)
-			}
+		fmt.Fprintf(console.Warnings(ctx), "Fetching orchestrator versions failed, continue with old orchestrator: %v\n", err)
+		return client.RemoteOrchestrator(boundCluster, stateless), nil
+	}
+
+	var matching []*fnapi.GetLatestDeployPlansResponse_Plan
+	for _, plan := range plans.Plan {
+		if plan.PackageName == constants.ServerPkg.String() {
+			matching = append(matching, plan)
 		}
+	}
+
+	if len(matching) == 0 {
+		msg := "No matching orchestrator plan, that's unexpected."
+		if versions.GetCurrent() == 0 {
+			return nil, fnerrors.InternalError("failed to install the orchestrator: %s", msg)
+		}
+
+		fmt.Fprintf(console.Warnings(ctx), "Fetching orchestrator versions failed, continue with old orchestrator: %s\n", msg)
+		return client.RemoteOrchestrator(boundCluster, stateless), nil
+	}
+
+	plan := matching[0]
+
+	// Best-effort clean up old stateful set for each orchestrator update.
+	// Ideally, we'd only do so when upgrading to the first stateless version.
+	// Due to a bug, some users are left with both versions, so we need to delete more aggressively for a while.
+	stateful := stateless
+	stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
+	if err := boundCluster.DeleteDeployable(ctx, stateful); err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "updating orchestrator to version %d\n", plan.Version)
+	if err := deployPlan(ctx, env, plan.Repository, plan.Digest, boundCluster, wait); err != nil {
+		return nil, err
 	}
 
 	return client.RemoteOrchestrator(boundCluster, stateless), nil
