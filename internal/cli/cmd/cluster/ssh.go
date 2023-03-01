@@ -7,18 +7,20 @@ package cluster
 import (
 	"context"
 	"errors"
-	"fmt"
-	"io"
 	"net"
 	"os"
-	"os/exec"
+	"os/signal"
+	"syscall"
 
+	"github.com/containerd/console"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/fnnet"
-	"namespacelabs.dev/foundation/internal/localexec"
+	con "namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func newSshCmd() *cobra.Command {
@@ -42,66 +44,104 @@ func newSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return dossh(ctx, cluster, nil)
+		return inlineSsh(ctx, cluster, nil)
 	})
 
 	return cmd
 }
 
-func dossh(ctx context.Context, cluster *api.KubernetesCluster, args []string) error {
-	lst, err := fnnet.ListenPort(ctx, "127.0.0.1", 0, 0)
+func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, args []string) error {
+	stdin, err := console.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		for {
-			conn, err := lst.Accept()
-			if err != nil {
-				return
-			}
-
-			go func() {
-				defer conn.Close()
-
-				peerConn, err := api.DialPort(ctx, cluster, 22)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
-					return
-				}
-
-				go func() {
-					_, _ = io.Copy(conn, peerConn)
-				}()
-
-				_, _ = io.Copy(peerConn, conn)
-			}()
-		}
-	}()
-
-	localPort := lst.Addr().(*net.TCPAddr).Port
-
-	args = append(args,
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
-		"-o", "UpdateHostKeys no",
-		"-p", fmt.Sprintf("%d", localPort), "root@127.0.0.1")
-
-	if cluster.SshPrivateKey != nil {
-		f, err := dirs.CreateUserTemp("ssh", "privatekey")
-		if err != nil {
-			return err
-		}
-
-		defer os.Remove(f.Name())
-
-		if _, err := f.Write(cluster.SshPrivateKey); err != nil {
-			return err
-		}
-
-		args = append(args, "-i", f.Name())
+	if !isatty.IsTerminal(stdin.Fd()) {
+		return fnerrors.New("stdin is not a tty")
 	}
 
-	cmd := exec.CommandContext(ctx, "ssh", args...)
-	return localexec.RunInteractive(ctx, cmd)
+	signer, err := ssh.ParsePrivateKey(cluster.SshPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	peerConn, err := api.DialPort(ctx, cluster, 22)
+	if err != nil {
+		return err
+	}
+
+	config := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.PublicKeys(signer),
+		},
+		HostKeyCallback: ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) error { return nil }),
+	}
+
+	c, chans, reqs, err := ssh.NewClientConn(peerConn, "internal", config)
+	if err != nil {
+		return err
+	}
+
+	client := ssh.NewClient(c, chans, reqs)
+	defer client.Close()
+
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+
+	session.Stdin = stdin
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+
+	defer session.Close()
+
+	done := con.EnterInputMode(ctx)
+	defer done()
+
+	if err := stdin.SetRaw(); err != nil {
+		return err
+	}
+
+	defer stdin.Reset()
+
+	w, h, err := term.GetSize(int(stdin.Fd()))
+	if err != nil {
+		return err
+	}
+
+	go listenForResize(ctx, stdin, session)
+
+	if err := session.RequestPty("xterm", h, w, nil); err != nil {
+		return err
+	}
+
+	if err := session.Shell(); err != nil {
+		return err
+	}
+
+	return session.Wait()
+}
+
+func listenForResize(ctx context.Context, stdin console.Console, session *ssh.Session) {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGWINCH)
+
+	defer func() {
+		signal.Stop(sig)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sig:
+		}
+
+		w, h, err := term.GetSize(int(stdin.Fd()))
+		if err == nil {
+			session.WindowChange(h, w)
+		}
+	}
 }
