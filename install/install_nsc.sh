@@ -105,7 +105,7 @@ do_install() {
     download_uri="https://get.namespace.so/packages/${tool_name}/v${version}/${tool_name}_${version}_${os}_${architecture}.tar.gz"
   fi
 
-  echo "Downloading and installing Namespace from ${download_uri}"
+  echo "Downloading and installing Namespace Cloud from ${download_uri}"
 
   ci_header=""
   if [ ! -z "${CI:-}" ]; then
