@@ -7,8 +7,8 @@ package buildkit
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
@@ -91,16 +91,22 @@ func makeAddr(containerName string) string {
 
 func waitForBuildkit(ctx context.Context, connect func() (*buildkit.Client, error)) error {
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
-		return backoff.Retry(func() error {
-			c, err := connect()
-			if err != nil {
-				return err
+		const retryDelay = 200 * time.Millisecond
+		const maxRetries = 5 * 60 // 60 seconds
+
+		c, err := connect()
+		if err != nil {
+			return err
+		}
+
+		for i := 0; i < maxRetries; i++ {
+			if _, err := c.ListWorkers(ctx); err == nil {
+				return nil
 			}
 
-			defer c.Close()
+			time.Sleep(retryDelay)
+		}
 
-			_, err = c.ListWorkers(ctx)
-			return err
-		}, backoff.WithContext(backoff.WithMaxRetries(backoff.NewExponentialBackOff(), 10), ctx))
+		return fnerrors.New("buildkit never became ready")
 	})
 }
