@@ -80,7 +80,8 @@ do_install() {
 
   echo "Detected ${architecture} as the platform architecture"
 
-  if [ -z "${NS_ROOT:-}"  ]; then
+  ns_root=${NS_ROOT:-}
+  if [ -z "$ns_root"  ]; then
     case "$os" in
       darwin) ns_root="$HOME/Library/Application Support/ns" ;;
       linux) ns_root="$HOME/.ns" ;;
