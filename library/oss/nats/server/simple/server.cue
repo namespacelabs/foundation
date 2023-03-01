@@ -6,7 +6,7 @@ server: {
 	args: [
 		"/usr/local/bin/nats-server",
 		"-m", "9000",
-		"--auth", "$AUTH_KEY",
+		"--auth", "$(AUTH_KEY)",
 	]
 
 	env: {
