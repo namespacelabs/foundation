@@ -3,7 +3,9 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
-set -e
+set -eu
+
+tool_name="ns"
 
 is_wsl() {
 	case "$(uname -r)" in
@@ -78,8 +80,7 @@ do_install() {
 
   echo "Detected ${architecture} as the platform architecture"
 
-  ns_root="$NS_ROOT"
-  if [ -z $ns_root ]; then
+  if [ -z "${NS_ROOT:-}"  ]; then
     case "$os" in
       darwin) ns_root="$HOME/Library/Application Support/ns" ;;
       linux) ns_root="$HOME/.ns" ;;
@@ -98,25 +99,30 @@ do_install() {
     $sh_c "mkdir -p ${bin_dir}"
   fi
 
-  download_uri="https://get.namespace.so/packages/ns/latest?arch=${architecture}&os=${os}"
-  if [ -n "$version" ]; then
-    download_uri="https://get.namespace.so/packages/ns/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
+  download_uri="https://get.namespace.so/packages/${tool_name}/latest?arch=${architecture}&os=${os}"
+  if [ ! -z "${version:-}" ]; then
+    download_uri="https://get.namespace.so/packages/${tool_name}/v${version}/${tool_name}_${version}_${os}_${architecture}.tar.gz"
   fi
 
   echo "Downloading and installing Namespace from ${download_uri}"
 
-  $sh_c "curl -H 'CI: ${CI}' --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} \"${download_uri}\""
+  ci_header=""
+  if [ ! -z "${CI:-}" ]; then
+    ci_header="-H 'CI: ${CI}'"
+  fi
 
-  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ns"
+  $sh_c "curl $ci_header --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} \"${download_uri}\""
 
-  $sh_c "chmod +x ${bin_dir}/ns"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${tool_name}"
+
+  $sh_c "chmod +x ${bin_dir}/${tool_name}"
 
   $sh_c "rm ${temp_tar}"
 
   echo
-  echo "Namespace was successfully installed to ${bin_dir}/ns"
+  echo "Namespace was successfully installed to ${bin_dir}/${tool_name}"
   echo
-  echo "Note: ns collects usage telemetry. This data helps us build a better "
+  echo "Note: ${tool_name} collects usage telemetry. This data helps us build a better "
   echo "platform for you. You can learn more at https://namespace.so/telemetry."
   echo
 
@@ -128,7 +134,7 @@ do_install() {
   echo "  export NS_ROOT=\"$ns_root\""
   echo "  export PATH=\"\$NS_ROOT/bin:\$PATH\""
   echo
-  echo "Or simply run ${bin_dir}/ns"
+  echo "Or simply run ${bin_dir}/${tool_name}"
 
   echo
   echo "Check out our examples at https://namespace.so/docs#examples to get started."
