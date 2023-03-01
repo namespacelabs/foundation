@@ -28,7 +28,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/cloudflare/cloudflared v0.0.0-20221214131721-99b3736cc7f7
 	github.com/containerd/console v1.0.3
-	github.com/containerd/containerd v1.6.16
+	github.com/containerd/containerd v1.6.18
 	github.com/containerd/stargz-snapshotter/estargz v0.13.0
 	github.com/creack/pty v1.1.11
 	github.com/docker/cli v23.0.0-rc.1+incompatible
