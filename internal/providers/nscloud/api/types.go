@@ -10,13 +10,12 @@ import (
 )
 
 type CreateKubernetesClusterRequest struct {
-	OpaqueUserAuth    []byte       `json:"opaque_user_auth,omitempty"`
-	Ephemeral         bool         `json:"ephemeral,omitempty"`
-	DocumentedPurpose string       `json:"documented_purpose,omitempty"`
-	AuthorizedSshKeys []string     `json:"authorized_ssh_keys,omitempty"`
-	MachineType       string       `json:"machine_type,omitempty"`
-	Feature           []string     `json:"feature,omitempty"`
-	Attachment        []Attachment `json:"attachment,omitempty"`
+	OpaqueUserAuth    []byte   `json:"opaque_user_auth,omitempty"`
+	Ephemeral         bool     `json:"ephemeral,omitempty"`
+	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
+	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
+	MachineType       string   `json:"machine_type,omitempty"`
+	Feature           []string `json:"feature,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {
