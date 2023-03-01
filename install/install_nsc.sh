@@ -100,14 +100,14 @@ do_install() {
 
   download_uri="https://get.namespace.so/packages/nsc/latest?arch=${architecture}&os=${os}"
   if [ -n "$version" ]; then
-    download_uri="https://get.namespace.so/packages/nsc/v${version}/ns_${version}_${os}_${architecture}.tar.gz"
+    download_uri="https://get.namespace.so/packages/nsc/v${version}/nsc_${version}_${os}_${architecture}.tar.gz"
   fi
 
   echo "Downloading and installing Namespace from ${download_uri}"
 
-  $sh_c "curl -H 'CI: ${CI}' --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} \"${download_uri}\""
+  $sh_c "curl -H 'CI: ${CI}' --fail --location --progress-bar --user-agent install_nsc.sh --output ${temp_tar} \"${download_uri}\""
 
-  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir}"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} nsc"
 
   $sh_c "chmod +x ${bin_dir}/nsc"
 

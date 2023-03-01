@@ -107,7 +107,7 @@ do_install() {
 
   $sh_c "curl -H 'CI: ${CI}' --fail --location --progress-bar --user-agent install.sh --output ${temp_tar} \"${download_uri}\""
 
-  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir}"
+  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ns"
 
   $sh_c "chmod +x ${bin_dir}/ns"
 

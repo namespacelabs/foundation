@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/secrets"
 	"namespacelabs.dev/foundation/internal/cli/cmd/tools"
+	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/compute"
 )
 
@@ -42,7 +43,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
 	root.AddCommand(sdk.NewSdkCmd())
-	root.AddCommand(NewVersionCmd())
+	root.AddCommand(version.NewVersionCmd())
 	root.AddCommand(NewAttachCmd())
 	root.AddCommand(NewDeploymentCmd())
 	root.AddCommand(NewDeployPlanCmd())

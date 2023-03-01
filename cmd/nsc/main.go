@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
@@ -22,6 +23,7 @@ func main() {
 		root.AddCommand(auth.NewLoginCmd())
 		root.AddCommand(cluster.NewClusterCmd(false))
 		root.AddCommand(cluster.NewKubectlCmd()) // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
+		root.AddCommand(version.NewVersionCmd())
 
 		fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
 			api.Register()

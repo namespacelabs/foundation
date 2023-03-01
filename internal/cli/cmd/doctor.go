@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
+	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -50,7 +51,7 @@ const (
 )
 
 type DoctorResults struct {
-	NSVersion     *VersionInfo                    `json:"ns"`
+	NSVersion     *version.VersionInfo            `json:"ns"`
 	NSBootVersion *storage.NamespaceBinaryVersion `json:"nsboot"`
 	DockerInfo    *DoctorResults_DockerInfo       `json:"docker_info"`
 	DockerRun     *DoctorResults_DockerRun        `json:"docker_run"`
@@ -95,12 +96,12 @@ func NewDoctorCmd() *cobra.Command {
 		var errCount int
 
 		if filterIncludes(testFilter, "version") {
-			versionI := runDiagnostic(ctx, "doctor.version-info", func(ctx context.Context) (*VersionInfo, error) {
-				return CollectVersionInfo()
+			versionI := runDiagnostic(ctx, "doctor.version-info", func(ctx context.Context) (*version.VersionInfo, error) {
+				return version.CollectVersionInfo()
 			})
-			printDiagnostic(ctx, "Namespace version", versionI, &errCount, func(w io.Writer, vi *VersionInfo) {
+			printDiagnostic(ctx, "Namespace version", versionI, &errCount, func(w io.Writer, vi *version.VersionInfo) {
 				results.NSVersion = vi
-				FormatVersionInfo(w, vi)
+				version.FormatVersionInfo(w, vi)
 			})
 		}
 
@@ -117,7 +118,7 @@ func NewDoctorCmd() *cobra.Command {
 			})
 			printDiagnostic(ctx, "NSBoot version", nsbootI, &errCount, func(w io.Writer, vi *storage.NamespaceBinaryVersion) {
 				results.NSBootVersion = vi
-				FormatBinaryVersion(w, vi)
+				version.FormatBinaryVersion(w, vi)
 			})
 		}
 
