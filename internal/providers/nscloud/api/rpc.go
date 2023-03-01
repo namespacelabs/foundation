@@ -20,7 +20,6 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/github"
@@ -154,22 +153,6 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 				TypeURL: "namespacelabs.dev/foundation/schema.GithubAttachment",
 				Content: content,
 			})
-		}
-
-		if !environment.IsRunningInCI() {
-			keys, err := UserSSHKeys()
-			if err != nil {
-				return nil, err
-			}
-
-			if keys != nil {
-				actualKeys, err := compute.GetValue(ctx, keys)
-				if err != nil {
-					return nil, err
-				}
-
-				req.AuthorizedSshKeys = append(req.AuthorizedSshKeys, actualKeys...)
-			}
 		}
 
 		var response StartCreateKubernetesClusterResponse
