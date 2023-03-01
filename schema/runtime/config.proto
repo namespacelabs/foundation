@@ -48,6 +48,7 @@ message Server {
         string  owner    = 1;  // Package name.
         string  name     = 2;  // Scoped to package name.
         string  endpoint = 3;  // E.g. hostname:port.
+        string  fully_qualified_endpoint = 5; // E.g. fully_qualified_hostname:port.
         Ingress ingress  = 4;  // Computed ingress for this service.
     }
 

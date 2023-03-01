@@ -31,10 +31,11 @@ type cueServerReference struct {
 }
 
 type cueEndpoint struct {
-	Type          string `json:"type"`
-	ServiceName   string `json:"serviceName"`
-	AllocatedName string `json:"allocatedName"`
-	ContainerPort int32  `json:"containerPort"`
+	Type               string `json:"type"`
+	ServiceName        string `json:"serviceName"`
+	AllocatedName      string `json:"allocatedName"`
+	FullyQualifiedName string `json:"fullyQualifiedName"`
+	ContainerPort      int32  `json:"containerPort"`
 }
 
 func FetchServer(packages pkggraph.PackageLoader, stack pkggraph.StackEndpoints) FetcherFunc {
@@ -59,10 +60,11 @@ func FetchServer(packages pkggraph.PackageLoader, stack pkggraph.StackEndpoints)
 
 		for _, endpoint := range stack.EndpointsBy(pkg.PackageName()) {
 			server.Endpoints = append(server.Endpoints, cueEndpoint{
-				Type:          endpoint.Type.String(),
-				ServiceName:   endpoint.ServiceName,
-				AllocatedName: endpoint.AllocatedName,
-				ContainerPort: endpoint.GetPort().GetContainerPort(),
+				Type:               endpoint.Type.String(),
+				ServiceName:        endpoint.ServiceName,
+				AllocatedName:      endpoint.AllocatedName,
+				FullyQualifiedName: endpoint.FullyQualifiedName,
+				ContainerPort:      endpoint.GetPort().GetContainerPort(),
 			})
 		}
 

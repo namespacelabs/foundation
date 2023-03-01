@@ -77,12 +77,15 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			stack, err := planning.ComputeStack(ctx, servers.Servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {
 				return err
 			}
 
-			p, err := planning.NewPlanner(ctx, env)
+			stack, err := planning.ComputeStack(ctx, servers.Servers, planning.ProvisionOpts{
+				Planner:   p.Runtime,
+				PortRange: eval.DefaultPortRange(),
+			})
 			if err != nil {
 				return err
 			}

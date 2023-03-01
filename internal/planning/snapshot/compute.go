@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/eval"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/wscontents"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -33,12 +34,13 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func RequireServers(env cfg.Context, servers ...schema.PackageName) compute.Computable[*ServerSnapshot] {
-	return &requiredServers{env: env, packages: servers}
+func RequireServers(env cfg.Context, planner runtime.Planner, servers ...schema.PackageName) compute.Computable[*ServerSnapshot] {
+	return &requiredServers{env: env, planner: planner, packages: servers}
 }
 
 type requiredServers struct {
 	env      cfg.Context
+	planner  runtime.Planner
 	packages []schema.PackageName
 
 	compute.LocalScoped[*ServerSnapshot]
@@ -49,6 +51,7 @@ type ServerSnapshot struct {
 	sealed pkggraph.SealedPackageLoader
 	// Used in Observe()
 	env      cfg.Context
+	planner  runtime.Planner
 	packages []schema.PackageName
 }
 
@@ -67,10 +70,10 @@ func (rs *requiredServers) Output() compute.Output {
 }
 
 func (rs *requiredServers) Compute(ctx context.Context, _ compute.Resolved) (*ServerSnapshot, error) {
-	return computeSnapshot(ctx, rs.env, rs.packages)
+	return computeSnapshot(ctx, rs.env, rs.planner, rs.packages)
 }
 
-func computeSnapshot(ctx context.Context, env cfg.Context, packages []schema.PackageName) (*ServerSnapshot, error) {
+func computeSnapshot(ctx context.Context, env cfg.Context, planner runtime.Planner, packages []schema.PackageName) (*ServerSnapshot, error) {
 	pl := parsing.NewPackageLoader(env)
 
 	var servers []planning.Server
@@ -83,12 +86,12 @@ func computeSnapshot(ctx context.Context, env cfg.Context, packages []schema.Pac
 		servers = append(servers, server)
 	}
 
-	stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+	stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{Planner: planner, PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
 
-	return &ServerSnapshot{stack: stack, sealed: pl.Seal(), env: env, packages: packages}, nil
+	return &ServerSnapshot{stack: stack, sealed: pl.Seal(), env: env, planner: planner, packages: packages}, nil
 }
 
 func (snap *ServerSnapshot) Get(pkgs ...schema.PackageName) ([]planning.PlannedServer, error) {
@@ -228,7 +231,7 @@ func observe(ctx context.Context, snap *ServerSnapshot, onChange func(*ServerSna
 				fmt.Fprintf(console.Warnings(ctx), "Got errors while watching for changes:\n  %v\n", err)
 			}
 
-			newSnapshot, err := computeSnapshot(ctx, snap.env, snap.packages)
+			newSnapshot, err := computeSnapshot(ctx, snap.env, snap.planner, snap.packages)
 			if err != nil {
 				if msg, ok := fnerrors.IsExpected(err); ok {
 					fmt.Fprintf(console.Stderr(ctx), "\n  %s\n\n", msg)

@@ -94,12 +94,18 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 
 	s, _ := stack.Get(srv.PackageName())
 	for _, endpoint := range s.Endpoints {
-		current.Service = append(current.Service, &runtime.Server_Service{
+		svc := &runtime.Server_Service{
 			Owner:    endpoint.EndpointOwner,
 			Name:     endpoint.ServiceName,
 			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
 			Ingress:  makeServiceIngress(stack, endpoint, env),
-		})
+		}
+
+		if endpoint.FullyQualifiedName != "" {
+			svc.FullyQualifiedEndpoint = fmt.Sprintf("%s:%d", endpoint.FullyQualifiedName, endpoint.ExportedPort)
+		}
+
+		current.Service = append(current.Service, svc)
 	}
 
 	for _, endpoint := range s.InternalEndpoints {

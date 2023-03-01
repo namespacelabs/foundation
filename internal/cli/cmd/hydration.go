@@ -116,12 +116,12 @@ func (h *hydrateParser) Parse(ctx context.Context, args []string) error {
 		h.resultOut.Ingress = rehydrated.IngressFragments
 		h.resultOut.Rehydrated = rehydrated
 	} else {
-		stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+		cluster, err := runtime.PlannerFor(ctx, *h.env)
 		if err != nil {
 			return err
 		}
 
-		cluster, err := runtime.PlannerFor(ctx, *h.env)
+		stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{Planner: cluster, PortRange: eval.DefaultPortRange()})
 		if err != nil {
 			return err
 		}

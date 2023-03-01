@@ -147,6 +147,11 @@ type Planner interface {
 	// The ingress class this runtime implementation uses.
 	Ingress() IngressClass
 
+	// Returns DNS-resolvable names for a particular service; the first one
+	// being a short-hand usable within the same namespace, and the latter being
+	// a fully qualified domain name.
+	MakeServiceName(string) (string, string)
+
 	EnsureClusterNamespace(context.Context) (ClusterNamespace, error)
 }
 

@@ -79,7 +79,7 @@ func (pd PreparedDeployable) PackageRef() *schema.PackageRef {
 }
 
 func PrepareDeployServers(ctx context.Context, planner planning.Planner, focus ...planning.Server) (compute.Computable[*Plan], error) {
-	stack, err := planning.ComputeStack(ctx, focus, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+	stack, err := planning.ComputeStack(ctx, focus, planning.ProvisionOpts{Planner: planner.Runtime, PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
@@ -754,7 +754,7 @@ func prepareSidecarAndInitImages(ctx context.Context, planner runtime.Planner, r
 }
 
 func ComputeStackAndImages(ctx context.Context, planner planning.Planner, servers planning.Servers) (*planning.Stack, []compute.Computable[ResolvedServerImages], error) {
-	stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+	stack, err := planning.ComputeStack(ctx, servers, planning.ProvisionOpts{Planner: planner.Runtime, PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, nil, err
 	}

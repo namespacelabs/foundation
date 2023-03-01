@@ -74,6 +74,7 @@ func (s *StackWithIngress) GetIngressesForService(endpointOwner string, serviceN
 }
 
 type ProvisionOpts struct {
+	Planner   runtime.Planner
 	Secrets   is.SecretsSource
 	PortRange eval.PortRange
 }
@@ -378,7 +379,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 		ps.Resources = append(ps.Resources, computed...)
 
 		// Fill in env-bound data now, post ports allocation.
-		endpoints, internal, err := ComputeEndpoints(server, ps.MergedFragment, allocatedPorts.Ports)
+		endpoints, internal, err := ComputeEndpoints(opts.Planner, server, ps.MergedFragment, allocatedPorts.Ports)
 		if err != nil {
 			return err
 		}

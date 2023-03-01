@@ -117,6 +117,10 @@ func (r Planner) ClusterNamespaceFor(parent runtime.Cluster, underlying *Cluster
 	return &ClusterNamespace{parent: parent, underlying: underlying, target: r.target}
 }
 
+func (r Planner) MakeServiceName(name string) (string, string) {
+	return name, fmt.Sprintf("%s.%s.svc.cluster.local", name, r.target.namespace)
+}
+
 func planDeployment(ctx context.Context, target BoundNamespace, d runtime.DeploymentSpec, platforms []specs.Platform) (*runtime.DeploymentPlan, error) {
 	var state runtime.DeploymentPlan
 

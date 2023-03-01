@@ -34,7 +34,7 @@ func setWorkspace(ctx context.Context, env cfg.Context, rt runtime.ClusterNamesp
 
 	return compute.Do(ctx, func(ctx context.Context) error {
 		serverPackages := schema.PackageNames(packageNames...)
-		focusServers := snapshot.RequireServers(env, serverPackages...)
+		focusServers := snapshot.RequireServers(env, planner, serverPackages...)
 
 		fmt.Fprintf(console.Debug(ctx), "devworkflow: setWorkspace.Do\n")
 

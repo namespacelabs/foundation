@@ -12,6 +12,7 @@ import (
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/constants"
+	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
@@ -27,7 +28,7 @@ func RegisterEndpointProvider(fmwk schema.Framework, f EndpointProvider) {
 	endpointProviderByFramework[fmwk.String()] = f
 }
 
-func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.ServerFragment, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
 	sch := srv.StackEntry()
 	serverPorts := append([]*schema.Endpoint_Port{}, sch.Server.StaticPort...)
 	serverPorts = append(serverPorts, allocatedPorts...)
@@ -54,7 +55,7 @@ func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts 
 			}
 		}
 
-		nd, err := computeServiceEndpoint(sch.Server, pkg, service, service.GetIngress(), serverPort)
+		nd, err := computeServiceEndpoint(planner, sch.Server, pkg, service, service.GetIngress(), serverPort)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -69,7 +70,7 @@ func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts 
 			t = s.EndpointType
 		}
 
-		spec, err := ServiceSpecToEndpoint(server, s, t)
+		spec, err := ServiceSpecToEndpoint(planner, server, s, t)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -81,7 +82,7 @@ func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts 
 			return nil, nil, fnerrors.InternalError("ingress endpoint type is incompatible, saw %v", s.EndpointType)
 		}
 
-		spec, err := ServiceSpecToEndpoint(server, s, schema.Endpoint_INTERNET_FACING)
+		spec, err := ServiceSpecToEndpoint(planner, server, s, schema.Endpoint_INTERNET_FACING)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -98,15 +99,18 @@ func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts 
 			}
 		}
 
+		short, fqdn := planner.MakeServiceName(server.Name)
+
 		// We need a http service to hit.
 		endpoints = append(endpoints, &schema.Endpoint{
-			Type:          schema.Endpoint_PRIVATE,
-			ServiceName:   constants.HttpServiceName,
-			Port:          httpPort,
-			ExportedPort:  httpPort.GetContainerPort(),
-			AllocatedName: server.Name,
-			EndpointOwner: server.GetPackageName(),
-			ServerOwner:   server.GetPackageName(),
+			Type:               schema.Endpoint_PRIVATE,
+			ServiceName:        constants.HttpServiceName,
+			Port:               httpPort,
+			ExportedPort:       httpPort.GetContainerPort(),
+			AllocatedName:      short,
+			FullyQualifiedName: fqdn,
+			EndpointOwner:      server.GetPackageName(),
+			ServerOwner:        server.GetPackageName(),
 			ServiceMetadata: []*schema.ServiceMetadata{
 				{Protocol: "http"},
 			},
@@ -127,21 +131,23 @@ func ComputeEndpoints(srv Server, merged *schema.ServerFragment, allocatedPorts 
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(server *schema.Server, pkg *pkggraph.Package, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
+func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, pkg *pkggraph.Package, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
 	if len(n.ExportService) == 0 {
 		return nil, nil
 	}
 
 	// XXX should we perhaps export an endpoint per service.
+	short, fqdn := planner.MakeServiceName(n.GetIngressServiceName() + "-grpc")
 
 	endpoint := &schema.Endpoint{
-		ServiceName:   n.GetIngressServiceName(),
-		AllocatedName: n.GetIngressServiceName() + "-grpc",
-		EndpointOwner: n.GetPackageName(),
-		ServerOwner:   server.GetPackageName(),
-		Type:          t,
-		Port:          serverPort,
-		ExportedPort:  serverPort.GetContainerPort(),
+		ServiceName:        n.GetIngressServiceName(),
+		AllocatedName:      short,
+		FullyQualifiedName: fqdn,
+		EndpointOwner:      n.GetPackageName(),
+		ServerOwner:        server.GetPackageName(),
+		Type:               t,
+		Port:               serverPort,
+		ExportedPort:       serverPort.GetContainerPort(),
 	}
 
 	if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
@@ -193,18 +199,21 @@ func computeServiceEndpoint(server *schema.Server, pkg *pkggraph.Package, n *sch
 	return []*schema.Endpoint{endpoint}, nil
 }
 
-func ServiceSpecToEndpoint(srv *schema.Server, spec *schema.Server_ServiceSpec, t schema.Endpoint_Type) (*schema.Endpoint, error) {
+func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *schema.Server_ServiceSpec, t schema.Endpoint_Type) (*schema.Endpoint, error) {
+	short, fqdn := planner.MakeServiceName(fmt.Sprintf("%s-%s", spec.GetName(), srv.Id))
+
 	endpoint := &schema.Endpoint{
-		ServiceName:     spec.GetName(),
-		ServerOwner:     srv.GetPackageName(),
-		EndpointOwner:   srv.GetPackageName(),
-		Type:            t,
-		Port:            spec.GetPort(),
-		ExportedPort:    spec.GetExportedPort(),
-		AllocatedName:   fmt.Sprintf("%s-%s", spec.GetName(), srv.Id),
-		ServiceLabel:    spec.GetLabel(),
-		ServiceMetadata: spec.Metadata,
-		IngressProvider: spec.IngressProvider,
+		ServiceName:        spec.GetName(),
+		ServerOwner:        srv.GetPackageName(),
+		EndpointOwner:      srv.GetPackageName(),
+		Type:               t,
+		Port:               spec.GetPort(),
+		ExportedPort:       spec.GetExportedPort(),
+		AllocatedName:      short,
+		FullyQualifiedName: fqdn,
+		ServiceLabel:       spec.GetLabel(),
+		ServiceMetadata:    spec.Metadata,
+		IngressProvider:    spec.IngressProvider,
 	}
 
 	ingressSpec := &schema.Endpoint_IngressSpec{}

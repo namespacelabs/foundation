@@ -70,7 +70,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 		return nil, fnerrors.AttachLocation(testPkg.Location, err)
 	}
 
-	stack, err := loadSUT(ctx, env, pl, testDef)
+	stack, err := loadSUT(ctx, env, planner, pl, testDef)
 	if err != nil {
 		return nil, fnerrors.NewWithLocation(testPkg.Location, "failed to load fixture: %w", err)
 	}
@@ -187,7 +187,7 @@ func driverDefinition(pkg *pkggraph.Package, test *schema.Test) (*schema.Binary,
 	return nil, fnerrors.NewWithLocation(pkg.Location, "did not find binary %q", test.Driver.Name)
 }
 
-func loadSUT(ctx context.Context, env cfg.Context, pl *parsing.PackageLoader, test *schema.Test) (*planning.Stack, error) {
+func loadSUT(ctx context.Context, env cfg.Context, planner runtime.Planner, pl *parsing.PackageLoader, test *schema.Test) (*planning.Stack, error) {
 	var suts []planning.Server
 
 	for _, pkg := range test.ServersUnderTest {
@@ -198,7 +198,7 @@ func loadSUT(ctx context.Context, env cfg.Context, pl *parsing.PackageLoader, te
 		suts = append(suts, sut)
 	}
 
-	stack, err := planning.ComputeStack(ctx, suts, planning.ProvisionOpts{PortRange: eval.DefaultPortRange()})
+	stack, err := planning.ComputeStack(ctx, suts, planning.ProvisionOpts{Planner: planner, PortRange: eval.DefaultPortRange()})
 	if err != nil {
 		return nil, err
 	}
