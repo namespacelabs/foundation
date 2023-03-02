@@ -49,16 +49,26 @@ func AnonymousCall(ctx context.Context, endpoint string, method string, req inte
 
 func AuthenticatedCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Endpoint:   endpoint,
-		Method:     method,
-		FetchToken: FetchTenantToken,
+		Endpoint: endpoint,
+		Method:   method,
+		FetchToken: func(ctx context.Context) (Token, error) {
+			return FetchTenantToken(ctx)
+		},
 	}.Do(ctx, req, handle)
+}
+
+type Token interface {
+	Raw() string
+}
+
+func BearerToken(t Token) string {
+	return "Bearer " + t.Raw()
 }
 
 type Call[RequestT any] struct {
 	Endpoint   string
 	Method     string
-	FetchToken func(context.Context) (*auth.Token, error)
+	FetchToken func(context.Context) (Token, error)
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -87,7 +97,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		if err != nil {
 			return err
 		}
-		headers.Add("Authorization", "Bearer "+tok.Raw())
+		headers.Add("Authorization", BearerToken(tok))
 	}
 
 	AddNamespaceHeaders(ctx, &headers)

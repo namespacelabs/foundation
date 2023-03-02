@@ -33,8 +33,13 @@ func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenRe
 	return res, nil
 }
 
+type userToken string
+
+func (u userToken) Raw() string {
+	return string(u)
+}
+
 type ExchangeUserTokenRequest struct {
-	Token  string   `json:"token,omitempty"`
 	Scopes []string `json:"scopes,omitempty"`
 }
 
@@ -43,10 +48,16 @@ type ExchangeUserTokenResponse struct {
 }
 
 func ExchangeUserToken(ctx context.Context, token string, scopes ...string) (ExchangeUserTokenResponse, error) {
-	req := ExchangeUserTokenRequest{Token: token, Scopes: scopes}
+	req := ExchangeUserTokenRequest{Scopes: scopes}
 
 	var res ExchangeUserTokenResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeUserToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[ExchangeUserTokenRequest]{
+		Endpoint: EndpointAddress,
+		Method:   "nsl.tenants.TenantsService/ExchangeUserToken",
+		FetchToken: func(ctx context.Context) (Token, error) {
+			return userToken(token), nil
+		},
+	}.Do(ctx, req, DecodeJSONResponse(&res))); err != nil {
 		return ExchangeUserTokenResponse{}, err
 	}
 
@@ -73,7 +84,7 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 	return res, nil
 }
 
-func FetchTenantToken(ctx context.Context) (*auth.Token, error) {
+func FetchTenantToken(ctx context.Context) (Token, error) {
 	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
 		if AdminMode {
 			// In admin mode we exchange user token to a tenant token with `admin` scope.

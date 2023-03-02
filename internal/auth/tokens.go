@@ -35,10 +35,6 @@ func (t *Token) Raw() string {
 	return t.TenantToken
 }
 
-func (t *Token) BearerToken() string {
-	return "Bearer " + t.TenantToken
-}
-
 func StoreTenantToken(token string) error {
 	data, err := json.Marshal(Token{TenantToken: token})
 	if err != nil {

@@ -13,7 +13,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jpillora/chisel/share/cnet"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
@@ -26,13 +25,13 @@ func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (
 	return DialPortWithToken(ctx, token, cluster, targetPort)
 }
 
-func DialPortWithToken(ctx context.Context, token *auth.Token, cluster *KubernetesCluster, targetPort int) (net.Conn, error) {
+func DialPortWithToken(ctx context.Context, token fnapi.Token, cluster *KubernetesCluster, targetPort int) (net.Conn, error) {
 	d := websocket.Dialer{
 		HandshakeTimeout: 15 * time.Second,
 	}
 
 	hdrs := http.Header{}
-	hdrs.Add("Authorization", token.BearerToken())
+	hdrs.Add("Authorization", fnapi.BearerToken(token))
 
 	wsConn, _, err := d.DialContext(ctx, fmt.Sprintf("wss://gate.%s/%s/%d", cluster.IngressDomain, cluster.ClusterId, targetPort), hdrs)
 	if err != nil {
