@@ -275,9 +275,9 @@ func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesC
 	})
 }
 
-func ListClusters(ctx context.Context, api API, previousRuns bool) (*KubernetesClusterList, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*KubernetesClusterList, error) {
-		var list KubernetesClusterList
+func ListClusters(ctx context.Context, api API, previousRuns bool) (*ListKubernetesClustersResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*ListKubernetesClustersResponse, error) {
+		var list ListKubernetesClustersResponse
 		if err := api.ListKubernetesClusters.Do(ctx, ListKubernetesClustersRequest{
 			IncludePreviousRuns: previousRuns,
 		}, fnapi.DecodeJSONResponse(&list)); err != nil {
