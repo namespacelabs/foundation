@@ -60,7 +60,7 @@ func (sl logger) write(b []byte) {
 		return
 	}
 
-	fo, err := os.Create(LogActionsToFile)
+	fo, err := os.OpenFile(LogActionsToFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		// Ignore errors
 		return
