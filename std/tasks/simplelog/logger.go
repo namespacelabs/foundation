@@ -8,14 +8,29 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var AlsoReportStartEvents = false
+var (
+	AlsoReportStartEvents = false
+	LogActionsToFile      = ""
+)
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&AlsoReportStartEvents, "also_report_start_events", AlsoReportStartEvents,
+		"If set to true, we log a start event for each action, if --log_actions is also set.")
+	flags.StringVar(&LogActionsToFile, "log_actions_to", LogActionsToFile,
+		"If set, emit action logs to the specified path instead of the console.")
+
+	_ = flags.MarkHidden("also_report_start_events")
+	_ = flags.MarkHidden("log_actions_to")
+}
 
 func NewSink(w io.Writer, maxLevel int) tasks.ActionSink {
 	return &logger{w, maxLevel}
@@ -38,6 +53,24 @@ func (sl *logger) Waiting(ra *tasks.RunningAction) {
 	// Do nothing.
 }
 
+func (sl logger) write(b []byte) {
+	if LogActionsToFile == "" {
+		// Ignore errors
+		_, _ = sl.out.Write(b)
+		return
+	}
+
+	fo, err := os.Create(LogActionsToFile)
+	if err != nil {
+		// Ignore errors
+		return
+	}
+
+	defer fo.Close()
+	// Ignore errors
+	_, _ = fo.Write(b)
+}
+
 func (sl *logger) Started(ra *tasks.RunningAction) {
 	if !tasks.LogActions || !AlsoReportStartEvents {
 		return
@@ -51,8 +84,7 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 	fmt.Fprint(&b, "↦ ")
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
 
-	// Ignore errors
-	_, _ = sl.out.Write(b.Bytes())
+	sl.write(b.Bytes())
 }
 
 func (sl *logger) Done(ra *tasks.RunningAction) {
@@ -73,8 +105,7 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 	}
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
 
-	// Ignore errors
-	_, _ = sl.out.Write(b.Bytes())
+	sl.write(b.Bytes())
 }
 
 func (sl *logger) Instant(ev *tasks.EventData) {
@@ -96,8 +127,7 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 	}
 	consolesink.LogAction(&b, colors.NoColors, *ev)
 
-	// Ignore errors
-	_, _ = sl.out.Write(b.Bytes())
+	sl.write(b.Bytes())
 }
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }

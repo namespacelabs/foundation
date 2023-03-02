@@ -122,7 +122,15 @@ jobs:
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
+            --log_actions_to=/tmp/action_log \
             internal/testdata/server/gogrpc
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}-${{ matrix.os }}-use_prebuilts-${{ matrix.use_prebuilts }}
+          path: /tmp/action_log
+          retention-days: 3
 
   run_dev:
     name: Test local Namespace dev session os=${{ matrix.os }}
@@ -204,12 +212,20 @@ jobs:
         run: |
           /tmp/ns test \
             --also_report_start_events \
+            --log_actions_to=/tmp/action_log \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel \
             --all
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}
+          path: /tmp/action_log
+          retention-days: 3
 
       - name: Test ns cluster commands
         run: |
@@ -289,9 +305,17 @@ jobs:
             internal/testdata/integrations/dockerfile/complex \
             internal/testdata/integrations/golang \
             internal/testdata/integrations/nodejs/yarn \
+            --log_actions_to=/tmp/action_log \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --run_codegen=false
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}
+          path: /tmp/action_log
+          retention-days: 3
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
@@ -348,11 +372,19 @@ jobs:
             multitier/02-withsecrets/apibackend \
             golang/01-simple/server \
             golang/02-withsecrets/server \
+            --log_actions_to=/tmp/action_log \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}
+          path: /tmp/action_log
+          retention-days: 3
 
       - uses: k0kubun/action-slack@v2.0.0
         with:

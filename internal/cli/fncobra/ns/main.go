@@ -68,7 +68,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/tasks/simplelog"
 	"namespacelabs.dev/foundation/universe/aws/iam"
 )
 
@@ -247,8 +246,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"If set to false, we rebuild the orchestrator instead of using the pinned version. For internal testing only.")
 		rootCmd.PersistentFlags().BoolVar(&orchestration.SkipVersionCache, "update_orchestrator", orchestration.SkipVersionCache,
 			"If set to true, we ignore the orchestrator version cache and force-update to the latest version. For internal testing only.")
-		rootCmd.PersistentFlags().BoolVar(&simplelog.AlsoReportStartEvents, "also_report_start_events", simplelog.AlsoReportStartEvents,
-			"If set to true, we log a start event for each action, if --log_actions is also set.")
 		rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
 			"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
 		rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
@@ -281,7 +278,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"use_orchestrator",
 			"deploy_with_orchestrator",
 			"render_orchestrator_deployment",
-			"also_report_start_events",
 			"buildkit_forward_keychain",
 			"use_head_orchestrator",
 			"update_orchestrator",
