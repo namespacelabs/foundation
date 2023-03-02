@@ -36,7 +36,7 @@ func newPortForwardCmd() *cobra.Command {
 
 		cluster, err := selectCluster(ctx, args)
 		if err != nil {
-			if errors.Is(err, ErrEmptyClusteList) {
+			if errors.Is(err, ErrEmptyClusterList) {
 				printCreateClusterMsg(ctx)
 				return nil
 			}

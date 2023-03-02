@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-var ErrEmptyClusteList = errors.New("no clusters")
+var ErrEmptyClusterList = errors.New("no clusters")
 
 func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
@@ -51,7 +51,7 @@ func selectClusterID(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if len(clusters.Clusters) == 0 {
-		return "", ErrEmptyClusteList
+		return "", ErrEmptyClusterList
 	}
 
 	cl, err := selectTableClusters(ctx, clusters.Clusters, previousRuns)

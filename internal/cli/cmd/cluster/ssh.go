@@ -33,7 +33,7 @@ func newSshCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, err := selectCluster(ctx, args)
 		if err != nil {
-			if errors.Is(err, ErrEmptyClusteList) {
+			if errors.Is(err, ErrEmptyClusterList) {
 				printCreateClusterMsg(ctx)
 				return nil
 			}
