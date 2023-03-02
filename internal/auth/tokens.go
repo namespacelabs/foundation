@@ -66,6 +66,10 @@ func LoadTenantToken(ctx context.Context) (*Token, error) {
 	p := filepath.Join(dir, tokenTxt)
 	data, err := os.ReadFile(p)
 	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, ErrRelogin
+		}
+
 		return nil, err
 	}
 
