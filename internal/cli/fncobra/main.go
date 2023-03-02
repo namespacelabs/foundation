@@ -136,6 +136,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 	tasks.SetupFlags(rootCmd.PersistentFlags())
 	consolesink.SetupFlags(rootCmd.PersistentFlags())
+	simplelog.SetupFlags(rootCmd.PersistentFlags())
 	fnapi.SetupFlags(rootCmd.PersistentFlags())
 	clerk.SetupFlags(rootCmd.PersistentFlags())
 
