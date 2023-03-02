@@ -131,6 +131,7 @@ jobs:
           name: ns-action-log-${{ github.job }}-${{ matrix.os }}-use_prebuilts-${{ matrix.use_prebuilts }}
           path: /tmp/action_log
           retention-days: 3
+        if: always()
 
   run_dev:
     name: Test local Namespace dev session os=${{ matrix.os }}
@@ -226,6 +227,7 @@ jobs:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
           retention-days: 3
+        if: always()
 
       - name: Test ns cluster commands
         run: |
@@ -316,6 +318,7 @@ jobs:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
           retention-days: 3
+        if: always()
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
@@ -385,6 +388,7 @@ jobs:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
           retention-days: 3
+        if: always()
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
