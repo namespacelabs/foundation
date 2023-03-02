@@ -25,31 +25,38 @@ func newDestroyCmd() *cobra.Command {
 	force := cmd.Flags().Bool("force", false, "Skip the confirmation step.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusters, err := selectClusters(ctx, args)
-		if err != nil {
-			if errors.Is(err, ErrEmptyClusteList) {
-				printCreateClusterMsg(ctx)
+		clusterIDs := args
+		if len(clusterIDs) == 0 {
+			selected, err := selectClusterID(ctx)
+			if err != nil {
+				if errors.Is(err, ErrEmptyClusteList) {
+					printCreateClusterMsg(ctx)
+					return nil
+				}
+				return err
+			}
+			if selected == "" {
 				return nil
 			}
-			return err
+			clusterIDs = []string{selected}
 		}
 
-		for _, cluster := range clusters {
+		for _, cluster := range clusterIDs {
 			if !*force {
 				result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
 					fmt.Sprintf(`This is a destructive action.
 
-	Type %q for it to be removed.`, cluster.ClusterId), "")
+	Type %q for it to be removed.`, cluster), "")
 				if err != nil {
 					return err
 				}
 
-				if result != cluster.ClusterId {
+				if result != cluster {
 					return context.Canceled
 				}
 			}
 
-			if err := api.DestroyCluster(ctx, api.Endpoint, cluster.ClusterId); err != nil {
+			if err := api.DestroyCluster(ctx, api.Endpoint, cluster); err != nil {
 				return err
 			}
 		}

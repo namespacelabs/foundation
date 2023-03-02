@@ -43,51 +43,48 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	return cmd
 }
 
-func selectClusters(ctx context.Context, names []string) ([]*api.KubernetesCluster, error) {
-	var res []*api.KubernetesCluster
+func selectClusterID(ctx context.Context) (string, error) {
 	previousRuns := false
-	for _, name := range names {
-		response, err := api.GetCluster(ctx, api.Endpoint, name)
-		if err != nil {
-			return nil, err
-		}
-		res = append(res, response.Cluster)
-	}
-
-	if len(res) > 0 {
-		return res, nil
-	}
 
 	clusters, err := api.ListClusters(ctx, api.Endpoint, previousRuns)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if len(clusters.Clusters) == 0 {
-		return nil, ErrEmptyClusteList
+		return "", ErrEmptyClusteList
 	}
 
 	cl, err := selectTableClusters(ctx, clusters.Clusters, previousRuns)
 	if err != nil || cl == nil {
-		return nil, err
+		return "", err
 	}
 
-	return []*api.KubernetesCluster{cl}, nil
+	return cl.ClusterId, nil
 }
 
 func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
-	clusters, err := selectClusters(ctx, args)
+	if len(args) > 1 {
+		return nil, fnerrors.InternalError("got %d clusters - expected one", len(args))
+	}
+
+	var clusterID string
+	if len(args) == 1 {
+		clusterID = args[0]
+	} else {
+		selected, err := selectClusterID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if selected == "" {
+			return nil, nil
+		}
+		clusterID = selected
+	}
+	response, err := api.GetCluster(ctx, api.Endpoint, clusterID)
 	if err != nil {
 		return nil, err
 	}
-
-	switch len(clusters) {
-	case 1:
-		return clusters[0], nil
-	case 0:
-		return nil, nil
-	default:
-		return nil, fnerrors.InternalError("got %d clusters - expected one", len(clusters))
-	}
+	return response.Cluster, nil
 }
 
 const (
@@ -101,8 +98,8 @@ const (
 )
 
 func tableClusters(ctx context.Context,
-	clusters []api.KubernetesCluster, previousRuns, selectCluster bool) (*api.KubernetesCluster, error) {
-	clusterIdMap := map[string]api.KubernetesCluster{}
+	clusters []api.KubernetesClusterMetadata, previousRuns, selectCluster bool) (*api.KubernetesClusterMetadata, error) {
+	clusterIdMap := map[string]api.KubernetesClusterMetadata{}
 	cols := []tui.Column{
 		{Key: idColKey, Title: "Cluster ID", MinWidth: 5, MaxWidth: 20},
 		{Key: cpuColKey, Title: "CPU", MinWidth: 5, MaxWidth: 20},
@@ -156,7 +153,7 @@ func tableClusters(ctx context.Context,
 	return nil, err
 }
 
-func formatPurpose(cluster api.KubernetesCluster) string {
+func formatPurpose(cluster api.KubernetesClusterMetadata) string {
 	purpose := "-"
 	if cluster.GithubWorkflow != nil {
 		purpose = fmt.Sprintf("GH Action: %s %s",
@@ -168,13 +165,13 @@ func formatPurpose(cluster api.KubernetesCluster) string {
 }
 
 func staticTableClusters(ctx context.Context,
-	clusters []api.KubernetesCluster, previousRuns bool) error {
+	clusters []api.KubernetesClusterMetadata, previousRuns bool) error {
 	_, err := tableClusters(ctx, clusters, previousRuns, false)
 	return err
 }
 
 func selectTableClusters(ctx context.Context,
-	clusters []api.KubernetesCluster, previousRuns bool) (*api.KubernetesCluster, error) {
+	clusters []api.KubernetesClusterMetadata, previousRuns bool) (*api.KubernetesClusterMetadata, error) {
 	return tableClusters(ctx, clusters, previousRuns, true)
 }
 

@@ -58,8 +58,27 @@ type ListKubernetesClustersRequest struct {
 	MaxEntries          int64  `json:"max_entries,omitempty"`
 }
 
-type KubernetesClusterList struct {
-	Clusters []KubernetesCluster `json:"cluster"`
+type ListKubernetesClustersResponse struct {
+	Clusters []KubernetesClusterMetadata `json:"cluster"`
+}
+
+type KubernetesClusterMetadata struct {
+	ClusterId         string        `json:"cluster_id,omitempty"`
+	Created           string        `json:"created,omitempty"`
+	DestroyedAt       string        `json:"destroyed_at,omitempty"`
+	Deadline          string        `json:"deadline,omitempty"`
+	DocumentedPurpose string        `json:"documented_purpose,omitempty"`
+	Shape             *ClusterShape `json:"shape,omitempty"`
+
+	KubernetesDistribution string   `json:"kubernetes_distribution,omitempty"`
+	Platform               []string `json:"platform,omitempty"`
+
+	IngressDomain string `json:"ingress_domain,omitempty"`
+
+	Label []*LabelEntry `json:"label,omitempty"`
+
+	CreatorId      string              `json:"creator_id,omitempty"`
+	GithubWorkflow *GithubWorkflowInfo `json:"github_workflow,omitempty"`
 }
 
 type KubernetesCluster struct {
