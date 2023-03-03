@@ -138,10 +138,10 @@ func (l *baseRequest[V]) Explain(ctx context.Context, w io.Writer) error {
 	}
 
 	return enc.Encode(map[string]interface{}{
-		"frontend":    req.Frontend,
-		"frontendOpt": req.FrontendOpt,
-		"ops":         ops,
-		"inputs":      inputs,
+		"frontend":      req.Frontend,
+		"frontendAttrs": req.FrontendAttrs,
+		"ops":           ops,
+		"inputs":        inputs,
 	})
 }
 
@@ -172,7 +172,7 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 		Session:        attachables,
 		Exports:        exp.Exports(),
 		Frontend:       req.Frontend,
-		FrontendAttrs:  req.FrontendOpt,
+		FrontendAttrs:  req.FrontendAttrs,
 		FrontendInputs: req.FrontendInputs,
 	}
 

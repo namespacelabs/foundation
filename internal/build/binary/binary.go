@@ -265,7 +265,16 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 	}
 
 	if dockerFile := src.Dockerfile; dockerFile != "" {
-		spec, err := dockerfile.Build(loc.Rel(), dockerFile)
+		spec, err := dockerfile.Build(loc.Rel(), &schema.ImageBuildPlan_DockerBuild{Dockerfile: dockerFile})
+		if err != nil {
+			return nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		return spec, nil
+	}
+
+	if d := src.DockerBuild; d != nil {
+		spec, err := dockerfile.Build(loc.Rel(), d)
 		if err != nil {
 			return nil, fnerrors.AttachLocation(loc, err)
 		}

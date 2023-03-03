@@ -36,7 +36,7 @@ type FrontendRequest struct {
 	Def            *llb.Definition
 	OriginalState  *llb.State
 	Frontend       string
-	FrontendOpt    map[string]string
+	FrontendAttrs  map[string]string
 	FrontendInputs map[string]llb.State
 	Secrets        []*schema.PackageRef
 }

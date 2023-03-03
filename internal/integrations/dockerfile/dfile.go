@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -29,13 +30,15 @@ import (
 // A Dockerfile build is always relative to the module it lives in. Within that
 // module, what's the relative path to the context, and within that context,
 // what's the relative path to the Dockerfile.
-func Build(rel, dockerfile string) (build.Spec, error) {
-	return dockerfileBuild{rel, dockerfile}, nil
+func Build(rel string, d *schema.ImageBuildPlan_DockerBuild) (build.Spec, error) {
+	return dockerfileBuild{rel, d.Dockerfile, d.AttrsByPlatform}, nil
 }
 
 type dockerfileBuild struct {
 	ContextRel string // Relative to the workspace.
 	Dockerfile string // Relative to ContextRel.
+
+	AttrsByPlatform []*schema.ImageBuildPlan_DockerBuild_AttrsByPlatform
 }
 
 var _ build.Spec = dockerfileBuild{}
@@ -69,10 +72,11 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 	}
 
 	generatedRequest := &generateRequest{
-		contextRel: df.ContextRel,
-		dockerfile: string(dfcontents),
-		conf:       conf,
-		excludes:   excludes,
+		contextRel:      df.ContextRel,
+		dockerfile:      string(dfcontents),
+		conf:            conf,
+		attrsByPlatform: df.AttrsByPlatform,
+		excludes:        excludes,
 	}
 
 	return buildkit.MakeImage(
@@ -90,6 +94,7 @@ type generateRequest struct {
 	contextRel, dockerfile string
 	conf                   build.Configuration
 	excludes               []string
+	attrsByPlatform        []*schema.ImageBuildPlan_DockerBuild_AttrsByPlatform
 	compute.LocalScoped[*buildkit.FrontendRequest]
 }
 
@@ -105,6 +110,7 @@ func (g *generateRequest) Inputs() *compute.In {
 	return compute.Inputs().
 		Str("contextRel", g.contextRel).
 		Str("dockerfile", g.dockerfile).
+		JSON("attrsByPlatform", g.attrsByPlatform).
 		Indigestible("conf", g.conf)
 }
 func (g *generateRequest) Output() compute.Output { return compute.Output{NotCacheable: true} }
@@ -118,7 +124,20 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 	}
 
 	if g.conf.TargetPlatform() != nil {
-		req.FrontendOpt = makeDockerOpts([]specs.Platform{*g.conf.TargetPlatform()})
+		req.FrontendAttrs = makeDockerOpts([]specs.Platform{*g.conf.TargetPlatform()})
+
+		p := platform.FormatPlatform(*g.conf.TargetPlatform())
+		for _, x := range g.attrsByPlatform {
+			if x.Platform == p {
+				if req.FrontendAttrs == nil {
+					req.FrontendAttrs = map[string]string{}
+				}
+
+				for k, v := range x.Attrs {
+					req.FrontendAttrs[k] = v
+				}
+			}
+		}
 	}
 
 	return req, nil

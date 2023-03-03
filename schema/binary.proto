@@ -29,7 +29,7 @@ message Binary {
     repeated Label        labels     = 9;
 }
 
-// Next ID: 16
+// Next ID: 19
 message ImageBuildPlan {
     reserved 3, 9;
 
@@ -38,6 +38,7 @@ message ImageBuildPlan {
     string              go_package          = 1;  // Use go binary builder.
     GoBuild             go_build            = 7;  // Use go binary builder.
     string              dockerfile          = 2;  // Use Dockerfile builder.
+    DockerBuild         docker_build        = 18; // Use Dockerfile builder.
     LLBPlan             llb_plan            = 4;  // Build binary which itself produces LLB.
     string              nix_flake           = 5;  // Build a docker image from a nix flake.
     repeated string     snapshot_files      = 6;  // Add all referenced files, and directories, recursively visiting their children.
@@ -88,6 +89,16 @@ message ImageBuildPlan {
         string         target = 2;
         string         kind   = 3;
         int64          size   = 4;  // Bytes.
+    }
+
+    message DockerBuild {
+        string dockerfile = 1;
+        repeated AttrsByPlatform attrs_by_platform = 2;
+
+        message AttrsByPlatform {
+            string platform = 1;
+            map<string, string> attrs = 2;
+        }
     }
 }
 
