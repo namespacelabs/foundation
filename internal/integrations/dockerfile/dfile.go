@@ -31,14 +31,12 @@ import (
 // module, what's the relative path to the context, and within that context,
 // what's the relative path to the Dockerfile.
 func Build(rel string, d *schema.ImageBuildPlan_DockerBuild) (build.Spec, error) {
-	return dockerfileBuild{rel, d.Dockerfile, d.AttrsByPlatform}, nil
+	return dockerfileBuild{rel, d}, nil
 }
 
 type dockerfileBuild struct {
-	ContextRel string // Relative to the workspace.
-	Dockerfile string // Relative to ContextRel.
-
-	AttrsByPlatform []*schema.ImageBuildPlan_DockerBuild_AttrsByPlatform
+	contextRel string                             // Relative to the workspace.
+	plan       *schema.ImageBuildPlan_DockerBuild // Dockerfile is relative to ContextRel.
 }
 
 var _ build.Spec = dockerfileBuild{}
@@ -54,7 +52,7 @@ func makeDockerfileState(sourceLabel string, contents []byte) llb.State {
 func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	// There's a compromise here: we go through a non-snapshot to fetch
 	// .dockerignore, to avoid creating two snapshots.
-	dfignore, err := fs.ReadFile(conf.Workspace().ReadOnlyFS(df.ContextRel), ".dockerignore")
+	dfignore, err := fs.ReadFile(conf.Workspace().ReadOnlyFS(df.contextRel), ".dockerignore")
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return nil, fnerrors.InternalError("failed to check if a .dockerignore exists: %w", err)
@@ -66,17 +64,17 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 		return nil, fnerrors.New("failed to parse dockerignore: %w", err)
 	}
 
-	dfcontents, err := fs.ReadFile(conf.Workspace().ReadOnlyFS(df.ContextRel), df.Dockerfile)
+	dfcontents, err := fs.ReadFile(conf.Workspace().ReadOnlyFS(df.contextRel), df.plan.Dockerfile)
 	if err != nil {
 		return nil, err
 	}
 
 	generatedRequest := &generateRequest{
-		contextRel:      df.ContextRel,
-		dockerfile:      string(dfcontents),
-		conf:            conf,
-		attrsByPlatform: df.AttrsByPlatform,
-		excludes:        excludes,
+		contextRel: df.contextRel,
+		dockerfile: string(dfcontents),
+		conf:       conf,
+		plan:       df.plan,
+		excludes:   excludes,
 	}
 
 	return buildkit.MakeImage(
@@ -84,7 +82,7 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 		conf,
 		generatedRequest,
 		[]buildkit.LocalContents{
-			dockerContext(conf, df.ContextRel, excludes),
+			dockerContext(conf, df.contextRel, excludes),
 		}, conf.PublishName()), nil
 }
 
@@ -94,7 +92,7 @@ type generateRequest struct {
 	contextRel, dockerfile string
 	conf                   build.Configuration
 	excludes               []string
-	attrsByPlatform        []*schema.ImageBuildPlan_DockerBuild_AttrsByPlatform
+	plan                   *schema.ImageBuildPlan_DockerBuild
 	compute.LocalScoped[*buildkit.FrontendRequest]
 }
 
@@ -110,7 +108,7 @@ func (g *generateRequest) Inputs() *compute.In {
 	return compute.Inputs().
 		Str("contextRel", g.contextRel).
 		Str("dockerfile", g.dockerfile).
-		JSON("attrsByPlatform", g.attrsByPlatform).
+		JSON("plan", g.plan).
 		Indigestible("conf", g.conf)
 }
 func (g *generateRequest) Output() compute.Output { return compute.Output{NotCacheable: true} }
@@ -123,11 +121,21 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 		},
 	}
 
+	if len(g.plan.Attrs) > 0 {
+		if req.FrontendAttrs == nil {
+			req.FrontendAttrs = map[string]string{}
+		}
+
+		for k, v := range g.plan.Attrs {
+			req.FrontendAttrs[k] = v
+		}
+	}
+
 	if g.conf.TargetPlatform() != nil {
 		req.FrontendAttrs = makeDockerOpts([]specs.Platform{*g.conf.TargetPlatform()})
 
 		p := platform.FormatPlatform(*g.conf.TargetPlatform())
-		for _, x := range g.attrsByPlatform {
+		for _, x := range g.plan.AttrsByPlatform {
 			if x.Platform == p {
 				if req.FrontendAttrs == nil {
 					req.FrontendAttrs = map[string]string{}
