@@ -114,6 +114,8 @@ jobs:
 
       # staging deployments already use buildkit, so only testing golang_use_buildkit=false here.
       - name: Deploy internal/testdata/server/gogrpc
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         run: |
           /tmp/ns deploy \
             --buildkit_import_cache=type=gha \
@@ -122,7 +124,6 @@ jobs:
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
-            --log_actions_to=/tmp/action_log \
             internal/testdata/server/gogrpc
 
       - name: Upload action log
@@ -209,11 +210,12 @@ jobs:
         run: /tmp/ns auth exchange-github-token
 
       - name: Run tests
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         # Consider removing --also_report_start_events
         run: |
           /tmp/ns test \
             --also_report_start_events \
-            --log_actions_to=/tmp/action_log \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
@@ -301,13 +303,14 @@ jobs:
           /tmp/ns prepare new-build-cluster --env=staging
 
       - name: Deploy staging
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         run: |
           /tmp/ns deploy --env=staging \
             internal/testdata/server/gogrpc \
             internal/testdata/integrations/dockerfile/complex \
             internal/testdata/integrations/golang \
             internal/testdata/integrations/nodejs/yarn \
-            --log_actions_to=/tmp/action_log \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --run_codegen=false
@@ -366,6 +369,8 @@ jobs:
         run: /tmp/ns auth exchange-github-token
 
       - name: Run tests
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         run: |
           cd external-repo; \
           /tmp/ns test \
@@ -375,7 +380,6 @@ jobs:
             multitier/02-withsecrets/apibackend \
             golang/01-simple/server \
             golang/02-withsecrets/server \
-            --log_actions_to=/tmp/action_log \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
