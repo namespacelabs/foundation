@@ -114,6 +114,8 @@ jobs:
 
       # staging deployments already use buildkit, so only testing golang_use_buildkit=false here.
       - name: Deploy internal/testdata/server/gogrpc
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         run: |
           /tmp/ns deploy \
             --buildkit_import_cache=type=gha \
@@ -123,6 +125,14 @@ jobs:
             --naming_no_tls=true \
             --use_orchestrator=false \
             internal/testdata/server/gogrpc
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}-${{ matrix.os }}-use_prebuilts-${{ matrix.use_prebuilts }}
+          path: /tmp/action_log
+          retention-days: 3
+        if: always()
 
   run_dev:
     name: Test local Namespace dev session os=${{ matrix.os }}
@@ -200,6 +210,8 @@ jobs:
         run: /tmp/ns auth exchange-github-token
 
       - name: Run tests
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         # Consider removing --also_report_start_events
         run: |
           /tmp/ns test \
@@ -210,6 +222,14 @@ jobs:
             --testing_use_namespace_cloud_build \
             --parallel \
             --all
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}
+          path: /tmp/action_log
+          retention-days: 3
+        if: always()
 
       - name: Test ns cluster commands
         run: |
@@ -283,6 +303,8 @@ jobs:
           /tmp/ns prepare new-build-cluster --env=staging
 
       - name: Deploy staging
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         run: |
           /tmp/ns deploy --env=staging \
             internal/testdata/server/gogrpc \
@@ -292,6 +314,14 @@ jobs:
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --run_codegen=false
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}
+          path: /tmp/action_log
+          retention-days: 3
+        if: always()
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
@@ -339,6 +369,8 @@ jobs:
         run: /tmp/ns auth exchange-github-token
 
       - name: Run tests
+        env:
+          NS_LOG_TO_FILE: /tmp/action_log
         run: |
           cd external-repo; \
           /tmp/ns test \
@@ -353,6 +385,14 @@ jobs:
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel
+
+      - name: Upload action log
+        uses: actions/upload-artifact@v3
+        with:
+          name: ns-action-log-${{ github.job }}
+          path: /tmp/action_log
+          retention-days: 3
+        if: always()
 
       - uses: k0kubun/action-slack@v2.0.0
         with:

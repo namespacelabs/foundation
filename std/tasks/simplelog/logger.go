@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
@@ -16,6 +17,13 @@ import (
 )
 
 var AlsoReportStartEvents = false
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&AlsoReportStartEvents, "also_report_start_events", AlsoReportStartEvents,
+		"If set to true, we log a start event for each action, if --log_actions is also set.")
+
+	_ = flags.MarkHidden("also_report_start_events")
+}
 
 func NewSink(w io.Writer, maxLevel int) tasks.ActionSink {
 	return &logger{w, maxLevel}
@@ -38,6 +46,11 @@ func (sl *logger) Waiting(ra *tasks.RunningAction) {
 	// Do nothing.
 }
 
+func (sl logger) write(b []byte) {
+	// Ignore errors
+	_, _ = sl.out.Write(b)
+}
+
 func (sl *logger) Started(ra *tasks.RunningAction) {
 	if !tasks.LogActions || !AlsoReportStartEvents {
 		return
@@ -51,8 +64,7 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 	fmt.Fprint(&b, "↦ ")
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
 
-	// Ignore errors
-	_, _ = sl.out.Write(b.Bytes())
+	sl.write(b.Bytes())
 }
 
 func (sl *logger) Done(ra *tasks.RunningAction) {
@@ -73,8 +85,7 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 	}
 	consolesink.LogAction(&b, colors.NoColors, ra.Data)
 
-	// Ignore errors
-	_, _ = sl.out.Write(b.Bytes())
+	sl.write(b.Bytes())
 }
 
 func (sl *logger) Instant(ev *tasks.EventData) {
@@ -96,8 +107,7 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 	}
 	consolesink.LogAction(&b, colors.NoColors, *ev)
 
-	// Ignore errors
-	_, _ = sl.out.Write(b.Bytes())
+	sl.write(b.Bytes())
 }
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }

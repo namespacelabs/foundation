@@ -136,6 +136,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 	tasks.SetupFlags(rootCmd.PersistentFlags())
 	consolesink.SetupFlags(rootCmd.PersistentFlags())
+	simplelog.SetupFlags(rootCmd.PersistentFlags())
 	fnapi.SetupFlags(rootCmd.PersistentFlags())
 	clerk.SetupFlags(rootCmd.PersistentFlags())
 
@@ -336,6 +337,17 @@ func ConsoleToSink(out *os.File, isTerm bool) (tasks.ActionSink, colors.Style, f
 		consoleSink := consolesink.NewSink(out, isTerm, maxLogLevel)
 		cleanup := consoleSink.Start()
 		return consoleSink, colors.WithColors, cleanup
+	}
+
+	if filename, ok := os.LookupEnv("NS_LOG_TO_FILE"); ok {
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			log.Fatalf("could not open file %q: %v", filename, err)
+		}
+
+		return simplelog.NewSink(f, maxLogLevel), colors.NoColors, func() {
+			f.Close()
+		}
 	}
 
 	return simplelog.NewSink(out, maxLogLevel), colors.NoColors, nil
