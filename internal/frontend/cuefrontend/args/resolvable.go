@@ -24,7 +24,7 @@ type ResolvableValue struct {
 	fromSecret                         string
 	fromServiceEndpoint                string
 	fromServiceIngress                 string
-	experimentalFromSecret             string
+	fromKubernetesSecret               string
 	experimentalFromDownwardsFieldPath string
 	fromField                          *fromFieldSyntax
 	fromResourceField                  *resourceFieldSyntax
@@ -38,7 +38,7 @@ var validKeys = []string{
 	"fromServiceEndpoint",
 	"fromServiceIngress",
 	"fromResourceField",
-	"experimentalFromSecret",
+	"fromKubernetesSecret",
 	"experimentalFromDownwardsFieldPath",
 }
 
@@ -88,8 +88,8 @@ func (ev *ResolvableValue) UnmarshalJSON(data []byte) error {
 			ev.fromResourceField = &ref
 			return nil
 
-		case "experimentalFromSecret":
-			ev.experimentalFromSecret, err = mustString("experimentalFromSecret", m[keys[0]])
+		case "fromKubernetesSecret":
+			ev.fromKubernetesSecret, err = mustString("fromKubernetesSecret", m[keys[0]])
 
 		case "experimentalFromDownwardsFieldPath":
 			ev.experimentalFromDownwardsFieldPath, err = mustString("experimentalFromDownwardsFieldPath", m[keys[0]])
@@ -175,8 +175,8 @@ func (value *ResolvableValue) ToProto(ctx context.Context, pl pkggraph.PackageLo
 	case value.experimentalFromDownwardsFieldPath != "":
 		out.ExperimentalFromDownwardsFieldPath = value.experimentalFromDownwardsFieldPath
 
-	case value.experimentalFromSecret != "":
-		out.ExperimentalFromSecret = value.experimentalFromSecret
+	case value.fromKubernetesSecret != "":
+		out.FromKubernetesSecret = value.fromKubernetesSecret
 	}
 
 	return out, nil
