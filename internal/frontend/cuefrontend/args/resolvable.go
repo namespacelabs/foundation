@@ -39,6 +39,7 @@ var validKeys = []string{
 	"fromServiceIngress",
 	"fromResourceField",
 	"fromKubernetesSecret",
+	"experimentalFromSecret",
 	"experimentalFromDownwardsFieldPath",
 }
 
@@ -90,6 +91,9 @@ func (ev *ResolvableValue) UnmarshalJSON(data []byte) error {
 
 		case "fromKubernetesSecret":
 			ev.fromKubernetesSecret, err = mustString("fromKubernetesSecret", m[keys[0]])
+
+		case "experimentalFromSecret":
+			ev.fromKubernetesSecret, err = mustString("experimentalFromSecret", m[keys[0]])
 
 		case "experimentalFromDownwardsFieldPath":
 			ev.experimentalFromDownwardsFieldPath, err = mustString("experimentalFromDownwardsFieldPath", m[keys[0]])
