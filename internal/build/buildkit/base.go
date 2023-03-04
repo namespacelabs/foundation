@@ -180,6 +180,8 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 	for _, exp := range solveOpt.Exports {
 		attrs = append(attrs, exp.Attrs)
 	}
+
+	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: frontendAttrs: %v\n", sid, req.FrontendAttrs)
 	fmt.Fprintf(console.Debug(ctx), "buildkit/%s: exports.attrs: %v\n", sid, attrs)
 
 	if len(l.localDirs) > 0 {

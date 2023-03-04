@@ -16,6 +16,7 @@ import (
 	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/maps"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
@@ -121,34 +122,37 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 		},
 	}
 
-	if len(g.plan.Attrs) > 0 {
-		if req.FrontendAttrs == nil {
-			req.FrontendAttrs = map[string]string{}
-		}
+	if g.conf.TargetPlatform() != nil {
+		req.FrontendAttrs = makeDockerOpts([]specs.Platform{*g.conf.TargetPlatform()})
+	}
 
-		for k, v := range g.plan.Attrs {
-			req.FrontendAttrs[k] = v
-		}
+	if len(g.plan.Attrs) > 0 {
+		req.FrontendAttrs = mergeMaps(req.FrontendAttrs, g.plan.Attrs)
 	}
 
 	if g.conf.TargetPlatform() != nil {
-		req.FrontendAttrs = makeDockerOpts([]specs.Platform{*g.conf.TargetPlatform()})
-
 		p := platform.FormatPlatform(*g.conf.TargetPlatform())
+
 		for _, x := range g.plan.AttrsByPlatform {
 			if x.Platform == p {
-				if req.FrontendAttrs == nil {
-					req.FrontendAttrs = map[string]string{}
-				}
-
-				for k, v := range x.Attrs {
-					req.FrontendAttrs[k] = v
-				}
+				req.FrontendAttrs = mergeMaps(req.FrontendAttrs, x.Attrs)
 			}
 		}
 	}
 
 	return req, nil
+}
+
+func mergeMaps(target map[string]string, src map[string]string) map[string]string {
+	if target == nil {
+		return maps.Clone(src)
+	}
+
+	for k, v := range src {
+		target[k] = v
+	}
+
+	return target
 }
 
 func dockerContext(conf build.Configuration, contextRel string, excludes []string) buildkit.LocalContents {
