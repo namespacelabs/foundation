@@ -108,7 +108,7 @@ func makeState(c *buildkit.GatewayClient, pkg schema.PackageName, image compute.
 				continue
 			}
 
-			if env.ExperimentalFromSecret != "" ||
+			if env.FromKubernetesSecret != "" ||
 				env.ExperimentalFromDownwardsFieldPath != "" ||
 				env.FromServiceEndpoint != nil ||
 				env.FromServiceIngress != nil ||

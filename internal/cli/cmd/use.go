@@ -296,7 +296,7 @@ func runPostgresCmd(ctx context.Context, database string, res *hydrateResult, ru
 			{
 				Name: "PGPASSWORD",
 				Value: &schema.Resolvable{
-					ExperimentalFromSecret: fmt.Sprintf("%s:%s", creds.SecretResourceName, creds.SecretName),
+					FromKubernetesSecret: fmt.Sprintf("%s:%s", creds.SecretResourceName, creds.SecretName),
 				},
 			},
 		},

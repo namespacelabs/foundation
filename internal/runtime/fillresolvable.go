@@ -73,10 +73,10 @@ func ResolveResolvables[V LikeResolvable](ctx context.Context, rt *runtimepb.Run
 
 func resolve(ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, fieldName string, resv *schema.Resolvable, out ResolvableSink) error {
 	switch {
-	case resv.ExperimentalFromSecret != "":
-		parts := strings.SplitN(resv.ExperimentalFromSecret, ":", 2)
+	case resv.FromKubernetesSecret != "":
+		parts := strings.SplitN(resv.FromKubernetesSecret, ":", 2)
 		if len(parts) < 2 {
-			return fnerrors.New("invalid experimental_from_secret format")
+			return fnerrors.New("invalid from_kubernetes_secret format")
 		}
 		return out.SetSecret(fieldName, &SecretRef{parts[0], parts[1]})
 

@@ -105,8 +105,8 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 
 	for _, entry := range opts.Env {
 		kv := entry.Value
-		if kv.ExperimentalFromSecret != "" {
-			return fnerrors.New("docker: doesn't support env.ExperimentalFromSecret")
+		if kv.FromKubernetesSecret != "" {
+			return fnerrors.New("docker: doesn't support env.FromKubernetesSecret")
 		}
 
 		if kv.ExperimentalFromDownwardsFieldPath != "" {
