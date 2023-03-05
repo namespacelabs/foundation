@@ -547,7 +547,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				case entry.KubernetesSecretRef != nil:
 					projected = projected.WithSources(applycorev1.VolumeProjection().WithSecret(
 						applycorev1.SecretProjection().WithName(entry.KubernetesSecretRef.SecretName).
-							WithItems(applycorev1.KeyToPath().WithKey(entry.KubernetesSecretRef.SecretName).WithPath(entry.Path)),
+							WithItems(applycorev1.KeyToPath().WithKey(entry.KubernetesSecretRef.SecretKey).WithPath(entry.Path)),
 					))
 				}
 			}
