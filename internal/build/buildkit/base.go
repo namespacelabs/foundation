@@ -187,6 +187,8 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 	if len(l.localDirs) > 0 {
 		solveOpt.LocalDirs = map[string]string{}
 		for _, local := range l.localDirs {
+			solveOpt.LocalDirs[local.Abs()] = filepath.Join(local.Module.Abs(), local.Path)
+
 			if !PreDigestLocalInputs {
 				if SkipExpectedMaxWorkspaceSizeCheck {
 					continue
@@ -209,8 +211,6 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 					return res, makeSizeError(w)
 				}
 			}
-
-			solveOpt.LocalDirs[local.Abs()] = filepath.Join(local.Module.Abs(), local.Path)
 		}
 	}
 
