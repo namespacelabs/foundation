@@ -14,6 +14,7 @@ import (
 	"github.com/moby/buildkit/client"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
+	"namespacelabs.dev/foundation/internal/build/buildkit/buildkitd"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -175,7 +176,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 }
 
 func waitAndConnect(ctx context.Context, connect func() (*client.Client, error)) (*GatewayClient, error) {
-	if err := waitForBuildkit(ctx, connect); err != nil {
+	if err := buildkitd.WaitReadiness(ctx, connect); err != nil {
 		return nil, err
 	}
 

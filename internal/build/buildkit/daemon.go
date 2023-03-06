@@ -7,17 +7,16 @@ package buildkit
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	buildkit "github.com/moby/buildkit/client"
+	"namespacelabs.dev/foundation/internal/build/buildkit/buildkitd"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/docker/install"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const DefaultContainerName = "fn-buildkitd"
@@ -34,7 +33,7 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (string, error) 
 		Version:       vendoredVersion,
 		Image:         "moby/buildkit",
 		WaitUntilRunning: func(ctx context.Context, containerName string) error {
-			return waitForBuildkit(ctx, func() (*buildkit.Client, error) {
+			return buildkitd.WaitReadiness(ctx, func() (*buildkit.Client, error) {
 				return buildkit.New(ctx, makeAddr(containerName))
 			})
 		},
@@ -87,26 +86,4 @@ func RemoveBuildkitd(ctx context.Context) error {
 
 func makeAddr(containerName string) string {
 	return fmt.Sprintf("docker-container://%s", containerName)
-}
-
-func waitForBuildkit(ctx context.Context, connect func() (*buildkit.Client, error)) error {
-	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
-		const retryDelay = 200 * time.Millisecond
-		const maxRetries = 5 * 60 // 60 seconds
-
-		c, err := connect()
-		if err != nil {
-			return err
-		}
-
-		for i := 0; i < maxRetries; i++ {
-			if _, err := c.ListWorkers(ctx); err == nil {
-				return nil
-			}
-
-			time.Sleep(retryDelay)
-		}
-
-		return fnerrors.New("buildkit never became ready")
-	})
 }

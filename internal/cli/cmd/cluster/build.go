@@ -18,10 +18,13 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
+	"github.com/moby/buildkit/client"
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/build/buildkit/buildkitd"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -84,6 +87,10 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		return nil, fnerrors.New("cluster is not a build cluster")
 	}
 
+	if err := waitUntilReady(ctx, response); err != nil {
+		return nil, err
+	}
+
 	sockDir, err := dirs.CreateUserTempDir("buildkit", response.Cluster.ClusterId)
 	if err != nil {
 		return nil, err
@@ -121,6 +128,20 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 	return &buildProxy{sockFile, sockDir, response.Registry.EndpointAddress, func() { _ = os.RemoveAll(sockDir) }}, nil
 }
 
+func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
+	return buildkitd.WaitReadiness(ctx, func() (*client.Client, error) {
+		// We must fetch a token with our parent context, so we get a task sink etc.
+		token, err := fnapi.FetchTenantToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		return client.New(ctx, response.ClusterId, client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return api.DialPortWithToken(ctx, token, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
+		}))
+	})
+}
+
 func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.CreateClusterResult) {
 	for {
 		conn, err := listener.Accept()
@@ -131,11 +152,13 @@ func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.C
 		go func() {
 			defer conn.Close()
 
-			peerConn, err := api.DialPort(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
+			peerConn, err := connect(ctx, response)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 				return
 			}
+
+			defer peerConn.Close()
 
 			go func() {
 				_, _ = io.Copy(conn, peerConn)
@@ -144,6 +167,10 @@ func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.C
 			_, _ = io.Copy(peerConn, conn)
 		}()
 	}
+}
+
+func connect(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
+	return api.DialPort(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
 }
 
 func newBuildCmd() *cobra.Command {
