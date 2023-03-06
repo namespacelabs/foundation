@@ -6,7 +6,6 @@ package fnapi
 
 import (
 	"context"
-	"time"
 
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/clerk"
@@ -30,16 +29,6 @@ type CompleteLoginRequest struct {
 
 type CheckRequest struct {
 	UserData string `json:"userData"`
-}
-
-type GetSessionTokenRequest struct {
-	UserData        string `json:"user_data"`
-	DurationSeconds uint32 `json:"duration_seconds"`
-}
-
-type GetSessionTokenResponse struct {
-	Token      string    `json:"token"`
-	Expiration time.Time `json:"expiration"`
 }
 
 // Returns the URL which the user should open.
