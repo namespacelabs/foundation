@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -31,6 +32,7 @@ func newCreateCmd() *cobra.Command {
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
+	outputJsonPath := cmd.Flags().String("output_json_to", "", "If specified, write cluster metadata as JSON to this path.")
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 
 	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
@@ -73,6 +75,24 @@ func newCreateCmd() *cobra.Command {
 		if *outputRegistryPath != "" {
 			if err := os.WriteFile(*outputRegistryPath, []byte(cluster.Registry.EndpointAddress), 0644); err != nil {
 				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
+			}
+		}
+
+		if *outputJsonPath != "" {
+			// Clear out secrets from output.
+			copy := *cluster.Cluster
+			copy.SshPrivateKey = nil
+			copy.CertificateAuthorityData = nil
+			copy.ClientCertificateData = nil
+			copy.ClientKeyData = nil
+
+			serialized, err := json.MarshalIndent(copy, "", "  ")
+			if err != nil {
+				return fnerrors.New("failed to serialize: %v", err)
+			}
+
+			if err := os.WriteFile(*outputJsonPath, serialized, 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputJsonPath, err)
 			}
 		}
 
