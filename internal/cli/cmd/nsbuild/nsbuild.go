@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/integrations/golang"
+	"namespacelabs.dev/foundation/internal/integrations/golang/rungo"
 	"namespacelabs.dev/foundation/internal/parsing"
 	gosdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/host"
@@ -79,5 +80,5 @@ func run(ctx context.Context, env cfg.Context, what, cmdpkg string) error {
 		return err
 	}
 
-	return golang.RunGo(ctx, loc, sdk, what, "-v", cmdpkg)
+	return rungo.RunGo(ctx, loc, sdk, what, "-v", cmdpkg)
 }
