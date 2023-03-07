@@ -94,7 +94,7 @@ func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {
 		Platform:   platform,
 	}
 
-	ro := llbutil.PrefixSh("updating deps", platform, "go mod download -x")
+	ro := llbutil.PrefixSh("updating deps", platform, "go mod download")
 
 	if git.AssumeSSHAuth {
 		ro = append(ro, llb.AddSSHSocket(llb.SSHID(buildkit.SSHAgentProviderID), llb.SSHSocketTarget("/root/ssh-agent.sock")))
