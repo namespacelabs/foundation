@@ -82,6 +82,7 @@ type KubernetesClusterMetadata struct {
 }
 
 type KubernetesCluster struct {
+	AppURL            string        `json:"app_url,omitempty"`
 	ClusterId         string        `json:"cluster_id,omitempty"`
 	Created           string        `json:"created,omitempty"`
 	DestroyedAt       string        `json:"destroyed_at,omitempty"`
