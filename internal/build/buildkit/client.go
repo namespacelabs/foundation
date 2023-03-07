@@ -23,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/cfg/knobs"
 	"namespacelabs.dev/foundation/std/tasks"
 
 	_ "github.com/moby/buildkit/client/connhelper/dockercontainer"
@@ -32,6 +33,8 @@ var (
 	BuildkitSecrets string
 	ForwardKeychain = true
 )
+
+var buildOnNamespaceCloud = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
 
 const SSHAgentProviderID = "default"
 
@@ -124,18 +127,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
 		}
 
-		// We must fetch a token with our parent context, so we get a task sink etc.
-		token, err := fnapi.FetchTenantToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		return waitAndConnect(ctx, func() (*client.Client, error) {
-			return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-				// Do the expirations work? We don't re-fetch tokens here yet.
-				return api.DialPortWithToken(ctx, token, cluster.Cluster, int(c.overrides.HostedBuildCluster.TargetPort))
-			}))
-		})
+		return useRemoteCluster(ctx, cluster.Cluster, int(c.overrides.HostedBuildCluster.TargetPort))
 	}
 
 	if c.overrides.ColocatedBuildCluster != nil {
@@ -152,6 +144,15 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 				return k.RawDialServer(ctx, conf.Namespace, conf.MatchingPodLabels, &schema.Endpoint_Port{ContainerPort: conf.TargetPort})
 			}))
 		})
+	}
+
+	if buildOnNamespaceCloud.Get(c.conf) {
+		response, err := api.EnsureBuildCluster(ctx, api.Endpoint)
+		if err != nil {
+			return nil, err
+		}
+
+		return useRemoteCluster(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
 	}
 
 	localAddr, err := EnsureBuildkitd(ctx, c.overrides.ContainerName)
@@ -173,6 +174,21 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	// })
 
 	return newClient(ctx, cli, true)
+}
+
+func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port int) (*GatewayClient, error) {
+	// We must fetch a token with our parent context, so we get a task sink etc.
+	token, err := fnapi.FetchTenantToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return waitAndConnect(ctx, func() (*client.Client, error) {
+		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			// Do the expirations work? We don't re-fetch tokens here yet.
+			return api.DialPortWithToken(ctx, token, cluster, port)
+		}))
+	})
 }
 
 func waitAndConnect(ctx context.Context, connect func() (*client.Client, error)) (*GatewayClient, error) {
