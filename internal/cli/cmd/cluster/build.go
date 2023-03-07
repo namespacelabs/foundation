@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func NewBuildctlCmd() *cobra.Command {
@@ -91,14 +90,16 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		return nil, err
 	}
 
-	sockDir, err := dirs.CreateUserTempDir("buildkit", response.Cluster.ClusterId)
+	p, err := runUnixSocketProxy(ctx, "buildkit", response.ClusterId, func(ctx context.Context) (net.Conn, error) {
+		return connect(ctx, response)
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	t, err := api.RegistryCreds(ctx)
 	if err != nil {
-		os.RemoveAll(sockDir)
+		p.Cleanup()
 		return nil, err
 	}
 
@@ -110,22 +111,13 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		},
 	}
 
-	credsFile := filepath.Join(sockDir, config.ConfigFileName)
+	credsFile := filepath.Join(p.TempDir, config.ConfigFileName)
 	if err := files.WriteJson(credsFile, cfg, 0600); err != nil {
-		os.RemoveAll(sockDir)
+		p.Cleanup()
 		return nil, err
 	}
 
-	sockFile := filepath.Join(sockDir, "buildkit.sock")
-	listener, err := net.Listen("unix", sockFile)
-	if err != nil {
-		os.RemoveAll(sockDir)
-		return nil, err
-	}
-
-	go serveBuildProxy(ctx, listener, response)
-
-	return &buildProxy{sockFile, sockDir, response.Registry.EndpointAddress, func() { _ = os.RemoveAll(sockDir) }}, nil
+	return &buildProxy{p.SocketAddr, p.TempDir, response.Registry.EndpointAddress, p.Cleanup}, nil
 }
 
 func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {

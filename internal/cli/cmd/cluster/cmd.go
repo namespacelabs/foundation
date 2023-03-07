@@ -39,6 +39,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(NewBuildCmd())
 	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newLogsCmd())
+	cmd.AddCommand(newDockerCmd())
 
 	return cmd
 }
