@@ -22,8 +22,7 @@ const (
 func JWT(ctx context.Context, audience string) (string, error) {
 	idTokenURL := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
 	if idTokenURL == "" {
-		// TODO add a link to a help page with an example, once we have nsc docs.
-		return "", fnerrors.UsageError("Please add `id-token: write` to your workflow permissions.", "empty GitHub ID token request URL")
+		return "", fnerrors.UsageError("Please add `id-token: write` to your workflow permissions. See also https://github.com/namespacelabs/nscloud-setup#example", "empty GitHub ID token request URL")
 	}
 
 	idToken := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
