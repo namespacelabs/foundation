@@ -12,7 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/integrations/golang"
+	"namespacelabs.dev/foundation/internal/integrations/golang/rungo"
 	"namespacelabs.dev/foundation/internal/parsing"
 	golangsdk "namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/host"
@@ -45,7 +45,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 			return fnerrors.AttachLocation(loc, err)
 		}
 
-		return golang.RunGo(ctx, loc, localSDK, args...)
+		return rungo.RunGo(ctx, loc, localSDK, args...)
 	})
 	return cmd
 }

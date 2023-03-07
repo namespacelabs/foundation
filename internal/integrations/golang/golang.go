@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/internal/integrations"
+	"namespacelabs.dev/foundation/internal/integrations/golang/rungo"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/production"
@@ -154,13 +155,13 @@ func (impl) TidyServer(ctx context.Context, env cfg.Context, pkgs pkggraph.Packa
 		}
 
 		if foundationVersion != "" {
-			if err := RunGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", foundationModule, foundationVersion)); err != nil {
+			if err := rungo.RunGo(ctx, loc, localSDK, "get", "-u", fmt.Sprintf("%s@%s", foundationModule, foundationVersion)); err != nil {
 				return fnerrors.AttachLocation(loc, err)
 			}
 		}
 	}
 
-	if err := RunGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
+	if err := rungo.RunGo(ctx, loc, localSDK, "mod", "tidy"); err != nil {
 		return fnerrors.AttachLocation(loc, err)
 	}
 

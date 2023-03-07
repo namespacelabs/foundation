@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/fnfs/memfs"
+	"namespacelabs.dev/foundation/internal/integrations/golang/rungo"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/production"
@@ -106,7 +107,7 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	cmd.Label = "go build"
 	cmd.Command = golang.GoBin(sdk)
 	cmd.Args = append(goBuildArgs(sdk.Version), "-o="+out, pkg)
-	cmd.AdditionalEnv = append(env, MakeGoEnv(sdk)...)
+	cmd.AdditionalEnv = append(env, rungo.MakeGoEnv(sdk)...)
 	cmd.Dir = modulePath
 	return cmd.Run(ctx)
 }
