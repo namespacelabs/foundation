@@ -229,10 +229,11 @@ func JWT(ctx context.Context, st *State) (string, error) {
 		return "", fnerrors.InvocationError("jwt", "bad response: %w", err)
 	}
 
+	token := tokenPrefix + x.JWT
 	tokenCache[st.ClerkClient] = cachedJWT{
 		CreatedAt: now,
-		JWT:       x.JWT,
+		JWT:       token,
 	}
 
-	return tokenPrefix + x.JWT, nil
+	return token, nil
 }
