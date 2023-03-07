@@ -21,9 +21,12 @@ func main() {
 		api.SetupFlags(root.PersistentFlags(), false)
 
 		root.AddCommand(auth.NewLoginCmd())
-		root.AddCommand(cluster.NewClusterCmd(false))
-		root.AddCommand(cluster.NewKubectlCmd()) // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
 		root.AddCommand(version.NewVersionCmd())
+
+		root.AddCommand(cluster.NewClusterCmd(false))
+		root.AddCommand(cluster.NewKubectlCmd())  // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
+		root.AddCommand(cluster.NewBuildctlCmd()) // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
+		root.AddCommand(cluster.NewBuildCmd())    // `nsc build` acts as an alias for `nsc cluster build`
 
 		fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
 			api.Register()

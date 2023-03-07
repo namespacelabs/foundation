@@ -35,8 +35,8 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newDestroyCmd())
 	cmd.AddCommand(NewKubectlCmd())
 	cmd.AddCommand(newKubeconfigCmd())
-	cmd.AddCommand(newBuildctlCmd())
-	cmd.AddCommand(newBuildCmd())
+	cmd.AddCommand(NewBuildctlCmd())
+	cmd.AddCommand(NewBuildCmd())
 	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newLogsCmd())
 

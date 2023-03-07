@@ -33,7 +33,7 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-func newBuildctlCmd() *cobra.Command {
+func NewBuildctlCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "buildctl -- ...",
 		Short: "Run buildctl on the target build cluster.",
@@ -173,7 +173,7 @@ func connect(ctx context.Context, response *api.CreateClusterResult) (net.Conn, 
 	return api.DialPort(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
 }
 
-func newBuildCmd() *cobra.Command {
+func NewBuildCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "build",
 		Short: "Build an image in a build cluster.",
