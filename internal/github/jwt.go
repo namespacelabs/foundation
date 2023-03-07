@@ -22,11 +22,12 @@ const (
 func JWT(ctx context.Context, audience string) (string, error) {
 	idTokenURL := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
 	if idTokenURL == "" {
-		return "", fnerrors.BadDataError("empty ID token request URL")
+		return "", fnerrors.UsageError("Please add `id-token: write` to your workflow permissions.", "empty GitHub ID token request URL")
 	}
+
 	idToken := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
 	if idToken == "" {
-		return "", fnerrors.BadDataError("empty ID token request token")
+		return "", fnerrors.BadDataError("empty GitHub ID token request token")
 	}
 
 	if audience != "" {
