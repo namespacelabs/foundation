@@ -34,15 +34,16 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-func NewSdkCmd() *cobra.Command {
+func NewSdkCmd(hidden bool) *cobra.Command {
 	sdks := []string{"go", "nodejs", "k3d", "kubectl", "grpcurl", "deno", "buildctl"}
 
 	goSdkVersion := "1.20"
 	nodejsVersion := "18"
 
 	cmd := &cobra.Command{
-		Use:   "sdk",
-		Short: "SDK related operations (e.g. download, shell).",
+		Use:    "sdk",
+		Short:  "SDK related operations (e.g. download, shell).",
+		Hidden: hidden,
 	}
 
 	selectedSdkList := func() []sdk {

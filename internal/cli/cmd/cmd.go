@@ -42,7 +42,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(NewKeysCmd())
 	root.AddCommand(NewTestCmd())
 	root.AddCommand(NewDebugShellCmd())
-	root.AddCommand(sdk.NewSdkCmd())
+	root.AddCommand(sdk.NewSdkCmd(false))
 	root.AddCommand(version.NewVersionCmd())
 	root.AddCommand(NewAttachCmd())
 	root.AddCommand(NewDeploymentCmd())
