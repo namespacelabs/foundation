@@ -99,7 +99,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 	ctx, done := context.WithTimeout(ctx, timeout)
 	defer done()
 
-	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
+	plan, err := compute.GetValue[*fnapi.GetLatestDeployPlansResponse_Plan](ctx, &lastestDeployPlan{})
 	if err != nil {
 		if versions.GetCurrent() == 0 {
 			return nil, fnerrors.InternalError("failed to install the orchestrator: failed to fetch latest version: %w", err)
@@ -108,25 +108,6 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		fmt.Fprintf(console.Warnings(ctx), "Fetching orchestrator versions failed, continue with old orchestrator: %v\n", err)
 		return client.RemoteOrchestrator(boundCluster, stateless), nil
 	}
-
-	var matching []*fnapi.GetLatestDeployPlansResponse_Plan
-	for _, plan := range plans.Plan {
-		if plan.PackageName == constants.ServerPkg.String() {
-			matching = append(matching, plan)
-		}
-	}
-
-	if len(matching) == 0 {
-		msg := "No matching orchestrator plan, that's unexpected."
-		if versions.GetCurrent() == 0 {
-			return nil, fnerrors.InternalError("failed to install the orchestrator: %s", msg)
-		}
-
-		fmt.Fprintf(console.Warnings(ctx), "Fetching orchestrator versions failed, continue with old orchestrator: %s\n", msg)
-		return client.RemoteOrchestrator(boundCluster, stateless), nil
-	}
-
-	plan := matching[0]
 
 	// Best-effort clean up old stateful set for each orchestrator update.
 	// Ideally, we'd only do so when upgrading to the first stateless version.
@@ -249,4 +230,37 @@ func getVersions(ctx context.Context, env cfg.Context, boundCluster runtime.Clus
 			SkipCache: SkipVersionCache,
 		})
 	})
+}
+
+type lastestDeployPlan struct {
+	// Cache orchestrator deploy plans for an entire CLI invocation.
+	compute.DoScoped[*fnapi.GetLatestDeployPlansResponse_Plan]
+}
+
+func (dp *lastestDeployPlan) Action() *tasks.ActionEvent {
+	return tasks.Action("orchestrator.fetch-deploy-plan")
+}
+
+func (dp *lastestDeployPlan) Inputs() *compute.In {
+	return compute.Inputs().Stringer("pkg", constants.ServerPkg)
+}
+
+func (dp *lastestDeployPlan) Compute(ctx context.Context, _ compute.Resolved) (*fnapi.GetLatestDeployPlansResponse_Plan, error) {
+	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
+	if err != nil {
+		return nil, err
+	}
+
+	var matching []*fnapi.GetLatestDeployPlansResponse_Plan
+	for _, plan := range plans.Plan {
+		if plan.PackageName == constants.ServerPkg.String() {
+			matching = append(matching, plan)
+		}
+	}
+
+	if len(matching) == 0 {
+		return nil, fnerrors.InternalError("No matching orchestrator plan, that's unexpected.")
+	}
+
+	return matching[0], nil
 }
