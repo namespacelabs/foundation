@@ -6,17 +6,42 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 )
 
-func ReturnFromTx[T any](ctx context.Context, db *DB, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+const (
+	maxRetries = 5
+
+	pgSerializationFailure      = "40001"
+	pgUniqueConstraintViolation = "23505"
+)
+
+func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	var empty T
 
-	tx, err := db.base.BeginTx(ctx, pgx.TxOptions{})
+	for i := 0; i < maxRetries; i++ {
+		value, err := beginRWTxFunc(ctx, db, f)
+		if err != nil && errorRetryable(err) {
+			continue
+		}
+
+		return value, err
+	}
+
+	return empty, rpcerrors.Errorf(codes.Internal, "max retries exceeded")
+}
+
+func beginRWTxFunc[T any](ctx context.Context, db *DB, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+	var empty T
+
+	tx, err := db.base.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return empty, err
 	}
@@ -33,6 +58,18 @@ func ReturnFromTx[T any](ctx context.Context, db *DB, f func(context.Context, pg
 	}
 
 	return value, nil
+}
+
+func errorRetryable(err error) bool {
+	var pgerr *pgconn.PgError
+	if !errors.As(err, &pgerr) {
+		return false
+	}
+
+	// We need to check unique constraint here because some versions of postgres have an error where
+	// unique constraint violations are raised instead of serialization errors.
+	// (e.g. https://www.postgresql.org/message-id/flat/CAGPCyEZG76zjv7S31v_xPeLNRuzj-m%3DY2GOY7PEzu7vhB%3DyQog%40mail.gmail.com)
+	return pgerr.SQLState() == pgSerializationFailure || pgerr.SQLState() == pgUniqueConstraintViolation
 }
 
 type tracingTx struct {
