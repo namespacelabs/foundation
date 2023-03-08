@@ -242,10 +242,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"If set to true, ns uses the incluster orchestrator for deployment.")
 		rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 			"If set to true, we print a render wait block while deploying the orchestrator itself.")
-		rootCmd.PersistentFlags().BoolVar(&orchestration.UseHeadOrchestrator, "use_head_orchestrator", orchestration.UseHeadOrchestrator,
-			"If set to false, we rebuild the orchestrator instead of using the pinned version. For internal testing only.")
-		rootCmd.PersistentFlags().BoolVar(&orchestration.SkipVersionCache, "update_orchestrator", orchestration.SkipVersionCache,
-			"If set to true, we ignore the orchestrator version cache and force-update to the latest version. For internal testing only.")
 		rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
 			"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
 		rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",

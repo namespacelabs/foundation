@@ -6,29 +6,13 @@ package orchestration
 
 import (
 	"context"
-	"fmt"
-	"io/fs"
-	"net"
-	"time"
 
-	"go.uber.org/atomic"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
-	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
-	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/environment"
-	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/secrets"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/orchestration/client"
-	orchestrationpb "namespacelabs.dev/foundation/orchestration/proto"
 	"namespacelabs.dev/foundation/orchestration/server/constants"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -37,14 +21,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const (
-	orchDialTimeout = 5 * time.Second
-	deployPlanFile  = "deployplan.binarypb"
-)
-
 var (
-	UseHeadOrchestrator          = false
-	SkipVersionCache             = false
 	RenderOrchestratorDeployment = false
 
 	stateless = &runtimepb.Deployable{
@@ -53,8 +30,6 @@ var (
 		Name:            constants.ServerName,
 		DeployableClass: string(schema.DeployableClass_STATELESS),
 	}
-
-	cachedDeployPlan = atomic.NewPointer[fnapi.GetLatestDeployPlansResponse_Plan](nil)
 )
 
 func RegisterPrepare() {
@@ -76,61 +51,15 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 		return nil, err
 	}
 
-	if UseHeadOrchestrator {
-		fmt.Fprintf(console.Debug(ctx), "deploying orchestrator from head\n")
-		if err := deployHead(ctx, env, boundCluster, wait); err != nil {
-			return nil, err
-		}
-
-		return client.RemoteOrchestrator(boundCluster, stateless), nil
-	}
-
-	versions, err := getVersions(ctx, env, boundCluster)
-	if err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to check if orchestrator is up to date: %v\nwill update orchestrator by default\n", err)
-	}
-
-	if versions.GetCurrent() != 0 && versions.GetCurrent() == versions.GetLatest() {
-		fmt.Fprintf(console.Debug(ctx), "orchestrator is already running the latest version (%d)\n", versions.GetCurrent())
-		return client.RemoteOrchestrator(boundCluster, stateless), nil
-	}
-
-	// Old orch (or non-existing orch), lets give it a quick try to do an update.
-	timeout := 10 * time.Second
-	if environment.IsRunningInCI() {
-		timeout = time.Minute
-	}
-	ctx, done := context.WithTimeout(ctx, timeout)
-	defer done()
-
-	plan, err := getLatestDeployPlan(ctx)
-	if err != nil {
-		if versions.GetCurrent() == 0 {
-			return nil, fnerrors.InternalError("failed to install the orchestrator: failed to fetch latest version: %w", err)
-		}
-
-		fmt.Fprintf(console.Warnings(ctx), "Fetching orchestrator versions failed, continue with old orchestrator: %v\n", err)
-		return client.RemoteOrchestrator(boundCluster, stateless), nil
-	}
-
-	// Best-effort clean up old stateful set for each orchestrator update.
-	// Ideally, we'd only do so when upgrading to the first stateless version.
-	// Due to a bug, some users are left with both versions, so we need to delete more aggressively for a while.
-	stateful := stateless
-	stateful.DeployableClass = string(schema.DeployableClass_STATEFUL)
-	if err := boundCluster.DeleteDeployable(ctx, stateful); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to delete old orchestrator: %v\n", err)
-	}
-
-	fmt.Fprintf(console.Debug(ctx), "updating orchestrator to version %d\n", plan.Version)
-	if err := deployPlan(ctx, env, plan.Repository, plan.Digest, boundCluster, wait); err != nil {
+	if err := deployOrchestrator(ctx, env, boundCluster, wait); err != nil {
 		return nil, err
 	}
 
 	return client.RemoteOrchestrator(boundCluster, stateless), nil
+
 }
 
-func deployHead(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace, wait bool) error {
+func deployOrchestrator(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace, wait bool) error {
 	focus, err := planning.RequireServer(ctx, env, constants.ServerPkg)
 	if err != nil {
 		return err
@@ -164,40 +93,6 @@ func deployHead(ctx context.Context, env cfg.Context, boundCluster runtime.Clust
 	return execute(ctx, env, boundCluster, computed.Deployer, wait)
 }
 
-func deployPlan(ctx context.Context, env cfg.Context, repository, digest string, boundCluster runtime.ClusterNamespace, wait bool) error {
-	plan, err := tasks.Return(ctx, tasks.Action("orchestrator.fetch-latest"), func(ctx context.Context) (*schema.DeployPlan, error) {
-		image, err := compute.GetValue(ctx, oci.ImageP(fmt.Sprintf("%s@%s", repository, digest), nil, oci.RegistryAccess{PublicImage: true}))
-		if err != nil {
-			return nil, err
-		}
-
-		data, err := fs.ReadFile(oci.ImageAsFS(image), deployPlanFile)
-		if err != nil {
-			return nil, err
-		}
-
-		any := &anypb.Any{}
-		if err := proto.Unmarshal(data, any); err != nil {
-			return nil, fnerrors.InternalError("orchestrator: failed to unmarshal %q: %w", deployPlanFile, err)
-		}
-
-		plan := &schema.DeployPlan{}
-		if err := any.UnmarshalTo(plan); err != nil {
-			return nil, fnerrors.InternalError("orchestrator: failed to any to plan %q: %w", deployPlanFile, err)
-		}
-
-		return plan, nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	p := execution.NewPlan(plan.Program.Invocation...)
-
-	return execute(ctx, env, boundCluster, p, wait)
-}
-
 func execute(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace, plan *execution.Plan, wait bool) error {
 	if wait {
 		return execution.Execute(ctx, "orchestrator.deploy", plan,
@@ -207,56 +102,4 @@ func execute(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterN
 
 	return execution.RawExecute(ctx, "orchestrator.deploy", execution.ExecuteOpts{ContinueOnErrors: true},
 		plan, execution.FromContext(env), runtime.InjectCluster(boundCluster))
-}
-
-func getVersions(ctx context.Context, env cfg.Context, boundCluster runtime.ClusterNamespace) (*orchestrationpb.GetOrchestratorVersionResponse, error) {
-	return tasks.Return(ctx, tasks.Action("orchestrator.check-version"), func(ctx context.Context) (*orchestrationpb.GetOrchestratorVersionResponse, error) {
-		ctx, cancel := context.WithTimeout(ctx, orchDialTimeout)
-		defer cancel()
-
-		// Only dial once.
-		conn, err := boundCluster.DialServer(ctx, stateless, &schema.Endpoint_Port{Name: constants.PortName})
-		if err != nil {
-			return nil, err
-		}
-
-		rpc, err := grpc.DialContext(ctx, "orchestrator",
-			grpc.WithBlock(),
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-				return conn, nil
-			}))
-		if err != nil {
-			return nil, err
-		}
-
-		return orchestrationpb.NewOrchestrationServiceClient(rpc).GetOrchestratorVersion(ctx, &orchestrationpb.GetOrchestratorVersionRequest{
-			SkipCache: SkipVersionCache,
-		})
-	})
-}
-
-func getLatestDeployPlan(ctx context.Context) (*fnapi.GetLatestDeployPlansResponse_Plan, error) {
-	if cached := cachedDeployPlan.Load(); cached != nil {
-		return cached, nil
-	}
-
-	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
-	if err != nil {
-		return nil, err
-	}
-
-	var matching []*fnapi.GetLatestDeployPlansResponse_Plan
-	for _, plan := range plans.Plan {
-		if plan.PackageName == constants.ServerPkg.String() {
-			matching = append(matching, plan)
-		}
-	}
-
-	if len(matching) == 0 {
-		return nil, fnerrors.InternalError("No matching orchestrator plan, that's unexpected.")
-	}
-
-	cachedDeployPlan.Store(matching[0])
-	return matching[0], nil
 }
