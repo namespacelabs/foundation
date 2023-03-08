@@ -93,8 +93,16 @@ func ProvideServerInfo(ctx context.Context, _ *types.ServerInfoArgs) (*types.Ser
 	}, nil
 }
 
+func EnvPurpose() schema.Environment_Purpose {
+	v, ok := schema.Environment_Purpose_value[initializedData().rt.Environment.Purpose]
+	if ok {
+		return schema.Environment_Purpose(v)
+	}
+	return schema.Environment_PURPOSE_UNKNOWN
+}
+
 func EnvIs(purpose schema.Environment_Purpose) bool {
-	return initializedData().rt.Environment.Purpose == purpose.String()
+	return EnvPurpose() == purpose
 }
 
 type frameworkKey string

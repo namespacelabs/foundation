@@ -278,7 +278,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 			return err
 		}
 
-		if err := handleService(ctx, pl, loc, cueExportMethods{Service: svc}, node, out); err != nil {
+		if err := handleService(ctx, env, pl, loc, cueExportMethods{Service: svc}, node, out); err != nil {
 			return err
 		}
 	}
@@ -289,7 +289,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 			return err
 		}
 
-		if err := handleService(ctx, pl, loc, export, node, out); err != nil {
+		if err := handleService(ctx, env, pl, loc, export, node, out); err != nil {
 			return err
 		}
 	}
@@ -462,7 +462,7 @@ func sortLabels(labels []*schema.Label) []*schema.Label {
 	return labels
 }
 
-func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {
+func handleService(ctx context.Context, env *schema.Environment, pl parsing.EarlyPackageLoader, loc pkggraph.Location, export cueExportMethods, node *schema.Node, out *pkggraph.Package) error {
 	fsys, err := pl.WorkspaceOf(ctx, loc.Module)
 	if err != nil {
 		return err
@@ -514,7 +514,7 @@ func handleService(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggr
 		ProtoTypename:            export.Service.Typename,
 		Proto:                    export.Service.Sources,
 		Method:                   export.Methods,
-		ServerReflectionIncluded: true, // XXX security: evaluate whether this makes sense.
+		ServerReflectionIncluded: env.GetPurpose() != schema.Environment_PRODUCTION,
 	})
 
 	if out.Services == nil {

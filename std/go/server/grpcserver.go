@@ -87,8 +87,10 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 
 	grpcServer := grpc.NewServer(opts...)
 
-	// Enable tooling to query which gRPC services, etc are exported by this server.
-	reflection.Register(grpcServer)
+	if core.EnvPurpose() != schema.Environment_PRODUCTION {
+		// Enable tooling to query which gRPC services, etc are exported by this server.
+		reflection.Register(grpcServer)
+	}
 
 	httpMux := mux.NewRouter()
 	httpMux.Use(middleware.Consume()...)
