@@ -41,13 +41,10 @@ var (
 	port           = flag.Int("port", 0, "Port to listen on.")
 	httpPort       = flag.Int("http_port", 0, "Port to listen HTTP on.")
 
-	handleSIGTERM = false
+	handleSIGTERM = true
 )
 
-const (
-	developmentDrainTimeout = 5 * time.Second
-	productionDrainTimeout  = 30 * time.Second
-)
+const drainTimeout = 30 * time.Second
 
 func ListenPort() int { return *port }
 
@@ -57,40 +54,7 @@ func InitializationDone() {
 
 func Listen(ctx context.Context, registerServices func(Server)) error {
 	if handleSIGTERM {
-		go func() {
-			sigint := make(chan os.Signal, 1)
-
-			signal.Notify(sigint, os.Interrupt)
-			signal.Notify(sigint, syscall.SIGTERM)
-
-			r2 := <-sigint
-
-			log.Printf("got %v", r2)
-
-			// XXX support more graceful shutdown. Although
-			// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
-			// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
-			// you should NOT do is close your listening socket. If you win the
-			// race, you will receive traffic and reject it.""
-
-			// So we start failing readiness, so we're removed from the serving set.
-			// Then we wait for a bit for traffic to drain out. And then we leave.
-
-			core.MarkShutdownStarted()
-
-			if core.EnvIs(schema.Environment_DEVELOPMENT) {
-				// In development, we drain quickly.
-				time.Sleep(developmentDrainTimeout)
-			} else {
-				time.Sleep(productionDrainTimeout)
-			}
-
-			if r2 == syscall.SIGTERM {
-				os.Exit(0)
-			} else {
-				os.Exit(1)
-			}
-		}()
+		go handleGracefulShutdown()
 	}
 
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *listenHostname, *port))
@@ -198,5 +162,39 @@ func interceptorsAsOpts() []grpc.ServerOption {
 func checkReturn(what string, err error) {
 	if err != nil {
 		core.ZLog.Fatal().Err(err).Str("what", what).Msg("serving failed")
+	}
+}
+
+func handleGracefulShutdown() {
+	if core.EnvIs(schema.Environment_DEVELOPMENT) {
+		// In development, we skip graceful shutdowns for faster iteration cycles.
+		return
+	}
+
+	sigint := make(chan os.Signal, 1)
+
+	signal.Notify(sigint, os.Interrupt)
+	signal.Notify(sigint, syscall.SIGTERM)
+
+	r2 := <-sigint
+
+	log.Printf("got %v", r2)
+
+	// XXX support more graceful shutdown. Although
+	// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
+	// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
+	// you should NOT do is close your listening socket. If you win the
+	// race, you will receive traffic and reject it.""
+
+	// So we start failing readiness, so we're removed from the serving set.
+	// Then we wait for a bit for traffic to drain out. And then we leave.
+
+	core.MarkShutdownStarted()
+	time.Sleep(drainTimeout)
+
+	if r2 == syscall.SIGTERM {
+		os.Exit(0)
+	} else {
+		os.Exit(1)
 	}
 }
