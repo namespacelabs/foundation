@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -16,7 +17,7 @@ func PollImmediateWithContext(ctx context.Context, interval, timeout time.Durati
 	if err != nil {
 		// The wait library never returns Cancelled, as it would break their compatibility. But we care
 		// about cancelation reporting.
-		if ctx.Err() != nil {
+		if ctx.Err() != nil && errors.Is(err, wait.ErrWaitTimeout) {
 			return ctx.Err()
 		}
 		return err
