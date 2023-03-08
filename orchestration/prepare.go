@@ -11,6 +11,8 @@ import (
 	"net"
 	"time"
 
+	"go.uber.org/atomic"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/proto"
@@ -51,6 +53,8 @@ var (
 		Name:            constants.ServerName,
 		DeployableClass: string(schema.DeployableClass_STATELESS),
 	}
+
+	cachedDeployPlan = atomic.NewPointer[fnapi.GetLatestDeployPlansResponse_Plan](nil)
 )
 
 func RegisterPrepare() {
@@ -99,7 +103,7 @@ func PrepareOrchestrator(ctx context.Context, targetEnv cfg.Configuration, clust
 	ctx, done := context.WithTimeout(ctx, timeout)
 	defer done()
 
-	plan, err := compute.GetValue[*fnapi.GetLatestDeployPlansResponse_Plan](ctx, &lastestDeployPlan{})
+	plan, err := getLatestDeployPlan(ctx)
 	if err != nil {
 		if versions.GetCurrent() == 0 {
 			return nil, fnerrors.InternalError("failed to install the orchestrator: failed to fetch latest version: %w", err)
@@ -232,20 +236,11 @@ func getVersions(ctx context.Context, env cfg.Context, boundCluster runtime.Clus
 	})
 }
 
-type lastestDeployPlan struct {
-	// Cache orchestrator deploy plans for an entire CLI invocation.
-	compute.DoScoped[*fnapi.GetLatestDeployPlansResponse_Plan]
-}
+func getLatestDeployPlan(ctx context.Context) (*fnapi.GetLatestDeployPlansResponse_Plan, error) {
+	if cached := cachedDeployPlan.Load(); cached != nil {
+		return cached, nil
+	}
 
-func (dp *lastestDeployPlan) Action() *tasks.ActionEvent {
-	return tasks.Action("orchestrator.fetch-deploy-plan")
-}
-
-func (dp *lastestDeployPlan) Inputs() *compute.In {
-	return compute.Inputs().Stringer("pkg", constants.ServerPkg)
-}
-
-func (dp *lastestDeployPlan) Compute(ctx context.Context, _ compute.Resolved) (*fnapi.GetLatestDeployPlansResponse_Plan, error) {
 	plans, err := fnapi.GetLatestDeployPlans(ctx, constants.ServerPkg)
 	if err != nil {
 		return nil, err
@@ -262,5 +257,6 @@ func (dp *lastestDeployPlan) Compute(ctx context.Context, _ compute.Resolved) (*
 		return nil, fnerrors.InternalError("No matching orchestrator plan, that's unexpected.")
 	}
 
+	cachedDeployPlan.Store(matching[0])
 	return matching[0], nil
 }
