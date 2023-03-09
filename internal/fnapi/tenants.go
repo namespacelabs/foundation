@@ -87,6 +87,7 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 func FetchTenantToken(ctx context.Context) (Token, error) {
 	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
 		if AdminMode {
+			// TODO remove admin flow.
 			// In admin mode we exchange user token to a tenant token with `admin` scope.
 			userToken, err := auth.GenerateToken(ctx)
 			if err != nil {
