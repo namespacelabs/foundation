@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"go.opentelemetry.io/otel/trace"
@@ -23,19 +24,31 @@ const (
 	pgUniqueConstraintViolation = "23505"
 )
 
-func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	var empty T
+func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+	var result T
 
-	for i := 0; i < maxRetries; i++ {
-		value, err := beginRWTxFunc(ctx, db, f)
-		if err != nil && errorRetryable(err) {
-			continue
+	i := 0
+	err := backoff.Retry(func() error {
+		if i == maxRetries {
+			return backoff.Permanent(rpcerrors.Errorf(codes.Internal, "max retries exceeded"))
 		}
 
-		return value, err
-	}
+		i++
 
-	return empty, rpcerrors.Errorf(codes.Internal, "max retries exceeded")
+		value, err := beginRWTxFunc(ctx, db, f)
+		if err == nil {
+			result = value
+			return nil
+		}
+
+		if !errorRetryable(err) {
+			return backoff.Permanent(err)
+		}
+
+		return err
+	}, b)
+
+	return result, err
 }
 
 func beginRWTxFunc[T any](ctx context.Context, db *DB, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
