@@ -180,7 +180,7 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 }
 
 func EnsureBuildCluster(ctx context.Context, api API) (*CreateClusterResult, error) {
-	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{MachineType: "16x32", Purpose: "build machine", Features: []string{"BUILD_CLUSTER"}})
+	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{Purpose: "build machine", Features: []string{"BUILD_CLUSTER"}})
 }
 
 func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateClusterResult, error) {
