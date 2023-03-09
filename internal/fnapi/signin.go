@@ -8,7 +8,6 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/auth"
-	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -47,24 +46,7 @@ func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
 	return &resp, nil
 }
 
-func CompleteLogin(ctx context.Context, id, kind string, ephemeralCliId string) (*auth.UserAuth, error) {
-	if kind == "clerk" {
-		t, err := completeClerkLogin(ctx, id, ephemeralCliId)
-		if err != nil {
-			return nil, err
-		}
-
-		n, err := clerk.Login(ctx, t.Ticket)
-		if err != nil {
-			return nil, err
-		}
-
-		return &auth.UserAuth{
-			Username: n.Email,
-			Clerk:    n,
-		}, nil
-	}
-
+func CompleteLogin(ctx context.Context, id, ephemeralCliId string) (*auth.UserAuth, error) {
 	req := CompleteLoginRequest{
 		LoginId:        id,
 		EphemeralCliId: ephemeralCliId,
@@ -89,7 +71,7 @@ type CompleteClerkLoginResponse struct {
 	Ticket string `json:"ticket,omitempty"`
 }
 
-func completeClerkLogin(ctx context.Context, id string, ephemeralCliId string) (*CompleteClerkLoginResponse, error) {
+func CompleteClerkLogin(ctx context.Context, id, ephemeralCliId string) (*CompleteClerkLoginResponse, error) {
 	req := CompleteLoginRequest{
 		LoginId:        id,
 		EphemeralCliId: ephemeralCliId,
@@ -98,6 +80,32 @@ func completeClerkLogin(ctx context.Context, id string, ephemeralCliId string) (
 	method := "nsl.signin.SigninService/CompleteClerkLogin"
 
 	var resp []CompleteClerkLoginResponse
+	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
+	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
+		return nil, err
+	}
+
+	if len(resp) != 1 {
+		return nil, fnerrors.InternalError("expected exactly one response (got %d)", len(resp))
+	}
+
+	return &resp[0], nil
+}
+
+type CompleteTenantLoginResponse struct {
+	TenantToken string `json:"tenant_token,omitempty"`
+	TenantName  string `json:"tenant_name,omitempty"`
+}
+
+func CompleteTenantLogin(ctx context.Context, id, ephemeralCliId string) (*CompleteTenantLoginResponse, error) {
+	req := CompleteLoginRequest{
+		LoginId:        id,
+		EphemeralCliId: ephemeralCliId,
+	}
+
+	method := "nsl.signin.SigninService/CompleteTenantLogin"
+
+	var resp []CompleteTenantLoginResponse
 	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
 	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
