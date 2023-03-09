@@ -13,9 +13,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func NewLoginCmd() *cobra.Command {
@@ -51,31 +53,20 @@ func NewLoginCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
 			}
 
-			userAuth, err := fnapi.CompleteLogin(ctx, res.LoginId, res.Kind, fnapi.TelemetryOn(ctx).GetClientID())
+			tenant, err := completeLogin(ctx, res.LoginId, res.Kind)
 			if err != nil {
 				return err
 			}
 
-			username, err := auth.StoreUser(ctx, userAuth)
-			if err != nil {
+			if err := auth.StoreTenantToken(tenant.token); err != nil {
 				return err
 			}
 
-			userToken, err := auth.GenerateTokenFromUserAuth(ctx, userAuth)
-			if err != nil {
-				return err
+			if tenant.name != "" {
+				fmt.Fprintf(stdout, "\nYou are now logged into workspace %q, have a nice day.\n", tenant.name)
+			} else {
+				fmt.Fprintf(stdout, "\nYou are now logged in, have a nice day.\n")
 			}
-
-			tt, err := fnapi.ExchangeUserToken(ctx, userToken)
-			if err != nil {
-				return err
-			}
-
-			if err := auth.StoreTenantToken(tt.TenantToken); err != nil {
-				return err
-			}
-
-			fmt.Fprintf(stdout, "\nHi %s, you are now logged in, have a nice day.\n", username)
 
 			return nil
 		}),
@@ -90,4 +81,73 @@ func NewLoginCmd() *cobra.Command {
 func openURL(url string) bool {
 	err := browser.OpenURL(url)
 	return err == nil
+}
+
+type tenant struct {
+	token string
+	name  string
+}
+
+func completeLogin(ctx context.Context, id, kind string) (tenant, error) {
+	ephemeralCliId := fnapi.TelemetryOn(ctx).GetClientID()
+
+	if kind == "tenant" {
+		res, err := fnapi.CompleteTenantLogin(ctx, id, kind)
+		if err != nil {
+			return tenant{}, err
+		}
+
+		return tenant{
+			token: res.TenantToken,
+			name:  res.TenantName,
+		}, nil
+	}
+
+	// TODO remove old login path
+	userAuth, err := getUserAuth(ctx, id, kind, ephemeralCliId)
+	if err != nil {
+		return tenant{}, err
+	}
+
+	if _, err := auth.StoreUser(ctx, userAuth); err != nil {
+		return tenant{}, err
+	}
+
+	userToken, err := auth.GenerateTokenFromUserAuth(ctx, userAuth)
+	if err != nil {
+		return tenant{}, err
+	}
+
+	tt, err := fnapi.ExchangeUserToken(ctx, userToken)
+	if err != nil {
+		return tenant{}, err
+	}
+
+	return tenant{token: tt.TenantToken}, nil
+}
+
+func getUserAuth(ctx context.Context, id, kind, ephemeralCliId string) (*auth.UserAuth, error) {
+	switch kind {
+	case "tenant":
+		return nil, fnerrors.InternalError("tenant login cannot produce user auth")
+
+	case "clerk":
+		t, err := fnapi.CompleteClerkLogin(ctx, id, ephemeralCliId)
+		if err != nil {
+			return nil, err
+		}
+
+		n, err := clerk.Login(ctx, t.Ticket)
+		if err != nil {
+			return nil, err
+		}
+
+		return &auth.UserAuth{
+			Username: n.Email,
+			Clerk:    n,
+		}, nil
+
+	default:
+		return fnapi.CompleteLogin(ctx, id, ephemeralCliId)
+	}
 }
