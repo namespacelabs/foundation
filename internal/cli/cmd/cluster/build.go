@@ -185,11 +185,11 @@ func NewBuildCmd() *cobra.Command {
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
 	pushTarget := cmd.Flags().String("push", "", "If specified, pushes the image to the target repository.")
 	pushToRepository := cmd.Flags().String("push_to_nsc_repo", "", "If specified, pushes the image to nsc's private registry, to the specified repository.")
-	pushToDocker := cmd.Flags().Bool("push_to_docker", false, "If true, pushes the image to the local docker instance.")
+	pushToDocker := cmd.Flags().String("push_to_docker", "", "If specified, loads the built image to the local docker instance, with the specified name.")
 	tags := cmd.Flags().StringArrayP("tag", "t", nil, "List of tags to attach to the image.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
-		if *pushTarget == "" && *pushToRepository == "" && !*pushToDocker {
+		if *pushTarget == "" && *pushToRepository == "" && *pushToDocker == "" {
 			return fnerrors.New("one of --push, --push_to_nsc_repo or --push_to_docker are required")
 		}
 
@@ -223,7 +223,7 @@ func NewBuildCmd() *cobra.Command {
 
 		var complete func() error
 
-		if !*pushToDocker {
+		if *pushToDocker == "" {
 			var imageName string
 
 			if *pushTarget != "" {
@@ -268,7 +268,7 @@ func NewBuildCmd() *cobra.Command {
 			// We don't actually need it.
 			f.Close()
 
-			args = append(args, "--output", "type=docker,dest="+f.Name())
+			args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,name=%s", f.Name(), *pushToDocker))
 
 			complete = func() error {
 				dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
