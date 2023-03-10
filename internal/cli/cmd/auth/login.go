@@ -92,7 +92,7 @@ func completeLogin(ctx context.Context, id, kind string) (tenant, error) {
 	ephemeralCliId := fnapi.TelemetryOn(ctx).GetClientID()
 
 	if kind == "tenant" {
-		res, err := fnapi.CompleteTenantLogin(ctx, id, kind)
+		res, err := fnapi.CompleteTenantLogin(ctx, id, ephemeralCliId)
 		if err != nil {
 			return tenant{}, err
 		}
