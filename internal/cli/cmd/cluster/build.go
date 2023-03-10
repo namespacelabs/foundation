@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/moby/buildkit/client"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/build/buildkit/buildkitd"
+	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
@@ -31,6 +31,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewBuildctlCmd() *cobra.Command {
@@ -128,16 +129,18 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 }
 
 func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
-	return buildkitd.WaitReadiness(ctx, func() (*client.Client, error) {
-		// We must fetch a token with our parent context, so we get a task sink etc.
-		token, err := fnapi.FetchTenantToken(ctx)
-		if err != nil {
-			return nil, err
-		}
+	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
+		return buildkitfw.WaitReadiness(ctx, func() (*client.Client, error) {
+			// We must fetch a token with our parent context, so we get a task sink etc.
+			token, err := fnapi.FetchTenantToken(ctx)
+			if err != nil {
+				return nil, err
+			}
 
-		return client.New(ctx, response.ClusterId, client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			return api.DialPortWithToken(ctx, token, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
-		}))
+			return client.New(ctx, response.ClusterId, client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+				return api.DialPortWithToken(ctx, token, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
+			}))
+		})
 	})
 }
 

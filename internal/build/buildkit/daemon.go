@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	buildkit "github.com/moby/buildkit/client"
-	"namespacelabs.dev/foundation/internal/build/buildkit/buildkitd"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
@@ -33,7 +32,7 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (string, error) 
 		Version:       vendoredVersion,
 		Image:         "moby/buildkit",
 		WaitUntilRunning: func(ctx context.Context, containerName string) error {
-			return buildkitd.WaitReadiness(ctx, func() (*buildkit.Client, error) {
+			return waitReadiness(ctx, func() (*buildkit.Client, error) {
 				return buildkit.New(ctx, makeAddr(containerName))
 			})
 		},

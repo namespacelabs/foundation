@@ -12,9 +12,10 @@ import (
 
 	moby_buildkit_v1 "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/client"
+	buildkit "github.com/moby/buildkit/client"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
-	"namespacelabs.dev/foundation/internal/build/buildkit/buildkitd"
+	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -191,8 +192,14 @@ func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port 
 	})
 }
 
+func waitReadiness(ctx context.Context, connect func() (*buildkit.Client, error)) error {
+	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
+		return buildkitfw.WaitReadiness(ctx, connect)
+	})
+}
+
 func waitAndConnect(ctx context.Context, connect func() (*client.Client, error)) (*GatewayClient, error) {
-	if err := buildkitd.WaitReadiness(ctx, connect); err != nil {
+	if err := waitReadiness(ctx, connect); err != nil {
 		return nil, err
 	}
 
