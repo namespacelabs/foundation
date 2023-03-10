@@ -185,11 +185,12 @@ func NewBuildCmd() *cobra.Command {
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
 	pushTarget := cmd.Flags().String("push", "", "If specified, pushes the image to the target repository.")
 	pushToRepository := cmd.Flags().String("push_to_nsc_repo", "", "If specified, pushes the image to nsc's private registry, to the specified repository.")
+	pushToDocker := cmd.Flags().Bool("push_to_docker", false, "If true, pushes the image to the local docker instance.")
 	tags := cmd.Flags().StringArrayP("tag", "t", nil, "List of tags to attach to the image.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
-		if *pushTarget == "" && *pushToRepository == "" {
-			return fnerrors.New("one of --push or --push_to_nsc_repo are required")
+		if *pushTarget == "" && *pushToRepository == "" && !*pushToDocker {
+			return fnerrors.New("one of --push, --push_to_nsc_repo or --push_to_docker are required")
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
@@ -209,48 +210,77 @@ func NewBuildCmd() *cobra.Command {
 			contextDir = specifiedArgs[0]
 		}
 
-		var imageName string
-
-		if *pushTarget != "" {
-			imageName = *pushTarget
-		}
-
-		if *pushToRepository != "" {
-			imageName = fmt.Sprintf("%s/%s", p.RegistryEndpoint, *pushToRepository)
-		}
-
-		parsed, err := name.NewTag(imageName)
-		if err != nil {
-			return err
-		}
-
-		imageNames := []string{imageName}
-		for _, tag := range *tags {
-			imageNames = append(imageNames, parsed.Tag(tag).Name())
-		}
-
 		args := []string{
 			"build",
 			"--frontend=dockerfile.v0",
 			"--local", "context=" + contextDir,
 			"--local", "dockerfile=" + contextDir,
-			// buildctl parses output as csv; need to quote to pass commas to `name`.
-			"--output", fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")),
 		}
 
 		if *dockerFile != "" {
 			args = append(args, "--opt", "filename="+*dockerFile)
 		}
 
+		var complete func() error
+
+		if !*pushToDocker {
+			var imageName string
+
+			if *pushTarget != "" {
+				imageName = *pushTarget
+			}
+
+			if *pushToRepository != "" {
+				imageName = fmt.Sprintf("%s/%s", p.RegistryEndpoint, *pushToRepository)
+			}
+
+			parsed, err := name.NewTag(imageName)
+			if err != nil {
+				return err
+			}
+
+			imageNames := []string{imageName}
+			for _, tag := range *tags {
+				imageNames = append(imageNames, parsed.Tag(tag).Name())
+			}
+
+			args = append(args,
+				// buildctl parses output as csv; need to quote to pass commas to `name`.
+				"--output", fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")),
+			)
+
+			complete = func() error {
+				fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
+				for _, imageName := range imageNames {
+					fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
+				}
+
+				return nil
+			}
+		} else {
+			f, err := os.CreateTemp("", "docker-image-nsc")
+			if err != nil {
+				return err
+			}
+
+			defer os.Remove(f.Name())
+
+			// We don't actually need it.
+			f.Close()
+
+			args = append(args, "--output", "type=docker,dest="+f.Name())
+
+			complete = func() error {
+				dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
+				return localexec.RunInteractive(ctx, dockerLoad)
+			}
+		}
+
 		if err := runBuildctl(ctx, buildctlBin, p, args...); err != nil {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
-		for _, imageName := range imageNames {
-			fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
-		}
-		return nil
+		return complete()
 	})
 
 	return cmd
