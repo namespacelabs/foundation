@@ -12,8 +12,10 @@ import (
 )
 
 type StartLoginRequest struct {
-	Kind           string   `json:"kind"`
-	SupportedKinds []string `json:"supported_kinds"`
+	Kind            string   `json:"kind"`
+	SupportedKinds  []string `json:"supported_kinds"`
+	PreferredTenant string   `json:"preferred_tenant,omitempty"`
+	Impersonate     bool     `json:"impersonate,omitempty"`
 }
 
 type StartLoginResponse struct {
@@ -28,8 +30,12 @@ type CompleteLoginRequest struct {
 }
 
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
-	req := StartLoginRequest{Kind: kind, SupportedKinds: []string{"clerk", "tenant"}}
+func StartLogin(ctx context.Context, kind, tenant string) (*StartLoginResponse, error) {
+	req := StartLoginRequest{Kind: kind, SupportedKinds: []string{"clerk", "tenant"}, PreferredTenant: tenant}
+
+	if AdminMode {
+		req.Impersonate = true
+	}
 
 	var resp StartLoginResponse
 	if err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(&resp)); err != nil {

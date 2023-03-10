@@ -24,7 +24,8 @@ import (
 const (
 	GithubJWTAudience = "nscloud.dev/inline-token"
 
-	tokenTxt = "token.json"
+	tokenTxt      = "token.json"
+	adminTokenTxt = "admin_token.json"
 )
 
 type Token struct {
@@ -35,7 +36,7 @@ func (t *Token) Raw() string {
 	return t.TenantToken
 }
 
-func StoreTenantToken(token string) error {
+func storeToken(token, loc string) error {
 	data, err := json.Marshal(Token{TenantToken: token})
 	if err != nil {
 		return err
@@ -46,20 +47,28 @@ func StoreTenantToken(token string) error {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(configDir, tokenTxt), data, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, loc), data, 0600); err != nil {
 		return fnerrors.New("failed to write token data: %w", err)
 	}
 
 	return nil
 }
 
-func LoadTenantToken(ctx context.Context) (*Token, error) {
+func StoreAdminToken(token string) error {
+	return storeToken(token, adminTokenTxt)
+}
+
+func StoreTenantToken(token string) error {
+	return storeToken(token, tokenTxt)
+}
+
+func loadToken(ctx context.Context, loc string) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err
 	}
 
-	p := filepath.Join(dir, tokenTxt)
+	p := filepath.Join(dir, loc)
 	data, err := os.ReadFile(p)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -88,4 +97,35 @@ func LoadTenantToken(ctx context.Context) (*Token, error) {
 	}
 
 	return token, nil
+}
+
+func LoadAdminToken(ctx context.Context) (*Token, error) {
+	tok, err := loadToken(ctx, adminTokenTxt)
+	if err != nil {
+		if err == ErrRelogin {
+			return nil, fnerrors.New("not logged in, please run `ns login --fnapi_admin --workspace={tenant_to_impersonate}`")
+		}
+		return nil, err
+	}
+
+	return tok, nil
+}
+
+func LoadTenantToken(ctx context.Context) (*Token, error) {
+	return loadToken(ctx, tokenTxt)
+}
+
+func RemoveTenantToken(ctx context.Context) error {
+	dir, err := dirs.Config()
+	if err != nil {
+		return err
+	}
+
+	for _, f := range []string{tokenTxt, adminTokenTxt} {
+		if err := os.Remove(filepath.Join(dir, f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+
+	return nil
 }
