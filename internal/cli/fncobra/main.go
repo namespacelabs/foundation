@@ -263,7 +263,8 @@ func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error)
 	case "nsc":
 		root.Example = `  nsc login            Log in to use Namespace Cloud.
   nsc cluster create   Create a new cluster.
-  nsc cluster kubectl  Run kubectl in your cluster.`
+  nsc cluster kubectl  Run kubectl in your cluster.
+  nsc build            Build a Docker image in a build cluster.`
 	}
 
 	return root
