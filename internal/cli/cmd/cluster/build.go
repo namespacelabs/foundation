@@ -78,6 +78,8 @@ type buildProxy struct {
 }
 
 func runBuildProxy(ctx context.Context) (*buildProxy, error) {
+	existing := config.LoadDefaultConfigFile(console.Stderr(ctx))
+
 	response, err := api.EnsureBuildCluster(ctx, api.Endpoint)
 	if err != nil {
 		return nil, err
@@ -104,16 +106,20 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		return nil, err
 	}
 
-	var cfg configfile.ConfigFile
-	cfg.AuthConfigs = map[string]types.AuthConfig{
-		response.Registry.EndpointAddress: {
-			Username: t.Username,
-			Password: t.Password,
-		},
+	// We don't copy over all authentication settings; only some.
+	// XXX replace with custom buildctl invocation that merges auth in-memory.
+	newConfig := configfile.ConfigFile{
+		AuthConfigs:       existing.AuthConfigs,
+		CredentialHelpers: existing.CredentialHelpers,
+	}
+
+	newConfig.AuthConfigs[response.Registry.EndpointAddress] = types.AuthConfig{
+		Username: t.Username,
+		Password: t.Password,
 	}
 
 	credsFile := filepath.Join(p.TempDir, config.ConfigFileName)
-	if err := files.WriteJson(credsFile, cfg, 0600); err != nil {
+	if err := files.WriteJson(credsFile, newConfig, 0600); err != nil {
 		p.Cleanup()
 		return nil, err
 	}
@@ -174,13 +180,13 @@ func NewBuildCmd() *cobra.Command {
 	}
 
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
-	target := cmd.Flags().String("push_to", "", "If specified, pushes the image to the target repository.")
-	repository := cmd.Flags().String("push_to_nsc_repo", "", "If specified, pushes the image to nsc's private registry, to the specified repository.")
+	pushTarget := cmd.Flags().String("push", "", "If specified, pushes the image to the target repository.")
+	pushToRepository := cmd.Flags().String("push_to_nsc_repo", "", "If specified, pushes the image to nsc's private registry, to the specified repository.")
 	tags := cmd.Flags().StringArrayP("tag", "t", nil, "List of tags to attach to the image.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
-		if *target == "" && *repository == "" {
-			return fnerrors.New("one of --push_to or --push_to_nsc_repo are required")
+		if *pushTarget == "" && *pushToRepository == "" {
+			return fnerrors.New("one of --push or --push_to_nsc_repo are required")
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
@@ -202,12 +208,12 @@ func NewBuildCmd() *cobra.Command {
 
 		var imageName string
 
-		if *target != "" {
-			imageName = *target
+		if *pushTarget != "" {
+			imageName = *pushTarget
 		}
 
-		if *repository != "" {
-			imageName = fmt.Sprintf("%s/%s", p.RegistryEndpoint, *repository)
+		if *pushToRepository != "" {
+			imageName = fmt.Sprintf("%s/%s", p.RegistryEndpoint, *pushToRepository)
 		}
 
 		parsed, err := name.NewTag(imageName)
