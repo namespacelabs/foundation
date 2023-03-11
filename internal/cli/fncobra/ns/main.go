@@ -246,6 +246,8 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
 		rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
 			filewatcher.FileWatcherUsePolling, "If set to true, uses polling to observe file system events.")
+		rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreVersionCheck, "k3d_ignore_docker_version", k3d.IgnoreVersionCheck,
+			"If set to true, does not validate Docker's verison.")
 
 		// We have too many flags, hide some of them from --help so users can focus on what's important.
 		for _, noisy := range []string{
@@ -279,6 +281,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			"update_orchestrator",
 			"gcloud_use_host_binary",
 			"filewatcher_use_polling",
+			"k3d_ignore_docker_version",
 			// Hidden for M0
 			"testing_use_namespace_cloud",
 			"testing_use_namespace_cloud_build",

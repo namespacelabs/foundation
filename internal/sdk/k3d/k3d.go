@@ -31,7 +31,10 @@ import (
 
 const version = "5.2.2"
 
-var IgnoreZfsCheck = false
+var (
+	IgnoreZfsCheck     = false
+	IgnoreVersionCheck = false
+)
 
 var Pins = map[string]artifacts.Reference{
 	"linux/amd64": {
@@ -124,6 +127,10 @@ const minimumDockerVer = "20.10.5"
 const minimumRuncVer = "1.0.0-rc93"
 
 func ValidateDocker(ctx context.Context, cli docker.Client) error {
+	if IgnoreVersionCheck {
+		return nil
+	}
+
 	ver, err := cli.ServerVersion(ctx)
 	if err != nil {
 		return fnerrors.InvocationError("docker", "failed to obtain docker version: %w", err)
