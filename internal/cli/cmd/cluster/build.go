@@ -125,7 +125,19 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		return nil, err
 	}
 
-	return &buildProxy{p.SocketAddr, p.TempDir, response.Registry.EndpointAddress, p.Cleanup}, nil
+	ctx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		_ = api.StartRefreshing(ctx, api.Endpoint, response.ClusterId, func(err error) error {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
+			return nil
+		})
+	}()
+
+	return &buildProxy{p.SocketAddr, p.TempDir, response.Registry.EndpointAddress, func() {
+		cancel()
+		p.Cleanup()
+	}}, nil
 }
 
 func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
