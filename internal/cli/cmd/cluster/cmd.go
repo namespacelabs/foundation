@@ -63,29 +63,30 @@ func selectClusterID(ctx context.Context) (string, error) {
 	return cl.ClusterId, nil
 }
 
-func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, error) {
+func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
 	if len(args) > 1 {
-		return nil, fnerrors.InternalError("got %d clusters - expected one", len(args))
+		return nil, nil, fnerrors.InternalError("got %d clusters - expected one", len(args))
 	}
 
 	var clusterID string
 	if len(args) == 1 {
 		clusterID = args[0]
+		args = args[1:]
 	} else {
 		selected, err := selectClusterID(ctx)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if selected == "" {
-			return nil, nil
+			return nil, nil, nil
 		}
 		clusterID = selected
 	}
 	response, err := api.GetCluster(ctx, api.Endpoint, clusterID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return response.Cluster, nil
+	return response.Cluster, args, nil
 }
 
 const (

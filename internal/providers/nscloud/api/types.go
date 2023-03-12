@@ -16,6 +16,7 @@ type CreateKubernetesClusterRequest struct {
 	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
 	MachineType       string   `json:"machine_type,omitempty"`
 	Feature           []string `json:"feature,omitempty"`
+	UniqueTag         string   `json:"unique_tag,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {

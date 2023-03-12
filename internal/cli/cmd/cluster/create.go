@@ -41,7 +41,7 @@ func newCreateCmd() *cobra.Command {
 		opts := api.CreateClusterOpts{
 			MachineType: *machineType,
 			Ephemeral:   *ephemeral,
-			KeepAlive:   true,
+			KeepAtExit:  true,
 			Purpose:     "Manually created from CLI",
 			Features:    *features,
 		}

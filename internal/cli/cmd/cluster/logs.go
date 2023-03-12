@@ -33,7 +33,7 @@ func newLogsCmd() *cobra.Command {
 	raw := cmd.Flags().Bool("raw", false, "Print the raw logs to stdout (skipping namespace/pod labels).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := selectCluster(ctx, args)
+		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
 				printCreateClusterMsg(ctx)

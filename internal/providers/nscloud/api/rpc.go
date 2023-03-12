@@ -120,11 +120,12 @@ type CreateClusterOpts struct {
 
 	// Whether to keep the cluster alive, regardless of it being ephemeral.
 	// This is typically needed if you want to execute multiple ns commands on an ephemeral cluster.
-	KeepAlive bool
+	KeepAtExit bool
 
 	Purpose           string
 	Features          []string
 	AuthorizedSshKeys []string
+	UniqueTag         string
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
@@ -135,6 +136,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			MachineType:       opts.MachineType,
 			Feature:           opts.Features,
 			AuthorizedSshKeys: opts.AuthorizedSshKeys,
+			UniqueTag:         opts.UniqueTag,
 		}
 
 		var response StartCreateKubernetesClusterResponse
@@ -152,7 +154,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			}
 		}
 
-		if opts.Ephemeral && !opts.KeepAlive {
+		if opts.Ephemeral && !opts.KeepAtExit {
 			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
 				if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
 					// The cluster being gone is an acceptable state (it could have

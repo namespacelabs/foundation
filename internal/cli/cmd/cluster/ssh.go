@@ -7,17 +7,20 @@ package cluster
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/containerd/console"
+	c "github.com/containerd/console"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/term"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	con "namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -30,8 +33,27 @@ func newSshCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
+	tag := cmd.Flags().String("tag", "", "If specified, creates a cluster with the specified tag.")
+	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, err := selectCluster(ctx, args)
+		if *tag != "" {
+			opts := api.CreateClusterOpts{
+				Ephemeral:  true,
+				KeepAtExit: true,
+				Purpose:    fmt.Sprintf("Manually created for ssh (%s)", *tag),
+				UniqueTag:  *tag,
+			}
+
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
+			if err != nil {
+				return err
+			}
+
+			return inlineSsh(ctx, cluster.Cluster, *sshAgent, args)
+		}
+
+		cluster, args, err := selectCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
 				printCreateClusterMsg(ctx)
@@ -44,14 +66,18 @@ func newSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return inlineSsh(ctx, cluster, nil)
+		return inlineSsh(ctx, cluster, *sshAgent, args)
 	})
 
 	return cmd
 }
 
-func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, args []string) error {
-	stdin, err := console.ConsoleFromFile(os.Stdin)
+func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
+	if len(args) > 0 {
+		return fnerrors.New("unimplemented")
+	}
+
+	stdin, err := c.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err
 	}
@@ -91,6 +117,20 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, args []strin
 		return err
 	}
 
+	if sshAgent {
+		if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
+			if err := agent.ForwardToRemote(client, authSock); err != nil {
+				return err
+			}
+
+			if err := agent.RequestAgentForwarding(session); err != nil {
+				return err
+			}
+		} else {
+			fmt.Fprintf(console.Warnings(ctx), "ssh-agent forwarding requested, without a SSH_AUTH_SOCK\n")
+		}
+	}
+
 	session.Stdin = stdin
 	session.Stdout = os.Stdout
 	session.Stderr = os.Stderr
@@ -124,7 +164,7 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, args []strin
 	return session.Wait()
 }
 
-func listenForResize(ctx context.Context, stdin console.Console, session *ssh.Session) {
+func listenForResize(ctx context.Context, stdin c.Console, session *ssh.Session) {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGWINCH)
 
