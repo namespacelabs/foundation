@@ -6,7 +6,6 @@ package cuefrontend
 
 import (
 	"context"
-	"encoding/json"
 	"io/fs"
 	"sort"
 	"strings"
@@ -20,6 +19,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
+	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/codegen/protos/fnany"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -588,12 +588,8 @@ func handleProvides(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 			switch k {
 			case "go":
 				g := &schema.Provides_AvailableIn_Go{}
-				remarshal, err := json.Marshal(m)
-				if err != nil {
-					return fnerrors.NewWithLocation(loc, "failed to marshal: %w", err)
-				}
-				if err := json.Unmarshal(remarshal, g); err != nil {
-					return fnerrors.NewWithLocation(loc, "failed to unmarshal: %w", err)
+				if err := jsonreparser.Reparse(m, g); err != nil {
+					return fnerrors.NewWithLocation(loc, "failed to reparse: %w", err)
 				}
 				p.AvailableIn = append(p.AvailableIn, &schema.Provides_AvailableIn{
 					Go: g,

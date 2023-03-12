@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/invariants"
 	"namespacelabs.dev/foundation/internal/protos"
@@ -74,7 +75,7 @@ func (ev *ResolvableValue) UnmarshalJSON(data []byte) error {
 
 		case "fromField":
 			var ref fromFieldSyntax
-			if err := reUnmarshal(m[keys[0]], &ref); err != nil {
+			if err := jsonreparser.Reparse(m[keys[0]], &ref); err != nil {
 				return fnerrors.BadInputError("failed to parse fromField: %w", err)
 			}
 			ev.fromField = &ref
@@ -82,7 +83,7 @@ func (ev *ResolvableValue) UnmarshalJSON(data []byte) error {
 
 		case "fromResourceField":
 			var ref resourceFieldSyntax
-			if err := reUnmarshal(m[keys[0]], &ref); err != nil {
+			if err := jsonreparser.Reparse(m[keys[0]], &ref); err != nil {
 				return fnerrors.BadInputError("failed to parse fromResourceField: %w", err)
 			}
 

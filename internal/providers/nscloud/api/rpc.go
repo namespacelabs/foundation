@@ -18,6 +18,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -212,7 +213,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateCluster
 
 				for mv := range decoder.Stream() {
 					var resp CreateKubernetesClusterResponse
-					if err := reparse(mv.Value, &resp); err != nil {
+					if err := jsonreparser.Reparse(mv.Value, &resp); err != nil {
 						return fnerrors.InvocationError("nscloud", "failed to parse response: %w", err)
 					}
 
@@ -352,12 +353,3 @@ type clusterCreateProgress struct {
 
 func (crp *clusterCreateProgress) set(status string)      { crp.status.Store(status) }
 func (crp *clusterCreateProgress) FormatProgress() string { return crp.status.Load() }
-
-func reparse(obj interface{}, target interface{}) error {
-	b, err := json.Marshal(obj)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(b, target)
-}

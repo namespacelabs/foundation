@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -172,13 +173,8 @@ func (p *Parsed) Unmarshal(resource string, out any) error {
 		return rpcerrors.Errorf(codes.NotFound, "no resource config found for resource %q", resource)
 	}
 
-	data, err := json.Marshal(raw)
-	if err != nil {
-		return rpcerrors.Errorf(codes.Internal, "%s: failed to re-marshal value: %w", resource, err)
-	}
-
-	if err := json.Unmarshal(data, out); err != nil {
-		return rpcerrors.Errorf(codes.Internal, "%s: failed to unmarshal resource: %w", resource, err)
+	if err := jsonreparser.Reparse(raw, out); err != nil {
+		return rpcerrors.Errorf(codes.Internal, "%s: failed to reparse value: %w", resource, err)
 	}
 
 	return nil

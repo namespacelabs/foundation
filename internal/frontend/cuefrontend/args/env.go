@@ -59,11 +59,3 @@ func mustString(what string, value any) (string, error) {
 
 	return "", fnerrors.BadInputError("%s: expected a string", what)
 }
-
-func reUnmarshal(value any, target any) error {
-	bytes, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(bytes, target)
-}
