@@ -192,3 +192,11 @@ type Attachment struct {
 	TypeURL string `json:"type_url,omitempty"`
 	Content []byte `json:"content,omitempty"`
 }
+
+type RefreshKubernetesClusterRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
+type RefreshKubernetesClusterResponse struct {
+	NewDeadline string `json:"new_deadline,omitempty"`
+}

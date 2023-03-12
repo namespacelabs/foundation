@@ -32,6 +32,7 @@ type API struct {
 	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
+	RefreshKubernetesCluster     fnapi.Call[RefreshKubernetesClusterRequest]
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
 	GetClusterLogs               fnapi.Call[GetLogsRequest]
 }
@@ -93,12 +94,20 @@ func MakeAPI(endpoint string) API {
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
+
+		RefreshKubernetesCluster: fnapi.Call[RefreshKubernetesClusterRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/RefreshKubernetesCluster",
+		},
+
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
 			// XXX: hardcoded for now, we need to add an alias to api.<region>.nscluster.cloud
 			Endpoint:   fmt.Sprintf("https://logging.nscloud-%s.namespacelabs.nscloud.dev", regionName),
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "logs/tail",
 		},
+
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
@@ -353,3 +362,34 @@ type clusterCreateProgress struct {
 
 func (crp *clusterCreateProgress) set(status string)      { crp.status.Store(status) }
 func (crp *clusterCreateProgress) FormatProgress() string { return crp.status.Load() }
+
+func RefreshCluster(ctx context.Context, api API, clusterId string) (*RefreshKubernetesClusterResponse, error) {
+	var response RefreshKubernetesClusterResponse
+	if err := api.RefreshKubernetesCluster.Do(ctx, RefreshKubernetesClusterRequest{
+		ClusterId: clusterId,
+	}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		return nil, err
+	}
+	return &response, nil
+}
+
+func StartRefreshing(ctx context.Context, api API, clusterId string, handle func(error) error) error {
+	for {
+		if _, err := RefreshCluster(ctx, api, clusterId); err != nil {
+			if err := handle(err); err != nil {
+				return err
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(time.Minute):
+			}
+		} else {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(10 * time.Minute):
+			}
+		}
+	}
+}

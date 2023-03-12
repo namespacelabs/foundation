@@ -22,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	con "namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
@@ -161,7 +162,18 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 		return err
 	}
 
-	return session.Wait()
+	g := executor.New(ctx, "ssh")
+	cancel := g.GoCancelable(func(ctx context.Context) error {
+		return api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
+			fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
+			return nil
+		})
+	})
+	g.Go(func(ctx context.Context) error {
+		defer cancel()
+		return session.Wait()
+	})
+	return g.Wait()
 }
 
 func listenForResize(ctx context.Context, stdin c.Console, session *ssh.Session) {
