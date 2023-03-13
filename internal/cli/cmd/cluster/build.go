@@ -198,7 +198,7 @@ func NewBuildCmd() *cobra.Command {
 	pushTarget := cmd.Flags().String("push", "", "If specified, pushes the image to the target repository.")
 	pushToRepository := cmd.Flags().String("push_to_nsc_repo", "", "If specified, pushes the image to nsc's private registry, to the specified repository.")
 	pushToDocker := cmd.Flags().String("push_to_docker", "", "If specified, loads the built image to the local docker instance, with the specified name.")
-	tags := cmd.Flags().StringArrayP("tag", "t", nil, "List of tags to attach to the image.")
+	tags := cmd.Flags().StringSliceP("tag", "t", nil, "List of tags to attach to the image.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if *pushTarget == "" && *pushToRepository == "" && *pushToDocker == "" {
@@ -280,7 +280,17 @@ func NewBuildCmd() *cobra.Command {
 			// We don't actually need it.
 			f.Close()
 
-			args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,name=%s", f.Name(), *pushToDocker))
+			parsed, err := name.NewTag(*pushToDocker)
+			if err != nil {
+				return err
+			}
+			imageNames := []string{*pushToDocker}
+			for _, tag := range *tags {
+				imageNames = append(imageNames, parsed.Tag(tag).Name())
+			}
+
+			// buildctl parses output as csv; need to quote to pass commas to `name`.
+			args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
 
 			complete = func() error {
 				dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
