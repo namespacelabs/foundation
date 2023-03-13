@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
@@ -69,10 +70,18 @@ func newDockerLoginCmd() *cobra.Command {
 		Hidden: true,
 	}
 
+	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		response, err := api.GetImageRegistry(ctx, api.Endpoint)
 		if err != nil {
 			return err
+		}
+
+		if *outputRegistryPath != "" {
+			if err := os.WriteFile(*outputRegistryPath, []byte(response.Registry.EndpointAddress), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
+			}
 		}
 
 		t, err := api.RegistryCreds(ctx)
@@ -91,10 +100,14 @@ func newDockerLoginCmd() *cobra.Command {
 
 		info, err := os.Stat(cfgFile)
 		if err != nil {
-			return err
+			return fnerrors.New("failed to describe %q: %w", cfgFile, err)
 		}
 
-		return files.WriteJson(cfgFile, cfg, info.Mode())
+		if err := files.WriteJson(cfgFile, cfg, info.Mode()); err != nil {
+			return fnerrors.New("failed to write %q: %w", cfgFile, err)
+		}
+
+		return nil
 	})
 
 	return cmd
