@@ -10,6 +10,7 @@ import (
 	"os/exec"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -53,4 +54,31 @@ func runDocker(ctx context.Context, p *unixSockProxy, args ...string) error {
 
 	docker := exec.CommandContext(ctx, "docker", cmdLine...)
 	return localexec.RunInteractive(ctx, docker)
+}
+
+func newDockerLoginCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "docker-login",
+		Short:  "Log into the Namespace Cloud private registry for use with Docker.",
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		response, err := api.GetCluster(ctx, api.Endpoint, args[0])
+		if err != nil {
+			return err
+		}
+
+		token, err := auth.LoadTenantToken(ctx)
+		if err != nil {
+			return err
+		}
+
+		cmdLine := []string{"login", response.Registry.EndpointAddress, "-u", "tenant-token", "-p", token.TenantToken}
+		docker := exec.CommandContext(ctx, "docker", cmdLine...)
+		return localexec.RunInteractive(ctx, docker)
+	})
+
+	return cmd
 }
