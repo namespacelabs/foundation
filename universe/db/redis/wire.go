@@ -30,9 +30,10 @@ func ProvideRedis(ctx context.Context, args *RedisArgs, deps ExtensionDeps) (*re
 	})
 
 	// Asynchronously wait until a database connection is ready.
-	deps.ReadinessCheck.RegisterFunc(fmt.Sprintf("redis/%s", core.InstantiationPathFromContext(ctx)), func(ctx context.Context) error {
-		return client.Ping(ctx).Err()
-	})
+	deps.ReadinessCheck.Register(fmt.Sprintf("redis/%s", core.InstantiationPathFromContext(ctx)),
+		core.CheckAtStartupFunc(func(ctx context.Context) error {
+			return client.Ping(ctx).Err()
+		}))
 
 	return client, nil
 }

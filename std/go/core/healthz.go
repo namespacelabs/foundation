@@ -27,14 +27,16 @@ const defaultProbeTimeout = 1 * time.Second
 
 type Checker interface {
 	Check(context.Context) error
+}
 
-	isManual() bool
+// After the checker function returns a nil error, it will always succeed.
+func CheckAtStartupFunc(callback func(context.Context) error) Checker {
+	return &memoizingChecker{checker: CheckerFunc(callback)}
 }
 
 type CheckerFunc func(context.Context) error
 
 func (c CheckerFunc) Check(ctx context.Context) error { return c(ctx) }
-func (c CheckerFunc) isManual() bool                  { return false }
 
 var shutdownStarted = atomic.NewBool(false)
 
@@ -78,16 +80,9 @@ func registerLiveness(name string, checker Checker) {
 }
 
 func registerReadiness(name string, checker Checker) {
-	var actualChecker Checker
-	if checker.isManual() {
-		actualChecker = checker
-	} else {
-		actualChecker = &memoizingChecker{checker: checker}
-	}
-
 	healthz.mu.Lock()
 	healthz.readinessNames = append(healthz.readinessNames, name)
-	healthz.readinessChecker = append(healthz.readinessChecker, actualChecker)
+	healthz.readinessChecker = append(healthz.readinessChecker, checker)
 	healthz.mu.Unlock()
 }
 

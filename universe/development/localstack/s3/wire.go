@@ -72,12 +72,13 @@ func ProvideBucket(ctx context.Context, config *BucketConfig, deps ExtensionDeps
 	}
 
 	// Asynchronously wait until a database connection is ready.
-	deps.ReadinessCheck.RegisterFunc(
+	deps.ReadinessCheck.Register(
 		fmt.Sprintf("localstack readiness: %s", core.InstantiationPathFromContext(ctx)),
-		func(ctx context.Context) error {
-			_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
-			return err
-		})
+		core.CheckAtStartupFunc(
+			func(ctx context.Context) error {
+				_, err := s3client.ListBuckets(ctx, &s3.ListBucketsInput{})
+				return err
+			}))
 
 	return &fns3.Bucket{
 		BucketName: config.BucketName,
