@@ -6,14 +6,16 @@ package datastore
 
 import (
 	"context"
+
+	"namespacelabs.dev/foundation/std/go/core"
 )
 
 type DB struct{}
 
 func ProvideDatabase(_ context.Context, _ *Database, deps ExtensionDeps) (*DB, error) {
-	deps.ReadinessCheck.RegisterFunc("foobar", func(ctx context.Context) error {
+	deps.ReadinessCheck.Register("foobar", core.CheckerFunc(func(ctx context.Context) error {
 		return nil
-	})
+	}))
 
 	return &DB{}, nil
 }
