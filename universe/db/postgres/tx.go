@@ -45,7 +45,7 @@ func beginRWTxFunc[T any](ctx context.Context, db *DB, f func(context.Context, p
 
 	tx, err := db.base.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
-		return empty, err
+		return empty, TransactionError{err}
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }()
@@ -56,7 +56,7 @@ func beginRWTxFunc[T any](ctx context.Context, db *DB, f func(context.Context, p
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return empty, err
+		return empty, TransactionError{err}
 	}
 
 	return value, nil
@@ -73,6 +73,13 @@ func errorRetryable(err error) bool {
 	// (e.g. https://www.postgresql.org/message-id/flat/CAGPCyEZG76zjv7S31v_xPeLNRuzj-m%3DY2GOY7PEzu7vhB%3DyQog%40mail.gmail.com)
 	return pgerr.SQLState() == pgSerializationFailure || pgerr.SQLState() == pgUniqueConstraintViolation
 }
+
+type TransactionError struct {
+	InternalErr error
+}
+
+func (p TransactionError) Error() string { return p.InternalErr.Error() }
+func (p TransactionError) Unwrap() error { return p.InternalErr }
 
 type tracingTx struct {
 	base pgx.Tx
