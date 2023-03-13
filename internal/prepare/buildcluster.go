@@ -19,7 +19,7 @@ import (
 )
 
 func PrepareBuildCluster(ctx context.Context, env cfg.Context, cluster *kubernetes.Cluster) (*buildkit.JobDefinition, error) {
-	jobdef := buildkit.JobDef()
+	jobdef := buildkit.JobDef(nil)
 
 	var resources []kubedef.Apply
 

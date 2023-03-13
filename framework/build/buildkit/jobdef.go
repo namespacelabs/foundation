@@ -18,7 +18,7 @@ type JobDefinition struct {
 	MatchingLabels map[string]string
 }
 
-func JobDef() *JobDefinition {
+func JobDef(env []corev1.EnvVar) *JobDefinition {
 	nsbuild := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
@@ -61,6 +61,7 @@ func JobDef() *JobDefinition {
 								"--addr", "unix:///run/buildkit/buildkitd.sock",
 								"--addr", "tcp://0.0.0.0:10000",
 							},
+							Env: env,
 							SecurityContext: &corev1.SecurityContext{
 								Privileged: pointer.Bool(true),
 							},
