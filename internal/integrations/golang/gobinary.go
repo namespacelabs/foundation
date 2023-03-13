@@ -11,6 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
 	"namespacelabs.dev/foundation/schema"
@@ -21,11 +22,12 @@ import (
 type GoBinary struct {
 	PackageName schema.PackageName `json:"packageName"`
 
-	GoModulePath string `json:"modulePath"` // Relative to workspace root.
-	GoModule     string `json:"module"`     // Go module name.
-	GoVersion    string `json:"goVersion"`
-	SourcePath   string `json:"sourcePath"` // Relative to workspace root.
-	BinaryName   string `json:"binaryName"`
+	// If workspaces are not used, will be the module path. Relative to ns workspace root.
+	GoWorkspacePath string `json:"workspacePath"`
+	GoModule        string `json:"module"` // Go module name.
+	GoVersion       string `json:"goVersion"`
+	SourcePath      string `json:"sourcePath"` // Relative to ns workspace root.
+	BinaryName      string `json:"binaryName"`
 
 	BinaryOnly      bool
 	UnsafeCacheable bool // Unsafe because we can't guarantee that the sources used for compilation are consistent with the workspace contents.
@@ -54,17 +56,22 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 		return nil, err
 	}
 
-	relMod, err := filepath.Rel(loc.Module.Abs(), modFile)
+	gowork, _ := findroot.Find("go work", filepath.Dir(modFile), findroot.LookForFile("go.work"))
+	if gowork == "" {
+		gowork = filepath.Dir(modFile)
+	}
+
+	relMod, err := filepath.Rel(loc.Module.Abs(), gowork)
 	if err != nil {
 		return nil, err
 	}
 
 	return &GoBinary{
-		PackageName:  loc.PackageName,
-		GoModulePath: filepath.Dir(relMod),
-		GoModule:     mod.Module.Mod.Path,
-		SourcePath:   loc.Rel(pkgName),
-		GoVersion:    mod.Go.Version,
+		PackageName:     loc.PackageName,
+		GoWorkspacePath: relMod,
+		GoModule:        mod.Module.Mod.Path,
+		SourcePath:      loc.Rel(pkgName),
+		GoVersion:       mod.Go.Version,
 	}, nil
 }
 

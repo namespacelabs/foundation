@@ -9,12 +9,15 @@ package foundation.languages.golang;
 option go_package = "namespacelabs.dev/foundation/internal/integrations/golang";
 
 message FrameworkExt {
+    reserved 3;
+    reserved "go_module_path";
+
     // Which Go version this server is compiled against (computed).
     string go_version = 1;
 
     // The go module of the server.
     string go_module = 2;
 
-    // Relative path to go.mod.
-    string go_module_path = 3;
+    // Relative path to go.work, or to go.mod.
+    string go_workspace_path = 4;
 }

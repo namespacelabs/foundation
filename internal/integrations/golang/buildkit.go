@@ -32,7 +32,7 @@ var (
 func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoBinary, conf build.Configuration) (compute.Computable[oci.Image], error) {
 	local := buildkit.LocalContents{
 		Module: conf.Workspace(),
-		Path:   bin.GoModulePath,
+		Path:   bin.GoWorkspacePath,
 	}
 
 	src := buildkit.MakeLocalState(local)
@@ -67,7 +67,7 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 	goBuild := goBuildArgs(bin.GoVersion)
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
-	relPath, err := makePkg(bin.GoModulePath, bin.SourcePath)
+	relPath, err := makePkg(bin.GoWorkspacePath, bin.SourcePath)
 	if err != nil {
 		return nil, err
 	}

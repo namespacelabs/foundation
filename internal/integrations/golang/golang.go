@@ -7,7 +7,6 @@ package golang
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -89,12 +88,12 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 	}
 
 	bin := &GoBinary{
-		PackageName:  server.Location.PackageName,
-		GoModulePath: ext.GoModulePath,
-		GoModule:     ext.GoModule,
-		GoVersion:    ext.GoVersion,
-		SourcePath:   server.Location.Rel(),
-		BinaryName:   "server",
+		PackageName:     server.Location.PackageName,
+		GoWorkspacePath: ext.GoWorkspacePath,
+		GoModule:        ext.GoModule,
+		GoVersion:       ext.GoVersion,
+		SourcePath:      server.Location.Rel(),
+		BinaryName:      "server",
 	}
 
 	return bin, nil
@@ -207,24 +206,15 @@ func (impl) GenerateServer(pkg *pkggraph.Package, nodes []*schema.Node) ([]*sche
 }
 
 func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *parsing.ServerFrameworkExt) error {
-	f, gomodFile, err := gosupport.LookupGoModule(loc.Abs())
-	if err != nil {
-		return err
-	}
-
-	if f.Go == nil {
-		return fnerrors.BadInputError("%s: no go definition", gomodFile)
-	}
-
-	rel, err := filepath.Rel(loc.Module.Abs(), gomodFile)
+	bin, err := FromLocation(loc, ".")
 	if err != nil {
 		return err
 	}
 
 	ext.FrameworkSpecific, err = anypb.New(&FrameworkExt{
-		GoVersion:    f.Go.Version,
-		GoModule:     f.Module.Mod.Path,
-		GoModulePath: filepath.Dir(rel),
+		GoVersion:       bin.GoVersion,
+		GoModule:        bin.GoModule,
+		GoWorkspacePath: bin.GoWorkspacePath,
 	})
 	if err != nil {
 		return err

@@ -43,11 +43,11 @@ func buildLocalImage(ctx context.Context, env pkggraph.SealedContext, workspace 
 		binary:       bin,
 		platform:     *target.TargetPlatform(),
 		workspaceAbs: workspace.Abs(),
-		trigger:      workspace.ChangeTrigger(bin.GoModulePath, nil),
+		trigger:      workspace.ChangeTrigger(bin.GoWorkspacePath, nil),
 	}
 
 	if bin.UnsafeCacheable || workspace.IsExternal() {
-		comp.localfs = memfs.DeferSnapshot(workspace.ReadOnlyFS(bin.GoModulePath), memfs.SnapshotOpts{})
+		comp.localfs = memfs.DeferSnapshot(workspace.ReadOnlyFS(bin.GoWorkspacePath), memfs.SnapshotOpts{})
 	}
 
 	layers := []oci.NamedLayer{
@@ -96,9 +96,9 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 		env = append(env, v)
 	}
 
-	modulePath := filepath.Join(absWorkspace, bin.GoModulePath)
+	modulePath := filepath.Join(absWorkspace, bin.GoWorkspacePath)
 	out := filepath.Join(targetDir, bin.BinaryName)
-	pkg, err := makePkg(bin.GoModulePath, bin.SourcePath)
+	pkg, err := makePkg(bin.GoWorkspacePath, bin.SourcePath)
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ type compilation struct {
 func (c *compilation) Action() *tasks.ActionEvent {
 	return tasks.Action("go.build.binary").
 		Arg("binary", c.binary.BinaryName).
-		Arg("module_path", c.binary.GoModulePath).
+		Arg("workspace_path", c.binary.GoWorkspacePath).
 		Arg("source_path", c.binary.SourcePath).
 		Arg("platform", platform.FormatPlatform(c.platform))
 }
