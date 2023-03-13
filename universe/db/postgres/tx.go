@@ -13,13 +13,9 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc/codes"
-	"namespacelabs.dev/foundation/framework/rpcerrors"
 )
 
 const (
-	maxRetries = 5
-
 	pgSerializationFailure      = "40001"
 	pgUniqueConstraintViolation = "23505"
 )
@@ -27,14 +23,7 @@ const (
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	var result T
 
-	i := 0
 	err := backoff.Retry(func() error {
-		if i == maxRetries {
-			return backoff.Permanent(rpcerrors.Errorf(codes.Internal, "max retries exceeded"))
-		}
-
-		i++
-
 		value, err := beginRWTxFunc(ctx, db, f)
 		if err == nil {
 			result = value
