@@ -18,6 +18,7 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -33,6 +34,7 @@ type API struct {
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
 	RefreshKubernetesCluster     fnapi.Call[RefreshKubernetesClusterRequest]
+	GetImageRegistry             fnapi.Call[emptypb.Empty]
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
 	GetClusterLogs               fnapi.Call[GetLogsRequest]
 }
@@ -99,6 +101,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/RefreshKubernetesCluster",
+		},
+
+		GetImageRegistry: fnapi.Call[emptypb.Empty]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/GetImageRegistry",
 		},
 
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
@@ -281,6 +289,16 @@ func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesC
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
 		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+}
+
+func GetImageRegistry(ctx context.Context, api API) (*GetImageRegistryResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get-image-registry"), func(ctx context.Context) (*GetImageRegistryResponse, error) {
+		var response GetImageRegistryResponse
+		if err := api.GetImageRegistry.Do(ctx, emptypb.Empty{}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

@@ -119,6 +119,10 @@ type GithubWorkflowInfo struct {
 	Workflow   string `json:"workflow,omitempty"`
 }
 
+type GetImageRegistryResponse struct {
+	Registry *ImageRegistry `json:"registry,omitempty"`
+}
+
 type TailLogsRequest struct {
 	ClusterID string          `json:"cluster_id,omitempty"`
 	Include   []*LogsSelector `json:"include,omitempty"`

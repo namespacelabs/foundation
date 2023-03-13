@@ -7,11 +7,16 @@ package cluster
 import (
 	"context"
 	"net"
+	"os"
 	"os/exec"
+	"path/filepath"
 
+	"github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/config/types"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
@@ -60,24 +65,36 @@ func newDockerLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "docker-login",
 		Short:  "Log into the Namespace Cloud private registry for use with Docker.",
-		Args:   cobra.ExactArgs(1),
+		Args:   cobra.NoArgs,
 		Hidden: true,
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		response, err := api.GetCluster(ctx, api.Endpoint, args[0])
+		response, err := api.GetImageRegistry(ctx, api.Endpoint)
 		if err != nil {
 			return err
 		}
 
-		token, err := auth.LoadTenantToken(ctx)
+		t, err := api.RegistryCreds(ctx)
 		if err != nil {
 			return err
 		}
 
-		cmdLine := []string{"login", response.Registry.EndpointAddress, "-u", "tenant-token", "-p", token.TenantToken}
-		docker := exec.CommandContext(ctx, "docker", cmdLine...)
-		return localexec.RunInteractive(ctx, docker)
+		cfg := config.LoadDefaultConfigFile(console.Stderr(ctx))
+
+		cfg.AuthConfigs[response.Registry.EndpointAddress] = types.AuthConfig{
+			Username: t.Username,
+			Password: t.Password,
+		}
+
+		cfgFile := filepath.Join(config.Dir(), config.ConfigFileName)
+
+		info, err := os.Stat(cfgFile)
+		if err != nil {
+			return err
+		}
+
+		return files.WriteJson(cfgFile, cfg, info.Mode())
 	})
 
 	return cmd
