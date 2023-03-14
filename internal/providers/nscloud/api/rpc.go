@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -144,6 +145,8 @@ type CreateClusterOpts struct {
 	Features          []string
 	AuthorizedSshKeys []string
 	UniqueTag         string
+
+	WaitForStates []string
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
@@ -196,14 +199,14 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 		return nil, err
 	}
 
-	return WaitCluster(ctx, api, cluster.ClusterId)
+	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitForStates...)
 }
 
 func EnsureBuildCluster(ctx context.Context, api API) (*CreateClusterResult, error) {
 	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{Purpose: "build machine", Features: []string{"BUILD_CLUSTER"}})
 }
 
-func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateClusterResult, error) {
+func WaitCluster(ctx context.Context, api API, clusterId string, waitForStates ...string) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
 	defer done()
 
@@ -241,7 +244,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string) (*CreateCluster
 						clusterId = resp.ClusterId
 					}
 
-					if resp.Status == "READY" {
+					if resp.Status == "READY" || slices.Contains(waitForStates, resp.Status) {
 						cr = &resp
 						return nil
 					}

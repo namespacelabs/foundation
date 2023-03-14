@@ -40,10 +40,11 @@ func newSshCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *tag != "" {
 			opts := api.CreateClusterOpts{
-				Ephemeral:  true,
-				KeepAtExit: true,
-				Purpose:    fmt.Sprintf("Manually created for ssh (%s)", *tag),
-				UniqueTag:  *tag,
+				Ephemeral:     true,
+				KeepAtExit:    true,
+				Purpose:       fmt.Sprintf("Manually created for ssh (%s)", *tag),
+				UniqueTag:     *tag,
+				WaitForStates: []string{"CORE_SERVICES_READY"},
 			}
 
 			cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
