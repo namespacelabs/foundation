@@ -22,29 +22,64 @@ type unixSockProxy struct {
 	Cleanup    func()
 }
 
-func runUnixSocketProxy(ctx context.Context, kind, clusterId string, connect func(context.Context) (net.Conn, error)) (*unixSockProxy, error) {
-	sockDir, err := dirs.CreateUserTempDir(kind, clusterId)
-	if err != nil {
-		return nil, err
-	}
-
-	sockFile := filepath.Join(sockDir, kind+".sock")
-	listener, err := net.Listen("unix", sockFile)
-	if err != nil {
-		os.RemoveAll(sockDir)
-		return nil, err
-	}
-
-	go serveProxy(ctx, listener, connect)
-
-	return &unixSockProxy{sockDir, sockFile, func() { _ = os.RemoveAll(sockDir) }}, nil
+type unixSockProxyOpts struct {
+	Kind           string
+	SocketPath     string
+	Blocking       bool
+	Connect        func(context.Context) (net.Conn, error)
+	AnnounceSocket func(string)
 }
 
-func serveProxy(ctx context.Context, listener net.Listener, connect func(context.Context) (net.Conn, error)) {
+func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProxyOpts) (*unixSockProxy, error) {
+	socketPath := opts.SocketPath
+	var cleanup func()
+
+	if socketPath == "" {
+		sockDir, err := dirs.CreateUserTempDir(opts.Kind, clusterId)
+		if err != nil {
+			return nil, err
+		}
+
+		socketPath = filepath.Join(sockDir, opts.Kind+".sock")
+		cleanup = func() {
+			os.RemoveAll(socketPath)
+		}
+	} else {
+		cleanup = func() {}
+	}
+
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		cleanup()
+		return nil, err
+	}
+
+	if opts.AnnounceSocket != nil {
+		opts.AnnounceSocket(socketPath)
+	}
+
+	if opts.Blocking {
+		if err := serveProxy(ctx, listener, opts.Connect); err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	} else {
+		go func() {
+			if err := serveProxy(ctx, listener, opts.Connect); err != nil {
+				log.Fatal(err)
+			}
+		}()
+
+		return &unixSockProxy{filepath.Dir(socketPath), socketPath, cleanup}, nil
+	}
+}
+
+func serveProxy(ctx context.Context, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		go func() {

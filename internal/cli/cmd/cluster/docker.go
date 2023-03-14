@@ -39,8 +39,11 @@ func newDockerCmd() *cobra.Command {
 			return err
 		}
 
-		p, err := runUnixSocketProxy(ctx, "docker", clusterId, func(ctx context.Context) (net.Conn, error) {
-			return api.DialPort(ctx, response.Cluster, 2375)
+		p, err := runUnixSocketProxy(ctx, clusterId, unixSockProxyOpts{
+			Kind: "docker",
+			Connect: func(ctx context.Context) (net.Conn, error) {
+				return api.DialPort(ctx, response.Cluster, 2375)
+			},
 		})
 		if err != nil {
 			return err

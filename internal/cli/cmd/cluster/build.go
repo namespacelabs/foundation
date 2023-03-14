@@ -94,8 +94,11 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		return nil, err
 	}
 
-	p, err := runUnixSocketProxy(ctx, "buildkit", response.ClusterId, func(ctx context.Context) (net.Conn, error) {
-		return connect(ctx, response)
+	p, err := runUnixSocketProxy(ctx, response.ClusterId, unixSockProxyOpts{
+		Kind: "buildkit",
+		Connect: func(ctx context.Context) (net.Conn, error) {
+			return connect(ctx, response)
+		},
 	})
 	if err != nil {
 		return nil, err
