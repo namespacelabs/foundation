@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/clerk"
+	fncobraname "namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -49,6 +50,8 @@ var (
 )
 
 func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
+	fncobraname.CmdName = name
+
 	style, err := doMain(name, autoUpdate, registerCommands)
 
 	if err != nil && !errors.Is(err, context.Canceled) {

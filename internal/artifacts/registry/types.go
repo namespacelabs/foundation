@@ -13,6 +13,7 @@ import (
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/registry"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -76,7 +77,7 @@ func GetRegistryFromConfig(ctx context.Context, env string, cfg cfg.Configuratio
 	}
 
 	return nil, fnerrors.UsageError(
-		fmt.Sprintf("Run `ns prepare local --env=%s` to set it up.", env),
+		fmt.Sprintf("Run `%s prepare local --env=%s` to set it up.", name.CmdName, env),
 		"No registry configured in the environment %q.", env)
 }
 

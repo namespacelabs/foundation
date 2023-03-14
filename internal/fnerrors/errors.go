@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"google.golang.org/grpc/status"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
 	"namespacelabs.dev/foundation/schema/tasks"
 	"namespacelabs.dev/foundation/std/tasks/protocol"
@@ -112,7 +113,8 @@ func NamespaceTooOld(what string, expected, got int32) error {
 }
 
 func NamespaceTooRecent(what string, expected, got int32) error {
-	return UsageError("Please run `ns mod get namespacelabs.dev/foundation` to update your Namespace dependency version.",
+	return UsageError(
+		fmt.Sprintf("Please run `%s mod get namespacelabs.dev/foundation` to update your Namespace dependency version.", name.CmdName),
 		"Your namespacelabs.dev/foundation dependency is too old to use %q with this version of `ns` (running %d, the dependency is version %d)", what, expected, got)
 }
 

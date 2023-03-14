@@ -6,11 +6,13 @@ package keys
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"strings"
 
 	"filippo.io/age"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -21,7 +23,9 @@ type Reader interface {
 	io.ReaderAt
 }
 
-var ErrKeyGen = fnerrors.UsageError("Please run `ns keys generate` to generate a new identity.", "Decryption requires that at least one identity to be configured.")
+var ErrKeyGen = fnerrors.UsageError(
+	fmt.Sprintf("Please run `%s keys generate` to generate a new identity.", name.CmdName),
+	"Decryption requires that at least one identity to be configured.")
 
 func Decrypt(ctx context.Context, keyDir fs.FS, src io.Reader) ([]byte, error) {
 	if keyDir == nil {

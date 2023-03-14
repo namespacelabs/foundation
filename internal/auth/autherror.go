@@ -4,6 +4,9 @@
 
 package auth
 
-import "namespacelabs.dev/foundation/internal/fnerrors"
+import (
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+)
 
-var ErrRelogin = fnerrors.New("not logged in, please run `ns login`")
+var ErrRelogin = fnerrors.New("not logged in, please run `%s login`", name.CmdName)

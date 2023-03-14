@@ -17,6 +17,7 @@ import (
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/html"
 	"namespacelabs.dev/foundation/internal/artifacts/download"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -297,5 +298,7 @@ type defaultMissingModuleResolver struct {
 }
 
 func (r *defaultMissingModuleResolver) Resolve(ctx context.Context, pkg schema.PackageName) (*schema.Workspace_Dependency, error) {
-	return nil, fnerrors.UsageError("Run `ns tidy`.", "%s: missing entry in %s: run:\n  ns tidy", pkg, r.workspace.LoadedFrom().DefinitionFile)
+	return nil, fnerrors.UsageError(
+		fmt.Sprintf("Run `%s tidy`.", name.CmdName),
+		"%s: missing entry in %s: run:\n  ns tidy", pkg, r.workspace.LoadedFrom().DefinitionFile)
 }

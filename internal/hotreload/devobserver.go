@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -41,7 +42,7 @@ type FileSyncDevObserver struct {
 
 func ConfigureFileSyncDevObserver(ctx context.Context, cluster runtime.ClusterNamespace, srv planning.Server) (context.Context, integrations.DevObserver, error) {
 	if wsremote.Ctx(ctx) != nil {
-		return nil, nil, fnerrors.NewWithLocation(srv.Location, "`ns dev` on multiple web/nodejs servers not supported")
+		return nil, nil, fnerrors.NewWithLocation(srv.Location, "`%s dev` on multiple web/nodejs servers not supported", name.CmdName)
 	}
 
 	devObserver := newFileSyncDevObserver(ctx, cluster, srv, hrconstants.FileSyncPort)
