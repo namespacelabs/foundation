@@ -49,6 +49,17 @@ func NewProxyCmd() *cobra.Command {
 			return fnerrors.New("unrecognized kind %q", *kind)
 		}
 
+		ctx, cancel := context.WithCancel(ctx)
+
+		go func() {
+			_ = api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
+				fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
+				return nil
+			})
+		}()
+
+		defer cancel()
+
 		if _, err := runUnixSocketProxy(ctx, cluster.ClusterId, unixSockProxyOpts{
 			Kind:       *kind,
 			SocketPath: *sockPath,
