@@ -109,20 +109,36 @@ func configureScope(ctx context.Context, hub *sentry.Hub, fullMethod string) {
 
 func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error, method string) {
 	if err != nil {
-		if errors.Is(err, context.Canceled) {
-			span.Status = sentry.SpanStatusCanceled
-		} else {
-			hub.CaptureException(err)
+		grpcCode := errorStatus(err)
+		span.Status = statusFromGrpc(grpcCode)
 
-			if st, ok := status.FromError(err); ok {
-				span.Status = statusFromGrpc(st.Code())
-			} else {
-				span.Status = sentry.SpanStatusUnknown
-			}
+		if !isUserError(grpcCode) {
+			hub.CaptureException(err)
 		}
 	} else {
 		span.Status = sentry.SpanStatusOK
 	}
+}
+
+func isUserError(code codes.Code) bool {
+	switch code {
+	case codes.Canceled, codes.InvalidArgument, codes.NotFound, codes.PermissionDenied, codes.Unauthenticated:
+		return true
+	}
+
+	return false
+}
+
+func errorStatus(err error) codes.Code {
+	if errors.Is(err, context.Canceled) {
+		return codes.Canceled
+	}
+
+	if st, ok := status.FromError(err); ok {
+		return st.Code()
+	}
+
+	return codes.Unknown
 }
 
 func statusFromGrpc(code codes.Code) sentry.SpanStatus {
