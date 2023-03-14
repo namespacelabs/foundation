@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/containerd/containerd/sys"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
@@ -48,7 +49,7 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 		cleanup = func() {}
 	}
 
-	listener, err := net.Listen("unix", socketPath)
+	listener, err := sys.CreateUnixSocket(socketPath)
 	if err != nil {
 		cleanup()
 		return nil, err
