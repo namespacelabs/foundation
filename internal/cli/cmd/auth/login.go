@@ -31,14 +31,6 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			if err := auth.RemoveUser(ctx); err != nil {
-				return err
-			}
-
-			if err := auth.RemoveTenantToken(ctx); err != nil {
-				return err
-			}
-
 			res, err := fnapi.StartLogin(ctx, kind)
 			if err != nil {
 				return nil
