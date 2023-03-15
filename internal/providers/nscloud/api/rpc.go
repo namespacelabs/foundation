@@ -153,7 +153,12 @@ type CreateClusterOpts struct {
 	AuthorizedSshKeys []string
 	UniqueTag         string
 
-	WaitForStates []string
+	WaitClusterOpts
+}
+
+type WaitClusterOpts struct {
+	WaitForStates  []string
+	WaitForService string
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
@@ -206,14 +211,14 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 		return nil, err
 	}
 
-	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitForStates...)
+	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
 func EnsureBuildCluster(ctx context.Context, api API) (*CreateClusterResult, error) {
 	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{Purpose: "build machine", Features: []string{"BUILD_CLUSTER"}})
 }
 
-func WaitCluster(ctx context.Context, api API, clusterId string, waitForStates ...string) (*CreateClusterResult, error) {
+func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
 	defer done()
 
@@ -251,7 +256,15 @@ func WaitCluster(ctx context.Context, api API, clusterId string, waitForStates .
 						clusterId = resp.ClusterId
 					}
 
-					if resp.Status == "READY" || slices.Contains(waitForStates, resp.Status) {
+					ready := resp.Status == "READY" || slices.Contains(opts.WaitForStates, resp.Status)
+					if !ready && opts.WaitForService != "" {
+						svc := ClusterService(resp.Cluster, opts.WaitForService)
+						if svc != nil && svc.Status == "READY" {
+							ready = true
+						}
+					}
+
+					if ready {
 						cr = &resp
 						return nil
 					}
@@ -287,6 +300,20 @@ func WaitCluster(ctx context.Context, api API, clusterId string, waitForStates .
 	}
 
 	return result, nil
+}
+
+func ClusterService(cluster *KubernetesCluster, name string) *Cluster_ServiceState {
+	if cluster == nil {
+		return nil
+	}
+
+	for _, srv := range cluster.ServiceState {
+		if srv.Name == name {
+			return srv
+		}
+	}
+
+	return nil
 }
 
 func DestroyCluster(ctx context.Context, api API, clusterId string) error {

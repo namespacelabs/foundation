@@ -103,6 +103,15 @@ type KubernetesCluster struct {
 
 	CreatorId      string              `json:"creator_id,omitempty"`
 	GithubWorkflow *GithubWorkflowInfo `json:"github_workflow,omitempty"`
+
+	ServiceState []*Cluster_ServiceState `json:"service_state,omitempty"`
+}
+
+type Cluster_ServiceState struct {
+	Name     string `json:"name,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"` // Service-specific endpoint.
+	Public   bool   `json:"public,omitempty"`
 }
 
 type GithubWorkflowInfo struct {

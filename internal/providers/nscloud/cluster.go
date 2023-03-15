@@ -76,7 +76,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 }
 
 func provideClusterExt(ctx context.Context, clusterId string, ephemeral bool) (client.ClusterConfiguration, error) {
-	wres, err := api.WaitCluster(ctx, api.Endpoint, clusterId)
+	wres, err := api.WaitCluster(ctx, api.Endpoint, clusterId, api.WaitClusterOpts{})
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}

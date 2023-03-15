@@ -40,11 +40,11 @@ func newSshCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *tag != "" {
 			opts := api.CreateClusterOpts{
-				Ephemeral:     true,
-				KeepAtExit:    true,
-				Purpose:       fmt.Sprintf("Manually created for ssh (%s)", *tag),
-				UniqueTag:     *tag,
-				WaitForStates: []string{"CORE_SERVICES_READY"},
+				Ephemeral:       true,
+				KeepAtExit:      true,
+				Purpose:         fmt.Sprintf("Manually created for ssh (%s)", *tag),
+				UniqueTag:       *tag,
+				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh"},
 			}
 
 			cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
@@ -79,6 +79,15 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 		return fnerrors.New("unimplemented")
 	}
 
+	sshSvc := api.ClusterService(cluster, "ssh")
+	if sshSvc == nil || sshSvc.Endpoint == "" {
+		return fnerrors.New("cluster does not have ssh")
+	}
+
+	if sshSvc.Status != "READY" {
+		return fnerrors.New("expected ssh to be READY, saw %q", sshSvc.Status)
+	}
+
 	stdin, err := c.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err
@@ -93,7 +102,7 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 		return err
 	}
 
-	peerConn, err := api.DialPort(ctx, cluster, 22)
+	peerConn, err := api.DialEndpoint(ctx, sshSvc.Endpoint)
 	if err != nil {
 		return err
 	}

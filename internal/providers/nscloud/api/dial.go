@@ -25,7 +25,20 @@ func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (
 	return DialPortWithToken(ctx, token, cluster, targetPort)
 }
 
+func DialEndpoint(ctx context.Context, endpoint string) (net.Conn, error) {
+	token, err := fnapi.FetchTenantToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return DialEndpointWithToken(ctx, token, endpoint)
+}
+
 func DialPortWithToken(ctx context.Context, token fnapi.Token, cluster *KubernetesCluster, targetPort int) (net.Conn, error) {
+	return DialEndpointWithToken(ctx, token, fmt.Sprintf("wss://gate.%s/%s/%d", cluster.IngressDomain, cluster.ClusterId, targetPort))
+}
+
+func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint string) (net.Conn, error) {
 	d := websocket.Dialer{
 		HandshakeTimeout: 15 * time.Second,
 	}
@@ -33,7 +46,7 @@ func DialPortWithToken(ctx context.Context, token fnapi.Token, cluster *Kubernet
 	hdrs := http.Header{}
 	hdrs.Add("Authorization", fnapi.BearerToken(token))
 
-	wsConn, _, err := d.DialContext(ctx, fmt.Sprintf("wss://gate.%s/%s/%d", cluster.IngressDomain, cluster.ClusterId, targetPort), hdrs)
+	wsConn, _, err := d.DialContext(ctx, endpoint, hdrs)
 	if err != nil {
 		return nil, err
 	}
