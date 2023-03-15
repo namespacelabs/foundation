@@ -72,7 +72,7 @@ func NewLoginCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVar(&kind, "kind", "clerk", "Internal kind.")
+	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
 	_ = cmd.Flags().MarkHidden("kind")
 
 	return cmd
