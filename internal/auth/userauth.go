@@ -7,8 +7,6 @@ package auth
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -72,17 +70,4 @@ func LoadUser() (*UserAuth, error) {
 	}
 
 	return userAuth, nil
-}
-
-func RemoveUser(ctx context.Context) error {
-	dir, err := dirs.Config()
-	if err != nil {
-		return err
-	}
-
-	if err := os.Remove(filepath.Join(dir, userAuthJson)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-
-	return nil
 }

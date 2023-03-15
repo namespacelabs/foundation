@@ -89,16 +89,3 @@ func LoadTenantToken(ctx context.Context) (*Token, error) {
 
 	return token, nil
 }
-
-func RemoveTenantToken(ctx context.Context) error {
-	dir, err := dirs.Config()
-	if err != nil {
-		return err
-	}
-
-	if err := os.Remove(filepath.Join(dir, tokenTxt)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return err
-	}
-
-	return nil
-}
