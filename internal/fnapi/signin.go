@@ -26,10 +26,6 @@ type CompleteLoginRequest struct {
 	EphemeralCliId string `json:"ephemeral_cli_id"`
 }
 
-type CheckRequest struct {
-	UserData string `json:"userData"`
-}
-
 // Returns the URL which the user should open.
 func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
 	req := StartLoginRequest{Kind: kind}
@@ -116,14 +112,4 @@ func CompleteTenantLogin(ctx context.Context, id, ephemeralCliId string) (*Compl
 	}
 
 	return &resp[0], nil
-}
-
-func CheckSignin(ctx context.Context, userData string) (*auth.UserAuth, error) {
-	req := CheckRequest{
-		UserData: userData,
-	}
-
-	userAuth := &auth.UserAuth{}
-	err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/Check", req, DecodeJSONResponse(userAuth))
-	return userAuth, err
 }
