@@ -33,7 +33,6 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newReleaseCmd())
 	cmd.AddCommand(NewKubectlCmd())
 	cmd.AddCommand(newKubeconfigCmd())
 	cmd.AddCommand(NewBuildctlCmd())
@@ -43,6 +42,15 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newDockerCmd())
 	cmd.AddCommand(NewProxyCmd())
 	cmd.AddCommand(newDockerLoginCmd())
+
+	h := &cobra.Command{
+		Use:    "internal",
+		Hidden: true,
+	}
+
+	cmd.AddCommand(h)
+
+	h.AddCommand(newReleaseCmd())
 
 	return cmd
 }
