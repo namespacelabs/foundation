@@ -95,8 +95,9 @@ func newDockerLoginCmd() *cobra.Command {
 		cfg := config.LoadDefaultConfigFile(console.Stderr(ctx))
 
 		cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
-			Username: t.Username,
-			Password: t.Password,
+			ServerAddress: response.Registry.EndpointAddress,
+			Username:      t.Username,
+			Password:      t.Password,
 		})
 
 		cfgFile := filepath.Join(config.Dir(), config.ConfigFileName)
