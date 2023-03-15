@@ -34,6 +34,7 @@ type API struct {
 	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
+	ReleaseKubernetesCluster     fnapi.Call[ReleaseKubernetesClusterRequest]
 	RefreshKubernetesCluster     fnapi.Call[RefreshKubernetesClusterRequest]
 	GetImageRegistry             fnapi.Call[emptypb.Empty]
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
@@ -96,6 +97,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
+		},
+
+		ReleaseKubernetesCluster: fnapi.Call[ReleaseKubernetesClusterRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/ReleaseKubernetesCluster",
 		},
 
 		RefreshKubernetesCluster: fnapi.Call[RefreshKubernetesClusterRequest]{

@@ -33,6 +33,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
+	cmd.AddCommand(newReleaseCmd())
 	cmd.AddCommand(NewKubectlCmd())
 	cmd.AddCommand(newKubeconfigCmd())
 	cmd.AddCommand(NewBuildctlCmd())

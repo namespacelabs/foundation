@@ -10,7 +10,6 @@ import (
 )
 
 type CreateKubernetesClusterRequest struct {
-	OpaqueUserAuth    []byte   `json:"opaque_user_auth,omitempty"`
 	Ephemeral         bool     `json:"ephemeral,omitempty"`
 	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
 	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
@@ -20,13 +19,11 @@ type CreateKubernetesClusterRequest struct {
 }
 
 type GetKubernetesClusterRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
-	ClusterId      string `json:"cluster_id,omitempty"`
+	ClusterId string `json:"cluster_id,omitempty"`
 }
 
 type WaitKubernetesClusterRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
-	ClusterId      string `json:"cluster_id,omitempty"`
+	ClusterId string `json:"cluster_id,omitempty"`
 }
 
 type CreateKubernetesClusterResponse struct {
@@ -53,7 +50,6 @@ type StartCreateKubernetesClusterResponse struct {
 }
 
 type ListKubernetesClustersRequest struct {
-	OpaqueUserAuth      []byte `json:"opaque_user_auth,omitempty"`
 	IncludePreviousRuns bool   `json:"include_previous_runs,omitempty"`
 	PaginationCursor    []byte `json:"pagination_cursor,omitempty"`
 	MaxEntries          int64  `json:"max_entries,omitempty"`
@@ -174,8 +170,11 @@ type ClusterShape struct {
 }
 
 type DestroyKubernetesClusterRequest struct {
-	OpaqueUserAuth []byte `json:"opaque_user_auth,omitempty"`
-	ClusterId      string `json:"cluster_id,omitempty"`
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
+type ReleaseKubernetesClusterRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
 }
 
 type LabelEntry struct {
