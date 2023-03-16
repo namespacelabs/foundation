@@ -65,12 +65,12 @@ func runDocker(ctx context.Context, p *unixSockProxy, args ...string) error {
 	return localexec.RunInteractive(ctx, docker)
 }
 
-func newDockerLoginCmd() *cobra.Command {
+func NewDockerLoginCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "docker-login",
 		Short:  "Log into the Namespace Cloud private registry for use with Docker.",
 		Args:   cobra.NoArgs,
-		Hidden: true,
+		Hidden: hidden,
 	}
 
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")

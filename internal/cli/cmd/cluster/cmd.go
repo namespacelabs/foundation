@@ -41,7 +41,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newDockerCmd())
 	cmd.AddCommand(NewProxyCmd())
-	cmd.AddCommand(newDockerLoginCmd())
+	cmd.AddCommand(NewDockerLoginCmd(true)) // Adding hidden command under `cluster` to support old action versions.
 
 	h := &cobra.Command{
 		Use:    "internal",

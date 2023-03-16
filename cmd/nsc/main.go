@@ -27,9 +27,10 @@ func main() {
 		root.AddCommand(version.NewVersionCmd())
 
 		root.AddCommand(cluster.NewClusterCmd(false))
-		root.AddCommand(cluster.NewKubectlCmd())  // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
-		root.AddCommand(cluster.NewBuildctlCmd()) // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
-		root.AddCommand(cluster.NewBuildCmd())    // `nsc build` acts as an alias for `nsc cluster build`
+		root.AddCommand(cluster.NewKubectlCmd())          // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
+		root.AddCommand(cluster.NewBuildctlCmd())         // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
+		root.AddCommand(cluster.NewBuildCmd())            // `nsc build` acts as an alias for `nsc cluster build`
+		root.AddCommand(cluster.NewDockerLoginCmd(false)) // `nsc docker-login` acts as an alias for `nsc cluster docker-login`
 
 		root.AddCommand(sdk.NewSdkCmd(true))
 
