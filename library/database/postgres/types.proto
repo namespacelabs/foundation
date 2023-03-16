@@ -12,6 +12,9 @@ message ClusterInstance {
     // Format: host:port.
     string address  = 1;
     string password = 2;  // TODO export as secret reference
+
+    string host = 3;
+    string port = 4;
 }
 
 message DatabaseInstance {
@@ -25,6 +28,9 @@ message DatabaseInstance {
     string user            = 4;
     string password        = 5;
     string cluster_address = 6;
+
+    string cluster_host = 7;
+    string cluster_port = 8;
 
     reserved 2;
 }

@@ -50,6 +50,8 @@ func main() {
 		User:           user,
 		Password:       cluster.Password,
 		ClusterAddress: cluster.Address,
+		ClusterHost:    cluster.Host,
+		ClusterPort:    cluster.Port,
 	}
 
 	p.EmitResult(instance)

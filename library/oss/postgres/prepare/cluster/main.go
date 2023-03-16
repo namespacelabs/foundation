@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/framework/resources/provider"
@@ -29,9 +30,16 @@ func main() {
 		log.Fatalf("failed to read Postgres password: %v", err)
 	}
 
+	host, port, err := net.SplitHostPort(endpoint)
+	if err != nil {
+		log.Fatalf("invalid Postgres endpoint %q: %v", endpoint, err)
+	}
+
 	instance := &postgresclass.ClusterInstance{
 		Address:  endpoint,
 		Password: string(password),
+		Host:     host,
+		Port:     port,
 	}
 
 	p.EmitResult(instance)
