@@ -27,7 +27,7 @@ func newCreateCmd() *cobra.Command {
 	}
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
-	ephemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
+	ephemeral := cmd.Flags().Bool("ephemeral", true, "Create an ephemeral cluster.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 
