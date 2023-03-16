@@ -235,19 +235,19 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 		tasks.Attachments(ctx).SetProgress(&progress)
 
 		lastStatus := "<none>"
-		for cr == nil {
-			if err := ctx.Err(); err != nil {
-				return err // Check if we've been cancelled.
-			}
-
+		tries := 0
+		for {
 			// We continue to wait for the cluster to become ready until we observe a READY.
 			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, func(body io.Reader) error {
+				// If we get a payload, reset the number of tries.
+				tries = 0
+
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
 				// returns map[string]interface{} rather than typed objects. We
-				// re-triggering parsing into the response type so the remainder
-				// of our codebase operates on types.
+				// re-trigger parsing into the response type so the remainder of
+				// our codebase operates on types.
 
 				for mv := range decoder.Stream() {
 					var resp CreateKubernetesClusterResponse
@@ -278,8 +278,21 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 
 				return fnerrors.InvocationError("nscloud", "stream closed before cluster became ready")
 			}); err != nil {
-				return fnerrors.InvocationError("nscloud", "cluster never became ready (last status was %q, cluster id: %s): %w", lastStatus, clusterId, err)
+				tries++
+				if tries >= 3 {
+					return fnerrors.InvocationError("nscloud", "cluster never became ready (last status was %q, cluster id: %s): %w", lastStatus, clusterId, err)
+				}
 			}
+
+			if cr != nil {
+				break
+			}
+
+			if err := ctx.Err(); err != nil {
+				return err // Check if we've been cancelled.
+			}
+
+			time.Sleep(time.Second)
 		}
 
 		tasks.Attachments(ctx).
