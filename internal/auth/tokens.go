@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -103,7 +104,7 @@ func LoadAdminToken(ctx context.Context) (*Token, error) {
 	tok, err := loadToken(ctx, adminTokenTxt)
 	if err != nil {
 		if err == ErrRelogin {
-			return nil, fnerrors.New("not logged in, please run `ns login --fnapi_admin --workspace={tenant_to_impersonate}`")
+			return nil, fnerrors.New("not logged in, please run `%s login --fnapi_admin --workspace={tenant_to_impersonate}`", name.CmdName)
 		}
 		return nil, err
 	}
@@ -113,19 +114,4 @@ func LoadAdminToken(ctx context.Context) (*Token, error) {
 
 func LoadTenantToken(ctx context.Context) (*Token, error) {
 	return loadToken(ctx, tokenTxt)
-}
-
-func RemoveTenantToken(ctx context.Context) error {
-	dir, err := dirs.Config()
-	if err != nil {
-		return err
-	}
-
-	for _, f := range []string{tokenTxt, adminTokenTxt} {
-		if err := os.Remove(filepath.Join(dir, f)); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return err
-		}
-	}
-
-	return nil
 }
