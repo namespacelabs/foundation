@@ -30,15 +30,34 @@ const (
 )
 
 type Token struct {
-	TenantToken string `json:"tenant_token,omitempty"`
+	BearerToken string `json:"bearer_token,omitempty"`
+}
+
+// TODO: remove when legacy token.json format is not used anymore.
+func (t *Token) UnmarshalJSON(data []byte) error {
+	var migrateToken struct {
+		BearerToken string `json:"bearer_token,omitempty"`
+		TenantToken string `json:"tenant_token,omitempty"`
+	}
+
+	if err := json.Unmarshal(data, &migrateToken); err != nil {
+		return err
+	}
+
+	t.BearerToken = migrateToken.BearerToken
+	if t.BearerToken == "" {
+		t.BearerToken = migrateToken.TenantToken
+	}
+
+	return nil
 }
 
 func (t *Token) Raw() string {
-	return t.TenantToken
+	return t.BearerToken
 }
 
 func storeToken(token, loc string) error {
-	data, err := json.Marshal(Token{TenantToken: token})
+	data, err := json.Marshal(Token{BearerToken: token})
 	if err != nil {
 		return err
 	}
@@ -87,7 +106,18 @@ func loadToken(ctx context.Context, loc string) (*Token, error) {
 
 	claims := jwt.RegisteredClaims{}
 	parser := jwt.Parser{}
-	if _, _, err := parser.ParseUnverified(strings.TrimPrefix(token.TenantToken, "nsct_"), &claims); err != nil {
+	var rawToken string
+	switch {
+	case strings.HasPrefix(token.BearerToken, "nsct_"):
+		rawToken = strings.TrimPrefix(token.BearerToken, "nsct_")
+	case strings.HasPrefix(token.BearerToken, "nscw_"):
+		rawToken = strings.TrimPrefix(token.BearerToken, "nscw_")
+	default:
+		fmt.Fprintf(console.Debug(ctx), "unknown token format\n")
+		return nil, ErrRelogin
+	}
+
+	if _, _, err := parser.ParseUnverified(rawToken, &claims); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to parse tenant JWT: %v\n", err)
 		return nil, ErrRelogin
 	}
