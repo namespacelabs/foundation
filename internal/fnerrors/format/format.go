@@ -16,6 +16,7 @@ import (
 
 	cueerrors "cuelang.org/go/cue/errors"
 	"github.com/kr/text"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -181,7 +182,7 @@ func formatUsageError(w io.Writer, err *fnerrors.UsageErr, opts *FormatOptions) 
 func formatInvocationError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) {
 	fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("invocation error"), err.OriginalErr.Error())
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
+	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, %s\n", askForSupport())
 	errorReportRequest(w)
 }
 
@@ -217,13 +218,13 @@ func formatUserError(w io.Writer, err *fnerrors.BaseError, opts *FormatOptions) 
 	case fnerrors.Kind_INTERNAL, fnerrors.Kind_BADINPUT, fnerrors.Kind_BADDATA:
 		fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("internal error"), err.OriginalErr.Error())
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "This was unexpected, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
+		fmt.Fprintf(w, "This was unexpected, %s\n", askForSupport())
 		errorReportRequest(w)
 
 	case fnerrors.Kind_EXTERNAL:
 		fmt.Fprintf(w, "%s: %s\n", opts.style.LogResult.Apply("component error"), err.OriginalErr.Error())
 		fmt.Fprintln(w)
-		fmt.Fprintf(w, "This was unexpected, please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues\n")
+		fmt.Fprintf(w, "This was unexpected, %s\n", askForSupport())
 		errorReportRequest(w)
 
 	case fnerrors.Kind_TRANSIENT:
@@ -272,8 +273,21 @@ func errorReportRequest(w io.Writer) {
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "Please include,\n")
 	fmt.Fprintf(w, "- the full command line you've used.\n")
-	fmt.Fprintf(w, "- the full output that ns produced\n")
-	fmt.Fprintf(w, "- the output of `ns doctor`\n")
+	fmt.Fprintf(w, "- the full output that %s produced\n", name.CmdName)
+
+	if name.CmdName == "ns" {
+		fmt.Fprintf(w, "- the output of `ns doctor`\n")
+	}
+}
+
+func askForSupport() string {
+	switch name.CmdName {
+	case "ns", "nsdev":
+		return "please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues"
+
+	default:
+		return "please reach out to support@namespacelabs.com"
+	}
 }
 
 func indent(w io.Writer) io.Writer { return text.NewIndentWriter(w, []byte("  ")) }
