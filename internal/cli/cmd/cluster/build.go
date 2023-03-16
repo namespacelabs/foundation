@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -296,8 +297,14 @@ func NewBuildCmd() *cobra.Command {
 			args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
 
 			complete = func() error {
+				t := time.Now()
 				dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
-				return localexec.RunInteractive(ctx, dockerLoad)
+				if err := localexec.RunInteractive(ctx, dockerLoad); err != nil {
+					return err
+				}
+				took := time.Since(t)
+				fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to docker.\n", took)
+				return nil
 			}
 		}
 
