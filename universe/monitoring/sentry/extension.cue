@@ -5,6 +5,8 @@ import (
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
 
+// Using this extension requires the environment variable MONITORING_SENTRY_DSN
+// to be set; this is a work-around until secrets can be passed in.
 extension: fn.#Extension & {
 	hasInitializerIn: "GO"
 
@@ -12,13 +14,5 @@ extension: fn.#Extension & {
 		serverInfo:     info.#Exports.ServerInfo
 		"interceptors": interceptors.#Exports.InterceptorRegistration
 		"middleware":   middleware.#Exports.Middleware
-	}
-}
-
-configure: fn.#Configure & {
-	startup: {
-		env: {
-			"MONITORING_SENTRY_DSN": fromSecret: ":sentryDsn"
-		}
 	}
 }

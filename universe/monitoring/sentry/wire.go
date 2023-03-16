@@ -23,8 +23,13 @@ import (
 )
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
+	key := os.Getenv("MONITORING_SENTRY_DSN")
+	if key == "" {
+		return nil
+	}
+
 	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:              os.Getenv("MONITORING_SENTRY_DSN"),
+		Dsn:              key,
 		ServerName:       deps.ServerInfo.ServerName,
 		Environment:      deps.ServerInfo.EnvName,
 		Release:          deps.ServerInfo.GetVcs().GetRevision(),
