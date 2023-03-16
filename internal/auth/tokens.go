@@ -35,10 +35,10 @@ type Token struct {
 
 // TODO: remove when legacy token.json format is not used anymore.
 func (t *Token) UnmarshalJSON(data []byte) error {
-	var migrateToken = struct {
+	var migrateToken struct {
 		BearerToken string `json:"bearer_token,omitempty"`
 		TenantToken string `json:"tenant_token,omitempty"`
-	}{}
+	}
 
 	if err := json.Unmarshal(data, &migrateToken); err != nil {
 		return err
