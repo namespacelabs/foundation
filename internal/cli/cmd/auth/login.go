@@ -22,7 +22,8 @@ import (
 
 func NewLoginCmd() *cobra.Command {
 	var (
-		kind string
+		kind   string
+		tenant string
 	)
 
 	cmd := &cobra.Command{
@@ -31,7 +32,7 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			res, err := fnapi.StartLogin(ctx, kind)
+			res, err := fnapi.StartLogin(ctx, kind, tenant)
 			if err != nil {
 				return nil
 			}
@@ -50,8 +51,14 @@ func NewLoginCmd() *cobra.Command {
 				return err
 			}
 
-			if err := auth.StoreTenantToken(tenant.token); err != nil {
-				return err
+			if fnapi.AdminMode {
+				if err := auth.StoreAdminToken(tenant.token); err != nil {
+					return err
+				}
+			} else {
+				if err := auth.StoreTenantToken(tenant.token); err != nil {
+					return err
+				}
 			}
 
 			if tenant.name != "" {
@@ -66,6 +73,9 @@ func NewLoginCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
 	_ = cmd.Flags().MarkHidden("kind")
+
+	cmd.Flags().StringVar(&tenant, "workspace", "", "Pre-select a workspace to log into.")
+	_ = cmd.Flags().MarkHidden("workspace")
 
 	return cmd
 }
