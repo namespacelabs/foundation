@@ -157,5 +157,8 @@ func LoadTenantToken(ctx context.Context) (*Token, error) {
 
 func EnsureTokenValidAt(ctx context.Context, target time.Time) error {
 	_, err := LoadTokenFromPath(ctx, tokenJson, target)
+	if errors.Is(err, fs.ErrNotExist) {
+		return ErrRelogin
+	}
 	return err
 }
