@@ -82,14 +82,8 @@ func StoreTenantToken(token string) error {
 	return storeToken(token, tokenTxt)
 }
 
-func loadToken(ctx context.Context, loc string) (*Token, error) {
-	dir, err := dirs.Config()
-	if err != nil {
-		return nil, err
-	}
-
-	p := filepath.Join(dir, loc)
-	data, err := os.ReadFile(p)
+func loadToken(ctx context.Context, tokenFile string) (*Token, error) {
+	data, err := os.ReadFile(tokenFile)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, ErrRelogin
@@ -131,7 +125,12 @@ func loadToken(ctx context.Context, loc string) (*Token, error) {
 }
 
 func LoadAdminToken(ctx context.Context) (*Token, error) {
-	tok, err := loadToken(ctx, adminTokenTxt)
+	dir, err := dirs.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	tok, err := loadToken(ctx, filepath.Join(dir, adminTokenTxt))
 	if err != nil {
 		if err == ErrRelogin {
 			return nil, fnerrors.New("not logged in, please run `%s login --fnapi_admin --workspace={tenant_to_impersonate}`", name.CmdName)
@@ -143,5 +142,35 @@ func LoadAdminToken(ctx context.Context) (*Token, error) {
 }
 
 func LoadTenantToken(ctx context.Context) (*Token, error) {
-	return loadToken(ctx, tokenTxt)
+	dir, err := dirs.Config()
+	if err != nil {
+		return nil, err
+	}
+
+	return loadToken(ctx, filepath.Join(dir, tokenTxt))
+}
+
+func LoadWorkloadToken(ctx context.Context) (*Token, error) {
+	f := workloadTokenFile()
+	if f == "" {
+		return nil, fnerrors.New("no workload token defined, please set env variable NSC_WORKLOAD_TOKEN={path_to_workload_token_file}")
+	}
+
+	tok, err := loadToken(ctx, f)
+	if err != nil {
+		if err == ErrRelogin {
+			return nil, fnerrors.New("workload token %q is not valid", f)
+		}
+		return nil, err
+	}
+
+	return tok, nil
+}
+
+func IsWorkloadMode() bool {
+	return workloadTokenFile() != ""
+}
+
+func workloadTokenFile() string {
+	return os.Getenv("NSC_WORKLOAD_TOKEN")
 }

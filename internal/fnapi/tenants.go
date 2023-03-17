@@ -86,11 +86,14 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 
 func FetchTenantToken(ctx context.Context) (Token, error) {
 	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
-		if AdminMode {
+		switch {
+		case auth.IsWorkloadMode():
+			return auth.LoadWorkloadToken(ctx)
+		case AdminMode:
 			return auth.LoadAdminToken(ctx)
+		default:
+			return auth.LoadTenantToken(ctx)
 		}
-
-		return auth.LoadTenantToken(ctx)
 	})
 }
 
