@@ -6,6 +6,7 @@ package fnapi
 
 import (
 	"context"
+	"os"
 
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -90,14 +91,10 @@ func FetchTenantToken(ctx context.Context) (Token, error) {
 			return auth.LoadAdminToken(ctx)
 		}
 
+		if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
+			return auth.LoadTokenFromPath(ctx, specified)
+		}
+
 		return auth.LoadTenantToken(ctx)
 	})
-}
-
-func FetchTenantTokenRaw(ctx context.Context) (string, error) {
-	t, err := FetchTenantToken(ctx)
-	if err != nil {
-		return "", err
-	}
-	return t.Raw(), nil
 }
