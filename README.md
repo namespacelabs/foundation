@@ -6,7 +6,7 @@
 
 <p>
 <b>
-Namespace is a work in progress! Our feature set and APIs are still evolving and breaking changes are still expected. Please join us on <a href="https://namespace.so/discord">Discord</a> or <a href="https://github.com/namespacelabs/foundation/issues">Issues</a> for feedback.
+Namespace is a work in progress! Our feature set and APIs are still evolving and breaking changes are still expected. Please join us on <a href="https://community.namespace.so/discord">Discord</a> or <a href="https://github.com/namespacelabs/foundation/issues">Issues</a> for feedback.
 </b>
 </p>
 
@@ -19,7 +19,7 @@ Namespace is a work in progress! Our feature set and APIs are still evolving and
  <span>&nbsp;•&nbsp;</span>
  🏛️ <a href="https://namespace.so/docs/syntax-reference?utm_source=github">Reference</a>
  <span>&nbsp;•&nbsp;</span>
- 💬 <a href="https://community.namespace.so/discord?utm_source=github">Discord</a>
+ 💬 <a href="https://community.namespace.so/discord">Discord</a>
 </div>
 
 ### **About Namespace**
