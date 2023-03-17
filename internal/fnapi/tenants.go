@@ -7,6 +7,7 @@ package fnapi
 import (
 	"context"
 	"os"
+	"time"
 
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -97,7 +98,7 @@ func FetchTenantToken(ctx context.Context) (Token, error) {
 		}
 
 		if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
-			return auth.LoadTokenFromPath(ctx, specified)
+			return auth.LoadTokenFromPath(ctx, specified, time.Now())
 		}
 
 		return auth.LoadTenantToken(ctx)

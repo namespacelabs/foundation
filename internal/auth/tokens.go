@@ -89,7 +89,7 @@ func loadUserToken(ctx context.Context, filename string) (*Token, error) {
 	}
 
 	p := filepath.Join(dir, filename)
-	token, err := LoadTokenFromPath(ctx, p)
+	token, err := LoadTokenFromPath(ctx, p, time.Now())
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, ErrRelogin
@@ -101,7 +101,7 @@ func loadUserToken(ctx context.Context, filename string) (*Token, error) {
 	return token, nil
 }
 
-func LoadTokenFromPath(ctx context.Context, path string) (*Token, error) {
+func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*Token, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func LoadTokenFromPath(ctx context.Context, path string) (*Token, error) {
 		return nil, ErrRelogin
 	}
 
-	if !claims.VerifyExpiresAt(time.Now(), true) {
+	if !claims.VerifyExpiresAt(validAt, true) {
 		fmt.Fprintf(console.Debug(ctx), "tenant JWT has expired\n")
 		return nil, ErrRelogin
 	}
@@ -153,4 +153,9 @@ func LoadAdminToken(ctx context.Context) (*Token, error) {
 
 func LoadTenantToken(ctx context.Context) (*Token, error) {
 	return loadUserToken(ctx, tokenJson)
+}
+
+func EnsureTokenValidAt(ctx context.Context, target time.Time) error {
+	_, err := LoadTokenFromPath(ctx, tokenJson, target)
+	return err
 }
