@@ -7,6 +7,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/auth"
@@ -25,9 +26,21 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 		Hidden: true,
 	}
 
+	ensuredDuration := cmd.Flags().Duration("ensure", 0, "If the current token is still valid for this duration, do nothing. Otherwise fetch a new token.")
+
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if !github.IsRunningInActions() {
 			return fnerrors.New("not running in a GitHub action")
+		}
+
+		if *ensuredDuration > 0 {
+			if err := auth.EnsureTokenValidAt(ctx, time.Now().Add(*ensuredDuration)); err == nil {
+				// Token is valid for entire duration.
+				return nil
+			} else if err != auth.ErrRelogin {
+				// failed to load token
+				return err
+			}
 		}
 
 		jwt, err := github.JWT(ctx, auth.GithubJWTAudience)
