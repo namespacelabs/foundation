@@ -82,14 +82,14 @@ func StoreTenantToken(token string) error {
 	return storeToken(token, tokenJson)
 }
 
-func loadUserToken(ctx context.Context, filename string) (*Token, error) {
+func loadUserToken(ctx context.Context, filename string, target time.Time) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err
 	}
 
 	p := filepath.Join(dir, filename)
-	token, err := LoadTokenFromPath(ctx, p, time.Now())
+	token, err := LoadTokenFromPath(ctx, p, target)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, ErrRelogin
@@ -140,7 +140,7 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 }
 
 func LoadAdminToken(ctx context.Context) (*Token, error) {
-	tok, err := loadUserToken(ctx, adminTokenJson)
+	tok, err := loadUserToken(ctx, adminTokenJson, time.Now())
 	if err != nil {
 		if err == ErrRelogin {
 			return nil, fnerrors.New("not logged in, please run `%s login --fnapi_admin --workspace={tenant_to_impersonate}`", name.CmdName)
@@ -152,13 +152,10 @@ func LoadAdminToken(ctx context.Context) (*Token, error) {
 }
 
 func LoadTenantToken(ctx context.Context) (*Token, error) {
-	return loadUserToken(ctx, tokenJson)
+	return loadUserToken(ctx, tokenJson, time.Now())
 }
 
 func EnsureTokenValidAt(ctx context.Context, target time.Time) error {
-	_, err := LoadTokenFromPath(ctx, tokenJson, target)
-	if errors.Is(err, fs.ErrNotExist) {
-		return ErrRelogin
-	}
+	_, err := loadUserToken(ctx, tokenJson, target)
 	return err
 }
