@@ -6,10 +6,12 @@ package auth
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/github"
@@ -36,6 +38,10 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 		res, err := fnapi.ExchangeGithubToken(ctx, jwt)
 		if err != nil {
 			return err
+		}
+
+		if res.Tenant != nil && res.Tenant.Name != "" {
+			fmt.Fprintf(console.Stdout(ctx), "You are now logged into workspace %q, have a nice day.\n", res.Tenant.Name)
 		}
 
 		return auth.StoreTenantToken(res.TenantToken)
