@@ -40,8 +40,13 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 			return err
 		}
 
-		if res.Tenant != nil && res.Tenant.Name != "" {
-			fmt.Fprintf(console.Stdout(ctx), "You are now logged into workspace %q, have a nice day.\n", res.Tenant.Name)
+		if res.Tenant != nil {
+			if res.Tenant.Name != "" {
+				fmt.Fprintf(console.Stdout(ctx), "You are now logged into workspace %q, have a nice day.\n", res.Tenant.Name)
+			}
+			if res.Tenant.AppUrl != "" {
+				fmt.Fprintf(console.Stdout(ctx), "You can inspect you clusters at %s\n", res.Tenant.AppUrl)
+			}
 		}
 
 		return auth.StoreTenantToken(res.TenantToken)
