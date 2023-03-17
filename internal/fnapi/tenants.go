@@ -19,8 +19,13 @@ type ExchangeGithubTokenRequest struct {
 }
 
 type ExchangeGithubTokenResponse struct {
-	TenantToken string `json:"tenant_token,omitempty"`
-	UserError   string `json:"user_error,omitempty"`
+	TenantToken string  `json:"tenant_token,omitempty"`
+	Tenant      *Tenant `json:"tenant,omitempty"`
+}
+
+type Tenant struct {
+	Name   string `json:"name,omitempty"`
+	AppUrl string `json:"app_url,omitempty"`
 }
 
 func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenResponse, error) {
