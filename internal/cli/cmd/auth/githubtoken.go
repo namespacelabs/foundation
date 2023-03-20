@@ -39,7 +39,7 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 			if err := auth.EnsureTokenValidAt(ctx, time.Now().Add(*ensuredDuration)); err == nil {
 				// Token is valid for entire duration.
 				return nil
-			} else if errors.As(err, &relogin) {
+			} else if !errors.As(err, &relogin) {
 				// failed to load token
 				return err
 			}
