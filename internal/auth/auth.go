@@ -10,6 +10,7 @@ import (
 	"errors"
 
 	"namespacelabs.dev/foundation/internal/clerk"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func GenerateToken(ctx context.Context) (string, error) {
@@ -27,7 +28,7 @@ func GenerateTokenFromUserAuth(ctx context.Context, userAuth *UserAuth) (string,
 		jwt, err := clerk.JWT(ctx, userAuth.Clerk)
 		if err != nil {
 			if errors.Is(err, clerk.ErrUnauthorized) {
-				return "", ErrRelogin
+				return "", fnerrors.ReloginError()
 			}
 
 			return "", err
@@ -37,6 +38,6 @@ func GenerateTokenFromUserAuth(ctx context.Context, userAuth *UserAuth) (string,
 	case len(userAuth.InternalOpaque) > 0:
 		return base64.RawStdEncoding.EncodeToString(userAuth.InternalOpaque), nil
 	default:
-		return "", ErrRelogin
+		return "", fnerrors.ReloginError()
 	}
 }

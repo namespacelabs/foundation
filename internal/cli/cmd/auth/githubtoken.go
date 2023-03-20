@@ -6,6 +6,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -34,10 +35,11 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 		}
 
 		if *ensuredDuration > 0 {
+			var relogin *fnerrors.ReloginErr
 			if err := auth.EnsureTokenValidAt(ctx, time.Now().Add(*ensuredDuration)); err == nil {
 				// Token is valid for entire duration.
 				return nil
-			} else if err != auth.ErrRelogin {
+			} else if errors.As(err, &relogin) {
 				// failed to load token
 				return err
 			}
