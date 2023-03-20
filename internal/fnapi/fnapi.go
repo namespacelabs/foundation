@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
@@ -179,7 +178,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	case http.StatusForbidden:
 		return fnerrors.NoAccessToLimitedFeature()
 	case http.StatusUnauthorized:
-		return auth.ErrRelogin
+		return fnerrors.ReloginError()
 	default:
 		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
@@ -188,7 +187,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
-		return auth.ErrRelogin
+		return fnerrors.ReloginError()
 
 	case int32(codes.PermissionDenied):
 		return fnerrors.NoAccessToLimitedFeature()
