@@ -62,6 +62,11 @@ func makeError(kind ErrorKind, format string, args ...interface{}) *BaseError {
 	return &BaseError{Kind: kind, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.NewWithSkip(2)}
 }
 
+func ReloginError() error {
+	err := makeError(Kind_USER, "not logged in, please run `%s login`", name.CmdName)
+	return &ReloginErr{BaseError: *err}
+}
+
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(runThis, toFixThis string, args ...interface{}) error {
 	err := makeError(Kind_USER, toFixThis, args...)
@@ -165,6 +170,10 @@ type InvocationErr struct {
 	what string
 }
 
+type ReloginErr struct {
+	BaseError
+}
+
 type ErrWithLogs struct {
 	Err     error
 	ReaderF func() io.Reader // Returns reader with command's stderr output.
@@ -194,6 +203,10 @@ func (e *UsageErr) Error() string {
 
 func (e *InvocationErr) Error() string {
 	return fmt.Sprintf("failed when calling %s: %s", e.what, e.OriginalErr.Error())
+}
+
+func (e *ReloginErr) Error() string {
+	return e.BaseError.Error()
 }
 
 func (e *ErrWithLogs) Error() string {
