@@ -6,11 +6,14 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
+	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
 
 // pgx does not provide for instrumentation hooks, only logging. So we wrap access to it, retaining the API.
@@ -22,8 +25,44 @@ type DB struct {
 	t    trace.Tracer
 }
 
-func NewDB(conn *pgxpool.Pool, tracer trace.Tracer) *DB {
-	return &DB{base: conn, t: tracer}
+func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer) *DB {
+	db := &DB{base: conn, t: tracer}
+
+	if instance != nil {
+		metrics := []struct {
+			Key   string
+			Value func(*pgxpool.Stat) float64
+		}{
+			{"acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.AcquireCount()) }},
+			{"acquired_conns", func(s *pgxpool.Stat) float64 { return float64(s.AcquiredConns()) }},
+			{"canceled_acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.CanceledAcquireCount()) }},
+			{"acquire_duration_ms", func(s *pgxpool.Stat) float64 { return float64(s.AcquireDuration().Milliseconds()) }},
+			{"constructing_conns", func(s *pgxpool.Stat) float64 { return float64(s.ConstructingConns()) }},
+			{"empty_acquire_count", func(s *pgxpool.Stat) float64 { return float64(s.EmptyAcquireCount()) }},
+			{"idle_conns", func(s *pgxpool.Stat) float64 { return float64(s.IdleConns()) }},
+			{"max_conns", func(s *pgxpool.Stat) float64 { return float64(s.MaxConns()) }},
+			{"total_conns", func(s *pgxpool.Stat) float64 { return float64(s.TotalConns()) }},
+		}
+
+		cols := make([]*prometheus.GaugeVec, len(metrics))
+		for k, def := range metrics {
+			cols[k] = prometheus.NewGaugeVec(prometheus.GaugeOpts{Subsystem: "pgx_pool", Name: def.Key}, []string{"address", "database"})
+			prometheus.MustRegister(cols[k])
+		}
+
+		go func() {
+			// Connections never go away, so we never stop updating metrics.
+			time.Sleep(5 * time.Second)
+
+			stats := conn.Stat()
+
+			for k, def := range metrics {
+				cols[k].WithLabelValues(instance.ClusterAddress, instance.Name).Set(def.Value(stats))
+			}
+		}()
+	}
+
+	return db
 }
 
 func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {

@@ -33,5 +33,5 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 		return nil, err
 	}
 
-	return NewDB(conn, tracer), nil
+	return NewDB(db, conn, tracer), nil
 }
