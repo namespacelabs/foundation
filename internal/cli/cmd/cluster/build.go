@@ -199,15 +199,10 @@ func NewBuildCmd() *cobra.Command {
 	}
 
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
-	pushTarget := cmd.Flags().String("push", "", "If specified, pushes the image to the target repository.")
-	pushToRepository := cmd.Flags().String("push_to_nsc_repo", "", "If specified, pushes the image to nsc's private registry, to the specified repository.")
-	pushToDocker := cmd.Flags().String("push_to_docker", "", "If specified, loads the built image to the local docker instance, with the specified name.")
-	tags := cmd.Flags().StringSliceP("tag", "t", nil, "List of tags to attach to the image.")
+	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
+	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach a tags to the image.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
-		if *pushTarget == "" && *pushToRepository == "" && *pushToDocker == "" {
-			return fnerrors.New("one of --push, --push_to_nsc_repo or --push_to_docker are required")
-		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
@@ -239,25 +234,16 @@ func NewBuildCmd() *cobra.Command {
 
 		var complete func() error
 
-		if *pushToDocker == "" {
-			var imageName string
-
-			if *pushTarget != "" {
-				imageName = *pushTarget
-			}
-
-			if *pushToRepository != "" {
-				imageName = fmt.Sprintf("%s/%s", p.RegistryEndpoint, *pushToRepository)
-			}
-
-			parsed, err := name.NewTag(imageName)
-			if err != nil {
-				return err
-			}
-
-			imageNames := []string{imageName}
+		if *push {
+			imageNames := []string{}
 			for _, tag := range *tags {
-				imageNames = append(imageNames, parsed.Tag(tag).Name())
+				parsed, err := name.NewTag(tag)
+				if err != nil {
+					return fmt.Errorf("invalid tag %s: %w", tag, err)
+				}
+				name := parsed.Name()
+				name = strings.Replace(name, "nscr.io", p.RegistryEndpoint, 1)
+				imageNames = append(imageNames, name)
 			}
 
 			args = append(args,
@@ -284,17 +270,23 @@ func NewBuildCmd() *cobra.Command {
 			// We don't actually need it.
 			f.Close()
 
-			parsed, err := name.NewTag(*pushToDocker)
-			if err != nil {
-				return err
-			}
-			imageNames := []string{*pushToDocker}
+			imageNames := []string{}
 			for _, tag := range *tags {
-				imageNames = append(imageNames, parsed.Tag(tag).Name())
+				parsed, err := name.NewTag(tag)
+				if err != nil {
+					return fmt.Errorf("invalid tag %s: %w", tag, err)
+				}
+				imageNames = append(imageNames, parsed.Name())
 			}
 
-			// buildctl parses output as csv; need to quote to pass commas to `name`.
-			args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
+			if len(imageNames) > 0 {
+				// buildctl parses output as csv; need to quote to pass commas to `name`.
+				args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q",
+					f.Name(), "name="+strings.Join(imageNames, ",")))
+			} else {
+				args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s",
+					f.Name()))
+			}
 
 			complete = func() error {
 				t := time.Now()
