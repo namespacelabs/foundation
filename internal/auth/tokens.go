@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -25,9 +25,24 @@ import (
 const (
 	GithubJWTAudience = "nscloud.dev/inline-token"
 
-	tokenJson      = "token.json"
-	adminTokenJson = "admin_token.json"
+	defaultTokenLoc = "token.json"
 )
+
+var Workspace string
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.StringVar(&Workspace, "workspace", "", "Select a workspace log in to.")
+
+	_ = flags.MarkHidden("workspace")
+}
+
+func tokenLoc() string {
+	if Workspace == "" {
+		return defaultTokenLoc
+	}
+
+	return fmt.Sprintf("token_%s.json", Workspace)
+}
 
 type Token struct {
 	BearerToken string `json:"bearer_token,omitempty"`
@@ -56,7 +71,7 @@ func (t *Token) Raw() string {
 	return t.BearerToken
 }
 
-func storeToken(token, loc string) error {
+func StoreTenantToken(token string) error {
 	data, err := json.Marshal(Token{BearerToken: token})
 	if err != nil {
 		return err
@@ -67,28 +82,20 @@ func storeToken(token, loc string) error {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(configDir, loc), data, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, tokenLoc()), data, 0600); err != nil {
 		return fnerrors.New("failed to write token data: %w", err)
 	}
 
 	return nil
 }
 
-func StoreAdminToken(token string) error {
-	return storeToken(token, adminTokenJson)
-}
-
-func StoreTenantToken(token string) error {
-	return storeToken(token, tokenJson)
-}
-
-func loadUserToken(ctx context.Context, filename string, target time.Time) (*Token, error) {
+func loadWorkspaceToken(ctx context.Context, target time.Time) (*Token, error) {
 	dir, err := dirs.Config()
 	if err != nil {
 		return nil, err
 	}
 
-	p := filepath.Join(dir, filename)
+	p := filepath.Join(dir, tokenLoc())
 	token, err := LoadTokenFromPath(ctx, p, target)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -139,24 +146,11 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 	return token, nil
 }
 
-func LoadAdminToken(ctx context.Context) (*Token, error) {
-	tok, err := loadUserToken(ctx, adminTokenJson, time.Now())
-	if err != nil {
-		var relogin *fnerrors.ReloginErr
-		if errors.As(err, &relogin) {
-			return nil, fnerrors.New("not logged in, please run `%s login --fnapi_admin --workspace={tenant_to_impersonate}`", name.CmdName)
-		}
-		return nil, err
-	}
-
-	return tok, nil
-}
-
 func LoadTenantToken(ctx context.Context) (*Token, error) {
-	return loadUserToken(ctx, tokenJson, time.Now())
+	return loadWorkspaceToken(ctx, time.Now())
 }
 
 func EnsureTokenValidAt(ctx context.Context, target time.Time) error {
-	_, err := loadUserToken(ctx, tokenJson, target)
+	_, err := loadWorkspaceToken(ctx, target)
 	return err
 }

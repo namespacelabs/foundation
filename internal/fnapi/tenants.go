@@ -93,10 +93,6 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 
 func FetchTenantToken(ctx context.Context) (Token, error) {
 	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
-		if AdminMode {
-			return auth.LoadAdminToken(ctx)
-		}
-
 		if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
 			return auth.LoadTokenFromPath(ctx, specified, time.Now())
 		}
