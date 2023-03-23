@@ -29,7 +29,7 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			res, err := fnapi.StartLogin(ctx, kind)
+			res, err := fnapi.StartLogin(ctx, kind, auth.Workspace)
 			if err != nil {
 				return nil
 			}
