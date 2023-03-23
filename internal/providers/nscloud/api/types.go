@@ -126,6 +126,7 @@ type GithubWorkflowInfo struct {
 
 type GetImageRegistryResponse struct {
 	Registry *ImageRegistry `json:"registry,omitempty"`
+	NSCR     *ImageRegistry `json:"nscr,omitempty"`
 }
 
 type TailLogsRequest struct {

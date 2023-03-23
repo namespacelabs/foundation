@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -17,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -76,6 +78,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		stdout := console.Stdout(ctx)
 		response, err := api.GetImageRegistry(ctx, api.Endpoint)
 		if err != nil {
 			return err
@@ -87,18 +90,24 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 			}
 		}
 
-		t, err := api.RegistryCreds(ctx)
+		token, err := fnapi.FetchTenantToken(ctx)
 		if err != nil {
 			return err
 		}
 
 		cfg := config.LoadDefaultConfigFile(console.Stderr(ctx))
 
-		cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
-			ServerAddress: response.Registry.EndpointAddress,
-			Username:      t.Username,
-			Password:      t.Password,
-		})
+		for _, x := range []*api.ImageRegistry{response.Registry, response.NSCR} {
+			if x != nil {
+				if err := cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
+					ServerAddress: x.EndpointAddress,
+					Username:      "tenant-token",
+					Password:      token.Raw(),
+				}); err != nil {
+					return err
+				}
+			}
+		}
 
 		cfgFile := filepath.Join(config.Dir(), config.ConfigFileName)
 
@@ -110,6 +119,13 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 		if err := files.WriteJson(cfgFile, cfg, info.Mode()); err != nil {
 			return fnerrors.New("failed to write %q: %w", cfgFile, err)
 		}
+
+		if nscr := response.NSCR; nscr != nil {
+			fmt.Fprintf(stdout, "\nYou are now logged into your workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
+			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . -t %s/%s/test --push", nscr.EndpointAddress, nscr.Repository)
+		}
+
+		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
 
 		return nil
 	})
