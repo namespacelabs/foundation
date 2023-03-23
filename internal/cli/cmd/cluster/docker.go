@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -76,6 +77,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		stdout := console.Stdout(ctx)
 		response, err := api.GetImageRegistry(ctx, api.Endpoint)
 		if err != nil {
 			return err
@@ -110,6 +112,10 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 		if err := files.WriteJson(cfgFile, cfg, info.Mode()); err != nil {
 			return fnerrors.New("failed to write %q: %w", cfgFile, err)
 		}
+
+		fmt.Fprintf(stdout, "\nYou are now logged into your workspace container registry:\n\n %s", response.Registry.EndpointAddress)
+		fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n nsc build .")
+		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds: https://cloud.namespace.so/docs/features/builds\n")
 
 		return nil
 	})
