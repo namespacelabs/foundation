@@ -121,7 +121,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 		}
 
 		if nscr := response.NSCR; nscr != nil {
-			fmt.Fprintf(stdout, "\nYou are now logged into your workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
+			fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
 			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . -t %s/%s/test --push", nscr.EndpointAddress, nscr.Repository)
 		}
 
