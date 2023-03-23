@@ -67,6 +67,7 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 	fmt.Fprintf(console.Debug(ctx), "buildctl %s\n", strings.Join(cmdLine, " "))
 
 	buildctl := exec.CommandContext(ctx, string(buildctlBin), cmdLine...)
+	buildctl.Env = os.Environ()
 	buildctl.Env = append(buildctl.Env, fmt.Sprintf("DOCKER_CONFIG="+p.DockerConfigDir))
 
 	return localexec.RunInteractive(ctx, buildctl)
