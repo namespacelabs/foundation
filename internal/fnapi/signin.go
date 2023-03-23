@@ -29,11 +29,11 @@ type CompleteLoginRequest struct {
 }
 
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context, kind string) (*StartLoginResponse, error) {
+func StartLogin(ctx context.Context, kind, tenantId string) (*StartLoginResponse, error) {
 	req := StartLoginRequest{
 		Kind:           kind,
 		SupportedKinds: []string{"clerk", "tenant"},
-		TenantId:       auth.Workspace,
+		TenantId:       tenantId,
 	}
 
 	var resp StartLoginResponse
