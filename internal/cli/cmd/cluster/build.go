@@ -116,6 +116,7 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 	newConfig := configfile.ConfigFile{
 		AuthConfigs:       existing.AuthConfigs,
 		CredentialHelpers: existing.CredentialHelpers,
+		CredentialsStore:  existing.CredentialsStore,
 	}
 
 	newConfig.AuthConfigs[response.Registry.EndpointAddress] = types.AuthConfig{
