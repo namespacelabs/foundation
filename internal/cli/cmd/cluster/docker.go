@@ -84,12 +84,6 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 			return err
 		}
 
-		if *outputRegistryPath != "" {
-			if err := os.WriteFile(*outputRegistryPath, []byte(response.Registry.EndpointAddress), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
-			}
-		}
-
 		token, err := fnapi.FetchTenantToken(ctx)
 		if err != nil {
 			return err
@@ -106,6 +100,18 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 				}); err != nil {
 					return err
 				}
+			}
+		}
+
+		if *outputRegistryPath != "" {
+			// If user wants the registry in output file,
+			// give priority to the newer nscr.io registry
+			registryEp := response.Registry.EndpointAddress
+			if response.NSCR != nil {
+				registryEp = fmt.Sprintf("%s/%s", response.NSCR.EndpointAddress, response.NSCR.Repository)
+			}
+			if err := os.WriteFile(*outputRegistryPath, []byte(registryEp), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
 			}
 		}
 
