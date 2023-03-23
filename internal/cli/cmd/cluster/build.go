@@ -204,13 +204,8 @@ func NewBuildCmd() *cobra.Command {
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
 	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach a tags to the image.")
-	to_nscr := cmd.Flags().Bool("to_nscr", false, "Push image to Namespace Container Registry.") // XXX to remove once nscr.io registry is deployed
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
-
-		if *to_nscr && !*push {
-			return fnerrors.New("--to_nscr can be set only with --push flag")
-		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
@@ -248,13 +243,6 @@ func NewBuildCmd() *cobra.Command {
 				parsed, err := name.NewTag(tag)
 				if err != nil {
 					return fmt.Errorf("invalid tag %s: %w", tag, err)
-				}
-
-				if *to_nscr {
-					parsed.Registry, err = name.NewRegistry(p.RegistryEndpoint)
-					if err != nil {
-						return fmt.Errorf("invalid registry %s: %w", p.RegistryEndpoint, err)
-					}
 				}
 
 				imageNames = append(imageNames, parsed.Name())
