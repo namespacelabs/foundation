@@ -76,6 +76,7 @@ type buildProxy struct {
 	BuildkitAddr     string
 	DockerConfigDir  string
 	RegistryEndpoint string
+	Repository       string
 	Cleanup          func()
 }
 
@@ -139,7 +140,7 @@ func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 		})
 	}()
 
-	return &buildProxy{p.SocketAddr, p.TempDir, response.Registry.EndpointAddress, func() {
+	return &buildProxy{p.SocketAddr, p.TempDir, response.Registry.EndpointAddress, response.Registry.Repository, func() {
 		cancel()
 		p.Cleanup()
 	}}, nil
@@ -248,7 +249,12 @@ func NewBuildCmd() *cobra.Command {
 			}
 
 			if *pushToRepository != "" {
-				imageName = fmt.Sprintf("%s/%s", p.RegistryEndpoint, *pushToRepository)
+				parts := []string{p.RegistryEndpoint}
+				if p.Repository != "" {
+					parts = append(parts, p.Repository)
+				}
+				parts = append(parts, *pushToRepository)
+				imageName = strings.Join(parts, "/")
 			}
 
 			parsed, err := name.NewTag(imageName)

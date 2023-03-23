@@ -58,6 +58,14 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 				return oci.RepositoryWithParent{}, fnerrors.InternalError("%s: cluster is missing registry", r.clusterID)
 			}
 
+			if registry.Repository != "" {
+				if strings.HasSuffix(url, "/") {
+					url += registry.Repository
+				} else {
+					url += "/" + registry.Repository
+				}
+			}
+
 			if strings.HasSuffix(url, "/") {
 				url += repository
 			} else {
