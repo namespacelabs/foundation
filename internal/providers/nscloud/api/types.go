@@ -49,6 +49,22 @@ type StartCreateKubernetesClusterResponse struct {
 	Deadline        string             `json:"deadline,omitempty"`
 }
 
+type CreateContainersRequest struct {
+	MachineType string              `json:"machine_type,omitempty"`
+	Container   []*ContainerRequest `json:"container,omitempty"`
+}
+
+type ContainerRequest struct {
+	Name  string   `json:"name,omitempty"`
+	Image string   `json:"image,omitempty"`
+	Args  []string `json:"args,omitempty"`
+	Flag  []string `json:"flag,omitempty"`
+}
+
+type CreateContainersResponse struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
 type ListKubernetesClustersRequest struct {
 	IncludePreviousRuns bool   `json:"include_previous_runs,omitempty"`
 	PaginationCursor    []byte `json:"pagination_cursor,omitempty"`
