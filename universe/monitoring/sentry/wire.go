@@ -58,7 +58,7 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 
 	configureScope(ctx, hub, info.FullMethod)
 	result, err = handler(span.Context(), req)
-	finalizeSpan(hub, span, err, info.FullMethod)
+	finalizeSpan(hub, span, err)
 	return result, err
 }
 
@@ -77,7 +77,7 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 
 	configureScope(ctx, hub, info.FullMethod)
 	err := handler(srv, &serverStream{ServerStream: ss, ctx: span.Context()})
-	finalizeSpan(hub, span, err, info.FullMethod)
+	finalizeSpan(hub, span, err)
 	return err
 }
 
@@ -112,16 +112,22 @@ func configureScope(ctx context.Context, hub *sentry.Hub, fullMethod string) {
 	scope.SetContext("grpc", grpcData)
 }
 
-func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error, method string) {
+func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error) {
 	if err != nil {
 		grpcCode := errorStatus(err)
 		span.Status = statusFromGrpc(grpcCode)
 
-		if !isUserError(grpcCode) {
+		if hub != nil && !isUserError(grpcCode) {
 			hub.CaptureException(err)
 		}
 	} else {
 		span.Status = sentry.SpanStatusOK
+	}
+}
+
+func MaybeAttachError(ctx context.Context, err error) {
+	if span := sentry.TransactionFromContext(ctx); span != nil {
+		finalizeSpan(sentry.GetHubFromContext(ctx), span, err)
 	}
 }
 
