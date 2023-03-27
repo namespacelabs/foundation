@@ -7,11 +7,13 @@ import (
 	"context"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
+	"namespacelabs.dev/foundation/std/go/http/middleware"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
 	Interceptors interceptors.Registration
+	Middleware   middleware.Middleware
 }
 
 var (
@@ -40,6 +42,10 @@ func makeDeps__16bc0q(ctx context.Context, di core.Dependencies) (_ interface{},
 	var deps ExtensionDeps
 
 	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+		return nil, err
+	}
+
+	if deps.Middleware, err = middleware.ProvideMiddleware(ctx, nil); err != nil {
 		return nil, err
 	}
 
