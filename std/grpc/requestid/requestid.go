@@ -47,7 +47,7 @@ func RequestDataFromContext(ctx context.Context) (RequestData, bool) {
 	return RequestData{}, false
 }
 
-func allocateRequestID(ctx context.Context) (context.Context, RequestData) {
+func AllocateRequestID(ctx context.Context) (context.Context, RequestData) {
 	rdata := RequestData{
 		Started:   time.Now(),
 		RequestID: NewID(),
@@ -73,13 +73,13 @@ func AttachRequestIDToError(err error, reqid RequestID) error {
 type Interceptor struct{}
 
 func (Interceptor) Unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	ctx, rdata := allocateRequestID(ctx)
+	ctx, rdata := AllocateRequestID(ctx)
 	resp, unaryErr := handler(ctx, req)
 	return resp, AttachRequestIDToError(unaryErr, rdata.RequestID)
 }
 
 func (Interceptor) Streaming(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	ctx, rdata := allocateRequestID(stream.Context())
+	ctx, rdata := AllocateRequestID(stream.Context())
 	streamErr := handler(srv, serverStream{stream, ctx})
 	return AttachRequestIDToError(streamErr, rdata.RequestID)
 }
