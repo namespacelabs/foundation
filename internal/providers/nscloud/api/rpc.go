@@ -221,10 +221,12 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
-func EnsureBuildCluster(ctx context.Context, api API) (*CreateClusterResult, error) {
+func EnsureBuildCluster(ctx context.Context, api API, features ...string) (*CreateClusterResult, error) {
+	featuresList := []string{"BUILD_CLUSTER"}
+	featuresList = append(featuresList, features...)
 	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{
-		Purpose:  "build machine",
-		Features: []string{"BUILD_CLUSTER"},
+		Purpose:  "Build machine",
+		Features: featuresList,
 		WaitClusterOpts: WaitClusterOpts{
 			WaitForService: "buildkit",
 		},
