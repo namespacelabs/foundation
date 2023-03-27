@@ -62,9 +62,9 @@ func makeError(kind ErrorKind, format string, args ...interface{}) *BaseError {
 	return &BaseError{Kind: kind, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.NewWithSkip(2)}
 }
 
-func ReloginError() error {
-	err := makeError(Kind_USER, "not logged in, please run `%s login`", name.CmdName)
-	return &ReloginErr{BaseError: *err}
+func ReloginError(toFixThis string, args ...interface{}) error {
+	err := makeError(Kind_USER, toFixThis, args...)
+	return &ReloginErr{BaseError: *err, Why: err.Error()}
 }
 
 // Configuration or system setup is not correct and requires user intervention.
@@ -172,6 +172,7 @@ type InvocationErr struct {
 
 type ReloginErr struct {
 	BaseError
+	Why string
 }
 
 type ErrWithLogs struct {
@@ -206,7 +207,7 @@ func (e *InvocationErr) Error() string {
 }
 
 func (e *ReloginErr) Error() string {
-	return e.BaseError.Error()
+	return fmt.Sprintf("%s\n\n  please run `%s login`", e.Why, name.CmdName)
 }
 
 func (e *ErrWithLogs) Error() string {
