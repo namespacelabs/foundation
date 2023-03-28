@@ -21,10 +21,7 @@ import (
 )
 
 func NewLoginCmd() *cobra.Command {
-	var (
-		kind              string
-		impersonateTenant string
-	)
+	var kind string
 
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -32,7 +29,7 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			res, err := fnapi.StartLogin(ctx, kind, impersonateTenant)
+			res, err := fnapi.StartLogin(ctx, kind, auth.Workspace)
 			if err != nil {
 				return nil
 			}
@@ -51,14 +48,8 @@ func NewLoginCmd() *cobra.Command {
 				return err
 			}
 
-			if fnapi.AdminMode {
-				if err := auth.StoreAdminToken(tenant.token); err != nil {
-					return err
-				}
-			} else {
-				if err := auth.StoreTenantToken(tenant.token); err != nil {
-					return err
-				}
+			if err := auth.StoreTenantToken(tenant.token); err != nil {
+				return err
 			}
 
 			if tenant.name != "" {
@@ -73,9 +64,6 @@ func NewLoginCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
 	_ = cmd.Flags().MarkHidden("kind")
-
-	cmd.Flags().StringVar(&impersonateTenant, "impersonate", "", "Select a workspace to impersonate. Requires --fnapi_admin.")
-	_ = cmd.Flags().MarkHidden("impersonate")
 
 	return cmd
 }

@@ -178,7 +178,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	case http.StatusForbidden:
 		return fnerrors.NoAccessToLimitedFeature()
 	case http.StatusUnauthorized:
-		return fnerrors.ReloginError()
+		return fnerrors.ReloginError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 	default:
 		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
 	}
@@ -187,7 +187,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
-		return fnerrors.ReloginError()
+		return fnerrors.ReloginError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 
 	case int32(codes.PermissionDenied):
 		return fnerrors.NoAccessToLimitedFeature()

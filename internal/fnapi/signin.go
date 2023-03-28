@@ -12,9 +12,9 @@ import (
 )
 
 type StartLoginRequest struct {
-	Kind              string   `json:"kind"`
-	SupportedKinds    []string `json:"supported_kinds"`
-	ImpersonateTenant string   `json:"impersonate_tenant,omitempty"`
+	Kind           string   `json:"kind"`
+	SupportedKinds []string `json:"supported_kinds"`
+	TenantId       string   `json:"tenant_id,omitempty"`
 }
 
 type StartLoginResponse struct {
@@ -29,15 +29,11 @@ type CompleteLoginRequest struct {
 }
 
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context, kind, impersonateTenant string) (*StartLoginResponse, error) {
-	req := StartLoginRequest{Kind: kind, SupportedKinds: []string{"clerk", "tenant"}}
-
-	if impersonateTenant != "" {
-		if AdminMode {
-			req.ImpersonateTenant = impersonateTenant
-		} else {
-			return nil, fnerrors.UsageError("specify --fnapi_admin to impersonate", "admin mode required")
-		}
+func StartLogin(ctx context.Context, kind, tenantId string) (*StartLoginResponse, error) {
+	req := StartLoginRequest{
+		Kind:           kind,
+		SupportedKinds: []string{"clerk", "tenant"},
+		TenantId:       tenantId,
 	}
 
 	var resp StartLoginResponse

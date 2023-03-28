@@ -93,6 +93,13 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 	}
 
 	httpMux := mux.NewRouter()
+	httpMux.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, _ := requestid.AllocateRequestID(r.Context())
+
+			h.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 	httpMux.Use(middleware.Consume()...)
 	httpMux.Use(proxyHeaders)
 	httpMux.Use(func(h http.Handler) http.Handler {
