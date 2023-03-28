@@ -99,7 +99,7 @@ func loadWorkspaceToken(ctx context.Context, target time.Time) (*Token, error) {
 	token, err := LoadTokenFromPath(ctx, p, target)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
-			return nil, fnerrors.ReloginError("not logged in")
+			return nil, fnerrors.ReauthError("not logged in")
 		}
 
 		return nil, err
@@ -117,7 +117,7 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 	token := &Token{}
 	if err := json.Unmarshal(data, token); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
-		return nil, fnerrors.ReloginError("not logged in")
+		return nil, fnerrors.ReauthError("not logged in")
 	}
 
 	claims := jwt.RegisteredClaims{}
@@ -130,16 +130,20 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 		rawToken = strings.TrimPrefix(token.BearerToken, "nscw_")
 	default:
 		fmt.Fprintf(console.Debug(ctx), "unknown token format\n")
-		return nil, fnerrors.ReloginError("not logged in")
+		return nil, fnerrors.ReauthError("not logged in")
 	}
 
 	if _, _, err := parser.ParseUnverified(rawToken, &claims); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to parse tenant JWT: %v\n", err)
-		return nil, fnerrors.ReloginError("not logged in")
+		return nil, fnerrors.ReauthError("not logged in")
 	}
 
 	if !claims.VerifyExpiresAt(validAt, true) {
-		return nil, fnerrors.ReloginError("login expired")
+		if strings.HasPrefix(token.BearerToken, "nscw_") {
+			return nil, fnerrors.InternalError("workload token expired")
+		}
+
+		return nil, fnerrors.ReauthError("login token expired")
 	}
 
 	return token, nil

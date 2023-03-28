@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/github"
+	ghenv "namespacelabs.dev/foundation/internal/github/env"
 )
 
 func NewExchangeGithubTokenCmd() *cobra.Command {
@@ -30,16 +31,16 @@ func NewExchangeGithubTokenCmd() *cobra.Command {
 	ensuredDuration := cmd.Flags().Duration("ensure", 0, "If the current token is still valid for this duration, do nothing. Otherwise fetch a new token.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		if !github.IsRunningInActions() {
+		if !ghenv.IsRunningInActions() {
 			return fnerrors.New("not running in a GitHub action")
 		}
 
 		if *ensuredDuration > 0 {
-			var relogin *fnerrors.ReloginErr
+			var reauth *fnerrors.ReauthErr
 			if err := auth.EnsureTokenValidAt(ctx, time.Now().Add(*ensuredDuration)); err == nil {
 				// Token is valid for entire duration.
 				return nil
-			} else if !errors.As(err, &relogin) {
+			} else if !errors.As(err, &reauth) {
 				// failed to load token
 				return err
 			}

@@ -58,7 +58,7 @@ func LoadUser() (*UserAuth, error) {
 	data, err := os.ReadFile(p)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fnerrors.ReloginError("not logged in")
+			return nil, fnerrors.ReauthError("not logged in")
 		}
 
 		return nil, err

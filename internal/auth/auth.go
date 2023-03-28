@@ -28,7 +28,7 @@ func GenerateTokenFromUserAuth(ctx context.Context, userAuth *UserAuth) (string,
 		jwt, err := clerk.JWT(ctx, userAuth.Clerk)
 		if err != nil {
 			if errors.Is(err, clerk.ErrUnauthorized) {
-				return "", fnerrors.ReloginError("not logged in")
+				return "", fnerrors.ReauthError("not logged in")
 			}
 
 			return "", err
@@ -38,6 +38,6 @@ func GenerateTokenFromUserAuth(ctx context.Context, userAuth *UserAuth) (string,
 	case len(userAuth.InternalOpaque) > 0:
 		return base64.RawStdEncoding.EncodeToString(userAuth.InternalOpaque), nil
 	default:
-		return "", fnerrors.ReloginError("not logged in")
+		return "", fnerrors.ReauthError("not logged in")
 	}
 }

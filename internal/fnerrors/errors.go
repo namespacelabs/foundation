@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/fnerrors/stacktrace"
+	ghenv "namespacelabs.dev/foundation/internal/github/env"
 	"namespacelabs.dev/foundation/schema/tasks"
 	"namespacelabs.dev/foundation/std/tasks/protocol"
 )
@@ -62,9 +63,9 @@ func makeError(kind ErrorKind, format string, args ...interface{}) *BaseError {
 	return &BaseError{Kind: kind, OriginalErr: fmt.Errorf(format, args...), stack: stacktrace.NewWithSkip(2)}
 }
 
-func ReloginError(toFixThis string, args ...interface{}) error {
+func ReauthError(toFixThis string, args ...interface{}) error {
 	err := makeError(Kind_USER, toFixThis, args...)
-	return &ReloginErr{BaseError: *err, Why: err.Error()}
+	return &ReauthErr{BaseError: *err, Why: err.Error()}
 }
 
 // Configuration or system setup is not correct and requires user intervention.
@@ -170,7 +171,7 @@ type InvocationErr struct {
 	what string
 }
 
-type ReloginErr struct {
+type ReauthErr struct {
 	BaseError
 	Why string
 }
@@ -206,8 +207,16 @@ func (e *InvocationErr) Error() string {
 	return fmt.Sprintf("failed when calling %s: %s", e.what, e.OriginalErr.Error())
 }
 
-func (e *ReloginErr) Error() string {
-	return fmt.Sprintf("%s\n\n  please run `%s login`", e.Why, name.CmdName)
+func (e *ReauthErr) Error() string {
+	var cmd string
+	switch {
+	case ghenv.IsRunningInActions():
+		cmd = "auth exchange-github-token"
+	default:
+		cmd = "login"
+	}
+
+	return fmt.Sprintf("%s\n\n  please run `%s %s`", e.Why, name.CmdName, cmd)
 }
 
 func (e *ErrWithLogs) Error() string {

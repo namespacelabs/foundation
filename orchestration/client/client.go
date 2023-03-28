@@ -142,8 +142,8 @@ func getAwsConf(ctx context.Context, env cfg.Context) (*awsconf.Configuration, e
 func getUserAuth(ctx context.Context) (*auth.UserAuth, error) {
 	x, err := auth.LoadUser()
 	if err != nil {
-		var relogin *fnerrors.ReloginErr
-		if errors.As(err, &relogin) {
+		var reauth *fnerrors.ReauthErr
+		if errors.As(err, &reauth) {
 			// Don't require login yet. The orchestrator will fail with the appropriate error if required.
 			return nil, nil
 		}
