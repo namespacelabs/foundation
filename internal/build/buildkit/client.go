@@ -148,7 +148,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	}
 
 	if buildOnNamespaceCloud.Get(c.conf) {
-		response, err := api.EnsureBuildCluster(ctx, api.Endpoint)
+		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, api.EnsureBuildClusterOpts{})
 		if err != nil {
 			return nil, err
 		}

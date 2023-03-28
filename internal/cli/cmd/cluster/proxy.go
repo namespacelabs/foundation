@@ -130,11 +130,11 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 
 func establishCluster(ctx context.Context, request string) (*api.CreateClusterResult, error) {
 	if request == buildCluster || request == armBuildCluster {
-		features := []string{}
+		opts := api.EnsureBuildClusterOpts{}
 		if request == armBuildCluster {
-			features = append(features, "EXP_ARM64_CLUSTER")
+			opts.Features = append(opts.Features, "EXP_ARM64_CLUSTER")
 		}
-		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, features...)
+		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, opts)
 		if err != nil {
 			return nil, err
 		}

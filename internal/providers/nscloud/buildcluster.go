@@ -13,7 +13,7 @@ import (
 )
 
 func EnsureBuildCluster(ctx context.Context, x api.API) (*buildkit.Overrides, error) {
-	cfg, err := api.EnsureBuildCluster(ctx, x)
+	cfg, err := api.EnsureBuildCluster(ctx, x, api.EnsureBuildClusterOpts{})
 	if err != nil {
 		return nil, err
 	}
