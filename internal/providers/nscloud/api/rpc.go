@@ -168,6 +168,10 @@ type WaitClusterOpts struct {
 	WaitForService string
 }
 
+type EnsureBuildClusterOpts struct {
+	Features []string
+}
+
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
 		req := CreateKubernetesClusterRequest{
@@ -221,10 +225,12 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
-func EnsureBuildCluster(ctx context.Context, api API) (*CreateClusterResult, error) {
+func EnsureBuildCluster(ctx context.Context, api API, opts EnsureBuildClusterOpts) (*CreateClusterResult, error) {
+	featuresList := []string{"BUILD_CLUSTER"}
+	featuresList = append(featuresList, opts.Features...)
 	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{
-		Purpose:  "build machine",
-		Features: []string{"BUILD_CLUSTER"},
+		Purpose:  "Build machine",
+		Features: featuresList,
 		WaitClusterOpts: WaitClusterOpts{
 			WaitForService: "buildkit",
 		},

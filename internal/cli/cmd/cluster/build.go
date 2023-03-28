@@ -84,7 +84,7 @@ type buildProxy struct {
 func runBuildProxy(ctx context.Context) (*buildProxy, error) {
 	existing := config.LoadDefaultConfigFile(console.Stderr(ctx))
 
-	response, err := api.EnsureBuildCluster(ctx, api.Endpoint)
+	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, api.EnsureBuildClusterOpts{})
 	if err != nil {
 		return nil, err
 	}

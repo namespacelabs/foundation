@@ -19,6 +19,11 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
+const (
+	buildCluster    = "build-cluster"
+	armBuildCluster = "build-cluster-arm64"
+)
+
 func NewProxyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "proxy",
@@ -29,7 +34,7 @@ func NewProxyCmd() *cobra.Command {
 
 	kind := cmd.Flags().String("kind", "", "The service being proxied.")
 	sockPath := cmd.Flags().String("sock_path", "", "If specified listens on the specified path.")
-	cluster := cmd.Flags().String("cluster", "", "Which cluster to proxy; or 'build-cluster' to proxy the build cluster.")
+	cluster := cmd.Flags().String("cluster", "", "Cluster ID to proxy; or 'build-cluster' and 'build-cluster-arm64' to proxy the build cluster.")
 	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -124,8 +129,12 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 }
 
 func establishCluster(ctx context.Context, request string) (*api.CreateClusterResult, error) {
-	if request == "build-cluster" {
-		response, err := api.EnsureBuildCluster(ctx, api.Endpoint)
+	if request == buildCluster || request == armBuildCluster {
+		opts := api.EnsureBuildClusterOpts{}
+		if request == armBuildCluster {
+			opts.Features = append(opts.Features, "EXP_ARM64_CLUSTER")
+		}
+		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, opts)
 		if err != nil {
 			return nil, err
 		}
