@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -109,6 +110,7 @@ const (
 	durationColKey = "duration"
 	ttlColKey      = "ttl"
 	purposeColKey  = "purpose"
+	platformColKey = "platform"
 )
 
 func tableClusters(ctx context.Context,
@@ -116,8 +118,9 @@ func tableClusters(ctx context.Context,
 	clusterIdMap := map[string]api.KubernetesClusterMetadata{}
 	cols := []tui.Column{
 		{Key: idColKey, Title: "Cluster ID", MinWidth: 5, MaxWidth: 20},
-		{Key: cpuColKey, Title: "CPU", MinWidth: 5, MaxWidth: 20},
+		{Key: cpuColKey, Title: "CPU", MinWidth: 3, MaxWidth: 20},
 		{Key: memColKey, Title: "Memory", MinWidth: 5, MaxWidth: 20},
+		{Key: platformColKey, Title: "Arch", MinWidth: 5, MaxWidth: 10},
 		{Key: createdColKey, Title: "Created", MinWidth: 10, MaxWidth: 20},
 	}
 	if previousRuns {
@@ -135,13 +138,16 @@ func tableClusters(ctx context.Context,
 		}
 		cpu := fmt.Sprintf("%d", cluster.Shape.VirtualCpu)
 		ram := humanize.IBytes(uint64(cluster.Shape.MemoryMegabytes) * humanize.MiByte)
+		arch := strings.ToLower(cluster.Shape.MachineArch)
 		created, _ := time.Parse(time.RFC3339, cluster.Created)
 		deadline, _ := time.Parse(time.RFC3339, cluster.Deadline)
 
 		row := tui.Row{
-			idColKey:      cluster.ClusterId,
-			cpuColKey:     cpu,
-			memColKey:     ram,
+			idColKey:       cluster.ClusterId,
+			cpuColKey:      cpu,
+			memColKey:      ram,
+			platformColKey: arch,
+
 			createdColKey: humanize.Time(created.Local()),
 		}
 		if previousRuns {

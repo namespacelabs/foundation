@@ -192,8 +192,9 @@ type ImageRegistry struct {
 }
 
 type ClusterShape struct {
-	VirtualCpu      int32 `json:"virtual_cpu,omitempty"`
-	MemoryMegabytes int32 `json:"memory_megabytes,omitempty"`
+	VirtualCpu      int32  `json:"virtual_cpu,omitempty"`
+	MemoryMegabytes int32  `json:"memory_megabytes,omitempty"`
+	MachineArch     string `json:"machine_arch,omitempty"`
 }
 
 type DestroyKubernetesClusterRequest struct {
