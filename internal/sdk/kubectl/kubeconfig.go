@@ -27,6 +27,10 @@ func WriteRawKubeconfig(ctx context.Context, rawConfig clientcmdapi.Config, keep
 		return nil, fnerrors.New("failed to serialize kubeconfig: %w", err)
 	}
 
+	return WriteKubeconfig(ctx, configBytes, keepConfig)
+}
+
+func WriteKubeconfig(ctx context.Context, configBytes []byte, keepConfig bool) (*Kubeconfig, error) {
 	tmpFile, err := dirs.CreateUserTemp("kubeconfig", "*.yaml")
 	if err != nil {
 		return nil, fnerrors.New("failed to create temp file: %w", err)

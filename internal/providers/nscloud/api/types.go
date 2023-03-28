@@ -231,3 +231,11 @@ type RefreshKubernetesClusterRequest struct {
 type RefreshKubernetesClusterResponse struct {
 	NewDeadline string `json:"new_deadline,omitempty"`
 }
+
+type GetKubernetesConfigRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
+type GetKubernetesConfigResponse struct {
+	Kubeconfig string `json:"kubeconfig,omitempty"`
+}

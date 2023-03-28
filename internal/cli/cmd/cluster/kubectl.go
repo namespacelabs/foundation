@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 )
@@ -33,14 +32,12 @@ func NewKubectlCmd() *cobra.Command {
 		clusterName := args[0]
 		args = args[1:]
 
-		response, err := api.GetCluster(ctx, api.Endpoint, clusterName)
+		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, clusterName)
 		if err != nil {
 			return err
 		}
 
-		cluster := response.Cluster
-
-		cfg, err := kubectl.WriteRawKubeconfig(ctx, ctl.MakeConfig(cluster), false)
+		cfg, err := kubectl.WriteKubeconfig(ctx, []byte(response.Kubeconfig), false)
 		if err != nil {
 			return err
 		}
@@ -65,25 +62,36 @@ func newKubeconfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubeconfig",
 		Short: "Write Kubeconfig for the target cluster.",
+		Args:  cobra.MaximumNArgs(1),
 	}
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectCluster(ctx, args)
-		if err != nil {
-			if errors.Is(err, ErrEmptyClusterList) {
-				printCreateClusterMsg(ctx)
+		var clusterID string
+		if len(args) == 1 {
+			clusterID = args[0]
+		} else {
+			selected, err := selectClusterID(ctx)
+			if err != nil {
+				if errors.Is(err, ErrEmptyClusterList) {
+					printCreateClusterMsg(ctx)
+					return nil
+				}
+				return err
+			}
+			if selected == "" {
 				return nil
 			}
+			clusterID = selected
+		}
+
+		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, clusterID)
+		if err != nil {
 			return err
 		}
 
-		if cluster == nil {
-			return nil
-		}
-
-		cfg, err := kubectl.WriteRawKubeconfig(ctx, ctl.MakeConfig(cluster), false)
+		cfg, err := kubectl.WriteKubeconfig(ctx, []byte(response.Kubeconfig), true)
 		if err != nil {
 			return err
 		}
@@ -94,7 +102,7 @@ func newKubeconfigCmd() *cobra.Command {
 			}
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
+		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", clusterID, cfg.Kubeconfig)
 		return nil
 	})
 
