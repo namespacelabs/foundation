@@ -239,3 +239,7 @@ type GetKubernetesConfigRequest struct {
 type GetKubernetesConfigResponse struct {
 	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
+
+type GetProfileResponse struct {
+	ClusterPlatform []string `json:"cluster_platform,omitempty"`
+}
