@@ -41,6 +41,7 @@ type API struct {
 	GetImageRegistry             fnapi.Call[emptypb.Empty]
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
 	GetClusterLogs               fnapi.Call[GetLogsRequest]
+	GetProfile                   fnapi.Call[emptypb.Empty]
 }
 
 var Endpoint API
@@ -142,6 +143,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.logging.LoggingService/GetLogs",
+		},
+
+		GetProfile: fnapi.Call[emptypb.Empty]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/GetProfile",
 		},
 	}
 }
@@ -456,6 +463,16 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 			return nil, err
 		}
 
+		return &response, nil
+	})
+}
+
+func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get-profile"), func(ctx context.Context) (*GetProfileResponse, error) {
+		var response GetProfileResponse
+		if err := api.GetProfile.Do(ctx, emptypb.Empty{}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
 		return &response, nil
 	})
 }
