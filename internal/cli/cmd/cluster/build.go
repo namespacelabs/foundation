@@ -50,9 +50,22 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const (
-	platformAmd64 = "linux/amd64"
-	platformArm64 = "linux/arm64"
+var (
+	// platformToCluster is a mapping between supported platforms and preferable build cluster.
+	platformToCluster = map[string]string{
+		"linux/amd64":    "amd64",
+		"linux/386":      "amd64",
+		"linux/mips64le": "amd64",
+		"linux/ppc64le":  "amd64",
+		"linux/riscv64":  "amd64",
+		"linux/s390x":    "amd64",
+
+		"linux/arm64":  "arm64",
+		"linux/arm/v5": "arm64",
+		"linux/arm/v6": "arm64",
+		"linux/arm/v7": "arm64",
+		"linux/arm/v8": "arm64",
+	}
 )
 
 func NewBuildctlCmd() *cobra.Command {
@@ -225,12 +238,16 @@ func NewBuildCmd() *cobra.Command {
 	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach a tags to the image.")
-	platforms := cmd.Flags().StringSlice("platform", []string{platformAmd64}, "Set target platform for build")
+	platforms := cmd.Flags().StringSlice("platform", []string{"linux/amd64"}, "Set target platform for build.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		// XXX: having multiple outputs is not supported by buildctl.
 		if *push && *dockerLoad {
 			return fnerrors.New("usage of both --push and --load flags is not supported")
+		}
+
+		if err := validateBuildPlatforms(*platforms); err != nil {
+			return err
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
@@ -502,9 +519,18 @@ func (r imageReindexer) setRegistryAccess(registry string, access oci.RegistryAc
 	r.registryAccess[registry] = access
 }
 
+func validateBuildPlatforms(platforms []string) error {
+	for _, p := range platforms {
+		if _, ok := platformToCluster[p]; !ok {
+			return fnerrors.New("platform is not supported: %s", p)
+		}
+	}
+	return nil
+}
+
 func resolveBuildCluster(platform string, allowedClusterPlatforms []string) string {
 	// If requested platform is arm64 and "arm64" is allowed.
-	if platform == platformArm64 && slices.Contains(allowedClusterPlatforms, "arm64") {
+	if platformToCluster[platform] == "arm64" && slices.Contains(allowedClusterPlatforms, "arm64") {
 		return buildClusterArm64
 	}
 
