@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	buildCluster    = "build-cluster"
-	armBuildCluster = "build-cluster-arm64"
+	buildCluster      = "build-cluster"
+	buildClusterArm64 = "build-cluster-arm64"
 )
 
 func NewProxyCmd() *cobra.Command {
@@ -129,12 +129,8 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 }
 
 func establishCluster(ctx context.Context, request string) (*api.CreateClusterResult, error) {
-	if request == buildCluster || request == armBuildCluster {
-		opts := api.EnsureBuildClusterOpts{}
-		if request == armBuildCluster {
-			opts.Features = append(opts.Features, "EXP_ARM64_CLUSTER")
-		}
-		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, opts)
+	if request == buildCluster || request == buildClusterArm64 {
+		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(request))
 		if err != nil {
 			return nil, err
 		}
@@ -161,4 +157,13 @@ func establishCluster(ctx context.Context, request string) (*api.CreateClusterRe
 		BuildCluster: response.BuildCluster,
 		Registry:     response.Registry,
 	}, nil
+}
+
+func buildClusterOpts(buildCluster string) api.EnsureBuildClusterOpts {
+	var opts api.EnsureBuildClusterOpts
+	if buildCluster == buildClusterArm64 {
+		opts.Features = []string{"EXP_ARM64_CLUSTER"}
+	}
+
+	return opts
 }

@@ -18,6 +18,8 @@ type staticRegistry struct{ r *registry.Registry }
 
 var _ Manager = staticRegistry{}
 
+var DefaultDockerKeychain oci.Keychain = defaultDockerKeychain{}
+
 func MakeStaticRegistry(r *registry.Registry) Manager {
 	return staticRegistry{r}
 }
