@@ -247,7 +247,7 @@ func NewBuildCmd() *cobra.Command {
 
 		multiPlatformBuild := len(*platforms) > 1
 		if multiPlatformBuild && *dockerLoad {
-			fmt.Fprintf(console.Stdout(ctx), "Multi-platform build used; multiple images will be loaded to the local registry\n")
+			fmt.Fprintf(console.Warnings(ctx), "Multi-platform build, multiple images will be loaded to the local registry\n")
 		}
 
 		if err := validateBuildPlatforms(*platforms); err != nil {
