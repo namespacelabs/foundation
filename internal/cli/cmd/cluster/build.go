@@ -270,11 +270,11 @@ func NewBuildCmd() *cobra.Command {
 		}
 
 		reindexer := newImageReindexer(ctx)
-		builtImages := make(map[string][]specs.Platform)
+		multiPlatformImages := make(map[string][]specs.Platform)
 
 		var completeFuncs []func() error
-
 		errc := make(chan error, len(*platforms))
+
 		var wg sync.WaitGroup
 		for _, p := range *platforms {
 			platformSpec, err := platform.ParsePlatform(p)
@@ -292,9 +292,9 @@ func NewBuildCmd() *cobra.Command {
 				imageName := parsed.Name()
 				if multiPlatformBuild {
 					imageName = imageNameWithPlatform(parsed.Name(), platformSpec)
+					multiPlatformImages[parsed.Name()] = append(multiPlatformImages[parsed.Name()], platformSpec)
 				}
 				imageNames = append(imageNames, imageName)
-				builtImages[parsed.Name()] = append(builtImages[parsed.Name()], platformSpec)
 			}
 
 			buildProxy, err := runBuildProxy(ctx, resolveBuildCluster(p, clusterProfiles.ClusterPlatform))
@@ -387,7 +387,7 @@ func NewBuildCmd() *cobra.Command {
 			fn()
 		}
 
-		for imageName, platformSpecs := range builtImages {
+		for imageName, platformSpecs := range multiPlatformImages {
 			if *push {
 				fmt.Fprintf(console.Stdout(ctx), "Reindex the image:\n %s\n", imageName)
 				if err := reindexer.remoteReindex(ctx, imageName, platformSpecs); err != nil {
