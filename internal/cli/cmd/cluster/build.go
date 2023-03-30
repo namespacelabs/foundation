@@ -21,7 +21,6 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
-	manifeststore "github.com/docker/cli/cli/manifest/store"
 	"github.com/docker/distribution/reference"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -246,6 +245,11 @@ func NewBuildCmd() *cobra.Command {
 			return fnerrors.New("usage of both --push and --load flags is not supported")
 		}
 
+		multiPlatformBuild := len(*platforms) > 1
+		if multiPlatformBuild && *dockerLoad {
+			fmt.Fprintf(console.Stdout(ctx), "Multi-platform build used; multiple images will be loaded to the local registry\n")
+		}
+
 		if err := validateBuildPlatforms(*platforms); err != nil {
 			return err
 		}
@@ -268,6 +272,8 @@ func NewBuildCmd() *cobra.Command {
 		reindexer := newImageReindexer(ctx)
 		builtImages := make(map[string][]specs.Platform)
 
+		var completeFuncs []func() error
+
 		errc := make(chan error, len(*platforms))
 		var wg sync.WaitGroup
 		for _, p := range *platforms {
@@ -283,8 +289,12 @@ func NewBuildCmd() *cobra.Command {
 					return fmt.Errorf("invalid tag %s: %w", tag, err)
 				}
 
+				imageName := parsed.Name()
+				if multiPlatformBuild {
+					imageName = imageNameWithPlatform(parsed.Name(), platformSpec)
+				}
+				imageNames = append(imageNames, imageName)
 				builtImages[parsed.Name()] = append(builtImages[parsed.Name()], platformSpec)
-				imageNames = append(imageNames, imageNameWithPlatform(parsed.Name(), platformSpec))
 			}
 
 			buildProxy, err := runBuildProxy(ctx, resolveBuildCluster(p, clusterProfiles.ClusterPlatform))
@@ -309,20 +319,19 @@ func NewBuildCmd() *cobra.Command {
 					args = append(args, "--opt", "filename="+*dockerFile)
 				}
 
-				var complete func() error
 				switch {
 				case *push:
 					// buildctl parses output as csv; need to quote to pass commas to `name`.
 					args = append(args, "--output",
 						fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")))
 
-					complete = func() error {
+					completeFuncs = append(completeFuncs, func() error {
 						fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
 						for _, imageName := range imageNames {
 							fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
 						}
 						return nil
-					}
+					})
 				case *dockerLoad:
 					// Load to local Docker registry
 					f, err := os.CreateTemp("", "docker-image-nsc")
@@ -330,8 +339,6 @@ func NewBuildCmd() *cobra.Command {
 						errc <- err
 						return
 					}
-
-					defer os.Remove(f.Name())
 					// We don't actually need it.
 					f.Close()
 
@@ -343,7 +350,9 @@ func NewBuildCmd() *cobra.Command {
 						args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s", f.Name()))
 					}
 
-					complete = func() error {
+					completeFuncs = append(completeFuncs, func() error {
+						defer os.Remove(f.Name())
+
 						t := time.Now()
 						dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
 						if err := localexec.RunInteractive(ctx, dockerLoad); err != nil {
@@ -351,16 +360,12 @@ func NewBuildCmd() *cobra.Command {
 						}
 						fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to docker.\n", time.Since(t))
 						return nil
-					}
+					})
 				}
 
 				if err := runBuildctl(ctx, buildctlBin, buildProxy, args...); err != nil {
 					errc <- err
 					return
-				}
-
-				if err := complete(); err != nil {
-					errc <- err
 				}
 			}(p)
 		}
@@ -378,15 +383,13 @@ func NewBuildCmd() *cobra.Command {
 			return rErr
 		}
 
-		for imageName, platformSpecs := range builtImages {
-			fmt.Fprintf(console.Stdout(ctx), "Reindex the image:\n %s\n", imageName)
+		for _, fn := range completeFuncs {
+			fn()
+		}
 
-			switch {
-			case *dockerLoad:
-				if err := reindexer.localReindex(ctx, imageName, platformSpecs); err != nil {
-					return err
-				}
-			case *push:
+		for imageName, platformSpecs := range builtImages {
+			if *push {
+				fmt.Fprintf(console.Stdout(ctx), "Reindex the image:\n %s\n", imageName)
 				if err := reindexer.remoteReindex(ctx, imageName, platformSpecs); err != nil {
 					return err
 				}
@@ -399,46 +402,13 @@ func NewBuildCmd() *cobra.Command {
 }
 
 type imageReindexer struct {
-	manifestStore  manifeststore.Store
 	registryAccess map[string]oci.RegistryAccess
 }
 
 func newImageReindexer(ctx context.Context) *imageReindexer {
-	manifestStore := manifeststore.NewStore(filepath.Join(config.Dir(), "manifests"))
 	return &imageReindexer{
-		manifestStore:  manifestStore,
 		registryAccess: make(map[string]oci.RegistryAccess),
 	}
-}
-
-func (r imageReindexer) localReindex(ctx context.Context, imageName string, platformSpecs []specs.Platform) error {
-	targetRef, err := normalizeReference(imageName)
-	if err != nil {
-		return err
-	}
-
-	_, err = r.manifestStore.GetList(targetRef)
-	if err != nil && !manifeststore.IsNotFound(err) {
-		return err
-	}
-
-	for _, p := range platformSpecs {
-		pNamedRef, err := normalizeReference(imageNameWithPlatform(imageName, p))
-		if err != nil {
-			return err
-		}
-
-		manifests, err := r.manifestStore.Get(targetRef, pNamedRef)
-		if err != nil {
-			return err
-		}
-
-		if err := r.manifestStore.Save(targetRef, pNamedRef, manifests); err != nil {
-			return fnerrors.New("failed to store image manifest: %w", err)
-		}
-	}
-
-	return nil
 }
 
 func (r imageReindexer) remoteReindex(ctx context.Context, imageName string, platformSpecs []specs.Platform) error {
