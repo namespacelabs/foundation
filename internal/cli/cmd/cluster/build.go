@@ -6,7 +6,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,7 +14,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/docker/cli/cli/config"
@@ -37,6 +35,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -247,7 +246,12 @@ func NewBuildCmd() *cobra.Command {
 
 		multiPlatformBuild := len(*platforms) > 1
 		if multiPlatformBuild && *dockerLoad {
-			fmt.Fprintf(console.Warnings(ctx), "Multi-platform build, multiple images will be loaded to the local registry\n")
+			fmt.Fprintf(console.Warnings(ctx), `
+Using --load when performing a multi-platform build is likely to lead to
+unexpected results: even though all of the combination of requested platforms
+will be built, only the image of the same platform as where is docker is
+running will be loaded.
+`)
 		}
 
 		if err := validateBuildPlatforms(*platforms); err != nil {
@@ -270,13 +274,14 @@ func NewBuildCmd() *cobra.Command {
 		}
 
 		reindexer := newImageReindexer(ctx)
-		multiPlatformImages := make(map[string][]specs.Platform)
+		multiPlatformImages := map[string][]specs.Platform{}
 
-		var completeFuncs []func() error
-		errc := make(chan error, len(*platforms))
+		// Allocate a list ahead of time to allow for concurrent access.
+		completeFuncs := make([]func() error, len(*platforms))
 
-		var wg sync.WaitGroup
-		for _, p := range *platforms {
+		eg := executor.New(ctx, "nsc/build")
+
+		for k, p := range *platforms {
 			platformSpec, err := platform.ParsePlatform(p)
 			if err != nil {
 				return err
@@ -294,6 +299,7 @@ func NewBuildCmd() *cobra.Command {
 					imageName = imageNameWithPlatform(parsed.Name(), platformSpec)
 					multiPlatformImages[parsed.Name()] = append(multiPlatformImages[parsed.Name()], platformSpec)
 				}
+
 				imageNames = append(imageNames, imageName)
 			}
 
@@ -302,12 +308,12 @@ func NewBuildCmd() *cobra.Command {
 				return err
 			}
 			defer buildProxy.Cleanup()
+
 			reindexer.setRegistryAccess(buildProxy.RegistryEndpoint, oci.RegistryAccess{Keychain: nscloud.DefaultKeychain})
 
-			wg.Add(1)
-			go func(platform string) {
-				defer wg.Done()
-
+			k := k        // Capture k
+			platform := p // Capture p.
+			eg.Go(func(ctx context.Context) error {
 				args := []string{
 					"build",
 					"--frontend=dockerfile.v0",
@@ -325,20 +331,21 @@ func NewBuildCmd() *cobra.Command {
 					args = append(args, "--output",
 						fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")))
 
-					completeFuncs = append(completeFuncs, func() error {
+					completeFuncs[k] = func() error {
 						fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
 						for _, imageName := range imageNames {
 							fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
 						}
 						return nil
-					})
+					}
+
 				case *dockerLoad:
 					// Load to local Docker registry
 					f, err := os.CreateTemp("", "docker-image-nsc")
 					if err != nil {
-						errc <- err
-						return
+						return err
 					}
+
 					// We don't actually need it.
 					f.Close()
 
@@ -350,7 +357,7 @@ func NewBuildCmd() *cobra.Command {
 						args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s", f.Name()))
 					}
 
-					completeFuncs = append(completeFuncs, func() error {
+					completeFuncs[k] = func() error {
 						defer os.Remove(f.Name())
 
 						t := time.Now()
@@ -360,27 +367,15 @@ func NewBuildCmd() *cobra.Command {
 						}
 						fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to docker.\n", time.Since(t))
 						return nil
-					})
+					}
 				}
 
-				if err := runBuildctl(ctx, buildctlBin, buildProxy, args...); err != nil {
-					errc <- err
-					return
-				}
-			}(p)
+				return runBuildctl(ctx, buildctlBin, buildProxy, args...)
+			})
 		}
 
-		wg.Wait()
-		close(errc)
-
-		var rErr error
-		for err := range errc {
-			if err != nil {
-				rErr = errors.Join(rErr, err)
-			}
-		}
-		if rErr != nil {
-			return rErr
+		if err := eg.Wait(); err != nil {
+			return err
 		}
 
 		for _, fn := range completeFuncs {
@@ -407,7 +402,7 @@ type imageReindexer struct {
 
 func newImageReindexer(ctx context.Context) *imageReindexer {
 	return &imageReindexer{
-		registryAccess: make(map[string]oci.RegistryAccess),
+		registryAccess: map[string]oci.RegistryAccess{},
 	}
 }
 
@@ -477,6 +472,7 @@ func (r imageReindexer) pullImageManifest(ctx context.Context, ref string, pSpec
 		Architecture: pSpec.Architecture,
 		Variant:      pSpec.Variant,
 	}))
+
 	imageManifest, err := remote.Image(namedRef, remoteOpts...)
 	if err != nil {
 		return nil, err
