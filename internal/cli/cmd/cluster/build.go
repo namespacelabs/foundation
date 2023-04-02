@@ -43,6 +43,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -236,7 +237,7 @@ func NewBuildCmd() *cobra.Command {
 	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach a tags to the image.")
-	platforms := cmd.Flags().StringSlice("platform", []string{"linux/amd64"}, "Set target platform for build.")
+	platforms := cmd.Flags().StringSlice("platform", []string{platform.FormatPlatform(docker.HostPlatform())}, "Set target platform for build.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		// XXX: having multiple outputs is not supported by buildctl.
