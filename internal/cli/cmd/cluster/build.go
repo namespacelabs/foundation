@@ -50,15 +50,8 @@ import (
 )
 
 var (
-	// platformToCluster is a mapping between supported platforms and preferable build cluster.
-	platformToCluster = map[string]string{
-		"linux/amd64":    "amd64",
-		"linux/386":      "amd64",
-		"linux/mips64le": "amd64",
-		"linux/ppc64le":  "amd64",
-		"linux/riscv64":  "amd64",
-		"linux/s390x":    "amd64",
-
+	// preferredBuildPlatform is a mapping between supported platforms and preferable build cluster.
+	preferredBuildPlatform = map[string]string{
 		"linux/arm64":  "arm64",
 		"linux/arm/v5": "arm64",
 		"linux/arm/v6": "arm64",
@@ -236,7 +229,7 @@ func NewBuildCmd() *cobra.Command {
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
 	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
-	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach a tags to the image.")
+	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach the specified tags to the image.")
 	platforms := cmd.Flags().StringSlice("platform", []string{platform.FormatPlatform(docker.HostPlatform())}, "Set target platform for build.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
@@ -253,10 +246,6 @@ unexpected results: even though all of the combination of requested platforms
 will be built, only the image of the same platform as where is docker is
 running will be loaded.
 `)
-		}
-
-		if err := validateBuildPlatforms(*platforms); err != nil {
-			return err
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
@@ -352,8 +341,7 @@ running will be loaded.
 
 					if len(imageNames) > 0 {
 						// buildctl parses output as csv; need to quote to pass commas to `name`.
-						args = append(args, "--output",
-							fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
+						args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
 					} else {
 						args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s", f.Name()))
 					}
@@ -380,7 +368,9 @@ running will be loaded.
 		}
 
 		for _, fn := range completeFuncs {
-			fn()
+			if fn != nil {
+				fn()
+			}
 		}
 
 		for imageName, platformSpecs := range multiPlatformImages {
@@ -486,18 +476,9 @@ func (r imageReindexer) setRegistryAccess(registry string, access oci.RegistryAc
 	r.registryAccess[registry] = access
 }
 
-func validateBuildPlatforms(platforms []string) error {
-	for _, p := range platforms {
-		if _, ok := platformToCluster[p]; !ok {
-			return fnerrors.New("platform is not supported: %s", p)
-		}
-	}
-	return nil
-}
-
 func resolveBuildCluster(platform string, allowedClusterPlatforms []string) string {
 	// If requested platform is arm64 and "arm64" is allowed.
-	if platformToCluster[platform] == "arm64" && slices.Contains(allowedClusterPlatforms, "arm64") {
+	if preferredBuildPlatform[platform] == "arm64" && slices.Contains(allowedClusterPlatforms, "arm64") {
 		return buildClusterArm64
 	}
 
