@@ -32,7 +32,7 @@ type ResolvableImage interface {
 	Image() (Image, error)
 	ImageForPlatform(specs.Platform) (Image, error)
 	ImageIndex() (ImageIndex, error)
-	Push(context.Context, RepositoryWithAccess, bool) (v1.Hash, error)
+	Push(context.Context, RepositoryWithAccess, bool /* trackProgress */) (v1.Hash, error)
 
 	cache(context.Context, cache.Cache) (schema.Digest, error)
 }

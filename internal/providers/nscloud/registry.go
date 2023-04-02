@@ -98,9 +98,9 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 type defaultKeychain struct{}
 
 func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	if !strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") {
-		return authn.Anonymous, nil
+	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || r.RegistryStr() == "nscr.io" {
+		return api.RegistryCreds(ctx)
 	}
 
-	return api.RegistryCreds(ctx)
+	return authn.Anonymous, nil
 }

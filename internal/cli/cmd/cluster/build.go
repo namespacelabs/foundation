@@ -21,18 +21,13 @@ import (
 	"github.com/docker/cli/cli/config/types"
 	"github.com/docker/distribution/reference"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/empty"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	registrytypes "github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/moby/buildkit/client"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -47,6 +42,7 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 var (
@@ -238,14 +234,14 @@ func NewBuildCmd() *cobra.Command {
 			return fnerrors.New("usage of both --push and --load flags is not supported")
 		}
 
-		multiPlatformBuild := len(*platforms) > 1
-		if multiPlatformBuild && *dockerLoad {
-			fmt.Fprintf(console.Warnings(ctx), `
-Using --load when performing a multi-platform build is likely to lead to
-unexpected results: even though all of the combination of requested platforms
-will be built, only the image of the same platform as where is docker is
-running will be loaded.
-`)
+		if len(*platforms) > 1 {
+			if *dockerLoad {
+				return fnerrors.New("multi-platform builds require --push, --load is not supported")
+			}
+		}
+
+		if len(*tags) == 0 && *push {
+			return fnerrors.New("--push requires at least one tag")
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
@@ -263,14 +259,35 @@ running will be loaded.
 			contextDir = specifiedArgs[0]
 		}
 
-		reindexer := newImageReindexer(ctx)
-		multiPlatformImages := map[string][]specs.Platform{}
+		parsedTags := make([]name.Tag, len(*tags))
+		for k, tag := range *tags {
+			parsed, err := name.NewTag(tag)
+			if err != nil {
+				return fmt.Errorf("invalid tag %s: %w", tag, err)
+			}
+			parsedTags[k] = parsed
+		}
 
 		// Allocate a list ahead of time to allow for concurrent access.
 		completeFuncs := make([]func() error, len(*platforms))
 
+		builders := map[string]*buildProxy{}
+		for _, p := range *platforms {
+			resolved := resolveBuildCluster(p, clusterProfiles.ClusterPlatform)
+			if _, ok := builders[resolved]; !ok {
+				buildProxy, err := runBuildProxy(ctx, resolved)
+				if err != nil {
+					return err
+				}
+				defer buildProxy.Cleanup()
+
+				builders[resolved] = buildProxy
+			}
+		}
+
 		eg := executor.New(ctx, "nsc/build")
 
+		images := make([]oci.RawImageWithPlatform, len(*platforms))
 		for k, p := range *platforms {
 			platformSpec, err := platform.ParsePlatform(p)
 			if err != nil {
@@ -278,88 +295,90 @@ running will be loaded.
 			}
 
 			var imageNames []string
-			for _, tag := range *tags {
-				parsed, err := name.NewTag(tag)
-				if err != nil {
-					return fmt.Errorf("invalid tag %s: %w", tag, err)
-				}
 
-				imageName := parsed.Name()
-				if multiPlatformBuild {
-					imageName = imageNameWithPlatform(parsed.Name(), platformSpec)
-					multiPlatformImages[parsed.Name()] = append(multiPlatformImages[parsed.Name()], platformSpec)
+			// When performing a multi-platform build, we only need a single
+			// remote reference to point an index at.
+			if len(*platforms) > 1 {
+				imageNames = append(imageNames, fmt.Sprintf("%s:%s-%s", parsedTags[0].Repository.Name(), strings.ReplaceAll(platform.FormatPlatform(platformSpec), "/", "-"), ids.NewRandomBase32ID(4)))
+			} else {
+				for _, parsed := range parsedTags {
+					imageNames = append(imageNames, parsed.Name())
 				}
-
-				imageNames = append(imageNames, imageName)
 			}
 
-			buildProxy, err := runBuildProxy(ctx, resolveBuildCluster(p, clusterProfiles.ClusterPlatform))
-			if err != nil {
-				return err
+			args := []string{
+				"build",
+				"--frontend=dockerfile.v0",
+				"--local", "context=" + contextDir,
+				"--local", "dockerfile=" + contextDir,
+				"--opt", "platform=" + p,
 			}
-			defer buildProxy.Cleanup()
+			if *dockerFile != "" {
+				args = append(args, "--opt", "filename="+*dockerFile)
+			}
 
-			reindexer.setRegistryAccess(buildProxy.RegistryEndpoint, oci.RegistryAccess{Keychain: nscloud.DefaultKeychain})
+			k := k // Capture k.
+			switch {
+			case *push:
+				// buildctl parses output as csv; need to quote to pass commas to `name`.
+				args = append(args, "--output", fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")))
 
-			k := k        // Capture k
-			platform := p // Capture p.
-			eg.Go(func(ctx context.Context) error {
-				args := []string{
-					"build",
-					"--frontend=dockerfile.v0",
-					"--local", "context=" + contextDir,
-					"--local", "dockerfile=" + contextDir,
-					"--opt", "platform=" + platform,
-				}
-				if *dockerFile != "" {
-					args = append(args, "--opt", "filename="+*dockerFile)
-				}
-
-				switch {
-				case *push:
-					// buildctl parses output as csv; need to quote to pass commas to `name`.
-					args = append(args, "--output",
-						fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")))
-
-					completeFuncs[k] = func() error {
-						fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
-						for _, imageName := range imageNames {
-							fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
-						}
-						return nil
+				completeFuncs[k] = func() error {
+					fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
+					for _, imageName := range imageNames {
+						fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
 					}
 
-				case *dockerLoad:
-					// Load to local Docker registry
-					f, err := os.CreateTemp("", "docker-image-nsc")
+					ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageNames[0], oci.RegistryAccess{Keychain: nscloud.DefaultKeychain})
 					if err != nil {
 						return err
 					}
 
-					// We don't actually need it.
-					f.Close()
-
-					if len(imageNames) > 0 {
-						// buildctl parses output as csv; need to quote to pass commas to `name`.
-						args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
-					} else {
-						args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s", f.Name()))
+					image, err := remote.Image(ref, remoteOpts...)
+					if err != nil {
+						return fnerrors.InvocationError("registry", "failed to fetch image: %w", err)
 					}
 
-					completeFuncs[k] = func() error {
-						defer os.Remove(f.Name())
-
-						t := time.Now()
-						dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
-						if err := localexec.RunInteractive(ctx, dockerLoad); err != nil {
-							return err
-						}
-						fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to docker.\n", time.Since(t))
-						return nil
+					images[k] = oci.RawImageWithPlatform{
+						Image:    image,
+						Platform: platformSpec,
 					}
+
+					return nil
 				}
 
-				return runBuildctl(ctx, buildctlBin, buildProxy, args...)
+			case *dockerLoad:
+				// Load to local Docker registry
+				f, err := os.CreateTemp("", "docker-image-nsc")
+				if err != nil {
+					return err
+				}
+
+				// We don't actually need it.
+				f.Close()
+
+				if len(imageNames) > 0 {
+					// buildctl parses output as csv; need to quote to pass commas to `name`.
+					args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s,%q", f.Name(), "name="+strings.Join(imageNames, ",")))
+				} else {
+					args = append(args, "--output", fmt.Sprintf("type=docker,dest=%s", f.Name()))
+				}
+
+				completeFuncs[k] = func() error {
+					defer os.Remove(f.Name())
+
+					t := time.Now()
+					dockerLoad := exec.CommandContext(ctx, "docker", "load", "-i", f.Name())
+					if err := localexec.RunInteractive(ctx, dockerLoad); err != nil {
+						return err
+					}
+					fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to docker.\n", time.Since(t))
+					return nil
+				}
+			}
+
+			eg.Go(func(ctx context.Context) error {
+				return runBuildctl(ctx, buildctlBin, builders[resolveBuildCluster(p, clusterProfiles.ClusterPlatform)], args...)
 			})
 		}
 
@@ -369,111 +388,38 @@ running will be loaded.
 
 		for _, fn := range completeFuncs {
 			if fn != nil {
-				fn()
-			}
-		}
-
-		for imageName, platformSpecs := range multiPlatformImages {
-			if *push {
-				fmt.Fprintf(console.Stdout(ctx), "Reindex the image:\n %s\n", imageName)
-				if err := reindexer.remoteReindex(ctx, imageName, platformSpecs); err != nil {
+				if err := fn(); err != nil {
 					return err
 				}
 			}
 		}
+
+		if len(images) > 1 && *push {
+			index, err := oci.RawMakeIndex(images...)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprint(console.Stdout(ctx), "Multi-platform image:\n\n")
+
+			for _, parsed := range parsedTags {
+				if _, err := index.Push(ctx, oci.RepositoryWithAccess{
+					Repository: parsed.Name(),
+					RegistryAccess: oci.RegistryAccess{
+						Keychain: nscloud.DefaultKeychain,
+					},
+				}, false); err != nil {
+					return err
+				}
+
+				fmt.Fprintf(console.Stdout(ctx), "  %s\n", parsed.Name())
+			}
+		}
+
 		return nil
 	})
 
 	return cmd
-}
-
-type imageReindexer struct {
-	registryAccess map[string]oci.RegistryAccess
-}
-
-func newImageReindexer(ctx context.Context) *imageReindexer {
-	return &imageReindexer{
-		registryAccess: map[string]oci.RegistryAccess{},
-	}
-}
-
-func (r imageReindexer) remoteReindex(ctx context.Context, imageName string, platformSpecs []specs.Platform) error {
-	imageRef, err := name.ParseReference(imageName)
-	if err != nil {
-		return err
-	}
-
-	registryAccess, ok := r.registryAccess[imageRef.Context().RegistryStr()]
-	if !ok {
-		registryAccess = oci.RegistryAccess{Keychain: registry.DefaultDockerKeychain}
-	}
-
-	remoteOpts, err := oci.RemoteOptsWithAuth(ctx, registryAccess, true)
-	if err != nil {
-		return err
-	}
-
-	adds := make([]mutate.IndexAddendum, 0, len(platformSpecs))
-	for _, pSpec := range platformSpecs {
-		imageIndex, err := r.pullImageManifest(ctx, imageNameWithPlatform(imageName, pSpec), pSpec, remoteOpts...)
-		if err != nil {
-			return err
-		}
-
-		if _, err := imageIndex.Digest(); err != nil {
-			return err
-		}
-
-		mediaType, err := imageIndex.MediaType()
-		if err != nil {
-			return err
-		}
-
-		adds = append(adds, mutate.IndexAddendum{
-			Add: imageIndex,
-			Descriptor: v1.Descriptor{
-				MediaType: mediaType,
-				Platform: &v1.Platform{
-					OS:           pSpec.OS,
-					Architecture: pSpec.Architecture,
-					Variant:      pSpec.Variant,
-				},
-			},
-		})
-	}
-
-	imageIndex := mutate.AppendManifests(mutate.IndexMediaType(empty.Index, registrytypes.OCIImageIndex), adds...)
-
-	// The Digest() is requested here to guarantee that the index can indeed be created.
-	if _, err := imageIndex.Digest(); err != nil {
-		return fnerrors.InternalError("failed to compute image index digest: %w", err)
-	}
-
-	return remote.WriteIndex(imageRef, imageIndex, remoteOpts...)
-}
-
-func (r imageReindexer) pullImageManifest(ctx context.Context, ref string, pSpec specs.Platform, opts ...remote.Option) (v1.Image, error) {
-	namedRef, err := name.ParseReference(ref)
-	if err != nil {
-		return nil, err
-	}
-
-	remoteOpts := append(opts, remote.WithPlatform(v1.Platform{
-		OS:           pSpec.OS,
-		Architecture: pSpec.Architecture,
-		Variant:      pSpec.Variant,
-	}))
-
-	imageManifest, err := remote.Image(namedRef, remoteOpts...)
-	if err != nil {
-		return nil, err
-	}
-
-	return imageManifest, nil
-}
-
-func (r imageReindexer) setRegistryAccess(registry string, access oci.RegistryAccess) {
-	r.registryAccess[registry] = access
 }
 
 func resolveBuildCluster(platform string, allowedClusterPlatforms []string) string {

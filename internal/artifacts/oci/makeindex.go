@@ -56,9 +56,27 @@ func (al *makeImageIndex) Action() *tasks.ActionEvent {
 }
 
 func (al *makeImageIndex) Compute(ctx context.Context, deps compute.Resolved) (ResolvableImage, error) {
-	var adds []mutate.IndexAddendum
+	images := make([]RawImageWithPlatform, len(al.images))
 	for k, d := range al.images {
 		image := compute.MustGetDepValue(deps, d.Image.Image(), fmt.Sprintf("image%d", k))
+		images[k] = RawImageWithPlatform{
+			Image:    image,
+			Platform: d.Platform,
+		}
+	}
+
+	return RawMakeIndex(images...)
+}
+
+type RawImageWithPlatform struct {
+	Image    Image
+	Platform specs.Platform
+}
+
+func RawMakeIndex(images ...RawImageWithPlatform) (ResolvableImage, error) {
+	var adds []mutate.IndexAddendum
+	for _, d := range images {
+		image := d.Image
 
 		digest, err := image.Digest()
 		if err != nil {
