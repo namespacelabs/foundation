@@ -227,6 +227,7 @@ func NewBuildCmd() *cobra.Command {
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach the specified tags to the image.")
 	platforms := cmd.Flags().StringSlice("platform", []string{platform.FormatPlatform(docker.HostPlatform())}, "Set target platform for build.")
+	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		// XXX: having multiple outputs is not supported by buildctl.
@@ -313,8 +314,13 @@ func NewBuildCmd() *cobra.Command {
 				"--local", "dockerfile=" + contextDir,
 				"--opt", "platform=" + p,
 			}
+
 			if *dockerFile != "" {
 				args = append(args, "--opt", "filename="+*dockerFile)
+			}
+
+			for _, arg := range *buildArg {
+				args = append(args, "--opt", "build-arg:"+arg)
 			}
 
 			k := k // Capture k.
