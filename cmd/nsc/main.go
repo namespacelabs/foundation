@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/cmd/metadata"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -31,6 +32,7 @@ func main() {
 		root.AddCommand(cluster.NewBuildctlCmd())         // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
 		root.AddCommand(cluster.NewBuildCmd())            // `nsc build` acts as an alias for `nsc cluster build`
 		root.AddCommand(cluster.NewDockerLoginCmd(false)) // `nsc docker-login` acts as an alias for `nsc cluster docker-login`
+		root.AddCommand(metadata.NewMetadataCmd(true))
 
 		root.AddCommand(sdk.NewSdkCmd(true))
 
