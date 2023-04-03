@@ -32,7 +32,7 @@ func main() {
 		root.AddCommand(cluster.NewBuildctlCmd())         // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
 		root.AddCommand(cluster.NewBuildCmd())            // `nsc build` acts as an alias for `nsc cluster build`
 		root.AddCommand(cluster.NewDockerLoginCmd(false)) // `nsc docker-login` acts as an alias for `nsc cluster docker-login`
-		root.AddCommand(metadata.NewMetadataCmd(true))
+		root.AddCommand(metadata.NewMetadataCmd())
 
 		root.AddCommand(sdk.NewSdkCmd(true))
 

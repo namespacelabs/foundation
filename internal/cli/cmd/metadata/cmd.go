@@ -23,11 +23,10 @@ const (
 
 var supportedMetadataKeys = []string{"id"}
 
-func NewMetadataCmd(hidden bool) *cobra.Command {
+func NewMetadataCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "metadata",
-		Short:  "Work with VM metadata.",
-		Hidden: hidden,
+		Use:   "metadata",
+		Short: "Work with VM metadata.",
 	}
 
 	cmd.AddCommand(newReadCmd())
