@@ -41,7 +41,7 @@ func newExposeCmd() *cobra.Command {
 			return fnerrors.New("--container is required")
 		}
 
-		cluster, args, err := selectCluster(ctx, args)
+		cluster, _, err := selectCluster(ctx, args)
 		if err != nil {
 			return err
 		}
