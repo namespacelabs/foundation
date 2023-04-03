@@ -6,12 +6,10 @@ package fnapi
 
 import (
 	"context"
-	"encoding/base64"
 	"os"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/auth"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -95,13 +93,8 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 
 func FetchTenantToken(ctx context.Context) (Token, error) {
 	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
-		if conf := os.Getenv("NSC_TOKEN_SPEC"); conf != "" {
-			specBytes, err := base64.RawStdEncoding.DecodeString(conf)
-			if err != nil {
-				return nil, fnerrors.New("NSC_TOKEN_SPEC is invalid")
-			}
-
-			return auth.FetchTokenFromSpec(ctx, specBytes)
+		if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
+			return auth.FetchTokenFromSpec(ctx, spec)
 		}
 
 		if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {

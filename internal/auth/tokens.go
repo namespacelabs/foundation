@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
@@ -156,4 +157,13 @@ func LoadTenantToken(ctx context.Context) (*Token, error) {
 func EnsureTokenValidAt(ctx context.Context, target time.Time) error {
 	_, err := loadWorkspaceToken(ctx, target)
 	return err
+}
+
+func FetchTokenFromSpec(ctx context.Context, spec string) (*Token, error) {
+	t, err := metadata.FetchTokenFromSpec(ctx, spec)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Token{BearerToken: t}, nil
 }
