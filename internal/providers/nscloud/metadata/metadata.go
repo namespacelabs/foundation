@@ -66,7 +66,6 @@ func FetchValueFromSpec(ctx context.Context, specData string, key string) (strin
 	default:
 		return "", fnerrors.New("metadata spec is not supported; only support version=v1")
 	}
-
 }
 
 func FetchTokenFromSpec(ctx context.Context, specData string) (string, error) {
