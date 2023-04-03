@@ -40,10 +40,6 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 		return nil, fnerrors.New("transport.ssh: user is required")
 	}
 
-	if endpoint.PrivateKeyPath == "" {
-		return nil, fnerrors.New("transport.ssh: private_key_path is required")
-	}
-
 	sshAddr := endpoint.Address
 	if sshAddr == "" {
 		return nil, fnerrors.New("transport.ssh: address is required")
@@ -54,23 +50,26 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 		sshAddr = fmt.Sprintf("%s:22", sshAddr)
 	}
 
-	key, err := parsePrivateKey(endpoint.PrivateKeyPath)
+	var auths []ssh.AuthMethod
+	key, keyKey, err := parseAuth(endpoint.PrivateKeyPath)
 	if err != nil {
 		return nil, err
 	}
 
+	if key != nil {
+		auths = append(auths, key)
+	}
+
 	config := ssh.ClientConfig{
 		User: endpoint.User,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(key),
-		},
+		Auth: auths,
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			fmt.Fprintf(debugLogger, "ssh: connected to %q (%s)\n", hostname, remote)
 			return nil
 		},
 	}
 
-	cachekey := fmt.Sprintf("%s:%s@%s", endpoint.User, base64.RawStdEncoding.EncodeToString(key.PublicKey().Marshal()), endpoint.Address)
+	cachekey := fmt.Sprintf("%s:%s@%s", endpoint.User, keyKey, endpoint.Address)
 
 	return &Deferred{
 		CacheKey: cachekey,
@@ -81,6 +80,20 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 			})
 		},
 	}, nil
+}
+
+func parseAuth(privateKeyPath string) (ssh.AuthMethod, string, error) {
+	if privateKeyPath != "" {
+		key, err := parsePrivateKey(privateKeyPath)
+		if err != nil {
+			return nil, "", err
+		}
+
+		keyKey := base64.RawStdEncoding.EncodeToString(key.PublicKey().Marshal())
+		return ssh.PublicKeys(key), keyKey, nil
+	}
+
+	return nil, "", nil
 }
 
 func parsePrivateKey(keyPath string) (ssh.Signer, error) {
