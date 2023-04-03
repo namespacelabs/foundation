@@ -42,6 +42,7 @@ type API struct {
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
 	GetClusterLogs               fnapi.Call[GetLogsRequest]
 	GetProfile                   fnapi.Call[emptypb.Empty]
+	RegisterDefaultIngress       fnapi.Call[RegisterDefaultIngressRequest]
 }
 
 var Endpoint API
@@ -149,6 +150,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/GetProfile",
+		},
+
+		RegisterDefaultIngress: fnapi.Call[RegisterDefaultIngressRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/RegisterDefaultIngress",
 		},
 	}
 }
@@ -471,6 +478,16 @@ func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-profile"), func(ctx context.Context) (*GetProfileResponse, error) {
 		var response GetProfileResponse
 		if err := api.GetProfile.Do(ctx, emptypb.Empty{}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+}
+
+func RegisterDefaultIngress(ctx context.Context, api API, req RegisterDefaultIngressRequest) (*RegisterDefaultIngressResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*RegisterDefaultIngressResponse, error) {
+		var response RegisterDefaultIngressResponse
+		if err := api.RegisterDefaultIngress.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

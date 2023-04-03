@@ -243,3 +243,18 @@ type GetKubernetesConfigResponse struct {
 type GetProfileResponse struct {
 	ClusterPlatform []string `json:"cluster_platform,omitempty"`
 }
+
+type RegisterDefaultIngressRequest struct {
+	ClusterId       string                  `json:"cluster_id,omitempty"`
+	Prefix          string                  `json:"prefix,omitempty"`
+	BackendEndpoint *IngressBackendEndpoint `json:"backend_endpoint,omitempty"`
+}
+
+type IngressBackendEndpoint struct {
+	GuestIpAddr string `json:"guest_ip_addr,omitempty"`
+	Port        int32  `json:"port,omitempty"`
+}
+
+type RegisterDefaultIngressResponse struct {
+	Fqdn string `json:"fqdn,omitempty"`
+}
