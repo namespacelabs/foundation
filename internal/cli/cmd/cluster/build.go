@@ -235,10 +235,8 @@ func NewBuildCmd() *cobra.Command {
 			return fnerrors.New("usage of both --push and --load flags is not supported")
 		}
 
-		if len(*platforms) > 1 {
-			if *dockerLoad {
-				return fnerrors.New("multi-platform builds require --push, --load is not supported")
-			}
+		if len(*platforms) > 1 && *dockerLoad {
+			return fnerrors.New("multi-platform builds require --push, --load is not supported")
 		}
 
 		if len(*tags) == 0 && *push {
