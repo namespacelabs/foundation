@@ -9,13 +9,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
+	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
+	"github.com/containerd/nerdctl/pkg/labels"
+	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -134,6 +144,9 @@ func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source, co
 	switch source {
 	case "docker":
 		return selectDockerPorts(ctx, cluster, containerName)
+
+	case "containerd":
+		return selectContainerdPorts(ctx, cluster, containerName)
 	}
 
 	return nil, fnerrors.New("unsupported source %q", source)
@@ -160,10 +173,7 @@ func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, cont
 		return nil, err
 	}
 
-	internalName := strings.TrimPrefix(data.Name, "/")        // docker returns names prefixed by /
-	mangledName := strings.ReplaceAll(internalName, "_", "-") // docker generated names have underscores.
-
-	suggestedPrefix := computeSuggestedPrefix(data.ID, mangledName)
+	internalName, suggestedPrefix := parseContainerName(data.ID, data.Name)
 
 	exported := portMap{}
 	for port, mapping := range data.NetworkSettings.Ports {
@@ -181,9 +191,100 @@ func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, cont
 						SuggestedPrefix: suggestedPrefix,
 						ExportedPort:    int32(parsedPort),
 					}
+				} else {
+					fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", port.Int(), port.Proto(), m.HostIP)
 				}
 			}
+		} else {
+			fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s (unsupported)\n", port.Int(), port.Proto())
 		}
+	}
+
+	return exported, nil
+}
+
+func parseContainerName(id, name string) (string, string) {
+	internalName := strings.TrimPrefix(name, "/")             // docker returns names prefixed by /
+	mangledName := strings.ReplaceAll(internalName, "_", "-") // docker generated names have underscores.
+
+	suggestedPrefix := computeSuggestedPrefix(id, mangledName)
+
+	return internalName, suggestedPrefix
+}
+
+func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, containerName string) (portMap, error) {
+	// We must fetch a token with our parent context, so we get a task sink etc.
+	token, err := fnapi.FetchTenantToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s-containerd", cluster.ClusterId),
+		grpc.WithBlock(),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			vars := url.Values{}
+			vars.Set("name", "containerd-socket")
+			return api.DialHostedServiceWithToken(ctx, token, cluster, "unixsocket", vars)
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Close()
+
+	ctr, err := containerd.NewWithConn(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	defer ctr.Conn()
+
+	ctx = namespaces.WithNamespace(ctx, "default")
+
+	exported := portMap{}
+	walker := &containerwalker.ContainerWalker{
+		Client: ctr,
+		OnFound: func(ctx context.Context, found containerwalker.Found) error {
+			if found.MatchCount > 1 {
+				return rpcerrors.Errorf(codes.InvalidArgument, "container name matches multiple containers")
+			}
+
+			l, err := found.Container.Labels(ctx)
+			if err != nil {
+				return err
+			}
+
+			ports, err := portutil.ParsePortsLabel(l)
+			if err != nil {
+				return err
+			}
+
+			internalName, suggestedPrefix := parseContainerName(found.Container.ID(), l[labels.Name])
+
+			for _, p := range ports {
+				if p.Protocol == "tcp" && p.HostIP == "0.0.0.0" {
+					exported[int(p.ContainerPort)] = containerPort{
+						ContainerID:     found.Container.ID(),
+						ContainerName:   internalName,
+						SuggestedPrefix: suggestedPrefix,
+						ExportedPort:    p.HostPort,
+					}
+				} else {
+					fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", p.ContainerPort, p.Protocol, p.HostIP)
+				}
+			}
+
+			return nil
+		},
+	}
+
+	n, err := walker.Walk(ctx, containerName)
+	if err != nil {
+		return nil, err
+	} else if n == 0 {
+		return nil, rpcerrors.Errorf(codes.NotFound, "no such container %q", containerName)
 	}
 
 	return exported, nil
