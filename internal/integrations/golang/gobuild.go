@@ -12,7 +12,7 @@ func goBuildArgs(goVersion string, strip bool) []string {
 	args := []string{"build", "-v", "-trimpath"}
 
 	if strip {
-		args = append(args, "-ldflags", "-s -w")
+		args = append(args, `-ldflags="-s -w"`)
 	}
 
 	// VCS information is not included in the binaries, to ensure we have reproducible builds.
