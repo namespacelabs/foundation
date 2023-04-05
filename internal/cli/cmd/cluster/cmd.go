@@ -54,6 +54,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(h)
 
 	h.AddCommand(newReleaseCmd())
+	h.AddCommand(newWakeCmd())
 
 	return cmd
 }

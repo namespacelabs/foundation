@@ -28,3 +28,20 @@ func newReleaseCmd() *cobra.Command {
 
 	return cmd
 }
+
+func newWakeCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "wake [cluster-id]",
+		Short:  "Wakes up an existing cluster.",
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return api.Endpoint.WakeKubernetesCluster.Do(ctx, api.WakeKubernetesClusterRequest{
+			ClusterId: args[0],
+		}, nil)
+	})
+
+	return cmd
+}

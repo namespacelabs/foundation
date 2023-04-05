@@ -205,6 +205,10 @@ type ReleaseKubernetesClusterRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
 
+type WakeKubernetesClusterRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
 type LabelEntry struct {
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
