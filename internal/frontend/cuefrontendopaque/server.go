@@ -25,6 +25,7 @@ var (
 	extensionFields = []string{
 		"args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
+		"resourceLimits", "resourceRequests",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
@@ -44,6 +45,9 @@ type cueServer struct {
 type cueServerExtension struct {
 	Args *args.ArgsListOrMap `json:"args"`
 	Env  *args.EnvMap        `json:"env"`
+
+	Requests *schema.Container_ResourceLimits `json:"resourceRequests"`
+	Limits   *schema.Container_ResourceLimits `json:"resourceLimits"`
 
 	Services map[string]cueService `json:"services"`
 
@@ -178,6 +182,9 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	if err != nil {
 		return nil, err
 	}
+
+	out.MainContainer.Limits = bits.Limits
+	out.MainContainer.Requests = bits.Requests
 
 	if sidecars := v.LookupPath("sidecars"); sidecars.Exists() {
 		it, err := sidecars.Val.Fields()

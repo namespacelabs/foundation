@@ -319,6 +319,8 @@ type ContainerRunOpts struct {
 	HostNetwork        bool
 	Mounts             []*schema.Mount
 	AllocatedPorts     []*schema.Endpoint_Port
+	ResourceLimits     *schema.Container_ResourceLimits
+	ResourceRequests   *schema.Container_ResourceLimits
 }
 
 type ContainerStatus struct {

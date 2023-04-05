@@ -922,6 +922,8 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.MainContainer.Args = append(out.MainContainer.Args, main.Args...)
 	out.MainContainer.Privileged = main.GetSecurity().GetPrivileged()
 	out.MainContainer.HostNetwork = main.GetSecurity().GetHostNetwork()
+	out.MainContainer.ResourceLimits = main.Limits
+	out.MainContainer.ResourceRequests = main.Requests
 
 	var err error
 	out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, main.Env)
@@ -959,11 +961,13 @@ func prepareContainerRunOpts(containers []*schema.Container, resolved ResolvedSe
 			Name:      container.Name,
 			BinaryRef: binRef,
 			ContainerRunOpts: runtime.ContainerRunOpts{
-				Image:      sidecarBinary.Binary,
-				Args:       append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.Args...),
-				Command:    sidecarBinary.BinaryConfig.GetCommand(),
-				WorkingDir: sidecarBinary.BinaryConfig.GetWorkingDir(),
-				Privileged: container.GetSecurity().GetPrivileged(),
+				Image:            sidecarBinary.Binary,
+				Args:             append(slices.Clone(sidecarBinary.BinaryConfig.GetArgs()), container.Args...),
+				Command:          sidecarBinary.BinaryConfig.GetCommand(),
+				WorkingDir:       sidecarBinary.BinaryConfig.GetWorkingDir(),
+				Privileged:       container.GetSecurity().GetPrivileged(),
+				ResourceLimits:   container.Limits,
+				ResourceRequests: container.Requests,
 			},
 		}
 

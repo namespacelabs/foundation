@@ -20,6 +20,9 @@ import (
 type cueContainer struct {
 	Args *args.ArgsListOrMap `json:"args"`
 	Env  *args.EnvMap        `json:"env"`
+
+	Requests *schema.Container_ResourceLimits `json:"resourceRequests"`
+	Limits   *schema.Container_ResourceLimits `json:"resourceLimits"`
 }
 
 type parsedCueContainer struct {
@@ -42,9 +45,11 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 
 	out := &parsedCueContainer{
 		container: &schema.Container{
-			Name: name,
-			Args: bits.Args.Parsed(),
-			Env:  envVars,
+			Name:     name,
+			Args:     bits.Args.Parsed(),
+			Env:      envVars,
+			Limits:   bits.Limits,
+			Requests: bits.Requests,
 		},
 	}
 

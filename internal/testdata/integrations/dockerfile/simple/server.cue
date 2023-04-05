@@ -15,6 +15,11 @@ server: {
 
 	}
 
+	resourceLimits: {
+		memory: "256Mi"
+		cpu:    "500m"
+	}
+
 	services: {
 		webapi: {
 			port: 4000

@@ -318,6 +318,22 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				return err
 			}
 
+			if ps.MergedFragment.MainContainer.Limits != nil {
+				if frag.MainContainer.Limits != nil {
+					return fnerrors.New("resource limits are defined more than once")
+				}
+			} else {
+				ps.MergedFragment.MainContainer.Limits = frag.MainContainer.Limits
+			}
+
+			if ps.MergedFragment.MainContainer.Requests != nil {
+				if frag.MainContainer.Requests != nil {
+					return fnerrors.New("resource requests are defined more than once")
+				}
+			} else {
+				ps.MergedFragment.MainContainer.Requests = frag.MainContainer.Requests
+			}
+
 			if frag.MainContainer.Security != nil {
 				if ps.MergedFragment.MainContainer.Security != nil {
 					return fnerrors.New("main_container.security set more than once")

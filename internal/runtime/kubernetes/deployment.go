@@ -102,6 +102,11 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		return err
 	}
 
+	reses, err := containerResources(deployable.MainContainer)
+	if err != nil {
+		return err
+	}
+
 	ctrName := kubedef.ServerCtrName(deployable)
 	containers := []string{ctrName}
 	mainContainer := applycorev1.Container().
@@ -110,7 +115,8 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		WithImage(deployable.MainContainer.Image.RepoAndDigest()).
 		WithArgs(deployable.MainContainer.Args...).
 		WithCommand(deployable.MainContainer.Command...).
-		WithSecurityContext(secCtx)
+		WithSecurityContext(secCtx).
+		WithResources(reses)
 
 	for _, port := range deployable.MainContainer.AllocatedPorts {
 		mainContainer.WithPorts(applycorev1.ContainerPort().WithName(port.Name).WithContainerPort(port.ContainerPort))
@@ -707,9 +713,15 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				return fnerrors.NewWithLocation(deployable.ErrorLocation, "duplicate sidecar container name: %s", name)
 			}
 		}
+
 		containers = append(containers, name)
 
 		sidecarSecCtx, err := makeSecurityContext(sidecar.ContainerRunOpts)
+		if err != nil {
+			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+		}
+
+		reses, err := containerResources(deployable.MainContainer)
 		if err != nil {
 			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 		}
@@ -720,7 +732,8 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			WithImage(sidecar.Image.RepoAndDigest()).
 			WithArgs(sidecar.Args...).
 			WithCommand(sidecar.Command...).
-			WithSecurityContext(sidecarSecCtx)
+			WithSecurityContext(sidecarSecCtx).
+			WithResources(reses)
 
 		// XXX remove this
 		scntr = scntr.WithEnv(
@@ -753,13 +766,19 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 		containers = append(containers, name)
 
+		reses, err := containerResources(deployable.MainContainer)
+		if err != nil {
+			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+		}
+
 		scntr := applycorev1.Container().
 			WithName(name).
 			WithTerminationMessagePolicy(corev1.TerminationMessageFallbackToLogsOnError).
 			WithImage(init.Image.RepoAndDigest()).
 			WithArgs(append(init.Args, initArgs[init.BinaryRef.Canonical()]...)...).
 			WithCommand(init.Command...).
-			WithVolumeMounts(initVolumeMounts...)
+			WithVolumeMounts(initVolumeMounts...).
+			WithResources(reses)
 
 		if _, err := fillEnv(ctx, deployable.RuntimeConfig, scntr, init.Env, seccol, &ensure); err != nil {
 			return err
@@ -929,6 +948,55 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 	s.operations = append(s.operations, ensure)
 	return nil
+}
+
+func containerResources(ctr runtime.ContainerRunOpts) (*applycorev1.ResourceRequirementsApplyConfiguration, error) {
+	if ctr.ResourceLimits == nil && ctr.ResourceRequests == nil {
+		return nil, nil
+	}
+
+	r := applycorev1.ResourceRequirements()
+
+	rl, err := parseResourceList(ctr.ResourceLimits)
+	if err != nil {
+		return nil, err
+	} else if rl != nil {
+		r = r.WithLimits(rl)
+	}
+
+	reqs, err := parseResourceList(ctr.ResourceRequests)
+	if err != nil {
+		return nil, err
+	} else if reqs != nil {
+		r = r.WithRequests(reqs)
+	}
+
+	return r, nil
+}
+
+func parseResourceList(limits *schema.Container_ResourceLimits) (corev1.ResourceList, error) {
+	if limits == nil || (limits.Cpu == "" && limits.Memory == "") {
+		return nil, nil
+	}
+
+	rl := corev1.ResourceList{}
+	if limits.Cpu != "" {
+		x, err := resource.ParseQuantity(limits.Cpu)
+		if err != nil {
+			return nil, err
+		}
+		rl[corev1.ResourceCPU] = x
+	}
+
+	if limits.Memory != "" {
+		x, err := resource.ParseQuantity(limits.Memory)
+		if err != nil {
+			return nil, err
+		}
+		rl[corev1.ResourceMemory] = x
+	}
+
+	return rl, nil
 }
 
 func firstStr(strs ...string) string {

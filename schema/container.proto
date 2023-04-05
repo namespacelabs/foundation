@@ -27,10 +27,17 @@ message Container {
     repeated BinaryConfig.EnvEntry env      = 6;
     repeated Mount                 mount    = 7;
     Security                       security = 8;
+    ResourceLimits                 requests = 10;
+    ResourceLimits                 limits   = 11;
 
     message Security {
-        bool privileged = 1;
+        bool privileged   = 1;
         bool host_network = 2;
+    }
+
+    message ResourceLimits {
+        string memory = 1;
+        string cpu    = 2;
     }
 }
 
