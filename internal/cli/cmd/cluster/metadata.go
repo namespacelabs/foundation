@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 
-package metadata
+package cluster
 
 import (
 	"context"
@@ -26,7 +26,7 @@ var supportedMetadataKeys = []string{"id"}
 func NewMetadataCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "metadata",
-		Short: "Work with VM metadata.",
+		Short: "Interact with Ephemeral Clusters metadata.",
 	}
 
 	cmd.AddCommand(newReadCmd())

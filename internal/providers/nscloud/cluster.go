@@ -36,7 +36,7 @@ var (
 )
 
 func SetupFlags(flags *pflag.FlagSet, hide bool) {
-	api.SetupFlags(flags, hide)
+	api.SetupFlags("nscloud_", flags, hide)
 	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_machine_type")
 }

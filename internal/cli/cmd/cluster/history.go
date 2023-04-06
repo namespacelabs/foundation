@@ -14,7 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func newListCmd() *cobra.Command {
+func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Lists all of your clusters.",

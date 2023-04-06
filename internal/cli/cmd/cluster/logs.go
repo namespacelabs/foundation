@@ -18,7 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func newLogsCmd() *cobra.Command {
+func NewLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logs [cluster-id]",
 		Short: "Prints log for a cluster.",

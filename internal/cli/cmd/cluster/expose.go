@@ -33,7 +33,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func newExposeCmd() *cobra.Command {
+func NewExposeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "expose [cluster-id]",
 		Short: "Opens a public ingress to the specified exported port.",

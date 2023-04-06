@@ -27,7 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func newSshCmd() *cobra.Command {
+func NewSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [cluster-id]",
 		Short: "Start an SSH session.",

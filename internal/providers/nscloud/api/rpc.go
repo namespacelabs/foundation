@@ -53,13 +53,16 @@ var (
 	regionName          string
 )
 
-func SetupFlags(flags *pflag.FlagSet, hide bool) {
-	flags.StringVar(&rpcEndpointOverride, "nscloud_endpoint", "", "Where to dial to when reaching nscloud.")
-	flags.StringVar(&regionName, "nscloud_region", "fra1", "Which region to use.")
+func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
+	endpointFlag := fmt.Sprintf("%sendpoint", prefix)
+	regionFlag := fmt.Sprintf("%sregion", prefix)
+
+	flags.StringVar(&rpcEndpointOverride, endpointFlag, "", "Where to dial to when reaching nscloud.")
+	flags.StringVar(&regionName, regionFlag, "fra1", "Which region to use.")
 
 	if hide {
-		_ = flags.MarkHidden("nscloud_endpoint")
-		_ = flags.MarkHidden("nscloud_region")
+		_ = flags.MarkHidden(endpointFlag)
+		_ = flags.MarkHidden(regionFlag)
 	}
 }
 

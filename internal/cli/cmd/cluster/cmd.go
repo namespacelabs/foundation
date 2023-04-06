@@ -29,9 +29,9 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 		Hidden: hidden,
 	}
 
-	cmd.AddCommand(newCreateCmd())
-	cmd.AddCommand(newListCmd())
-	cmd.AddCommand(newSshCmd())
+	cmd.AddCommand(NewCreateCmd())
+	cmd.AddCommand(NewListCmd())
+	cmd.AddCommand(NewSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
 	cmd.AddCommand(NewKubectlCmd())
@@ -39,12 +39,13 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(NewBuildctlCmd())
 	cmd.AddCommand(NewBuildCmd())
 	cmd.AddCommand(newHistoryCmd())
-	cmd.AddCommand(newLogsCmd())
+	cmd.AddCommand(NewLogsCmd())
 	cmd.AddCommand(newDockerCmd())
 	cmd.AddCommand(NewProxyCmd())
 	cmd.AddCommand(NewDockerLoginCmd(true)) // Adding hidden command under `cluster` to support old action versions.
 	cmd.AddCommand(newExperimentalCmd())
-	cmd.AddCommand(newExposeCmd())
+	cmd.AddCommand(NewExposeCmd())
+	cmd.AddCommand(NewMetadataCmd())
 
 	h := &cobra.Command{
 		Use:    "internal",

@@ -19,7 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 )
 
-func newCreateCmd() *cobra.Command {
+func NewCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Creates a new cluster.",

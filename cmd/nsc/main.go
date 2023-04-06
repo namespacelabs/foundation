@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
-	"namespacelabs.dev/foundation/internal/cli/cmd/metadata"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -20,7 +19,7 @@ import (
 func main() {
 	// Consider adding auto updates if we frequently change nsc.
 	fncobra.DoMain("nsc", false, func(root *cobra.Command) {
-		api.SetupFlags(root.PersistentFlags(), false)
+		api.SetupFlags("", root.PersistentFlags(), false)
 
 		root.AddCommand(auth.NewAuthCmd())
 		root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
@@ -32,7 +31,11 @@ func main() {
 		root.AddCommand(cluster.NewBuildctlCmd())         // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
 		root.AddCommand(cluster.NewBuildCmd())            // `nsc build` acts as an alias for `nsc cluster build`
 		root.AddCommand(cluster.NewDockerLoginCmd(false)) // `nsc docker-login` acts as an alias for `nsc cluster docker-login`
-		root.AddCommand(metadata.NewMetadataCmd())
+		root.AddCommand(cluster.NewMetadataCmd())         // `nsc metadata` acts as an alias for `nsc cluster metadata`
+		root.AddCommand(cluster.NewCreateCmd())           // nsc create
+		root.AddCommand(cluster.NewListCmd())             // nsc list
+		root.AddCommand(cluster.NewLogsCmd())             // nsc logs
+		root.AddCommand(cluster.NewExposeCmd())           // nsc expose
 
 		root.AddCommand(sdk.NewSdkCmd(true))
 
