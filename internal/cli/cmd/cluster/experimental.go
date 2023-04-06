@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 func newExperimentalCmd() *cobra.Command {
@@ -27,13 +28,20 @@ func newExperimentalCmd() *cobra.Command {
 	}
 
 	image := run.Flags().String("image", "", "Which image to run.")
+	requestedName := run.Flags().String("name", "", "If no name is specified, one is generated.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *image == "" {
 			return fnerrors.New("--image is required")
 		}
 
+		name := *requestedName
+		if name == "" {
+			name = ids.NewRandomBase32ID(6)
+		}
+
 		container := &api.ContainerRequest{
+			Name:  name,
 			Image: *image,
 			Args:  args,
 			Flag:  []string{"TERMINATE_ON_EXIT"},
