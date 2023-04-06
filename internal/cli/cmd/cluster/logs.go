@@ -25,12 +25,12 @@ func NewLogsCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
-	follow := cmd.Flags().BoolP("follow", "f", false, "Specify if the logs should be streamed.")
-	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs since a relative timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
-	namespace := cmd.Flags().StringP("namespace", "n", "", "Print the logs of this namespace.")
-	pod := cmd.Flags().StringP("pod", "p", "", "Print the logs of this pod.")
-	container := cmd.Flags().StringP("container", "c", "", "Print the logs of this container.")
-	raw := cmd.Flags().Bool("raw", false, "Print the raw logs to stdout (skipping namespace/pod labels).")
+	follow := cmd.Flags().BoolP("follow", "f", true, "Specify if logs should be streamed continuously.")
+	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs relative to a timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
+	namespace := cmd.Flags().StringP("namespace", "n", "", "If specified, only display logs of this Kubernetes namespace.")
+	pod := cmd.Flags().StringP("pod", "p", "", "If specified, only display logs of this Kubernetes Pod.")
+	container := cmd.Flags().StringP("container", "c", "", "If specified, only display logs of this container.")
+	raw := cmd.Flags().Bool("raw", false, "Output raw logs (skipping namespace/pod labels).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := selectCluster(ctx, args)
