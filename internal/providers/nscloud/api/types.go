@@ -55,14 +55,34 @@ type CreateContainersRequest struct {
 }
 
 type ContainerRequest struct {
-	Name  string   `json:"name,omitempty"`
-	Image string   `json:"image,omitempty"`
-	Args  []string `json:"args,omitempty"`
-	Flag  []string `json:"flag,omitempty"`
+	Name       string           `json:"name,omitempty"`
+	Image      string           `json:"image,omitempty"`
+	Args       []string         `json:"args,omitempty"`
+	Flag       []string         `json:"flag,omitempty"`
+	ExportPort []*ContainerPort `json:"export_port,omitempty"`
+}
+
+type ContainerPort struct {
+	Proto string `json:"proto,omitempty"`
+	Port  int32  `json:"port,omitempty"`
 }
 
 type CreateContainersResponse struct {
-	ClusterId string `json:"cluster_id,omitempty"`
+	ClusterId  string       `json:"cluster_id,omitempty"`
+	ClusterUrl string       `json:"cluster_url,omitempty"`
+	Container  []*Container `json:"container,omitempty"`
+}
+
+type Container struct {
+	Id           string                             `json:"id,omitempty"`
+	Name         string                             `json:"name,omitempty"`
+	ExportedPort []*Container_ExportedContainerPort `json:"exported_port,omitempty"`
+}
+
+type Container_ExportedContainerPort struct {
+	Proto       string `json:"proto,omitempty"`
+	Port        int32  `json:"port,omitempty"`
+	IngressFqdn string `json:"ingress_fqdn,omitempty"`
 }
 
 type ListKubernetesClustersRequest struct {
