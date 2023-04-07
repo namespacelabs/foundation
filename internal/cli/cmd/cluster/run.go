@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -34,6 +35,7 @@ func NewRunCmd() *cobra.Command {
 	image := run.Flags().String("image", "", "Which image to run.")
 	requestedName := run.Flags().String("name", "", "If no name is specified, one is generated.")
 	exportedPorts := run.Flags().Int32SliceP("publish", "p", nil, "Publish the specified ports.")
+	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -46,7 +48,12 @@ func NewRunCmd() *cobra.Command {
 			name = generateNameFromImage(*image)
 		}
 
-		return createContainer(ctx, *image, name, *exportedPorts, args)
+		resp, err := createContainer(ctx, *image, name, *exportedPorts, args)
+		if err != nil {
+			return err
+		}
+
+		return printResult(ctx, *output, resp)
 	})
 
 	return run
@@ -60,14 +67,20 @@ func NewRunComposeCmd() *cobra.Command {
 		Hidden: true,
 	}
 
+	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
+
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return createCompose(ctx)
+		resp, err := createCompose(ctx)
+		if err != nil {
+			return err
+		}
+		return printResult(ctx, *output, resp)
 	})
 
 	return run
 }
 
-func createContainer(ctx context.Context, name, image string, ports []int32, args []string) error {
+func createContainer(ctx context.Context, name, image string, ports []int32, args []string) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
 		Name:  name,
 		Image: image,
@@ -92,35 +105,48 @@ func createContainer(ctx context.Context, name, image string, ports []int32, arg
 		return &response, nil
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
-		return err
+		return nil, err
 	}
 
-	return printResult(ctx, resp)
+	return resp, nil
 }
 
-func printResult(ctx context.Context, resp *api.CreateContainersResponse) error {
-	fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
-	fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
+func printResult(ctx context.Context, output string, resp *api.CreateContainersResponse) error {
+	switch output {
+	case "json":
+		d := json.NewEncoder(console.Stdout(ctx))
+		d.SetIndent("", "  ")
+		return d.Encode(resp)
 
-	for _, ctr := range resp.Container {
-		fmt.Fprintf(console.Stdout(ctx), "\n  Running %q\n", ctr.Name)
-		if len(ctr.ExportedPort) > 0 {
-			fmt.Fprintln(console.Stdout(ctx))
-			for _, port := range ctr.ExportedPort {
-				fmt.Fprintf(console.Stdout(ctx), "    Exported %d/%s as https://%s\n", port.Port, port.Proto, port.IngressFqdn)
+	default:
+		if output != "plan" {
+			fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
+		fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
+
+		for _, ctr := range resp.Container {
+			fmt.Fprintf(console.Stdout(ctx), "\n  Running %q\n", ctr.Name)
+			if len(ctr.ExportedPort) > 0 {
+				fmt.Fprintln(console.Stdout(ctx))
+				for _, port := range ctr.ExportedPort {
+					fmt.Fprintf(console.Stdout(ctx), "    Exported %d/%s as https://%s\n", port.Port, port.Proto, port.IngressFqdn)
+				}
 			}
 		}
+
+		fmt.Fprintln(console.Stdout(ctx))
 	}
 
-	fmt.Fprintln(console.Stdout(ctx))
 	return nil
 }
 
-func createCompose(ctx context.Context) error {
+func createCompose(ctx context.Context) (*api.CreateContainersResponse, error) {
 	var optionsFn []composecli.ProjectOptionsFn
 	optionsFn = append(optionsFn,
 		composecli.WithOsEnv,
@@ -134,17 +160,17 @@ func createCompose(ctx context.Context) error {
 
 	projectOptions, err := composecli.NewProjectOptions(nil, optionsFn...)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	project, err := composecli.ProjectFromOptions(projectOptions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	projectYAML, err := yaml.Marshal(project)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
@@ -157,14 +183,14 @@ func createCompose(ctx context.Context) error {
 		return &response, nil
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
-		return err
+		return nil, err
 	}
 
-	return printResult(ctx, resp)
+	return resp, nil
 }
 
 func sshRun(ctx context.Context, sshcli *ssh.Client, io rtypes.IO, cmd string) error {
