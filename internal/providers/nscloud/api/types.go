@@ -55,6 +55,11 @@ type CreateContainersRequest struct {
 	Compose     []*ComposeRequest   `json:"compose,omitempty"`
 }
 
+type StartContainersRequest struct {
+	Id        string              `json:"id,omitempty"`
+	Container []*ContainerRequest `json:"container,omitempty"`
+}
+
 type ContainerRequest struct {
 	Name       string           `json:"name,omitempty"`
 	Image      string           `json:"image,omitempty"`
@@ -76,6 +81,10 @@ type CreateContainersResponse struct {
 	ClusterId  string       `json:"cluster_id,omitempty"`
 	ClusterUrl string       `json:"cluster_url,omitempty"`
 	Container  []*Container `json:"container,omitempty"`
+}
+
+type StartContainersResponse struct {
+	Container []*Container `json:"container,omitempty"`
 }
 
 type Container struct {

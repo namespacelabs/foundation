@@ -35,7 +35,8 @@ func NewRunCmd() *cobra.Command {
 	image := run.Flags().String("image", "", "Which image to run.")
 	requestedName := run.Flags().String("name", "", "If no name is specified, one is generated.")
 	exportedPorts := run.Flags().Int32SliceP("publish", "p", nil, "Publish the specified ports.")
-	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
+	output := run.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	on := run.Flags().String("on", "", "Run the container in the specified container, instead of creating a new one.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -48,7 +49,7 @@ func NewRunCmd() *cobra.Command {
 			name = generateNameFromImage(*image)
 		}
 
-		resp, err := createContainer(ctx, *image, name, *exportedPorts, args)
+		resp, err := createContainer(ctx, *on, name, *image, *exportedPorts, args)
 		if err != nil {
 			return err
 		}
@@ -80,7 +81,7 @@ func NewRunComposeCmd() *cobra.Command {
 	return run
 }
 
-func createContainer(ctx context.Context, name, image string, ports []int32, args []string) (*api.CreateContainersResponse, error) {
+func createContainer(ctx context.Context, target, name, image string, ports []int32, args []string) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
 		Name:  name,
 		Image: image,
@@ -95,24 +96,40 @@ func createContainer(ctx context.Context, name, image string, ports []int32, arg
 		})
 	}
 
-	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
-		var response api.CreateContainersResponse
-		if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
+	if target == "" {
+		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
+			var response api.CreateContainersResponse
+			if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
+				Container: []*api.ContainerRequest{container},
+			}, fnapi.DecodeJSONResponse(&response)); err != nil {
+				return nil, err
+			}
+			return &response, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+			return nil, err
+		}
+
+		return resp, nil
+	}
+
+	return tasks.Return(ctx, tasks.Action("nscloud.start-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
+		var response api.StartContainersResponse
+		if err := api.Endpoint.StartContainers.Do(ctx, api.StartContainersRequest{
+			Id:        target,
 			Container: []*api.ContainerRequest{container},
 		}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
-		return &response, nil
+
+		return &api.CreateContainersResponse{
+			Container: response.Container,
+		}, nil
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
-		return nil, err
-	}
-
-	return resp, nil
 }
 
 func printResult(ctx context.Context, output string, resp *api.CreateContainersResponse) error {
@@ -127,8 +144,10 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 			fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
-		fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
+		if resp.ClusterId != "" {
+			fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
+			fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
+		}
 
 		for _, ctr := range resp.Container {
 			fmt.Fprintf(console.Stdout(ctx), "\n  Running %q\n", ctr.Name)

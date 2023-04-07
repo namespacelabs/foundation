@@ -31,6 +31,7 @@ import (
 type API struct {
 	StartCreateKubernetesCluster fnapi.Call[CreateKubernetesClusterRequest]
 	CreateContainers             fnapi.Call[CreateContainersRequest]
+	StartContainers              fnapi.Call[StartContainersRequest]
 	GetKubernetesCluster         fnapi.Call[GetKubernetesClusterRequest]
 	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
@@ -87,6 +88,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/CreateContainers",
+		},
+
+		StartContainers: fnapi.Call[StartContainersRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/StartContainers",
 		},
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
