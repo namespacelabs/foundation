@@ -69,12 +69,14 @@ func NewRunComposeCmd() *cobra.Command {
 	}
 
 	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
+	dir := run.Flags().String("dir", "", "If not specified, loads the compose project from the current working directory.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		resp, err := createCompose(ctx)
+		resp, err := createCompose(ctx, *dir)
 		if err != nil {
 			return err
 		}
+
 		return printResult(ctx, *output, resp)
 	})
 
@@ -165,17 +167,20 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 	return nil
 }
 
-func createCompose(ctx context.Context) (*api.CreateContainersResponse, error) {
+func createCompose(ctx context.Context, dir string) (*api.CreateContainersResponse, error) {
 	var optionsFn []composecli.ProjectOptionsFn
 	optionsFn = append(optionsFn,
 		composecli.WithOsEnv,
-		// composecli.WithWorkingDirectory(o.ProjectDirectory),
 		// composecli.WithEnvFile(o.EnvFile),
 		composecli.WithConfigFileEnv,
 		composecli.WithDefaultConfigPath,
 		composecli.WithDotEnv,
 		// composecli.WithName(o.Project),
 	)
+
+	if dir != "" {
+		optionsFn = append(optionsFn, composecli.WithWorkingDirectory(dir))
+	}
 
 	projectOptions, err := composecli.NewProjectOptions(nil, optionsFn...)
 	if err != nil {
