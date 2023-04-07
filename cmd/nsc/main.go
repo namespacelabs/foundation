@@ -36,6 +36,8 @@ func main() {
 		root.AddCommand(cluster.NewListCmd())             // nsc list
 		root.AddCommand(cluster.NewLogsCmd())             // nsc logs
 		root.AddCommand(cluster.NewExposeCmd())           // nsc expose
+		root.AddCommand(cluster.NewRunCmd())              // nsc run
+		root.AddCommand(cluster.NewRunComposeCmd())       // nsc run-compose
 
 		root.AddCommand(sdk.NewSdkCmd(true))
 

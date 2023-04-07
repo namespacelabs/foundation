@@ -212,11 +212,11 @@ func parseContainerName(id, name string) (string, string) {
 	return internalName, suggestedPrefix
 }
 
-func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, containerName string) (portMap, error) {
+func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *containerd.Client) error) error {
 	// We must fetch a token with our parent context, so we get a task sink etc.
 	token, err := fnapi.FetchTenantToken(ctx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s-containerd", cluster.ClusterId),
@@ -229,62 +229,73 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer conn.Close()
 
 	ctr, err := containerd.NewWithConn(conn)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	defer ctr.Conn()
 
 	ctx = namespaces.WithNamespace(ctx, "default")
 
+	return callback(ctx, ctr)
+}
+
+func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, containerName string) (portMap, error) {
 	exported := portMap{}
-	walker := &containerwalker.ContainerWalker{
-		Client: ctr,
-		OnFound: func(ctx context.Context, found containerwalker.Found) error {
-			if found.MatchCount > 1 {
-				return rpcerrors.Errorf(codes.InvalidArgument, "container name matches multiple containers")
-			}
 
-			l, err := found.Container.Labels(ctx)
-			if err != nil {
-				return err
-			}
-
-			ports, err := portutil.ParsePortsLabel(l)
-			if err != nil {
-				return err
-			}
-
-			internalName, suggestedPrefix := parseContainerName(found.Container.ID(), l[labels.Name])
-
-			for _, p := range ports {
-				if p.Protocol == "tcp" && p.HostIP == "0.0.0.0" {
-					exported[int(p.ContainerPort)] = containerPort{
-						ContainerID:     found.Container.ID(),
-						ContainerName:   internalName,
-						SuggestedPrefix: suggestedPrefix,
-						ExportedPort:    p.HostPort,
-					}
-				} else {
-					fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", p.ContainerPort, p.Protocol, p.HostIP)
+	if err := withContainerd(ctx, cluster, func(ctx context.Context, ctr *containerd.Client) error {
+		walker := &containerwalker.ContainerWalker{
+			Client: ctr,
+			OnFound: func(ctx context.Context, found containerwalker.Found) error {
+				if found.MatchCount > 1 {
+					return rpcerrors.Errorf(codes.InvalidArgument, "container name matches multiple containers")
 				}
-			}
 
-			return nil
-		},
-	}
+				l, err := found.Container.Labels(ctx)
+				if err != nil {
+					return err
+				}
 
-	n, err := walker.Walk(ctx, containerName)
-	if err != nil {
+				ports, err := portutil.ParsePortsLabel(l)
+				if err != nil {
+					return err
+				}
+
+				internalName, suggestedPrefix := parseContainerName(found.Container.ID(), l[labels.Name])
+
+				for _, p := range ports {
+					if p.Protocol == "tcp" && p.HostIP == "0.0.0.0" {
+						exported[int(p.ContainerPort)] = containerPort{
+							ContainerID:     found.Container.ID(),
+							ContainerName:   internalName,
+							SuggestedPrefix: suggestedPrefix,
+							ExportedPort:    p.HostPort,
+						}
+					} else {
+						fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", p.ContainerPort, p.Protocol, p.HostIP)
+					}
+				}
+
+				return nil
+			},
+		}
+
+		n, err := walker.Walk(ctx, containerName)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return rpcerrors.Errorf(codes.NotFound, "no such container %q", containerName)
+		}
+
+		return nil
+	}); err != nil {
 		return nil, err
-	} else if n == 0 {
-		return nil, rpcerrors.Errorf(codes.NotFound, "no such container %q", containerName)
 	}
 
 	return exported, nil

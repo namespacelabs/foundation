@@ -52,6 +52,7 @@ type StartCreateKubernetesClusterResponse struct {
 type CreateContainersRequest struct {
 	MachineType string              `json:"machine_type,omitempty"`
 	Container   []*ContainerRequest `json:"container,omitempty"`
+	Compose     []*ComposeRequest   `json:"compose,omitempty"`
 }
 
 type ContainerRequest struct {
@@ -60,6 +61,10 @@ type ContainerRequest struct {
 	Args       []string         `json:"args,omitempty"`
 	Flag       []string         `json:"flag,omitempty"`
 	ExportPort []*ContainerPort `json:"export_port,omitempty"`
+}
+
+type ComposeRequest struct {
+	Contents []byte `json:"contents,omitempty"`
 }
 
 type ContainerPort struct {

@@ -74,11 +74,7 @@ func NewSshCmd() *cobra.Command {
 	return cmd
 }
 
-func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
-	if len(args) > 0 {
-		return fnerrors.New("unimplemented")
-	}
-
+func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *ssh.Client) error) error {
 	sshSvc := api.ClusterService(cluster, "ssh")
 	if sshSvc == nil || sshSvc.Endpoint == "" {
 		return fnerrors.New("cluster does not have ssh")
@@ -86,15 +82,6 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 
 	if sshSvc.Status != "READY" {
 		return fnerrors.New("expected ssh to be READY, saw %q", sshSvc.Status)
-	}
-
-	stdin, err := c.ConsoleFromFile(os.Stdin)
-	if err != nil {
-		return err
-	}
-
-	if !isatty.IsTerminal(stdin.Fd()) {
-		return fnerrors.New("stdin is not a tty")
 	}
 
 	signer, err := ssh.ParsePrivateKey(cluster.SshPrivateKey)
@@ -123,67 +110,86 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 	client := ssh.NewClient(c, chans, reqs)
 	defer client.Close()
 
-	session, err := client.NewSession()
+	return callback(ctx, client)
+}
+
+func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
+	if len(args) > 0 {
+		return fnerrors.New("unimplemented")
+	}
+
+	stdin, err := c.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err
 	}
 
-	if sshAgent {
-		if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
-			if err := agent.ForwardToRemote(client, authSock); err != nil {
-				return err
-			}
+	if !isatty.IsTerminal(stdin.Fd()) {
+		return fnerrors.New("stdin is not a tty")
+	}
 
-			if err := agent.RequestAgentForwarding(session); err != nil {
-				return err
-			}
-		} else {
-			fmt.Fprintf(console.Warnings(ctx), "ssh-agent forwarding requested, without a SSH_AUTH_SOCK\n")
+	return withSsh(ctx, cluster, func(ctx context.Context, client *ssh.Client) error {
+		session, err := client.NewSession()
+		if err != nil {
+			return err
 		}
-	}
 
-	session.Stdin = stdin
-	session.Stdout = os.Stdout
-	session.Stderr = os.Stderr
+		if sshAgent {
+			if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
+				if err := agent.ForwardToRemote(client, authSock); err != nil {
+					return err
+				}
 
-	defer session.Close()
+				if err := agent.RequestAgentForwarding(session); err != nil {
+					return err
+				}
+			} else {
+				fmt.Fprintf(console.Warnings(ctx), "ssh-agent forwarding requested, without a SSH_AUTH_SOCK\n")
+			}
+		}
 
-	done := con.EnterInputMode(ctx)
-	defer done()
+		session.Stdin = stdin
+		session.Stdout = os.Stdout
+		session.Stderr = os.Stderr
 
-	if err := stdin.SetRaw(); err != nil {
-		return err
-	}
+		defer session.Close()
 
-	defer stdin.Reset()
+		done := con.EnterInputMode(ctx)
+		defer done()
 
-	w, h, err := term.GetSize(int(stdin.Fd()))
-	if err != nil {
-		return err
-	}
+		if err := stdin.SetRaw(); err != nil {
+			return err
+		}
 
-	go listenForResize(ctx, stdin, session)
+		defer stdin.Reset()
 
-	if err := session.RequestPty("xterm", h, w, nil); err != nil {
-		return err
-	}
+		w, h, err := term.GetSize(int(stdin.Fd()))
+		if err != nil {
+			return err
+		}
 
-	if err := session.Shell(); err != nil {
-		return err
-	}
+		go listenForResize(ctx, stdin, session)
 
-	g := executor.New(ctx, "ssh")
-	cancel := g.GoCancelable(func(ctx context.Context) error {
-		return api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
-			fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
-			return nil
+		if err := session.RequestPty("xterm", h, w, nil); err != nil {
+			return err
+		}
+
+		if err := session.Shell(); err != nil {
+			return err
+		}
+
+		g := executor.New(ctx, "ssh")
+		cancel := g.GoCancelable(func(ctx context.Context) error {
+			return api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
+				fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
+				return nil
+			})
 		})
+		g.Go(func(ctx context.Context) error {
+			defer cancel()
+			return session.Wait()
+		})
+		return g.Wait()
 	})
-	g.Go(func(ctx context.Context) error {
-		defer cancel()
-		return session.Wait()
-	})
-	return g.Wait()
 }
 
 func listenForResize(ctx context.Context, stdin c.Console, session *ssh.Session) {

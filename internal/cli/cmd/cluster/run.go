@@ -9,18 +9,22 @@ import (
 	"fmt"
 	"strings"
 
+	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
+	"golang.org/x/crypto/ssh"
+	"gopkg.in/yaml.v3"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
-func newRunCmd() *cobra.Command {
+func NewRunCmd() *cobra.Command {
 	run := &cobra.Command{
 		Use:   "run",
 		Short: "Starts a container in an ephemeral environment, optionally exporting ports for public serving.",
@@ -32,65 +36,150 @@ func newRunCmd() *cobra.Command {
 	exportedPorts := run.Flags().Int32SliceP("publish", "p", nil, "Publish the specified ports.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		name := *requestedName
+
 		if *image == "" {
 			return fnerrors.New("--image is required")
 		}
 
-		name := *requestedName
 		if name == "" {
 			name = generateNameFromImage(*image)
 		}
 
-		container := &api.ContainerRequest{
-			Name:  name,
-			Image: *image,
-			Args:  args,
-			Flag:  []string{"TERMINATE_ON_EXIT"},
-		}
-
-		for _, port := range *exportedPorts {
-			container.ExportPort = append(container.ExportPort, &api.ContainerPort{
-				Proto: "tcp",
-				Port:  port,
-			})
-		}
-
-		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
-			var response api.CreateContainersResponse
-			if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
-				Container: []*api.ContainerRequest{container},
-			}, fnapi.DecodeJSONResponse(&response)); err != nil {
-				return nil, err
-			}
-			return &response, nil
-		})
-		if err != nil {
-			return err
-		}
-
-		if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
-			return err
-		}
-
-		fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
-		fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
-
-		for _, ctr := range resp.Container {
-			fmt.Fprintf(console.Stdout(ctx), "\n  Running %q\n", ctr.Name)
-			if len(ctr.ExportedPort) > 0 {
-				fmt.Fprintln(console.Stdout(ctx))
-				for _, port := range ctr.ExportedPort {
-					fmt.Fprintf(console.Stdout(ctx), "    Exported %d/%s as https://%s\n", port.Port, port.Proto, port.IngressFqdn)
-				}
-			}
-		}
-
-		fmt.Fprintln(console.Stdout(ctx))
-
-		return nil
+		return createContainer(ctx, *image, name, *exportedPorts, args)
 	})
 
 	return run
+}
+
+func NewRunComposeCmd() *cobra.Command {
+	run := &cobra.Command{
+		Use:    "run-compose",
+		Short:  "Starts a set of containers in an ephemeral environment.",
+		Args:   cobra.NoArgs,
+		Hidden: true,
+	}
+
+	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return createCompose(ctx)
+	})
+
+	return run
+}
+
+func createContainer(ctx context.Context, name, image string, ports []int32, args []string) error {
+	container := &api.ContainerRequest{
+		Name:  name,
+		Image: image,
+		Args:  args,
+		Flag:  []string{"TERMINATE_ON_EXIT"},
+	}
+
+	for _, port := range ports {
+		container.ExportPort = append(container.ExportPort, &api.ContainerPort{
+			Proto: "tcp",
+			Port:  port,
+		})
+	}
+
+	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
+		var response api.CreateContainersResponse
+		if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
+			Container: []*api.ContainerRequest{container},
+		}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+		return err
+	}
+
+	return printResult(ctx, resp)
+}
+
+func printResult(ctx context.Context, resp *api.CreateContainersResponse) error {
+	fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
+	fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
+
+	for _, ctr := range resp.Container {
+		fmt.Fprintf(console.Stdout(ctx), "\n  Running %q\n", ctr.Name)
+		if len(ctr.ExportedPort) > 0 {
+			fmt.Fprintln(console.Stdout(ctx))
+			for _, port := range ctr.ExportedPort {
+				fmt.Fprintf(console.Stdout(ctx), "    Exported %d/%s as https://%s\n", port.Port, port.Proto, port.IngressFqdn)
+			}
+		}
+	}
+
+	fmt.Fprintln(console.Stdout(ctx))
+	return nil
+}
+
+func createCompose(ctx context.Context) error {
+	var optionsFn []composecli.ProjectOptionsFn
+	optionsFn = append(optionsFn,
+		composecli.WithOsEnv,
+		// composecli.WithWorkingDirectory(o.ProjectDirectory),
+		// composecli.WithEnvFile(o.EnvFile),
+		composecli.WithConfigFileEnv,
+		composecli.WithDefaultConfigPath,
+		composecli.WithDotEnv,
+		// composecli.WithName(o.Project),
+	)
+
+	projectOptions, err := composecli.NewProjectOptions(nil, optionsFn...)
+	if err != nil {
+		return err
+	}
+
+	project, err := composecli.ProjectFromOptions(projectOptions)
+	if err != nil {
+		return err
+	}
+
+	projectYAML, err := yaml.Marshal(project)
+	if err != nil {
+		return err
+	}
+
+	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
+		var response api.CreateContainersResponse
+		if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
+			Compose: []*api.ComposeRequest{{Contents: projectYAML}},
+		}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+		return err
+	}
+
+	return printResult(ctx, resp)
+}
+
+func sshRun(ctx context.Context, sshcli *ssh.Client, io rtypes.IO, cmd string) error {
+	sess, err := sshcli.NewSession()
+	if err != nil {
+		return err
+	}
+
+	defer sess.Close()
+
+	sess.Stdin = io.Stdin
+	sess.Stdout = io.Stdout
+	sess.Stderr = io.Stderr
+
+	return sess.Run(cmd)
 }
 
 func generateNameFromImage(image string) string {
