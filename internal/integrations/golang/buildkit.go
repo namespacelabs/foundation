@@ -12,6 +12,8 @@ import (
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/util/system"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/baseimage"
@@ -64,7 +66,8 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 		label += fmt.Sprintf(" %s", bin.PackageName)
 	}
 
-	goBuild := goBuildArgs(bin.GoVersion, bin.StripBinary)
+	goBuild := []string{"build"}
+	goBuild = append(goBuild, quoteArgs(goBuildArgs(bin.GoVersion, bin.StripBinary))...)
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
 	relPath, err := makePkg(bin.GoWorkspacePath, bin.SourcePath)
@@ -84,6 +87,21 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 		AddMount("/out", prodBase)
 
 	return buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, state, local)
+}
+
+func quoteArgs(m map[string]string) []string {
+	keys := maps.Keys(m)
+	slices.Sort(keys)
+
+	var args []string
+	for _, k := range keys {
+		if v := m[k]; v != "" {
+			args = append(args, fmt.Sprintf("%s=%q", k, v))
+		} else {
+			args = append(args, k)
+		}
+	}
+	return args
 }
 
 func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {

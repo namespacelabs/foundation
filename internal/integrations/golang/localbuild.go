@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
@@ -106,10 +108,27 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 	var cmd localexec.Command
 	cmd.Label = "go build"
 	cmd.Command = golang.GoBin(sdk)
-	cmd.Args = append(goBuildArgs(sdk.Version, bin.StripBinary), "-o="+out, pkg)
+	cmd.Args = []string{"build"}
+	cmd.Args = append(cmd.Args, constructArgs(goBuildArgs(sdk.Version, bin.StripBinary))...)
+	cmd.Args = append(cmd.Args, "-o="+out, pkg)
 	cmd.AdditionalEnv = append(env, rungo.MakeGoEnv(sdk)...)
 	cmd.Dir = modulePath
 	return cmd.Run(ctx)
+}
+
+func constructArgs(m map[string]string) []string {
+	keys := maps.Keys(m)
+	slices.Sort(keys)
+
+	var args []string
+	for _, k := range keys {
+		if v := m[k]; v != "" {
+			args = append(args, fmt.Sprintf("%s=%s", k, v))
+		} else {
+			args = append(args, k)
+		}
+	}
+	return args
 }
 
 func makePkg(modPath, srcPath string) (string, error) {

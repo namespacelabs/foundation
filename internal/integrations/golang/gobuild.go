@@ -8,17 +8,20 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func goBuildArgs(goVersion string, strip bool) []string {
-	args := []string{"build", "-v", "-trimpath"}
+func goBuildArgs(goVersion string, strip bool) map[string]string {
+	m := map[string]string{
+		"-v":        "",
+		"-trimpath": "",
+	}
 
 	if strip {
-		args = append(args, "-ldflags", "-s -w")
+		m["-ldflags"] = "-s -w"
 	}
 
 	// VCS information is not included in the binaries, to ensure we have reproducible builds.
 	if semver.Compare("v"+goVersion, "v1.18") >= 0 {
-		args = append(args, "-buildvcs=false")
+		m["-buildvcs"] = "false"
 	}
 
-	return args
+	return m
 }
