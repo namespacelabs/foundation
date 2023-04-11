@@ -23,9 +23,10 @@ import (
 
 func NewKubectlCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "kubectl -- ...",
-		Short: "Run kubectl on the target cluster.",
-		Args:  cobra.MinimumNArgs(1),
+		Use:                "kubectl ...",
+		Short:              "Run kubectl on the target cluster.",
+		Args:               cobra.MinimumNArgs(1),
+		DisableFlagParsing: true,
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
