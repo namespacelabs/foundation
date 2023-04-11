@@ -146,7 +146,7 @@ func establishCluster(ctx context.Context, request string) (*api.CreateClusterRe
 		return response, nil
 	}
 
-	response, err := api.GetCluster(ctx, api.Endpoint, request)
+	response, err := api.EnsureCluster(ctx, api.Endpoint, request)
 	if err != nil {
 		return nil, err
 	}

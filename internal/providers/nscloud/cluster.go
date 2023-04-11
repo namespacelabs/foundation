@@ -106,7 +106,7 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
 	}
 
-	response, err := api.GetCluster(ctx, api.Endpoint, conf.ClusterId)
+	response, err := api.EnsureCluster(ctx, api.Endpoint, conf.ClusterId)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 
 func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string) (runtime.Planner, error) {
 	if conf, ok := clusterConfigType.CheckGet(env.Configuration()); ok {
-		response, err := api.GetCluster(ctx, api.Endpoint, conf.ClusterId)
+		response, err := api.EnsureCluster(ctx, api.Endpoint, conf.ClusterId)
 		if err != nil {
 			return nil, err
 		}

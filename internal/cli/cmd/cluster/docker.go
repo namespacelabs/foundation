@@ -36,7 +36,7 @@ func newDockerCmd() *cobra.Command {
 		clusterId := args[0]
 		args = args[1:]
 
-		response, err := api.GetCluster(ctx, api.Endpoint, clusterId)
+		response, err := api.EnsureCluster(ctx, api.Endpoint, clusterId)
 		if err != nil {
 			return err
 		}

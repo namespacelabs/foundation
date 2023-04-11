@@ -99,10 +99,12 @@ func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, 
 		}
 		clusterID = selected
 	}
-	response, err := api.GetCluster(ctx, api.Endpoint, clusterID)
+
+	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterID)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return response.Cluster, args, nil
 }
 

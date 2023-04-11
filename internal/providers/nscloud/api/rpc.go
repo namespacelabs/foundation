@@ -33,6 +33,7 @@ type API struct {
 	CreateContainers             fnapi.Call[CreateContainersRequest]
 	StartContainers              fnapi.Call[StartContainersRequest]
 	GetKubernetesCluster         fnapi.Call[GetKubernetesClusterRequest]
+	EnsureKubernetesCluster      fnapi.Call[EnsureKubernetesClusterRequest]
 	WaitKubernetesCluster        fnapi.Call[WaitKubernetesClusterRequest]
 	ListKubernetesClusters       fnapi.Call[ListKubernetesClustersRequest]
 	DestroyKubernetesCluster     fnapi.Call[DestroyKubernetesClusterRequest]
@@ -100,6 +101,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesCluster",
+		},
+
+		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/EnsureKubernetesCluster",
 		},
 
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
@@ -396,6 +403,16 @@ func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesC
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
 		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+}
+
+func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.ensure").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
+		var response GetKubernetesClusterResponse
+		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

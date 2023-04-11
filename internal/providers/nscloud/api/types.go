@@ -22,6 +22,10 @@ type GetKubernetesClusterRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
 
+type EnsureKubernetesClusterRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
 type WaitKubernetesClusterRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
