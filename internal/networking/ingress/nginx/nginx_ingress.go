@@ -186,6 +186,7 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 
 	annotations["kubernetes.io/ingress.class"] = "nginx"
 	annotations["nginx.ingress.kubernetes.io/backend-protocol"] = strings.ToUpper(string(backendProtocol))
+	annotations["nginx.ingress.kubernetes.io/enable-opentelemetry"] = "true"
 
 	if hasTLS {
 		annotations["nginx.ingress.kubernetes.io/ssl-redirect"] = "true"
