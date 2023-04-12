@@ -5,14 +5,23 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   labels:
-    app.kubernetes.io/name: ingress-nginx
-    app.kubernetes.io/instance: ingress-nginx
-    app.kubernetes.io/version: 1.1.1
     app.kubernetes.io/component: admission-webhook
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/version: 1.7.0
   name: ingress-nginx-admission
 webhooks:
-  - name: validate.nginx.ingress.kubernetes.io
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: ingress-nginx-controller-admission
+        namespace: ingress-nginx
+        path: /networking/v1/ingresses
+    failurePolicy: Fail
     matchPolicy: Equivalent
+    name: validate.nginx.ingress.kubernetes.io
     rules:
       - apiGroups:
           - networking.k8s.io
@@ -23,12 +32,4 @@ webhooks:
           - UPDATE
         resources:
           - ingresses
-    failurePolicy: Fail
     sideEffects: None
-    admissionReviewVersions:
-      - v1
-    clientConfig:
-      service:
-        namespace: ingress-nginx
-        name: ingress-nginx-controller-admission
-        path: /networking/v1/ingresses
