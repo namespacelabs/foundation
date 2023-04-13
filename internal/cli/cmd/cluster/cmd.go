@@ -22,30 +22,21 @@ import (
 
 var ErrEmptyClusterList = errors.New("no clusters")
 
-func NewClusterCmd(hidden bool) *cobra.Command {
+// Used by `nsc` (and as the basis to `ns cluster`)
+func NewBareClusterCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "cluster",
 		Short:  "Cluster-related activities.",
 		Hidden: hidden,
 	}
 
-	cmd.AddCommand(NewCreateCmd())
-	cmd.AddCommand(NewListCmd())
-	cmd.AddCommand(NewSshCmd())
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(NewKubectlCmd())
 	cmd.AddCommand(newKubeconfigCmd())
-	cmd.AddCommand(NewBuildctlCmd())
-	cmd.AddCommand(NewBuildCmd())
 	cmd.AddCommand(newHistoryCmd())
-	cmd.AddCommand(NewLogsCmd())
 	cmd.AddCommand(newDockerCmd())
 	cmd.AddCommand(NewProxyCmd())
 	cmd.AddCommand(NewDockerLoginCmd(true)) // Adding hidden command under `cluster` to support old action versions.
-	cmd.AddCommand(NewRunCmd())
-	cmd.AddCommand(NewRunComposeCmd())
-	cmd.AddCommand(NewExposeCmd())
 	cmd.AddCommand(NewMetadataCmd())
 
 	h := &cobra.Command{
@@ -57,6 +48,25 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 
 	h.AddCommand(newReleaseCmd())
 	h.AddCommand(newWakeCmd())
+
+	return cmd
+}
+
+// Used as `ns cluster`
+func NewClusterCmd(hidden bool) *cobra.Command {
+	cmd := NewBareClusterCmd(hidden)
+
+	cmd.AddCommand(NewCreateCmd())
+	cmd.AddCommand(NewListCmd())
+	cmd.AddCommand(NewSshCmd())
+	cmd.AddCommand(NewKubectlCmd())
+	cmd.AddCommand(NewBuildCmd())
+	cmd.AddCommand(NewLogsCmd())
+	cmd.AddCommand(NewProxyCmd())
+	cmd.AddCommand(NewRunCmd())
+	cmd.AddCommand(NewRunComposeCmd())
+	cmd.AddCommand(NewExposeCmd())
+	cmd.AddCommand(NewBuildkitCmd())
 
 	return cmd
 }

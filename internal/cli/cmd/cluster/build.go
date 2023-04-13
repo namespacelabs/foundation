@@ -56,7 +56,18 @@ var (
 	}
 )
 
-func NewBuildctlCmd() *cobra.Command {
+func NewBuildkitCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "buildkit",
+		Short: "Buildkit-related functionality.",
+	}
+
+	cmd.AddCommand(newBuildctlCmd())
+
+	return cmd
+}
+
+func newBuildctlCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "buildctl -- ...",
 		Short: "Run buildctl on the target build cluster.",

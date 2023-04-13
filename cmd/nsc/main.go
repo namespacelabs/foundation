@@ -26,18 +26,19 @@ func main() {
 
 		root.AddCommand(version.NewVersionCmd())
 
-		root.AddCommand(cluster.NewClusterCmd(false))
-		root.AddCommand(cluster.NewKubectlCmd())          // `nsc kubectl` acts as an alias for `nsc cluster kubectl`
-		root.AddCommand(cluster.NewBuildctlCmd())         // `nsc buildctl` acts as an alias for `nsc cluster buildctl`
-		root.AddCommand(cluster.NewBuildCmd())            // `nsc build` acts as an alias for `nsc cluster build`
-		root.AddCommand(cluster.NewDockerLoginCmd(false)) // `nsc docker-login` acts as an alias for `nsc cluster docker-login`
-		root.AddCommand(cluster.NewMetadataCmd())         // `nsc metadata` acts as an alias for `nsc cluster metadata`
+		root.AddCommand(cluster.NewBareClusterCmd(false))
+		root.AddCommand(cluster.NewKubectlCmd())          // nsc kubectl
+		root.AddCommand(cluster.NewBuildkitCmd())         // nsc buildkit builctl
+		root.AddCommand(cluster.NewBuildCmd())            // nsc build
+		root.AddCommand(cluster.NewDockerLoginCmd(false)) // nsc docker-login
+		root.AddCommand(cluster.NewMetadataCmd())         // nsc metadata
 		root.AddCommand(cluster.NewCreateCmd())           // nsc create
 		root.AddCommand(cluster.NewListCmd())             // nsc list
 		root.AddCommand(cluster.NewLogsCmd())             // nsc logs
 		root.AddCommand(cluster.NewExposeCmd())           // nsc expose
 		root.AddCommand(cluster.NewRunCmd())              // nsc run
 		root.AddCommand(cluster.NewRunComposeCmd())       // nsc run-compose
+		root.AddCommand(cluster.NewSshCmd())              // nsc ssh
 
 		root.AddCommand(sdk.NewSdkCmd(true))
 

@@ -25,7 +25,7 @@ func NewLoginCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "login",
-		Short: "Login to use Namespace services (DNS and SSL management, etc).",
+		Short: "Login to Namespace to use Ephemeral Clusters, Remote Builders, etc.",
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
