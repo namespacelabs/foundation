@@ -25,7 +25,7 @@ func NewLogsCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
-	follow := cmd.Flags().BoolP("follow", "f", true, "Specify if logs should be streamed continuously.")
+	follow := cmd.Flags().BoolP("follow", "f", false, "Specify if logs should be streamed continuously.")
 	since := cmd.Flags().Duration("since", time.Duration(0), "Show logs relative to a timestamp (e.g. 42m for 42 minutes). The flag can't be use with --follow.")
 	namespace := cmd.Flags().StringP("namespace", "n", "", "If specified, only display logs of this Kubernetes namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "If specified, only display logs of this Kubernetes Pod.")
