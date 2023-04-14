@@ -46,6 +46,20 @@ jobs:
           path: ns
           # We don't need to persist it for long, only for the next job to download it.
           retention-days: 1
+
+      - name: Build nsc
+        env:
+          CGO_ENABLED: 0
+        run: go build -v -o nsc ./cmd/nsc
+
+      - name: Upload nsc
+        uses: actions/upload-artifact@v3
+        with:
+          name: nsc-${{ runner.os }}
+          path: nsc
+          # We don't need to persist it for long, only for the next job to download it.
+          retention-days: 1
+
       - uses: k0kubun/action-slack@v2.0.0
         with:
           payload: |
@@ -206,6 +220,14 @@ jobs:
       - name: Make ns executable
         run: chmod +x ns && mv ns /tmp/ns
 
+      - name: Download nsc
+        uses: actions/download-artifact@v3
+        with:
+          name: nsc-${{ runner.os }}
+
+      - name: Make nsc executable
+        run: chmod +x nsc && mv nsc /tmp/nsc
+
       - name: Exchange Github token
         run: /tmp/ns auth exchange-github-token
 
@@ -233,7 +255,7 @@ jobs:
 
       - name: Test ns cluster commands
         run: |
-          ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/ns
+          ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/nsc
 
       - uses: k0kubun/action-slack@v2.0.0
         with:
