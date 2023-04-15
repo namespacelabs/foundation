@@ -19,7 +19,7 @@ import (
 
 func main() {
 	// Consider adding auto updates if we frequently change nsc.
-	fncobra.DoMain("nsc", false, func(root *cobra.Command) {
+	fncobra.DoMain("nsc", true, func(root *cobra.Command) {
 		api.SetupFlags("", root.PersistentFlags(), false)
 		ia.SetupFlags(root.PersistentFlags())
 

@@ -42,7 +42,7 @@ func DeferCheckVersion(ctx context.Context, command string) {
 		return
 	}
 
-	compute.On(ctx).BestEffort(tasks.Action("ns.check-updated"), func(ctx context.Context) error {
+	compute.On(ctx).BestEffort(tasks.Action(command+".check-updated"), func(ctx context.Context) error {
 		status, err := versioncheck.CheckRemote(ctx, ver, nil)
 		if err != nil {
 			fmt.Fprintf(console.Debug(ctx), "failed to check remote version: %v\n", err)
@@ -53,9 +53,9 @@ func DeferCheckVersion(ctx context.Context, command string) {
 			return nil
 		}
 
-		if newVersion, ok := nsboot.CheckInvalidate(command, status); ok {
-			compute.On(ctx).Cleanup(tasks.Action("ns.check-updated.notify").LogLevel(1), func(ctx context.Context) error {
-				fmt.Fprintf(console.Stdout(ctx), "\n\n  A new version of ns is available (%s). It will be automatically downloaded on the next run.\n\n", newVersion)
+		if nsboot.NewerVersion(command, status) {
+			compute.On(ctx).Cleanup(tasks.Action(command+".check-updated.notify").LogLevel(1), func(ctx context.Context) error {
+				fmt.Fprintf(console.Stdout(ctx), "\n\n  A new version of %s is available (%s).\n\n", command, status.Version)
 				return nil
 			})
 		}

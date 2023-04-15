@@ -74,7 +74,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
 	if autoUpdate {
-		ensureLatest(name)
+		maybeRunLatest(name, name == "ns")
 	}
 
 	rootCtx, style, flushLogs := SetupContext(context.Background())
@@ -204,12 +204,12 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	return style, err
 }
 
-func ensureLatest(command string) {
+func maybeRunLatest(command string, updateInline bool) {
 	if ver, err := version.Current(); err == nil {
 		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
 			rootCtx, style, flushLogs := SetupContext(context.Background())
 
-			cached, ns, err := nsboot.CheckUpdate(rootCtx, command, true, ver.Version)
+			cached, ns, err := nsboot.CheckUpdate(rootCtx, command, updateInline, ver.Version)
 			if err == nil && cached != nil {
 				flushLogs()
 

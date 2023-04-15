@@ -82,21 +82,27 @@ func checkExists(command string, cached *versionCache) (NSPackage, bool) {
 	return NSPackage{}, false
 }
 
-func CheckUpdate(ctx context.Context, command string, silent bool, currentVersion string) (*toolVersion, NSPackage, error) {
-	cached, needUpdate, err := loadCheckCachedMetadata(ctx, command, silent)
+func CheckUpdate(ctx context.Context, command string, updateInline bool, currentVersion string) (*toolVersion, NSPackage, error) {
+	cached, needUpdate, err := loadCheckCachedMetadata(ctx, command, true)
 	if err != nil {
 		return nil, NSPackage{}, fnerrors.New("failed to load versions.json: %w", err)
 	}
 
-	if cached != nil && !needUpdate {
+	if cached != nil {
 		if cached.Latest != nil && currentVersion != "" && semver.Compare(currentVersion, cached.Latest.TagName) >= 0 {
 			// Current version is at least as up to date as the downloaded version.
 			return nil, NSPackage{}, nil
 		}
 
-		if ns, ok := checkExists(command, cached); ok {
-			return cached.Latest, ns, nil
+		if !needUpdate {
+			if ns, ok := checkExists(command, cached); ok {
+				return cached.Latest, ns, nil
+			}
 		}
+	}
+
+	if !updateInline {
+		return nil, NSPackage{}, nil
 	}
 
 	var ver *toolVersion
@@ -243,18 +249,13 @@ func loadCachedMetadata(command string) (*versionCache, error) {
 	return &cache, nil
 }
 
-func CheckInvalidate(command string, ver *versioncheck.Status) (string, bool) {
+func NewerVersion(command string, ver *versioncheck.Status) bool {
 	cached, err := loadCachedMetadata(command)
 	if err == nil && cached != nil && cached.Latest != nil {
-		newVersion := semver.Compare(ver.Version, cached.Latest.TagName) > 0
-		if newVersion {
-			if err := invalidate(command, cached, ver.Version); err == nil {
-				return ver.Version, true
-			}
-		}
+		return semver.Compare(ver.Version, cached.Latest.TagName) > 0
 	}
 
-	return "", false
+	return false
 }
 
 func invalidate(command string, cached *versionCache, pending string) error {
