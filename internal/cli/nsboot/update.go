@@ -40,13 +40,19 @@ import (
 
 const (
 	updatePeriod = time.Hour * 24
-	versionsJson = "versions.json"
 )
 
-type NSPackage string
+type NSPackage struct {
+	Command string
+	Path    string
+}
+
+func versionsJson(command string) string {
+	return fmt.Sprintf("%s-version.json", command)
+}
 
 func (p NSPackage) Execute(ctx context.Context) error {
-	proc := exec.CommandContext(ctx, filepath.Join(string(p), "ns"), os.Args[1:]...)
+	proc := exec.CommandContext(ctx, filepath.Join(string(p.Path), p.Command), os.Args[1:]...)
 	proc.Stdin = os.Stdin
 	proc.Stdout = os.Stdout
 	proc.Stderr = os.Stderr
@@ -66,52 +72,53 @@ func (p NSPackage) ExecuteAndForwardExitCode(ctx context.Context, style colors.S
 	}
 }
 
-func checkExists(cached *versionCache) (NSPackage, bool) {
+func checkExists(command string, cached *versionCache) (NSPackage, bool) {
 	if cached != nil && cached.BinaryPath != "" {
 		if _, err := os.Stat(cached.BinaryPath); err == nil {
-			return NSPackage(cached.BinaryPath), true
+			return NSPackage{Command: command, Path: cached.BinaryPath}, true
 		}
 	}
 
-	return "", false
+	return NSPackage{}, false
 }
 
-func CheckUpdate(ctx context.Context, silent bool, currentVersion string) (*toolVersion, NSPackage, error) {
-	cached, needUpdate, err := loadCheckCachedMetadata(ctx, silent)
+func CheckUpdate(ctx context.Context, command string, silent bool, currentVersion string) (*toolVersion, NSPackage, error) {
+	cached, needUpdate, err := loadCheckCachedMetadata(ctx, command, silent)
 	if err != nil {
-		return nil, "", fnerrors.New("failed to load versions.json: %w", err)
+		return nil, NSPackage{}, fnerrors.New("failed to load versions.json: %w", err)
 	}
 
 	if cached != nil && !needUpdate {
 		if cached.Latest != nil && currentVersion != "" && semver.Compare(currentVersion, cached.Latest.TagName) >= 0 {
 			// Current version is at least as up to date as the downloaded version.
-			return nil, "", nil
+			return nil, NSPackage{}, nil
 		}
 
-		if ns, ok := checkExists(cached); ok {
+		if ns, ok := checkExists(command, cached); ok {
 			return cached.Latest, ns, nil
 		}
 	}
 
 	var ver *toolVersion
 	var ns NSPackage
+	ns.Command = command
 
 	updateErr := compute.Do(ctx, func(ctx context.Context) error {
 		var err error
-		ver, ns, err = performUpdate(ctx, cached, currentVersion, !needUpdate)
+		ver, ns, err = performUpdate(ctx, command, cached, currentVersion, !needUpdate)
 		return err
 	})
 
 	return ver, ns, updateErr
 }
 
-func ForceUpdate(ctx context.Context) error {
-	cached, err := loadCachedMetadata()
+func ForceUpdate(ctx context.Context, command string) error {
+	cached, err := loadCachedMetadata(command)
 	if err != nil {
 		return err
 	}
 
-	newVersion, _, err := performUpdate(ctx, cached, "", true)
+	newVersion, _, err := performUpdate(ctx, command, cached, "", true)
 	if err != nil {
 		return err
 	}
@@ -130,8 +137,8 @@ func AutoUpdateEnabled() bool {
 }
 
 // Loads version cache and applies default update policy.
-func loadCheckCachedMetadata(ctx context.Context, silent bool) (*versionCache, bool, error) {
-	cache, err := loadCachedMetadata()
+func loadCheckCachedMetadata(ctx context.Context, command string, silent bool) (*versionCache, bool, error) {
+	cache, err := loadCachedMetadata(command)
 	if err != nil {
 		return nil, false, err
 	}
@@ -151,16 +158,16 @@ func loadCheckCachedMetadata(ctx context.Context, silent bool) (*versionCache, b
 	return cache, needUpdate, nil
 }
 
-func performUpdate(ctx context.Context, previous *versionCache, currentVersion string, forceUpdate bool) (*toolVersion, NSPackage, error) {
+func performUpdate(ctx context.Context, command string, previous *versionCache, currentVersion string, forceUpdate bool) (*toolVersion, NSPackage, error) {
 	// XXX store the last time timestamp checked, else after 24h we're always checking.
-	newVersion, err := fetchRemoteVersion(ctx)
+	newVersion, err := fetchRemoteVersion(ctx, command)
 	if err != nil {
-		return nil, "", fnerrors.New("failed to load an update from the update service: %w", err)
+		return nil, NSPackage{}, fnerrors.New("failed to load an update from the update service: %w", err)
 	}
 
 	// If the latest version is not new than the current, just use the current binary.
 	if currentVersion != "" && semver.Compare(currentVersion, newVersion.TagName) >= 0 {
-		return nil, "", nil
+		return nil, NSPackage{}, nil
 	}
 
 	values := url.Values{}
@@ -178,22 +185,22 @@ func performUpdate(ctx context.Context, previous *versionCache, currentVersion s
 		values.Add("force_update", "true")
 	}
 
-	path, err := fetchBinary(ctx, newVersion, values)
+	path, err := fetchBinary(ctx, command, newVersion, values)
 	if err != nil {
-		return nil, "", fnerrors.New("failed to fetch a new tarball: %w", err)
+		return nil, NSPackage{}, fnerrors.New("failed to fetch a new tarball: %w", err)
 	}
 
 	// Only commit to the new version once we know that we got the new binary.
-	if err := persistVersion(newVersion, path); err != nil {
-		return nil, "", fnerrors.New("failed to persist the version cache: %w", err)
+	if err := persistVersion(command, newVersion, path); err != nil {
+		return nil, NSPackage{}, fnerrors.New("failed to persist the version cache: %w", err)
 	}
 
-	return newVersion, NSPackage(path), nil
+	return newVersion, NSPackage{Command: command, Path: path}, nil
 }
 
-func fetchRemoteVersion(ctx context.Context) (*toolVersion, error) {
-	return tasks.Return(ctx, tasks.Action("ns.version-check"), func(ctx context.Context) (*toolVersion, error) {
-		resp, err := fnapi.GetLatestVersion(ctx, nil)
+func fetchRemoteVersion(ctx context.Context, command string) (*toolVersion, error) {
+	return tasks.Return(ctx, tasks.Action(command+".version-check"), func(ctx context.Context) (*toolVersion, error) {
+		resp, err := fnapi.GetLatestVersion(ctx, map[string]any{command: map[string]any{}})
 		if err != nil {
 			return nil, err
 		}
@@ -213,13 +220,13 @@ func fetchRemoteVersion(ctx context.Context) (*toolVersion, error) {
 	})
 }
 
-func loadCachedMetadata() (*versionCache, error) {
+func loadCachedMetadata(command string) (*versionCache, error) {
 	cacheDir, err := dirs.Cache()
 	if err != nil {
 		return nil, err
 	}
 
-	bs, err := os.ReadFile(filepath.Join(cacheDir, versionsJson))
+	bs, err := os.ReadFile(filepath.Join(cacheDir, versionsJson(command)))
 	if err != nil {
 		if os.IsNotExist(err) {
 			// Missing the cache is okay.
@@ -236,12 +243,12 @@ func loadCachedMetadata() (*versionCache, error) {
 	return &cache, nil
 }
 
-func CheckInvalidate(ver *versioncheck.Status) (string, bool) {
-	cached, err := loadCachedMetadata()
+func CheckInvalidate(command string, ver *versioncheck.Status) (string, bool) {
+	cached, err := loadCachedMetadata(command)
 	if err == nil && cached != nil && cached.Latest != nil {
 		newVersion := semver.Compare(ver.Version, cached.Latest.TagName) > 0
 		if newVersion {
-			if err := invalidate(cached, ver.Version); err == nil {
+			if err := invalidate(command, cached, ver.Version); err == nil {
 				return ver.Version, true
 			}
 		}
@@ -250,13 +257,13 @@ func CheckInvalidate(ver *versioncheck.Status) (string, bool) {
 	return "", false
 }
 
-func invalidate(cached *versionCache, pending string) error {
+func invalidate(command string, cached *versionCache, pending string) error {
 	dir, err := dirs.Cache()
 	if err != nil {
 		return err
 	}
 
-	return rewrite(dir, versionsJson, func(w io.Writer) error {
+	return rewrite(dir, versionsJson(command), func(w io.Writer) error {
 		copy := *cached
 		copy.PendingVersion = pending
 		enc := json.NewEncoder(w)
@@ -265,13 +272,13 @@ func invalidate(cached *versionCache, pending string) error {
 	})
 }
 
-func persistVersion(version *toolVersion, path string) error {
+func persistVersion(command string, version *toolVersion, path string) error {
 	toolDir, err := dirs.Ensure(dirs.Cache())
 	if err != nil {
 		return err
 	}
 
-	return rewrite(toolDir, versionsJson, func(w io.Writer) error {
+	return rewrite(toolDir, versionsJson(command), func(w io.Writer) error {
 		cache := versionCache{
 			Latest:     version,
 			BinaryPath: path,
@@ -308,7 +315,7 @@ func rewrite(dir, filename string, make func(io.Writer) error) error {
 	return nil
 }
 
-func fetchBinary(ctx context.Context, version *toolVersion, values url.Values) (string, error) {
+func fetchBinary(ctx context.Context, command string, version *toolVersion, values url.Values) (string, error) {
 	tarRef := artifacts.Reference{
 		URL: version.URL,
 		Digest: schema.Digest{
@@ -317,7 +324,7 @@ func fetchBinary(ctx context.Context, version *toolVersion, values url.Values) (
 		},
 	}
 
-	fsys := unpack.Unpack("ns", tarfs.TarGunzip(download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
+	fsys := unpack.Unpack(command, tarfs.TarGunzip(download.NamespaceURL(tarRef, values)), unpack.SkipChecksumCheck())
 	unpacked, err := compute.GetValue(ctx, fsys)
 	if err != nil {
 		return "", err

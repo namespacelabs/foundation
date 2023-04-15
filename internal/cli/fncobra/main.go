@@ -74,7 +74,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
 	if autoUpdate {
-		ensureLatest()
+		ensureLatest(name)
 	}
 
 	rootCtx, style, flushLogs := SetupContext(context.Background())
@@ -98,7 +98,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 		// This is a bit of an hack. But don't run version checks when doing an update.
 		if autoUpdate && !slices.Contains(cmd.Aliases, "update-ns") {
-			DeferCheckVersion(ctx)
+			DeferCheckVersion(ctx, name)
 		}
 
 		tel := fnapi.TelemetryOn(ctx)
@@ -204,12 +204,12 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	return style, err
 }
 
-func ensureLatest() {
+func ensureLatest(command string) {
 	if ver, err := version.Current(); err == nil {
 		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
 			rootCtx, style, flushLogs := SetupContext(context.Background())
 
-			cached, ns, err := nsboot.CheckUpdate(rootCtx, true, ver.Version)
+			cached, ns, err := nsboot.CheckUpdate(rootCtx, command, true, ver.Version)
 			if err == nil && cached != nil {
 				flushLogs()
 

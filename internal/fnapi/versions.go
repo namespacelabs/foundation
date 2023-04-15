@@ -11,10 +11,6 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-type GetLatestRequest struct {
-	NS NSRequirements `json:"ns"`
-}
-
 type NSRequirements struct {
 	MinimumApi int32 `json:"minimum_api"`
 }
@@ -32,15 +28,7 @@ type Artifact struct {
 	SHA256 string `json:"sha256"`
 }
 
-func GetLatestVersion(ctx context.Context, nsReqs *schema.Workspace_FoundationRequirements) (*GetLatestResponse, error) {
-	// "ns" must always be set.
-	req := GetLatestRequest{}
-	if nsReqs != nil {
-		req.NS = NSRequirements{
-			MinimumApi: nsReqs.MinimumApi,
-		}
-	}
-
+func GetLatestVersion(ctx context.Context, req map[string]any) (*GetLatestResponse, error) {
 	var resp GetLatestResponse
 	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatest", req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err

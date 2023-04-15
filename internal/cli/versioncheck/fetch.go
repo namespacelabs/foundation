@@ -40,7 +40,7 @@ func CheckRemote(ctx context.Context, current *storage.NamespaceBinaryVersion, c
 	fmt.Fprintf(console.Debug(ctx), "version check: current %s, build time %v, min API %d\n",
 		current.Version, current.BuildTime, fnReqs.GetMinimumApi())
 
-	resp, err := fnapi.GetLatestVersion(ctx, fnReqs)
+	resp, err := fnapi.GetLatestVersion(ctx, map[string]any{"ns": fnReqs})
 	if err != nil {
 		return nil, fnerrors.InternalError("version check failed: %w", err)
 	}

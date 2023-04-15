@@ -20,7 +20,7 @@ func NewUpdateNSCmd() *cobra.Command {
 		Aliases: []string{"update-ns"},
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			return nsboot.ForceUpdate(ctx)
+			return nsboot.ForceUpdate(ctx, "ns")
 		}),
 	}
 

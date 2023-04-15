@@ -14,6 +14,7 @@ import (
 	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -50,6 +51,23 @@ func NewVersionCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(&buildInfo, "build_info", buildInfo, "Output all of build info.")
+
+	cmd.AddCommand(newUpdateCmd())
+
+	return cmd
+}
+
+func newUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "update",
+		Short:   "Updates the current binary to the latest version.",
+		Aliases: []string{"update-ns"},
+		Args:    cobra.NoArgs,
+
+		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
+			return nsboot.ForceUpdate(ctx, "nsc")
+		}),
+	}
 
 	return cmd
 }

@@ -31,7 +31,7 @@ func RunE(handler CmdHandler) func(*cobra.Command, []string) error {
 	}
 }
 
-func DeferCheckVersion(ctx context.Context) {
+func DeferCheckVersion(ctx context.Context, command string) {
 	ver, err := version.Current()
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to check current version: %v\n", err)
@@ -53,7 +53,7 @@ func DeferCheckVersion(ctx context.Context) {
 			return nil
 		}
 
-		if newVersion, ok := nsboot.CheckInvalidate(status); ok {
+		if newVersion, ok := nsboot.CheckInvalidate(command, status); ok {
 			compute.On(ctx).Cleanup(tasks.Action("ns.check-updated.notify").LogLevel(1), func(ctx context.Context) error {
 				fmt.Fprintf(console.Stdout(ctx), "\n\n  A new version of ns is available (%s). It will be automatically downloaded on the next run.\n\n", newVersion)
 				return nil
