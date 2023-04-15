@@ -38,6 +38,7 @@ func NewRunCmd() *cobra.Command {
 	output := run.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	on := run.Flags().String("on", "", "Run the container in the specified container, instead of creating a new one.")
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
+	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -50,7 +51,17 @@ func NewRunCmd() *cobra.Command {
 			name = generateNameFromImage(*image)
 		}
 
-		resp, err := createContainer(ctx, *on, name, *image, *exportedPorts, args, *env)
+		if *devmode && *on != "" {
+			return fnerrors.New("--development can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+		}
+
+		resp, err := createContainer(ctx, *on, *devmode, createContainerOpts{
+			Name:          name,
+			Image:         *image,
+			ExportedPorts: *exportedPorts,
+			Args:          args,
+			Env:           *env,
+		})
 		if err != nil {
 			return err
 		}
@@ -71,9 +82,10 @@ func NewRunComposeCmd() *cobra.Command {
 
 	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
 	dir := run.Flags().String("dir", "", "If not specified, loads the compose project from the current working directory.")
+	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		resp, err := createCompose(ctx, *dir)
+		resp, err := createCompose(ctx, *dir, *devmode)
 		if err != nil {
 			return err
 		}
@@ -84,16 +96,25 @@ func NewRunComposeCmd() *cobra.Command {
 	return run
 }
 
-func createContainer(ctx context.Context, target, name, image string, ports []int32, args []string, env map[string]string) (*api.CreateContainersResponse, error) {
+type createContainerOpts struct {
+	Name          string
+	Image         string
+	Args          []string
+	Env           map[string]string
+	Flags         []string
+	ExportedPorts []int32
+}
+
+func createContainer(ctx context.Context, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
-		Name:  name,
-		Image: image,
-		Args:  args,
-		Env:   env,
+		Name:  opts.Name,
+		Image: opts.Image,
+		Args:  opts.Args,
+		Env:   opts.Env,
 		Flag:  []string{"TERMINATE_ON_EXIT"},
 	}
 
-	for _, port := range ports {
+	for _, port := range opts.ExportedPorts {
 		container.ExportPort = append(container.ExportPort, &api.ContainerPort{
 			Proto: "tcp",
 			Port:  port,
@@ -104,7 +125,8 @@ func createContainer(ctx context.Context, target, name, image string, ports []in
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
 			var response api.CreateContainersResponse
 			if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
-				Container: []*api.ContainerRequest{container},
+				Container:       []*api.ContainerRequest{container},
+				DevelopmentMode: devmode,
 			}, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
@@ -144,7 +166,7 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 		return d.Encode(resp)
 
 	default:
-		if output != "plan" {
+		if output != "" && output != "plain" {
 			fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
 		}
 
@@ -169,7 +191,7 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 	return nil
 }
 
-func createCompose(ctx context.Context, dir string) (*api.CreateContainersResponse, error) {
+func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateContainersResponse, error) {
 	var optionsFn []composecli.ProjectOptionsFn
 	optionsFn = append(optionsFn,
 		composecli.WithOsEnv,
@@ -202,7 +224,8 @@ func createCompose(ctx context.Context, dir string) (*api.CreateContainersRespon
 	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
 		var response api.CreateContainersResponse
 		if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
-			Compose: []*api.ComposeRequest{{Contents: projectYAML}},
+			Compose:         []*api.ComposeRequest{{Contents: projectYAML}},
+			DevelopmentMode: devmode,
 		}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
