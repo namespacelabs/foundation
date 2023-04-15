@@ -12,7 +12,7 @@ $NSC_BIN create --ephemeral --output_to /tmp/cluster_id --ssh_key /tmp/cluster_k
 CLUSTER_ID=$(cat /tmp/cluster_id)
 
 # Test ns cluster list
-$NSC_BIN list --raw_output | grep $CLUSTER_ID
+$NSC_BIN list -o json | grep $CLUSTER_ID
 
 # Test ns cluster ssh
 tmux new-session -d -s NsSSHSession "$NSC_BIN ssh $CLUSTER_ID"
@@ -42,6 +42,6 @@ fi
 $NSC_BIN cluster destroy $CLUSTER_ID --force
 
 # Test ns cluster history
-$NSC_BIN cluster history --raw_output | grep $CLUSTER_ID
+$NSC_BIN cluster history -o json | grep $CLUSTER_ID
 
 ssh-add -d /tmp/cluster_key

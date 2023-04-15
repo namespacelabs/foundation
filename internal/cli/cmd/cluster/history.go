@@ -21,7 +21,7 @@ func NewListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
-	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := false
@@ -30,11 +30,11 @@ func NewListCmd() *cobra.Command {
 			return err
 		}
 
-		if *rawOutput {
+		if *output == "json" {
 			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(clusters)
+			return enc.Encode(clusters.Clusters)
 		}
 		if len(clusters.Clusters) == 0 {
 			printCreateClusterMsg(ctx)
@@ -53,7 +53,7 @@ func newHistoryCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 	}
 
-	rawOutput := cmd.Flags().Bool("raw_output", false, "Dump the resulting server response, without formatting.")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := true
@@ -62,11 +62,11 @@ func newHistoryCmd() *cobra.Command {
 			return err
 		}
 
-		if *rawOutput {
+		if *output == "json" {
 			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(clusters)
+			return enc.Encode(clusters.Clusters)
 		}
 
 		if len(clusters.Clusters) == 0 {
