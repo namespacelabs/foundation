@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	ia "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
@@ -20,6 +21,7 @@ func main() {
 	// Consider adding auto updates if we frequently change nsc.
 	fncobra.DoMain("nsc", false, func(root *cobra.Command) {
 		api.SetupFlags("", root.PersistentFlags(), false)
+		ia.SetupFlags(root.PersistentFlags())
 
 		root.AddCommand(auth.NewAuthCmd())
 		root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
