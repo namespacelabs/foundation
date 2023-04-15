@@ -37,6 +37,7 @@ func NewRunCmd() *cobra.Command {
 	exportedPorts := run.Flags().Int32SliceP("publish", "p", nil, "Publish the specified ports.")
 	output := run.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	on := run.Flags().String("on", "", "Run the container in the specified container, instead of creating a new one.")
+	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -49,7 +50,7 @@ func NewRunCmd() *cobra.Command {
 			name = generateNameFromImage(*image)
 		}
 
-		resp, err := createContainer(ctx, *on, name, *image, *exportedPorts, args)
+		resp, err := createContainer(ctx, *on, name, *image, *exportedPorts, args, env)
 		if err != nil {
 			return err
 		}
@@ -83,11 +84,12 @@ func NewRunComposeCmd() *cobra.Command {
 	return run
 }
 
-func createContainer(ctx context.Context, target, name, image string, ports []int32, args []string) (*api.CreateContainersResponse, error) {
+func createContainer(ctx context.Context, target, name, image string, ports []int32, args []string, env map[string]string) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
 		Name:  name,
 		Image: image,
 		Args:  args,
+		Env:   env,
 		Flag:  []string{"TERMINATE_ON_EXIT"},
 	}
 
