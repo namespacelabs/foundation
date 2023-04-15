@@ -50,7 +50,7 @@ func NewRunCmd() *cobra.Command {
 			name = generateNameFromImage(*image)
 		}
 
-		resp, err := createContainer(ctx, *on, name, *image, *exportedPorts, args, env)
+		resp, err := createContainer(ctx, *on, name, *image, *exportedPorts, args, *env)
 		if err != nil {
 			return err
 		}
