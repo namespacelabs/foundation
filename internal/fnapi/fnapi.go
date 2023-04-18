@@ -175,8 +175,6 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	switch response.StatusCode {
 	case http.StatusInternalServerError:
 		return fnerrors.InvocationError("namespace api", "internal server error, and wasn't able to parse error response")
-	case http.StatusForbidden:
-		return fnerrors.NoAccessToLimitedFeature()
 	case http.StatusUnauthorized:
 		return fnerrors.ReauthError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 	default:
@@ -188,9 +186,6 @@ func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
 		return fnerrors.ReauthError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
-
-	case int32(codes.PermissionDenied):
-		return fnerrors.NoAccessToLimitedFeature()
 
 	case int32(codes.FailedPrecondition):
 		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).

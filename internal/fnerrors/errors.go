@@ -105,10 +105,6 @@ func InvocationError(what, format string, args ...interface{}) error {
 	return &InvocationErr{BaseError: *err, what: what}
 }
 
-func NoAccessToLimitedFeature() error {
-	return New("this feature is not broadly available yet; please reach out to us at hello@namespacelabs.com to be added to the access list")
-}
-
 // This error means that Namespace does not meet the minimum version requirements.
 func NamespaceTooOld(what string, expected, got int32) error {
 	if expected == 0 && got == 0 {
