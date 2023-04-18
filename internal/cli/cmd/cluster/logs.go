@@ -33,16 +33,22 @@ func NewLogsCmd() *cobra.Command {
 	raw := cmd.Flags().Bool("raw", false, "Output raw logs (skipping namespace/pod labels).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectCluster(ctx, args)
-		if err != nil {
-			if errors.Is(err, ErrEmptyClusterList) {
-				printCreateClusterMsg(ctx)
-				return nil
+		var clusterID string
+		if len(args) == 1 {
+			clusterID = args[0]
+		} else {
+			var err error
+			clusterID, err = selectClusterID(ctx, true /* previousRuns */)
+			if err != nil {
+				if errors.Is(err, ErrEmptyClusterList) {
+					printCreateClusterMsg(ctx)
+					return nil
+				}
+				return err
 			}
-			return err
 		}
 
-		if cluster == nil {
+		if clusterID == "" {
 			return nil
 		}
 
@@ -68,13 +74,13 @@ func NewLogsCmd() *cobra.Command {
 			}
 
 			return api.TailClusterLogs(ctx, api.Endpoint, &api.LogsOpts{
-				ClusterID: cluster.ClusterId,
+				ClusterID: clusterID,
 				Include:   includeSelector,
 			}, handle)
 		}
 
 		logOpts := &api.LogsOpts{
-			ClusterID: cluster.ClusterId,
+			ClusterID: clusterID,
 			Include:   includeSelector,
 		}
 		if *since != time.Duration(0) {

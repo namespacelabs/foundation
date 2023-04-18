@@ -69,25 +69,19 @@ func newKubeconfigCmd() *cobra.Command {
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		var clusterID string
-		if len(args) == 1 {
-			clusterID = args[0]
-		} else {
-			selected, err := selectClusterID(ctx)
-			if err != nil {
-				if errors.Is(err, ErrEmptyClusterList) {
-					printCreateClusterMsg(ctx)
-					return nil
-				}
-				return err
-			}
-			if selected == "" {
+		cluster, _, err := selectRunningCluster(ctx, args)
+		if err != nil {
+			if errors.Is(err, ErrEmptyClusterList) {
+				printCreateClusterMsg(ctx)
 				return nil
 			}
-			clusterID = selected
+			return err
+		}
+		if cluster == nil {
+			return nil
 		}
 
-		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, clusterID)
+		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, cluster.ClusterId)
 		if err != nil {
 			return err
 		}
@@ -103,7 +97,7 @@ func newKubeconfigCmd() *cobra.Command {
 			}
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", clusterID, cfg.Kubeconfig)
+		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
 		return nil
 	})
 
