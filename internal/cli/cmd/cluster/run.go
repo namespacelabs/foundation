@@ -39,6 +39,9 @@ func NewRunCmd() *cobra.Command {
 	on := run.Flags().String("on", "", "Run the container in the specified container, instead of creating a new one.")
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
+	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
+
+	run.Flags().MarkHidden("label")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -61,6 +64,7 @@ func NewRunCmd() *cobra.Command {
 			ExportedPorts: *exportedPorts,
 			Args:          args,
 			Env:           *env,
+			Labels:        *labels,
 		})
 		if err != nil {
 			return err
@@ -103,6 +107,7 @@ type createContainerOpts struct {
 	Env           map[string]string
 	Flags         []string
 	ExportedPorts []int32
+	Labels        map[string]string
 }
 
 func createContainer(ctx context.Context, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
@@ -121,12 +126,18 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 		})
 	}
 
+	var labels []*api.LabelEntry
+	for key, value := range opts.Labels {
+		labels = append(labels, &api.LabelEntry{Name: key, Value: value})
+	}
+
 	if target == "" {
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
 			var response api.CreateContainersResponse
 			if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
 				Container:       []*api.ContainerRequest{container},
 				DevelopmentMode: devmode,
+				Label:           labels,
 			}, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}

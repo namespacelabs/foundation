@@ -59,6 +59,7 @@ type CreateContainersRequest struct {
 	Compose         []*ComposeRequest   `json:"compose,omitempty"`
 	Interactive     bool                `json:"interactive,omitempty"`
 	DevelopmentMode bool                `json:"development_mode,omitempty"`
+	Label           []*LabelEntry       `json:"label,omitempty"`
 }
 
 type StartContainersRequest struct {
