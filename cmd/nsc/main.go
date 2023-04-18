@@ -34,7 +34,7 @@ func main() {
 		root.AddCommand(cluster.NewBuildCmd())            // nsc build
 		root.AddCommand(cluster.NewDockerLoginCmd(false)) // nsc docker-login
 		root.AddCommand(cluster.NewMetadataCmd())         // nsc metadata
-		root.AddCommand(cluster.NewCreateCmd())           // nsc create
+		root.AddCommand(cluster.NewCreateCmd(false))      // nsc create
 		root.AddCommand(cluster.NewListCmd())             // nsc list
 		root.AddCommand(cluster.NewLogsCmd())             // nsc logs
 		root.AddCommand(cluster.NewExposeCmd())           // nsc expose

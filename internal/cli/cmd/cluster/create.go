@@ -19,11 +19,12 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 )
 
-func NewCreateCmd() *cobra.Command {
+func NewCreateCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Creates a new cluster.",
-		Args:  cobra.NoArgs,
+		Use:    "create",
+		Short:  "Creates a new cluster.",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
 	}
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
