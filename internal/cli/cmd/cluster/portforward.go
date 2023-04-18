@@ -34,7 +34,7 @@ func newPortForwardCmd() *cobra.Command {
 			return fnerrors.New("--target_port is required")
 		}
 
-		cluster, _, err := selectCluster(ctx, args)
+		cluster, _, err := selectRunningCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
 				printCreateClusterMsg(ctx)

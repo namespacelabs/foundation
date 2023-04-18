@@ -72,9 +72,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	return cmd
 }
 
-func selectClusterID(ctx context.Context) (string, error) {
-	previousRuns := false
-
+func selectClusterID(ctx context.Context, previousRuns bool) (string, error) {
 	clusters, err := api.ListClusters(ctx, api.Endpoint, previousRuns, nil)
 	if err != nil {
 		return "", err
@@ -91,17 +89,17 @@ func selectClusterID(ctx context.Context) (string, error) {
 	return cl.ClusterId, nil
 }
 
-func selectCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
+func selectRunningCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
 	if len(args) > 1 {
 		return nil, nil, fnerrors.InternalError("got %d clusters - expected one", len(args))
 	}
 
 	var clusterID string
-	if len(args) == 1 {
+	if len(args) >= 1 {
 		clusterID = args[0]
 		args = args[1:]
 	} else {
-		selected, err := selectClusterID(ctx)
+		selected, err := selectClusterID(ctx, false /* previousRuns */)
 		if err != nil {
 			return nil, nil, err
 		}

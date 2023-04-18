@@ -55,7 +55,7 @@ func NewSshCmd() *cobra.Command {
 			return inlineSsh(ctx, cluster.Cluster, *sshAgent, args)
 		}
 
-		cluster, args, err := selectCluster(ctx, args)
+		cluster, args, err := selectRunningCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
 				printCreateClusterMsg(ctx)

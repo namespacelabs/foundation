@@ -26,21 +26,8 @@ type Status struct {
 
 // Checks for updates and messages from Namespace developers.
 // Does nothing if a check for remote status failed
-func CheckRemote(ctx context.Context, current *storage.NamespaceBinaryVersion, computeRequirements func(context.Context) (*schema.Workspace_FoundationRequirements, error)) (*Status, error) {
-	var fnReqs *schema.Workspace_FoundationRequirements
-	if computeRequirements != nil {
-		reqs, err := computeRequirements(ctx)
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to compute workspace requirements: %w", err)
-		}
-
-		fnReqs = reqs
-	}
-
-	fmt.Fprintf(console.Debug(ctx), "version check: current %s, build time %v, min API %d\n",
-		current.Version, current.BuildTime, fnReqs.GetMinimumApi())
-
-	resp, err := fnapi.GetLatestVersion(ctx, map[string]any{"ns": fnReqs})
+func CheckRemote(ctx context.Context, current *storage.NamespaceBinaryVersion, command string) (*Status, error) {
+	resp, err := fnapi.GetLatestVersion(ctx, map[string]any{command: map[string]any{}})
 	if err != nil {
 		return nil, fnerrors.InternalError("version check failed: %w", err)
 	}

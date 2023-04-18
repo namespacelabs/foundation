@@ -27,7 +27,7 @@ func newDestroyCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		clusterIDs := args
 		if len(clusterIDs) == 0 {
-			selected, err := selectClusterID(ctx)
+			selected, err := selectClusterID(ctx, false /* previousRuns */)
 			if err != nil {
 				if errors.Is(err, ErrEmptyClusterList) {
 					printCreateClusterMsg(ctx)
