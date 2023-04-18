@@ -18,11 +18,11 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type makeExt4Image struct {
@@ -97,7 +97,7 @@ func toExt4Image(ctx context.Context, tmpdir string, image oci.Image, target str
 		return err
 	}
 
-	out := console.TypedOutput(ctx, "write-ext4-image", common.CatOutputTool)
+	out := console.TypedOutput(ctx, "write-ext4-image", idtypes.CatOutputTool)
 	io := rtypes.IO{Stdout: out, Stderr: out}
 
 	if err := runCommandMaybeNixShell(ctx, io, "e2fsprogs", "mkfs.ext4",

@@ -9,9 +9,9 @@ import (
 	"io"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	fnsync "namespacelabs.dev/foundation/internal/sync"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -101,7 +101,7 @@ func (ev *EventAttachments) AttachSerializable(name, modifier string, body inter
 		return nil
 	}
 
-	bytes, err := common.SerializeToBytes(body)
+	bytes, err := idtypes.SerializeToBytes(body)
 	if err != nil {
 		return fnerrors.BadInputError("failed to serialize payload to bytes: %w", err)
 	}
@@ -174,7 +174,7 @@ func (ev *EventAttachments) ReaderByName(name string) io.ReadCloser {
 	return io.NopCloser(bytes.NewReader(nil))
 }
 
-func (ev *EventAttachments) ensureOutput(name OutputName, outputType common.CatOutputType, addIfMissing bool) (io.Writer, bool) {
+func (ev *EventAttachments) ensureOutput(name OutputName, outputType idtypes.CatOutputType, addIfMissing bool) (io.Writer, bool) {
 	if ev == nil {
 		return fnsync.Discard, false
 	}
@@ -216,7 +216,7 @@ func (ev *EventAttachments) ensureOutput(name OutputName, outputType common.CatO
 	return ev.buffers[name.computed].writer, added
 }
 
-func (ev *EventAttachments) Output(name OutputName, cat common.CatOutputType) io.Writer {
+func (ev *EventAttachments) Output(name OutputName, cat idtypes.CatOutputType) io.Writer {
 	w, added := ev.ensureOutput(name, cat, true)
 	if added {
 		ev.sink.AttachmentsUpdated(ev.actionID, nil)

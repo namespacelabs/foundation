@@ -20,9 +20,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 func NewConfiguration(ctx context.Context, host kubedef.KubeCluster, namespace string) (*action.Configuration, error) {
@@ -31,7 +31,7 @@ func NewConfiguration(ctx context.Context, host kubedef.KubeCluster, namespace s
 	// g := getter{cfg: client.NewClientConfig(ctx, host)}
 	g := clusterWrapper{host}
 
-	log := console.TypedOutput(ctx, "helm", common.CatOutputTool)
+	log := console.TypedOutput(ctx, "helm", idtypes.CatOutputTool)
 
 	debugLogger := func(format string, v ...interface{}) {
 		fmt.Fprintf(log, format+"\n", v...)

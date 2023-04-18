@@ -24,10 +24,10 @@ import (
 	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 var (
@@ -97,10 +97,10 @@ func SetupFlags(flags *pflag.FlagSet) {
 }
 
 type consoleOutput struct {
-	id       common.IdAndHash
+	id       idtypes.IdAndHash
 	actionID tasks.ActionID
 	name     string
-	cat      common.CatOutputType
+	cat      idtypes.CatOutputType
 	lines    [][]byte
 }
 
@@ -383,7 +383,7 @@ func (li *lineItem) precompute() {
 			}
 
 		default:
-			if b, err := common.SerializeToBytes(arg.Msg); err == nil {
+			if b, err := idtypes.SerializeToBytes(arg.Msg); err == nil {
 				value = string(b)
 			} else {
 				value = fmt.Sprintf("failed to serialize to json: %v", err)
@@ -398,7 +398,7 @@ func (li *lineItem) precompute() {
 	for _, r := range li.results.Items {
 		var value string
 
-		if b, err := common.SerializeToBytes(r.Msg); err == nil {
+		if b, err := idtypes.SerializeToBytes(r.Msg); err == nil {
 			value = string(b)
 		} else {
 			value = fmt.Sprintf("failed to serialize to json: %v", err)
@@ -689,8 +689,8 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	// Drain any pending logging message.
 	var hdrBuf bytes.Buffer
 	for _, block := range c.buffer {
-		if block.name != "" && block.name != common.KnownStdout && block.name != common.KnownStderr {
-			if block.cat == common.CatOutputUs {
+		if block.name != "" && block.name != idtypes.KnownStdout && block.name != idtypes.KnownStderr {
+			if block.cat == idtypes.CatOutputUs {
 				fmt.Fprint(&hdrBuf, usBar)
 			} else {
 				colorIndex := block.id.Digest % uint64(len(toolBars))
@@ -1028,11 +1028,11 @@ func (c *ConsoleSink) AttachmentsUpdated(actionID tasks.ActionID, data *tasks.Re
 	}
 }
 
-func (c *ConsoleSink) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+func (c *ConsoleSink) Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer {
 	return nil
 }
 
-func (c *ConsoleSink) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, _ time.Time, lines [][]byte) {
+func (c *ConsoleSink) WriteLines(id idtypes.IdAndHash, name string, cat idtypes.CatOutputType, actionID tasks.ActionID, _ time.Time, lines [][]byte) {
 	c.ch <- consoleEvent{output: consoleOutput{id: id, name: name, cat: cat, lines: lines, actionID: actionID}}
 }
 

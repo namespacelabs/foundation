@@ -8,8 +8,8 @@ import (
 	"io"
 	"time"
 
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 func NewSink(ch chan *Log) *logger {
@@ -60,11 +60,11 @@ func (l *logger) Instant(ev *tasks.EventData) {
 
 func (l *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
 
-func (l *logger) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+func (l *logger) Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer {
 	return nil
 }
 
-func (l *logger) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
+func (l *logger) WriteLines(id idtypes.IdAndHash, name string, cat idtypes.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
 	l.ch <- &Log{
 		Lines: &Log_Lines{
 			Name:  name,

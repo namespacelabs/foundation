@@ -17,7 +17,6 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
@@ -25,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 var UseHostGCloudBinary = false
@@ -130,7 +130,7 @@ func cacheDir() (string, error) {
 func Helper(ctx context.Context) (*ConfigHelper, error) {
 	return tasks.Return(ctx, tasks.Action("gcloud.slow-fetch-access-token"), func(ctx context.Context) (*ConfigHelper, error) {
 		var out bytes.Buffer
-		stderr := console.TypedOutput(ctx, "gcloud", common.CatOutputTool)
+		stderr := console.TypedOutput(ctx, "gcloud", idtypes.CatOutputTool)
 
 		if err := Run(ctx, rtypes.IO{Stdout: &out, Stderr: stderr}, "config", "config-helper", "--format=json"); err != nil {
 			return nil, err

@@ -26,7 +26,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
 	"namespacelabs.dev/foundation/internal/environment"
@@ -41,6 +40,7 @@ import (
 	"namespacelabs.dev/foundation/std/cfg/knobs"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/actiontracing"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 	"namespacelabs.dev/foundation/std/tasks/simplelog"
 )
 
@@ -121,7 +121,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		run = storedrun.New()
 
 		// Setting up container registry logging, which is unfortunately global.
-		crlogs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", common.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
+		crlogs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", idtypes.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
 
 		// Telemetry.
 		tel.RecordInvocation(ctx, cmd, args)

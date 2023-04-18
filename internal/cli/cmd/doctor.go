@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/dependencies/pins"
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -44,6 +43,7 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 const (
@@ -272,7 +272,7 @@ func NewDoctorCmd() *cobra.Command {
 			}
 		}
 
-		out := console.TypedOutput(ctx, "Support", common.CatOutputUs)
+		out := console.TypedOutput(ctx, "Support", idtypes.CatOutputUs)
 		fmt.Fprintf(out, "\nHaving trouble? Chat with us at https://community.namespace.so/discord\n")
 
 		if *uploadResults {
@@ -322,7 +322,7 @@ func runDiagnostic[V any](ctx context.Context, title string, f func(ctx context.
 func printDiagnostic[V any](ctx context.Context, title string, res errorOr[V], errCount *int, print func(io.Writer, V)) {
 	style := colors.Ctx(ctx)
 
-	w := console.TypedOutput(ctx, title, common.CatOutputUs)
+	w := console.TypedOutput(ctx, title, idtypes.CatOutputUs)
 
 	fmt.Fprintln(w, style.Header.Apply(fmt.Sprintf("* %s", title)))
 	x := text.NewIndentWriter(w, []byte("  "))

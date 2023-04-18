@@ -7,7 +7,7 @@ package tasks
 import (
 	"io"
 
-	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type ActionSink interface {
@@ -16,7 +16,7 @@ type ActionSink interface {
 	Done(*RunningAction)
 	Instant(*EventData)
 	AttachmentsUpdated(ActionID, *ResultData)
-	Output(name, contentType string, outputType common.CatOutputType) io.Writer
+	Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer
 }
 
 func NullSink() ActionSink {
@@ -25,9 +25,9 @@ func NullSink() ActionSink {
 
 type nullSink struct{}
 
-func (nullSink) Waiting(*RunningAction)                               {}
-func (nullSink) Started(*RunningAction)                               {}
-func (nullSink) Done(*RunningAction)                                  {}
-func (nullSink) Instant(*EventData)                                   {}
-func (nullSink) AttachmentsUpdated(ActionID, *ResultData)             {}
-func (nullSink) Output(_, _ string, _ common.CatOutputType) io.Writer { return nil }
+func (nullSink) Waiting(*RunningAction)                                {}
+func (nullSink) Started(*RunningAction)                                {}
+func (nullSink) Done(*RunningAction)                                   {}
+func (nullSink) Instant(*EventData)                                    {}
+func (nullSink) AttachmentsUpdated(ActionID, *ResultData)              {}
+func (nullSink) Output(_, _ string, _ idtypes.CatOutputType) io.Writer { return nil }

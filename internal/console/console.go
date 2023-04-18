@@ -15,16 +15,16 @@ import (
 	"github.com/kr/text"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 	"namespacelabs.dev/go-ids"
 )
 
 const (
-	CatOutputTool = common.CatOutputTool
-	CatOutputUs   = common.CatOutputUs
+	CatOutputTool = idtypes.CatOutputTool
+	CatOutputUs   = idtypes.CatOutputUs
 )
 
 var (
@@ -33,15 +33,15 @@ var (
 )
 
 func Stdout(ctx context.Context) io.Writer {
-	return Output(ctx, common.KnownStdout)
+	return Output(ctx, idtypes.KnownStdout)
 }
 
 func Stderr(ctx context.Context) io.Writer {
-	return Output(ctx, common.KnownStderr)
+	return Output(ctx, idtypes.KnownStderr)
 }
 
 func Output(ctx context.Context, name string) io.Writer {
-	return TypedOutput(ctx, name, common.CatOutputTool)
+	return TypedOutput(ctx, name, idtypes.CatOutputTool)
 }
 
 func Debug(ctx context.Context) io.Writer {
@@ -49,23 +49,23 @@ func Debug(ctx context.Context) io.Writer {
 }
 
 func NamedDebug(ctx context.Context, name string) io.Writer {
-	return TypedOutput(ctx, name, common.CatOutputDebug)
+	return TypedOutput(ctx, name, idtypes.CatOutputDebug)
 }
 
 func Warnings(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "warning", common.CatOutputWarnings)
+	return TypedOutput(ctx, "warning", idtypes.CatOutputWarnings)
 }
 
 func Errors(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "error", common.CatOutputErrors)
+	return TypedOutput(ctx, "error", idtypes.CatOutputErrors)
 }
 
 func ConsoleOutputName(name string) tasks.OutputName {
 	return tasks.Output("console:"+name, "application/json+ns-console-log")
 }
 
-func TypedOutput(ctx context.Context, name string, cat common.CatOutputType) io.Writer {
-	if cat == common.CatOutputDebug && !DebugToConsole {
+func TypedOutput(ctx context.Context, name string, cat idtypes.CatOutputType) io.Writer {
+	if cat == idtypes.CatOutputDebug && !DebugToConsole {
 		return tasks.Attachments(ctx).Output(tasks.Output(name, "text/plain"), cat)
 	}
 
@@ -77,7 +77,7 @@ type writeStored struct {
 	stored io.Writer
 }
 
-func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
+func (w writeStored) WriteLines(id idtypes.IdAndHash, name string, cat idtypes.CatOutputType, actionID tasks.ActionID, ts time.Time, lines [][]byte) {
 	strLines := make([]string, len(lines))
 	for k, line := range lines {
 		strLines[k] = string(line)
@@ -97,7 +97,7 @@ func (w writeStored) WriteLines(id common.IdAndHash, name string, cat common.Cat
 	}
 }
 
-func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutputType, extra ...writesLines) io.Writer {
+func consoleOutputFromCtx(ctx context.Context, name string, cat idtypes.CatOutputType, extra ...writesLines) io.Writer {
 	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
 	if t, ok := unwrapped.(writesLines); ok {
 		actionID := tasks.Attachments(ctx).ActionID()
@@ -114,7 +114,7 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 			actual: append([]writesLines{t}, extra...),
 			name:   name,
 			cat:    cat,
-			id:     common.IdAndHashFrom(id),
+			id:     idtypes.IdAndHashFrom(id),
 		}
 		if actionID != "" {
 			buf.actionID = actionID
@@ -123,9 +123,9 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat common.CatOutput
 	}
 
 	// If there's no console sink in context, pass along the original Stdout or Stderr.
-	if name == common.KnownStdout {
+	if name == idtypes.KnownStdout {
 		return os.Stdout
-	} else if name == common.KnownStderr {
+	} else if name == idtypes.KnownStderr {
 		return os.Stderr
 	}
 

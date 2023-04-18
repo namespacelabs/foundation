@@ -23,7 +23,6 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubeobj"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -34,6 +33,7 @@ import (
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type ClusterNamespace struct {
@@ -156,7 +156,7 @@ func (r *ClusterNamespace) WaitUntilReady(ctx context.Context, srv runtime.Deplo
 			if res.Message != "" {
 				if shouldLog(t, lastMsg) {
 					lastMsg = time.Now()
-					fmt.Fprintf(console.TypedOutput(ctx, "service readiness", common.CatOutputTool), "%s\n", res.Message)
+					fmt.Fprintf(console.TypedOutput(ctx, "service readiness", idtypes.CatOutputTool), "%s\n", res.Message)
 				} else {
 					fmt.Fprintf(console.Debug(ctx), "%s\n", res.Message)
 				}

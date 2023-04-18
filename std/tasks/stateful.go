@@ -9,7 +9,7 @@ import (
 	"io"
 	"sync"
 
-	"namespacelabs.dev/foundation/internal/console/common"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 	"namespacelabs.dev/foundation/std/tasks/protocol"
 )
 
@@ -238,7 +238,7 @@ func (s *statefulState) AttachmentsUpdated(actionID ActionID, data *ResultData) 
 	}
 }
 
-func (s *statefulState) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+func (s *statefulState) Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer {
 	return nil
 }
 

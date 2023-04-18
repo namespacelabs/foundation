@@ -9,19 +9,19 @@ import (
 	"sync"
 	"time"
 
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type writesLines interface {
-	WriteLines(common.IdAndHash, string, common.CatOutputType, tasks.ActionID, time.Time, [][]byte)
+	WriteLines(idtypes.IdAndHash, string, idtypes.CatOutputType, tasks.ActionID, time.Time, [][]byte)
 }
 
 type consoleBuffer struct {
 	actual   []writesLines
 	name     string
-	cat      common.CatOutputType
-	id       common.IdAndHash
+	cat      idtypes.CatOutputType
+	id       idtypes.IdAndHash
 	actionID tasks.ActionID // Optional ActionID in case this buffer is used in a context of an Action.
 
 	mu  sync.Mutex

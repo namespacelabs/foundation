@@ -13,8 +13,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/keyboard"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/schema/storage"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type NetworkPlanKeybinding struct {
@@ -56,7 +56,7 @@ func (k NetworkPlanKeybinding) Handle(ctx context.Context, ch chan keyboard.Even
 			if event.Operation == keyboard.OpStackUpdate && event.StackUpdate.Deployed && event.StackUpdate.DeployedRevision > deploymentRevision && networkPlan != nil && !networkPlan.Incomplete {
 				deploymentRevision = event.StackUpdate.DeployedRevision
 				if out := renderStickyNetworkPlan(networkPlan, false); out != "" {
-					fmt.Fprintln(console.TypedOutput(ctx, "network plan", common.CatOutputUs), out)
+					fmt.Fprintln(console.TypedOutput(ctx, "network plan", idtypes.CatOutputUs), out)
 				}
 			}
 		}

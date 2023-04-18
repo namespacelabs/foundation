@@ -21,7 +21,6 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	enverr "namespacelabs.dev/foundation/internal/fnerrors/env"
@@ -31,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 const exitCode = 3
@@ -108,7 +108,7 @@ func NewTestCmd() *cobra.Command {
 			return noTestsError(ctx, allTests, *locs)
 		}
 
-		out := console.TypedOutput(ctx, "test-results", common.CatOutputUs)
+		out := console.TypedOutput(ctx, "test-results", idtypes.CatOutputUs)
 		style := colors.Ctx(ctx)
 
 		testOpts.ParentRunID = storedrun.ParentID

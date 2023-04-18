@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/console/colors"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 var AlsoReportStartEvents = false
@@ -112,6 +112,6 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 
 func (sl *logger) AttachmentsUpdated(tasks.ActionID, *tasks.ResultData) { /* nothing to do */ }
 
-func (sl *logger) Output(name, contentType string, outputType common.CatOutputType) io.Writer {
+func (sl *logger) Output(name, contentType string, outputType idtypes.CatOutputType) io.Writer {
 	return nil
 }

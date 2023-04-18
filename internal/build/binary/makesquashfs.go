@@ -18,9 +18,9 @@ import (
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type makeSquashFS struct {
@@ -94,7 +94,7 @@ func ToLocalSquashFS(ctx context.Context, image oci.Image, target string) error 
 	r := mutate.Extract(image)
 	defer r.Close()
 
-	out := console.TypedOutput(ctx, "tar2sqfs", common.CatOutputTool)
+	out := console.TypedOutput(ctx, "tar2sqfs", idtypes.CatOutputTool)
 
 	if err := runCommandMaybeNixShell(ctx, rtypes.IO{Stdin: r, Stdout: out, Stderr: out},
 		"squashfs-tools-ng", "tar2sqfs", "-f", target); err != nil {

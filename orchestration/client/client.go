@@ -22,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	awsprovider "namespacelabs.dev/foundation/internal/providers/aws"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -33,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 	"namespacelabs.dev/foundation/std/tasks/protolog"
 	awsconf "namespacelabs.dev/foundation/universe/aws/configuration"
 )
@@ -250,8 +250,8 @@ func WireDeploymentStatus(ctx context.Context, conn *grpc.ClientConn, id string,
 func forwardsLogs(ctx context.Context, maxLogLevel int32, log *protolog.Log) {
 	if l := log.Lines; l != nil {
 		for _, line := range l.Lines {
-			outputType := common.CatOutputType(l.Cat)
-			if outputType == common.CatOutputDebug {
+			outputType := idtypes.CatOutputType(l.Cat)
+			if outputType == idtypes.CatOutputDebug {
 				// Call console.NamedDebug to respect DebugToConsole
 				fmt.Fprintln(console.NamedDebug(ctx, l.Name), string(line))
 			} else {

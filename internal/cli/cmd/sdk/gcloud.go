@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/console/common"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/internal/sdk/gcloud"
+	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 func newGcloudCmd() *cobra.Command {
@@ -24,7 +24,7 @@ func newGcloudCmd() *cobra.Command {
 			DisableFlagParsing: true,
 		}).
 		DoWithArgs(func(ctx context.Context, args []string) error {
-			stdout := console.TypedOutput(ctx, "gcloud", common.CatOutputTool)
+			stdout := console.TypedOutput(ctx, "gcloud", idtypes.CatOutputTool)
 
 			return gcloud.Run(ctx, rtypes.IO{
 				Stdout: stdout,
