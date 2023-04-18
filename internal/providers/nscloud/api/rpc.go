@@ -439,12 +439,22 @@ func GetImageRegistry(ctx context.Context, api API) (*GetImageRegistryResponse, 
 	})
 }
 
-func ListClusters(ctx context.Context, api API, previousRuns bool) (*ListKubernetesClustersResponse, error) {
+func ListClusters(ctx context.Context, api API, previousRuns bool, labels map[string]string) (*ListKubernetesClustersResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*ListKubernetesClustersResponse, error) {
-		var list ListKubernetesClustersResponse
-		if err := api.ListKubernetesClusters.Do(ctx, ListKubernetesClustersRequest{
+		req := ListKubernetesClustersRequest{
 			IncludePreviousRuns: previousRuns,
-		}, fnapi.DecodeJSONResponse(&list)); err != nil {
+		}
+
+		for key, value := range labels {
+			req.LabelFilter = append(req.LabelFilter, &LabelFilterEntry{
+				Name:  key,
+				Value: value,
+				Op:    "EQUAL",
+			})
+		}
+
+		var list ListKubernetesClustersResponse
+		if err := api.ListKubernetesClusters.Do(ctx, req, fnapi.DecodeJSONResponse(&list)); err != nil {
 			return nil, err
 		}
 

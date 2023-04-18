@@ -108,9 +108,16 @@ type Container_ExportedContainerPort struct {
 }
 
 type ListKubernetesClustersRequest struct {
-	IncludePreviousRuns bool   `json:"include_previous_runs,omitempty"`
-	PaginationCursor    []byte `json:"pagination_cursor,omitempty"`
-	MaxEntries          int64  `json:"max_entries,omitempty"`
+	IncludePreviousRuns bool                `json:"include_previous_runs,omitempty"`
+	PaginationCursor    []byte              `json:"pagination_cursor,omitempty"`
+	MaxEntries          int64               `json:"max_entries,omitempty"`
+	LabelFilter         []*LabelFilterEntry `json:"label_filter,omitempty"`
+}
+
+type LabelFilterEntry struct {
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
+	Op    string `json:"op,omitempty"`
 }
 
 type ListKubernetesClustersResponse struct {

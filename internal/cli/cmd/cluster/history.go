@@ -22,10 +22,13 @@ func NewListCmd() *cobra.Command {
 	}
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
+
+	cmd.Flags().MarkHidden("label")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := false
-		clusters, err := api.ListClusters(ctx, api.Endpoint, history)
+		clusters, err := api.ListClusters(ctx, api.Endpoint, history, *labels)
 		if err != nil {
 			return err
 		}
@@ -54,10 +57,13 @@ func newHistoryCmd() *cobra.Command {
 	}
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
+
+	cmd.Flags().MarkHidden("label")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := true
-		clusters, err := api.ListClusters(ctx, api.Endpoint, history)
+		clusters, err := api.ListClusters(ctx, api.Endpoint, history, *labels)
 		if err != nil {
 			return err
 		}
