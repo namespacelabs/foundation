@@ -43,7 +43,7 @@ func DeferCheckVersion(ctx context.Context, command string) {
 	}
 
 	compute.On(ctx).BestEffort(tasks.Action(command+".check-updated"), func(ctx context.Context) error {
-		status, err := versioncheck.CheckRemote(ctx, ver, nil)
+		status, err := versioncheck.CheckRemote(ctx, ver, command)
 		if err != nil {
 			fmt.Fprintf(console.Debug(ctx), "failed to check remote version: %v\n", err)
 			return nil
