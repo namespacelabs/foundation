@@ -44,7 +44,7 @@ func NewExposeCmd() *cobra.Command {
 	prefix := cmd.Flags().String("prefix", "", "If specified, prefixes the allocated URL.")
 	containerName := cmd.Flags().String("container", "", "Which container to export.")
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
-	output := cmd.Flags().StringP("output", "o", "text", "One of text or json.")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *containerName == "" {
@@ -104,7 +104,7 @@ func NewExposeCmd() *cobra.Command {
 				URL:           "https://" + resp.Fqdn,
 			})
 
-			if *output == "text" {
+			if *output == "plain" {
 				fmt.Fprintf(console.Stdout(ctx), "Exported port %d from %s (%s):\n  https://%s\n\n",
 					containerPort, port.ContainerName, substr(port.ContainerID), resp.Fqdn)
 			}
