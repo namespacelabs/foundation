@@ -8,12 +8,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -242,5 +242,14 @@ func formatDescription(cluster api.KubernetesCluster, history bool) string {
 
 func printCreateClusterMsg(ctx context.Context) {
 	stdout := console.Stdout(ctx)
-	fmt.Fprintf(stdout, "No clusters. Try creating one with `%s cluster create`.\n", os.Args[0])
+
+	var cmd string
+	switch name.CmdName {
+	case "nsc":
+		cmd = "nsc create"
+	default:
+		cmd = fmt.Sprintf("%s cluster create", name.CmdName)
+	}
+
+	fmt.Fprintf(stdout, "No clusters. Try creating one with `%s`.\n", cmd)
 }
