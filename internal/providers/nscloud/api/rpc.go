@@ -439,13 +439,20 @@ func GetImageRegistry(ctx context.Context, api API) (*GetImageRegistryResponse, 
 	})
 }
 
-func ListClusters(ctx context.Context, api API, previousRuns bool, labels map[string]string) (*ListKubernetesClustersResponse, error) {
+type ListOpts struct {
+	PreviousRuns bool
+	NotOlderThan *time.Time
+	Labels       map[string]string
+}
+
+func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesClustersResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-list"), func(ctx context.Context) (*ListKubernetesClustersResponse, error) {
 		req := ListKubernetesClustersRequest{
-			IncludePreviousRuns: previousRuns,
+			IncludePreviousRuns: opts.PreviousRuns,
+			NotOlderThan:        opts.NotOlderThan,
 		}
 
-		for key, value := range labels {
+		for key, value := range opts.Labels {
 			req.LabelFilter = append(req.LabelFilter, &LabelFilterEntry{
 				Name:  key,
 				Value: value,

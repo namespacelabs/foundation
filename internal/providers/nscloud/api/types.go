@@ -111,6 +111,7 @@ type ListKubernetesClustersRequest struct {
 	IncludePreviousRuns bool                `json:"include_previous_runs,omitempty"`
 	PaginationCursor    []byte              `json:"pagination_cursor,omitempty"`
 	MaxEntries          int64               `json:"max_entries,omitempty"`
+	NotOlderThan        *time.Time          `json:"not_older_than,omitempty"`
 	LabelFilter         []*LabelFilterEntry `json:"label_filter,omitempty"`
 }
 

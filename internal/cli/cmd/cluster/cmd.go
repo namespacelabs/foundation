@@ -73,7 +73,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 }
 
 func selectClusterID(ctx context.Context, previousRuns bool) (string, error) {
-	clusters, err := api.ListClusters(ctx, api.Endpoint, previousRuns, nil)
+	clusters, err := api.ListClusters(ctx, api.Endpoint, api.ListOpts{PreviousRuns: previousRuns})
 	if err != nil {
 		return "", err
 	}

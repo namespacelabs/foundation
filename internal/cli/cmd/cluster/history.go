@@ -7,6 +7,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -28,7 +29,10 @@ func NewListCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := false
-		clusters, err := api.ListClusters(ctx, api.Endpoint, history, *labels)
+		clusters, err := api.ListClusters(ctx, api.Endpoint, api.ListOpts{
+			PreviousRuns: history,
+			Labels:       *labels,
+		})
 		if err != nil {
 			return err
 		}
@@ -58,12 +62,18 @@ func newHistoryCmd() *cobra.Command {
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
+	since := cmd.Flags().Duration("since", time.Hour*24*7, "Contrain list to selected duration.")
 
 	cmd.Flags().MarkHidden("label")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := true
-		clusters, err := api.ListClusters(ctx, api.Endpoint, history, *labels)
+		startTs := time.Now().Add(-*since)
+		clusters, err := api.ListClusters(ctx, api.Endpoint, api.ListOpts{
+			PreviousRuns: history,
+			NotOlderThan: &startTs,
+			Labels:       *labels,
+		})
 		if err != nil {
 			return err
 		}
