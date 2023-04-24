@@ -22,4 +22,5 @@ message DatabaseIntent {
     // The database name is applied as is (e.g. it is case-sensitive).
     string   name                                  = 1;
     repeated foundation.schema.FileContents schema = 2;
+    bool skip_schema_initialization_if_exists = 3;
 }

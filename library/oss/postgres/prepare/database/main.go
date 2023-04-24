@@ -32,15 +32,17 @@ func main() {
 		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
 
-	conn, err := ensureDatabase(ctx, cluster, p.Intent.Name)
+	conn, exists, err := ensureDatabase(ctx, cluster, p.Intent.Name)
 	if err != nil {
 		log.Fatalf("unable to create database %q: %v", p.Intent.Name, err)
 	}
 	defer conn.Close(ctx)
 
-	for _, schema := range p.Intent.Schema {
-		if _, err = conn.Exec(ctx, string(schema.Contents)); err != nil {
-			log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
+	if !exists || !p.Intent.SkipSchemaInitializationIfExists {
+		for _, schema := range p.Intent.Schema {
+			if _, err = conn.Exec(ctx, string(schema.Contents)); err != nil {
+				log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
+			}
 		}
 	}
 
@@ -57,17 +59,17 @@ func main() {
 	p.EmitResult(instance)
 }
 
-func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (*pgx.Conn, error) {
+func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (*pgx.Conn, bool, error) {
 	// Postgres needs a database to connect to so we pin one that is guaranteed to exist.
-	conn, err := connect(ctx, cluster, "postgres")
+	postgresConn, err := connect(ctx, cluster, "postgres")
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	defer conn.Close(ctx)
+	defer postgresConn.Close(ctx)
 
-	exists, err := existsDatabase(ctx, conn, name)
+	exists, err := existsDatabase(ctx, postgresConn, name)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	if !exists {
@@ -77,15 +79,16 @@ func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance,
 		// Still, let's do some basic sanity checking (whitespaces are forbidden), as we need to use Sprintf here.
 		// Valid database names are defined at https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
 		if len(strings.Fields(name)) > 1 || strings.Contains(name, "-") {
-			return nil, fmt.Errorf("invalid database name: %s", name)
+			return nil, false, fmt.Errorf("invalid database name: %s", name)
 		}
 
-		if _, err := conn.Exec(ctx, fmt.Sprintf("CREATE DATABASE \"%s\";", name)); err != nil {
-			return nil, fmt.Errorf("failed to create database %q: %w", name, err)
+		if _, err := postgresConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE \"%s\";", name)); err != nil {
+			return nil, false, fmt.Errorf("failed to create database %q: %w", name, err)
 		}
 	}
 
-	return connect(ctx, cluster, name)
+	conn, err := connect(ctx, cluster, name)
+	return conn, exists, err
 }
 
 func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, error) {
