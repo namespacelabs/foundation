@@ -78,10 +78,9 @@ func NewRunCmd() *cobra.Command {
 
 func NewRunComposeCmd() *cobra.Command {
 	run := &cobra.Command{
-		Use:    "run-compose",
-		Short:  "Starts a set of containers in an ephemeral environment.",
-		Args:   cobra.NoArgs,
-		Hidden: true,
+		Use:   "run-compose",
+		Short: "Starts a set of containers in an ephemeral environment.",
+		Args:  cobra.NoArgs,
 	}
 
 	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
