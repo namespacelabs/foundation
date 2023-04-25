@@ -441,7 +441,7 @@ func NewBuildCmd() *cobra.Command {
 
 		if !*push {
 			// On push, we already report what was built. Add a hint for other builds, too.
-			fmt.Fprintf(console.Stdout(ctx), "\nCompleted build for platforms %s.\n", strings.Join(*platforms, ","))
+			fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d images (platforms %s).\n", len(images), strings.Join(*platforms, ","))
 		}
 
 		return nil
