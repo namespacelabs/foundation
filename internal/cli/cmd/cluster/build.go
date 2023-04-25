@@ -237,7 +237,7 @@ func NewBuildCmd() *cobra.Command {
 	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach the specified tags to the image.")
-	platforms := cmd.Flags().StringSlice("platform", []string{platform.FormatPlatform(docker.HostPlatform())}, "Set target platform for build.")
+	platforms := cmd.Flags().StringSlice("platform", []string{}, "Set target platform for build.")
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
@@ -252,6 +252,14 @@ func NewBuildCmd() *cobra.Command {
 
 		if len(*tags) == 0 && *push {
 			return fnerrors.New("--push requires at least one tag")
+		}
+
+		if len(*platforms) == 0 {
+			if *dockerLoad {
+				*platforms = []string{platform.FormatPlatform(docker.HostPlatform())}
+			} else {
+				*platforms = []string{"linux/arm64"}
+			}
 		}
 
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
@@ -339,7 +347,7 @@ func NewBuildCmd() *cobra.Command {
 				args = append(args, "--output", fmt.Sprintf("type=image,push=true,%q", "name="+strings.Join(imageNames, ",")))
 
 				completeFuncs[k] = func() error {
-					fmt.Fprintf(console.Stdout(ctx), "Pushed:\n")
+					fmt.Fprintf(console.Stdout(ctx), "Pushed for %s:\n", p)
 					for _, imageName := range imageNames {
 						fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
 					}
@@ -429,6 +437,11 @@ func NewBuildCmd() *cobra.Command {
 
 				fmt.Fprintf(console.Stdout(ctx), "  %s\n", parsed.Name())
 			}
+		}
+
+		if !*push {
+			// On push, we already report what was built. Add a hint for other builds, too.
+			fmt.Fprintf(console.Stdout(ctx), "\nCompleted build for platforms %s.\n", strings.Join(*platforms, ","))
 		}
 
 		return nil
