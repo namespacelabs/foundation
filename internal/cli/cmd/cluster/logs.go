@@ -14,14 +14,17 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 )
 
 func NewLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logs [cluster-id]",
-		Short: "Prints log for a cluster.",
+		Short: "Prints logs for a cluster.",
+		Long:  "Prints application logs for a cluster. To print all cluster logs (including Kubernetes system logs) add --all.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 
@@ -31,6 +34,7 @@ func NewLogsCmd() *cobra.Command {
 	pod := cmd.Flags().StringP("pod", "p", "", "If specified, only display logs of this Kubernetes Pod.")
 	container := cmd.Flags().StringP("container", "c", "", "If specified, only display logs of this container.")
 	raw := cmd.Flags().Bool("raw", false, "Output raw logs (skipping namespace/pod labels).")
+	all := cmd.Flags().Bool("all", false, "Output all logs (including Kubernetes system logs).")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		var clusterID string
@@ -57,12 +61,19 @@ func NewLogsCmd() *cobra.Command {
 		}
 
 		var includeSelector []*api.LogsSelector
+		var excludeSelector []*api.LogsSelector
 		if *namespace != "" || *pod != "" || *container != "" {
 			includeSelector = append(includeSelector, &api.LogsSelector{
 				Namespace: *namespace,
 				Pod:       *pod,
 				Container: *container,
 			})
+		} else if !*all {
+			for _, ns := range ctl.SystemNamespaces {
+				excludeSelector = append(excludeSelector, &api.LogsSelector{
+					Namespace: ns,
+				})
+			}
 		}
 
 		lp := newLogPrinter(*raw)
@@ -76,12 +87,14 @@ func NewLogsCmd() *cobra.Command {
 			return api.TailClusterLogs(ctx, api.Endpoint, &api.LogsOpts{
 				ClusterID: clusterID,
 				Include:   includeSelector,
+				Exclude:   excludeSelector,
 			}, handle)
 		}
 
 		logOpts := &api.LogsOpts{
 			ClusterID: clusterID,
 			Include:   includeSelector,
+			Exclude:   excludeSelector,
 		}
 		if *since != time.Duration(0) {
 			ts := time.Now().Add(-1 * (*since))
@@ -91,6 +104,16 @@ func NewLogsCmd() *cobra.Command {
 		logs, err := api.GetClusterLogs(ctx, api.Endpoint, logOpts)
 		if err != nil {
 			return fnerrors.New("failed to get cluster logs: %w", err)
+		}
+
+		// Skip hint when running in raw mode.
+		if !*raw && len(logs.LogBlock) == 0 {
+			fmt.Fprintf(console.Stdout(ctx), "No logs found.\n")
+
+			style := colors.Ctx(ctx)
+			fmt.Fprintf(console.Stdout(ctx), "\n  Try running %s to also fetch Kubernetes system logs.\n", style.Highlight.Apply(fmt.Sprintf("nsc logs %s --all", clusterID)))
+
+			return nil
 		}
 
 		for _, lb := range logs.LogBlock {

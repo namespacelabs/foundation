@@ -10,6 +10,9 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
+// XXX should receive these.
+var SystemNamespaces = []string{"kube-system", "metallb-system"}
+
 func MakeConfig(cluster *api.KubernetesCluster) k8sapi.Config {
 	return *kubeclient.MakeApiConfig(&kubeclient.StaticConfig{
 		EndpointAddress:          cluster.EndpointAddress,
