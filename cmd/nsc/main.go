@@ -30,6 +30,7 @@ func main() {
 
 		root.AddCommand(cluster.NewBareClusterCmd(false))
 		root.AddCommand(cluster.NewKubectlCmd())          // nsc kubectl
+		root.AddCommand(cluster.NewKubeconfigCmd())       // nsc kubeconfig write
 		root.AddCommand(cluster.NewBuildkitCmd())         // nsc buildkit builctl
 		root.AddCommand(cluster.NewBuildCmd())            // nsc build
 		root.AddCommand(cluster.NewDockerLoginCmd(false)) // nsc docker-login

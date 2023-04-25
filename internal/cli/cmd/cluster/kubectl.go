@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -59,11 +60,23 @@ func NewKubectlCmd() *cobra.Command {
 	return cmd
 }
 
-func newKubeconfigCmd() *cobra.Command {
+func NewKubeconfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "kubeconfig",
-		Short: "Write Kubeconfig for the target cluster.",
-		Args:  cobra.MaximumNArgs(1),
+		Short: "Kubeconfig-related activities.",
+	}
+
+	cmd.AddCommand(newWriteKubeconfigCmd("write", false))
+
+	return cmd
+}
+
+func newWriteKubeconfigCmd(use string, hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    use,
+		Short:  "Write Kubeconfig for the target cluster.",
+		Args:   cobra.MaximumNArgs(1),
+		Hidden: hidden,
 	}
 
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
@@ -98,6 +111,11 @@ func newKubeconfigCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
+
+		style := colors.Ctx(ctx)
+		fmt.Fprintf(console.Stdout(ctx), "\nStart using it by setting:\n")
+		fmt.Fprintf(console.Stdout(ctx), "  %s", style.Highlight.Apply(fmt.Sprintf("export KUBECONFIG=%s\n", cfg.Kubeconfig)))
+
 		return nil
 	})
 

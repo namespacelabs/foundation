@@ -33,7 +33,7 @@ func NewBareClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(NewCreateCmd(true)) // Adding hidden command under `cluster` to support old action versions.
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
-	cmd.AddCommand(newKubeconfigCmd())
+	cmd.AddCommand(newWriteKubeconfigCmd("kubeconfig", true)) // Adding hidden command under `cluster` to support old action versions.
 	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newDockerCmd())
 	cmd.AddCommand(NewProxyCmd())
