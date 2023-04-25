@@ -234,13 +234,18 @@ func NewBuildCmd() *cobra.Command {
 	}
 
 	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
-	push := cmd.Flags().Bool("push", false, "If specified, pushes the image to the target repository.")
+	push := cmd.Flags().BoolP("push", "p", false, "If specified, pushes the image to the target repository.")
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach the specified tags to the image.")
 	platforms := cmd.Flags().StringSlice("platform", []string{}, "Set target platform for build.")
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
+	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
+		if len(*tags) > 0 && len(*names) > 0 {
+			return fnerrors.New("usage of both --tag and --name flags is not supported")
+		}
+
 		// XXX: having multiple outputs is not supported by buildctl.
 		if *push && *dockerLoad {
 			return fnerrors.New("usage of both --push and --load flags is not supported")
@@ -250,8 +255,8 @@ func NewBuildCmd() *cobra.Command {
 			return fnerrors.New("multi-platform builds require --push, --load is not supported")
 		}
 
-		if len(*tags) == 0 && *push {
-			return fnerrors.New("--push requires at least one tag")
+		if len(*tags)+len(*names) == 0 && *push {
+			return fnerrors.New("--push requires at least one tag or name")
 		}
 
 		if len(*platforms) == 0 {
@@ -275,6 +280,23 @@ func NewBuildCmd() *cobra.Command {
 		contextDir := "."
 		if len(specifiedArgs) > 0 {
 			contextDir = specifiedArgs[0]
+		}
+
+		if len(*names) > 0 {
+			// Either tags or names slice is set, but not both.
+			// So, append all names in tags slice
+			resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+			if err != nil {
+				return fmt.Errorf("Could not fetch nscr.io repository: %w", err)
+			}
+
+			if resp.NSCR == nil {
+				return fmt.Errorf("Could not fetch nscr.io repository")
+			}
+
+			for _, name := range *names {
+				*tags = append(*tags, fmt.Sprintf("%s/%s/%s", resp.NSCR.EndpointAddress, resp.NSCR.Repository, name))
+			}
 		}
 
 		parsedTags := make([]name.Tag, len(*tags))
