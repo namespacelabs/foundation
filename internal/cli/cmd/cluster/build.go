@@ -258,7 +258,7 @@ func NewBuildCmd() *cobra.Command {
 			if *dockerLoad {
 				*platforms = []string{platform.FormatPlatform(docker.HostPlatform())}
 			} else {
-				*platforms = []string{"linux/arm64"}
+				*platforms = []string{"linux/amd64"}
 			}
 		}
 
