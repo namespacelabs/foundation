@@ -80,7 +80,7 @@ func newBuildctlCmd() *cobra.Command {
 			return fnerrors.New("failed to download buildctl: %w", err)
 		}
 
-		p, err := runBuildProxy(ctx, *buildCluster)
+		p, err := runBuildProxy(ctx, *buildCluster, false)
 		if err != nil {
 			return err
 		}
@@ -107,14 +107,12 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 }
 
 type buildProxy struct {
-	BuildkitAddr     string
-	DockerConfigDir  string
-	RegistryEndpoint string
-	Repository       string
-	Cleanup          func()
+	BuildkitAddr    string
+	DockerConfigDir string
+	Cleanup         func()
 }
 
-func runBuildProxy(ctx context.Context, cluster string) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (*buildProxy, error) {
 	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(cluster))
 	if err != nil {
 		return nil, err
@@ -138,24 +136,47 @@ func runBuildProxy(ctx context.Context, cluster string) (*buildProxy, error) {
 		return nil, err
 	}
 
-	t, err := api.RegistryCreds(ctx)
-	if err != nil {
-		p.Cleanup()
-		return nil, err
-	}
+	newConfig := *configfile.New(config.ConfigFileName)
 
-	existing := config.LoadDefaultConfigFile(console.Stderr(ctx))
-	// We don't copy over all authentication settings; only some.
-	// XXX replace with custom buildctl invocation that merges auth in-memory.
-	newConfig := configfile.ConfigFile{
-		AuthConfigs:       existing.AuthConfigs,
-		CredentialHelpers: existing.CredentialHelpers,
-		CredentialsStore:  existing.CredentialsStore,
-	}
+	if nscrOnlyRegistry {
+		nsRegs, err := api.GetImageRegistry(ctx, api.Endpoint)
+		if err != nil {
+			return nil, err
+		}
 
-	newConfig.AuthConfigs[response.Registry.EndpointAddress] = types.AuthConfig{
-		Username: t.Username,
-		Password: t.Password,
+		token, err := fnapi.FetchTenantToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, reg := range []*api.ImageRegistry{nsRegs.Registry, nsRegs.NSCR} {
+			if reg != nil {
+				newConfig.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
+					ServerAddress: reg.EndpointAddress,
+					Username:      "tenant-token",
+					Password:      token.Raw(),
+				}
+			}
+		}
+	} else {
+		t, err := api.RegistryCreds(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		existing := config.LoadDefaultConfigFile(console.Stderr(ctx))
+
+		// We don't copy over all authentication settings; only some.
+		// XXX replace with custom buildctl invocation that merges auth in-memory.
+		newConfig = configfile.ConfigFile{
+			AuthConfigs:       existing.AuthConfigs,
+			CredentialHelpers: existing.CredentialHelpers,
+			CredentialsStore:  existing.CredentialsStore,
+		}
+
+		newConfig.AuthConfigs[response.Registry.EndpointAddress] = types.AuthConfig{
+			Username: t.Username,
+			Password: t.Password,
+		}
 	}
 
 	credsFile := filepath.Join(p.TempDir, config.ConfigFileName)
@@ -173,7 +194,7 @@ func runBuildProxy(ctx context.Context, cluster string) (*buildProxy, error) {
 		})
 	}()
 
-	return &buildProxy{p.SocketAddr, p.TempDir, response.Registry.EndpointAddress, response.Registry.Repository, func() {
+	return &buildProxy{p.SocketAddr, p.TempDir, func() {
 		cancel()
 		p.Cleanup()
 	}}, nil
@@ -315,7 +336,7 @@ func NewBuildCmd() *cobra.Command {
 		for _, p := range *platforms {
 			resolved := resolveBuildCluster(p, clusterProfiles.ClusterPlatform)
 			if _, ok := builders[resolved]; !ok {
-				buildProxy, err := runBuildProxy(ctx, resolved)
+				buildProxy, err := runBuildProxy(ctx, resolved, len(*names) > 0)
 				if err != nil {
 					return err
 				}
