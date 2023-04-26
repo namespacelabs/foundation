@@ -5,8 +5,12 @@
 package cluster
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -137,4 +141,118 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 	})
 
 	return cmd
+}
+
+func NewDockerCredHelperStoreCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "store",
+		Short:  "Unimplemented",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return fnerrors.New("unimplemented")
+	})
+
+	return cmd
+}
+
+func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "get",
+		Short:  "Get Workspace's container registry credetial",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		done := console.EnterInputMode(ctx)
+		defer done()
+
+		input, err := readStdin()
+		if err != nil {
+			return fnerrors.New("failed to read from stdin: %w", err)
+		}
+		regURL := string(input)
+
+		resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+		if err != nil {
+			return fnerrors.New("failed to get nscloud registries: %w", err)
+		}
+
+		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
+			if regURL == reg.EndpointAddress {
+				token, err := fnapi.FetchTenantToken(ctx)
+				if err != nil {
+					return fnerrors.New("failed to fetch tenant token: %w", err)
+				}
+
+				c := credHelperGetOutput{
+					ServerURL: reg.EndpointAddress,
+					Username:  "tenant-token",
+					Secret:    token.Raw(),
+				}
+
+				buf, err := json.Marshal(c)
+				if err != nil {
+					return fnerrors.New("failed to marshal output JSON: %w", err)
+				}
+
+				fmt.Println(string(buf))
+				return nil
+			}
+		}
+
+		return fnerrors.New("credentials not found in nscloud")
+
+	})
+
+	return cmd
+}
+
+func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "list",
+		Short:  "List Workspace's container registry credetials",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return nil
+	})
+
+	return cmd
+}
+
+func NewDockerCredHelperEraseCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "erase",
+		Short:  "Unimplemented",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return fnerrors.New("unimplemented")
+	})
+
+	return cmd
+}
+
+type credHelperGetOutput struct {
+	ServerURL string
+	Username  string
+	Secret    string
+}
+
+func readStdin() ([]byte, error) {
+	reader := bufio.NewReader(os.Stdin)
+	// Read until (required) newline.
+	s, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	return bytes.TrimSpace([]byte(s)), nil
 }
