@@ -438,7 +438,7 @@ func NewBuildCmd() *cobra.Command {
 					if err := localexec.RunInteractive(ctx, dockerLoad); err != nil {
 						return err
 					}
-					fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to docker.\n", time.Since(t))
+					fmt.Fprintf(console.Stdout(ctx), "Took %v to upload the image to Docker.\n", time.Since(t))
 					return nil
 				}
 			}
