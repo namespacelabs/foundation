@@ -28,6 +28,10 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
+const (
+	dockerUsername = "tenant-token"
+)
+
 func newDockerCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "docker -- ...",
@@ -99,7 +103,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 			if x != nil {
 				if err := cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
 					ServerAddress: x.EndpointAddress,
-					Username:      "tenant-token",
+					Username:      dockerUsername,
 					Password:      token.Raw(),
 				}); err != nil {
 					return err
@@ -190,7 +194,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 
 				c := credHelperGetOutput{
 					ServerURL: reg.EndpointAddress,
-					Username:  "tenant-token",
+					Username:  dockerUsername,
 					Secret:    token.Raw(),
 				}
 
@@ -220,6 +224,26 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		done := console.EnterInputMode(ctx)
+		defer done()
+
+		resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+		if err != nil {
+			return fnerrors.New("failed to get nscloud registries: %w", err)
+		}
+
+		output := map[string]string{}
+
+		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
+			output[reg.EndpointAddress] = dockerUsername
+		}
+
+		buf, err := json.Marshal(output)
+		if err != nil {
+			return fnerrors.New("failed to marshal output JSON: %w", err)
+		}
+
+		fmt.Println(string(buf))
 		return nil
 	})
 
@@ -249,7 +273,6 @@ type credHelperGetOutput struct {
 
 func readStdin() ([]byte, error) {
 	reader := bufio.NewReader(os.Stdin)
-	// Read until (required) newline.
 	s, err := reader.ReadString('\n')
 	if err != nil && err != io.EOF {
 		return nil, err
