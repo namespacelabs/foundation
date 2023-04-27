@@ -3,7 +3,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
-set -eu
+set -eux
 
 tool_name="nsc"
 
@@ -119,7 +119,9 @@ do_install() {
   $sh_c "chmod +x ${bin_dir}/${tool_name}"
 
   # symlink for Docker's credential helper (requirement for `nsc docker-login`)
-  $sh_c "ln -s ${bin_dir}/${tool_name} ${bin_dir}/docker-credential-${tool_name}"
+  if [ ! -f "${ns_root}/bin/docker-credential-${tool_name}" ]; then
+    $sh_c "ln -s ${bin_dir}/${tool_name} ${bin_dir}/docker-credential-${tool_name}"
+  fi
 
   $sh_c "rm ${temp_tar}"
 
