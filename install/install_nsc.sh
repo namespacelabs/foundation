@@ -6,6 +6,7 @@
 set -eu
 
 tool_name="nsc"
+docker_cred_helper_name="docker-credential-nsc"
 
 is_wsl() {
 	case "$(uname -r)" in
@@ -117,11 +118,7 @@ do_install() {
   $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${tool_name}"
 
   $sh_c "chmod +x ${bin_dir}/${tool_name}"
-
-  # symlink for Docker's credential helper (requirement for `nsc docker-login`)
-  if [ ! -f "${ns_root}/bin/docker-credential-${tool_name}" ]; then
-    $sh_c "ln -s ${bin_dir}/${tool_name} ${bin_dir}/docker-credential-${tool_name}"
-  fi
+  $sh_c "chmod +x ${bin_dir}/${docker_cred_helper_name}"
 
   $sh_c "rm ${temp_tar}"
 

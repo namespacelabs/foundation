@@ -6,7 +6,6 @@ package main
 
 import (
 	"context"
-	"os"
 
 	"github.com/spf13/cobra"
 	ia "namespacelabs.dev/foundation/internal/auth"
@@ -18,22 +17,9 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-const (
-	dockerCredHelperBinary = "docker-credential-nsc"
-	nscBinary              = "nsc"
-)
-
 func main() {
-	if os.Args[0] == dockerCredHelperBinary {
-		dockerCredHelperMain()
-	} else {
-		nscMain()
-	}
-}
-
-func nscMain() {
 	// Consider adding auto updates if we frequently change nsc.
-	fncobra.DoMain(nscBinary, true, func(root *cobra.Command) {
+	fncobra.DoMain("nsc", true, func(root *cobra.Command) {
 		api.SetupFlags("", root.PersistentFlags(), false)
 		ia.SetupFlags(root.PersistentFlags())
 
@@ -58,23 +44,6 @@ func nscMain() {
 		root.AddCommand(cluster.NewSshCmd())              // nsc ssh
 
 		root.AddCommand(sdk.NewSdkCmd(true))
-
-		fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
-			api.Register()
-			return nil
-		})
-	})
-}
-
-func dockerCredHelperMain() {
-	fncobra.DoMain(dockerCredHelperBinary, false, func(root *cobra.Command) {
-		api.SetupFlags("", root.PersistentFlags(), false)
-		ia.SetupFlags(root.PersistentFlags())
-
-		root.AddCommand(cluster.NewDockerCredHelperStoreCmd(false))
-		root.AddCommand(cluster.NewDockerCredHelperGetCmd(false))
-		root.AddCommand(cluster.NewDockerCredHelperListCmd(false))
-		root.AddCommand(cluster.NewDockerCredHelperEraseCmd(false))
 
 		fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
 			api.Register()
