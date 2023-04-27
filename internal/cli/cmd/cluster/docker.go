@@ -5,15 +5,19 @@
 package cluster
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/cli/cli/config/types"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -22,6 +26,12 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+)
+
+const (
+	dockerUsername   = "tenant-token"
+	credHelperBinary = "docker-credential-nsc"
+	nscBinary        = "nsc"
 )
 
 func newDockerCmd() *cobra.Command {
@@ -79,27 +89,21 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		stdout := console.Stdout(ctx)
-		response, err := api.GetImageRegistry(ctx, api.Endpoint)
-		if err != nil {
-			return err
-		}
 
-		token, err := fnapi.FetchTenantToken(ctx)
+		response, err := api.GetImageRegistry(ctx, api.Endpoint)
 		if err != nil {
 			return err
 		}
 
 		cfg := config.LoadDefaultConfigFile(console.Stderr(ctx))
 
-		for _, x := range []*api.ImageRegistry{response.Registry, response.NSCR} {
-			if x != nil {
-				if err := cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
-					ServerAddress: x.EndpointAddress,
-					Username:      "tenant-token",
-					Password:      token.Raw(),
-				}); err != nil {
-					return err
-				}
+		if cfg.CredentialHelpers == nil {
+			cfg.CredentialHelpers = map[string]string{}
+		}
+
+		for _, reg := range []*api.ImageRegistry{response.Registry, response.NSCR} {
+			if reg != nil {
+				cfg.CredentialHelpers[reg.EndpointAddress] = nscBinary
 			}
 		}
 
@@ -128,13 +132,147 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 		if nscr := response.NSCR; nscr != nil {
 			fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
-			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . -n test:v0.0.1 -p")
+			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
 		}
 
 		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
+
+		if _, err := exec.LookPath(credHelperBinary); err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				fmt.Fprintf(stdout, "\nWe didn't find docker-credential-nsc in your $PATH.\nIt's usually installed along-side nsc; so if you have nsc to the $PATH, docker-credential-nsc will also be available.\n")
+				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing nscr.io images from docker-based tools won't work.\nBut you can always use nsc build (as per above) or nsc run.\n")
+			} else {
+				return fnerrors.New("failed to look up nsc in $PATH: %w", err)
+			}
+		}
 
 		return nil
 	})
 
 	return cmd
+}
+
+func NewDockerCredHelperStoreCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "store",
+		Short:  "Unimplemented",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return fnerrors.New("not supported")
+	})
+
+	return cmd
+}
+
+func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "get",
+		Short:  "Get Workspace's container registry credentials",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		done := console.EnterInputMode(ctx)
+		defer done()
+
+		input, err := readStdin()
+		if err != nil {
+			return fnerrors.New("failed to read from stdin: %w", err)
+		}
+		regURL := string(input)
+
+		resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+		if err != nil {
+			return fnerrors.New("failed to get nscloud registries: %w", err)
+		}
+
+		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
+			if reg != nil && regURL == reg.EndpointAddress {
+				token, err := fnapi.FetchTenantToken(ctx)
+				if err != nil {
+					return err
+				}
+
+				c := credHelperGetOutput{
+					ServerURL: reg.EndpointAddress,
+					Username:  dockerUsername,
+					Secret:    token.Raw(),
+				}
+
+				enc := json.NewEncoder(os.Stdout)
+				return enc.Encode(c)
+			}
+		}
+
+		// Docker-like tools expect the following error string w/o special formatting
+		return errors.New("credentials not found in native keychain")
+	})
+
+	return cmd
+}
+
+func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "list",
+		Short:  "List Workspace's container registry credentials",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		done := console.EnterInputMode(ctx)
+		defer done()
+
+		resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+		if err != nil {
+			return fnerrors.New("failed to get nscloud registries: %w", err)
+		}
+
+		output := map[string]string{}
+
+		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
+			if reg != nil {
+				output[reg.EndpointAddress] = dockerUsername
+			}
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(output)
+	})
+
+	return cmd
+}
+
+func NewDockerCredHelperEraseCmd(hidden bool) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "erase",
+		Short:  "Unimplemented",
+		Args:   cobra.NoArgs,
+		Hidden: hidden,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return fnerrors.New("not supported")
+	})
+
+	return cmd
+}
+
+type credHelperGetOutput struct {
+	ServerURL string
+	Username  string
+	Secret    string
+}
+
+func readStdin() ([]byte, error) {
+	reader := bufio.NewReader(os.Stdin)
+	s, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	return bytes.TrimSpace([]byte(s)), nil
 }
