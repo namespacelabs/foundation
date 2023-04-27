@@ -118,6 +118,9 @@ do_install() {
 
   $sh_c "chmod +x ${bin_dir}/${tool_name}"
 
+  # symlink for Docker's credential helper (requirement for `nsc docker-login`)
+  $sh_c "ln -s ${bin_dir}/${tool_name} ${bin_dir}/docker-credential-${tool_name}"
+
   $sh_c "rm ${temp_tar}"
 
   echo
