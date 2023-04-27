@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -87,6 +88,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		stdout := console.Stdout(ctx)
+
 		response, err := api.GetImageRegistry(ctx, api.Endpoint)
 		if err != nil {
 			return err
@@ -127,13 +129,21 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 			return fnerrors.New("failed to write %q: %w", cfgFile, err)
 		}
 
-		if nscr := response.NSCR; nscr != nil {
-			fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
-			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
+		if _, err := exec.LookPath(credHelperBinary); err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				fmt.Fprintf(stdout, "\nWarning: nsc binary is not installed in your $PATH. Docker credentials won't work until you add nsc's path to the $PATH.\n")
+			} else {
+				return fnerrors.New("failed to look up nsc in $PATH: %w", err)
+			}
+
+		} else {
+			if nscr := response.NSCR; nscr != nil {
+				fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
+				fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
+			}
+
+			fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
 		}
-
-		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
-
 		return nil
 	})
 
