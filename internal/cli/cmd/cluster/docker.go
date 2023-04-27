@@ -99,8 +99,8 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 		cfg := config.LoadDefaultConfigFile(console.Stderr(ctx))
 
-		for _, x := range []*api.ImageRegistry{response.Registry, response.NSCR} {
-			if x != nil {
+		for _, reg := range []*api.ImageRegistry{response.Registry, response.NSCR} {
+			if reg != nil {
 				if err := cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
 					ServerAddress: x.EndpointAddress,
 					Username:      dockerUsername,
@@ -186,7 +186,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 		}
 
 		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
-			if regURL == reg.EndpointAddress {
+			if reg != nil && regURL == reg.EndpointAddress {
 				token, err := fnapi.FetchTenantToken(ctx)
 				if err != nil {
 					return fnerrors.New("failed to fetch tenant token: %w", err)
@@ -235,7 +235,9 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 		output := map[string]string{}
 
 		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
-			output[reg.EndpointAddress] = dockerUsername
+			if reg != nil {
+				output[reg.EndpointAddress] = dockerUsername
+			}
 		}
 
 		buf, err := json.Marshal(output)
