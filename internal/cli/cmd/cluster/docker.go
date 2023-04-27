@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 
 	"github.com/docker/cli/cli/config"
-	"github.com/docker/cli/cli/config/types"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -29,7 +28,8 @@ import (
 )
 
 const (
-	dockerUsername = "tenant-token"
+	dockerUsername   = "tenant-token"
+	credHelperBinary = "nsc"
 )
 
 func newDockerCmd() *cobra.Command {
@@ -92,22 +92,15 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 			return err
 		}
 
-		token, err := fnapi.FetchTenantToken(ctx)
-		if err != nil {
-			return err
-		}
-
 		cfg := config.LoadDefaultConfigFile(console.Stderr(ctx))
+
+		if cfg.CredentialHelpers == nil {
+			cfg.CredentialHelpers = map[string]string{}
+		}
 
 		for _, reg := range []*api.ImageRegistry{response.Registry, response.NSCR} {
 			if reg != nil {
-				if err := cfg.GetCredentialsStore(response.Registry.EndpointAddress).Store(types.AuthConfig{
-					ServerAddress: x.EndpointAddress,
-					Username:      dockerUsername,
-					Password:      token.Raw(),
-				}); err != nil {
-					return err
-				}
+				cfg.CredentialHelpers[reg.EndpointAddress] = credHelperBinary
 			}
 		}
 
@@ -136,7 +129,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 		if nscr := response.NSCR; nscr != nil {
 			fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
-			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . -n test:v0.0.1 -p")
+			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
 		}
 
 		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
