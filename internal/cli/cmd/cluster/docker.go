@@ -30,7 +30,8 @@ import (
 
 const (
 	dockerUsername   = "tenant-token"
-	credHelperBinary = "nsc"
+	credHelperBinary = "docker-credentials-nsc"
+	nscBinary        = "nsc"
 )
 
 func newDockerCmd() *cobra.Command {
@@ -102,7 +103,7 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 		for _, reg := range []*api.ImageRegistry{response.Registry, response.NSCR} {
 			if reg != nil {
-				cfg.CredentialHelpers[reg.EndpointAddress] = credHelperBinary
+				cfg.CredentialHelpers[reg.EndpointAddress] = nscBinary
 			}
 		}
 
@@ -129,21 +130,22 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 			return fnerrors.New("failed to write %q: %w", cfgFile, err)
 		}
 
+		if nscr := response.NSCR; nscr != nil {
+			fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
+			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
+		}
+
+		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
+
 		if _, err := exec.LookPath(credHelperBinary); err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
-				fmt.Fprintf(stdout, "\nWarning: nsc binary is not installed in your $PATH. Docker credentials won't work until you add nsc's path to the $PATH.\n")
+				fmt.Fprintf(stdout, "\nWe didn't find docker-credentials-nsc in your $PATH.\nIt's usually installed along-side nsc; so if you have nsc to the $PATH, docker-credentials-nsc will also be available.\n")
+				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing nscr.io images from docker-based tools won't work.\nBut you can always use nsc build (as per above) or nsc run.\n")
 			} else {
 				return fnerrors.New("failed to look up nsc in $PATH: %w", err)
 			}
-
-		} else {
-			if nscr := response.NSCR; nscr != nil {
-				fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
-				fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
-			}
-
-			fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
 		}
+
 		return nil
 	})
 
@@ -159,7 +161,7 @@ func NewDockerCredHelperStoreCmd(hidden bool) *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return fnerrors.New("unimplemented")
+		return fnerrors.New("not supported")
 	})
 
 	return cmd
@@ -168,7 +170,7 @@ func NewDockerCredHelperStoreCmd(hidden bool) *cobra.Command {
 func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "get",
-		Short:  "Get Workspace's container registry credetial",
+		Short:  "Get Workspace's container registry credentials",
 		Args:   cobra.NoArgs,
 		Hidden: hidden,
 	}
@@ -192,7 +194,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 			if reg != nil && regURL == reg.EndpointAddress {
 				token, err := fnapi.FetchTenantToken(ctx)
 				if err != nil {
-					return fnerrors.New("failed to fetch tenant token: %w", err)
+					return err
 				}
 
 				c := credHelperGetOutput{
@@ -201,18 +203,13 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 					Secret:    token.Raw(),
 				}
 
-				buf, err := json.Marshal(c)
-				if err != nil {
-					return fnerrors.New("failed to marshal output JSON: %w", err)
-				}
-
-				fmt.Println(string(buf))
-				return nil
+				enc := json.NewEncoder(os.Stdout)
+				return enc.Encode(c)
 			}
 		}
 
-		return fnerrors.New("credentials not found in nscloud")
-
+		// Docker-like tools expect the following error string w/o special formatting
+		return errors.New("credentials not found in native keychain")
 	})
 
 	return cmd
@@ -221,7 +218,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "list",
-		Short:  "List Workspace's container registry credetials",
+		Short:  "List Workspace's container registry credentials",
 		Args:   cobra.NoArgs,
 		Hidden: hidden,
 	}
@@ -243,13 +240,8 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 			}
 		}
 
-		buf, err := json.Marshal(output)
-		if err != nil {
-			return fnerrors.New("failed to marshal output JSON: %w", err)
-		}
-
-		fmt.Println(string(buf))
-		return nil
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(output)
 	})
 
 	return cmd
@@ -264,7 +256,7 @@ func NewDockerCredHelperEraseCmd(hidden bool) *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return fnerrors.New("unimplemented")
+		return fnerrors.New("not supported")
 	})
 
 	return cmd
