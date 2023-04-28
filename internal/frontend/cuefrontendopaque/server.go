@@ -25,7 +25,7 @@ var (
 	extensionFields = []string{
 		"args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
-		"resourceLimits", "resourceRequests",
+		"resourceLimits", "resourceRequests", "extensions",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
