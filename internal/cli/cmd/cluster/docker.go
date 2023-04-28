@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	dockerUsername   = "tenant-token"
+	dockerUsername   = "token"
 	credHelperBinary = "docker-credential-nsc"
 	nscBinary        = "nsc"
 )

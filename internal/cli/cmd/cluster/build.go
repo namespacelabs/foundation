@@ -45,6 +45,10 @@ import (
 	"namespacelabs.dev/go-ids"
 )
 
+const (
+	nscrRegistryUsername = "token"
+)
+
 var (
 	// preferredBuildPlatform is a mapping between supported platforms and preferable build cluster.
 	preferredBuildPlatform = map[string]string{
@@ -138,44 +142,38 @@ func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (
 
 	newConfig := *configfile.New(config.ConfigFileName)
 
-	if nscrOnlyRegistry {
-		nsRegs, err := api.GetImageRegistry(ctx, api.Endpoint)
-		if err != nil {
-			return nil, err
-		}
-
-		token, err := fnapi.FetchTenantToken(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, reg := range []*api.ImageRegistry{nsRegs.Registry, nsRegs.NSCR} {
-			if reg != nil {
-				newConfig.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
-					ServerAddress: reg.EndpointAddress,
-					Username:      "tenant-token",
-					Password:      token.Raw(),
-				}
-			}
-		}
-	} else {
-		t, err := api.RegistryCreds(ctx)
-		if err != nil {
-			return nil, err
-		}
-
+	if !nscrOnlyRegistry {
+		// This is a special option to support calling `nsc build --name`, which
+		// implies that they want to use nscr.io registry, without asking the user to
+		// set the credentials earlier with `nsc docker-login`.
+		// In that case we cannot copy the CredentialsStore from default config
+		// because MacOS Docker Engine would ignore the cleartext credentials we injected.
 		existing := config.LoadDefaultConfigFile(console.Stderr(ctx))
 
 		// We don't copy over all authentication settings; only some.
 		// XXX replace with custom buildctl invocation that merges auth in-memory.
-		newConfig = configfile.ConfigFile{
-			AuthConfigs:       existing.AuthConfigs,
-			CredentialHelpers: existing.CredentialHelpers,
-			CredentialsStore:  existing.CredentialsStore,
-		}
 
-		newConfig.AuthConfigs[response.Registry.EndpointAddress] = types.AuthConfig{
-			Username: t.Username,
-			Password: t.Password,
+		newConfig.AuthConfigs = existing.AuthConfigs
+		newConfig.CredentialHelpers = existing.CredentialHelpers
+		newConfig.CredentialsStore = existing.CredentialsStore
+	}
+
+	nsRegs, err := api.GetImageRegistry(ctx, api.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := fnapi.FetchTenantToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, reg := range []*api.ImageRegistry{nsRegs.Registry, nsRegs.NSCR} {
+		if reg != nil {
+			newConfig.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
+				ServerAddress: reg.EndpointAddress,
+				Username:      nscrRegistryUsername,
+				Password:      token.Raw(),
+			}
 		}
 	}
 

@@ -18,7 +18,7 @@ func RegistryCreds(ctx context.Context) (*authn.Basic, error) {
 	}
 
 	return &authn.Basic{
-		Username: "tenant-token", // XXX: hardcoded as image-registry expects static username.
+		Username: "token", // XXX: hardcoded as image-registry expects static username.
 		Password: token.Raw(),
 	}, nil
 }
