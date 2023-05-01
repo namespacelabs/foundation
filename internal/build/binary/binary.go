@@ -328,12 +328,15 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 			return nil, err
 		}
 
-		switch strings.ToLower(src.MakeFsImage.Kind) {
+		switch kind := strings.ToLower(src.MakeFsImage.Kind); kind {
 		case "squashfs", "squash":
 			return makeSquashFS{inner, src.MakeFsImage.Target}, nil
 
 		case "ext4fs", "ext4":
 			return makeExt4Image{inner, src.MakeFsImage.Target, src.MakeFsImage.Size}, nil
+
+		case "tar", "tgz":
+			return makeTarImage{inner, src.MakeFsImage.Target, kind == "tgz"}, nil
 
 		default:
 			return nil, fnerrors.BadInputError("make_fs_image: unsupported filesystem %q", src.MakeFsImage.Kind)
