@@ -47,7 +47,6 @@ type cueImageBuildPlan struct {
 	NodejsBuild              *schema.NodejsBuild                    `json:"nodejs_build,omitempty"`
 	Binary                   string                                 `json:"binary,omitempty"`
 	FilesFrom                *cueImageBuildPlan_FilesFrom           `json:"files_from,omitempty"`
-	MakeSquashFS             *cueImageBuildPlan_MakeSquashFS        `json:"make_squashfs,omitempty"`
 	MakeFilesystemImage      *cueImageBuildPlan_MakeFilesystemImage `json:"make_fs_image,omitempty"`
 	ImageID                  string                                 `json:"image_id,omitempty"`
 }
@@ -60,11 +59,6 @@ type cueImageBuildPlan_FilesFrom struct {
 	From      cueImageBuildPlan `json:"from"`
 	Files     []string          `json:"files"`
 	TargetDir string            `json:"target_dir"`
-}
-
-type cueImageBuildPlan_MakeSquashFS struct {
-	From   cueImageBuildPlan `json:"from"`
-	Target string            `json:"target"`
 }
 
 type cueImageBuildPlan_MakeFilesystemImage struct {
@@ -246,20 +240,6 @@ func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackag
 		}
 
 		set = append(set, "files_from")
-	}
-
-	if bp.MakeSquashFS != nil {
-		from, err := bp.MakeSquashFS.From.ToSchema(ctx, pl, loc)
-		if err != nil {
-			return nil, err
-		}
-
-		plan.MakeSquashfs = &schema.ImageBuildPlan_MakeSquashFS{
-			From:   from,
-			Target: bp.MakeSquashFS.Target,
-		}
-
-		set = append(set, "make_squashfs")
 	}
 
 	if bp.MakeFilesystemImage != nil {

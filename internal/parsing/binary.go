@@ -85,9 +85,6 @@ func ensureBaseImageDeps(ctx context.Context, pl EarlyPackageLoader, owner schem
 
 	case layer.MakeFsImage.GetFrom() != nil:
 		return ensureBaseImageDeps(ctx, pl, owner, layer.MakeFsImage.From)
-
-	case layer.MakeSquashfs.GetFrom() != nil:
-		return ensureBaseImageDeps(ctx, pl, owner, layer.MakeSquashfs.From)
 	}
 
 	return nil

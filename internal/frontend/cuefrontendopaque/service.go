@@ -20,12 +20,13 @@ import (
 )
 
 // Needs to be consistent with JSON names of cueResourceClass fields.
-var serviceFields = []string{"kind", "port", "exportedPort", "ingress", "annotations", "probe", "probes"}
+var serviceFields = []string{"kind", "port", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes"}
 
 type cueService struct {
 	Kind         string     `json:"kind"`
 	Port         int32      `json:"port"`
 	ExportedPort int32      `json:"exportedPort"`
+	HostPort     int32      `json:"hostPort"`
 	Ingress      cueIngress `json:"ingress"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
@@ -152,7 +153,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 
 	parsed := &schema.Server_ServiceSpec{
 		Name:         name,
-		Port:         &schema.Endpoint_Port{Name: name, ContainerPort: svc.Port},
+		Port:         &schema.Endpoint_Port{Name: name, ContainerPort: svc.Port, HostPort: svc.HostPort},
 		ExportedPort: svc.ExportedPort,
 		EndpointType: endpointType,
 	}
