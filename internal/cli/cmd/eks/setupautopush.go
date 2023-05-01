@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/std/execution"
 )
 
-const appURL = "https://github.com/apps/namespace-continuous-integration/installations/new"
+const appURL = "https://github.com/apps/obsolete-namespace-ci/installations/new"
 
 func newSetupAutopushCmd() *cobra.Command {
 	var iamRole string
