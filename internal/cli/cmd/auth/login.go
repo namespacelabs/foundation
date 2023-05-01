@@ -31,7 +31,7 @@ func NewLoginCmd() *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			res, err := fnapi.StartLogin(ctx, kind, auth.Workspace)
 			if err != nil {
-				return nil
+				return err
 			}
 
 			stdout := console.Stdout(ctx)
