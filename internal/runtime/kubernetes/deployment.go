@@ -119,7 +119,14 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		WithResources(reses)
 
 	for _, port := range deployable.MainContainer.AllocatedPorts {
-		mainContainer.WithPorts(applycorev1.ContainerPort().WithName(port.Name).WithContainerPort(port.ContainerPort))
+		p := applycorev1.ContainerPort().WithContainerPort(port.ContainerPort)
+		if port.Name != "" {
+			p = p.WithName(port.Name)
+		}
+		if port.HostPort != 0 {
+			p = p.WithHostPort(port.HostPort)
+		}
+		mainContainer.WithPorts(p)
 	}
 
 	switch deployable.Attachable {

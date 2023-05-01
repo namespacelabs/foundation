@@ -44,6 +44,10 @@ message Endpoint {
     message Port {
         string name           = 1;
         int32  container_port = 2;
+        // Most of the times you DON'T want to use this; this binds the
+        // container port to the specified port in the node the pod gets
+        // scheduled to.
+        int32  host_port      = 3;
     }
 
     message IngressSpec {
