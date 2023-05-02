@@ -118,7 +118,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		WithSecurityContext(secCtx).
 		WithResources(reses)
 
-	for _, port := range deployable.MainContainer.AllocatedPorts {
+	for _, port := range deployable.MainContainer.ContainerPorts {
 		p := applycorev1.ContainerPort().WithContainerPort(port.ContainerPort)
 		if port.Name != "" {
 			p = p.WithName(port.Name)

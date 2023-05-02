@@ -318,7 +318,7 @@ type ContainerRunOpts struct {
 	Privileged         bool
 	HostNetwork        bool
 	Mounts             []*schema.Mount
-	AllocatedPorts     []*schema.Endpoint_Port
+	ContainerPorts     []*schema.Endpoint_Port
 	ResourceLimits     *schema.Container_ResourceLimits
 	ResourceRequests   *schema.Container_ResourceLimits
 }

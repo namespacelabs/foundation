@@ -89,7 +89,6 @@ type PlannedServer struct {
 	Resources      []pkggraph.ResourceInstance
 	MergedFragment *schema.ServerFragment
 
-	AllocatedPorts    []*schema.Endpoint_Port
 	Endpoints         []*schema.Endpoint
 	InternalEndpoints []*schema.InternalEndpoint
 }
@@ -318,6 +317,8 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				return err
 			}
 
+			ps.MergedFragment.MainContainer.ContainerPort = append(ps.MergedFragment.MainContainer.ContainerPort, frag.MainContainer.ContainerPort...)
+
 			if ps.MergedFragment.MainContainer.Limits != nil {
 				if frag.MainContainer.Limits != nil {
 					return fnerrors.New("resource limits are defined more than once")
@@ -506,7 +507,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			})
 		})
 
-		ps.AllocatedPorts = allocatedPorts.Ports
+		ps.MergedFragment.MainContainer.ContainerPort = append(ps.MergedFragment.MainContainer.ContainerPort, allocatedPorts.Ports...)
 		ps.Endpoints = endpoints
 		ps.InternalEndpoints = internal
 

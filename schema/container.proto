@@ -9,6 +9,7 @@ package foundation.schema;
 option go_package = "namespacelabs.dev/foundation/schema";
 
 import "schema/binary.proto";
+import "schema/networking.proto";
 import "schema/package.proto";
 import "schema/volume.proto";
 
@@ -29,6 +30,8 @@ message Container {
     Security                       security = 8;
     ResourceLimits                 requests = 10;
     ResourceLimits                 limits   = 11;
+
+    repeated Endpoint.Port container_port = 12;
 
     message Security {
         bool privileged   = 1;

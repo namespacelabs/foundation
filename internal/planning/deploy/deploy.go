@@ -369,7 +369,7 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 		return runtime.DeploymentSpec{}, err
 	}
 
-	for k, srv := range stack.Servers {
+	for _, srv := range stack.Servers {
 		resolved, ok := imageIDs[srv.PackageName()]
 		if !ok {
 			return runtime.DeploymentSpec{}, fnerrors.InternalError("%s: missing server build results", srv.PackageName())
@@ -409,8 +409,8 @@ func planDeployment(ctx context.Context, planner planning.Planner, stack *planni
 			return runtime.DeploymentSpec{}, err
 		}
 
-		sidecars := stack.Servers[k].MergedFragment.Sidecar
-		inits := stack.Servers[k].MergedFragment.InitContainer
+		sidecars := srv.MergedFragment.Sidecar
+		inits := srv.MergedFragment.InitContainer
 
 		if err := prepareContainerRunOpts(sidecars, resolved, &deployable.Sidecars); err != nil {
 			return runtime.DeploymentSpec{}, err
@@ -853,6 +853,7 @@ func computeStackAndImages(ctx context.Context, planner planning.Planner, stack 
 func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.PlannedServer, imgs *ResolvedServerImages, out *runtime.DeployableSpec) error {
 	proto := srv.Proto()
 	frag := srv.MergedFragment
+	main := frag.MainContainer
 
 	out.ErrorLocation = srv.Location
 	out.PackageRef = srv.Proto().GetPackageRef()
@@ -861,7 +862,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.Id = proto.Id
 	out.Name = proto.Name
 	out.Volumes = append(out.Volumes, frag.Volume...)
-	out.MainContainer.Mounts = append(out.MainContainer.Mounts, frag.MainContainer.Mount...)
+	out.MainContainer.Mounts = append(out.MainContainer.Mounts, main.Mount...)
 
 	if imgs != nil {
 		out.MainContainer.Image = imgs.Binary
@@ -903,8 +904,6 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 		return fnerrors.InternalError("%s: missing from the stack", srv.PackageName())
 	}
 
-	out.MainContainer.AllocatedPorts = append(out.MainContainer.AllocatedPorts, stackEntry.AllocatedPorts...)
-
 	for _, dep := range stackEntry.ParsedDeps {
 		plan, err := dep.Startup.EvalStartup(ctx, srv.SealedContext(), inputs, dep.Allocations)
 		if err != nil {
@@ -918,12 +917,12 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 		}
 	}
 
-	main := srv.MergedFragment.MainContainer
 	out.MainContainer.Args = append(out.MainContainer.Args, main.Args...)
 	out.MainContainer.Privileged = main.GetSecurity().GetPrivileged()
 	out.MainContainer.HostNetwork = main.GetSecurity().GetHostNetwork()
 	out.MainContainer.ResourceLimits = main.Limits
 	out.MainContainer.ResourceRequests = main.Requests
+	out.MainContainer.ContainerPorts = append(out.MainContainer.ContainerPorts, main.ContainerPort...)
 
 	var err error
 	out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, main.Env)
@@ -968,6 +967,7 @@ func prepareContainerRunOpts(containers []*schema.Container, resolved ResolvedSe
 				Privileged:       container.GetSecurity().GetPrivileged(),
 				ResourceLimits:   container.Limits,
 				ResourceRequests: container.Requests,
+				ContainerPorts:   container.ContainerPort,
 			},
 		}
 

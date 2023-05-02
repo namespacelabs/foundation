@@ -23,7 +23,7 @@ import (
 
 var (
 	extensionFields = []string{
-		"args", "env", "services", "unstable_permissions", "permissions", "probe", "probes", "security",
+		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "extensions",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
@@ -50,6 +50,7 @@ type cueServerExtension struct {
 	Limits   *schema.Container_ResourceLimits `json:"resourceLimits"`
 
 	Services map[string]cueService `json:"services"`
+	Ports    map[string]cuePort    `json:"ports"`
 
 	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
 	Permissions         *cuePermissions `json:"permissions,omitempty"`
@@ -61,6 +62,11 @@ type cueServerExtension struct {
 	Annotations    map[string]args.ResolvableValue `json:"annotations,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
+}
+
+type cuePort struct {
+	ContainerPort int32 `json:"containerPort"`
+	HostPort      int32 `json:"hostPort"`
 }
 
 type cuePermissions struct {
@@ -170,6 +176,16 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 
 		serviceProbes = append(serviceProbes, probes...)
 	}
+
+	for name, port := range bits.Ports {
+		out.MainContainer.ContainerPort = append(out.MainContainer.ContainerPort, &schema.Endpoint_Port{
+			Name:          name,
+			ContainerPort: port.ContainerPort,
+			HostPort:      port.HostPort,
+		})
+	}
+
+	slices.SortFunc(out.MainContainer.ContainerPort, func(a, b *schema.Endpoint_Port) bool { return strings.Compare(a.Name, b.Name) < 0 })
 
 	var err error
 	out.Probe, err = parseProbes(loc, serviceProbes, bits)
