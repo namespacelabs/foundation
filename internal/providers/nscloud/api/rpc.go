@@ -211,6 +211,7 @@ type CreateClusterOpts struct {
 	Features          []string
 	AuthorizedSshKeys []string
 	UniqueTag         string
+	InternalExtra     string
 
 	WaitClusterOpts
 }
@@ -233,6 +234,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			Feature:           opts.Features,
 			AuthorizedSshKeys: opts.AuthorizedSshKeys,
 			UniqueTag:         opts.UniqueTag,
+			InternalExtra:     opts.InternalExtra,
 		}
 
 		var response StartCreateKubernetesClusterResponse

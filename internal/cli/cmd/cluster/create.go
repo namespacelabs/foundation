@@ -38,13 +38,17 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 
 	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
 
+	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
+	cmd.Flags().MarkHidden("internal_extra")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		opts := api.CreateClusterOpts{
-			MachineType: *machineType,
-			Ephemeral:   *ephemeral,
-			KeepAtExit:  true,
-			Purpose:     "Manually created from CLI",
-			Features:    *features,
+			MachineType:   *machineType,
+			Ephemeral:     *ephemeral,
+			KeepAtExit:    true,
+			Purpose:       "Manually created from CLI",
+			Features:      *features,
+			InternalExtra: *internalExtra,
 		}
 
 		if *userSshey != "" {

@@ -16,6 +16,7 @@ type CreateKubernetesClusterRequest struct {
 	MachineType       string   `json:"machine_type,omitempty"`
 	Feature           []string `json:"feature,omitempty"`
 	UniqueTag         string   `json:"unique_tag,omitempty"`
+	InternalExtra     string   `json:"internal_extra,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {
