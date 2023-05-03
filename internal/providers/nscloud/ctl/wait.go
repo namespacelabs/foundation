@@ -7,7 +7,9 @@ package ctl
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
 	"namespacelabs.dev/foundation/internal/console"
@@ -18,7 +20,11 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const kubeSystem = "kube-system"
+const (
+	kubeSystem  = "kube-system"
+	waitTimeout = 5 * time.Minute
+	waitBackoff = 500 * time.Millisecond
+)
 
 var deployments = []string{
 	"coredns",
@@ -57,4 +63,47 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 		return eg.Wait()
 	})
 
+}
+
+func WaitContainers(ctx context.Context, clusterId string, ctrs []*api.Container) error {
+	return tasks.Action("cluster.wait-containers").
+		Arg("id", clusterId).Run(ctx, func(ctx context.Context) error {
+		fmt.Fprintf(console.Debug(ctx), "polling cluster %q\n", clusterId)
+		ctx, cancel := context.WithTimeout(ctx, waitTimeout)
+		defer cancel()
+
+		return backoff.Retry(func() error {
+			res, err := api.GetClusterSummary(ctx, api.Endpoint, clusterId, []string{"nsc/containers"})
+			if err != nil {
+				return fmt.Errorf("failed to fetch cluster summary: %w", err)
+			}
+
+			resources := map[string]*api.Resource{} // keyed by UID
+			for _, sum := range res.Summary {
+				for _, r := range sum.PerResource {
+					resources[r.Uid] = &r
+				}
+			}
+
+			for _, ctr := range ctrs {
+				r, ok := resources[ctr.Id]
+				if !ok {
+					return fmt.Errorf("no summary for requested container %q yet", ctr.Id)
+				}
+
+				for _, c := range r.Container {
+					if !c.Ready {
+						msg := fmt.Sprintf("container %q is not ready", c.Id)
+						if c.NotRunningReason != "" {
+							msg = fmt.Sprintf("%s: %s", msg, c.NotRunningReason)
+						}
+
+						return fmt.Errorf(msg)
+					}
+				}
+			}
+
+			return nil
+		}, backoff.WithContext(backoff.NewConstantBackOff(waitBackoff), ctx))
+	})
 }

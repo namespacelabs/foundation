@@ -286,6 +286,51 @@ type RefreshKubernetesClusterResponse struct {
 	NewDeadline string `json:"new_deadline,omitempty"`
 }
 
+type GetKubernetesClusterSummaryRequest struct {
+	ClusterId string   `json:"cluster_id,omitempty"`
+	Resource  []string `json:"resource,omitempty"`
+}
+
+type GetKubernetesClusterSummaryResponse struct {
+	Summary []ResourceSummary `json:"summary,omitempty"`
+}
+
+type ResourceSummary struct {
+	Resource    string              `json:"resource,omitempty"`
+	PerResource map[string]Resource `json:"per_resource,omitempty"`
+	GenVersion  int32               `json:"gen_version,omitempty"`
+}
+
+type Resource struct {
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Uid       string `json:"uid,omitempty"`
+	Parent    []Ref  `json:"parent,omitempty"`
+
+	CreationTime *time.Time `json:"creation_time,omitempty"`
+	UpdatedTime  *time.Time `json:"updated_time,omitempty"`
+	Tombstone    *time.Time `json:"tombstone,omitempty"`
+
+	Container []ResourceContainer `json:"container,omitempty"`
+}
+
+type ResourceContainer struct {
+	Id               string     `json:"id,omitempty"`
+	Name             string     `json:"name,omitempty"`
+	StartedAt        *time.Time `json:"started_at,omitempty"`
+	TerminatedAt     *time.Time `json:"terminated_at,omitempty"`
+	Ready            bool       `json:"ready,omitempty"`
+	RestartCount     int64      `json:"restart_count,omitempty"`
+	Status           string     `json:"status,omitempty"`
+	NotRunningReason string     `json:"not_running_reason,omitempty"`
+}
+
+type Ref struct {
+	Resource string `json:"resource,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Uid      string `json:"uid,omitempty"`
+}
+
 type GetKubernetesConfigRequest struct {
 	ClusterId string `json:"cluster_id,omitempty"`
 }
