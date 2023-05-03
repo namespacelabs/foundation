@@ -40,6 +40,7 @@ type API struct {
 	ReleaseKubernetesCluster     fnapi.Call[ReleaseKubernetesClusterRequest]
 	WakeKubernetesCluster        fnapi.Call[WakeKubernetesClusterRequest]
 	RefreshKubernetesCluster     fnapi.Call[RefreshKubernetesClusterRequest]
+	GetKubernetesClusterSummary  fnapi.Call[GetKubernetesClusterSummaryRequest]
 	GetKubernetesConfig          fnapi.Call[GetKubernetesConfigRequest]
 	GetImageRegistry             fnapi.Call[emptypb.Empty]
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
@@ -143,6 +144,12 @@ func MakeAPI(endpoint string) API {
 			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchTenantToken,
 			Method:     "nsl.vm.api.VMService/RefreshKubernetesCluster",
+		},
+
+		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
+			Endpoint:   endpoint,
+			FetchToken: fnapi.FetchTenantToken,
+			Method:     "nsl.vm.api.VMService/GetKubernetesClusterSummary",
 		},
 
 		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
@@ -413,6 +420,16 @@ func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernet
 	return tasks.Return(ctx, tasks.Action("nscloud.ensure").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
 		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+}
+
+func GetClusterSummary(ctx context.Context, api API, clusterId string, resources []string) (*GetKubernetesClusterSummaryResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterSummaryResponse, error) {
+		var response GetKubernetesClusterSummaryResponse
+		if err := api.GetKubernetesClusterSummary.Do(ctx, GetKubernetesClusterSummaryRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

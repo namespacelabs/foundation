@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
@@ -40,6 +41,7 @@ func NewRunCmd() *cobra.Command {
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
+	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
 
 	run.Flags().MarkHidden("label")
 
@@ -70,6 +72,12 @@ func NewRunCmd() *cobra.Command {
 			return err
 		}
 
+		if *wait {
+			if err := ctl.WaitContainers(ctx, resp.ClusterId, resp.Container); err != nil {
+				return err
+			}
+		}
+
 		return printResult(ctx, *output, resp)
 	})
 
@@ -86,11 +94,18 @@ func NewRunComposeCmd() *cobra.Command {
 	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
 	dir := run.Flags().String("dir", "", "If not specified, loads the compose project from the current working directory.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
+	wait := run.Flags().Bool("wait", false, "Wait for all containers to start running.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		resp, err := createCompose(ctx, *dir, *devmode)
 		if err != nil {
 			return err
+		}
+
+		if *wait {
+			if err := ctl.WaitContainers(ctx, resp.ClusterId, resp.Container); err != nil {
+				return err
+			}
 		}
 
 		return printResult(ctx, *output, resp)
