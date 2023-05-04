@@ -112,7 +112,9 @@ func Credentials(ctx context.Context) (*credential, error) {
 
 		var b bytes.Buffer
 		if json.NewEncoder(&b).Encode(h.Credential) == nil {
-			_ = atomic.WriteFile(cacheFile, bytes.NewReader(b.Bytes()))
+			if err := atomic.WriteFile(cacheFile, bytes.NewReader(b.Bytes())); err != nil {
+				return nil, err
+			}
 		}
 
 		return &h.Credential, nil
