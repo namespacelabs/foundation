@@ -42,6 +42,7 @@ func NewRunCmd() *cobra.Command {
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
+	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 
 	run.Flags().MarkHidden("label")
 
@@ -66,6 +67,7 @@ func NewRunCmd() *cobra.Command {
 			ExportedPorts: *exportedPorts,
 			Args:          args,
 			Env:           *env,
+			Features:      *features,
 			Labels:        *labels,
 		})
 		if err != nil {
@@ -121,6 +123,7 @@ type createContainerOpts struct {
 	Env           map[string]string
 	Flags         []string
 	ExportedPorts []int32
+	Features      []string
 	Labels        map[string]string
 }
 
@@ -152,6 +155,7 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 				Container:       []*api.ContainerRequest{container},
 				DevelopmentMode: devmode,
 				Label:           labels,
+				Feature:         opts.Features,
 			}, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
