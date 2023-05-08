@@ -72,7 +72,7 @@ func ManagedByUs() map[string]string {
 	}
 }
 
-// Env may be nil.
+// Env may be nil; srv may be nil.
 func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]string {
 	// XXX add recommended labels https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
 	m := ManagedByUs()
@@ -89,8 +89,10 @@ func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]stri
 		}
 	}
 
-	if pkg := srv.GetPackageRef().GetPackageName(); pkg != "" {
-		m[K8sServerPackageName] = pkg
+	if srv != nil {
+		if pkg := srv.GetPackageRef().GetPackageName(); pkg != "" {
+			m[K8sServerPackageName] = pkg
+		}
 	}
 
 	return m
