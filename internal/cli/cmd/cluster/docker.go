@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -54,7 +55,11 @@ func newDockerCmd() *cobra.Command {
 		p, err := runUnixSocketProxy(ctx, clusterId, unixSockProxyOpts{
 			Kind: "docker",
 			Connect: func(ctx context.Context) (net.Conn, error) {
-				return api.DialPort(ctx, response.Cluster, 2375)
+				token, err := fnapi.FetchTenantToken(ctx)
+				if err != nil {
+					return nil, err
+				}
+				return connectToDocker(ctx, token, response.Cluster)
 			},
 		})
 		if err != nil {
@@ -67,6 +72,12 @@ func newDockerCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.KubernetesCluster) (net.Conn, error) {
+	vars := url.Values{}
+	vars.Set("name", "docker-socket")
+	return api.DialHostedServiceWithToken(ctx, token, cluster, "unixsocket", vars)
 }
 
 func runDocker(ctx context.Context, p *unixSockProxy, args ...string) error {

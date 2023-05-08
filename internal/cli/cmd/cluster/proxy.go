@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
@@ -88,13 +89,23 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 		return err
 	}
 
-	var port int
+	var connect func(context.Context) (net.Conn, error)
+
 	switch kind {
 	case "buildkit":
-		port = int(cluster.BuildCluster.Colocated.TargetPort)
+		connect = func(ctx context.Context) (net.Conn, error) {
+			return api.DialPort(ctx, cluster.Cluster, int(cluster.BuildCluster.Colocated.TargetPort))
+		}
 
 	case "docker":
-		port = 2375
+		connect = func(ctx context.Context) (net.Conn, error) {
+			token, err := fnapi.FetchTenantToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+
+			return connectToDocker(ctx, token, cluster.Cluster)
+		}
 
 	default:
 		return fnerrors.New("unrecognized kind %q", kind)
@@ -115,9 +126,7 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 		Kind:       kind,
 		SocketPath: socketPath,
 		Blocking:   true,
-		Connect: func(ctx context.Context) (net.Conn, error) {
-			return api.DialPort(ctx, cluster.Cluster, port)
-		},
+		Connect:    connect,
 		AnnounceSocket: func(socketPath string) {
 			fmt.Fprintf(console.Stdout(ctx), "Listening on %s\n", socketPath)
 		},

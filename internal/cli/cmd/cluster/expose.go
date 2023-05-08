@@ -160,7 +160,7 @@ func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, cont
 	}
 
 	docker, err := client.NewClientWithOpts(client.WithDialContext(func(ctx context.Context, network, addr string) (net.Conn, error) {
-		return api.DialPortWithToken(ctx, token, cluster, 2375)
+		return connectToDocker(ctx, token, cluster)
 	}))
 	if err != nil {
 		return nil, err
