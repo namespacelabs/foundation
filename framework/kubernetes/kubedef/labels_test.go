@@ -27,7 +27,7 @@ func TestMakeLabels(t *testing.T) {
 		"k8s.namespacelabs.dev/env-ephemeral":       "false",
 		"k8s.namespacelabs.dev/env-purpose":         "production",
 		"k8s.namespacelabs.dev/server-id":           "abc",
-		"k8s.namespacelabs.dev/server-package-name": "namespacelabs.dev/foundation/test",
+		"k8s.namespacelabs.dev/server-package-name": "namespacelabs-dev-foundation-test",
 	}, got); d != "" {
 		t.Errorf("mismatch (-want +got):\n%s", d)
 	}

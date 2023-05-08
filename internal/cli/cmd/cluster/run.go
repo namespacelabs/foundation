@@ -129,11 +129,12 @@ type createContainerOpts struct {
 
 func createContainer(ctx context.Context, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
-		Name:  opts.Name,
-		Image: opts.Image,
-		Args:  opts.Args,
-		Env:   opts.Env,
-		Flag:  []string{"TERMINATE_ON_EXIT"},
+		Name:           opts.Name,
+		Image:          opts.Image,
+		Args:           opts.Args,
+		Env:            opts.Env,
+		Flag:           []string{"TERMINATE_ON_EXIT"},
+		DockerSockPath: "/var/run/docker.sock",
 	}
 
 	for _, port := range opts.ExportedPorts {

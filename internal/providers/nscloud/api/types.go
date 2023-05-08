@@ -70,12 +70,13 @@ type StartContainersRequest struct {
 }
 
 type ContainerRequest struct {
-	Name       string            `json:"name,omitempty"`
-	Image      string            `json:"image,omitempty"`
-	Args       []string          `json:"args,omitempty"`
-	Env        map[string]string `json:"env,omitempty"`
-	Flag       []string          `json:"flag,omitempty"`
-	ExportPort []*ContainerPort  `json:"export_port,omitempty"`
+	Name           string            `json:"name,omitempty"`
+	Image          string            `json:"image,omitempty"`
+	Args           []string          `json:"args,omitempty"`
+	Env            map[string]string `json:"env,omitempty"`
+	Flag           []string          `json:"flag,omitempty"`
+	ExportPort     []*ContainerPort  `json:"export_port,omitempty"`
+	DockerSockPath string            `json:"docker_sock_path,omitempty"`
 }
 
 type ComposeRequest struct {
