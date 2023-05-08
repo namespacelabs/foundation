@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
@@ -91,7 +92,7 @@ func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]stri
 
 	if srv != nil {
 		if pkg := srv.GetPackageRef().GetPackageName(); pkg != "" {
-			m[K8sServerPackageName] = pkg
+			m[K8sServerPackageName] = kubenaming.LabelLike(pkg)
 		}
 	}
 
