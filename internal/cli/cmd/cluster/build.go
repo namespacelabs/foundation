@@ -357,7 +357,7 @@ func NewBuildCmd() *cobra.Command {
 
 			// When performing a multi-platform build, we only need a single
 			// remote reference to point an index at.
-			if len(*platforms) > 1 {
+			if len(*platforms) > 1 && len(parsedTags) > 0 {
 				imageNames = append(imageNames, fmt.Sprintf("%s:%s-%s", parsedTags[0].Repository.Name(), strings.ReplaceAll(platform.FormatPlatform(platformSpec), "/", "-"), ids.NewRandomBase32ID(4)))
 			} else {
 				for _, parsed := range parsedTags {
