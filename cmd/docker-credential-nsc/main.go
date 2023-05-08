@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	fncobra.DoMain("docker-credential-nsc", false, func(root *cobra.Command) {
+	fncobra.DoMain("docker-credential-nsc", false, fncobra.DefaultErrorFormatter, func(root *cobra.Command) {
 		api.SetupFlags("", root.PersistentFlags(), false)
 		ia.SetupFlags(root.PersistentFlags())
 

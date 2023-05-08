@@ -6,20 +6,28 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	ia "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/std/protocol"
 )
 
 func main() {
 	// Consider adding auto updates if we frequently change nsc.
-	fncobra.DoMain("nsc", true, func(root *cobra.Command) {
+	fncobra.DoMain("nsc", true, formatErr, func(root *cobra.Command) {
 		api.SetupFlags("", root.PersistentFlags(), false)
 		ia.SetupFlags(root.PersistentFlags())
 
@@ -50,4 +58,54 @@ func main() {
 			return nil
 		})
 	})
+}
+
+func formatErr(out io.Writer, style colors.Style, err error) {
+	st, _ := unwrapStatus(err)
+
+	var rid *protocol.RequestID
+	for _, msg := range st.Proto().Details {
+		decRid := &protocol.RequestID{}
+		if msg.MessageIs(decRid) {
+			if msg.UnmarshalTo(decRid) == nil {
+				rid = decRid
+			}
+		}
+	}
+
+	switch st.Code() {
+	case codes.PermissionDenied:
+		ww := wordwrap.NewWriter(100)
+
+		fmt.Fprintln(ww)
+		fmt.Fprint(ww, style.ErrorHeader.Apply("Failed: "))
+		fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", st.Message())
+
+		if rid != nil {
+			fmt.Fprintln(ww)
+
+			fmt.Fprint(ww, style.Comment.Apply("If this was unexpected, reach out to our team at "),
+				style.CommentHighlight.Apply("support@namespacelabs.com"),
+				style.Comment.Apply(" and mention request ID "),
+				style.CommentHighlight.Apply(rid.Id),
+			)
+			fmt.Fprintln(ww)
+		}
+
+		fmt.Fprintln(ww)
+
+		_ = ww.Close()
+		_, _ = out.Write(ww.Bytes())
+
+	default:
+		fncobra.DefaultErrorFormatter(out, style, err)
+	}
+}
+
+func unwrapStatus(err error) (*status.Status, bool) {
+	if unwrapped := errors.Unwrap(err); unwrapped != nil {
+		return unwrapStatus(unwrapped)
+	}
+
+	return status.FromError(err)
 }

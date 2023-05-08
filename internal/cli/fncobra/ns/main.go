@@ -74,7 +74,7 @@ import (
 func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
 	var deprecatedToolsInvocation bool
 
-	fncobra.DoMain(name, autoUpdate, func(rootCmd *cobra.Command) {
+	fncobra.DoMain(name, autoUpdate, fncobra.DefaultErrorFormatter, func(rootCmd *cobra.Command) {
 		registerCommands(rootCmd)
 
 		fncobra.PushPreParse(rootCmd, func(ctx context.Context, args []string) error {

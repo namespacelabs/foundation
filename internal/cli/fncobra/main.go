@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -49,13 +50,13 @@ var (
 	disableCommandBundle = false
 )
 
-func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) {
+func DoMain(name string, autoUpdate bool, formatErr FormatErrorFunc, registerCommands func(*cobra.Command)) {
 	fncobraname.CmdName = name
 
 	style, err := doMain(name, autoUpdate, registerCommands)
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		os.Exit(handleExitError(style, err))
+		os.Exit(handleExitError(style, err, formatErr))
 	}
 }
 
@@ -220,7 +221,9 @@ func maybeRunLatest(command string, updateInline bool) {
 	}
 }
 
-func handleExitError(style colors.Style, err error) int {
+type FormatErrorFunc func(io.Writer, colors.Style, error)
+
+func handleExitError(style colors.Style, err error, formatError FormatErrorFunc) int {
 	if exitError, ok := err.(fnerrors.ExitError); ok {
 		// If we are exiting, because a sub-process failed, don't bother outputting
 		// an error again, just forward the appropriate exit code.
@@ -228,9 +231,13 @@ func handleExitError(style colors.Style, err error) int {
 	} else {
 		// Only print errors after calling flushLogs above, so the console driver
 		// is no longer erasing lines.
-		format.Format(os.Stderr, err, format.WithStyle(style), format.WithTracing(enableErrorTracing), format.WithActionTrace(true))
+		formatError(os.Stderr, style, err)
 		return 1
 	}
+}
+
+func DefaultErrorFormatter(out io.Writer, style colors.Style, err error) {
+	format.Format(os.Stderr, err, format.WithStyle(style), format.WithTracing(enableErrorTracing), format.WithActionTrace(true))
 }
 
 func newRoot(name string, preRunE func(cmd *cobra.Command, args []string) error) *cobra.Command {
