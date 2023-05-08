@@ -115,7 +115,7 @@ func registerEnsureRuntimeConfig() {
 						return nil, err
 					}
 
-					annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment, ensure.Deployable.GetPackageRef().AsPackageName())
+					annotations := kubedef.MakeAnnotations(cluster.KubeConfig().Environment)
 					labels := kubedef.MakeLabels(cluster.KubeConfig().Environment, ensure.Deployable)
 
 					if _, err := cluster.Cluster().(kubedef.KubeCluster).PreparedClient().Clientset.CoreV1().

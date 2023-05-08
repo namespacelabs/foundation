@@ -88,6 +88,11 @@ func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]stri
 			m[K8sEnvEphemeral] = "false"
 		}
 	}
+
+	if pkg := srv.GetPackageRef().GetPackageName(); pkg != "" {
+		m[K8sServerPackageName] = pkg
+	}
+
 	return m
 }
 
@@ -98,12 +103,8 @@ func BaseAnnotations() map[string]string {
 }
 
 // Env may be nil.
-func MakeAnnotations(env *schema.Environment, pkg schema.PackageName) map[string]string {
+func MakeAnnotations(env *schema.Environment) map[string]string {
 	m := BaseAnnotations()
-
-	if pkg != "" {
-		m[K8sServerPackageName] = pkg.String()
-	}
 
 	if env.GetEphemeral() {
 		m[K8sEnvTimeout] = defaultEphemeralTimeout.String()

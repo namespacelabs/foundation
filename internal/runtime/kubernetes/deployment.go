@@ -197,7 +197,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 						WithValues(archs...))))))
 
 	labels := kubedef.MakeLabels(target.env, deployable)
-	annotations := kubedef.MakeAnnotations(target.env, deployable.GetPackageRef().AsPackageName())
+	annotations := kubedef.MakeAnnotations(target.env)
 	deploymentId := kubedef.MakeDeploymentId(deployable)
 
 	tmpl := applycorev1.PodTemplateSpec().

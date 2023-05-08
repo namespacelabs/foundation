@@ -146,7 +146,7 @@ func bindNamespace(env cfg.Context) BoundNamespace {
 func MakeNamespace(env *schema.Environment, ns string) *applycorev1.NamespaceApplyConfiguration {
 	return applycorev1.Namespace(ns).
 		WithLabels(kubedef.MakeLabels(env, nil)).
-		WithAnnotations(kubedef.MakeAnnotations(env, ""))
+		WithAnnotations(kubedef.MakeAnnotations(env))
 }
 
 func PrepareProvisionWith(env *schema.Environment, ns string, systemInfo *kubedef.SystemInfo) (*rtypes.RuntimeProvisionProps, error) {
