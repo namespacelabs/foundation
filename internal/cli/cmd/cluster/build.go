@@ -116,24 +116,29 @@ type buildProxy struct {
 	Cleanup         func()
 }
 
-func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (*buildProxy, error) {
+func ensureBuildCluster(ctx context.Context, cluster string) (*api.CreateClusterResult, error) {
 	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(cluster))
 	if err != nil {
 		return nil, err
-	}
-
-	if response.BuildCluster == nil || response.BuildCluster.Colocated == nil {
-		return nil, fnerrors.New("cluster is not a build cluster")
 	}
 
 	if err := waitUntilReady(ctx, response); err != nil {
 		return nil, err
 	}
 
+	return response, nil
+}
+
+func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (*buildProxy, error) {
+	response, err := ensureBuildCluster(ctx, cluster)
+	if err != nil {
+		return nil, err
+	}
+
 	p, err := runUnixSocketProxy(ctx, response.ClusterId, unixSockProxyOpts{
 		Kind: "buildkit",
 		Connect: func(ctx context.Context) (net.Conn, error) {
-			return connect(ctx, response)
+			return connectToBuildkit(ctx, response)
 		},
 	})
 	if err != nil {
@@ -199,6 +204,15 @@ func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (
 }
 
 func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
+	buildkitSvc := api.ClusterService(response.Cluster, "buildkit")
+	if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
+		return fnerrors.New("cluster is missing buildkit")
+	}
+
+	if buildkitSvc.Status != "READY" {
+		return fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+	}
+
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
 		return buildkitfw.WaitReadiness(ctx, func() (*client.Client, error) {
 			// We must fetch a token with our parent context, so we get a task sink etc.
@@ -208,7 +222,7 @@ func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) erro
 			}
 
 			return client.New(ctx, response.ClusterId, client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-				return api.DialPortWithToken(ctx, token, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
+				return api.DialEndpointWithToken(ctx, token, buildkitSvc.Endpoint)
 			}))
 		})
 	})
@@ -224,7 +238,7 @@ func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.C
 		go func() {
 			defer conn.Close()
 
-			peerConn, err := connect(ctx, response)
+			peerConn, err := connectToBuildkit(ctx, response)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 				return
@@ -241,8 +255,17 @@ func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.C
 	}
 }
 
-func connect(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
-	return api.DialPort(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
+func connectToBuildkit(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
+	buildkitSvc := api.ClusterService(response.Cluster, "buildkit")
+	if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
+		return nil, fnerrors.New("cluster is missing buildkit")
+	}
+
+	if buildkitSvc.Status != "READY" {
+		return nil, fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+	}
+
+	return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
 }
 
 func NewBuildCmd() *cobra.Command {

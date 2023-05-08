@@ -93,8 +93,17 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 
 	switch kind {
 	case "buildkit":
+		buildkitSvc := api.ClusterService(cluster.Cluster, "buildkit")
+		if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
+			return fnerrors.New("cluster is missing buildkit")
+		}
+
+		if buildkitSvc.Status != "READY" {
+			return fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+		}
+
 		connect = func(ctx context.Context) (net.Conn, error) {
-			return api.DialPort(ctx, cluster.Cluster, int(cluster.BuildCluster.Colocated.TargetPort))
+			return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
 		}
 
 	case "docker":
@@ -137,34 +146,20 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 	return nil
 }
 
-func establishCluster(ctx context.Context, request string) (*api.CreateClusterResult, error) {
-	if request == buildCluster || request == buildClusterArm64 {
-		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(request))
-		if err != nil {
-			return nil, err
-		}
-
-		if response.BuildCluster == nil || response.BuildCluster.Colocated == nil {
-			return nil, fnerrors.New("cluster is not a build cluster")
-		}
-
-		if err := waitUntilReady(ctx, response); err != nil {
-			return nil, err
-		}
-
-		return response, nil
+func establishCluster(ctx context.Context, clusterRequest string) (*api.CreateClusterResult, error) {
+	if clusterRequest == buildCluster || clusterRequest == buildClusterArm64 {
+		return ensureBuildCluster(ctx, clusterRequest)
 	}
 
-	response, err := api.EnsureCluster(ctx, api.Endpoint, request)
+	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterRequest)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.CreateClusterResult{
-		ClusterId:    response.Cluster.ClusterId,
-		Cluster:      response.Cluster,
-		BuildCluster: response.BuildCluster,
-		Registry:     response.Registry,
+		ClusterId: response.Cluster.ClusterId,
+		Cluster:   response.Cluster,
+		Registry:  response.Registry,
 	}, nil
 }
 
