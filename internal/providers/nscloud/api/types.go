@@ -268,7 +268,9 @@ type LabelEntry struct {
 }
 
 type BuildCluster struct {
-	Colocated *BuildCluster_ColocatedPort `json:"colocated,omitempty"`
+	Colocated             *BuildCluster_ColocatedPort `json:"colocated,omitempty"`
+	Resumable             bool                        `json:"resumable,omitempty"`
+	DoesNotRequireRefresh bool                        `json:"does_not_require_refresh,omitempty"`
 }
 
 type BuildCluster_ColocatedPort struct {

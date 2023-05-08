@@ -359,8 +359,7 @@ func Return[V any](ctx context.Context, ev *ActionEvent, f func(context.Context)
 	return ret, err
 }
 
-func (ev *ActionEvent) Log(ctx context.Context) {
-	sink := SinkFrom(ctx)
+func (ev *ActionEvent) LogToSink(sink ActionSink) {
 	if sink == nil {
 		return
 	}
@@ -371,6 +370,10 @@ func (ev *ActionEvent) Log(ctx context.Context) {
 	}
 	ev.data.State = ActionInstant
 	sink.Instant(&ev.data)
+}
+
+func (ev *ActionEvent) Log(ctx context.Context) {
+	ev.LogToSink(SinkFrom(ctx))
 }
 
 func makeProto(data *EventData, at *EventAttachments) *protocol.Task {

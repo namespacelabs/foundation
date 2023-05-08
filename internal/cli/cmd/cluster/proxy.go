@@ -49,7 +49,7 @@ func NewProxyCmd() *cobra.Command {
 			}
 
 			// Make sure the cluster exists before going to the background.
-			resolved, err := establishCluster(ctx, *cluster)
+			resolved, err := compatEnsureCluster(ctx, *cluster)
 			if err != nil {
 				return err
 			}
@@ -73,18 +73,18 @@ func NewProxyCmd() *cobra.Command {
 			return os.WriteFile(*background, []byte(fmt.Sprintf("%d", pid)), 0644)
 		}
 
-		return runProxy(ctx, *cluster, *kind, *sockPath)
+		return deprecateRunProxy(ctx, *cluster, *kind, *sockPath)
 	})
 
 	return cmd
 }
 
-func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
+func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 	if clusterReq == "" || kind == "" {
 		return fnerrors.New("--cluster and --kind are required")
 	}
 
-	cluster, err := establishCluster(ctx, clusterReq)
+	cluster, err := compatEnsureCluster(ctx, clusterReq)
 	if err != nil {
 		return err
 	}
@@ -146,12 +146,29 @@ func runProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
 	return nil
 }
 
-func establishCluster(ctx context.Context, clusterRequest string) (*api.CreateClusterResult, error) {
-	if clusterRequest == buildCluster || clusterRequest == buildClusterArm64 {
-		return ensureBuildCluster(ctx, clusterRequest)
+func compatEnsureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
+	// This is to be removed; but we used to select the build cluster by passing "build-cluster" as the cluster ID.
+	if platform, ok := compatClusterIDAsBuildPlatform(clusterID); ok {
+		return ensureBuildCluster(ctx, platform)
 	}
 
-	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterRequest)
+	return ensureCluster(ctx, clusterID)
+}
+
+func compatClusterIDAsBuildPlatform(clusterID string) (buildPlatform, bool) {
+	switch clusterID {
+	case buildCluster:
+		return "amd64", true
+
+	case buildClusterArm64:
+		return "arm64", true
+	}
+
+	return "", false
+}
+
+func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
+	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -163,9 +180,9 @@ func establishCluster(ctx context.Context, clusterRequest string) (*api.CreateCl
 	}, nil
 }
 
-func buildClusterOpts(buildCluster string) api.EnsureBuildClusterOpts {
+func buildClusterOpts(platform buildPlatform) api.EnsureBuildClusterOpts {
 	var opts api.EnsureBuildClusterOpts
-	if buildCluster == buildClusterArm64 {
+	if platform == "arm64" {
 		opts.Features = []string{"EXP_ARM64_CLUSTER"}
 	}
 

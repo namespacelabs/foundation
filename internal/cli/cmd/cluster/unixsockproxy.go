@@ -23,9 +23,17 @@ type unixSockProxy struct {
 	Cleanup    func()
 }
 
-type unixSockProxyOpts struct {
-	Kind           string
+type grpcProxyOpts struct {
 	SocketPath     string
+	Kind           string
+	Blocking       bool
+	Connect        func(context.Context) (net.Conn, error)
+	AnnounceSocket func(string)
+}
+
+type unixSockProxyOpts struct {
+	SocketPath     string
+	Kind           string
 	Blocking       bool
 	Connect        func(context.Context) (net.Conn, error)
 	AnnounceSocket func(string)
@@ -36,14 +44,14 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 	var cleanup func()
 
 	if socketPath == "" {
-		sockDir, err := dirs.CreateUserTempDir(opts.Kind, clusterId)
+		sockDir, err := dirs.CreateUserTempDir("", clusterId)
 		if err != nil {
 			return nil, err
 		}
 
 		socketPath = filepath.Join(sockDir, opts.Kind+".sock")
 		cleanup = func() {
-			os.RemoveAll(socketPath)
+			os.RemoveAll(sockDir)
 		}
 	} else {
 		cleanup = func() {}
@@ -60,14 +68,14 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 	}
 
 	if opts.Blocking {
-		if err := serveProxy(ctx, listener, opts.Connect); err != nil {
+		if err := serveProxy(listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
 			return nil, err
 		}
 
 		return nil, nil
 	} else {
 		go func() {
-			if err := serveProxy(ctx, listener, opts.Connect); err != nil {
+			if err := serveProxy(listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
 				log.Fatal(err)
 			}
 		}()
@@ -76,7 +84,7 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 	}
 }
 
-func serveProxy(ctx context.Context, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
+func serveProxy(listener net.Listener, connect func() (net.Conn, error)) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -86,7 +94,7 @@ func serveProxy(ctx context.Context, listener net.Listener, connect func(context
 		go func() {
 			defer conn.Close()
 
-			peerConn, err := connect(ctx)
+			peerConn, err := connect()
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
 				return

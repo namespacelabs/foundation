@@ -92,7 +92,7 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 }
 
 func FetchTenantToken(ctx context.Context) (Token, error) {
-	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token"), func(ctx context.Context) (*auth.Token, error) {
+	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token").LogLevel(1), func(ctx context.Context) (*auth.Token, error) {
 		if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
 			return auth.FetchTokenFromSpec(ctx, spec)
 		}

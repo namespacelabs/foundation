@@ -7,13 +7,14 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/docker/cli/cli/config"
@@ -26,7 +27,9 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
+	"golang.org/x/sys/unix"
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
+	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -41,6 +44,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -51,7 +55,7 @@ const (
 
 var (
 	// preferredBuildPlatform is a mapping between supported platforms and preferable build cluster.
-	preferredBuildPlatform = map[string]string{
+	preferredBuildPlatform = map[string]buildPlatform{
 		"linux/arm64":  "arm64",
 		"linux/arm/v5": "arm64",
 		"linux/arm/v6": "arm64",
@@ -67,6 +71,7 @@ func NewBuildkitCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newBuildctlCmd())
+	cmd.AddCommand(newBuildkitProxy())
 
 	return cmd
 }
@@ -77,14 +82,37 @@ func newBuildctlCmd() *cobra.Command {
 		Short: "Run buildctl on the target build cluster.",
 	}
 
-	buildCluster := cmd.Flags().String("cluster", buildCluster, "Set the type of a the build cluster to use.")
+	buildCluster := cmd.Flags().String("cluster", "", "Set the type of a the build cluster to use.")
+	platform := cmd.Flags().String("platform", "amd64", "One of amd64 or arm64.")
+
+	cmd.Flags().MarkDeprecated("cluster", "use --platform instead")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *buildCluster != "" && *platform != "" {
+			return fnerrors.New("--cluster and --platform are exclusive")
+		}
+
 		buildctlBin, err := buildctl.EnsureSDK(ctx, host.HostPlatform())
 		if err != nil {
 			return fnerrors.New("failed to download buildctl: %w", err)
 		}
 
-		p, err := runBuildProxy(ctx, *buildCluster, false)
+		var plat buildPlatform
+		if *platform != "" {
+			p, err := parseBuildPlatform(*platform)
+			if err != nil {
+				return err
+			}
+			plat = p
+		} else {
+			if p, ok := compatClusterIDAsBuildPlatform(buildClusterOrDefault(*buildCluster)); ok {
+				plat = p
+			} else {
+				return fnerrors.New("expected --cluster=build-cluster or build-cluster-arm64")
+			}
+		}
+
+		p, err := runBuildProxyWithRegistry(ctx, plat, false)
 		if err != nil {
 			return err
 		}
@@ -97,7 +125,78 @@ func newBuildctlCmd() *cobra.Command {
 	return cmd
 }
 
-func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildProxy, args ...string) error {
+func buildClusterOrDefault(bp string) string {
+	if bp == "" {
+		return buildCluster
+	}
+	return bp
+}
+
+func newBuildkitProxy() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "proxy",
+		Short: "Run a platform-specific buildkit proxy.",
+		Args:  cobra.NoArgs,
+	}
+
+	sockPath := cmd.Flags().String("sock_path", "", "If specified listens on the specified path.")
+	platform := cmd.Flags().String("platform", "amd64", "One of amd64, or arm64.")
+	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
+	connectAtStartup := cmd.Flags().Bool("connect_at_startup", true, "If true, eagerly connects to the build cluster.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
+		plat, err := parseBuildPlatform(*platform)
+		if err != nil {
+			return err
+		}
+
+		if *background != "" {
+			if *sockPath == "" {
+				return fnerrors.New("--background requires --sock_path")
+			}
+
+			if *connectAtStartup {
+				// Make sure the cluster exists before going to the background.
+				if _, err := ensureBuildCluster(ctx, plat); err != nil {
+					return err
+				}
+			}
+
+			cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path", *sockPath, "--platform", string(plat), "--connect_at_startup", fmt.Sprintf("%v", *connectAtStartup))
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Foreground: false,
+				Setsid:     true,
+			}
+
+			if err := cmd.Start(); err != nil {
+				return err
+			}
+
+			pid := cmd.Process.Pid
+			// Make sure the child process is not cleaned up on exit.
+			if err := cmd.Process.Release(); err != nil {
+				return err
+			}
+
+			return os.WriteFile(*background, []byte(fmt.Sprintf("%d", pid)), 0644)
+		}
+
+		bp, err := runBuildProxy(ctx, plat, *sockPath, *connectAtStartup)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
+
+		defer bp.Cleanup()
+
+		return bp.Serve()
+	})
+
+	return cmd
+}
+
+func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildProxyWithRegistry, args ...string) error {
 	cmdLine := []string{"--addr", "unix://" + p.BuildkitAddr}
 	cmdLine = append(cmdLine, args...)
 
@@ -110,14 +209,28 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 	return localexec.RunInteractive(ctx, buildctl)
 }
 
-type buildProxy struct {
+type buildProxyWithRegistry struct {
 	BuildkitAddr    string
 	DockerConfigDir string
-	Cleanup         func()
+	Cleanup         func() error
 }
 
-func ensureBuildCluster(ctx context.Context, cluster string) (*api.CreateClusterResult, error) {
-	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(cluster))
+type buildPlatform string
+
+func parseBuildPlatform(value string) (buildPlatform, error) {
+	switch strings.ToLower(value) {
+	case "amd64":
+		return "amd64", nil
+
+	case "arm64":
+		return "arm64", nil
+	}
+
+	return "", fnerrors.New("invalid build platform %q", value)
+}
+
+func ensureBuildCluster(ctx context.Context, platform buildPlatform) (*api.CreateClusterResult, error) {
+	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(platform))
 	if err != nil {
 		return nil, err
 	}
@@ -129,21 +242,147 @@ func ensureBuildCluster(ctx context.Context, cluster string) (*api.CreateCluster
 	return response, nil
 }
 
-func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (*buildProxy, error) {
-	response, err := ensureBuildCluster(ctx, cluster)
+type buildProxy struct {
+	socketPath string
+	sink       tasks.ActionSink
+	instance   *buildClusterInstance
+	listener   net.Listener
+	cleanup    func() error
+}
+
+type buildClusterInstance struct {
+	platform buildPlatform
+
+	mu            sync.Mutex
+	previous      *api.CreateClusterResult
+	cancelRefresh func()
+}
+
+func (bp *buildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
+	// This is not our usual play; we're doing a lot of work with the lock held.
+	bp.mu.Lock()
+	defer bp.mu.Unlock()
+
+	if bp.previous != nil && (bp.previous.BuildCluster == nil || bp.previous.BuildCluster.Resumable) {
+		if _, err := api.EnsureCluster(ctx, api.Endpoint, bp.previous.ClusterId); err == nil {
+			return bp.rawDial(ctx, bp.previous)
+		}
+	}
+
+	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(bp.platform))
 	if err != nil {
 		return nil, err
 	}
 
-	p, err := runUnixSocketProxy(ctx, response.ClusterId, unixSockProxyOpts{
-		Kind: "buildkit",
-		Connect: func(ctx context.Context) (net.Conn, error) {
-			return connectToBuildkit(ctx, response)
-		},
-	})
+	if bp.cancelRefresh != nil {
+		bp.cancelRefresh()
+		bp.cancelRefresh = nil
+	}
+
+	if bp.previous == nil || bp.previous.ClusterId != response.ClusterId {
+		if err := waitUntilReady(ctx, response); err != nil {
+			fmt.Fprintf(console.Warnings(ctx), "Failed to wait for buildkit to become ready: %v\n", err)
+		}
+	}
+
+	if response.BuildCluster != nil && !response.BuildCluster.DoesNotRequireRefresh {
+		bp.cancelRefresh = api.StartBackgroundRefreshing(ctx, response.ClusterId)
+	}
+
+	bp.previous = response
+
+	return bp.rawDial(ctx, response)
+}
+
+func (bp *buildClusterInstance) Cleanup() error {
+	bp.mu.Lock()
+	defer bp.mu.Unlock()
+
+	if bp.cancelRefresh != nil {
+		bp.cancelRefresh()
+		bp.cancelRefresh = nil
+	}
+
+	return nil
+}
+
+func (bp *buildClusterInstance) rawDial(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
+	buildkitSvc, err := resolveBuildkitService(response)
 	if err != nil {
 		return nil, err
 	}
+
+	return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
+}
+
+func runBuildProxy(ctx context.Context, platform buildPlatform, socketPath string, connectAtStart bool) (*buildProxy, error) {
+	bp := &buildClusterInstance{platform: platform}
+
+	if connectAtStart {
+		if _, err := bp.NewConn(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	var cleanup func() error
+	if socketPath == "" {
+		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", platform))
+		if err != nil {
+			return nil, err
+		}
+
+		socketPath = filepath.Join(sockDir, "buildkit.sock")
+		cleanup = func() error {
+			return os.RemoveAll(sockDir)
+		}
+	} else {
+		if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	var d net.ListenConfig
+	listener, err := d.Listen(ctx, "unix", socketPath)
+	if err != nil {
+		_ = bp.Cleanup()
+		if cleanup != nil {
+			_ = cleanup()
+		}
+		return nil, err
+	}
+
+	sink := tasks.SinkFrom(ctx)
+
+	return &buildProxy{socketPath, sink, bp, listener, cleanup}, nil
+}
+
+func (bp *buildProxy) Cleanup() error {
+	var errs []error
+	errs = append(errs, bp.listener.Close())
+	errs = append(errs, bp.instance.Cleanup())
+	if bp.cleanup != nil {
+		errs = append(errs, bp.cleanup())
+	}
+	return multierr.New(errs...)
+}
+
+func (bp *buildProxy) Serve() error {
+	return serveProxy(bp.listener, func() (net.Conn, error) {
+		return bp.instance.NewConn(tasks.WithSink(context.Background(), bp.sink))
+	})
+}
+
+func runBuildProxyWithRegistry(ctx context.Context, platform buildPlatform, nscrOnlyRegistry bool) (*buildProxyWithRegistry, error) {
+	p, err := runBuildProxy(ctx, platform, "", true)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		if err := p.Serve(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	newConfig := *configfile.New(config.ConfigFileName)
 
@@ -182,35 +421,33 @@ func runBuildProxy(ctx context.Context, cluster string, nscrOnlyRegistry bool) (
 		}
 	}
 
-	credsFile := filepath.Join(p.TempDir, config.ConfigFileName)
+	tmpDir := filepath.Dir(p.socketPath)
+	credsFile := filepath.Join(tmpDir, config.ConfigFileName)
 	if err := files.WriteJson(credsFile, newConfig, 0600); err != nil {
 		p.Cleanup()
 		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-
-	go func() {
-		_ = api.StartRefreshing(ctx, api.Endpoint, response.ClusterId, func(err error) error {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
-			return nil
-		})
-	}()
-
-	return &buildProxy{p.SocketAddr, p.TempDir, func() {
-		cancel()
-		p.Cleanup()
-	}}, nil
+	return &buildProxyWithRegistry{p.socketPath, tmpDir, p.Cleanup}, nil
 }
 
-func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
+func resolveBuildkitService(response *api.CreateClusterResult) (*api.Cluster_ServiceState, error) {
 	buildkitSvc := api.ClusterService(response.Cluster, "buildkit")
 	if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
-		return fnerrors.New("cluster is missing buildkit")
+		return nil, fnerrors.New("cluster is missing buildkit")
 	}
 
 	if buildkitSvc.Status != "READY" {
-		return fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+		return nil, fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+	}
+
+	return buildkitSvc, nil
+}
+
+func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
+	buildkitSvc, err := resolveBuildkitService(response)
+	if err != nil {
+		return err
 	}
 
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
@@ -228,41 +465,10 @@ func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) erro
 	})
 }
 
-func serveBuildProxy(ctx context.Context, listener net.Listener, response *api.CreateClusterResult) {
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		go func() {
-			defer conn.Close()
-
-			peerConn, err := connectToBuildkit(ctx, response)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
-				return
-			}
-
-			defer peerConn.Close()
-
-			go func() {
-				_, _ = io.Copy(conn, peerConn)
-			}()
-
-			_, _ = io.Copy(peerConn, conn)
-		}()
-	}
-}
-
 func connectToBuildkit(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
-	buildkitSvc := api.ClusterService(response.Cluster, "buildkit")
-	if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
-		return nil, fnerrors.New("cluster is missing buildkit")
-	}
-
-	if buildkitSvc.Status != "READY" {
-		return nil, fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+	buildkitSvc, err := resolveBuildkitService(response)
+	if err != nil {
+		return nil, err
 	}
 
 	return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
@@ -353,11 +559,11 @@ func NewBuildCmd() *cobra.Command {
 		// Allocate a list ahead of time to allow for concurrent access.
 		completeFuncs := make([]func() error, len(*platforms))
 
-		builders := map[string]*buildProxy{}
+		builders := map[buildPlatform]*buildProxyWithRegistry{}
 		for _, p := range *platforms {
-			resolved := resolveBuildCluster(p, clusterProfiles.ClusterPlatform)
+			resolved := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, p)
 			if _, ok := builders[resolved]; !ok {
-				buildProxy, err := runBuildProxy(ctx, resolved, len(*names) > 0)
+				buildProxy, err := runBuildProxyWithRegistry(ctx, resolved, len(*names) > 0)
 				if err != nil {
 					return err
 				}
@@ -465,7 +671,7 @@ func NewBuildCmd() *cobra.Command {
 			}
 
 			eg.Go(func(ctx context.Context) error {
-				return runBuildctl(ctx, buildctlBin, builders[resolveBuildCluster(p, clusterProfiles.ClusterPlatform)], args...)
+				return runBuildctl(ctx, buildctlBin, builders[determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, p)], args...)
 			})
 		}
 
@@ -514,13 +720,13 @@ func NewBuildCmd() *cobra.Command {
 	return cmd
 }
 
-func resolveBuildCluster(platform string, allowedClusterPlatforms []string) string {
+func determineBuildClusterPlatform(allowedClusterPlatforms []string, platform string) buildPlatform {
 	// If requested platform is arm64 and "arm64" is allowed.
 	if preferredBuildPlatform[platform] == "arm64" && slices.Contains(allowedClusterPlatforms, "arm64") {
-		return buildClusterArm64
+		return "arm64"
 	}
 
-	return buildCluster
+	return "amd64"
 }
 
 func imageNameWithPlatform(imageName string, platformSpec specs.Platform) string {
