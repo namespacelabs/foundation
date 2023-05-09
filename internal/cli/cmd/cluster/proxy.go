@@ -179,12 +179,3 @@ func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterRes
 		Registry:  response.Registry,
 	}, nil
 }
-
-func buildClusterOpts(platform buildPlatform) api.EnsureBuildClusterOpts {
-	var opts api.EnsureBuildClusterOpts
-	if platform == "arm64" {
-		opts.Features = []string{"EXP_ARM64_CLUSTER"}
-	}
-
-	return opts
-}

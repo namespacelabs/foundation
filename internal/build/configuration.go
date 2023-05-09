@@ -76,7 +76,10 @@ func CopyConfiguration(b Configuration) *buildConfiguration {
 		t = t.WithTargetName(x)
 	}
 
-	return t.WithSourcePackage(b.SourcePackage()).WithSourceLabel(b.SourceLabel()).WithPrefersBuildkit(b.PrefersBuildkit()).WithWorkspace(b.Workspace())
+	return t.WithSourcePackage(b.SourcePackage()).
+		WithSourceLabel(b.SourceLabel()).
+		WithPrefersBuildkit(b.PrefersBuildkit()).
+		WithWorkspace(b.Workspace())
 }
 
 func (c *buildTarget) TargetPlatform() *specs.Platform                           { return c.target }

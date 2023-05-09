@@ -39,7 +39,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
-	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
@@ -245,12 +244,12 @@ func ensureBuildCluster(ctx context.Context, platform buildPlatform) (*api.Creat
 type buildProxy struct {
 	socketPath string
 	sink       tasks.ActionSink
-	instance   *buildClusterInstance
+	instance   *BuildClusterInstance
 	listener   net.Listener
 	cleanup    func() error
 }
 
-type buildClusterInstance struct {
+type BuildClusterInstance struct {
 	platform buildPlatform
 
 	mu            sync.Mutex
@@ -258,7 +257,7 @@ type buildClusterInstance struct {
 	cancelRefresh func()
 }
 
-func (bp *buildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
+func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	// This is not our usual play; we're doing a lot of work with the lock held.
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
@@ -294,7 +293,7 @@ func (bp *buildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	return bp.rawDial(ctx, response)
 }
 
-func (bp *buildClusterInstance) Cleanup() error {
+func (bp *BuildClusterInstance) Cleanup() error {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 
@@ -306,7 +305,7 @@ func (bp *buildClusterInstance) Cleanup() error {
 	return nil
 }
 
-func (bp *buildClusterInstance) rawDial(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
+func (bp *BuildClusterInstance) rawDial(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
 	buildkitSvc, err := resolveBuildkitService(response)
 	if err != nil {
 		return nil, err
@@ -315,8 +314,24 @@ func (bp *buildClusterInstance) rawDial(ctx context.Context, response *api.Creat
 	return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
 }
 
-func runBuildProxy(ctx context.Context, platform buildPlatform, socketPath string, connectAtStart bool) (*buildProxy, error) {
-	bp := &buildClusterInstance{platform: platform}
+func NewBuildClusterInstance(ctx context.Context, platformStr string) (*BuildClusterInstance, error) {
+	clusterProfiles, err := api.GetProfile(ctx, api.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, platformStr)
+
+	bp := &BuildClusterInstance{platform: platform}
+
+	return bp, nil
+}
+
+func runBuildProxy(ctx context.Context, requestedPlatform buildPlatform, socketPath string, connectAtStart bool) (*buildProxy, error) {
+	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
+	if err != nil {
+		return nil, err
+	}
 
 	if connectAtStart {
 		if _, err := bp.NewConn(ctx); err != nil {
@@ -326,7 +341,7 @@ func runBuildProxy(ctx context.Context, platform buildPlatform, socketPath strin
 
 	var cleanup func() error
 	if socketPath == "" {
-		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", platform))
+		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
 		if err != nil {
 			return nil, err
 		}
@@ -622,7 +637,7 @@ func NewBuildCmd() *cobra.Command {
 						fmt.Fprintf(console.Stdout(ctx), "  %s\n", imageName)
 					}
 
-					ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageNames[0], oci.RegistryAccess{Keychain: nscloud.DefaultKeychain})
+					ref, remoteOpts, err := oci.ParseRefAndKeychain(ctx, imageNames[0], oci.RegistryAccess{Keychain: api.DefaultKeychain})
 					if err != nil {
 						return err
 					}
@@ -699,7 +714,7 @@ func NewBuildCmd() *cobra.Command {
 				if _, err := index.Push(ctx, oci.RepositoryWithAccess{
 					Repository: parsed.Name(),
 					RegistryAccess: oci.RegistryAccess{
-						Keychain: nscloud.DefaultKeychain,
+						Keychain: api.DefaultKeychain,
 					},
 				}, false); err != nil {
 					return err
@@ -742,4 +757,13 @@ func normalizeReference(ref string) (reference.Named, error) {
 		return reference.TagNameOnly(namedRef), nil
 	}
 	return namedRef, nil
+}
+
+func buildClusterOpts(platform buildPlatform) api.EnsureBuildClusterOpts {
+	var opts api.EnsureBuildClusterOpts
+	if platform == "arm64" {
+		opts.Features = []string{"EXP_ARM64_CLUSTER"}
+	}
+
+	return opts
 }

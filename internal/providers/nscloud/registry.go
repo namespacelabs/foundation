@@ -8,7 +8,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -18,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var DefaultKeychain oci.Keychain = defaultKeychain{}
+var DefaultKeychain oci.Keychain = api.DefaultKeychain
 
 type nscloudRegistry struct {
 	clusterID string
@@ -39,7 +38,7 @@ func RegisterRegistry() {
 func (r nscloudRegistry) Access() oci.RegistryAccess {
 	return oci.RegistryAccess{
 		InsecureRegistry: false,
-		Keychain:         defaultKeychain{},
+		Keychain:         DefaultKeychain,
 	}
 }
 
@@ -93,14 +92,4 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 	}
 
 	return resp.Registry, nil
-}
-
-type defaultKeychain struct{}
-
-func (dk defaultKeychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || r.RegistryStr() == "nscr.io" {
-		return api.RegistryCreds(ctx)
-	}
-
-	return authn.Anonymous, nil
 }

@@ -10,17 +10,20 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/containerd/containerd/platforms"
 	moby_buildkit_v1 "github.com/moby/buildkit/api/services/control"
 	"github.com/moby/buildkit/client"
 	buildkit "github.com/moby/buildkit/client"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/mod/semver"
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -35,7 +38,7 @@ var (
 	ForwardKeychain = true
 )
 
-var buildOnNamespaceCloud = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
+var BuildOnNamespaceCloud = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
 
 const SSHAgentProviderID = "default"
 
@@ -60,6 +63,7 @@ func (cli *GatewayClient) MakeClient(_ context.Context) (*GatewayClient, error) 
 type clientInstance struct {
 	conf      cfg.Configuration
 	overrides *Overrides
+	platform  *specs.Platform
 
 	compute.DoScoped[*GatewayClient] // Only connect once per configuration.
 }
@@ -96,7 +100,7 @@ func MakeClient(config cfg.Configuration, targetPlatform *specs.Platform) comput
 		conf.ContainerName = DefaultContainerName
 	}
 
-	return &clientInstance{conf: config, overrides: conf}
+	return &clientInstance{conf: config, overrides: conf, platform: targetPlatform}
 }
 
 var _ compute.Computable[*GatewayClient] = &clientInstance{}
@@ -106,7 +110,7 @@ func (c *clientInstance) Action() *tasks.ActionEvent {
 }
 
 func (c *clientInstance) Inputs() *compute.In {
-	return compute.Inputs().Proto("conf", c.overrides)
+	return compute.Inputs().Proto("conf", c.overrides).JSON("platform", c.platform)
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*GatewayClient, error) {
@@ -147,13 +151,13 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		})
 	}
 
-	if buildOnNamespaceCloud.Get(c.conf) {
-		response, err := api.EnsureBuildCluster(ctx, api.Endpoint, api.EnsureBuildClusterOpts{})
+	if BuildOnNamespaceCloud.Get(c.conf) {
+		bp, err := cluster.NewBuildClusterInstance(ctx, formatPlatformOrDefault(c.platform))
 		if err != nil {
 			return nil, err
 		}
 
-		return useRemoteCluster(ctx, response.Cluster, int(response.BuildCluster.Colocated.TargetPort))
+		return useBuildClusterCluster(ctx, bp)
 	}
 
 	localAddr, err := EnsureBuildkitd(ctx, c.overrides.ContainerName)
@@ -177,6 +181,14 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	return newClient(ctx, cli, true)
 }
 
+func formatPlatformOrDefault(p *specs.Platform) string {
+	if p != nil {
+		return platforms.Format(*p)
+	}
+
+	return platforms.Format(docker.HostPlatform())
+}
+
 func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port int) (*GatewayClient, error) {
 	// We must fetch a token with our parent context, so we get a task sink etc.
 	token, err := fnapi.FetchTenantToken(ctx)
@@ -188,6 +200,16 @@ func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port 
 		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			// Do the expirations work? We don't re-fetch tokens here yet.
 			return api.DialPortWithToken(ctx, token, cluster, port)
+		}))
+	})
+}
+
+func useBuildClusterCluster(ctx context.Context, bp *cluster.BuildClusterInstance) (*GatewayClient, error) {
+	sink := tasks.SinkFrom(ctx)
+
+	return waitAndConnect(ctx, func() (*client.Client, error) {
+		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return bp.NewConn(tasks.WithSink(ctx, sink))
 		}))
 	})
 }
