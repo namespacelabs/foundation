@@ -6,25 +6,20 @@ package buildkit
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/moby/buildkit/session"
-	"github.com/moby/buildkit/session/auth"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/session/secrets/secretsprovider"
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/build/buildkit/bkkeychain"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
@@ -124,7 +119,7 @@ func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.Grou
 
 	if ForwardKeychain {
 		if keychain != nil {
-			attachables = append(attachables, keychainWrapper{ctx: ctx, errorLogger: console.Output(ctx, "buildkit-auth"), keychain: keychain})
+			attachables = append(attachables, bkkeychain.Wrapper{Context: ctx, ErrorLogger: console.Output(ctx, "buildkit-auth"), Keychain: keychain})
 		}
 	} else {
 		dockerConfig := config.LoadDefaultConfigFile(console.Stderr(ctx))
@@ -142,80 +137,4 @@ func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.Grou
 	}
 
 	return attachables, nil
-}
-
-type keychainWrapper struct {
-	ctx         context.Context // Solve's parent context.
-	errorLogger io.Writer
-	keychain    oci.Keychain
-}
-
-func (kw keychainWrapper) Register(server *grpc.Server) {
-	auth.RegisterAuthServer(server, kw)
-}
-
-func (kw keychainWrapper) Credentials(ctx context.Context, req *auth.CredentialsRequest) (*auth.CredentialsResponse, error) {
-	response, err := kw.credentials(ctx, req.Host)
-
-	if err == nil {
-		fmt.Fprintf(console.Debug(kw.ctx), "[buildkit] AuthServer.Credentials %q --> %q\n", req.Host, response.Username)
-	} else {
-		fmt.Fprintf(console.Debug(kw.ctx), "[buildkit] AuthServer.Credentials %q: failed: %v\n", req.Host, err)
-
-	}
-
-	return response, err
-}
-
-func (kw keychainWrapper) credentials(ctx context.Context, host string) (*auth.CredentialsResponse, error) {
-	// The parent context, not the incoming context is used, as the parent
-	// context has an ActionSink attached (etc) while the incoming context is
-	// managed by buildkit.
-	authn, err := kw.keychain.Resolve(kw.ctx, resourceWrapper{host})
-	if err != nil {
-		return nil, err
-	}
-
-	if authn == nil {
-		return &auth.CredentialsResponse{}, nil
-	}
-
-	authz, err := authn.Authorization()
-	if err != nil {
-		return nil, err
-	}
-
-	if authz.IdentityToken != "" || authz.RegistryToken != "" {
-		fmt.Fprintf(kw.errorLogger, "%s: authentication type mismatch, got token expected username/secret", host)
-		return nil, rpcerrors.Errorf(codes.InvalidArgument, "expected username/secret got token")
-	}
-
-	return &auth.CredentialsResponse{Username: authz.Username, Secret: authz.Password}, nil
-}
-
-func (kw keychainWrapper) FetchToken(ctx context.Context, req *auth.FetchTokenRequest) (*auth.FetchTokenResponse, error) {
-	fmt.Fprintf(kw.errorLogger, "AuthServer.FetchToken %s\n", asJson(req))
-	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
-}
-
-func (kw keychainWrapper) GetTokenAuthority(ctx context.Context, req *auth.GetTokenAuthorityRequest) (*auth.GetTokenAuthorityResponse, error) {
-	fmt.Fprintf(kw.errorLogger, "AuthServer.GetTokenAuthority %s\n", asJson(req))
-	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
-}
-
-func (kw keychainWrapper) VerifyTokenAuthority(ctx context.Context, req *auth.VerifyTokenAuthorityRequest) (*auth.VerifyTokenAuthorityResponse, error) {
-	fmt.Fprintf(kw.errorLogger, "AuthServer.VerifyTokenAuthority %s\n", asJson(req))
-	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
-}
-
-type resourceWrapper struct {
-	host string
-}
-
-func (rw resourceWrapper) String() string      { return rw.host }
-func (rw resourceWrapper) RegistryStr() string { return rw.host }
-
-func asJson(msg any) string {
-	str, _ := json.Marshal(msg)
-	return string(str)
 }
