@@ -258,7 +258,7 @@ func NewBuildCmd() *cobra.Command {
 					if _, err := index.Push(ctx, oci.RepositoryWithAccess{
 						Repository: parsed.Name(),
 						RegistryAccess: oci.RegistryAccess{
-							Keychain: api.DefaultKeychain,
+							Keychain: keychain{},
 						},
 					}, false); err != nil {
 						return err
