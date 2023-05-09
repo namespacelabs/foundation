@@ -44,7 +44,10 @@ func NewRunCmd() *cobra.Command {
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
 	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 
+	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
+
 	run.Flags().MarkHidden("label")
+	run.Flags().MarkHidden("internal_extra")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -69,6 +72,7 @@ func NewRunCmd() *cobra.Command {
 			Env:           *env,
 			Features:      *features,
 			Labels:        *labels,
+			InternalExtra: *internalExtra,
 		})
 		if err != nil {
 			return err
@@ -125,6 +129,7 @@ type createContainerOpts struct {
 	ExportedPorts []int32
 	Features      []string
 	Labels        map[string]string
+	InternalExtra string
 	EnableDocker  bool
 }
 
@@ -161,6 +166,7 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 				DevelopmentMode: devmode,
 				Label:           labels,
 				Feature:         opts.Features,
+				InternalExtra:   opts.InternalExtra,
 			}, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}

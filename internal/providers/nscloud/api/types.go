@@ -62,6 +62,7 @@ type CreateContainersRequest struct {
 	DevelopmentMode bool                `json:"development_mode,omitempty"`
 	Feature         []string            `json:"feature,omitempty"`
 	Label           []*LabelEntry       `json:"label,omitempty"`
+	InternalExtra   string              `json:"internal_extra,omitempty"`
 }
 
 type StartContainersRequest struct {
