@@ -40,14 +40,16 @@ func NewRunCmd() *cobra.Command {
 	on := run.Flags().String("on", "", "Run the container in the specified container, instead of creating a new one.")
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
-	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
 	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 
+	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
+	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
+	run.Flags().MarkHidden("enable_docker")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -73,6 +75,7 @@ func NewRunCmd() *cobra.Command {
 			Features:      *features,
 			Labels:        *labels,
 			InternalExtra: *internalExtra,
+			EnableDocker:  *enableDocker,
 		})
 		if err != nil {
 			return err
