@@ -18,6 +18,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/moby/buildkit/client"
+	"github.com/moby/buildkit/cmd/buildctl/build"
 	gateway "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
@@ -59,12 +60,12 @@ func NewBuildCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
-	// dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
+	dockerFile := cmd.Flags().StringP("file", "f", "", "If set, specifies what Dockerfile to build.")
 	push := cmd.Flags().BoolP("push", "p", false, "If specified, pushes the image to the target repository.")
 	dockerLoad := cmd.Flags().Bool("load", false, "If specified, load the image to the local docker registry.")
 	tags := cmd.Flags().StringSliceP("tag", "t", nil, "Attach the specified tags to the image.")
 	platforms := cmd.Flags().StringSlice("platform", []string{}, "Set target platform for build.")
-	// buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
+	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
@@ -124,6 +125,11 @@ func NewBuildCmd() *cobra.Command {
 			parsedTags[k] = parsed
 		}
 
+		buildArgs, err := build.ParseOpt(*buildArg)
+		if err != nil {
+			return err
+		}
+
 		var fragments []buildFragment
 		var localImages []string
 		for _, p := range *platforms {
@@ -146,7 +152,15 @@ func NewBuildCmd() *cobra.Command {
 				}
 			}
 
-			bf := buildFragment{Platform: platformSpec}
+			bf := buildFragment{
+				ContextDir: contextDir,
+				Platform:   platformSpec,
+				BuildArgs:  buildArgs,
+			}
+
+			if *dockerFile != "" {
+				bf.Dockerfile = *dockerFile
+			}
 
 			switch {
 			case *push:
@@ -278,8 +292,11 @@ func NewBuildCmd() *cobra.Command {
 }
 
 type buildFragment struct {
-	Platform specs.Platform
-	Exports  []client.ExportEntry
+	ContextDir string
+	Dockerfile string
+	BuildArgs  map[string]string
+	Platform   specs.Platform
+	Exports    []client.ExportEntry
 }
 
 func startBuilds(ctx context.Context, contextDir string, fragments []buildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
@@ -323,7 +340,7 @@ func startBuilds(ctx context.Context, contextDir string, fragments []buildFragme
 	for k, bf := range fragments {
 		k := k // Close k
 
-		startSingleBuild(eg, clients[k], mw, contextDir, bf.Exports, bf.Platform, func(sr *client.SolveResponse) error {
+		startSingleBuild(eg, clients[k], mw, bf, func(sr *client.SolveResponse) error {
 			results[k] = sr
 			return nil
 		})
@@ -341,7 +358,7 @@ func startBuilds(ctx context.Context, contextDir string, fragments []buildFragme
 	return results, nil
 }
 
-func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswriter.MultiWriter, contextDir string, exports []client.ExportEntry, p specs.Platform, set func(*client.SolveResponse) error) {
+func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswriter.MultiWriter, bf buildFragment, set func(*client.SolveResponse) error) {
 	ref := identity.NewID()
 
 	eg.Go(func(ctx context.Context) error {
@@ -350,15 +367,25 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 		attachable = append(attachable, bkkeychain.Wrapper{Context: ctx, ErrorLogger: io.Discard, Keychain: keychain{}})
 
 		solveOpt := client.SolveOpt{
-			Exports: exports,
+			Exports: bf.Exports,
 			LocalDirs: map[string]string{
-				"context":    contextDir,
-				"dockerfile": contextDir,
+				"context":    bf.ContextDir,
+				"dockerfile": bf.ContextDir,
 			},
-			Frontend:      "dockerfile.v0",
-			FrontendAttrs: map[string]string{"platform": platform.FormatPlatform(p)},
-			Session:       attachable,
-			Ref:           ref,
+			Frontend: "dockerfile.v0",
+			FrontendAttrs: map[string]string{
+				"platform": platform.FormatPlatform(bf.Platform),
+			},
+			Session: attachable,
+			Ref:     ref,
+		}
+
+		if bf.Dockerfile != "" {
+			solveOpt.FrontendAttrs["filename"] = bf.Dockerfile
+		}
+
+		for k, v := range bf.BuildArgs {
+			solveOpt.FrontendAttrs["build-arg:"+k] = v
 		}
 
 		var writers []progresswriter.Writer
@@ -387,7 +414,7 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 
 		resp, err := c.Build(ctx, solveOpt, "nsc-build", func(ctx context.Context, c gateway.Client) (*gateway.Result, error) {
 			return c.Solve(ctx, sreq)
-		}, progresswriter.ResetTime(mw.WithPrefix(platform.FormatPlatform(p), true)).Status())
+		}, progresswriter.ResetTime(mw.WithPrefix(platform.FormatPlatform(bf.Platform), true)).Status())
 		if err != nil {
 			return err
 		}
