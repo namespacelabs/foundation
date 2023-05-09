@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -395,6 +396,12 @@ func runBuildProxyWithRegistry(ctx context.Context, platform buildPlatform, nscr
 
 	go func() {
 		if err := p.Serve(); err != nil {
+			if x, ok := err.(*net.OpError); ok {
+				if x.Op == "accept" && errors.Is(x.Err, net.ErrClosed) {
+					return
+				}
+			}
+
 			log.Fatal(err)
 		}
 	}()
