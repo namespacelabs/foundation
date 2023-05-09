@@ -19,7 +19,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/moby/buildkit/client"
 	"github.com/moby/buildkit/cmd/buildctl/build"
-	gateway "github.com/moby/buildkit/frontend/gateway/client"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
 	"github.com/moby/buildkit/util/progress/progresswriter"
@@ -407,14 +406,8 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 			}
 		}()
 
-		sreq := gateway.SolveRequest{
-			Frontend:    solveOpt.Frontend,
-			FrontendOpt: solveOpt.FrontendAttrs,
-		}
-
-		resp, err := c.Build(ctx, solveOpt, "nsc-build", func(ctx context.Context, c gateway.Client) (*gateway.Result, error) {
-			return c.Solve(ctx, sreq)
-		}, progresswriter.ResetTime(mw.WithPrefix(platform.FormatPlatform(bf.Platform), true)).Status())
+		statusCh := progresswriter.ResetTime(mw.WithPrefix(platform.FormatPlatform(bf.Platform), true)).Status()
+		resp, err := c.Solve(ctx, nil, solveOpt, statusCh)
 		if err != nil {
 			return err
 		}
