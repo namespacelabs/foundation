@@ -216,6 +216,8 @@ type CreateClusterOpts struct {
 }
 
 type WaitClusterOpts struct {
+	WaitKind string // One of kubernetes, buildcluster, or something else.
+
 	WaitForService string
 }
 
@@ -285,6 +287,7 @@ func EnsureBuildCluster(ctx context.Context, api API, opts EnsureBuildClusterOpt
 		Features: featuresList,
 		WaitClusterOpts: WaitClusterOpts{
 			WaitForService: "buildkit",
+			WaitKind:       "buildcluster",
 		},
 	})
 }
@@ -296,7 +299,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 	var cr *CreateKubernetesClusterResponse
 	if err := tasks.Action("nscloud.cluster-wait").Arg("cluster_id", clusterId).Run(ctx, func(ctx context.Context) error {
 		var progress clusterCreateProgress
-		progress.status.Store("CREATE_ACCEPTED_WAITING_FOR_ALLOCATION")
+		progress.status.Store(stageHumanLabel("CREATE_ACCEPTED_WAITING_FOR_ALLOCATION", opts.WaitKind))
 		tasks.Attachments(ctx).SetProgress(&progress)
 
 		lastStatus := "<none>"
@@ -320,7 +323,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 						return fnerrors.InvocationError("nscloud", "failed to parse response: %w", err)
 					}
 
-					progress.set(resp.Status)
+					progress.set(stageHumanLabel(resp.Status, opts.WaitKind))
 					lastStatus = resp.Status
 
 					if resp.ClusterId != "" {
@@ -384,6 +387,42 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 	}
 
 	return result, nil
+}
+
+func stageHumanLabel(stage, kind string) string {
+	switch stage {
+	case "CREATE_ACCEPTED_WAITING_FOR_ALLOCATION":
+		return "Waiting for resources"
+
+	case "COMMITTED":
+		return "Assigning machine"
+
+	case "NAMESPACE_CREATED":
+		return "Starting isolated environment"
+
+	case "NAMESPACE_READY":
+		return "Waiting for core services"
+
+	case "CORE_SERVICES_READY":
+		switch kind {
+		case "kubernetes":
+			return "Waiting for Kubernetes"
+
+		case "buildcluster":
+			return "Waiting for build cluster"
+
+		default:
+			return "Waiting for containers"
+		}
+
+	case "KUBERNETES_READY", "KUBERNETES_LOAD_BALANCER_READY":
+		return "Waiting to settle"
+
+	case "BUILD_CLUSTER_READY":
+		return "Waiting to settle"
+	}
+
+	return stage
 }
 
 func ClusterService(cluster *KubernetesCluster, name string) *Cluster_ServiceState {

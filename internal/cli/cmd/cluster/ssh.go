@@ -44,7 +44,7 @@ func NewSshCmd() *cobra.Command {
 				KeepAtExit:      true,
 				Purpose:         fmt.Sprintf("Manually created for ssh (%s)", *tag),
 				UniqueTag:       *tag,
-				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh"},
+				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
 			}
 
 			cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)

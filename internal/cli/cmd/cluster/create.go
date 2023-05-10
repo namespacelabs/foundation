@@ -60,6 +60,8 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, string(keyData))
 		}
 
+		opts.WaitKind = "kubernetes"
+
 		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
 		if err != nil {
 			return err
