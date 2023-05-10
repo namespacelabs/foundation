@@ -95,7 +95,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 				sockPath := filepath.Join(dir, fmt.Sprintf("%s.sock", p))
 
 				if *background {
-					if _, err := startBackgroundProxy(sockPath, p, *createAtStartup); err != nil {
+					if _, err := startBackgroundProxy(ctx, sockPath, p, *createAtStartup); err != nil {
 						return err
 					}
 				} else {

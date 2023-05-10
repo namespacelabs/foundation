@@ -118,14 +118,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			if *createAtStartup {
-				// Make sure the cluster exists before going to the background.
-				if _, err := ensureBuildCluster(ctx, plat); err != nil {
-					return err
-				}
-			}
-
-			pid, err := startBackgroundProxy(*sockPath, plat, *createAtStartup)
+			pid, err := startBackgroundProxy(ctx, *sockPath, plat, *createAtStartup)
 			if err != nil {
 				return err
 			}
@@ -148,8 +141,15 @@ func newBuildkitProxy() *cobra.Command {
 	return cmd
 }
 
-func startBackgroundProxy(sockPath string, plat buildPlatform, connect bool) (int, error) {
-	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+sockPath, "--platform="+string(plat), "--create_at_startup="+fmt.Sprintf("%v", connect))
+func startBackgroundProxy(ctx context.Context, sockPath string, plat buildPlatform, connect bool) (int, error) {
+	if connect {
+		// Make sure the cluster exists before going to the background.
+		if _, err := ensureBuildCluster(ctx, plat); err != nil {
+			return 0, err
+		}
+	}
+
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+sockPath, "--platform="+string(plat))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,
 	}
