@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
@@ -47,10 +48,12 @@ func newReadCmd() *cobra.Command {
 			return fnerrors.New("reading cluster metadata value for the key %q is not supported", metadataKey)
 		}
 
-		var spec string
-		if s, ok := os.LookupEnv("NSC_TOKEN_SPEC"); ok {
-			spec = s
-		} else {
+		spec, err := fnapi.ResolveSpec()
+		if err != nil {
+			return err
+		}
+
+		if spec == "" {
 			s, err := os.ReadFile(defaultMetadataSpecFile)
 			if err != nil {
 				return fnerrors.New("failed to read metadata spec file: %w", err)

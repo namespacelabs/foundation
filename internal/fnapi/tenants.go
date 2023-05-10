@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -91,9 +92,31 @@ func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTo
 	return res, nil
 }
 
+func ResolveSpec() (string, error) {
+	if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
+		return spec, nil
+	}
+
+	if specFile := os.Getenv("NSC_TOKEN_SPEC_FILE"); specFile != "" {
+		contents, err := os.ReadFile(specFile)
+		if err != nil {
+			return "", fnerrors.New("failed to load spec: %w", err)
+		}
+
+		return string(contents), nil
+	}
+
+	return "", nil
+}
+
 func FetchTenantToken(ctx context.Context) (Token, error) {
 	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token").LogLevel(1), func(ctx context.Context) (*auth.Token, error) {
-		if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
+		spec, err := ResolveSpec()
+		if err != nil {
+			return nil, err
+		}
+
+		if spec != "" {
 			return auth.FetchTokenFromSpec(ctx, spec)
 		}
 
