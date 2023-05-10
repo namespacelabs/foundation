@@ -209,7 +209,7 @@ func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) erro
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
 		return buildkitfw.WaitReadiness(ctx, func() (*client.Client, error) {
 			// We must fetch a token with our parent context, so we get a task sink etc.
-			token, err := fnapi.FetchTenantToken(ctx)
+			token, err := fnapi.FetchToken(ctx)
 			if err != nil {
 				return nil, err
 			}

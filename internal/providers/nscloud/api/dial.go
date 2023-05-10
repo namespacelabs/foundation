@@ -21,7 +21,7 @@ import (
 )
 
 func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (net.Conn, error) {
-	token, err := fnapi.FetchTenantToken(ctx)
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +30,7 @@ func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (
 }
 
 func DialEndpoint(ctx context.Context, endpoint string, opts ...Option) (net.Conn, error) {
-	token, err := fnapi.FetchTenantToken(ctx)
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return nil, err
 	}

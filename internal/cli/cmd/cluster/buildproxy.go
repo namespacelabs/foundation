@@ -228,7 +228,7 @@ func runBuildProxyWithRegistry(ctx context.Context, platform buildPlatform, nscr
 		return nil, err
 	}
 
-	token, err := fnapi.FetchTenantToken(ctx)
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return nil, err
 	}

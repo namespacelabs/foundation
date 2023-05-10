@@ -154,7 +154,7 @@ func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source, co
 
 func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, containerName string) (portMap, error) {
 	// We must fetch a token with our parent context, so we get a task sink etc.
-	token, err := fnapi.FetchTenantToken(ctx)
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func parseContainerName(id, name string) (string, string) {
 
 func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *containerd.Client) error) error {
 	// We must fetch a token with our parent context, so we get a task sink etc.
-	token, err := fnapi.FetchTenantToken(ctx)
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return err
 	}

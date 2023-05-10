@@ -12,7 +12,7 @@ import (
 )
 
 func RegistryCreds(ctx context.Context) (*authn.Basic, error) {
-	token, err := fnapi.FetchTenantToken(ctx)
+	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
 		return nil, err
 	}

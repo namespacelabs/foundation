@@ -108,7 +108,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 
 	case "docker":
 		connect = func(ctx context.Context) (net.Conn, error) {
-			token, err := fnapi.FetchTenantToken(ctx)
+			token, err := fnapi.FetchToken(ctx)
 			if err != nil {
 				return nil, err
 			}

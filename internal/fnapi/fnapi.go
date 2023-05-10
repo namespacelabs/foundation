@@ -51,7 +51,7 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 		Endpoint: endpoint,
 		Method:   method,
 		FetchToken: func(ctx context.Context) (Token, error) {
-			return FetchTenantToken(ctx)
+			return FetchToken(ctx)
 		},
 	}.Do(ctx, req, handle)
 }

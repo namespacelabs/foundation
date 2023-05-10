@@ -82,110 +82,110 @@ func MakeAPI(endpoint string) API {
 	return API{
 		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		},
 
 		CreateContainers: fnapi.Call[CreateContainersRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/CreateContainers",
 		},
 
 		StartContainers: fnapi.Call[StartContainersRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/StartContainers",
 		},
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesCluster",
 		},
 
 		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/EnsureKubernetesCluster",
 		},
 
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/WaitKubernetesCluster",
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/ListKubernetesClusters",
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
 
 		ReleaseKubernetesCluster: fnapi.Call[ReleaseKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/ReleaseKubernetesCluster",
 		},
 
 		WakeKubernetesCluster: fnapi.Call[WakeKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/WakeKubernetesCluster",
 		},
 
 		RefreshKubernetesCluster: fnapi.Call[RefreshKubernetesClusterRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/RefreshKubernetesCluster",
 		},
 
 		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesClusterSummary",
 		},
 
 		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesConfig",
 		},
 
 		GetImageRegistry: fnapi.Call[emptypb.Empty]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetImageRegistry",
 		},
 
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
 			// XXX: hardcoded for now, we need to add an alias to api.<region>.nscluster.cloud
 			Endpoint:   fmt.Sprintf("https://logging.nscloud-%s.namespacelabs.nscloud.dev", regionName),
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "logs/tail",
 		},
 
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.logging.LoggingService/GetLogs",
 		},
 
 		GetProfile: fnapi.Call[emptypb.Empty]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetProfile",
 		},
 
 		RegisterDefaultIngress: fnapi.Call[RegisterDefaultIngressRequest]{
 			Endpoint:   endpoint,
-			FetchToken: fnapi.FetchTenantToken,
+			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/RegisterDefaultIngress",
 		},
 	}

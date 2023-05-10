@@ -109,8 +109,8 @@ func ResolveSpec() (string, error) {
 	return "", nil
 }
 
-func FetchTenantToken(ctx context.Context) (Token, error) {
-	return tasks.Return(ctx, tasks.Action("tenants.fetch-tenant-token").LogLevel(1), func(ctx context.Context) (*auth.Token, error) {
+func FetchToken(ctx context.Context) (Token, error) {
+	return tasks.Return(ctx, tasks.Action("nsc.fetch-token").LogLevel(1), func(ctx context.Context) (*auth.Token, error) {
 		spec, err := ResolveSpec()
 		if err != nil {
 			return nil, err

@@ -55,7 +55,7 @@ func newDockerCmd() *cobra.Command {
 		p, err := runUnixSocketProxy(ctx, clusterId, unixSockProxyOpts{
 			Kind: "docker",
 			Connect: func(ctx context.Context) (net.Conn, error) {
-				token, err := fnapi.FetchTenantToken(ctx)
+				token, err := fnapi.FetchToken(ctx)
 				if err != nil {
 					return nil, err
 				}
@@ -203,7 +203,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 
 		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
 			if reg != nil && regURL == reg.EndpointAddress {
-				token, err := fnapi.FetchTenantToken(ctx)
+				token, err := fnapi.FetchToken(ctx)
 				if err != nil {
 					return err
 				}
