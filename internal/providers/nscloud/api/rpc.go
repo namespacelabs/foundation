@@ -19,7 +19,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -217,7 +216,6 @@ type CreateClusterOpts struct {
 }
 
 type WaitClusterOpts struct {
-	WaitForStates  []string
 	WaitForService string
 }
 
@@ -329,8 +327,8 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 						clusterId = resp.ClusterId
 					}
 
-					ready := resp.Status == "READY" || slices.Contains(opts.WaitForStates, resp.Status)
-					if !ready && opts.WaitForService != "" {
+					ready := resp.Status == "READY"
+					if opts.WaitForService != "" {
 						svc := ClusterService(resp.Cluster, opts.WaitForService)
 						if svc != nil && svc.Status == "READY" {
 							ready = true
