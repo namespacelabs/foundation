@@ -35,7 +35,13 @@ func NewBuildkitCmd() *cobra.Command {
 
 	cmd.AddCommand(newBuildctlCmd())
 	cmd.AddCommand(newBuildkitProxy())
-	cmd.AddCommand(newBuildxCmd())
+	cmd.AddCommand(newSetupBuildxCmd("setup-buildx"))
+
+	buildx := &cobra.Command{Use: "buildx", Short: "docker buildx related functionality."}
+	buildx.AddCommand(newSetupBuildxCmd("setup"))
+	buildx.AddCommand(newCleanupBuildxCommand())
+
+	cmd.AddCommand(buildx)
 
 	return cmd
 }

@@ -30,13 +30,15 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-func newBuildxCmd() *cobra.Command {
+const defaultBuilder = "nsc-remote"
+
+func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "setup-buildx",
-		Short: "Run buildctl on the target build cluster.",
+		Use:   cmdName,
+		Short: "Setup buildx in the current machine, to use Namespace Remote builders.",
 	}
 
-	name := cmd.Flags().String("name", "nsc-remote", "The name of the builder we setup.")
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	background := cmd.Flags().Bool("background", false, "If true, runs the proxies in the background.")
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
@@ -154,6 +156,32 @@ func newBuildxCmd() *cobra.Command {
 		}
 
 		return nil
+	})
+
+	return cmd
+}
+
+func newCleanupBuildxCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "cleanup",
+		Short: "Unregisters Namespace Remote builders from buildx.",
+	}
+
+	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		dockerCli, err := command.NewDockerCli()
+		if err != nil {
+			return err
+		}
+
+		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
+			return err
+		}
+
+		return withStore(dockerCli, func(txn *store.Txn) error {
+			return txn.Remove(*name)
+		})
 	})
 
 	return cmd
