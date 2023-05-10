@@ -64,6 +64,27 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return rpcerrors.Errorf(codes.Internal, "no builders available")
 		}
 
+		var instances []*BuildClusterInstance
+		for _, p := range available {
+			instances = append(instances, NewBuildClusterInstance0(p))
+		}
+
+		if *createAtStartup {
+			eg := executor.New(ctx, "startup")
+
+			for _, p := range instances {
+				p := p // Close p
+				eg.Go(func(ctx context.Context) error {
+					_, err := p.NewConn(ctx)
+					return err
+				})
+			}
+
+			if err := eg.Wait(); err != nil {
+				return err
+			}
+		}
+
 		if err := withStore(dockerCli, func(txn *store.Txn) error {
 			ng, err := txn.NodeGroupByName(*name)
 			if err != nil {
@@ -86,7 +107,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 				return err
 			}
 
-			for _, p := range available {
+			for k, p := range available {
 				var platforms []string
 				if p == "arm64" {
 					platforms = []string{"linux/arm64"}
@@ -99,7 +120,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 						return err
 					}
 				} else {
-					bp, err := runBuildProxy(ctx, p, sockPath, *createAtStartup)
+					bp, err := runBuildProxy0(ctx, instances[k], sockPath)
 					if err != nil {
 						return err
 					}

@@ -363,9 +363,11 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 			time.Sleep(time.Second)
 		}
 
-		tasks.Attachments(ctx).
-			AddResult("cluster_address", cr.Cluster.EndpointAddress).
-			AddResult("deadline", cr.Cluster.Deadline)
+		if cr.Cluster.EndpointAddress != "" {
+			tasks.Attachments(ctx).AddResult("cluster_address", cr.Cluster.EndpointAddress)
+		}
+
+		tasks.Attachments(ctx).AddResult("deadline", cr.Cluster.Deadline)
 
 		return nil
 	}); err != nil {

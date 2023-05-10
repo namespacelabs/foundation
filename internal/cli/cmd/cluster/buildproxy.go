@@ -104,9 +104,11 @@ func NewBuildClusterInstance(ctx context.Context, platformStr string) (*BuildClu
 
 	platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, platformStr)
 
-	bp := &BuildClusterInstance{platform: platform}
+	return NewBuildClusterInstance0(platform), nil
+}
 
-	return bp, nil
+func NewBuildClusterInstance0(p buildPlatform) *BuildClusterInstance {
+	return &BuildClusterInstance{platform: p}
 }
 
 type buildProxy struct {
@@ -129,6 +131,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform buildPlatform, socketP
 		}
 	}
 
+	return runBuildProxy0(ctx, bp, socketPath)
+}
+
+func runBuildProxy0(ctx context.Context, bp *BuildClusterInstance, socketPath string) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
