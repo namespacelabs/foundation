@@ -172,9 +172,19 @@ func (bp *buildProxy) Cleanup() error {
 }
 
 func (bp *buildProxy) Serve() error {
-	return serveProxy(bp.listener, func() (net.Conn, error) {
+	if err := serveProxy(bp.listener, func() (net.Conn, error) {
 		return bp.instance.NewConn(tasks.WithSink(context.Background(), bp.sink))
-	})
+	}); err != nil {
+		if x, ok := err.(*net.OpError); ok {
+			if x.Op == "accept" && errors.Is(x.Err, net.ErrClosed) {
+				return nil
+			}
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 type buildProxyWithRegistry struct {
@@ -191,12 +201,6 @@ func runBuildProxyWithRegistry(ctx context.Context, platform buildPlatform, nscr
 
 	go func() {
 		if err := p.Serve(); err != nil {
-			if x, ok := err.(*net.OpError); ok {
-				if x.Op == "accept" && errors.Is(x.Err, net.ErrClosed) {
-					return
-				}
-			}
-
 			log.Fatal(err)
 		}
 	}()

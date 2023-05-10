@@ -35,6 +35,7 @@ func NewBuildkitCmd() *cobra.Command {
 
 	cmd.AddCommand(newBuildctlCmd())
 	cmd.AddCommand(newBuildkitProxy())
+	cmd.AddCommand(newBuildxCmd())
 
 	return cmd
 }
@@ -98,7 +99,7 @@ func newBuildkitProxy() *cobra.Command {
 	sockPath := cmd.Flags().String("sock_path", "", "If specified listens on the specified path.")
 	platform := cmd.Flags().String("platform", "amd64", "One of amd64, or arm64.")
 	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
-	connectAtStartup := cmd.Flags().Bool("connect_at_startup", true, "If true, eagerly connects to the build cluster.")
+	createAtStartup := cmd.Flags().Bool("create_at_startup", true, "If true, eagerly creates the build clusters.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		plat, err := parseBuildPlatform(*platform)
@@ -111,33 +112,22 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			if *connectAtStartup {
+			if *createAtStartup {
 				// Make sure the cluster exists before going to the background.
 				if _, err := ensureBuildCluster(ctx, plat); err != nil {
 					return err
 				}
 			}
 
-			cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path", *sockPath, "--platform", string(plat), "--connect_at_startup", fmt.Sprintf("%v", *connectAtStartup))
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				Foreground: false,
-				Setsid:     true,
-			}
-
-			if err := cmd.Start(); err != nil {
-				return err
-			}
-
-			pid := cmd.Process.Pid
-			// Make sure the child process is not cleaned up on exit.
-			if err := cmd.Process.Release(); err != nil {
+			pid, err := startBackgroundProxy(*sockPath, plat, *createAtStartup)
+			if err != nil {
 				return err
 			}
 
 			return os.WriteFile(*background, []byte(fmt.Sprintf("%d", pid)), 0644)
 		}
 
-		bp, err := runBuildProxy(ctx, plat, *sockPath, *connectAtStartup)
+		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup)
 		if err != nil {
 			return err
 		}
@@ -150,6 +140,25 @@ func newBuildkitProxy() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func startBackgroundProxy(sockPath string, plat buildPlatform, connect bool) (int, error) {
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+sockPath, "--platform="+string(plat), "--create_at_startup="+fmt.Sprintf("%v", connect))
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setsid: true,
+	}
+
+	if err := cmd.Start(); err != nil {
+		return -1, err
+	}
+
+	pid := cmd.Process.Pid
+	// Make sure the child process is not cleaned up on exit.
+	if err := cmd.Process.Release(); err != nil {
+		return -1, err
+	}
+
+	return pid, nil
 }
 
 func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildProxyWithRegistry, args ...string) error {

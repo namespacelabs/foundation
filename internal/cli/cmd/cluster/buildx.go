@@ -1,0 +1,221 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+package cluster
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/docker/buildx/store"
+	"github.com/docker/buildx/store/storeutil"
+	"github.com/docker/buildx/util/dockerutil"
+	"github.com/docker/cli/cli/command"
+	cliflags "github.com/docker/cli/cli/flags"
+	"github.com/muesli/reflow/wordwrap"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/executor"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
+)
+
+func newBuildxCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "setup-buildx",
+		Short: "Run buildctl on the target build cluster.",
+	}
+
+	name := cmd.Flags().String("name", "nsc-remote", "The name of the builder we setup.")
+	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
+	background := cmd.Flags().Bool("background", false, "If true, runs the proxies in the background.")
+	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		dockerCli, err := command.NewDockerCli()
+		if err != nil {
+			return err
+		}
+
+		if err := dockerCli.Initialize(cliflags.NewClientOptions()); err != nil {
+			return err
+		}
+
+		eg := executor.New(ctx, "proxies")
+
+		available, err := available(ctx)
+		if err != nil {
+			return err
+		}
+
+		if len(available) == 0 {
+			return rpcerrors.Errorf(codes.Internal, "no builders available")
+		}
+
+		if err := withStore(dockerCli, func(txn *store.Txn) error {
+			ng, err := txn.NodeGroupByName(*name)
+			if err != nil {
+				if !os.IsNotExist(errors.Cause(err)) {
+					return err
+				}
+			}
+
+			const driver = "remote"
+
+			if ng == nil {
+				ng = &store.NodeGroup{
+					Name:   *name,
+					Driver: driver,
+				}
+			}
+
+			dir, err := dirs.CreateUserTempDir("buildkit", "proxy")
+			if err != nil {
+				return err
+			}
+
+			for _, p := range available {
+				var platforms []string
+				if p == "arm64" {
+					platforms = []string{"linux/arm64"}
+				}
+
+				sockPath := filepath.Join(dir, fmt.Sprintf("%s.sock", p))
+
+				if *background {
+					if _, err := startBackgroundProxy(sockPath, p, *createAtStartup); err != nil {
+						return err
+					}
+				} else {
+					bp, err := runBuildProxy(ctx, p, sockPath, *createAtStartup)
+					if err != nil {
+						return err
+					}
+
+					eg.Go(func(ctx context.Context) error {
+						<-ctx.Done()
+						return bp.Cleanup()
+					})
+
+					eg.Go(func(ctx context.Context) error {
+						return bp.Serve()
+					})
+				}
+
+				if err := ng.Update(string(p), "unix://"+sockPath, platforms, true, true, nil, "", nil); err != nil {
+					return err
+				}
+			}
+
+			if *use {
+				ep, err := dockerutil.GetCurrentEndpoint(dockerCli)
+				if err != nil {
+					return err
+				}
+
+				if err := txn.SetCurrent(ep, *name, false, false); err != nil {
+					return err
+				}
+			}
+
+			if err := txn.Save(ng); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		if *background {
+			return nil
+		}
+
+		console.SetStickyContent(ctx, "build", banner(ctx, *name, *use, available))
+
+		if err := eg.Wait(); err != nil {
+			return err
+		}
+
+		if err := withStore(dockerCli, func(txn *store.Txn) error {
+			return txn.Remove(*name)
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return cmd
+}
+
+func available(ctx context.Context) ([]buildPlatform, error) {
+	clusterProfiles, err := api.GetProfile(ctx, api.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	var avail []buildPlatform
+	for _, x := range []buildPlatform{"amd64", "arm64"} {
+		platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, fmt.Sprintf("linux/%s", x))
+		if !slices.Contains(avail, platform) {
+			avail = append(avail, platform)
+		}
+	}
+
+	return avail, nil
+}
+
+func banner(ctx context.Context, name string, use bool, native []buildPlatform) string {
+	w := wordwrap.NewWriter(80)
+	style := colors.Ctx(ctx)
+
+	fmt.Fprint(w, style.Highlight.Apply("docker buildx"), " has been configured to use ",
+		style.Highlight.Apply("Namespace Remote builders"), ".\n")
+
+	fmt.Fprintln(w)
+	fmt.Fprint(w, "Native building: ", strings.Join(bold(style, native), " and "), ".\n")
+
+	if !use {
+		fmt.Fprint(w, "\nThe default buildx builder was not changed, you can re-run with ", style.Highlight.Apply("--use"), " or run:\n")
+		fmt.Fprintf(w, "\n  docker buildx use %s\n", name)
+	}
+
+	fmt.Fprintf(w, "\nStart a new terminal, and start building:\n")
+	fmt.Fprintf(w, "\n  docker buildx build ...\n")
+
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, style.Comment.Apply("Exiting will remove the configuration."))
+
+	_ = w.Close()
+
+	return strings.TrimSpace(w.String())
+}
+
+func bold[X any](style colors.Style, values []X) []string {
+	result := make([]string, len(values))
+	for k, x := range values {
+		result[k] = style.Highlight.Apply(fmt.Sprintf("%v", x))
+	}
+	return result
+}
+
+func withStore(dockerCli *command.DockerCli, f func(*store.Txn) error) error {
+	txn, release, err := storeutil.GetStore(dockerCli)
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	return f(txn)
+}
