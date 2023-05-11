@@ -26,7 +26,7 @@ func TestTelemetryDisabled(t *testing.T) {
 	defer reset()
 
 	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
-	tel.useTelemetry = false
+	tel.enabled = false
 	tel.errorLogging = true
 
 	cmd := &cobra.Command{
@@ -58,7 +58,7 @@ func TestTelemetryDisabledViaEnv(t *testing.T) {
 	defer reset()
 
 	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
-	tel.useTelemetry = true
+	tel.enabled = true
 	tel.errorLogging = true
 
 	t.Setenv("DO_NOT_TRACK", "1")
@@ -93,7 +93,7 @@ func TestTelemetryDisabledViaViper(t *testing.T) {
 	viper.Set("telemetry", false)
 
 	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
-	tel.useTelemetry = true
+	tel.enabled = true
 	tel.errorLogging = true
 
 	cmd := &cobra.Command{
@@ -124,7 +124,7 @@ func TestTelemetryRecordInvocationAnon(t *testing.T) {
 	defer reset()
 
 	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
-	tel.useTelemetry = true
+	tel.enabled = true
 	tel.errorLogging = true
 
 	sentID := make(chan string, 1)
@@ -175,7 +175,7 @@ func TestTelemetryRecordErrorPlaintext(t *testing.T) {
 	defer reset()
 
 	tel := InternalNewTelemetry(context.Background(), generateTestIDs)
-	tel.useTelemetry = true
+	tel.enabled = true
 	tel.errorLogging = true
 	tel.recID = atomic.NewString("fake-id")
 

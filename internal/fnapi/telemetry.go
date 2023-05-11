@@ -36,7 +36,7 @@ const telemetryServiceName = "telemetry.TelemetryService"
 const postTimeout = 1 * time.Second
 
 type Telemetry struct {
-	useTelemetry bool
+	enabled      bool
 	errorLogging bool // For testing and debugging.
 
 	backendAddress string
@@ -76,19 +76,27 @@ func TelemetryOn(ctx context.Context) *Telemetry {
 }
 
 func WithTelemetry(ctx context.Context) context.Context {
+	if isTelemetryDisabled() {
+		return ctx
+	}
+
 	return context.WithValue(ctx, _telemetryKey, NewTelemetry(ctx))
 }
 
 // Telemetry needs to be excplicitly enabled by calling this function.
 // IsTelemetryEnabled() may still be false if telemetry is disabled through DO_NOT_TRACK, etc.
 func (tel *Telemetry) Enable() {
-	tel.useTelemetry = true
+	tel.enabled = true
+}
+
+func isTelemetryDisabled() bool {
+	doNotTrack := os.Getenv("DO_NOT_TRACK")
+	enableTelemetry := viper.GetBool("telemetry")
+	return environment.IsRunningInCI() || doNotTrack != "" || !enableTelemetry
 }
 
 func (tel *Telemetry) IsTelemetryEnabled() bool {
-	doNotTrack := os.Getenv("DO_NOT_TRACK")
-	enableTelemetry := viper.GetBool("telemetry")
-	return !environment.IsRunningInCI() && tel.useTelemetry && doNotTrack == "" && enableTelemetry
+	return tel != nil && tel.enabled
 }
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {
@@ -307,7 +315,13 @@ func (tel *Telemetry) recordError(ctx context.Context, recID string, err error) 
 	}
 }
 
-func (tel *Telemetry) IsFirstRun() bool { return tel.created }
+func (tel *Telemetry) IsFirstRun() bool {
+	if tel == nil {
+		return false
+	}
+
+	return tel.created
+}
 
 func (tel *Telemetry) GetClientID() string {
 	if tel == nil {

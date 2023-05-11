@@ -111,7 +111,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		}
 
 		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
-		if useTelemetry {
+		if useTelemetry && tel != nil {
 			tel.Enable()
 		}
 
