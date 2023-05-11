@@ -226,7 +226,7 @@ type EnsureBuildClusterOpts struct {
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create"), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadablef("Creating Environment"), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         opts.Ephemeral,
 			DocumentedPurpose: opts.Purpose,
@@ -297,7 +297,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse
-	if err := tasks.Action("nscloud.cluster-wait").Arg("cluster_id", clusterId).Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("nscloud.cluster-wait").HumanReadablef("Creating Environment").Arg("cluster_id", clusterId).Run(ctx, func(ctx context.Context) error {
 		var progress clusterCreateProgress
 		progress.status.Store(stageHumanLabel("CREATE_ACCEPTED_WAITING_FOR_ALLOCATION", opts.WaitKind))
 		tasks.Attachments(ctx).SetProgress(&progress)
