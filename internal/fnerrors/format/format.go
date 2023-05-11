@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	ghenv "namespacelabs.dev/foundation/internal/github/env"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -152,6 +153,9 @@ func format(w io.Writer, err error, opts *FormatOptions) {
 	case *fnerrors.CodegenMultiError:
 		formatCodegenMultiError(w, x, opts)
 
+	case *fnerrors.PermissionDeniedErr:
+		formatPermissionDeniedError(w, x, opts)
+
 	default:
 		fmt.Fprintf(w, "%s\n", x.Error())
 	}
@@ -193,6 +197,23 @@ func formatInvocationError(w io.Writer, err *fnerrors.BaseError, opts *FormatOpt
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "This was unexpected, but could be transient. Please try again.\nAnd if it persists, %s\n", askForSupport())
 	errorReportRequest(w)
+}
+
+func formatPermissionDeniedError(w io.Writer, err *fnerrors.PermissionDeniedErr, opts *FormatOptions) {
+	// XXX don't wordwrap if terminal is below 80 chars in width.
+	errTxt := text.Wrap(err.Why, 80)
+
+	var cmd string
+	switch {
+	case ghenv.IsRunningInActions():
+		cmd = "auth exchange-github-token"
+	default:
+		cmd = "login"
+	}
+
+	suggestion := fmt.Sprintf("%s %s", name.CmdName, cmd)
+
+	fmt.Fprintf(w, "%s\n\nTry running `%s`.\nIf this does not help %s\n", errTxt, opts.style.Highlight.Apply(suggestion), askForSupport())
 }
 
 func formatCueError(w io.Writer, err cueerrors.Error, opts *FormatOptions) {

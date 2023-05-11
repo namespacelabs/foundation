@@ -68,6 +68,11 @@ func ReauthError(toFixThis string, args ...interface{}) error {
 	return &ReauthErr{BaseError: *err, Why: err.Error()}
 }
 
+func PermissionDeniedError(toFixThis string, args ...interface{}) error {
+	err := makeError(Kind_USER, toFixThis, args...)
+	return &PermissionDeniedErr{BaseError: *err, Why: err.Error()}
+}
+
 // Configuration or system setup is not correct and requires user intervention.
 func UsageError(runThis, toFixThis string, args ...interface{}) error {
 	err := makeError(Kind_USER, toFixThis, args...)
@@ -172,6 +177,12 @@ type ReauthErr struct {
 	Why string
 }
 
+// Similar to ReauthErr, but the error might be persistent.
+type PermissionDeniedErr struct {
+	BaseError
+	Why string
+}
+
 type ErrWithLogs struct {
 	Err     error
 	ReaderF func() io.Reader // Returns reader with command's stderr output.
@@ -259,7 +270,8 @@ func (ae *ActionError) GRPCStatus() *status.Status {
 
 func IsNamespaceError(err error) bool {
 	switch err.(type) {
-	case *BaseError, *InvocationErr, *DependencyFailedError, *ActionError:
+	case *BaseError, *InvocationErr, *DependencyFailedError,
+		*ActionError, *ReauthErr, *PermissionDeniedErr:
 		return true
 	}
 	return false
