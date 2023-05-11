@@ -187,17 +187,17 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
-		return fnerrors.ReauthError("%s/%s requires authentication: %s", c.Endpoint, c.Method, st.Message)
+		return fnerrors.ReauthError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 
 	case int32(codes.PermissionDenied):
-		return fnerrors.PermissionDeniedError("%s/%s denied access: %s", c.Endpoint, c.Method, st.Message)
+		return fnerrors.PermissionDeniedError("%s/%s denied access: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 
 	case int32(codes.FailedPrecondition):
 		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).
-		return fnerrors.New("failed to call %s/%s: %s", c.Endpoint, c.Method, st.Message)
+		return fnerrors.New("failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 
 	case int32(codes.Internal):
-		return fnerrors.InternalError("failed to call %s/%s: %s", c.Endpoint, c.Method, st.Message)
+		return fnerrors.InternalError("failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 
 	default:
 		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))

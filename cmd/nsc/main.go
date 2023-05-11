@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	ghenv "namespacelabs.dev/foundation/internal/github/env"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/std/protocol"
 )
@@ -73,12 +74,18 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 		}
 	}
 
+	if st.Code() == codes.Unknown {
+		// Not a status error
+		fncobra.DefaultErrorFormatter(out, style, err)
+		return
+	}
+
+	ww := wordwrap.NewWriter(100)
+	fmt.Fprintln(ww)
+	fmt.Fprint(ww, style.ErrorHeader.Apply("Failed: "))
+
 	switch st.Code() {
 	case codes.PermissionDenied:
-		ww := wordwrap.NewWriter(100)
-
-		fmt.Fprintln(ww)
-		fmt.Fprint(ww, style.ErrorHeader.Apply("Failed: "))
 		fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", st.Message())
 
 		if rid != nil {
@@ -92,14 +99,42 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 			fmt.Fprintln(ww)
 		}
 
-		fmt.Fprintln(ww)
+	case codes.Unauthenticated:
+		fmt.Fprintf(ww, "no credentials found.\n")
 
-		_ = ww.Close()
-		_, _ = out.Write(ww.Bytes())
+		var cmd string
+		switch {
+		case ghenv.IsRunningInActions():
+			cmd = "auth exchange-github-token"
+		default:
+			cmd = "login"
+		}
+
+		fmt.Fprintln(ww)
+		fmt.Fprint(ww, style.Comment.Apply("Please run "),
+			style.CommentHighlight.Apply(cmd),
+			style.Comment.Apply("."))
 
 	default:
-		fncobra.DefaultErrorFormatter(out, style, err)
+		fmt.Fprintf(ww, "we got an error from our server: %s (%d)\n", st.Message(), st.Code())
+
+		fmt.Fprintln(ww)
+		fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),
+			style.CommentHighlight.Apply("support@namespacelabs.com"))
+
+		if rid != nil {
+			fmt.Fprint(ww,
+				style.Comment.Apply(" and mention request ID "),
+				style.CommentHighlight.Apply(rid.Id),
+			)
+		}
+
+		fmt.Fprint(ww, style.Comment.Apply("."))
 	}
+
+	fmt.Fprintln(ww)
+	_ = ww.Close()
+	_, _ = out.Write(ww.Bytes())
 }
 
 func unwrapStatus(err error) (*status.Status, bool) {
