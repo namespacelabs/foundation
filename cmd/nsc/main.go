@@ -116,7 +116,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 			style.Comment.Apply("."))
 
 	default:
-		fmt.Fprintf(ww, "we got an error from our server: %s (%d)\n", st.Message(), st.Code())
+		fmt.Fprintf(ww, "we got an error from our server: %s (%s)\n", st.Message(), st.Code())
 
 		fmt.Fprintln(ww)
 		fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),
