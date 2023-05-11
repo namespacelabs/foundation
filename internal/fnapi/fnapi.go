@@ -174,7 +174,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	switch response.StatusCode {
 	case http.StatusInternalServerError:
-		return fnerrors.InvocationError("namespace api", "internal server error, and wasn't able to parse error response")
+		return fnerrors.InternalError("namespace api: internal server error, and wasn't able to parse error response")
 	case http.StatusUnauthorized:
 		return fnerrors.ReauthError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
 	default:
@@ -185,11 +185,14 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
-		return fnerrors.ReauthError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.ReauthError("%s/%s requires authentication: %s", c.Endpoint, c.Method, st.Message)
 
 	case int32(codes.FailedPrecondition):
 		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).
-		return fnerrors.New("failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.New("failed to call %s/%s: %s", c.Endpoint, c.Method, st.Message)
+
+	case int32(codes.Internal):
+		return fnerrors.InternalError("failed to call %s/%s: %s", c.Endpoint, c.Method, st.Message)
 
 	default:
 		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
