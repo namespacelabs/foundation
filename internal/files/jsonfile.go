@@ -21,3 +21,15 @@ func WriteJson(path string, m any, perm os.FileMode) error {
 
 	return nil
 }
+
+func ReadJson(path string, m any) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	dec := json.NewDecoder(f)
+	return dec.Decode(m)
+}

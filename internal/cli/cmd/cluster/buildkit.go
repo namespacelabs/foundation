@@ -39,7 +39,9 @@ func NewBuildkitCmd() *cobra.Command {
 
 	buildx := &cobra.Command{Use: "buildx", Short: "docker buildx related functionality."}
 	buildx.AddCommand(newSetupBuildxCmd("setup"))
+	buildx.AddCommand(newSetupBuildxCmd("run-proxy"))
 	buildx.AddCommand(newCleanupBuildxCommand())
+	buildx.AddCommand(newWireBuildxCommand())
 
 	cmd.AddCommand(buildx)
 
@@ -118,7 +120,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			pid, err := startBackgroundProxy(ctx, *sockPath, plat, *createAtStartup)
+			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup)
 			if err != nil {
 				return err
 			}
@@ -141,15 +143,15 @@ func newBuildkitProxy() *cobra.Command {
 	return cmd
 }
 
-func startBackgroundProxy(ctx context.Context, sockPath string, plat buildPlatform, connect bool) (int, error) {
+func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool) (int, error) {
 	if connect {
 		// Make sure the cluster exists before going to the background.
-		if _, err := ensureBuildCluster(ctx, plat); err != nil {
+		if _, err := ensureBuildCluster(ctx, md.Platform); err != nil {
 			return 0, err
 		}
 	}
 
-	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+sockPath, "--platform="+string(plat))
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,
 	}
