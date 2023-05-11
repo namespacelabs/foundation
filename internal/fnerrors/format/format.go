@@ -67,20 +67,29 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 
 	var actionError *fnerrors.ActionError
 	cause := err
+	curr := err
 	// Keep unwrapping to get the root fnError.
 	for {
-		// Keep looking for the innermost fnerror
+		// Keep looking for the innermost action error
 		errors.As(cause, &actionError)
 
-		child := errors.Unwrap(cause)
-		if child == nil || !fnerrors.IsNamespaceError(child) {
+		curr = errors.Unwrap(curr)
+		if curr == nil {
 			break
-		} else if opts.tracing {
+		}
+
+		if !fnerrors.IsNamespaceError(curr) {
+			// Also traverse through non-Namespace errors (e.g. fmt.wrapError) to find the root cause.
+			continue
+		}
+
+		if opts.tracing {
 			format(w, cause, opts)
 			writeSourceFileAndLine(w, cause, opts.style)
 			w = indent(w)
 		}
-		cause = child
+
+		cause = curr
 	}
 
 	if opts.actionTracing && actionError != nil {
