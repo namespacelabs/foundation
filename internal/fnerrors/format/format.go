@@ -200,9 +200,6 @@ func formatInvocationError(w io.Writer, err *fnerrors.BaseError, opts *FormatOpt
 }
 
 func formatPermissionDeniedError(w io.Writer, err *fnerrors.PermissionDeniedErr, opts *FormatOptions) {
-	// XXX don't wordwrap if terminal is below 80 chars in width.
-	errTxt := text.Wrap(err.Why, 80)
-
 	var cmd string
 	switch {
 	case ghenv.IsRunningInActions():
@@ -213,7 +210,7 @@ func formatPermissionDeniedError(w io.Writer, err *fnerrors.PermissionDeniedErr,
 
 	suggestion := fmt.Sprintf("%s %s", name.CmdName, cmd)
 
-	fmt.Fprintf(w, "%s\n\nTry running `%s`.\nIf this does not help %s\n", errTxt, opts.style.Highlight.Apply(suggestion), askForSupport())
+	fmt.Fprintf(w, "%s\n\nTry running `%s`.\nIf this does not help %s\n", err.Why, opts.style.Highlight.Apply(suggestion), askForSupport())
 }
 
 func formatCueError(w io.Writer, err cueerrors.Error, opts *FormatOptions) {
