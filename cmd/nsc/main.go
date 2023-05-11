@@ -112,7 +112,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 
 		fmt.Fprintln(ww)
 		fmt.Fprint(ww, style.Comment.Apply("Please run "),
-			style.CommentHighlight.Apply(cmd),
+			style.CommentHighlight.Apply("nsc "+cmd),
 			style.Comment.Apply("."))
 
 	default:
