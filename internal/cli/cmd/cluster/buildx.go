@@ -108,7 +108,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					return err
 				}
 			} else {
-				bp, err := runBuildProxy0(ctx, instance, p.SocketPath)
+				bp, err := instance.runBuildProxy(ctx, p.SocketPath)
 				if err != nil {
 					return err
 				}
@@ -173,8 +173,8 @@ type buildxMetadata struct {
 }
 
 type buildxInstanceMetadata struct {
-	Platform   buildPlatform `json:"build_platform"`
-	SocketPath string        `json:"socket_path"`
+	Platform   api.BuildPlatform `json:"build_platform"`
+	SocketPath string            `json:"socket_path"`
 }
 
 func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {
@@ -286,21 +286,21 @@ func newWireBuildxCommand() *cobra.Command {
 	return cmd
 }
 
-func determineAvailable(ctx context.Context) ([]buildPlatform, error) {
+func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
 	profile, err := api.GetProfile(ctx, api.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	avail := make([]buildPlatform, len(profile.ClusterPlatform))
+	avail := make([]api.BuildPlatform, len(profile.ClusterPlatform))
 	for k, x := range profile.ClusterPlatform {
-		avail[k] = buildPlatform(x)
+		avail[k] = api.BuildPlatform(x)
 	}
 
 	return avail, nil
 }
 
-func banner(ctx context.Context, name string, use bool, native []buildPlatform) string {
+func banner(ctx context.Context, name string, use bool, native []api.BuildPlatform) string {
 	w := wordwrap.NewWriter(80)
 	style := colors.Ctx(ctx)
 

@@ -32,7 +32,7 @@ const (
 )
 
 type BuildClusterInstance struct {
-	platform buildPlatform
+	platform api.BuildPlatform
 
 	mu            sync.Mutex
 	previous      *api.CreateClusterResult
@@ -50,7 +50,7 @@ func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 		}
 	}
 
-	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(bp.platform))
+	response, err := api.CreateBuildCluster(ctx, api.Endpoint, bp.platform)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func NewBuildClusterInstance(ctx context.Context, platformStr string) (*BuildClu
 	return NewBuildClusterInstance0(platform), nil
 }
 
-func NewBuildClusterInstance0(p buildPlatform) *BuildClusterInstance {
+func NewBuildClusterInstance0(p api.BuildPlatform) *BuildClusterInstance {
 	return &BuildClusterInstance{platform: p}
 }
 
@@ -119,7 +119,7 @@ type buildProxy struct {
 	cleanup    func() error
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform buildPlatform, socketPath string, connectAtStart bool) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart bool) (*buildProxy, error) {
 	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
 	if err != nil {
 		return nil, err
@@ -131,10 +131,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform buildPlatform, socketP
 		}
 	}
 
-	return runBuildProxy0(ctx, bp, socketPath)
+	return bp.runBuildProxy(ctx, socketPath)
 }
 
-func runBuildProxy0(ctx context.Context, bp *BuildClusterInstance, socketPath string) (*buildProxy, error) {
+func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
@@ -199,7 +199,7 @@ type buildProxyWithRegistry struct {
 	Cleanup         func() error
 }
 
-func runBuildProxyWithRegistry(ctx context.Context, platform buildPlatform, nscrOnlyRegistry bool) (*buildProxyWithRegistry, error) {
+func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry bool) (*buildProxyWithRegistry, error) {
 	p, err := runBuildProxy(ctx, platform, "", true)
 	if err != nil {
 		return nil, err

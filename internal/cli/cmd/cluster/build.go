@@ -43,7 +43,7 @@ import (
 
 var (
 	// preferredBuildPlatform is a mapping between supported platforms and preferable build cluster.
-	preferredBuildPlatform = map[string]buildPlatform{
+	preferredBuildPlatform = map[string]api.BuildPlatform{
 		"linux/arm64":  "arm64",
 		"linux/arm/v5": "arm64",
 		"linux/arm/v6": "arm64",
@@ -426,20 +426,11 @@ func (dk keychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authent
 	return authn.DefaultKeychain.Resolve(r)
 }
 
-func determineBuildClusterPlatform(allowedClusterPlatforms []string, platform string) buildPlatform {
+func determineBuildClusterPlatform(allowedClusterPlatforms []string, platform string) api.BuildPlatform {
 	// If requested platform is arm64 and "arm64" is allowed.
 	if preferredBuildPlatform[platform] == "arm64" && slices.Contains(allowedClusterPlatforms, "arm64") {
 		return "arm64"
 	}
 
 	return "amd64"
-}
-
-func buildClusterOpts(platform buildPlatform) api.EnsureBuildClusterOpts {
-	var opts api.EnsureBuildClusterOpts
-	if platform == "arm64" {
-		opts.Features = []string{"EXP_ARM64_CLUSTER"}
-	}
-
-	return opts
 }

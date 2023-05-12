@@ -69,9 +69,9 @@ func newBuildctlCmd() *cobra.Command {
 			return fnerrors.New("failed to download buildctl: %w", err)
 		}
 
-		var plat buildPlatform
+		var plat api.BuildPlatform
 		if *platform != "" {
-			p, err := parseBuildPlatform(*platform)
+			p, err := api.ParseBuildPlatform(*platform)
 			if err != nil {
 				return err
 			}
@@ -110,7 +110,7 @@ func newBuildkitProxy() *cobra.Command {
 	createAtStartup := cmd.Flags().Bool("create_at_startup", true, "If true, eagerly creates the build clusters.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
-		plat, err := parseBuildPlatform(*platform)
+		plat, err := api.ParseBuildPlatform(*platform)
 		if err != nil {
 			return err
 		}
@@ -182,8 +182,8 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 	return localexec.RunInteractive(ctx, buildctl)
 }
 
-func ensureBuildCluster(ctx context.Context, platform buildPlatform) (*api.CreateClusterResult, error) {
-	response, err := api.EnsureBuildCluster(ctx, api.Endpoint, buildClusterOpts(platform))
+func ensureBuildCluster(ctx context.Context, platform api.BuildPlatform) (*api.CreateClusterResult, error) {
+	response, err := api.CreateBuildCluster(ctx, api.Endpoint, platform)
 	if err != nil {
 		return nil, err
 	}

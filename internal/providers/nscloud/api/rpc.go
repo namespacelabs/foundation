@@ -222,17 +222,23 @@ type CreateClusterOpts struct {
 }
 
 type WaitClusterOpts struct {
+	CreateLabel string // Used as human-facing label, e.g. "Creating Environment: ..."
+
 	WaitKind string // One of kubernetes, buildcluster, or something else.
 
 	WaitForService string
 }
 
-type EnsureBuildClusterOpts struct {
-	Features []string
+func (w WaitClusterOpts) label() string {
+	if w.CreateLabel == "" {
+		return "Creating Environment"
+	}
+
+	return w.CreateLabel
 }
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadablef("Creating Environment"), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadablef(opts.label()), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
 		req := CreateKubernetesClusterRequest{
 			Ephemeral:         opts.Ephemeral,
 			DocumentedPurpose: opts.Purpose,
@@ -285,17 +291,26 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
-func EnsureBuildCluster(ctx context.Context, api API, opts EnsureBuildClusterOpts) (*CreateClusterResult, error) {
+func CreateBuildCluster(ctx context.Context, api API, platform BuildPlatform) (*CreateClusterResult, error) {
 	featuresList := []string{"BUILD_CLUSTER"}
-	featuresList = append(featuresList, opts.Features...)
+	featuresList = append(featuresList, buildClusterFeatures(platform)...)
 	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{
 		Purpose:  "Build machine",
 		Features: featuresList,
 		WaitClusterOpts: WaitClusterOpts{
+			CreateLabel:    fmt.Sprintf("Creating %s Build Cluster", platform),
 			WaitForService: "buildkit",
 			WaitKind:       "buildcluster",
 		},
 	})
+}
+
+func buildClusterFeatures(platform BuildPlatform) []string {
+	if platform == "arm64" {
+		return []string{"EXP_ARM64_CLUSTER"}
+	}
+
+	return nil
 }
 
 func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
@@ -303,7 +318,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse
-	if err := tasks.Action("nscloud.cluster-wait").HumanReadablef("Creating Environment").Arg("cluster_id", clusterId).Run(ctx, func(ctx context.Context) error {
+	if err := tasks.Action("nscloud.cluster-wait").HumanReadablef(opts.label()).Arg("cluster_id", clusterId).Run(ctx, func(ctx context.Context) error {
 		var progress clusterCreateProgress
 		progress.status.Store(stageHumanLabel("CREATE_ACCEPTED_WAITING_FOR_ALLOCATION", opts.WaitKind))
 		tasks.Attachments(ctx).SetProgress(&progress)

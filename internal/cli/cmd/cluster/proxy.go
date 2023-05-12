@@ -155,7 +155,7 @@ func compatEnsureCluster(ctx context.Context, clusterID string) (*api.CreateClus
 	return ensureCluster(ctx, clusterID)
 }
 
-func compatClusterIDAsBuildPlatform(clusterID string) (buildPlatform, bool) {
+func compatClusterIDAsBuildPlatform(clusterID string) (api.BuildPlatform, bool) {
 	switch clusterID {
 	case buildCluster:
 		return "amd64", true

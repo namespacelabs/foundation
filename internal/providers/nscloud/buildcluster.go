@@ -13,7 +13,7 @@ import (
 )
 
 func EnsureBuildCluster(ctx context.Context, x api.API) (*buildkit.Overrides, error) {
-	cfg, err := api.EnsureBuildCluster(ctx, x, api.EnsureBuildClusterOpts{})
+	cfg, err := api.CreateBuildCluster(ctx, x, "amd64")
 	if err != nil {
 		return nil, err
 	}
