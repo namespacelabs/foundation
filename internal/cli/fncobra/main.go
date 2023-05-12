@@ -50,17 +50,30 @@ var (
 	disableCommandBundle = false
 )
 
-func DoMain(name string, autoUpdate bool, formatErr FormatErrorFunc, registerCommands func(*cobra.Command)) {
-	fncobraname.CmdName = name
+type MainOpts struct {
+	Name                 string
+	AutoUpdate           bool
+	InhibitConsoleReport bool
+	FormatErr            FormatErrorFunc
+	RegisterCommands     func(*cobra.Command)
+}
 
-	style, err := doMain(name, autoUpdate, registerCommands)
+func DoMain(opts MainOpts) {
+	fncobraname.CmdName = opts.Name
+
+	style, err := doMain(opts)
 
 	if err != nil && !errors.Is(err, context.Canceled) {
-		os.Exit(handleExitError(style, err, formatErr))
+		format := opts.FormatErr
+		if format == nil {
+			format = DefaultErrorFormatter
+		}
+
+		os.Exit(handleExitError(style, err, format))
 	}
 }
 
-func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command)) (colors.Style, error) {
+func doMain(opts MainOpts) (colors.Style, error) {
 	if v := os.Getenv("FN_CPU_PROFILE"); v != "" {
 		done := cpuprofile(v)
 		defer done()
@@ -73,12 +86,12 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	compute.RegisterBytesCacheable()
 	fscache.RegisterFSCacheable()
 
-	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
-	if autoUpdate {
-		maybeRunLatest(name, name == "ns")
-	}
+	rootCtx, style, flushLogs := SetupContext(context.Background(), opts.InhibitConsoleReport)
 
-	rootCtx, style, flushLogs := SetupContext(context.Background())
+	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
+	if opts.AutoUpdate {
+		maybeRunLatest(rootCtx, style, flushLogs, opts.Name, opts.Name == "ns")
+	}
 
 	var cleanupTracer func()
 	if tracerEndpoint := viper.GetString("jaeger_endpoint"); tracerEndpoint != "" && viper.GetBool("enable_tracing") {
@@ -94,12 +107,12 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	var run *storedrun.Run
 	var useTelemetry bool
 
-	rootCmd := newRoot(name, func(cmd *cobra.Command, args []string) error {
+	rootCmd := newRoot(opts.Name, func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 
 		// This is a bit of an hack. But don't run version checks when doing an update.
-		if autoUpdate && !slices.Contains(cmd.Aliases, "update-ns") {
-			DeferCheckVersion(ctx, name)
+		if opts.AutoUpdate && !slices.Contains(cmd.Aliases, "update-ns") {
+			DeferCheckVersion(ctx, opts.Name)
 		}
 
 		tel := fnapi.TelemetryOn(ctx)
@@ -107,7 +120,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		// XXX move id management out of telemetry, it's used for other purposes too.
 		if tel.IsFirstRun() && !environment.IsRunningInCI() {
 			// First NS run - print a welcome message.
-			welcome.PrintWelcome(ctx, true /* firstRun */, name)
+			welcome.PrintWelcome(ctx, true /* firstRun */, opts.Name)
 		}
 
 		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
@@ -167,7 +180,7 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
 
-	registerCommands(rootCmd)
+	opts.RegisterCommands(rootCmd)
 
 	debugLog := console.Debug(rootCtx)
 	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))
@@ -205,11 +218,9 @@ func doMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 	return style, err
 }
 
-func maybeRunLatest(command string, updateInline bool) {
+func maybeRunLatest(rootCtx context.Context, style colors.Style, flushLogs func(), command string, updateInline bool) {
 	if ver, err := version.Current(); err == nil {
 		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
-			rootCtx, style, flushLogs := SetupContext(context.Background())
-
 			cached, ns, err := nsboot.CheckUpdate(rootCtx, command, updateInline, ver.Version)
 			if err == nil && cached != nil {
 				flushLogs()
@@ -343,10 +354,14 @@ func StandardConsole() (*os.File, bool) {
 	return os.Stderr, isStdoutTerm && isStderrTerm
 }
 
-func ConsoleToSink(out *os.File, isTerm bool) (tasks.ActionSink, colors.Style, func()) {
+func ConsoleToSink(out *os.File, isTerm, inhibitReport bool) (tasks.ActionSink, colors.Style, func()) {
 	maxLogLevel := viper.GetInt("console_log_level")
 	if isTerm && !viper.GetBool("console_no_colors") {
-		consoleSink := consolesink.NewSink(out, isTerm, maxLogLevel)
+		consoleSink := consolesink.NewSink(out, consolesink.ConsoleSinkOpts{
+			Interactive:   true,
+			InhibitReport: inhibitReport,
+			MaxLevel:      maxLogLevel,
+		})
 		cleanup := consoleSink.Start()
 		return consoleSink, colors.WithColors, cleanup
 	}
@@ -379,8 +394,9 @@ func cpuprofile(cpuprofile string) func() {
 	}
 }
 
-func SetupContext(ctx context.Context) (context.Context, colors.Style, func()) {
-	sink, style, flushLogs := ConsoleToSink(StandardConsole())
+func SetupContext(ctx context.Context, inhibitReport bool) (context.Context, colors.Style, func()) {
+	out, isterm := StandardConsole()
+	sink, style, flushLogs := ConsoleToSink(out, isterm, inhibitReport)
 	ctx = colors.WithStyle(tasks.WithSink(ctx, sink), style)
 	if flushLogs == nil {
 		flushLogs = func() {}

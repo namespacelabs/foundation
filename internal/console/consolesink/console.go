@@ -127,8 +127,9 @@ type atom struct {
 }
 
 type ConsoleSink struct {
+	ConsoleSinkOpts
+
 	out           *os.File
-	interactive   bool          // If set to false, only emit buffer output and logged actions.
 	outbuf        *bytes.Buffer // A buffer is utilized when preparing output, to avoiding having multiple individual writes hit the console.
 	previousLines [][]byte      // We keep a copy of the last rendered lines to avoid redrawing if the output doesn't change.
 
@@ -143,8 +144,6 @@ type ConsoleSink struct {
 	nodes           map[tasks.ActionID]*node // Map of actionID->tree node.
 	startedCounting time.Time                // When did we start counting.
 	waitForIdle     []chan struct{}
-
-	maxLevel int // Only display actions at this level or below (all actions are still computed).
 
 	stickyContent []*stickyContent // Multi-line content that is always displayed above actions.
 
@@ -181,13 +180,18 @@ type logSources struct {
 
 var _ tasks.ActionSink = &ConsoleSink{}
 
-func NewSink(out *os.File, interactive bool, maxLevel int) *ConsoleSink {
+type ConsoleSinkOpts struct {
+	Interactive   bool // If set to false, only emit buffer output and logged actions.
+	InhibitReport bool
+	MaxLevel      int // Only display actions at this level or below (all actions are still computed).
+}
+
+func NewSink(out *os.File, opts ConsoleSinkOpts) *ConsoleSink {
 	return &ConsoleSink{
-		out:         out,
-		interactive: interactive,
-		outbuf:      bytes.NewBuffer(make([]byte, 0, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
-		idling:      true,
-		maxLevel:    maxLevel,
+		out:             out,
+		ConsoleSinkOpts: opts,
+		outbuf:          bytes.NewBuffer(make([]byte, 0, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
+		idling:          true,
 	}
 }
 
@@ -525,7 +529,7 @@ type debugRunning struct {
 }
 
 func (c *ConsoleSink) redraw(t time.Time, flush bool) {
-	if !c.interactive {
+	if !c.Interactive {
 		c.drawFrame(c.out, c.outbuf, t, 0, 0, flush)
 		return
 	}
@@ -541,7 +545,7 @@ func (c *ConsoleSink) redraw(t time.Time, flush bool) {
 
 	cursorWasReset := false
 	resetCursorOnce := func() {
-		if !cursorWasReset && c.interactive {
+		if !cursorWasReset && c.Interactive {
 			// Hide the cursor while re-rendering.
 			fmt.Fprint(c.out, aec.Hide)
 			if !DebugConsoleOutput {
@@ -664,7 +668,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
 			shouldLog := tasks.LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
 
-			if (shouldLog || hasError) && r.data.Level <= c.maxLevel {
+			if (shouldLog || hasError) && r.data.Level <= c.MaxLevel {
 				printableCompleted = append(printableCompleted, *r)
 			}
 
@@ -756,7 +760,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		c.recomputeTree()
 	}
 
-	if !c.interactive {
+	if !c.Interactive {
 		return
 	}
 
@@ -803,14 +807,16 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 		shortenLabel = "[...] "
 	}
 
-	report := ""
-	report += fmt.Sprintf("[+] %s%s", shortenLabel, timefmt.Seconds(t.Sub(c.startedCounting)))
-	report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
-	if waiting > 0 {
-		report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
-	}
+	if !c.InhibitReport {
+		report := ""
+		report += fmt.Sprintf("[+] %s%s", shortenLabel, timefmt.Seconds(t.Sub(c.startedCounting)))
+		report += fmt.Sprintf(" %s %s running", num(aec.GreenF, running), plural(running, "action", "actions"))
+		if waiting > 0 {
+			report += fmt.Sprintf(", %s waiting", num(aec.CyanF, waiting))
+		}
 
-	c.writeLineWithMaxW(out, width, report+".", "")
+		c.writeLineWithMaxW(out, width, report+".", "")
+	}
 }
 
 func (c *ConsoleSink) calculateActionHeight(height uint) (uint, uint, bool) {
@@ -930,7 +936,7 @@ func (c *ConsoleSink) maxRenderDepth(n *node, currDepth, maxDepth uint) (uint, u
 
 		subDepth, subDrawn := c.maxRenderDepth(child, currDepth+1, maxDepth)
 		drawn += subDrawn
-		if !skipRendering(child.item.data, c.maxLevel) {
+		if !skipRendering(child.item.data, c.MaxLevel) {
 			drawn++
 		}
 
@@ -967,7 +973,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 		data := child.item.data
 
 		prefix := inputPrefix
-		if !skipRendering(data, c.maxLevel) {
+		if !skipRendering(data, c.MaxLevel) {
 			// Although this is not very efficient as we're thrashing strings, we need to make sure
 			// we don't print more than one line, as that would disrupt the line acount we keep track
 			// of to make for a smooth update in place.

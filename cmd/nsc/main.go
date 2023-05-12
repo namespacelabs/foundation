@@ -28,36 +28,42 @@ import (
 
 func main() {
 	// Consider adding auto updates if we frequently change nsc.
-	fncobra.DoMain("nsc", true, formatErr, func(root *cobra.Command) {
-		api.SetupFlags("", root.PersistentFlags(), false)
-		ia.SetupFlags(root.PersistentFlags())
+	fncobra.DoMain(fncobra.MainOpts{
+		Name:                 "nsc",
+		AutoUpdate:           true,
+		InhibitConsoleReport: true,
+		FormatErr:            formatErr,
+		RegisterCommands: func(root *cobra.Command) {
+			api.SetupFlags("", root.PersistentFlags(), false)
+			ia.SetupFlags(root.PersistentFlags())
 
-		root.AddCommand(auth.NewAuthCmd())
-		root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
+			root.AddCommand(auth.NewAuthCmd())
+			root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
 
-		root.AddCommand(version.NewVersionCmd())
+			root.AddCommand(version.NewVersionCmd())
 
-		root.AddCommand(cluster.NewBareClusterCmd(false))
-		root.AddCommand(cluster.NewKubectlCmd())          // nsc kubectl
-		root.AddCommand(cluster.NewKubeconfigCmd())       // nsc kubeconfig write
-		root.AddCommand(cluster.NewBuildkitCmd())         // nsc buildkit builctl
-		root.AddCommand(cluster.NewBuildCmd())            // nsc build
-		root.AddCommand(cluster.NewDockerLoginCmd(false)) // nsc docker-login
-		root.AddCommand(cluster.NewMetadataCmd())         // nsc metadata
-		root.AddCommand(cluster.NewCreateCmd(false))      // nsc create
-		root.AddCommand(cluster.NewListCmd())             // nsc list
-		root.AddCommand(cluster.NewLogsCmd())             // nsc logs
-		root.AddCommand(cluster.NewExposeCmd())           // nsc expose
-		root.AddCommand(cluster.NewRunCmd())              // nsc run
-		root.AddCommand(cluster.NewRunComposeCmd())       // nsc run-compose
-		root.AddCommand(cluster.NewSshCmd())              // nsc ssh
+			root.AddCommand(cluster.NewBareClusterCmd(false))
+			root.AddCommand(cluster.NewKubectlCmd())          // nsc kubectl
+			root.AddCommand(cluster.NewKubeconfigCmd())       // nsc kubeconfig write
+			root.AddCommand(cluster.NewBuildkitCmd())         // nsc buildkit builctl
+			root.AddCommand(cluster.NewBuildCmd())            // nsc build
+			root.AddCommand(cluster.NewDockerLoginCmd(false)) // nsc docker-login
+			root.AddCommand(cluster.NewMetadataCmd())         // nsc metadata
+			root.AddCommand(cluster.NewCreateCmd(false))      // nsc create
+			root.AddCommand(cluster.NewListCmd())             // nsc list
+			root.AddCommand(cluster.NewLogsCmd())             // nsc logs
+			root.AddCommand(cluster.NewExposeCmd())           // nsc expose
+			root.AddCommand(cluster.NewRunCmd())              // nsc run
+			root.AddCommand(cluster.NewRunComposeCmd())       // nsc run-compose
+			root.AddCommand(cluster.NewSshCmd())              // nsc ssh
 
-		root.AddCommand(sdk.NewSdkCmd(true))
+			root.AddCommand(sdk.NewSdkCmd(true))
 
-		fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
-			api.Register()
-			return nil
-		})
+			fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
+				api.Register()
+				return nil
+			})
+		},
 	})
 }
 

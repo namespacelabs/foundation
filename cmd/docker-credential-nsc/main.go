@@ -15,18 +15,21 @@ import (
 )
 
 func main() {
-	fncobra.DoMain("docker-credential-nsc", false, fncobra.DefaultErrorFormatter, func(root *cobra.Command) {
-		api.SetupFlags("", root.PersistentFlags(), false)
-		ia.SetupFlags(root.PersistentFlags())
+	fncobra.DoMain(fncobra.MainOpts{
+		Name: "docker-credential-nsc",
+		RegisterCommands: func(root *cobra.Command) {
+			api.SetupFlags("", root.PersistentFlags(), false)
+			ia.SetupFlags(root.PersistentFlags())
 
-		root.AddCommand(cluster.NewDockerCredHelperStoreCmd(false))
-		root.AddCommand(cluster.NewDockerCredHelperGetCmd(false))
-		root.AddCommand(cluster.NewDockerCredHelperListCmd(false))
-		root.AddCommand(cluster.NewDockerCredHelperEraseCmd(false))
+			root.AddCommand(cluster.NewDockerCredHelperStoreCmd(false))
+			root.AddCommand(cluster.NewDockerCredHelperGetCmd(false))
+			root.AddCommand(cluster.NewDockerCredHelperListCmd(false))
+			root.AddCommand(cluster.NewDockerCredHelperEraseCmd(false))
 
-		fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
-			api.Register()
-			return nil
-		})
+			fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
+				api.Register()
+				return nil
+			})
+		},
 	})
 }
