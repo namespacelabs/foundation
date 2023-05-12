@@ -7,13 +7,10 @@ package cluster
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
@@ -103,13 +100,8 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			}
 		}
 
-		stdout := console.Stdout(ctx)
-		fmt.Fprintf(stdout, "Created cluster %q\n", cluster.ClusterId)
-		if cluster.Deadline != nil {
-			fmt.Fprintf(stdout, " deadline: %s\n", cluster.Deadline.Format(time.RFC3339))
-		} else {
-			fmt.Fprintf(stdout, " no deadline\n")
-		}
+		printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
+
 		return nil
 	})
 

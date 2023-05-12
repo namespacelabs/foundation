@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
@@ -162,7 +163,9 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 	}
 
 	if target == "" {
-		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
+		const label = "Creating container environment"
+
+		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadablef(label), func(ctx context.Context) (*api.CreateContainersResponse, error) {
 			var response api.CreateContainersResponse
 			if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
 				Container:       []*api.ContainerRequest{container},
@@ -179,7 +182,9 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 			return nil, err
 		}
 
-		if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+		if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{
+			CreateLabel: label,
+		}); err != nil {
 			return nil, err
 		}
 
@@ -213,13 +218,10 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 			fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
 		}
 
-		if resp.ClusterId != "" {
-			fmt.Fprintf(console.Stdout(ctx), "\n  Created new ephemeral environment! (id: %s).\n", resp.ClusterId)
-			fmt.Fprintf(console.Stdout(ctx), "\n  More at: %s\n", resp.ClusterUrl)
-		}
+		printNewEnv(ctx, resp.ClusterId, resp.ClusterUrl)
 
 		for _, ctr := range resp.Container {
-			fmt.Fprintf(console.Stdout(ctx), "\n  Running %q\n", ctr.Name)
+			fmt.Fprintf(console.Stdout(ctx), "\n  Started %q\n", ctr.Name)
 			if len(ctr.ExportedPort) > 0 {
 				fmt.Fprintln(console.Stdout(ctx))
 				for _, port := range ctr.ExportedPort {
@@ -232,6 +234,15 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 	}
 
 	return nil
+}
+
+func printNewEnv(ctx context.Context, clusterID, clusterURL string) {
+	style := colors.Ctx(ctx)
+
+	stdout := console.Stdout(ctx)
+
+	fmt.Fprintf(stdout, "\n  Created new ephemeral environment! ID: %s\n", clusterID)
+	fmt.Fprintf(stdout, "\n  %s %s\n", style.Comment.Apply("More at:"), clusterURL)
 }
 
 func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateContainersResponse, error) {
