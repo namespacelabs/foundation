@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -70,6 +71,11 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 
 func Register() {
 	rpcEndpoint := rpcEndpointOverride
+
+	if rpcEndpoint == "" {
+		rpcEndpoint = os.Getenv("NSC_ENDPOINT")
+	}
+
 	if rpcEndpoint == "" {
 		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
 	}
