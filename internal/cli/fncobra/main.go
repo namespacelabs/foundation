@@ -301,6 +301,7 @@ func SetupViper() {
 	_ = viper.BindEnv("enable_tracing")
 
 	viper.SetDefault("telemetry", true)
+	_ = viper.BindEnv("telemetry")
 
 	viper.SetDefault("enable_autoupdate", true)
 	_ = viper.BindEnv("enable_autoupdate")
