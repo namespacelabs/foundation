@@ -7,10 +7,13 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
@@ -101,6 +104,19 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 		}
 
 		printNewEnv(ctx, cluster.ClusterId, cluster.Cluster.AppURL)
+
+		if api.ClusterService(cluster.Cluster, "kubernetes") != nil {
+			stdout := console.Stdout(ctx)
+			style := colors.Ctx(ctx)
+			fmt.Fprintln(stdout)
+			fmt.Fprintf(stdout, "  As a next step, try one of:\n\n")
+			fmt.Fprintf(stdout, "    $ nsc kubectl %s get pod -A\n\n", cluster.ClusterId)
+			fmt.Fprintf(stdout, "    $ nsc kubeconfig write %s\n", cluster.ClusterId)
+			fmt.Fprintf(stdout, "      %s\n", style.Comment.Apply("<follow instructions>"))
+			fmt.Fprintf(stdout, "    $ kubectl get pod -A\n\n")
+			fmt.Fprintf(stdout, "  You can also connect to a shell in the new environment:\n\n")
+			fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
+		}
 
 		return nil
 	})
