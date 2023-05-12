@@ -19,7 +19,6 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -59,7 +58,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 		eg := executor.New(ctx, "proxies")
 
-		available, err := available(ctx)
+		available, err := determineAvailable(ctx)
 		if err != nil {
 			return err
 		}
@@ -287,18 +286,15 @@ func newWireBuildxCommand() *cobra.Command {
 	return cmd
 }
 
-func available(ctx context.Context) ([]buildPlatform, error) {
-	clusterProfiles, err := api.GetProfile(ctx, api.Endpoint)
+func determineAvailable(ctx context.Context) ([]buildPlatform, error) {
+	profile, err := api.GetProfile(ctx, api.Endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	var avail []buildPlatform
-	for _, x := range []buildPlatform{"amd64", "arm64"} {
-		platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, fmt.Sprintf("linux/%s", x))
-		if !slices.Contains(avail, platform) {
-			avail = append(avail, platform)
-		}
+	avail := make([]buildPlatform, len(profile.ClusterPlatform))
+	for k, x := range profile.ClusterPlatform {
+		avail[k] = buildPlatform(x)
 	}
 
 	return avail, nil
