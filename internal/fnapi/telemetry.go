@@ -96,7 +96,7 @@ func isTelemetryDisabled() bool {
 }
 
 func (tel *Telemetry) IsTelemetryEnabled() bool {
-	return tel != nil && tel.enabled
+	return !isTelemetryDisabled() && tel != nil && tel.enabled
 }
 
 func (tel *Telemetry) logError(ctx context.Context, err error) {
