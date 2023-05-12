@@ -100,7 +100,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 		}
 
 	case codes.Unauthenticated:
-		fmt.Fprintf(ww, "no credentials found.\n")
+		fmt.Fprintf(ww, "no credentials found. We got: %s\n\n", st.Message())
 
 		var cmd string
 		switch {
