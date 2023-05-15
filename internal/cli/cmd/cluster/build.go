@@ -67,18 +67,24 @@ func NewBuildCmd() *cobra.Command {
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
 
+	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, specifiedArgs []string) error {
 		if len(*tags) > 0 && len(*names) > 0 {
 			return fnerrors.New("usage of both --tag and --name flags is not supported")
 		}
 
 		// XXX: having multiple outputs is not supported by buildctl.
-		if *push && *dockerLoad {
-			return fnerrors.New("usage of both --push and --load flags is not supported")
+		if *push && *dockerLoad && *outputLocal != "" {
+			return fnerrors.New("only one of --push, --load or --output-local can be used at a time")
 		}
 
 		if len(*platforms) > 1 && *dockerLoad {
 			return fnerrors.New("multi-platform builds require --push, --load is not supported")
+		}
+
+		if len(*platforms) > 1 && *outputLocal != "" {
+			return fnerrors.New("multi-platform builds require --push, --output-local is not supported")
 		}
 
 		if len(*tags)+len(*names) == 0 && *push {
@@ -195,6 +201,16 @@ func NewBuildCmd() *cobra.Command {
 				}
 
 				bf.Exports = append(bf.Exports, export)
+
+			case *outputLocal != "":
+				if err := os.MkdirAll(*outputLocal, 0755); err != nil {
+					return err
+				}
+
+				bf.Exports = append(bf.Exports, client.ExportEntry{
+					Type:      "local",
+					OutputDir: *outputLocal,
+				})
 			}
 
 			fragments = append(fragments, bf)
