@@ -23,8 +23,8 @@ func renderTime(w io.Writer, s colors.Style, t time.Time) {
 	fmt.Fprint(w, s.Header.Apply(str), " ")
 }
 
-func renderLine(w io.Writer, s colors.Style, li lineItem) {
-	data := li.data
+func renderLine(w io.Writer, s colors.Style, li Renderable) {
+	data := li.Data
 
 	if OutputActionID {
 		fmt.Fprint(w, s.Header.Apply("["+trim(data.ActionID.String(), 12)+"] "))
@@ -39,22 +39,22 @@ func renderLine(w io.Writer, s colors.Style, li lineItem) {
 		name = data.Name
 	}
 
-	if li.cached {
+	if li.Cached {
 		fmt.Fprint(w, s.LogCachedName.Apply(name))
 	} else {
 		fmt.Fprint(w, name)
 	}
 
-	if progress := li.progress; progress != nil && data.State == tasks.ActionRunning {
+	if progress := li.Progress; progress != nil && data.State == tasks.ActionRunning {
 		if p := progress.FormatProgress(); p != "" {
 			fmt.Fprint(w, " ", s.Progress.Apply(p))
 		}
 	}
 
-	if data.HumanReadable == "" && len(li.scope) > 0 {
+	if data.HumanReadable == "" && len(li.Scope) > 0 {
 		var ws bytes.Buffer
 
-		scope := li.scope
+		scope := li.Scope
 		var origlen int
 		if len(scope) > 3 {
 			origlen = len(scope)
@@ -75,7 +75,7 @@ func renderLine(w io.Writer, s colors.Style, li lineItem) {
 		fmt.Fprintf(w, " %s", s.LogScope.Apply(ws.String()))
 	}
 
-	for _, kv := range li.serialized {
+	for _, kv := range li.Serialized {
 		color := s.LogArgument
 		if kv.result {
 			color = s.LogResult
@@ -93,24 +93,24 @@ func renderLine(w io.Writer, s colors.Style, li lineItem) {
 	}
 }
 
-func renderCompletedAction(raw io.Writer, s colors.Style, r lineItem) {
-	if r.data.State.IsDone() {
-		renderTime(raw, s, r.data.Completed)
+func renderCompletedAction(raw io.Writer, s colors.Style, r Renderable) {
+	if r.Data.State.IsDone() {
+		renderTime(raw, s, r.Data.Completed)
 	} else {
-		renderTime(raw, s, r.data.Started)
+		renderTime(raw, s, r.Data.Started)
 	}
 
 	renderLine(raw, s, r)
-	if !r.data.Started.IsZero() && !r.cached {
-		if !r.data.Started.Equal(r.data.Created) {
-			d := r.data.Started.Sub(r.data.Created)
+	if !r.Data.Started.IsZero() && !r.Cached {
+		if !r.Data.Started.Equal(r.Data.Created) {
+			d := r.Data.Started.Sub(r.Data.Created)
 			if d >= 1*time.Microsecond {
 				fmt.Fprint(raw, " ", s.Header.Apply("waited="), timefmt.Format(d))
 			}
 		}
 
-		if r.data.State.IsDone() {
-			d := r.data.Completed.Sub(r.data.Started)
+		if r.Data.State.IsDone() {
+			d := r.Data.Completed.Sub(r.Data.Started)
 			fmt.Fprint(raw, " ", s.Header.Apply("took="), timefmt.Format(d))
 		}
 	}
@@ -118,11 +118,11 @@ func renderCompletedAction(raw io.Writer, s colors.Style, r lineItem) {
 }
 
 func LogAction(w io.Writer, s colors.Style, ev tasks.EventData) {
-	item := lineItem{
-		data: ev,
+	item := Renderable{
+		Data: ev,
 	}
 
-	item.precompute()
+	item.precompute(tasks.ResultData{})
 
 	renderCompletedAction(w, s, item)
 }

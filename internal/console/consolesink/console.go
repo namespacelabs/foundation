@@ -120,7 +120,7 @@ type consoleEvent struct {
 	onInput       chan struct{} // When the console enters the input mode, the console closes this channel.
 }
 
-type atom struct {
+type Atom struct {
 	key    string
 	value  string
 	result bool
@@ -139,7 +139,7 @@ type ConsoleSink struct {
 
 	idling          bool
 	buffer          []consoleOutput          // Pending regular log output lines.
-	running         []*lineItem              // Computed EventData for waiting/running actions.
+	running         []*Renderable            // Computed EventData for waiting/running actions.
 	root            *node                    // Root of the tree of displayable events.
 	nodes           map[tasks.ActionID]*node // Map of actionID->tree node.
 	startedCounting time.Time                // When did we start counting.
@@ -157,17 +157,16 @@ type stickyContent struct {
 	content [][]byte
 }
 
-type lineItem struct {
-	data       tasks.EventData // The original event data.
-	results    tasks.ResultData
-	scope      []string             // List of packages this line item pertains to.
-	serialized []atom               // Pre-rendered arguments.
-	cached     bool                 // Whether this item represents a cache hit.
-	progress   tasks.ActionProgress // This is not great, as we're using memory sharing here, but keeping it simple.
+type Renderable struct {
+	Data       tasks.EventData      // The original event data.
+	Scope      []string             // List of packages this line item pertains to.
+	Serialized []Atom               // Pre-rendered arguments.
+	Cached     bool                 // Whether this item represents a cache hit.
+	Progress   tasks.ActionProgress // This is not great, as we're using memory sharing here, but keeping it simple.
 }
 
 type node struct {
-	item        *lineItem
+	item        *Renderable
 	replacement *node // If this node is a `compute.wait`, replace it with the actual computation it is waiting on.
 	hidden      bool  // Whether this node has been marked hidden (because e.g. there are multiple nodes to the same anchor).
 	children    []tasks.ActionID
@@ -180,10 +179,14 @@ type logSources struct {
 
 var _ tasks.ActionSink = &ConsoleSink{}
 
+type RendererFunc func(io.Writer, colors.Style, time.Time, Renderable) string
+
 type ConsoleSinkOpts struct {
 	Interactive   bool // If set to false, only emit buffer output and logged actions.
 	InhibitReport bool
 	MaxLevel      int // Only display actions at this level or below (all actions are still computed).
+
+	Renderer RendererFunc
 }
 
 func NewSink(out *os.File, opts ConsoleSinkOpts) *ConsoleSink {
@@ -305,21 +308,19 @@ loop:
 			if msg.attachmentUpdatedForID != "" {
 				item := c.addOrGet(msg.attachmentUpdatedForID, false)
 				if item != nil {
-					item.results = msg.results
 					if msg.progress != nil {
-						item.progress = msg.progress
+						item.Progress = msg.progress
 					}
-					item.precompute()
+					item.precompute(msg.results)
 					// recomputeTree is not required because parent/children relationships have not changed.
 				}
 			}
 
 			if msg.ev.ActionID != "" {
 				item := c.addOrGet(msg.ev.ActionID, true)
-				item.data = msg.ev
-				item.results = msg.results
-				item.progress = msg.progress
-				item.precompute()
+				item.Data = msg.ev
+				item.Progress = msg.progress
+				item.precompute(msg.results)
 				c.recomputeTree()
 			}
 
@@ -346,10 +347,10 @@ loop:
 	c.redraw(time.Now(), true)
 }
 
-func (c *ConsoleSink) addOrGet(actionID tasks.ActionID, addIfMissing bool) *lineItem {
+func (c *ConsoleSink) addOrGet(actionID tasks.ActionID, addIfMissing bool) *Renderable {
 	index := -1
 	for k, r := range c.running {
-		if r.data.ActionID == actionID {
+		if r.Data.ActionID == actionID {
 			index = k
 		}
 	}
@@ -360,22 +361,22 @@ func (c *ConsoleSink) addOrGet(actionID tasks.ActionID, addIfMissing bool) *line
 		}
 
 		index = len(c.running)
-		c.running = append(c.running, &lineItem{})
+		c.running = append(c.running, &Renderable{})
 	}
 
 	return c.running[index]
 }
 
-func (li *lineItem) precompute() {
-	data := li.data
+func (li *Renderable) precompute(results tasks.ResultData) {
+	data := li.Data
 
-	var serialized []atom
+	var serialized []Atom
 
 	if data.AnchorID != "" {
-		serialized = append(serialized, atom{key: "anchor", value: data.AnchorID.String()})
+		serialized = append(serialized, Atom{key: "anchor", value: data.AnchorID.String()})
 	}
 
-	li.scope = data.Scope.PackageNamesAsString()
+	li.Scope = data.Scope.PackageNamesAsString()
 
 	for _, arg := range data.Arguments {
 		var value string
@@ -383,7 +384,7 @@ func (li *lineItem) precompute() {
 		switch arg.Name {
 		case "cached":
 			if b, ok := arg.Msg.(bool); ok && b {
-				li.cached = true
+				li.Cached = true
 			}
 
 		default:
@@ -395,11 +396,11 @@ func (li *lineItem) precompute() {
 		}
 
 		if value != "" {
-			serialized = append(serialized, atom{key: arg.Name, value: value})
+			serialized = append(serialized, Atom{key: arg.Name, value: value})
 		}
 	}
 
-	for _, r := range li.results.Items {
+	for _, r := range results.Items {
 		var value string
 
 		if b, err := idtypes.SerializeToBytes(r.Msg); err == nil {
@@ -409,11 +410,11 @@ func (li *lineItem) precompute() {
 		}
 
 		if value != "" {
-			serialized = append(serialized, atom{key: r.Name, value: value, result: true})
+			serialized = append(serialized, Atom{key: r.Name, value: value, result: true})
 		}
 	}
 
-	li.serialized = serialized
+	li.Serialized = serialized
 }
 
 func (c *ConsoleSink) recomputeTree() {
@@ -423,14 +424,14 @@ func (c *ConsoleSink) recomputeTree() {
 
 	var runningCount int
 	for _, item := range c.running {
-		nodes[item.data.ActionID] = &node{item: item}
-		if !item.data.Indefinite {
+		nodes[item.Data.ActionID] = &node{item: item}
+		if !item.Data.Indefinite {
 			runningCount++
 		}
 	}
 
 	for _, item := range c.running {
-		r := item.data
+		r := item.Data
 		parent := parentOf(root, nodes, r.ParentID)
 		parent.children = append(parent.children, r.ActionID)
 
@@ -450,7 +451,7 @@ func (c *ConsoleSink) recomputeTree() {
 
 	// If a line item has at least one anchor, unattached from it's original root.
 	for anchorID := range anchors {
-		anchorParent := parentOf(root, nodes, nodes[anchorID].item.data.ParentID)
+		anchorParent := parentOf(root, nodes, nodes[anchorID].item.Data.ParentID)
 		anchorParent.children = without(anchorParent.children, anchorID)
 	}
 
@@ -483,7 +484,7 @@ func sortNodes(nodes map[tasks.ActionID]*node, n *node) {
 		// If an action is anchored, use the anchor's start time for sorting purposes.
 		a := follow(nodes[n.children[i]])
 		b := follow(nodes[n.children[j]])
-		return a.item.data.Started.Before(b.item.data.Started)
+		return a.item.Data.Started.Before(b.item.Data.Started)
 	})
 
 	for _, id := range n.children {
@@ -643,15 +644,15 @@ func (c *ConsoleSink) countStates() (running, waiting, anchored int) {
 	waiting = 0
 	anchored = 0
 	for _, r := range c.running {
-		if r.data.State == tasks.ActionRunning {
-			if !r.data.Indefinite {
-				if r.data.AnchorID != "" {
+		if r.Data.State == tasks.ActionRunning {
+			if !r.Data.Indefinite {
+				if r.Data.AnchorID != "" {
 					anchored++
 				} else {
 					running++
 				}
 			}
-		} else if r.data.State == tasks.ActionWaiting {
+		} else if r.Data.State == tasks.ActionWaiting {
 			waiting++
 		}
 	}
@@ -662,18 +663,18 @@ func (c *ConsoleSink) countStates() (running, waiting, anchored int) {
 func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height uint, flush bool) {
 	running, waiting, anchored := c.countStates()
 	var completed, completedAnchors int
-	var printableCompleted []lineItem
+	var printableCompleted []Renderable
 	for _, r := range c.running {
-		if r.data.State != tasks.ActionWaiting && r.data.State != tasks.ActionRunning {
-			hasError := (r.data.Err != nil && tasks.ErrorType(r.data.Err) == tasks.ErrTypeIsRegular)
-			shouldLog := tasks.LogActions && (DisplayWaitingActions || r.data.AnchorID == "")
+		if r.Data.State != tasks.ActionWaiting && r.Data.State != tasks.ActionRunning {
+			hasError := (r.Data.Err != nil && tasks.ErrorType(r.Data.Err) == tasks.ErrTypeIsRegular)
+			shouldLog := tasks.LogActions && (DisplayWaitingActions || r.Data.AnchorID == "")
 
-			if (shouldLog || hasError) && r.data.Level <= c.MaxLevel {
+			if (shouldLog || hasError) && r.Data.Level <= c.MaxLevel {
 				printableCompleted = append(printableCompleted, *r)
 			}
 
 			completed++
-			if r.data.AnchorID != "" {
+			if r.Data.AnchorID != "" {
 				completedAnchors++
 			}
 		}
@@ -681,7 +682,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 	if tasks.LogActions && len(printableCompleted) > 0 {
 		sort.Slice(printableCompleted, func(i, j int) bool {
-			return printableCompleted[i].data.Completed.Before(printableCompleted[j].data.Completed)
+			return printableCompleted[i].Data.Completed.Before(printableCompleted[j].Data.Completed)
 		})
 
 		for _, r := range printableCompleted {
@@ -725,15 +726,15 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 		for _, r := range c.running {
 			var completed *time.Time
-			if r.data.State == tasks.ActionDone {
-				completed = &r.data.Completed
+			if r.Data.State == tasks.ActionDone {
+				completed = &r.Data.Completed
 			}
 
 			running = append(running, debugRunning{
-				ID:        r.data.ActionID,
-				Name:      r.data.Name,
-				Created:   r.data.Created,
-				State:     string(r.data.State),
+				ID:        r.Data.ActionID,
+				Name:      r.Data.Name,
+				Created:   r.Data.Created,
+				State:     string(r.Data.State),
 				Completed: completed,
 			})
 		}
@@ -750,9 +751,9 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 	// If at least one item has completed, re-compute the display tree. This is expensive
 	// but kept simple for now. Will optimize later.
 	if completed > 0 {
-		var newRunning []*lineItem
+		var newRunning []*Renderable
 		for _, r := range c.running {
-			if r.data.State.IsRunning() {
+			if r.Data.State.IsRunning() {
 				newRunning = append(newRunning, r)
 			}
 		}
@@ -936,7 +937,7 @@ func (c *ConsoleSink) maxRenderDepth(n *node, currDepth, maxDepth uint) (uint, u
 
 		subDepth, subDrawn := c.maxRenderDepth(child, currDepth+1, maxDepth)
 		drawn += subDrawn
-		if !skipRendering(child.item.data, c.MaxLevel) {
+		if !skipRendering(child.item.Data, c.MaxLevel) {
 			drawn++
 		}
 
@@ -956,7 +957,7 @@ func skipRendering(data tasks.EventData, maxLevel int) bool {
 	return skip
 }
 
-func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.Time, inputPrefix int, currDepth, maxDepth uint) {
+func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.Time, inputDepth int, currDepth, maxDepth uint) {
 	if currDepth >= maxDepth {
 		return
 	}
@@ -970,9 +971,9 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			continue
 		}
 
-		data := child.item.data
+		data := child.item.Data
 
-		prefix := inputPrefix
+		depth := inputDepth
 		if !skipRendering(data, c.MaxLevel) {
 			// Although this is not very efficient as we're thrashing strings, we need to make sure
 			// we don't print more than one line, as that would disrupt the line acount we keep track
@@ -980,23 +981,27 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			// XXX precompute these lines as they don't change if the arguments don't change.
 			lineb.Reset()
 
-			fmt.Fprint(&lineb, renderPrefix(prefix))
+			var suffix string
+			if c.Renderer != nil {
+				suffix = c.Renderer(&lineb, colors.WithColors, t, *child.item)
+			} else {
+				fmt.Fprint(&lineb, renderPrefix(depth))
 
-			renderLine(&lineb, colors.WithColors, *child.item)
+				renderLine(&lineb, colors.WithColors, *child.item)
 
-			suffix := ""
-			if data.State == tasks.ActionRunning {
-				d := t.Sub(data.Started)
-				suffix = " (" + timefmt.Seconds(d) + ") "
-			} else if data.State == tasks.ActionWaiting {
-				suffix = " (waiting) "
+				if data.State == tasks.ActionRunning {
+					d := t.Sub(data.Started)
+					suffix = " (" + timefmt.Seconds(d) + ") "
+				} else if data.State == tasks.ActionWaiting {
+					suffix = " (waiting) "
+				}
 			}
 
 			c.writeLineWithMaxW(out, width, lineb.String(), suffix)
-			prefix++
+			depth++
 		}
 
-		c.renderLineRec(out, width, child, t, prefix, currDepth+1, maxDepth)
+		c.renderLineRec(out, width, child, t, depth, currDepth+1, maxDepth)
 	}
 }
 

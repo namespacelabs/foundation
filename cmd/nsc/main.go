@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/spf13/cobra"
@@ -21,9 +22,12 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/console/consolesink"
 	ghenv "namespacelabs.dev/foundation/internal/github/env"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/text/timefmt"
 	"namespacelabs.dev/foundation/std/protocol"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func main() {
@@ -31,8 +35,9 @@ func main() {
 	fncobra.DoMain(fncobra.MainOpts{
 		Name:                 "nsc",
 		AutoUpdate:           true,
-		InhibitConsoleReport: true,
+		ConsoleInhibitReport: true,
 		FormatErr:            formatErr,
+		ConsoleRenderer:      renderLine,
 		RegisterCommands: func(root *cobra.Command) {
 			api.SetupFlags("", root.PersistentFlags(), false)
 			ia.SetupFlags(root.PersistentFlags())
@@ -65,6 +70,38 @@ func main() {
 			})
 		},
 	})
+}
+
+var progressRunes = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+var runeDur = int64(1000 / len(progressRunes))
+
+func renderLine(w io.Writer, style colors.Style, t time.Time, li consolesink.Renderable) string {
+	data := li.Data
+
+	dur := t.Sub(li.Data.Started)
+
+	progressRune := progressRunes[(dur.Milliseconds()%1000)/runeDur]
+
+	fmt.Fprintf(w, "%s ", style.LogArgument.Apply(progressRune))
+
+	name := data.HumanReadable
+	if name == "" {
+		name = data.Name
+	}
+
+	fmt.Fprint(w, name)
+
+	if progress := li.Progress; progress != nil && data.State == tasks.ActionRunning {
+		if p := progress.FormatProgress(); p != "" {
+			fmt.Fprint(w, " ", style.Progress.Apply(p))
+		}
+	}
+
+	if dur > 3*time.Second {
+		return " (" + timefmt.Seconds(dur) + ") "
+	}
+
+	return ""
 }
 
 func formatErr(out io.Writer, style colors.Style, err error) {

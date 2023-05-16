@@ -53,8 +53,9 @@ var (
 type MainOpts struct {
 	Name                 string
 	AutoUpdate           bool
-	InhibitConsoleReport bool
 	FormatErr            FormatErrorFunc
+	ConsoleInhibitReport bool
+	ConsoleRenderer      consolesink.RendererFunc
 	RegisterCommands     func(*cobra.Command)
 }
 
@@ -86,7 +87,7 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	compute.RegisterBytesCacheable()
 	fscache.RegisterFSCacheable()
 
-	rootCtx, style, flushLogs := SetupContext(context.Background(), opts.InhibitConsoleReport)
+	rootCtx, style, flushLogs := setupContext(context.Background(), opts.ConsoleInhibitReport, opts.ConsoleRenderer)
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
 	if opts.AutoUpdate {
@@ -354,13 +355,14 @@ func StandardConsole() (*os.File, bool) {
 	return os.Stderr, isStdoutTerm && isStderrTerm
 }
 
-func ConsoleToSink(out *os.File, isTerm, inhibitReport bool) (tasks.ActionSink, colors.Style, func()) {
+func consoleToSink(out *os.File, isTerm, inhibitReport bool, renderer consolesink.RendererFunc) (tasks.ActionSink, colors.Style, func()) {
 	maxLogLevel := viper.GetInt("console_log_level")
 	if isTerm && !viper.GetBool("console_no_colors") {
 		consoleSink := consolesink.NewSink(out, consolesink.ConsoleSinkOpts{
 			Interactive:   true,
 			InhibitReport: inhibitReport,
 			MaxLevel:      maxLogLevel,
+			Renderer:      renderer,
 		})
 		cleanup := consoleSink.Start()
 		return consoleSink, colors.WithColors, cleanup
@@ -394,9 +396,9 @@ func cpuprofile(cpuprofile string) func() {
 	}
 }
 
-func SetupContext(ctx context.Context, inhibitReport bool) (context.Context, colors.Style, func()) {
+func setupContext(ctx context.Context, inhibitReport bool, rendered consolesink.RendererFunc) (context.Context, colors.Style, func()) {
 	out, isterm := StandardConsole()
-	sink, style, flushLogs := ConsoleToSink(out, isterm, inhibitReport)
+	sink, style, flushLogs := consoleToSink(out, isterm, inhibitReport, rendered)
 	ctx = colors.WithStyle(tasks.WithSink(ctx, sink), style)
 	if flushLogs == nil {
 		flushLogs = func() {}
