@@ -16,9 +16,9 @@ import (
 
 	"github.com/containerd/containerd"
 	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/nerdctl/pkg/idutil/containerwalker"
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -45,10 +45,13 @@ func NewExposeCmd() *cobra.Command {
 	containerName := cmd.Flags().String("container", "", "Which container to export.")
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	all := cmd.Flags().Bool("all", false, "If set to true, exports one ingress for each exported port of each running container.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		if *containerName == "" {
-			return fnerrors.New("--container is required")
+		if *containerName == "" && !*all {
+			return fnerrors.New("one of --all or --container is required")
+		} else if *containerName != "" && *all {
+			return fnerrors.New("onlyo one of --all or --container may be specified")
 		}
 
 		cluster, _, err := selectRunningCluster(ctx, args)
@@ -60,7 +63,7 @@ func NewExposeCmd() *cobra.Command {
 			return nil
 		}
 
-		ports, err := selectPorts(ctx, cluster, *source, *containerName)
+		ports, err := selectPorts(ctx, cluster, *source, containerFilter{*all, *containerName})
 		if err != nil {
 			return err
 		}
@@ -140,19 +143,24 @@ type containerPort struct {
 
 type portMap map[int]containerPort
 
-func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source, containerName string) (portMap, error) {
+type containerFilter struct {
+	all           bool
+	containerName string
+}
+
+func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source string, filter containerFilter) (portMap, error) {
 	switch source {
 	case "docker":
-		return selectDockerPorts(ctx, cluster, containerName)
+		return selectDockerPorts(ctx, cluster, filter)
 
 	case "containerd":
-		return selectContainerdPorts(ctx, cluster, containerName)
+		return selectContainerdPorts(ctx, cluster, filter)
 	}
 
 	return nil, fnerrors.New("unsupported source %q", source)
 }
 
-func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, containerName string) (portMap, error) {
+func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) (portMap, error) {
 	// We must fetch a token with our parent context, so we get a task sink etc.
 	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
@@ -168,35 +176,68 @@ func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, cont
 
 	defer docker.Close()
 
-	data, err := docker.ContainerInspect(ctx, containerName)
+	data, err := dockerFilterToContainers(ctx, docker, filter)
 	if err != nil {
 		return nil, err
 	}
 
-	internalName, suggestedPrefix := parseContainerName(data.ID, data.Name)
+	return buildContainersPortMap(ctx, data...)
+}
 
-	exported := portMap{}
-	for port, mapping := range data.NetworkSettings.Ports {
-		if port.Proto() == "tcp" && len(mapping) > 0 {
-			for _, m := range mapping {
-				if m.HostIP == "0.0.0.0" {
-					parsedPort, err := strconv.ParseInt(m.HostPort, 10, 32)
-					if err != nil {
-						return nil, err
-					}
+func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter containerFilter) ([]types.ContainerJSON, error) {
+	if filter.all {
+		list, err := docker.ContainerList(ctx, types.ContainerListOptions{})
+		if err != nil {
+			return nil, err
+		}
 
-					exported[port.Int()] = containerPort{
-						ContainerID:     data.ID,
-						ContainerName:   internalName,
-						SuggestedPrefix: suggestedPrefix,
-						ExportedPort:    int32(parsedPort),
-					}
-				} else {
-					fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", port.Int(), port.Proto(), m.HostIP)
-				}
+		actual := make([]types.ContainerJSON, len(list))
+		for k, l := range list {
+			res, err := docker.ContainerInspect(ctx, l.ID)
+			if err != nil {
+				return nil, err
 			}
-		} else {
-			fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s (unsupported)\n", port.Int(), port.Proto())
+			actual[k] = res
+		}
+
+		return actual, nil
+	}
+
+	data, err := docker.ContainerInspect(ctx, filter.containerName)
+	if err != nil {
+		return nil, err
+	}
+
+	return []types.ContainerJSON{data}, nil
+}
+
+func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) (portMap, error) {
+	exported := portMap{}
+	for _, data := range data {
+		internalName, suggestedPrefix := parseContainerName(data.ID, data.Name)
+
+		for port, mapping := range data.NetworkSettings.Ports {
+			if port.Proto() == "tcp" {
+				for _, m := range mapping {
+					if m.HostIP == "0.0.0.0" || m.HostIP == "::" {
+						parsedPort, err := strconv.ParseInt(m.HostPort, 10, 32)
+						if err != nil {
+							return nil, err
+						}
+
+						exported[port.Int()] = containerPort{
+							ContainerID:     data.ID,
+							ContainerName:   internalName,
+							SuggestedPrefix: suggestedPrefix,
+							ExportedPort:    int32(parsedPort),
+						}
+					} else {
+						fmt.Fprintf(console.Warnings(ctx), "%s: Skipping %d/%s exported to %s (unsupported)\n", data.Name, port.Int(), port.Proto(), m.HostIP)
+					}
+				}
+			} else {
+				fmt.Fprintf(console.Warnings(ctx), "%s: Skipping unsupported protocol %q, port %d\n", data.Name, port.Proto(), port.Int())
+			}
 		}
 	}
 
@@ -246,51 +287,57 @@ func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callbac
 	return callback(ctx, ctr)
 }
 
-func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, containerName string) (portMap, error) {
+func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) (portMap, error) {
 	exported := portMap{}
 
+	var filters []string
+
+	if filter.containerName != "" {
+		filters = append(filters,
+			fmt.Sprintf("labels.%q==%s", labels.Name, filter.containerName),
+			fmt.Sprintf("id~=^%s.*$", regexp.QuoteMeta(filter.containerName)),
+		)
+	}
+
 	if err := withContainerd(ctx, cluster, func(ctx context.Context, ctr *containerd.Client) error {
-		walker := &containerwalker.ContainerWalker{
-			Client: ctr,
-			OnFound: func(ctx context.Context, found containerwalker.Found) error {
-				if found.MatchCount > 1 {
-					return rpcerrors.Errorf(codes.InvalidArgument, "container name matches multiple containers")
-				}
-
-				l, err := found.Container.Labels(ctx)
-				if err != nil {
-					return err
-				}
-
-				ports, err := portutil.ParsePortsLabel(l)
-				if err != nil {
-					return err
-				}
-
-				internalName, suggestedPrefix := parseContainerName(found.Container.ID(), l[labels.Name])
-
-				for _, p := range ports {
-					if p.Protocol == "tcp" && p.HostIP == "0.0.0.0" {
-						exported[int(p.ContainerPort)] = containerPort{
-							ContainerID:     found.Container.ID(),
-							ContainerName:   internalName,
-							SuggestedPrefix: suggestedPrefix,
-							ExportedPort:    p.HostPort,
-						}
-					} else {
-						fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", p.ContainerPort, p.Protocol, p.HostIP)
-					}
-				}
-
-				return nil
-			},
-		}
-
-		n, err := walker.Walk(ctx, containerName)
+		containers, err := ctr.Containers(ctx, filters...)
 		if err != nil {
 			return err
-		} else if n == 0 {
-			return rpcerrors.Errorf(codes.NotFound, "no such container %q", containerName)
+		}
+
+		if len(containers) == 0 && !filter.all {
+			return rpcerrors.Errorf(codes.NotFound, "no such container %q", filter.containerName)
+		}
+
+		if len(containers) > 1 && filter.containerName != "" {
+			return rpcerrors.Errorf(codes.InvalidArgument, "container name matches multiple containers")
+		}
+
+		for _, ctr := range containers {
+			l, err := ctr.Labels(ctx)
+			if err != nil {
+				return err
+			}
+
+			ports, err := portutil.ParsePortsLabel(l)
+			if err != nil {
+				return err
+			}
+
+			internalName, suggestedPrefix := parseContainerName(ctr.ID(), l[labels.Name])
+
+			for _, p := range ports {
+				if p.Protocol == "tcp" && p.HostIP == "0.0.0.0" {
+					exported[int(p.ContainerPort)] = containerPort{
+						ContainerID:     ctr.ID(),
+						ContainerName:   internalName,
+						SuggestedPrefix: suggestedPrefix,
+						ExportedPort:    p.HostPort,
+					}
+				} else {
+					fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", p.ContainerPort, p.Protocol, p.HostIP)
+				}
+			}
 		}
 
 		return nil
