@@ -177,8 +177,8 @@ func (bp *buildProxy) Cleanup() error {
 	return multierr.New(errs...)
 }
 
-func (bp *buildProxy) Serve() error {
-	if err := serveProxy(bp.listener, func() (net.Conn, error) {
+func (bp *buildProxy) Serve(ctx context.Context) error {
+	if err := serveProxy(ctx, bp.listener, func() (net.Conn, error) {
 		return bp.instance.NewConn(tasks.WithSink(context.Background(), bp.sink))
 	}); err != nil {
 		if x, ok := err.(*net.OpError); ok {
@@ -206,7 +206,7 @@ func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, 
 	}
 
 	go func() {
-		if err := p.Serve(); err != nil {
+		if err := p.Serve(ctx); err != nil {
 			log.Fatal(err)
 		}
 	}()

@@ -7,14 +7,16 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/sys"
+	"golang.org/x/sys/unix"
+	"namespacelabs.dev/foundation/framework/netcopy"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/go-ids"
 )
 
 type unixSockProxy struct {
@@ -57,7 +59,12 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 		cleanup = func() {}
 	}
 
-	listener, err := sys.CreateUnixSocket(socketPath)
+	if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	var d net.ListenConfig
+	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
 		cleanup()
 		return nil, err
@@ -68,14 +75,31 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 	}
 
 	if opts.Blocking {
-		if err := serveProxy(listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
+		defer cleanup()
+
+		ch := make(chan struct{})
+		go func() {
+			select {
+			case <-ch:
+			case <-ctx.Done():
+			}
+			_ = listener.Close()
+		}()
+
+		defer close(ch)
+
+		if err := serveProxy(ctx, listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return nil, ctxErr
+			}
+
 			return nil, err
 		}
 
 		return nil, nil
 	} else {
 		go func() {
-			if err := serveProxy(listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
+			if err := serveProxy(ctx, listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
 				log.Fatal(err)
 			}
 		}()
@@ -84,7 +108,9 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 	}
 }
 
-func serveProxy(listener net.Listener, connect func() (net.Conn, error)) error {
+const debug = false
+
+func serveProxy(ctx context.Context, listener net.Listener, connect func() (net.Conn, error)) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -92,21 +118,25 @@ func serveProxy(listener net.Listener, connect func() (net.Conn, error)) error {
 		}
 
 		go func() {
+			var d netcopy.DebugLogFunc
+			if debug {
+				id := ids.NewRandomBase32ID(8)
+				d = func(format string, args ...any) {
+					fmt.Fprintf(console.Stderr(ctx), "["+id+"]: "+format+"\n", args...)
+				}
+			}
+
 			defer conn.Close()
 
 			peerConn, err := connect()
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "Failed to connect: %v\n", err)
+				fmt.Fprintf(console.Stderr(ctx), "Failed to connect: %v\n", err)
 				return
 			}
 
 			defer peerConn.Close()
 
-			go func() {
-				_, _ = io.Copy(conn, peerConn)
-			}()
-
-			_, _ = io.Copy(peerConn, conn)
+			_ = netcopy.CopyConns(d, conn, peerConn)
 		}()
 	}
 }

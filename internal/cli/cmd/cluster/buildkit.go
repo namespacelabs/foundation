@@ -137,7 +137,7 @@ func newBuildkitProxy() *cobra.Command {
 
 		defer bp.Cleanup()
 
-		return bp.Serve()
+		return bp.Serve(ctx)
 	})
 
 	return cmd

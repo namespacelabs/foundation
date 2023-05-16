@@ -35,7 +35,18 @@ const (
 	nscBinary        = "nsc"
 )
 
-func newDockerCmd() *cobra.Command {
+func NewDockerCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "docker",
+		Short: "Docker-related functionality.",
+	}
+
+	cmd.AddCommand(newDockerAttachCmd())
+
+	return cmd
+}
+
+func newDockerPassthroughCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "docker -- ...",
 		Short:  "Run docker on the target cluster.",

@@ -67,21 +67,9 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return rpcerrors.Errorf(codes.Internal, "no builders available")
 		}
 
-		state := *stateDir
-		if state == "" {
-			dir, err := dirs.CreateUserTempDir("buildkit", "proxy")
-			if err != nil {
-				return err
-			}
-
-			state = dir
-		} else {
-			s, err := filepath.Abs(*stateDir)
-			if err != nil {
-				return err
-			}
-
-			state = s
+		state, err := ensureStateDir(*stateDir, "buildkit", "proxy")
+		if err != nil {
+			return err
 		}
 
 		var md buildxMetadata
@@ -121,7 +109,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 				})
 
 				eg.Go(func(ctx context.Context) error {
-					return bp.Serve()
+					return bp.Serve(ctx)
 				})
 			}
 		}
@@ -166,6 +154,19 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	})
 
 	return cmd
+}
+
+func ensureStateDir(specified, dir, suffix string) (string, error) {
+	if specified == "" {
+		return dirs.CreateUserTempDir(dir, suffix)
+	}
+
+	s, err := filepath.Abs(specified)
+	if err != nil {
+		return "", err
+	}
+
+	return s, nil
 }
 
 type buildxMetadata struct {

@@ -125,6 +125,7 @@ require (
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.9.0
 	honnef.co/go/tools v0.4.2
+	inet.af/tcpproxy v0.0.0-20221017015627-91f861402626
 	k8s.io/api v0.26.1
 	k8s.io/apiextensions-apiserver v0.26.0
 	k8s.io/apimachinery v0.26.1
