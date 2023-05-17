@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,9 +29,11 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewExposeCmd() *cobra.Command {
@@ -40,7 +43,7 @@ func NewExposeCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 	}
 
-	source := cmd.Flags().String("source", "docker", "Where to lookup the container.")
+	source := cmd.Flags().String("source", "", "Where to lookup the container.")
 	prefix := cmd.Flags().String("prefix", "", "If specified, prefixes the allocated URL.")
 	containerName := cmd.Flags().String("container", "", "Which container to export.")
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
@@ -51,7 +54,7 @@ func NewExposeCmd() *cobra.Command {
 		if *containerName == "" && !*all {
 			return fnerrors.New("one of --all or --container is required")
 		} else if *containerName != "" && *all {
-			return fnerrors.New("onlyo one of --all or --container may be specified")
+			return fnerrors.New("only one of --all or --container may be specified")
 		}
 
 		cluster, _, err := selectRunningCluster(ctx, args)
@@ -69,21 +72,16 @@ func NewExposeCmd() *cobra.Command {
 		}
 
 		if len(*containerPorts) > 0 {
-			remapped := portMap{}
-
-			for _, port := range *containerPorts {
-				if m, has := ports[port]; !has {
-					return fnerrors.New("port %d not exported by container", port)
-				} else {
-					remapped[port] = m
-				}
+			filtered, err := filterPorts(ports, *containerPorts)
+			if err != nil {
+				return err
 			}
 
-			ports = remapped
+			ports = filtered
 		}
 
 		var exps []exported
-		for containerPort, port := range ports {
+		for _, port := range ports {
 			p := *prefix
 			if p == "" {
 				p = port.SuggestedPrefix
@@ -103,13 +101,13 @@ func NewExposeCmd() *cobra.Command {
 			exps = append(exps, exported{
 				ContainerID:   port.ContainerID,
 				ContainerName: port.ContainerName,
-				ContainerPort: int32(containerPort),
+				ContainerPort: port.ContainerPort,
 				URL:           "https://" + resp.Fqdn,
 			})
 
 			if *output == "plain" {
 				fmt.Fprintf(console.Stdout(ctx), "Exported port %d from %s (%s):\n  https://%s\n\n",
-					containerPort, port.ContainerName, substr(port.ContainerID), resp.Fqdn)
+					port.ContainerPort, port.ContainerName, substr(port.ContainerID), resp.Fqdn)
 			}
 		}
 
@@ -127,6 +125,41 @@ func NewExposeCmd() *cobra.Command {
 	return cmd
 }
 
+func filterPorts(ports []containerPort, acceptable []int) ([]containerPort, error) {
+	var filtered []containerPort
+	matched := map[int]struct{}{}
+	for _, p := range ports {
+		if slices.Contains(acceptable, int(p.ContainerPort)) {
+			filtered = append(filtered, p)
+			matched[int(p.ContainerPort)] = struct{}{}
+		}
+	}
+	var unmatched []int
+	for _, p := range acceptable {
+		if _, ok := matched[p]; !ok {
+			unmatched = append(unmatched, p)
+		}
+	}
+	switch len(unmatched) {
+	case 0:
+		return filtered, nil
+
+	case 1:
+		return nil, fnerrors.New("specified port %d is not exported", unmatched[0])
+
+	default:
+		return nil, fnerrors.New("specified ports %s are not exported", strings.Join(stringify(unmatched), ", "))
+	}
+}
+
+func stringify(values []int) []string {
+	result := make([]string, len(values))
+	for k, v := range values {
+		result[k] = fmt.Sprintf("%d", v)
+	}
+	return result
+}
+
 type exported struct {
 	ContainerID   string `json:"container_id"`
 	ContainerName string `json:"container_name"`
@@ -137,6 +170,7 @@ type exported struct {
 type containerPort struct {
 	ContainerID     string
 	ContainerName   string
+	ContainerPort   int32
 	SuggestedPrefix string
 	ExportedPort    int32
 }
@@ -148,19 +182,47 @@ type containerFilter struct {
 	containerName string
 }
 
-func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source string, filter containerFilter) (portMap, error) {
-	switch source {
-	case "docker":
-		return selectDockerPorts(ctx, cluster, filter)
+func selectPorts(ctx context.Context, cluster *api.KubernetesCluster, source string, filter containerFilter) ([]containerPort, error) {
+	return tasks.Return(ctx, tasks.Action("nsc.expose").HumanReadablef("Querying exported ports"), func(ctx context.Context) ([]containerPort, error) {
+		if source != "" && source != "docker" && source != "containerd" {
+			return nil, fnerrors.New("--source can be either empty, or one of %q or %q", "docker", "containerd")
+		}
 
-	case "containerd":
-		return selectContainerdPorts(ctx, cluster, filter)
-	}
+		eg := executor.New(ctx, "port selector")
 
-	return nil, fnerrors.New("unsupported source %q", source)
+		ports := make([][]containerPort, 2)
+
+		if source == "" || source == "docker" {
+			eg.Go(func(ctx context.Context) error {
+				dockerPorts, err := selectDockerPorts(ctx, cluster, filter)
+				if err != nil {
+					return err
+				}
+				ports[0] = dockerPorts
+				return nil
+			})
+		}
+
+		if source == "" || source == "containerd" {
+			eg.Go(func(ctx context.Context) error {
+				containerdPorts, err := selectContainerdPorts(ctx, cluster, filter)
+				if err != nil {
+					return err
+				}
+				ports[1] = containerdPorts
+				return nil
+			})
+		}
+
+		if err := eg.Wait(); err != nil {
+			return nil, err
+		}
+
+		return append(ports[0], ports[1]...), nil
+	})
 }
 
-func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) (portMap, error) {
+func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) ([]containerPort, error) {
 	// We must fetch a token with our parent context, so we get a task sink etc.
 	token, err := fnapi.FetchToken(ctx)
 	if err != nil {
@@ -211,7 +273,7 @@ func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter
 	return []types.ContainerJSON{data}, nil
 }
 
-func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) (portMap, error) {
+func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) ([]containerPort, error) {
 	exported := portMap{}
 	for _, data := range data {
 		internalName, suggestedPrefix := parseContainerName(data.ID, data.Name)
@@ -229,6 +291,7 @@ func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) (p
 							ContainerID:     data.ID,
 							ContainerName:   internalName,
 							SuggestedPrefix: suggestedPrefix,
+							ContainerPort:   int32(port.Int()),
 							ExportedPort:    int32(parsedPort),
 						}
 					} else {
@@ -241,7 +304,7 @@ func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) (p
 		}
 	}
 
-	return exported, nil
+	return maps.Values(exported), nil
 }
 
 func parseContainerName(id, name string) (string, string) {
@@ -287,7 +350,7 @@ func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callbac
 	return callback(ctx, ctr)
 }
 
-func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) (portMap, error) {
+func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, filter containerFilter) ([]containerPort, error) {
 	exported := portMap{}
 
 	var filters []string
@@ -327,11 +390,12 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 			internalName, suggestedPrefix := parseContainerName(ctr.ID(), l[labels.Name])
 
 			for _, p := range ports {
-				if p.Protocol == "tcp" && p.HostIP == "0.0.0.0" {
+				if p.Protocol == "tcp" && (p.HostIP == "0.0.0.0" || p.HostIP == "::") {
 					exported[int(p.ContainerPort)] = containerPort{
 						ContainerID:     ctr.ID(),
 						ContainerName:   internalName,
 						SuggestedPrefix: suggestedPrefix,
+						ContainerPort:   p.ContainerPort,
 						ExportedPort:    p.HostPort,
 					}
 				} else {
@@ -345,7 +409,7 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 		return nil, err
 	}
 
-	return exported, nil
+	return maps.Values(exported), nil
 }
 
 var simpleLabelRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-]*$")
