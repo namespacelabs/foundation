@@ -33,6 +33,7 @@ func NewLogsCmd() *cobra.Command {
 	namespace := cmd.Flags().StringP("namespace", "n", "", "If specified, only display logs of this Kubernetes namespace.")
 	pod := cmd.Flags().StringP("pod", "p", "", "If specified, only display logs of this Kubernetes Pod.")
 	container := cmd.Flags().StringP("container", "c", "", "If specified, only display logs of this container.")
+	source := cmd.Flags().StringP("source", "s", "kubernetes", "If specified, display logs from this source. Default: kubernetes")
 	raw := cmd.Flags().Bool("raw", false, "Output raw logs (skipping namespace/pod labels).")
 	all := cmd.Flags().Bool("all", false, "Output all logs (including Kubernetes system logs).")
 
@@ -63,14 +64,24 @@ func NewLogsCmd() *cobra.Command {
 		var includeSelector []*api.LogsSelector
 		var excludeSelector []*api.LogsSelector
 		if *namespace != "" || *pod != "" || *container != "" {
-			includeSelector = append(includeSelector, &api.LogsSelector{
+			sel := &api.LogsSelector{
+				Source:    *source,
 				Namespace: *namespace,
-				Pod:       *pod,
-				Container: *container,
-			})
+				PodName:   *pod,
+			}
+
+			switch *source {
+			case "", "kubernetes":
+				sel.ContainerName = *container
+			case "containerd":
+				sel.ContainerID = *container
+			}
+
+			includeSelector = append(includeSelector, sel)
 		} else if !*all {
 			for _, ns := range ctl.SystemNamespaces {
 				excludeSelector = append(excludeSelector, &api.LogsSelector{
+					Source:    *source,
 					Namespace: ns,
 				})
 			}

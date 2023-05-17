@@ -231,9 +231,11 @@ type GetLogsResponse struct {
 }
 
 type LogsSelector struct {
-	Namespace string `json:"namespace,omitempty"`
-	Pod       string `json:"pod,omitempty"`
-	Container string `json:"container,omitempty"`
+	Source        string `json:"source,omitempty"`
+	Namespace     string `json:"namespace,omitempty"`
+	PodName       string `json:"pod_name,omitempty"`
+	ContainerName string `json:"container_name,omitempty"`
+	ContainerID   string `json:"container_id,omitempty"`
 }
 
 type LogBlock struct {
