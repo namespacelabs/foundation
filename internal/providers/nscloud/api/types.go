@@ -211,9 +211,10 @@ type GetImageRegistryResponse struct {
 }
 
 type TailLogsRequest struct {
-	ClusterID string          `json:"cluster_id,omitempty"`
-	Include   []*LogsSelector `json:"include,omitempty"`
-	Exclude   []*LogsSelector `json:"exclude,omitempty"`
+	ClusterID      string          `json:"cluster_id,omitempty"`
+	UseBlockLabels bool            `json:"use_block_labels,omitempty"`
+	Include        []*LogsSelector `json:"include,omitempty"`
+	Exclude        []*LogsSelector `json:"exclude,omitempty"`
 }
 
 type GetLogsRequest struct {

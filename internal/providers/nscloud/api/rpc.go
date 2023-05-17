@@ -170,10 +170,9 @@ func MakeAPI(endpoint string) API {
 		},
 
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
-			// XXX: hardcoded for now, we need to add an alias to api.<region>.nscluster.cloud
-			Endpoint:   fmt.Sprintf("https://logging.nscloud-%s.namespacelabs.nscloud.dev", regionName),
+			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
-			Method:     "logs/tail",
+			Method:     "nsl.vm.logging.LoggingService/TailLogs",
 		},
 
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
@@ -558,9 +557,10 @@ type LogsOpts struct {
 
 func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(LogBlock) error) error {
 	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
-		ClusterID: opts.ClusterID,
-		Include:   opts.Include,
-		Exclude:   opts.Exclude,
+		ClusterID:      opts.ClusterID,
+		UseBlockLabels: true,
+		Include:        opts.Include,
+		Exclude:        opts.Exclude,
 	}, func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
