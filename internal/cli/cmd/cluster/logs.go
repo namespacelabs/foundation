@@ -67,14 +67,19 @@ func NewLogsCmd() *cobra.Command {
 			sel := &api.LogsSelector{
 				Source:    *source,
 				Namespace: *namespace,
-				PodName:   *pod,
 			}
 
 			switch *source {
 			case "", "kubernetes":
 				sel.ContainerName = *container
+				sel.PodName = *pod
 			case "containerd":
+				if *pod != "" {
+					return fnerrors.New("--pod flag can't be used with source 'containerd'")
+				}
 				sel.ContainerID = *container
+			default:
+				return fnerrors.New("unsupported logs source %q, only 'containerd' and 'kubernetes' are supported")
 			}
 
 			includeSelector = append(includeSelector, sel)
