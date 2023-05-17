@@ -174,7 +174,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	switch response.StatusCode {
 	case http.StatusInternalServerError:
-		return fnerrors.InternalError("namespace api: internal server error, and wasn't able to parse error response")
+		return fnerrors.InternalError("namespace api: internal server error: %s", string(respBody))
 	case http.StatusUnauthorized:
 		return fnerrors.ReauthError("%s/%s requires authentication", c.Endpoint, c.Method)
 	case http.StatusForbidden:
