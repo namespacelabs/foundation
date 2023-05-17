@@ -49,15 +49,15 @@ func Debug(ctx context.Context) io.Writer {
 }
 
 func NamedDebug(ctx context.Context, name string) io.Writer {
-	return TypedOutput(ctx, name, idtypes.CatOutputDebug)
+	return typedOutput(ctx, true, name, idtypes.CatOutputDebug)
 }
 
 func Warnings(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "warning", idtypes.CatOutputWarnings)
+	return typedOutput(ctx, true, "warning", idtypes.CatOutputWarnings)
 }
 
 func Errors(ctx context.Context) io.Writer {
-	return TypedOutput(ctx, "error", idtypes.CatOutputErrors)
+	return typedOutput(ctx, true, "error", idtypes.CatOutputErrors)
 }
 
 func ConsoleOutputName(name string) tasks.OutputName {
@@ -65,12 +65,16 @@ func ConsoleOutputName(name string) tasks.OutputName {
 }
 
 func TypedOutput(ctx context.Context, name string, cat idtypes.CatOutputType) io.Writer {
+	return typedOutput(ctx, false, name, cat)
+}
+
+func typedOutput(ctx context.Context, stderr bool, name string, cat idtypes.CatOutputType) io.Writer {
 	if cat == idtypes.CatOutputDebug && !DebugToConsole {
 		return tasks.Attachments(ctx).Output(tasks.Output(name, "text/plain"), cat)
 	}
 
 	stored := tasks.Attachments(ctx).Output(ConsoleOutputName(name), cat)
-	return consoleOutputFromCtx(ctx, name, cat, writeStored{stored})
+	return consoleOutputFromCtx(ctx, stderr, name, cat, writeStored{stored})
 }
 
 type writeStored struct {
@@ -97,7 +101,7 @@ func (w writeStored) WriteLines(id idtypes.IdAndHash, name string, cat idtypes.C
 	}
 }
 
-func consoleOutputFromCtx(ctx context.Context, name string, cat idtypes.CatOutputType, extra ...writesLines) io.Writer {
+func consoleOutputFromCtx(ctx context.Context, stderr bool, name string, cat idtypes.CatOutputType, extra ...writesLines) io.Writer {
 	unwrapped := UnwrapSink(tasks.SinkFrom(ctx))
 	if t, ok := unwrapped.(writesLines); ok {
 		actionID := tasks.Attachments(ctx).ActionID()
@@ -129,8 +133,13 @@ func consoleOutputFromCtx(ctx context.Context, name string, cat idtypes.CatOutpu
 		return os.Stderr
 	}
 
+	out := os.Stdout
+	if stderr {
+		out = os.Stderr
+	}
+
 	// IndentWriter is not thread safe.
-	return sync.SyncWriter(text.NewIndentWriter(os.Stdout, []byte(name+": ")))
+	return sync.SyncWriter(text.NewIndentWriter(out, []byte(name+": ")))
 }
 
 // ConsoleOutput returns a writer, whose output will be managed by the specified ConsoleSink.
