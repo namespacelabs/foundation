@@ -119,6 +119,8 @@ func NewRunCmd() *cobra.Command {
 			}
 		}
 
+		// This needs to handle the case both of when a cluster is created, and
+		// when StartContainers are called.
 		return printResult(ctx, *output, resp)
 	})
 
@@ -238,19 +240,20 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 		return resp, nil
 	}
 
-	return tasks.Return(ctx, tasks.Action("nscloud.start-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
-		var response api.StartContainersResponse
-		if err := api.Endpoint.StartContainers.Do(ctx, api.StartContainersRequest{
-			Id:        target,
-			Container: []*api.ContainerRequest{container},
-		}, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, err
-		}
+	return tasks.Return(ctx, tasks.Action("nscloud.start-containers").HumanReadablef("Starting containers"),
+		func(ctx context.Context) (*api.CreateContainersResponse, error) {
+			var response api.StartContainersResponse
+			if err := api.Endpoint.StartContainers.Do(ctx, api.StartContainersRequest{
+				Id:        target,
+				Container: []*api.ContainerRequest{container},
+			}, fnapi.DecodeJSONResponse(&response)); err != nil {
+				return nil, err
+			}
 
-		return &api.CreateContainersResponse{
-			Container: response.Container,
-		}, nil
-	})
+			return &api.CreateContainersResponse{
+				Container: response.Container,
+			}, nil
+		})
 }
 
 func parseRule(spec string) (*api.ContainerPort_HttpMatchRule, error) {
@@ -315,7 +318,10 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 			fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", output)
 		}
 
-		printNewEnv(ctx, resp.ClusterId, resp.ClusterUrl)
+		// ClusterId is not set when `--on` is used.
+		if resp.ClusterId != "" {
+			printNewEnv(ctx, resp.ClusterId, resp.ClusterUrl)
+		}
 
 		for _, ctr := range resp.Container {
 			fmt.Fprintf(console.Stdout(ctx), "\n  Started %q\n", ctr.Name)
