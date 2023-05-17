@@ -364,10 +364,11 @@ type GetProfileResponse struct {
 	ClusterPlatform []string `json:"cluster_platform,omitempty"`
 }
 
-type RegisterDefaultIngressRequest struct {
-	ClusterId       string                  `json:"cluster_id,omitempty"`
-	Prefix          string                  `json:"prefix,omitempty"`
-	BackendEndpoint *IngressBackendEndpoint `json:"backend_endpoint,omitempty"`
+type RegisterIngressRequest struct {
+	ClusterId       string                         `json:"cluster_id,omitempty"`
+	Prefix          string                         `json:"prefix,omitempty"`
+	BackendEndpoint *IngressBackendEndpoint        `json:"backend_endpoint,omitempty"`
+	HttpMatchRule   []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
 }
 
 type IngressBackendEndpoint struct {
@@ -375,6 +376,6 @@ type IngressBackendEndpoint struct {
 	Port        int32  `json:"port,omitempty"`
 }
 
-type RegisterDefaultIngressResponse struct {
+type RegisterIngressResponse struct {
 	Fqdn string `json:"fqdn,omitempty"`
 }

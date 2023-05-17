@@ -49,6 +49,7 @@ func NewExposeCmd() *cobra.Command {
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	all := cmd.Flags().Bool("all", false, "If set to true, exports one ingress for each exported port of each running container.")
+	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *containerName == "" && !*all {
@@ -80,19 +81,30 @@ func NewExposeCmd() *cobra.Command {
 			ports = filtered
 		}
 
+		portNumbers := make([]int32, len(ports))
+		for k, x := range ports {
+			portNumbers[k] = x.ContainerPort
+		}
+
+		filledIn, err := fillInIngressRules(portNumbers, *ingressRules)
+		if err != nil {
+			return err
+		}
+
 		var exps []exported
-		for _, port := range ports {
+		for k, port := range ports {
 			p := *prefix
 			if p == "" {
 				p = port.SuggestedPrefix
 			}
 
-			resp, err := api.RegisterDefaultIngress(ctx, api.Endpoint, api.RegisterDefaultIngressRequest{
+			resp, err := api.RegisterIngress(ctx, api.Endpoint, api.RegisterIngressRequest{
 				ClusterId: cluster.ClusterId,
 				Prefix:    p,
 				BackendEndpoint: &api.IngressBackendEndpoint{
 					Port: port.ExportedPort,
 				},
+				HttpMatchRule: filledIn[k].HttpIngressRules,
 			})
 			if err != nil {
 				return err

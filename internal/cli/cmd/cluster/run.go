@@ -79,34 +79,12 @@ func NewRunCmd() *cobra.Command {
 			EnableDocker:  *enableDocker,
 		}
 
-		matched := map[string]struct{}{}
-		for _, p := range *exportedPorts {
-			portKey := fmt.Sprintf("%d", p)
-			rules, ok := (*ingressRules)[portKey]
-			if !ok {
-				rules = (*ingressRules)["*"]
-			} else {
-				matched[portKey] = struct{}{}
-			}
-
-			x := exportContainerPort{
-				ContainerPort: p,
-			}
-
-			if rules != "" {
-				x.HttpIngressRules = strings.Split(rules, ";")
-			}
-
-			opts.ExportedPorts = append(opts.ExportedPorts, x)
+		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
+		if err != nil {
+			return err
 		}
 
-		for k := range *ingressRules {
-			if _, ok := matched[k]; ok || k == "*" {
-				continue
-			}
-
-			return fnerrors.New("specified ingress rule for port %q which is not exported", k)
-		}
+		opts.ExportedPorts = exported
 
 		resp, err := createContainer(ctx, *on, *devmode, opts)
 		if err != nil {
@@ -125,6 +103,48 @@ func NewRunCmd() *cobra.Command {
 	})
 
 	return run
+}
+
+func fillInIngressRules(ports []int32, ingressRules map[string]string) ([]exportContainerPort, error) {
+	var exported []exportContainerPort
+
+	matched := map[string]struct{}{}
+	for _, p := range ports {
+		portKey := fmt.Sprintf("%d", p)
+		rules, ok := ingressRules[portKey]
+		if !ok {
+			rules = ingressRules["*"]
+		} else {
+			matched[portKey] = struct{}{}
+		}
+
+		x := exportContainerPort{
+			ContainerPort: p,
+		}
+
+		if rules != "" {
+			for _, ruleSpec := range strings.Split(rules, ";") {
+				rule, err := parseRule(ruleSpec)
+				if err != nil {
+					return nil, err
+				}
+
+				x.HttpIngressRules = append(x.HttpIngressRules, rule)
+			}
+		}
+
+		exported = append(exported, x)
+	}
+
+	for k := range ingressRules {
+		if _, ok := matched[k]; ok || k == "*" {
+			continue
+		}
+
+		return nil, fnerrors.New("specified ingress rule for port %q which is not exported", k)
+	}
+
+	return exported, nil
 }
 
 func NewRunComposeCmd() *cobra.Command {
@@ -172,7 +192,7 @@ type createContainerOpts struct {
 
 type exportContainerPort struct {
 	ContainerPort    int32
-	HttpIngressRules []string
+	HttpIngressRules []*api.ContainerPort_HttpMatchRule
 }
 
 func createContainer(ctx context.Context, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
@@ -189,21 +209,11 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 	}
 
 	for _, port := range opts.ExportedPorts {
-		p := &api.ContainerPort{
-			Proto: "tcp",
-			Port:  port.ContainerPort,
-		}
-
-		for _, ruleSpec := range port.HttpIngressRules {
-			rule, err := parseRule(ruleSpec)
-			if err != nil {
-				return nil, err
-			}
-
-			p.HttpMatchRule = append(p.HttpMatchRule, rule)
-		}
-
-		container.ExportPort = append(container.ExportPort, p)
+		container.ExportPort = append(container.ExportPort, &api.ContainerPort{
+			Proto:         "tcp",
+			Port:          port.ContainerPort,
+			HttpMatchRule: port.HttpIngressRules,
+		})
 	}
 
 	var labels []*api.LabelEntry
