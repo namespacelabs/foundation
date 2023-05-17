@@ -267,6 +267,10 @@ func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter
 
 	data, err := docker.ContainerInspect(ctx, filter.containerName)
 	if err != nil {
+		if client.IsErrNotFound(err) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 
