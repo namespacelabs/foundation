@@ -43,6 +43,7 @@ func NewRunCmd() *cobra.Command {
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
 	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
+	ingressRules := run.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
 
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
@@ -67,17 +68,47 @@ func NewRunCmd() *cobra.Command {
 			return fnerrors.New("--development can only be set when creating an environment (i.e. it can't be set when --on is specified)")
 		}
 
-		resp, err := createContainer(ctx, *on, *devmode, createContainerOpts{
+		opts := createContainerOpts{
 			Name:          name,
 			Image:         *image,
-			ExportedPorts: *exportedPorts,
 			Args:          args,
 			Env:           *env,
 			Features:      *features,
 			Labels:        *labels,
 			InternalExtra: *internalExtra,
 			EnableDocker:  *enableDocker,
-		})
+		}
+
+		matched := map[string]struct{}{}
+		for _, p := range *exportedPorts {
+			portKey := fmt.Sprintf("%d", p)
+			rules, ok := (*ingressRules)[portKey]
+			if !ok {
+				rules = (*ingressRules)["*"]
+			} else {
+				matched[portKey] = struct{}{}
+			}
+
+			x := exportContainerPort{
+				ContainerPort: p,
+			}
+
+			if rules != "" {
+				x.HttpIngressRules = strings.Split(rules, ";")
+			}
+
+			opts.ExportedPorts = append(opts.ExportedPorts, x)
+		}
+
+		for k := range *ingressRules {
+			if _, ok := matched[k]; ok || k == "*" {
+				continue
+			}
+
+			return fnerrors.New("specified ingress rule for port %q which is not exported", k)
+		}
+
+		resp, err := createContainer(ctx, *on, *devmode, opts)
 		if err != nil {
 			return err
 		}
@@ -130,11 +161,16 @@ type createContainerOpts struct {
 	Args          []string
 	Env           map[string]string
 	Flags         []string
-	ExportedPorts []int32
+	ExportedPorts []exportContainerPort
 	Features      []string
 	Labels        map[string]string
 	InternalExtra string
 	EnableDocker  bool
+}
+
+type exportContainerPort struct {
+	ContainerPort    int32
+	HttpIngressRules []string
 }
 
 func createContainer(ctx context.Context, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
@@ -151,10 +187,21 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 	}
 
 	for _, port := range opts.ExportedPorts {
-		container.ExportPort = append(container.ExportPort, &api.ContainerPort{
+		p := &api.ContainerPort{
 			Proto: "tcp",
-			Port:  port,
-		})
+			Port:  port.ContainerPort,
+		}
+
+		for _, ruleSpec := range port.HttpIngressRules {
+			rule, err := parseRule(ruleSpec)
+			if err != nil {
+				return nil, err
+			}
+
+			p.HttpMatchRule = append(p.HttpMatchRule, rule)
+		}
+
+		container.ExportPort = append(container.ExportPort, p)
 	}
 
 	var labels []*api.LabelEntry
@@ -204,6 +251,56 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 			Container: response.Container,
 		}, nil
 	})
+}
+
+func parseRule(spec string) (*api.ContainerPort_HttpMatchRule, error) {
+	parts := strings.SplitN(spec, ":", 3)
+	rule, err := parseEffect(parts[len(parts)-1])
+	if err != nil {
+		return nil, err
+	}
+
+	switch len(parts) {
+	case 1:
+		// Apply to all paths and methods
+
+	case 2:
+		// All methods: [path]: [spec]
+		rule.Match = &api.ContainerPort_HttpMatch{Path: parts[0]}
+
+	case 3:
+		// [methods]:[path]:[spec]
+		rule.Match = &api.ContainerPort_HttpMatch{Method: parseMethods(parts[0]), Path: parts[1]}
+	}
+
+	return rule, nil
+}
+
+func parseMethods(spec string) []string {
+	var methods []string
+
+	parts := strings.Split(spec, ",")
+	for _, p := range parts {
+		methods = append(methods, strings.ToUpper(p))
+	}
+
+	return methods
+}
+
+func parseEffect(spec string) (*api.ContainerPort_HttpMatchRule, error) {
+	parts := strings.Split(spec, ",")
+	x := &api.ContainerPort_HttpMatchRule{}
+	for _, p := range parts {
+		switch strings.ToLower(p) {
+		case "noauth":
+			x.DoesNotRequireAuth = true
+
+		default:
+			return nil, fnerrors.New("unrecognized rule %q", p)
+		}
+	}
+
+	return x, nil
 }
 
 func printResult(ctx context.Context, output string, resp *api.CreateContainersResponse) error {

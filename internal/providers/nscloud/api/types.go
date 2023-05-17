@@ -85,8 +85,19 @@ type ComposeRequest struct {
 }
 
 type ContainerPort struct {
-	Proto string `json:"proto,omitempty"`
-	Port  int32  `json:"port,omitempty"`
+	Proto         string                         `json:"proto,omitempty"`
+	Port          int32                          `json:"port,omitempty"`
+	HttpMatchRule []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
+}
+
+type ContainerPort_HttpMatchRule struct {
+	Match              *ContainerPort_HttpMatch `json:"match,omitempty"`
+	DoesNotRequireAuth bool                     `json:"does_not_require_auth,omitempty"`
+}
+
+type ContainerPort_HttpMatch struct {
+	Method []string `json:"method,omitempty"` // If empty, matches any method.
+	Path   string   `json:"path,omitempty"`   // If empty, matches any path.
 }
 
 type CreateContainersResponse struct {
