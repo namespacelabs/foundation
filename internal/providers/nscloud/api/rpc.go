@@ -588,11 +588,12 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-cluster-logs"), func(ctx context.Context) (*GetLogsResponse, error) {
 		req := GetLogsRequest{
-			ClusterID: opts.ClusterID,
-			StartTs:   opts.StartTs,
-			EndTs:     opts.EndTs,
-			Include:   opts.Include,
-			Exclude:   opts.Exclude,
+			ClusterID:      opts.ClusterID,
+			UseBlockLabels: true,
+			StartTs:        opts.StartTs,
+			EndTs:          opts.EndTs,
+			Include:        opts.Include,
+			Exclude:        opts.Exclude,
 		}
 
 		var response GetLogsResponse

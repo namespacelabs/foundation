@@ -218,11 +218,12 @@ type TailLogsRequest struct {
 }
 
 type GetLogsRequest struct {
-	ClusterID string          `json:"cluster_id,omitempty"`
-	StartTs   *time.Time      `json:"start_ts,omitempty"`
-	EndTs     *time.Time      `json:"end_ts,omitempty"`
-	Include   []*LogsSelector `json:"include,omitempty"`
-	Exclude   []*LogsSelector `json:"exclude,omitempty"`
+	ClusterID      string          `json:"cluster_id,omitempty"`
+	UseBlockLabels bool            `json:"use_block_labels,omitempty"`
+	StartTs        *time.Time      `json:"start_ts,omitempty"`
+	EndTs          *time.Time      `json:"end_ts,omitempty"`
+	Include        []*LogsSelector `json:"include,omitempty"`
+	Exclude        []*LogsSelector `json:"exclude,omitempty"`
 }
 
 type GetLogsResponse struct {
