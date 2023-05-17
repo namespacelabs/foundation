@@ -70,7 +70,7 @@ func NewLogsCmd() *cobra.Command {
 			}
 
 			switch *source {
-			case "", "kubernetes":
+			case "kubernetes":
 				sel.ContainerName = *container
 				sel.PodName = *pod
 			case "containerd":
@@ -79,7 +79,7 @@ func NewLogsCmd() *cobra.Command {
 				}
 				sel.ContainerID = *container
 			default:
-				return fnerrors.New("unsupported logs source %q, only 'containerd' and 'kubernetes' are supported")
+				return fnerrors.New("unsupported logs source %q, only 'containerd' and 'kubernetes' are supported", *source)
 			}
 
 			includeSelector = append(includeSelector, sel)
@@ -127,7 +127,12 @@ func NewLogsCmd() *cobra.Command {
 			fmt.Fprintf(console.Stdout(ctx), "No logs found.\n")
 
 			style := colors.Ctx(ctx)
-			fmt.Fprintf(console.Stdout(ctx), "\n  Try running %s to also fetch Kubernetes system logs.\n", style.Highlight.Apply(fmt.Sprintf("nsc logs %s --all", clusterID)))
+			if *source == "kubernetes" {
+				fmt.Fprintf(console.Stdout(ctx),
+					"\n  Try running %s to also fetch Kubernetes system logs.\n",
+					style.Highlight.Apply(fmt.Sprintf("nsc logs %s --all", clusterID)),
+				)
+			}
 
 			return nil
 		}
