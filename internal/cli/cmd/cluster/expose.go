@@ -384,10 +384,6 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 			return err
 		}
 
-		if len(containers) == 0 && !filter.all {
-			return rpcerrors.Errorf(codes.NotFound, "no such container %q", filter.containerName)
-		}
-
 		if len(containers) > 1 && filter.containerName != "" {
 			return rpcerrors.Errorf(codes.InvalidArgument, "container name matches multiple containers")
 		}
