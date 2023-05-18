@@ -488,7 +488,7 @@ func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernet
 }
 
 func GetClusterSummary(ctx context.Context, api API, clusterId string, resources []string) (*GetKubernetesClusterSummaryResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.get-summary").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterSummaryResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.get-summary").LogLevel(1).Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterSummaryResponse, error) {
 		var response GetKubernetesClusterSummaryResponse
 		if err := api.GetKubernetesClusterSummary.Do(ctx, GetKubernetesClusterSummaryRequest{ClusterId: clusterId, Resource: resources}, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err

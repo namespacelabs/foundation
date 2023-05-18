@@ -92,7 +92,11 @@ func NewRunCmd() *cobra.Command {
 		}
 
 		if *wait {
-			if err := ctl.WaitContainers(ctx, resp.ClusterId, resp.Container); err != nil {
+			clusterId := *on
+			if clusterId == "" {
+				clusterId = resp.ClusterId
+			}
+			if err := ctl.WaitContainers(ctx, clusterId, resp.Container); err != nil {
 				return err
 			}
 		}

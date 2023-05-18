@@ -66,7 +66,7 @@ func WaitKubeSystem(ctx context.Context, cluster *api.KubernetesCluster) error {
 }
 
 func WaitContainers(ctx context.Context, clusterId string, ctrs []*api.Container) error {
-	return tasks.Action("cluster.wait-containers").
+	return tasks.Action("cluster.wait-containers").HumanReadablef("Waiting for containers to start").
 		Arg("id", clusterId).Run(ctx, func(ctx context.Context) error {
 		fmt.Fprintf(console.Debug(ctx), "polling cluster %q\n", clusterId)
 		ctx, cancel := context.WithTimeout(ctx, waitTimeout)
