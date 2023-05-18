@@ -16,7 +16,6 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
@@ -90,10 +89,6 @@ func selectClusterID(ctx context.Context, previousRuns bool) (string, error) {
 }
 
 func selectRunningCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
-	if len(args) > 1 {
-		return nil, nil, fnerrors.InternalError("got %d clusters - expected one", len(args))
-	}
-
 	var clusterID string
 	if len(args) >= 1 {
 		clusterID = args[0]

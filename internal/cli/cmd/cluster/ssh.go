@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	c "github.com/containerd/console"
@@ -31,7 +32,7 @@ func NewSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ssh [cluster-id]",
 		Short: "Start an SSH session.",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.ArbitraryArgs,
 	}
 
 	tag := cmd.Flags().String("tag", "", "If specified, creates a cluster with the specified tag.")
@@ -114,10 +115,6 @@ func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(
 }
 
 func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
-	if len(args) > 0 {
-		return fnerrors.New("unimplemented")
-	}
-
 	stdin, err := c.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err
@@ -173,22 +170,30 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 			return err
 		}
 
-		if err := session.Shell(); err != nil {
-			return err
-		}
+		if len(args) > 0 {
+			command := strings.Join(args, " ")
+			if err := session.Run(command); err != nil {
+				return err
+			}
+			return nil
+		} else {
+			if err := session.Shell(); err != nil {
+				return err
+			}
 
-		g := executor.New(ctx, "ssh")
-		cancel := g.GoCancelable(func(ctx context.Context) error {
-			return api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
-				fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
-				return nil
+			g := executor.New(ctx, "ssh")
+			cancel := g.GoCancelable(func(ctx context.Context) error {
+				return api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
+					fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
+					return nil
+				})
 			})
-		})
-		g.Go(func(ctx context.Context) error {
-			defer cancel()
-			return session.Wait()
-		})
-		return g.Wait()
+			g.Go(func(ctx context.Context) error {
+				defer cancel()
+				return session.Wait()
+			})
+			return g.Wait()
+		}
 	})
 }
 
