@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	ia "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
@@ -26,6 +27,7 @@ import (
 	ghenv "namespacelabs.dev/foundation/internal/github/env"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
+	v1 "namespacelabs.dev/foundation/public/nscloud/proto/v1"
 	"namespacelabs.dev/foundation/std/protocol"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -161,26 +163,57 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 			style.CommentHighlight.Apply("nsc "+cmd),
 			style.Comment.Apply("."))
 
-	default:
-		fmt.Fprintf(ww, "we got an error from our server: %s (%s)\n", st.Message(), st.Code())
-
-		fmt.Fprintln(ww)
-		fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),
-			style.CommentHighlight.Apply("support@namespacelabs.com"))
-
-		if rid != nil {
-			fmt.Fprint(ww,
-				style.Comment.Apply(" and mention request ID "),
-				style.CommentHighlight.Apply(rid.Id),
-			)
+	case codes.NotFound:
+		if x, ok := hasDetail(st, &v1.EnvironmentDoesntExist{}); ok {
+			fmt.Fprintf(ww, "%q does not exist", x.ClusterId)
+		} else {
+			generic(ww, style, st, rid)
 		}
 
-		fmt.Fprint(ww, style.Comment.Apply("."))
+	case codes.FailedPrecondition:
+		if x, ok := hasDetail(st, &v1.EnvironmentDestroyed{}); ok {
+			fmt.Fprintf(ww, "%q is no longer running", x.ClusterId)
+		} else {
+			generic(ww, style, st, rid)
+		}
+
+	default:
+		generic(ww, style, st, rid)
 	}
 
 	fmt.Fprintln(ww)
 	_ = ww.Close()
 	_, _ = out.Write(ww.Bytes())
+}
+
+func hasDetail[Msg proto.Message](st *status.Status, detail Msg) (Msg, bool) {
+	for _, x := range st.Proto().Details {
+		if x.MessageIs(detail) {
+			if x.UnmarshalTo(detail) == nil {
+				return detail, true
+			}
+			return detail, false
+		}
+	}
+
+	return detail, false
+}
+
+func generic(ww io.Writer, style colors.Style, st *status.Status, rid *protocol.RequestID) {
+	fmt.Fprintf(ww, "we got an error from our server: %s (%s)\n", st.Message(), st.Code())
+
+	fmt.Fprintln(ww)
+	fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),
+		style.CommentHighlight.Apply("support@namespacelabs.com"))
+
+	if rid != nil {
+		fmt.Fprint(ww,
+			style.Comment.Apply(" and mention request ID "),
+			style.CommentHighlight.Apply(rid.Id),
+		)
+	}
+
+	fmt.Fprint(ww, style.Comment.Apply("."))
 }
 
 func unwrapStatus(err error) (*status.Status, bool) {
