@@ -12,6 +12,23 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
+func newSuspendCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:    "suspend [cluster-id]",
+		Short:  "Suspends an existing cluster.",
+		Args:   cobra.ExactArgs(1),
+		Hidden: true,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return api.Endpoint.SuspendKubernetesCluster.Do(ctx, api.SuspendKubernetesClusterRequest{
+			ClusterId: args[0],
+		}, nil)
+	})
+
+	return cmd
+}
+
 func newReleaseCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "release [cluster-id]",
