@@ -172,7 +172,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 
 	case codes.FailedPrecondition:
 		if x, ok := hasDetail(st, &v1.EnvironmentDestroyed{}); ok {
-			fmt.Fprintf(ww, "%q is no longer running", x.ClusterId)
+			fmt.Fprintf(ww, "%q is no longer running.", x.ClusterId)
 		} else {
 			generic(ww, style, st, rid)
 		}
