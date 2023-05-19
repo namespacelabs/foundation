@@ -63,6 +63,7 @@ func main() {
 			root.AddCommand(cluster.NewSshCmd())              // nsc ssh
 			root.AddCommand(cluster.NewDockerCmd())           // nsc docker
 			root.AddCommand(cluster.NewDescribeCmd())         // nsc describe
+			root.AddCommand(cluster.NewExecScoped())          // nsc exec-scoped
 
 			root.AddCommand(sdk.NewSdkCmd(true))
 

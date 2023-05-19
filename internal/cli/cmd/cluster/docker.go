@@ -82,6 +82,12 @@ func runPassthrough(ctx context.Context, clusterId string, args []string) error 
 		return fnerrors.New("at least one argument to pass to `docker` is required")
 	}
 
+	return withDocker(ctx, clusterId, func(ctx context.Context, socketPath string) error {
+		return runDocker(ctx, socketPath, args...)
+	})
+}
+
+func withDocker(ctx context.Context, clusterId string, callback func(context.Context, string) error) error {
 	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterId)
 	if err != nil {
 		return err
@@ -103,7 +109,7 @@ func runPassthrough(ctx context.Context, clusterId string, args []string) error 
 
 	defer p.Cleanup()
 
-	return runDocker(ctx, p, args...)
+	return callback(ctx, p.SocketAddr)
 }
 
 func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.KubernetesCluster) (net.Conn, error) {
@@ -112,8 +118,8 @@ func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.Kubern
 	return api.DialHostedServiceWithToken(ctx, token, cluster, "unixsocket", vars)
 }
 
-func runDocker(ctx context.Context, p *unixSockProxy, args ...string) error {
-	cmdLine := []string{"-H", "unix://" + p.SocketAddr}
+func runDocker(ctx context.Context, socketPath string, args ...string) error {
+	cmdLine := []string{"-H", "unix://" + socketPath}
 	cmdLine = append(cmdLine, args...)
 
 	docker := exec.CommandContext(ctx, "docker", cmdLine...)
