@@ -342,7 +342,7 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 			if len(ctr.ExportedPort) > 0 {
 				fmt.Fprintln(console.Stdout(ctx))
 				for _, port := range ctr.ExportedPort {
-					fmt.Fprintf(console.Stdout(ctx), "    Exported %d/%s as https://%s\n", port.Port, port.Proto, port.IngressFqdn)
+					fmt.Fprintf(console.Stdout(ctx), "    Exported %d/%s as https://%s\n", port.ContainerPort, port.Proto, port.IngressFqdn)
 				}
 			}
 		}

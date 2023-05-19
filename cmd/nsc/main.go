@@ -62,6 +62,7 @@ func main() {
 			root.AddCommand(cluster.NewRunComposeCmd())       // nsc run-compose
 			root.AddCommand(cluster.NewSshCmd())              // nsc ssh
 			root.AddCommand(cluster.NewDockerCmd())           // nsc docker
+			root.AddCommand(cluster.NewDescribeCmd())         // nsc describe
 
 			root.AddCommand(sdk.NewSdkCmd(true))
 

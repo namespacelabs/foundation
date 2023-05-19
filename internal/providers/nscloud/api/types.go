@@ -117,9 +117,11 @@ type Container struct {
 }
 
 type Container_ExportedContainerPort struct {
-	Proto       string `json:"proto,omitempty"`
-	Port        int32  `json:"port,omitempty"`
-	IngressFqdn string `json:"ingress_fqdn,omitempty"`
+	Proto         string                         `json:"proto,omitempty"`
+	ContainerPort int32                          `json:"container_port,omitempty"`
+	ExportedPort  int32                          `json:"exported_port,omitempty"` // Port exposed within the guest.
+	IngressFqdn   string                         `json:"ingress_fqdn,omitempty"`
+	HttpMatchRule []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
 }
 
 type ListKubernetesClustersRequest struct {
@@ -327,30 +329,40 @@ type ResourceSummary struct {
 }
 
 type Resource struct {
-	Namespace string `json:"namespace,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Uid       string `json:"uid,omitempty"`
-	Parent    []Ref  `json:"parent,omitempty"`
-
-	CreationTime *time.Time `json:"creation_time,omitempty"`
-	UpdatedTime  *time.Time `json:"updated_time,omitempty"`
-	Tombstone    *time.Time `json:"tombstone,omitempty"`
-
-	Container []ResourceContainer `json:"container,omitempty"`
+	Namespace    string                          `json:"namespace,omitempty"`
+	Name         string                          `json:"name,omitempty"`
+	Uid          string                          `json:"uid,omitempty"` // Union value - depends on resource type.
+	Parent       []*ResourceSummary_Resource_Ref `json:"parent,omitempty"`
+	CreationTime *time.Time                      `json:"creation_time,omitempty"`
+	UpdatedTime  *time.Time                      `json:"updated_time,omitempty"`
+	Tombstone    *time.Time                      `json:"tombstone,omitempty"` // If set, the resource has been removed.
+	// For pods.
+	Container []*ResourceSummary_Resource_Container `json:"container,omitempty"`
+	Phase     string                                `json:"phase,omitempty"`
+	// For apps.
+	ReplicaCount       string `json:"replica_count,omitempty"`
+	ReplicaUpdated     string `json:"replica_updated,omitempty"`
+	ReplicaReady       string `json:"replica_ready,omitempty"`
+	ReplicaAvailable   string `json:"replica_available,omitempty"`
+	ObservedGeneration string `json:"observed_generation,omitempty"`
+	// For ingress.
+	HttpMatchRule      []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
+	TargetExportedPort int32                          `json:"target_exported_port,omitempty"`
 }
 
-type ResourceContainer struct {
-	Id               string     `json:"id,omitempty"`
-	Name             string     `json:"name,omitempty"`
-	StartedAt        *time.Time `json:"started_at,omitempty"`
-	TerminatedAt     *time.Time `json:"terminated_at,omitempty"`
-	Ready            bool       `json:"ready,omitempty"`
-	RestartCount     int64      `json:"restart_count,omitempty"`
-	Status           string     `json:"status,omitempty"`
-	NotRunningReason string     `json:"not_running_reason,omitempty"`
+type ResourceSummary_Resource_Container struct {
+	Id               string                             `json:"id,omitempty"`
+	Name             string                             `json:"name,omitempty"`
+	StartedAt        *time.Time                         `json:"started_at,omitempty"`
+	TerminatedAt     *time.Time                         `json:"terminated_at,omitempty"`
+	Ready            bool                               `json:"ready,omitempty"`
+	RestartCount     int64                              `json:"restart_count,omitempty"`
+	Status           string                             `json:"status,omitempty"`
+	NotRunningReason string                             `json:"not_running_reason,omitempty"`
+	ExportedPort     []*Container_ExportedContainerPort `json:"exported_port,omitempty"`
 }
 
-type Ref struct {
+type ResourceSummary_Resource_Ref struct {
 	Resource string `json:"resource,omitempty"`
 	Name     string `json:"name,omitempty"`
 	Uid      string `json:"uid,omitempty"`
