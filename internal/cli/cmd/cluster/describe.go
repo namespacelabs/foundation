@@ -43,7 +43,7 @@ func NewDescribeCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, args, err := selectRunningCluster(ctx, args)
+		cluster, _, err := selectRunningCluster(ctx, args)
 		if err != nil {
 			return err
 		}
