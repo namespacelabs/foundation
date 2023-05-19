@@ -11,11 +11,13 @@ import (
 	"github.com/go-errors/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type Error struct {
 	Err    error
-	code   codes.Code
+	s      *status.Status
 	stack  []uintptr
 	frames []errors.StackFrame
 }
@@ -30,7 +32,7 @@ func WrapWithSkip(code codes.Code, err error, skip int) *Error {
 
 	return &Error{
 		Err:   err,
-		code:  code,
+		s:     status.New(code, err.Error()),
 		stack: stack[:length],
 	}
 }
@@ -38,9 +40,10 @@ func WrapWithSkip(code codes.Code, err error, skip int) *Error {
 func Errorf(code codes.Code, format string, args ...interface{}) *Error {
 	stack := make([]uintptr, errors.MaxStackDepth)
 	length := runtime.Callers(2, stack[:])
+	err := fmt.Errorf(format, args...)
 	return &Error{
-		Err:   fmt.Errorf(format, args...),
-		code:  code,
+		Err:   err,
+		s:     status.New(code, err.Error()),
 		stack: stack[:length],
 	}
 }
@@ -54,7 +57,27 @@ func (e *Error) Unwrap() error {
 }
 
 func (e *Error) GRPCStatus() *status.Status {
-	return status.New(e.code, e.Error())
+	return e.s
+}
+
+func (e *Error) WithDetails(details ...proto.Message) *Error {
+	if e.s.Code() == codes.OK {
+		return e
+	}
+
+	p := e.s.Proto()
+	for _, detail := range details {
+		any, _ := anypb.New(detail)
+		if any != nil {
+			p.Details = append(p.Details, any)
+		}
+	}
+
+	return &Error{
+		Err:   e.Err,
+		s:     status.FromProto(p),
+		stack: e.stack,
+	}
 }
 
 func (err *Error) StackFrames() []errors.StackFrame {
