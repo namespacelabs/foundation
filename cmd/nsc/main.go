@@ -165,7 +165,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 
 	case codes.NotFound:
 		if x, ok := hasDetail(st, &v1.EnvironmentDoesntExist{}); ok {
-			fmt.Fprintf(ww, "%q does not exist", x.ClusterId)
+			fmt.Fprintf(ww, "%q does not exist.", x.ClusterId)
 		} else {
 			generic(ww, style, st, rid)
 		}
