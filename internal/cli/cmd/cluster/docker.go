@@ -42,6 +42,22 @@ func NewDockerCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newDockerAttachCmd())
+	cmd.AddCommand(newDockerRemoteCmd())
+
+	return cmd
+}
+
+func newDockerRemoteCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:                "remote ...",
+		Short:              "Run docker on the target cluster.",
+		Args:               cobra.MinimumNArgs(1),
+		DisableFlagParsing: true,
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		return runPassthrough(ctx, args[0], args[1:])
+	})
 
 	return cmd
 }
@@ -55,34 +71,39 @@ func newDockerPassthroughCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		clusterId := args[0]
-		args = args[1:]
-
-		response, err := api.EnsureCluster(ctx, api.Endpoint, clusterId)
-		if err != nil {
-			return err
-		}
-
-		p, err := runUnixSocketProxy(ctx, clusterId, unixSockProxyOpts{
-			Kind: "docker",
-			Connect: func(ctx context.Context) (net.Conn, error) {
-				token, err := fnapi.FetchToken(ctx)
-				if err != nil {
-					return nil, err
-				}
-				return connectToDocker(ctx, token, response.Cluster)
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		defer p.Cleanup()
-
-		return runDocker(ctx, p, args...)
+		return runPassthrough(ctx, args[0], args[1:])
 	})
 
 	return cmd
+}
+
+func runPassthrough(ctx context.Context, clusterId string, args []string) error {
+	if len(args) == 0 {
+		return fnerrors.New("at least one argument to pass to `docker` is required")
+	}
+
+	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterId)
+	if err != nil {
+		return err
+	}
+
+	p, err := runUnixSocketProxy(ctx, clusterId, unixSockProxyOpts{
+		Kind: "docker",
+		Connect: func(ctx context.Context) (net.Conn, error) {
+			token, err := fnapi.FetchToken(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return connectToDocker(ctx, token, response.Cluster)
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	defer p.Cleanup()
+
+	return runDocker(ctx, p, args...)
 }
 
 func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.KubernetesCluster) (net.Conn, error) {
