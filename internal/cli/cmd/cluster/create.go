@@ -33,7 +33,9 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
 
-	outputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
+	legacyOutputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
+	cmd.Flags().MarkDeprecated("output_to", "use cidfile instead")
+	cidfile := cmd.Flags().String("cidfile", "", "If specified, write the cluster id to this path.")
 	outputJsonPath := cmd.Flags().String("output_json_to", "", "If specified, write cluster metadata as JSON to this path.")
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
@@ -79,9 +81,15 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			}
 		}
 
-		if *outputPath != "" {
-			if err := os.WriteFile(*outputPath, []byte(cluster.ClusterId), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+		if *legacyOutputPath != "" {
+			if err := os.WriteFile(*legacyOutputPath, []byte(cluster.ClusterId), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *legacyOutputPath, err)
+			}
+		}
+
+		if *cidfile != "" {
+			if err := os.WriteFile(*cidfile, []byte(cluster.ClusterId), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *cidfile, err)
 			}
 		}
 
