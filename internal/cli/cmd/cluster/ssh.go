@@ -30,7 +30,7 @@ import (
 
 func NewSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh [cluster-id]",
+		Use:   "ssh [cluster-id] [command]",
 		Short: "Start an SSH session.",
 		Args:  cobra.ArbitraryArgs,
 	}
