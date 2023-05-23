@@ -35,6 +35,12 @@ To issue an actual release:
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
 
+NOTE: if you are running `goreleaser` inside a nix shell on macOS, you'll need to specify your host compiler, e.g.:
+
+```bash
+CC=/usr/bin/gcc goreleaser release --clean --snapshot
+```
+
 ### MacOS Notarization
 
 Note: currently the notarization is not required. Namespace binaries are downloaded by Homebrew and
