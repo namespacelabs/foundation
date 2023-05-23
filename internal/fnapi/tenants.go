@@ -124,10 +124,6 @@ func FetchToken(ctx context.Context) (Token, error) {
 			return auth.LoadTokenFromPath(ctx, specified, time.Now())
 		}
 
-		if specified := os.Getenv("NSC_TOKEN"); specified != "" {
-			return auth.LoadToken(ctx, []byte(specified), time.Now())
-		}
-
 		return auth.LoadTenantToken(ctx)
 	})
 }

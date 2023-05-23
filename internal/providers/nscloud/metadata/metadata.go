@@ -25,6 +25,7 @@ type MetadataSpec struct {
 	Version     string `json:"version,omitempty"`
 	MetadataURL string `json:"metadata_url,omitempty"`
 	TokenURL    string `json:"token_url,omitempty"`
+	InlineToken string `json:"inline_token,omitempty"`
 }
 
 func FetchValueFromSpec(ctx context.Context, specData string, key string) (string, error) {
@@ -37,6 +38,10 @@ func FetchValueFromSpec(ctx context.Context, specData string, key string) (strin
 	if err := json.Unmarshal(decodedSpec, &spec); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal metadata spec: %v", err)
 		return "", fnerrors.New("metadata spec is invalid")
+	}
+
+	if spec.InlineToken != "" {
+		return spec.InlineToken, nil
 	}
 
 	switch spec.Version {
