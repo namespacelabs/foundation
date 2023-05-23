@@ -156,6 +156,7 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 		Setsid: true,
 	}
 
+	fmt.Fprintf(console.Debug(ctx), "Running background command %q\n", strings.Join(cmd.Args, " "))
 	if err := cmd.Start(); err != nil {
 		return -1, err
 	}

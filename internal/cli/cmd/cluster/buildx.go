@@ -71,6 +71,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		if err != nil {
 			return err
 		}
+		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
 
 		var md buildxMetadata
 		for _, p := range available {
