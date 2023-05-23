@@ -28,6 +28,7 @@ func NewDebugCmd() *cobra.Command {
 	cmd.AddCommand(newUpdateLicenseCmd())
 	cmd.AddCommand(newKubernetesCmd())
 	cmd.AddCommand(newFindConfigCmd())
+	cmd.AddCommand(newInlineSpecCmd())
 
 	return cmd
 }
