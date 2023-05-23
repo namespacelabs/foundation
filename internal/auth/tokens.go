@@ -115,6 +115,10 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 		return nil, err
 	}
 
+	return LoadToken(ctx, data, validAt)
+}
+
+func LoadToken(ctx context.Context, data []byte, validAt time.Time) (*Token, error) {
 	token := &Token{}
 	if err := json.Unmarshal(data, token); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
