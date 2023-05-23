@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/url"
 	"os"
@@ -170,12 +171,12 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 
 		cfgFile := filepath.Join(config.Dir(), config.ConfigFileName)
 
-		info, err := os.Stat(cfgFile)
+		mode, err := determineCfgFileMode(cfgFile)
 		if err != nil {
-			return fnerrors.New("failed to describe %q: %w", cfgFile, err)
+			return err
 		}
 
-		if err := files.WriteJson(cfgFile, cfg, info.Mode()); err != nil {
+		if err := files.WriteJson(cfgFile, cfg, mode); err != nil {
 			return fnerrors.New("failed to write %q: %w", cfgFile, err)
 		}
 
@@ -199,6 +200,19 @@ func NewDockerLoginCmd(hidden bool) *cobra.Command {
 	})
 
 	return cmd
+}
+
+func determineCfgFileMode(f string) (fs.FileMode, error) {
+	info, err := os.Stat(f)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0660, nil
+		}
+
+		return 0, fnerrors.New("failed to describe %q: %w", f, err)
+	}
+
+	return info.Mode(), nil
 }
 
 func NewDockerCredHelperStoreCmd(hidden bool) *cobra.Command {
