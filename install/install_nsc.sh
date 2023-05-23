@@ -68,9 +68,10 @@ do_install() {
 
   echo "Detected ${os} as the host operating system"
 
+  architecture=''
   case $(uname -m) in
     x86_64) architecture="amd64" ;;
-    arm64) architecture="arm64" ;;
+    arm6|aarch64) architecture="arm64" ;;
     arm)    dpkg --print-architecture | grep -q "arm64" && architecture="arm64" || architecture="arm" ;;
   esac
 
