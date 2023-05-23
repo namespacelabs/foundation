@@ -36,7 +36,7 @@ func FetchValueFromSpec(ctx context.Context, specData string, key string) (strin
 
 	var spec MetadataSpec
 	if err := json.Unmarshal(decodedSpec, &spec); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal metadata spec: %v", err)
+		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal metadata spec: %v\n", err)
 		return "", fnerrors.New("metadata spec is invalid")
 	}
 
