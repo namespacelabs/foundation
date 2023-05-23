@@ -1,4 +1,5 @@
 .envrc
+.direnv
 
 # Binaries for programs and plugins
 *.exe

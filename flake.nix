@@ -17,15 +17,14 @@
         buildInputs = with pkgs;
           [
             clang-tools # For clang-format.
-            go_1_19
+            go_1_20
             upx
-            nodejs-16_x
+            nodejs
             yarn
             git
 
             crane
 
-            pre-commit
 
             goreleaser
 
