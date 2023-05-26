@@ -60,22 +60,15 @@ jobs:
           # We don't need to persist it for long, only for the next job to download it.
           retention-days: 1
 
-      - uses: k0kubun/action-slack@v2.0.0
-        with:
-          payload: |
-            {
-              "attachments": [{
-                "title": "${{ job.status }}: ${{ github.workflow }}",
-                "title_link": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}/checks",
-                "text": "${{ github.repository }}@${{ github.ref }}: <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
-                "fields": [{ "value": ${{ toJson(github.event.head_commit.message) }}, "short": false }],
-                "footer": "${{ github.event.head_commit.committer.name }} at ${{ github.event.head_commit.timestamp }}",
-                "color": "danger"
-              }]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Breakpoint on failure
         if: failure() && github.ref_name == 'main'
+        uses: namespacelabs/breakpoint-action@v0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          duration: 30m
+          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
+          slack-announce-channel: "#ci"
 
   run_deploy:
     name: Test local Namespace (deploy to k3d) os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
@@ -257,22 +250,15 @@ jobs:
         run: |
           ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/nsc
 
-      - uses: k0kubun/action-slack@v2.0.0
-        with:
-          payload: |
-            {
-              "attachments": [{
-                "title": "${{ job.status }}: ${{ github.workflow }}",
-                "title_link": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}/checks",
-                "text": "${{ github.repository }}@${{ github.ref }}: <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
-                "fields": [{ "value": ${{ toJson(github.event.head_commit.message) }}, "short": false }],
-                "footer": "${{ github.event.head_commit.committer.name }} at ${{ github.event.head_commit.timestamp }}",
-                "color": "danger"
-              }]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Breakpoint on failure
         if: failure() && github.ref_name == 'main'
+        uses: namespacelabs/breakpoint-action@v0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          duration: 15m
+          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
+          slack-announce-channel: "#ci"
 
   deploy_staging:
     name: Deploy staging
@@ -345,22 +331,15 @@ jobs:
           retention-days: 3
         if: always()
 
-      - uses: k0kubun/action-slack@v2.0.0
-        with:
-          payload: |
-            {
-              "attachments": [{
-                "title": "${{ job.status }}: ${{ github.workflow }}",
-                "title_link": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}/checks",
-                "text": "${{ github.repository }}@${{ github.ref }}: <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
-                "fields": [{ "value": ${{ toJson(github.event.head_commit.message) }}, "short": false }],
-                "footer": "${{ github.event.head_commit.committer.name }} at ${{ github.event.head_commit.timestamp }}",
-                "color": "danger"
-              }]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Breakpoint on failure
         if: failure()
+        uses: namespacelabs/breakpoint-action@v0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          duration: 30m
+          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
+          slack-announce-channel: "#ci"
 
   run_cross_repo_tests:
     name: cross-repo e2e tests
@@ -416,22 +395,15 @@ jobs:
           retention-days: 3
         if: always()
 
-      - uses: k0kubun/action-slack@v2.0.0
-        with:
-          payload: |
-            {
-              "attachments": [{
-                "title": "${{ job.status }}: ${{ github.workflow }}",
-                "title_link": "https://github.com/${{ github.repository }}/commit/${{ github.sha }}/checks",
-                "text": "${{ github.repository }}@${{ github.ref }}: <https://github.com/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>",
-                "fields": [{ "value": ${{ toJson(github.event.head_commit.message) }}, "short": false }],
-                "footer": "${{ github.event.head_commit.committer.name }} at ${{ github.event.head_commit.timestamp }}",
-                "color": "danger"
-              }]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      - name: Breakpoint on failure
         if: failure() && github.ref_name == 'main'
+        uses: namespacelabs/breakpoint-action@v0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          duration: 15m
+          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
+          slack-announce-channel: "#ci"
 
   test_unprepare:
     name: Test unprepare os=${{ matrix.os }}
