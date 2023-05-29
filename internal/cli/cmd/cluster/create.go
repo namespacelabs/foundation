@@ -40,8 +40,6 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
-	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
-
 	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
 	cmd.Flags().MarkHidden("internal_extra")
 
@@ -57,15 +55,6 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 
 		if *bare {
 			opts.Features = append(opts.Features, "EXP_DISABLE_KUBERNETES")
-		}
-
-		if *userSshey != "" {
-			keyData, err := os.ReadFile(*userSshey)
-			if err != nil {
-				return fnerrors.New("failed to load key: %w", err)
-			}
-
-			opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, string(keyData))
 		}
 
 		opts.WaitKind = "kubernetes"
