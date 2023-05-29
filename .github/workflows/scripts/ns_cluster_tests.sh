@@ -38,6 +38,22 @@ if [[ $s -gt 0 ]]; then
     exit 1
 fi
 
+# Test nsc kubectl get pods -A
+s=1
+for i in $(seq 1 5); do
+    K_OUT=$($NSC_BIN kubectl $CLUSTER_ID get pods -A | wc -l)
+    if [[ $(($K_OUT)) -gt 0 ]]; then
+        echo "Found K8s pods!"
+        s=0
+        break
+    fi
+    echo "Still no pods from cluster..."
+    sleep 5
+done
+if [[ $s -gt 0 ]]; then
+    exit 1
+fi
+
 # Test ns cluster destroy
 $NSC_BIN cluster destroy $CLUSTER_ID --force
 
