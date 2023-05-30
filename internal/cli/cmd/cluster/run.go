@@ -9,11 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -34,6 +36,7 @@ func NewRunCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 	}
 
+	machineType := run.Flags().String("machine_type", "", "Specify the machine type.")
 	image := run.Flags().String("image", "", "Which image to run.")
 	requestedName := run.Flags().String("name", "", "If no name is specified, one is generated.")
 	exportedPorts := run.Flags().Int32SliceP("publish", "p", nil, "Publish the specified ports.")
@@ -44,7 +47,7 @@ func NewRunCmd() *cobra.Command {
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
 	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 	ingressRules := run.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
-
+	duration := run.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
 	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
@@ -64,8 +67,18 @@ func NewRunCmd() *cobra.Command {
 			name = generateNameFromImage(*image)
 		}
 
-		if *devmode && *on != "" {
-			return fnerrors.New("--development can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+		if *on != "" {
+			if *devmode {
+				return fnerrors.New("--development can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+			}
+
+			if *machineType != "" {
+				return fnerrors.New("--machine_type can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+			}
+
+			if *duration > 0 {
+				return fnerrors.New("--duration can only be set when creating an environment (i.e. it can't be set when --on is specified)")
+			}
 		}
 
 		opts := createContainerOpts{
@@ -86,7 +99,7 @@ func NewRunCmd() *cobra.Command {
 
 		opts.ExportedPorts = exported
 
-		resp, err := createContainer(ctx, *on, *devmode, opts)
+		resp, err := createContainer(ctx, *machineType, *duration, *on, *devmode, opts)
 		if err != nil {
 			return err
 		}
@@ -199,7 +212,7 @@ type exportContainerPort struct {
 	HttpIngressRules []*api.ContainerPort_HttpMatchRule
 }
 
-func createContainer(ctx context.Context, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
+func createContainer(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
 		Name:  opts.Name,
 		Image: opts.Image,
@@ -229,14 +242,21 @@ func createContainer(ctx context.Context, target string, devmode bool, opts crea
 		const label = "Creating container environment"
 
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadablef(label), func(ctx context.Context) (*api.CreateContainersResponse, error) {
-			var response api.CreateContainersResponse
-			if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
+			req := api.CreateContainersRequest{
+				MachineType:     machineType,
 				Container:       []*api.ContainerRequest{container},
 				DevelopmentMode: devmode,
 				Label:           labels,
 				Feature:         opts.Features,
 				InternalExtra:   opts.InternalExtra,
-			}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			}
+
+			if duration > 0 {
+				req.Deadline = timestamppb.New(time.Now().Add(duration))
+			}
+
+			var response api.CreateContainersResponse
+			if err := api.Endpoint.CreateContainers.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 			return &response, nil

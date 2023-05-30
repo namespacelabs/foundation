@@ -61,14 +61,15 @@ type StartCreateKubernetesClusterResponse struct {
 }
 
 type CreateContainersRequest struct {
-	MachineType     string              `json:"machine_type,omitempty"`
-	Container       []*ContainerRequest `json:"container,omitempty"`
-	Compose         []*ComposeRequest   `json:"compose,omitempty"`
-	Interactive     bool                `json:"interactive,omitempty"`
-	DevelopmentMode bool                `json:"development_mode,omitempty"`
-	Feature         []string            `json:"feature,omitempty"`
-	Label           []*LabelEntry       `json:"label,omitempty"`
-	InternalExtra   string              `json:"internal_extra,omitempty"`
+	MachineType     string                 `json:"machine_type,omitempty"`
+	Container       []*ContainerRequest    `json:"container,omitempty"`
+	Compose         []*ComposeRequest      `json:"compose,omitempty"`
+	Interactive     bool                   `json:"interactive,omitempty"`
+	DevelopmentMode bool                   `json:"development_mode,omitempty"`
+	Feature         []string               `json:"feature,omitempty"`
+	Label           []*LabelEntry          `json:"label,omitempty"`
+	InternalExtra   string                 `json:"internal_extra,omitempty"`
+	Deadline        *timestamppb.Timestamp `json:"deadline,omitempty"`
 }
 
 type StartContainersRequest struct {

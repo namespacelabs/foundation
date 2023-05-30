@@ -46,7 +46,7 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	cmd.Flags().MarkHidden("ssh_key")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
 
-	duration := cmd.Flags().Duration("duration", 4*time.Hour, "For how long to run the ephemeral environment.")
+	duration := cmd.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
 
 	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
 	cmd.Flags().MarkHidden("internal_extra")
@@ -58,8 +58,11 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			KeepAtExit:    true,
 			Purpose:       "Manually created from CLI",
 			Features:      *features,
-			Deadline:      timestamppb.New(time.Now().Add(*duration)),
 			InternalExtra: *internalExtra,
+		}
+
+		if *duration > 0 {
+			opts.Deadline = timestamppb.New(time.Now().Add(*duration))
 		}
 
 		if *userSshey != "" {
