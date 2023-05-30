@@ -40,7 +40,8 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	outputJsonPath := cmd.Flags().String("output_json_to", "", "If specified, write cluster metadata as JSON to this path.")
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
-
+	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
+	cmd.Flags().MarkHidden("ssh_key")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
 
 	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
@@ -54,6 +55,15 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			Purpose:       "Manually created from CLI",
 			Features:      *features,
 			InternalExtra: *internalExtra,
+		}
+
+		if *userSshey != "" {
+			keyData, err := os.ReadFile(*userSshey)
+			if err != nil {
+				return fnerrors.New("failed to load key: %w", err)
+			}
+
+			opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, string(keyData))
 		}
 
 		if *experimentalFrom != "" {
