@@ -132,9 +132,14 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 	fmt.Fprintln(ww)
 	fmt.Fprint(ww, style.ErrorHeader.Apply("Failed: "))
 
+	msg := st.Message()
+	if x, ok := hasDetail(st, &v1.UserMessage{}); ok && x.Message != "" {
+		msg = x.Message
+	}
+
 	switch st.Code() {
 	case codes.PermissionDenied:
-		fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", st.Message())
+		fmt.Fprintf(ww, "it seems that's not allowed. We got: %s\n", msg)
 
 		if rid != nil {
 			fmt.Fprintln(ww)
@@ -148,7 +153,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 		}
 
 	case codes.Unauthenticated:
-		fmt.Fprintf(ww, "no credentials found. We got: %s\n\n", st.Message())
+		fmt.Fprintf(ww, "no credentials found. We got: %s\n\n", msg)
 
 		var cmd string
 		switch {
@@ -167,18 +172,18 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 		if x, ok := hasDetail(st, &v1.EnvironmentDoesntExist{}); ok {
 			fmt.Fprintf(ww, "%q does not exist.", x.ClusterId)
 		} else {
-			generic(ww, style, st, rid)
+			generic(ww, style, st.Code(), msg, rid)
 		}
 
 	case codes.FailedPrecondition:
 		if x, ok := hasDetail(st, &v1.EnvironmentDestroyed{}); ok {
 			fmt.Fprintf(ww, "%q is no longer running.", x.ClusterId)
 		} else {
-			generic(ww, style, st, rid)
+			generic(ww, style, st.Code(), msg, rid)
 		}
 
 	default:
-		generic(ww, style, st, rid)
+		generic(ww, style, st.Code(), msg, rid)
 	}
 
 	fmt.Fprintln(ww)
@@ -199,8 +204,8 @@ func hasDetail[Msg proto.Message](st *status.Status, detail Msg) (Msg, bool) {
 	return detail, false
 }
 
-func generic(ww io.Writer, style colors.Style, st *status.Status, rid *protocol.RequestID) {
-	fmt.Fprintf(ww, "we got an error from our server: %s (%s)\n", st.Message(), st.Code())
+func generic(ww io.Writer, style colors.Style, code codes.Code, msg string, rid *protocol.RequestID) {
+	fmt.Fprintf(ww, "we got an error from our server: %s (%s)\n", msg, code)
 
 	fmt.Fprintln(ww)
 	fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),

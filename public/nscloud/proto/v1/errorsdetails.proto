@@ -15,3 +15,7 @@ message EnvironmentDestroyed {
 message EnvironmentDoesntExist {
     string cluster_id = 1;
 }
+
+message UserMessage {
+    string message = 1;
+}
