@@ -10,13 +10,14 @@ import (
 )
 
 type CreateKubernetesClusterRequest struct {
-	Ephemeral         bool     `json:"ephemeral,omitempty"`
-	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
-	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
-	MachineType       string   `json:"machine_type,omitempty"`
-	Feature           []string `json:"feature,omitempty"`
-	UniqueTag         string   `json:"unique_tag,omitempty"`
-	InternalExtra     string   `json:"internal_extra,omitempty"`
+	Ephemeral         bool                  `json:"ephemeral,omitempty"`
+	DocumentedPurpose string                `json:"documented_purpose,omitempty"`
+	AuthorizedSshKeys []string              `json:"authorized_ssh_keys,omitempty"`
+	MachineType       string                `json:"machine_type,omitempty"`
+	Feature           []string              `json:"feature,omitempty"`
+	UniqueTag         string                `json:"unique_tag,omitempty"`
+	InternalExtra     string                `json:"internal_extra,omitempty"`
+	Experimental      *ExperimentalFeatures `json:"experimental,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {
@@ -394,4 +395,22 @@ type IngressBackendEndpoint struct {
 
 type RegisterIngressResponse struct {
 	Fqdn string `json:"fqdn,omitempty"`
+}
+
+type ExperimentalFeatures struct {
+	Disk           []*ExperimentalFeatures_Disk           `json:"disk,omitempty"`
+	ContainerdShim []*ExperimentalFeatures_ContainerdShim `json:"containerd_shim,omitempty"`
+}
+
+type ExperimentalFeatures_Disk struct {
+	Name  string `json:"name,omitempty"`
+	Image string `json:"image,omitempty"`
+}
+
+type ExperimentalFeatures_ContainerdShim struct {
+	Name        string   `json:"name,omitempty"`
+	RuntimeType string   `json:"runtime_type,omitempty"`
+	AddToPath   []string `json:"add_to_path,omitempty"`
+	BinaryName  string   `json:"binary_name,omitempty"`
+	Root        string   `json:"root,omitempty"`
 }

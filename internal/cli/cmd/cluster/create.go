@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
@@ -40,6 +41,8 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
+	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
+
 	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
 	cmd.Flags().MarkHidden("internal_extra")
 
@@ -51,6 +54,14 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			Purpose:       "Manually created from CLI",
 			Features:      *features,
 			InternalExtra: *internalExtra,
+		}
+
+		if *experimentalFrom != "" {
+			exp := &api.ExperimentalFeatures{}
+			if err := files.ReadJson(*experimentalFrom, exp); err != nil {
+				return err
+			}
+			opts.Experimental = exp
 		}
 
 		if *bare {
