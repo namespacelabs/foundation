@@ -7,17 +7,22 @@ package api
 import (
 	"fmt"
 	"time"
+
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type CreateKubernetesClusterRequest struct {
-	Ephemeral         bool     `json:"ephemeral,omitempty"`
-	DocumentedPurpose string   `json:"documented_purpose,omitempty"`
-	AuthorizedSshKeys []string `json:"authorized_ssh_keys,omitempty"`
-	MachineType       string   `json:"machine_type,omitempty"`
-	Feature           []string `json:"feature,omitempty"`
-	UniqueTag         string   `json:"unique_tag,omitempty"`
-	InternalExtra     string   `json:"internal_extra,omitempty"`
-	Experimental      any      `json:"experimental,omitempty"`
+	Ephemeral         bool                   `json:"ephemeral,omitempty"`
+	DocumentedPurpose string                 `json:"documented_purpose,omitempty"`
+	AuthorizedSshKeys []string               `json:"authorized_ssh_keys,omitempty"`
+	MachineType       string                 `json:"machine_type,omitempty"`
+	Feature           []string               `json:"feature,omitempty"`
+	Interactive       bool                   `json:"interactive,omitempty"`
+	Label             []*LabelEntry          `json:"label,omitempty"`
+	UniqueTag         string                 `json:"unique_tag,omitempty"`
+	InternalExtra     string                 `json:"internal_extra,omitempty"`
+	Deadline          *timestamppb.Timestamp `json:"deadline,omitempty"`
+	Experimental      any                    `json:"experimental,omitempty"`
 }
 
 type GetKubernetesClusterRequest struct {

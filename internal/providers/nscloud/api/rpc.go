@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/framework/jsonreparser"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -223,6 +224,7 @@ type CreateClusterOpts struct {
 	AuthorizedSshKeys []string
 	UniqueTag         string
 	InternalExtra     string
+	Deadline          *timestamppb.Timestamp
 	Experimental      any
 
 	WaitClusterOpts
@@ -254,6 +256,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			AuthorizedSshKeys: opts.AuthorizedSshKeys,
 			UniqueTag:         opts.UniqueTag,
 			InternalExtra:     opts.InternalExtra,
+			Deadline:          opts.Deadline,
 			Experimental:      opts.Experimental,
 		}
 
