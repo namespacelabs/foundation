@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/cli/cli/config"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -21,6 +22,7 @@ import (
 	"github.com/moby/buildkit/cmd/buildctl/build"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/util/progress/progresswriter"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
@@ -28,7 +30,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
-	"namespacelabs.dev/foundation/internal/build/buildkit/bkkeychain"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -379,7 +380,8 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 	eg.Go(func(ctx context.Context) error {
 		var attachable []session.Attachable
 
-		attachable = append(attachable, bkkeychain.Wrapper{Context: ctx, ErrorLogger: io.Discard, Keychain: keychain{}})
+		dockerConfig := config.LoadDefaultConfigFile(os.Stderr)
+		attachable = append(attachable, authprovider.NewDockerAuthProvider(dockerConfig))
 
 		solveOpt := client.SolveOpt{
 			Exports: bf.Exports,
