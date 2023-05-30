@@ -67,8 +67,8 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 		}
 
 		if *experimentalFrom != "" {
-			exp := &api.ExperimentalFeatures{}
-			if err := files.ReadJson(*experimentalFrom, exp); err != nil {
+			var exp any
+			if err := files.ReadJson(*experimentalFrom, &exp); err != nil {
 				return err
 			}
 			opts.Experimental = exp

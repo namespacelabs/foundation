@@ -223,7 +223,7 @@ type CreateClusterOpts struct {
 	AuthorizedSshKeys []string
 	UniqueTag         string
 	InternalExtra     string
-	Experimental      *ExperimentalFeatures
+	Experimental      any
 
 	WaitClusterOpts
 }
