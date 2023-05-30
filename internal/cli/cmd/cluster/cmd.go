@@ -36,7 +36,7 @@ func NewBareClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newDockerPassthroughCmd())
 	cmd.AddCommand(NewProxyCmd())
-	cmd.AddCommand(NewDockerLoginCmd(true)) // Adding hidden command under `cluster` to support old action versions.
+	cmd.AddCommand(newDockerLoginCmd(true)) // Adding hidden command under `cluster` to support old action versions.
 	cmd.AddCommand(NewMetadataCmd())
 
 	h := &cobra.Command{

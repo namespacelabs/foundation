@@ -39,8 +39,16 @@ func NewDockerCmd() *cobra.Command {
 		Short: "Docker-related functionality.",
 	}
 
-	cmd.AddCommand(newDockerAttachCmd())
-	cmd.AddCommand(newDockerRemoteCmd())
+	cmd.AddCommand(newDockerAttachCmd())     // nsc docker attach-context
+	cmd.AddCommand(newDockerRemoteCmd())     // nsc docker remote
+	cmd.AddCommand(newDockerLoginCmd(false)) // nsc docker login
+
+	buildx := &cobra.Command{Use: "buildx", Short: "Docker Buildx related functionality."}
+	buildx.AddCommand(newSetupBuildxCmd("setup"))
+	buildx.AddCommand(newCleanupBuildxCommand())
+	buildx.AddCommand(newWireBuildxCommand(true))
+
+	cmd.AddCommand(buildx)
 
 	return cmd
 }
@@ -124,9 +132,9 @@ func runDocker(ctx context.Context, socketPath string, args ...string) error {
 	return localexec.RunInteractive(ctx, docker)
 }
 
-func NewDockerLoginCmd(hidden bool) *cobra.Command {
+func newDockerLoginCmd(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "docker-login",
+		Use:    "login",
 		Short:  "Log into the Namespace Cloud private registry for use with Docker.",
 		Args:   cobra.NoArgs,
 		Hidden: hidden,

@@ -253,10 +253,11 @@ func newCleanupBuildxCommand() *cobra.Command {
 	return cmd
 }
 
-func newWireBuildxCommand() *cobra.Command {
+func newWireBuildxCommand(hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "wire",
-		Short: "Wires a previously setup proxy setup.",
+		Use:    "wire",
+		Short:  "Wires a previously setup proxy setup.",
+		Hidden: hidden,
 	}
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
