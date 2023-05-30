@@ -398,8 +398,8 @@ type RegisterIngressResponse struct {
 }
 
 type ExperimentalFeatures struct {
-	Disk           []*ExperimentalFeatures_Disk           `json:"disk,omitempty"`
-	ContainerdShim []*ExperimentalFeatures_ContainerdShim `json:"containerd_shim,omitempty"`
+	Disk           []*ExperimentalFeatures_Disk           `json:"disks,omitempty"`
+	ContainerdShim []*ExperimentalFeatures_ContainerdShim `json:"containerd_shims,omitempty"`
 }
 
 type ExperimentalFeatures_Disk struct {
