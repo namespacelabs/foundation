@@ -22,6 +22,7 @@ import (
 
 func NewLoginCmd() *cobra.Command {
 	var kind string
+	var openBrowser bool
 
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -37,7 +38,7 @@ func NewLoginCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			fmt.Fprintf(stdout, "%s\n", aec.Bold.Apply("Login to Namespace"))
 
-			if openURL(res.LoginUrl) {
+			if openBrowser && openURL(res.LoginUrl) {
 				fmt.Fprintf(stdout, "Please complete the login flow in your browser.\n\n  %s\n", res.LoginUrl)
 			} else {
 				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
@@ -64,6 +65,8 @@ func NewLoginCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
 	_ = cmd.Flags().MarkHidden("kind")
+
+	cmd.Flags().BoolVar(&openBrowser, "browser", true, "Open a browser to login.")
 
 	return cmd
 }
