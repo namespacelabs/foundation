@@ -22,6 +22,7 @@ import (
 	"github.com/moby/buildkit/cmd/buildctl/build"
 	"github.com/moby/buildkit/identity"
 	"github.com/moby/buildkit/session"
+	"github.com/moby/buildkit/session/auth"
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/util/progress/progresswriter"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -30,6 +31,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
+	"namespacelabs.dev/foundation/internal/build/buildkit/bkkeychain"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -380,8 +382,14 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 	eg.Go(func(ctx context.Context) error {
 		var attachable []session.Attachable
 
-		dockerConfig := config.LoadDefaultConfigFile(os.Stderr)
-		attachable = append(attachable, authprovider.NewDockerAuthProvider(dockerConfig))
+		dockerConfig := config.LoadDefaultConfigFile(console.Stderr(ctx))
+
+		attachable = append(attachable, bkkeychain.Wrapper{
+			Context:     ctx,
+			ErrorLogger: io.Discard,
+			Keychain:    keychain{},
+			Fallback:    authprovider.NewDockerAuthProvider(dockerConfig).(auth.AuthServer),
+		})
 
 		solveOpt := client.SolveOpt{
 			Exports: bf.Exports,

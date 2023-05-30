@@ -22,6 +22,8 @@ type Wrapper struct {
 	Context     context.Context // Solve's parent context.
 	ErrorLogger io.Writer
 	Keychain    oci.Keychain
+
+	Fallback auth.AuthServer
 }
 
 func (kw Wrapper) Register(server *grpc.Server) {
@@ -59,7 +61,9 @@ func (kw Wrapper) credentials(ctx context.Context, host string) (*auth.Credentia
 		return nil, err
 	}
 
-	if authz.IdentityToken != "" || authz.RegistryToken != "" {
+	if authz.IdentityToken != "" {
+		return &auth.CredentialsResponse{Secret: authz.IdentityToken}, nil
+	} else if authz.RegistryToken != "" {
 		fmt.Fprintf(kw.ErrorLogger, "%s: authentication type mismatch, got token expected username/secret", host)
 		return nil, rpcerrors.Errorf(codes.InvalidArgument, "expected username/secret got token")
 	}
@@ -68,16 +72,28 @@ func (kw Wrapper) credentials(ctx context.Context, host string) (*auth.Credentia
 }
 
 func (kw Wrapper) FetchToken(ctx context.Context, req *auth.FetchTokenRequest) (*auth.FetchTokenResponse, error) {
+	if kw.Fallback != nil {
+		return kw.Fallback.FetchToken(ctx, req)
+	}
+
 	fmt.Fprintf(kw.ErrorLogger, "AuthServer.FetchToken %s\n", asJson(req))
 	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
 }
 
 func (kw Wrapper) GetTokenAuthority(ctx context.Context, req *auth.GetTokenAuthorityRequest) (*auth.GetTokenAuthorityResponse, error) {
+	if kw.Fallback != nil {
+		return kw.Fallback.GetTokenAuthority(ctx, req)
+	}
+
 	fmt.Fprintf(kw.ErrorLogger, "AuthServer.GetTokenAuthority %s\n", asJson(req))
 	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
 }
 
 func (kw Wrapper) VerifyTokenAuthority(ctx context.Context, req *auth.VerifyTokenAuthorityRequest) (*auth.VerifyTokenAuthorityResponse, error) {
+	if kw.Fallback != nil {
+		return kw.Fallback.VerifyTokenAuthority(ctx, req)
+	}
+
 	fmt.Fprintf(kw.ErrorLogger, "AuthServer.VerifyTokenAuthority %s\n", asJson(req))
 	return nil, rpcerrors.Errorf(codes.Unimplemented, "unimplemented")
 }
