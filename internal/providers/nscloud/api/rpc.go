@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -567,6 +568,10 @@ type LogsOpts struct {
 	Exclude   []*LogsSelector
 }
 
+var (
+	streamResetError = regexp.MustCompile("^stream error:.*; received from peer$")
+)
+
 func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(LogBlock) error) error {
 	return api.TailClusterLogs.Do(ctx, TailLogsRequest{
 		ClusterID:      opts.ClusterID,
@@ -591,6 +596,11 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		}
 
 		if err := scanner.Err(); err != nil {
+			// XXX Replace with pagination
+			if streamResetError.MatchString(err.Error()) {
+				return fnerrors.New("Logs stream reset. We saw: %w\n\nThis can happen if no new logs arrived for a long time.\nIf you are still expecting new logs, please retry.", err)
+			}
+
 			return fnerrors.New("cluster log stream closed with error: %w", err)
 		}
 		return nil
