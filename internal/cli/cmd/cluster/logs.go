@@ -9,9 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/maps"
+	"k8s.io/utils/strings/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -147,6 +150,13 @@ func NewLogsCmd() *cobra.Command {
 	return cmd
 }
 
+const (
+	namespaceLogLabel  = "namespace"
+	k8sPodNameLogLabel = "kubernetes_pod_name"
+)
+
+var defaultNamespaces = []string{"", "default"}
+
 type logPrinter struct {
 	outs      map[string]io.Writer
 	useStdout bool
@@ -159,26 +169,44 @@ func newLogPrinter(useStdout bool) *logPrinter {
 	}
 }
 
-func (lp *logPrinter) writer(ctx context.Context, ns, pod, container, stream string) io.Writer {
+func (lp *logPrinter) writer(ctx context.Context, labels map[string]string, stream string) io.Writer {
 	if lp.useStdout {
 		return console.Stdout(ctx)
 	}
 
 	// Cache writers so that we get the same color for each output on the same stream
-	label := fmt.Sprintf("%s/%s/%s/%s", ns, pod, container, stream)
-	if out, ok := lp.outs[label]; ok {
+	keys := maps.Keys(labels)
+	sort.Strings(keys)
+
+	key := stream
+	for _, k := range keys {
+		key = fmt.Sprintf("%s/%s:%s", key, k, labels[k])
+	}
+
+	if out, ok := lp.outs[key]; ok {
 		return out
 	}
 
 	// Only use namespace and pod name in user visible label since console space is limited
-	out := console.Output(ctx, fmt.Sprintf("%s/%s", ns, pod))
-	lp.outs[label] = out
+	var label string
+	if pod, ok := labels[k8sPodNameLogLabel]; ok {
+		label = pod
+
+		if ns, ok := labels[namespaceLogLabel]; ok && !slices.Contains(defaultNamespaces, ns) {
+			label = fmt.Sprintf("%s/%s", ns, label)
+		}
+	} else {
+		label = stream
+	}
+
+	out := console.Output(ctx, label)
+	lp.outs[key] = out
 	return out
 }
 
 func (lp *logPrinter) Print(ctx context.Context, lb api.LogBlock) {
 	for _, l := range lb.Line {
-		out := lp.writer(ctx, lb.Namespace, lb.Pod, lb.Container, l.Stream)
+		out := lp.writer(ctx, lb.Labels, l.Stream)
 		fmt.Fprintf(out, "%s %s\n", l.Timestamp.Format(time.RFC3339), l.Content)
 	}
 }

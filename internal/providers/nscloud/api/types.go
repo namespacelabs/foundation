@@ -248,10 +248,8 @@ type LogsSelector struct {
 }
 
 type LogBlock struct {
-	Namespace string    `json:"namespace,omitempty"`
-	Pod       string    `json:"pod,omitempty"`
-	Container string    `json:"container,omitempty"`
-	Line      []LogLine `json:"line,omitempty"`
+	Line   []LogLine         `json:"line,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
 }
 
 type LogLine struct {
