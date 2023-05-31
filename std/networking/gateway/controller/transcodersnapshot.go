@@ -494,6 +494,7 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 				TypedConfig: fileAccessLog,
 			},
 		}},
+		StreamIdleTimeout: durationpb.New(30 * time.Minute),
 		RouteSpecifier: &hcm.HttpConnectionManager_RouteConfig{
 			RouteConfig: &route.RouteConfiguration{
 				Name: LocalRouteName,
