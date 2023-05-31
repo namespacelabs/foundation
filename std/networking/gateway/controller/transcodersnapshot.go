@@ -412,8 +412,9 @@ func makeRoute(clusterName string, transcoderSpec HttpGrpcTranscoderSpec) *route
 					Cluster: clusterName,
 				},
 				// Explicitly override the default upstream route timeout of 15s.
+				// We set HttpConnectionManager.RequestTimeout to 5m below for unary requests.
 				// https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/route/v3/route_components.proto#config-route-v3-routeaction
-				Timeout: durationpb.New(5 * time.Minute),
+				Timeout: durationpb.New(30 * time.Minute),
 			},
 		},
 	}
@@ -495,6 +496,7 @@ func makeHTTPListener(httpConfig httpListenerConfig, transcoders []transcoderWit
 			},
 		}},
 		StreamIdleTimeout: durationpb.New(30 * time.Minute),
+		RequestTimeout:    durationpb.New(5 * time.Minute), // Does not apply to streaming requests.
 		RouteSpecifier: &hcm.HttpConnectionManager_RouteConfig{
 			RouteConfig: &route.RouteConfiguration{
 				Name: LocalRouteName,
