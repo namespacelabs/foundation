@@ -300,13 +300,21 @@ func NewBuildCmd() *cobra.Command {
 
 		if !*push {
 			// On push, we already report what was built. Add a hint for other builds, too.
-			fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d images (platforms %s).\n", len(fragments), strings.Join(*platforms, ","))
+			fmt.Fprintf(console.Stdout(ctx), "\nBuilt %d %s (platforms %s).\n", len(fragments), plural(len(fragments), "image", "images"), strings.Join(*platforms, ","))
 		}
 
 		return nil
 	})
 
 	return cmd
+}
+
+func plural(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+
+	return plural
 }
 
 type buildFragment struct {
