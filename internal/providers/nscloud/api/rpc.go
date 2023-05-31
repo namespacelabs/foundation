@@ -591,7 +591,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		}
 
 		if err := scanner.Err(); err != nil {
-			return err
+			return fnerrors.New("cluster log stream closed with error: %w", err)
 		}
 		return nil
 	})
