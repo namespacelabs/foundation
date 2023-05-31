@@ -63,7 +63,7 @@ func newDockerAttachCmd() *cobra.Command {
 			}
 		}
 
-		state, err := ensureStateDir(*stateDir, "docker", "proxy")
+		state, err := ensureStateDir(*stateDir, "docker/proxy")
 		if err != nil {
 			return err
 		}
