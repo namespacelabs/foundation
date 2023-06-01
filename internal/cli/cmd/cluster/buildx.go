@@ -32,7 +32,12 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
-const defaultBuilder = "nsc-remote"
+const (
+	metadataFile      = "metadata.json"
+	defaultBuilder    = "nsc-remote"
+	proxyDir          = "proxy"
+	buildkitProxyPath = "buildkit/" + proxyDir
+)
 
 func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	cmd := &cobra.Command{
@@ -67,13 +72,20 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return rpcerrors.Errorf(codes.Internal, "no builders available")
 		}
 
-		state, err := ensureStateDir(*stateDir, "buildkit", "proxy")
+		state, err := ensureStateDir(*stateDir, buildkitProxyPath)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
 
-		var md buildxMetadata
+		if proxyAlreadyExists(state) {
+			console.SetStickyContent(ctx, "build", existingProxyMessage(*stateDir))
+			return nil
+		}
+
+		md := buildxMetadata{
+			NodeGroupName: *name,
+		}
 		for _, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
 			md.Instances = append(md.Instances, buildxInstanceMetadata{
@@ -82,21 +94,20 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			})
 		}
 
-		if err := files.WriteJson(filepath.Join(state, "metadata.json"), md, 0644); err != nil {
-			return err
-		}
-
 		var instances []*BuildClusterInstance
-		for _, p := range md.Instances {
+		for i, p := range md.Instances {
 			// Always create one, in case it's needed below. This instance has a zero-ish cost if we never call NewConn.
 			instance := NewBuildClusterInstance0(p.Platform)
 			instances = append(instances, instance)
 
 			if *background {
-				if _, err := startBackgroundProxy(ctx, p, *createAtStartup); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup); err != nil {
 					return err
+				} else {
+					md.Instances[i].Pid = pid
 				}
 			} else {
+				md.Instances[i].Pid = os.Getpid()
 				bp, err := instance.runBuildProxy(ctx, p.SocketPath)
 				if err != nil {
 					return err
@@ -113,6 +124,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					return bp.Serve(ctx)
 				})
 			}
+		}
+
+		if err := files.WriteJson(filepath.Join(state, metadataFile), md, 0644); err != nil {
+			return err
 		}
 
 		if *createAtStartup {
@@ -135,11 +150,12 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return multierr.New(err, eg.CancelAndWait())
 		}
 
+		// Print info message even if proxy goes in background
+		console.SetStickyContent(ctx, "build", banner(ctx, *name, *use, available, *background))
+
 		if *background {
 			return nil
 		}
-
-		console.SetStickyContent(ctx, "build", banner(ctx, *name, *use, available))
 
 		if err := eg.Wait(); err != nil {
 			return err
@@ -151,15 +167,40 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return err
 		}
 
+		if err := os.RemoveAll(state); err != nil {
+			return err
+		}
+
 		return nil
 	})
 
 	return cmd
 }
 
-func ensureStateDir(specified, dir, suffix string) (string, error) {
+func proxyAlreadyExists(stateDir string) bool {
+	_, err := os.Stat(filepath.Join(stateDir, metadataFile))
+	return !os.IsNotExist(err)
+}
+
+func existingProxyMessage(customStateDir string) string {
+	if customStateDir != "" {
+		return fmt.Sprintf(`Previous Buildx proxy configuration found in %s.
+If you want to create a new proxy configuration, cleanup the older one first with:
+
+   nsc docker buildx cleanup --state %s
+`, customStateDir, customStateDir)
+	} else {
+		return `Previous Buildx proxy configuration found.
+If you want to create a new proxy configuration, cleanup the older one first with:
+
+   nsc docker buildx cleanup
+`
+	}
+}
+
+func ensureStateDir(specified, dir string) (string, error) {
 	if specified == "" {
-		return dirs.CreateUserTempDir(dir, suffix)
+		return dirs.Ensure(dirs.Subdir(dir))
 	}
 
 	s, err := filepath.Abs(specified)
@@ -167,16 +208,18 @@ func ensureStateDir(specified, dir, suffix string) (string, error) {
 		return "", err
 	}
 
-	return s, nil
+	return dirs.Ensure(filepath.Join(s, proxyDir), nil)
 }
 
 type buildxMetadata struct {
-	Instances []buildxInstanceMetadata `json:"instances"`
+	NodeGroupName string                   `json:"node_group_name"`
+	Instances     []buildxInstanceMetadata `json:"instances"`
 }
 
 type buildxInstanceMetadata struct {
 	Platform   api.BuildPlatform `json:"build_platform"`
 	SocketPath string            `json:"socket_path"`
+	Pid        int               `json:"pid"`
 }
 
 func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {
@@ -233,7 +276,7 @@ func newCleanupBuildxCommand() *cobra.Command {
 		Short: "Unregisters Namespace Remote builders from buildx.",
 	}
 
-	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
+	stateDir := cmd.Flags().String("state", "", "If set, stores the proxy sockets in this directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		dockerCli, err := command.NewDockerCli()
@@ -246,7 +289,44 @@ func newCleanupBuildxCommand() *cobra.Command {
 		}
 
 		return withStore(dockerCli, func(txn *store.Txn) error {
-			return txn.Remove(*name)
+			state, err := ensureStateDir(*stateDir, buildkitProxyPath)
+			if err != nil {
+				return err
+			}
+
+			if !proxyAlreadyExists(state) {
+				console.SetStickyContent(ctx, "build", "State file not found. Nothing to cleanup.")
+				return nil
+			}
+
+			var md buildxMetadata
+			if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
+				return err
+			}
+
+			for _, inst := range md.Instances {
+				if inst.Pid > 0 {
+					process, err := os.FindProcess(inst.Pid)
+					if err != nil {
+						return err
+					}
+
+					if err := process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
+						return err
+					}
+				}
+			}
+
+			if err := os.RemoveAll(state); err != nil {
+				console.SetStickyContent(ctx, "build",
+					fmt.Sprintf("Warning: deleting state files in %s failed: %v", state, err))
+			}
+
+			if md.NodeGroupName != "" {
+				return txn.Remove(md.NodeGroupName)
+			}
+
+			return nil
 		})
 	})
 
@@ -279,7 +359,7 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 		}
 
 		var md buildxMetadata
-		if err := files.ReadJson(filepath.Join(*stateDir, "metadata.json"), &md); err != nil {
+		if err := files.ReadJson(filepath.Join(*stateDir, metadataFile), &md); err != nil {
 			return err
 		}
 
@@ -303,7 +383,7 @@ func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
 	return avail, nil
 }
 
-func banner(ctx context.Context, name string, use bool, native []api.BuildPlatform) string {
+func banner(ctx context.Context, name string, use bool, native []api.BuildPlatform, background bool) string {
 	w := wordwrap.NewWriter(80)
 	style := colors.Ctx(ctx)
 
@@ -318,11 +398,19 @@ func banner(ctx context.Context, name string, use bool, native []api.BuildPlatfo
 		fmt.Fprintf(w, "\n  docker buildx use %s\n", name)
 	}
 
-	fmt.Fprintf(w, "\nStart a new terminal, and start building:\n")
-	fmt.Fprintf(w, "\n  docker buildx build ...\n")
+	if !background {
+		fmt.Fprintf(w, "\nStart a new terminal, and start building:\n")
+		fmt.Fprintf(w, "\n  docker buildx build ...\n")
 
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, style.Comment.Apply("Exiting will remove the configuration."))
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, style.Comment.Apply("Exiting will remove the configuration."))
+	} else {
+		fmt.Fprintf(w, "\nStart building:\n")
+		fmt.Fprintf(w, "\n  docker buildx build ...\n")
+
+		fmt.Fprintf(w, "\nYour remote builder context is running in the background. You can always clean it up with:\n")
+		fmt.Fprintf(w, "\n  nsc docker buildx cleanup \n")
+	}
 
 	_ = w.Close()
 
