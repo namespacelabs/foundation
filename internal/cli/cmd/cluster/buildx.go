@@ -47,9 +47,9 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
-	background := cmd.Flags().Bool("background", false, "If true, runs the proxies in the background.")
+	background := cmd.Flags().Bool("background", false, "If true, runs the remote builder context in the background.")
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
-	stateDir := cmd.Flags().String("state", "", "If set, stores the proxy sockets in this directory.")
+	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		dockerCli, err := command.NewDockerCli()
@@ -184,14 +184,14 @@ func proxyAlreadyExists(stateDir string) bool {
 
 func existingProxyMessage(customStateDir string) string {
 	if customStateDir != "" {
-		return fmt.Sprintf(`Previous Buildx proxy configuration found in %s.
-If you want to create a new proxy configuration, cleanup the older one first with:
+		return fmt.Sprintf(`Previous remote builder configuration found in %s.
+If you want to create a new remote builder context configuration, cleanup the older one first with:
 
    nsc docker buildx cleanup --state %s
 `, customStateDir, customStateDir)
 	} else {
-		return `Previous Buildx proxy configuration found.
-If you want to create a new proxy configuration, cleanup the older one first with:
+		return `Previous remote builder configuration found.
+If you want to create a new remote builder context configuration, cleanup the older one first with:
 
    nsc docker buildx cleanup
 `
@@ -276,7 +276,7 @@ func newCleanupBuildxCommand() *cobra.Command {
 		Short: "Unregisters Namespace Remote builders from buildx.",
 	}
 
-	stateDir := cmd.Flags().String("state", "", "If set, stores the proxy sockets in this directory.")
+	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		dockerCli, err := command.NewDockerCli()
