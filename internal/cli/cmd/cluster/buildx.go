@@ -8,10 +8,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/store/storeutil"
@@ -63,25 +61,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return err
 		}
 
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		eg := executor.New(ctx, "proxies")
-
-		eg.Go(func(ctx context.Context) error {
-			// Listen to SIGTERM signal
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, syscall.SIGTERM)
-
-			select {
-			case <-ctx.Done():
-			case <-sigCh:
-				// Graceful termination
-				cancel()
-			}
-
-			return nil
-		})
 
 		available, err := determineAvailable(ctx)
 		if err != nil {
@@ -109,9 +89,8 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		for _, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
 			md.Instances = append(md.Instances, buildxInstanceMetadata{
-				Platform:           p,
-				SocketPath:         sockPath,
-				BackgroundProxyPID: -1, // -1 means proxy is not in background
+				Platform:   p,
+				SocketPath: sockPath,
 			})
 		}
 
@@ -125,9 +104,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup); err != nil {
 					return err
 				} else {
-					md.Instances[i].BackgroundProxyPID = pid
+					md.Instances[i].Pid = pid
 				}
 			} else {
+				md.Instances[i].Pid = os.Getpid()
 				bp, err := instance.runBuildProxy(ctx, p.SocketPath)
 				if err != nil {
 					return err
@@ -187,6 +167,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return err
 		}
 
+		if err := os.RemoveAll(state); err != nil {
+			return err
+		}
+
 		return nil
 	})
 
@@ -233,9 +217,9 @@ type buildxMetadata struct {
 }
 
 type buildxInstanceMetadata struct {
-	Platform           api.BuildPlatform `json:"build_platform"`
-	SocketPath         string            `json:"socket_path"`
-	BackgroundProxyPID int               `json:"bg_proxy_pid"`
+	Platform   api.BuildPlatform `json:"build_platform"`
+	SocketPath string            `json:"socket_path"`
+	Pid        int               `json:"pid"`
 }
 
 func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {
@@ -321,24 +305,28 @@ func newCleanupBuildxCommand() *cobra.Command {
 			}
 
 			for _, inst := range md.Instances {
-				if inst.BackgroundProxyPID > 0 {
-					process, err := os.FindProcess(inst.BackgroundProxyPID)
+				if inst.Pid > 0 {
+					process, err := os.FindProcess(inst.Pid)
 					if err != nil {
 						return err
 					}
 
-					err = process.Signal(syscall.SIGTERM)
-					if err != nil && !errors.Is(err, os.ErrProcessDone) {
+					if err := process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
 						return err
 					}
 				}
 			}
 
 			if err := os.RemoveAll(state); err != nil {
-				return err
+				console.SetStickyContent(ctx, "build",
+					fmt.Sprintf("Warning: deleting state files in %s failed: %v", state, err))
 			}
 
-			return txn.Remove(md.NodeGroupName)
+			if md.NodeGroupName != "" {
+				return txn.Remove(md.NodeGroupName)
+			}
+
+			return nil
 		})
 	})
 
@@ -420,7 +408,7 @@ func banner(ctx context.Context, name string, use bool, native []api.BuildPlatfo
 		fmt.Fprintf(w, "\nStart building:\n")
 		fmt.Fprintf(w, "\n  docker buildx build ...\n")
 
-		fmt.Fprintf(w, "\nThe proxy is running in background. You can stop it and unconfigure the remote builders with:\n")
+		fmt.Fprintf(w, "\nYour remote builder context is running in the background. You can always clean it up with:\n")
 		fmt.Fprintf(w, "\n  nsc docker buildx cleanup \n")
 	}
 
