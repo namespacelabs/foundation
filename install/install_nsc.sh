@@ -131,7 +131,7 @@ do_install() {
   echo "platform for you. You can learn more at https://namespace.so/telemetry."
   echo
 
-  case $SHELL in
+  case "$SHELL" in
     /bin/zsh) shell_profile=".zshrc" ;;
     *) shell_profile=".bashrc" ;;
   esac
