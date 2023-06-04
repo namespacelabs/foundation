@@ -28,6 +28,10 @@ func init() {
 
 var Log = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 
+func Background() context.Context {
+	return Log.WithContext(context.Background())
+}
+
 type interceptor struct{}
 
 func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
