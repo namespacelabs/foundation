@@ -17,7 +17,7 @@ import (
 )
 
 // Needs to be consistent with JSON names of cueSecret fields.
-var secretFields = []string{"description", "generate"}
+var secretFields = []string{"description", "generate", "optional"}
 
 type cueSecret struct {
 	Description string             `json:"description,omitempty"`
