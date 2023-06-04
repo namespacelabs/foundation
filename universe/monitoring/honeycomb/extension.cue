@@ -18,10 +18,7 @@ extension: fn.#Extension & {
 configure: fn.#Configure & {
 	startup: {
 		env: {
-			// TODO: support optional secrets
-			if $env.name == "dev" || $env.name == "staging" || $env.name == "prod" || $env.name == "prod-metal" {
-				"MONITORING_HONEYCOMB_X_HONEYCOMB_TEAM": fromSecret: ":xHoneycombTeam"
-			}
+			"MONITORING_HONEYCOMB_X_HONEYCOMB_TEAM": fromSecret: ":xHoneycombTeam"
 		}
 	}
 }

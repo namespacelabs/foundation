@@ -57,6 +57,10 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef, exter
 		}
 
 		if value == nil {
+			if gsec.Spec.DefaultValue != nil {
+				return gsec.Spec.DefaultValue, nil
+			}
+
 			var server schema.PackageName
 			if gs.server != nil {
 				server = gs.server.PackageName

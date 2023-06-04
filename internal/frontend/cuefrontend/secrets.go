@@ -22,6 +22,7 @@ var secretFields = []string{"description", "generate"}
 type cueSecret struct {
 	Description string             `json:"description,omitempty"`
 	Generate    *cueSecretGenerate `json:"generate,omitempty"`
+	Optional    bool               `json:"optional,omitempty"`
 }
 
 type cueSecretGenerate struct {
@@ -65,6 +66,10 @@ func parseSecret(ctx context.Context, name string, v cue.Value) (*schema.SecretS
 	}
 
 	if bits.Generate != nil {
+		if bits.Optional {
+			return nil, fnerrors.BadInputError("%s: generated secrets can't be optional", name)
+		}
+
 		spec.Generate = &schema.SecretSpec_GenerateSpec{
 			UniqueId:        bits.Generate.UniqueID,
 			RandomByteCount: int32(bits.Generate.RandomByteCount),
@@ -83,6 +88,10 @@ func parseSecret(ctx context.Context, name string, v cue.Value) (*schema.SecretS
 			spec.Generate.Format = schema.SecretSpec_GenerateSpec_Format(x)
 		} else {
 			spec.Generate.Format = schema.SecretSpec_GenerateSpec_FORMAT_BASE64
+		}
+	} else {
+		if bits.Optional {
+			spec.DefaultValue = &schema.SecretResult{Value: []byte{}}
 		}
 	}
 
