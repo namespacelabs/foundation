@@ -20,7 +20,7 @@ configure: fn.#Configure & {
 	startup: {
 		args: {
 			listen_hostname: "0.0.0.0"
-			port:            "\($inputs.serverPort.port)"
+			grpcserver_port: "\($inputs.serverPort.port)"
 		}
 	}
 }

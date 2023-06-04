@@ -14,7 +14,7 @@ extension: fn.#Extension & {}
 configure: fn.#Configure & {
 	startup: {
 		args: {
-			http_port: "\($inputs.httpPort.port)"
+			grpcserver_http_port: "\($inputs.httpPort.port)"
 		}
 	}
 }

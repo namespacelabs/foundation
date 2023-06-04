@@ -38,8 +38,8 @@ import (
 
 var (
 	listenHostname = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
-	port           = flag.Int("port", 0, "Port to listen on.")
-	httpPort       = flag.Int("http_port", 0, "Port to listen HTTP on.")
+	port           = flag.Int("grpcserver_port", 0, "Port to listen on.")
+	httpPort       = flag.Int("grpcserver_http_port", 0, "Port to listen HTTP on.")
 
 	handleSIGTERM = true
 )
