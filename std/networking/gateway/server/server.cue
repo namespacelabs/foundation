@@ -25,13 +25,13 @@ server: fn.#OpaqueServer & {
 	}
 }
 
-$jaegerServer: inputs.#Server & {
-	packageName: "namespacelabs.dev/foundation/std/monitoring/jaeger"
+$collectorServer: inputs.#Server & {
+	packageName: "namespacelabs.dev/foundation/std/monitoring/otelcollector"
 }
 
 configure: fn.#Configure & {
 	stack: {
-		append: [$jaegerServer]
+		append: [$collectorServer]
 	}
 
 	with: binary: "namespacelabs.dev/foundation/std/networking/gateway/server/configure"
