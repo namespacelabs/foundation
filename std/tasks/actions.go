@@ -75,7 +75,6 @@ type ActionEvent struct {
 	data     EventData
 	progress ActionProgress
 	onDone   OnDoneFunc
-	tracer   trace.Tracer
 }
 
 type ResultData struct {
@@ -91,7 +90,6 @@ type RunningAction struct {
 	span        trace.Span
 	attachments *EventAttachments
 	onDone      OnDoneFunc
-	tracer      trace.Tracer
 }
 
 type ActionArgument struct {
@@ -107,12 +105,6 @@ func Action(name string) *ActionEvent {
 	ev := allocEvent()
 	ev.data.Name = name
 	ev.data.State = ActionCreated
-	ev.tracer = actiontracing.Tracer
-	return ev
-}
-
-func (ev *ActionEvent) WithTracer(tracer trace.Tracer) *ActionEvent {
-	ev.tracer = tracer
 	return ev
 }
 
@@ -251,17 +243,16 @@ func (ev *ActionEvent) toAction(ctx context.Context, state ActionState) *Running
 		Progress:    ev.progress,
 		attachments: &EventAttachments{actionID: ev.data.ActionID, sink: sink},
 		onDone:      ev.onDone,
-		tracer:      ev.tracer,
 	}
 }
 
-func (ev *ActionEvent) Start(ctx context.Context) *RunningAction {
+func (ev *ActionEvent) Start(ctx context.Context, tracer trace.Tracer) (context.Context, *RunningAction) {
 	ra := ev.toAction(ctx, ActionRunning)
-	ra.markStarted(ctx)
-	return ra
+	return ra.markStarted(ctx, tracer), ra
 }
 
 type RunOpts struct {
+	Tracer trace.Tracer
 	// If Wait returns true, then the action is considered to be cached, and Run is skipped.
 	Wait func(context.Context) (bool, error)
 	Run  func(context.Context) error
@@ -332,11 +323,16 @@ func (ev *ActionEvent) RunWithOpts(ctx context.Context, opts RunOpts) error {
 		defer releaseLease()
 	}
 
+	tracer := opts.Tracer
+	if tracer == nil {
+		tracer = actiontracing.Tracer
+	}
+
 	// Our data model implies that the caller always owns data; and sinks should perform copies.
 	ra.Data.Started = time.Now()
-	ra.markStarted(ctx)
+	ctxWithTrace := ra.markStarted(ctx, tracer)
 
-	return ra.Done(ra.Call(ctx, opts.Run))
+	return ra.Done(ra.Call(ctxWithTrace, opts.Run))
 }
 
 func (ev *ActionEvent) Run(ctx context.Context, f func(context.Context) error) error {
@@ -575,9 +571,9 @@ func ActionFromProto(ctx context.Context, cat string, in *protocol.Task) *Runnin
 	}
 }
 
-func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) trace.Span {
+func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) (context.Context, trace.Span) {
 	if tracer == nil {
-		return nil
+		return ctx, nil
 	}
 
 	name := data.Name
@@ -585,7 +581,7 @@ func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) trace.S
 		name = data.Category + "::" + name
 	}
 
-	_, span := tracer.Start(ctx, name)
+	ctx, span := tracer.Start(ctx, name)
 
 	if span.IsRecording() {
 		span.SetAttributes(attribute.String("actionID", data.ActionID.String()))
@@ -604,7 +600,7 @@ func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) trace.S
 		}
 	}
 
-	return span
+	return ctx, span
 }
 
 func endSpan(span trace.Span, r ResultData, completed time.Time) {
@@ -619,14 +615,17 @@ func endSpan(span trace.Span, r ResultData, completed time.Time) {
 	span.End()
 }
 
-func (af *RunningAction) markStarted(ctx context.Context) {
+func (af *RunningAction) markStarted(ctx context.Context, tracer trace.Tracer) context.Context {
 	if af.Data.Started.IsZero() {
 		af.Data.Started = af.Data.Created
 	}
 	af.Data.State = ActionRunning
 	af.sink.Started(af)
-	af.span = startSpan(ctx, af.tracer, af.Data)
+
+	ctxWithSpan, span := startSpan(ctx, tracer, af.Data)
+	af.span = span
 	runningActionsSink.Sink().Started(af)
+	return ctxWithSpan
 }
 
 func (af *RunningAction) CustomDone(t time.Time, err error) bool {

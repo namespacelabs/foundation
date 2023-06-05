@@ -138,8 +138,9 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 				existing := running[vid]
 				if vertex.Started != nil && vertex.Completed == nil {
 					if existing == nil {
+						_, ra := tasks.Action(name).Category("buildkit").StartTimestamp(*vertex.Started).Start(ctx, nil)
 						existing = &vertexState{
-							action:   tasks.Action(name).Category("buildkit").StartTimestamp(*vertex.Started).Start(ctx),
+							action:   ra,
 							statuses: map[string]*tasks.RunningAction{},
 						}
 						running[vid] = existing
@@ -172,7 +173,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 				existing := parent.statuses[sid]
 				if status.Started != nil {
 					if existing == nil {
-						existing = tasks.Action(sid).Category("buildkit").Parent(parent.action.ID()).StartTimestamp(*status.Started).Start(ctx)
+						_, existing = tasks.Action(sid).Category("buildkit").Parent(parent.action.ID()).StartTimestamp(*status.Started).Start(ctx, nil)
 						parent.statuses[sid] = existing
 						// XXX implement progress tracking, buildkit will send updated `Current` counts.
 					}

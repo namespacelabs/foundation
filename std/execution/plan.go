@@ -217,13 +217,12 @@ func (g *compiledPlan) apply(ctx context.Context, ch chan *orchestration.Event, 
 			if n.invocation.Description != "" {
 				action = action.HumanReadablef(n.invocation.Description)
 			}
-			if opts.TaskTracer != nil {
-				action = action.WithTracer(opts.TaskTracer)
-			}
+
 			if opts.TaskOnDone != nil {
 				action = action.OnDone(opts.TaskOnDone)
 			}
-			running = action.Start(invCtx)
+
+			invCtx, running = action.Start(invCtx, opts.TaskTracer)
 		}
 
 		res, err := n.dispatch.Handle(invCtx, n.invocation, n.message, n.parsed, ch)

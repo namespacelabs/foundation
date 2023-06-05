@@ -16,7 +16,7 @@ import (
 
 func TestMultipleError(t *testing.T) {
 	ctx := WithSink(context.Background(), nullSink{})
-	af := Action("foobar").Start(ctx)
+	_, af := Action("foobar").Start(ctx, nil)
 	_ = af.Done(multierr.New(errors.New("foobar0"), errors.New("foobar1")))
 
 	stored := MakeStoreProto(&af.Data, nil)
