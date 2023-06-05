@@ -25,6 +25,15 @@ type ExchangeGithubTokenResponse struct {
 	Tenant      *Tenant `json:"tenant,omitempty"`
 }
 
+type ExchangeCircleciTokenRequest struct {
+	CircleciToken string `json:"circleci_token,omitempty"`
+}
+
+type ExchangeCircleciTokenResponse struct {
+	TenantToken string  `json:"tenant_token,omitempty"`
+	Tenant      *Tenant `json:"tenant,omitempty"`
+}
+
 type Tenant struct {
 	Name   string `json:"name,omitempty"`
 	AppUrl string `json:"app_url,omitempty"`
@@ -36,6 +45,17 @@ func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenRe
 	var res ExchangeGithubTokenResponse
 	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeGithubToken", req, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeGithubTokenResponse{}, err
+	}
+
+	return res, nil
+}
+
+func ExchangeCircleciToken(ctx context.Context, token string) (ExchangeCircleciTokenResponse, error) {
+	req := ExchangeCircleciTokenRequest{CircleciToken: token}
+
+	var res ExchangeCircleciTokenResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeCircleciToken", req, DecodeJSONResponse(&res)); err != nil {
+		return ExchangeCircleciTokenResponse{}, err
 	}
 
 	return res, nil

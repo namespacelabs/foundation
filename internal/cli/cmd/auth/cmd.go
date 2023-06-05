@@ -14,6 +14,7 @@ func NewAuthCmd() *cobra.Command {
 
 	cmd.AddCommand(NewLoginCmd())
 	cmd.AddCommand(NewExchangeGithubTokenCmd())
+	cmd.AddCommand(NewExchangeCircleCITokenCmd())
 
 	return cmd
 }
