@@ -56,7 +56,8 @@ var (
 func makeDeps__70o2mm(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+	// name: "otel-tracing"
+	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, core.MustUnwrapProto("CgxvdGVsLXRyYWNpbmc=", &interceptors.InterceptorRegistration{}).(*interceptors.InterceptorRegistration)); err != nil {
 		return nil, err
 	}
 

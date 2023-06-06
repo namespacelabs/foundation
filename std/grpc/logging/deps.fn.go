@@ -41,7 +41,9 @@ var (
 func makeDeps__16bc0q(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+	// name: "grpc-logging"
+	// after: "namespace-rid"
+	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, core.MustUnwrapProto("CgxncnBjLWxvZ2dpbmcSDW5hbWVzcGFjZS1yaWQ=", &interceptors.InterceptorRegistration{}).(*interceptors.InterceptorRegistration)); err != nil {
 		return nil, err
 	}
 

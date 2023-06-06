@@ -40,7 +40,9 @@ extension: fn.#Extension & {
 
 	instantiate: {
 		serverInfo:     info.#Exports.ServerInfo
-		"interceptors": interceptors.#Exports.InterceptorRegistration
-		"middleware":   middleware.#Exports.Middleware
+		"interceptors": interceptors.#Exports.InterceptorRegistration & {
+			name: "otel-tracing"
+		}
+		"middleware": middleware.#Exports.Middleware
 	}
 }

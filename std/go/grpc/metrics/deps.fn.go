@@ -39,7 +39,8 @@ var (
 func makeDeps__so2f3v(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
-	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, nil); err != nil {
+	// name: "prometheus-metrics"
+	if deps.Interceptors, err = interceptors.ProvideInterceptorRegistration(ctx, core.MustUnwrapProto("ChJwcm9tZXRoZXVzLW1ldHJpY3M=", &interceptors.InterceptorRegistration{}).(*interceptors.InterceptorRegistration)); err != nil {
 		return nil, err
 	}
 

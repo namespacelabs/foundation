@@ -7,6 +7,8 @@ extension: fn.#Extension & {
 	hasInitializerIn: "GO"
 
 	instantiate: {
-		"interceptors": interceptors.#Exports.InterceptorRegistration
+		"interceptors": interceptors.#Exports.InterceptorRegistration & {
+			name: "prometheus-metrics"
+		}
 	}
 }

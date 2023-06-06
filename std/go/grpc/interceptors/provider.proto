@@ -10,4 +10,5 @@ option go_package = "namespacelabs.dev/foundation/std/go/grpc/interceptors";
 
 message InterceptorRegistration {
     string name = 1;
+    repeated string after = 2; // Run this interceptor after the specified ones.
 }

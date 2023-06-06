@@ -4,6 +4,7 @@ package interceptors
 #Exports: {
 	InterceptorRegistration: {
 		name?: string
+		after?: [...string]
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/go/grpc/interceptors"

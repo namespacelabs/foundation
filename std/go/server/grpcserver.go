@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/philopon/go-toposort"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
 	"google.golang.org/grpc"
@@ -148,19 +149,53 @@ func Listen(ctx context.Context, registerServices func(Server)) error {
 }
 
 func interceptorsAsOpts() []grpc.ServerOption {
-	unary, streaming := interceptors.ServerInterceptors()
+	registrations := interceptors.ServerInterceptors()
+
+	var rid requestid.Interceptor
+	registrations = append(registrations, interceptors.Registered{
+		Name:   "namespace-rid",
+		After:  []string{"otel-tracing"},
+		Unary:  rid.Unary,
+		Stream: rid.Streaming,
+	})
+
+	graph := toposort.NewGraph(len(registrations))
+
+	names := make([]string, len(registrations))
+	index := map[string]int{}
+	for k, reg := range registrations {
+		name := reg.Name
+		if name == "" {
+			name = fmt.Sprintf("$interceptor_%d", k)
+		}
+		names[k] = name
+		index[name] = k
+
+		graph.AddNode(name)
+	}
+
+	for k, reg := range registrations {
+		for _, after := range reg.After {
+			if _, ok := index[after]; ok {
+				graph.AddEdge(after, names[k])
+			}
+		}
+	}
+
+	sorted, ok := graph.Toposort()
+	if !ok {
+		panic("loop in interceptor order")
+	}
+
+	core.ZLog.Debug().Strs("interceptors", sorted).Send()
 
 	var coreU []grpc.UnaryServerInterceptor
 	var coreS []grpc.StreamServerInterceptor
-
-	// Interceptors are always invoked in order. It's **imperative** that the
-	// request id handling interceptor shows up first.
-
-	coreU = append(coreU, requestid.Interceptor{}.Unary)
-	coreS = append(coreS, requestid.Interceptor{}.Streaming)
-
-	coreU = append(coreU, unary...)
-	coreS = append(coreS, streaming...)
+	for _, key := range sorted {
+		reg := registrations[index[key]]
+		coreU = append(coreU, reg.Unary)
+		coreS = append(coreS, reg.Stream)
+	}
 
 	return []grpc.ServerOption{
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(coreS...)),

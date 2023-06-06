@@ -8,6 +8,8 @@ import (
 	"context"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -52,6 +54,9 @@ func AllocateRequestID(ctx context.Context) (context.Context, RequestData) {
 		Started:   time.Now(),
 		RequestID: NewID(),
 	}
+
+	trace.SpanFromContext(ctx).SetAttributes(attribute.String("ns.rid", string(rdata.RequestID)))
+
 	return context.WithValue(ctx, ck, rdata), rdata
 }
 

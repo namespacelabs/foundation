@@ -16,9 +16,7 @@ var (
 	interceptorsMu sync.RWMutex
 
 	serverInterceptors struct {
-		registrations []Registration // Each index of `unary` and `streaming` maps back to the same index `Registration`.
-		unary         []grpc.UnaryServerInterceptor
-		streaming     []grpc.StreamServerInterceptor
+		registrations []Registered
 	}
 
 	clientInterceptors struct {
@@ -31,6 +29,14 @@ var (
 type Registration struct {
 	owner *core.InstantiationPath
 	name  string
+	after []string
+}
+
+type Registered struct {
+	Name   string
+	After  []string
+	Unary  grpc.UnaryServerInterceptor
+	Stream grpc.StreamServerInterceptor
 }
 
 func (r Registration) ForClient(u grpc.UnaryClientInterceptor, s grpc.StreamClientInterceptor) {
@@ -50,18 +56,18 @@ func (r Registration) ForServer(u grpc.UnaryServerInterceptor, s grpc.StreamServ
 	interceptorsMu.Lock()
 	defer interceptorsMu.Unlock()
 
-	serverInterceptors.registrations = append(serverInterceptors.registrations, r)
-	serverInterceptors.unary = append(serverInterceptors.unary, u)
-	serverInterceptors.streaming = append(serverInterceptors.streaming, s)
+	serverInterceptors.registrations = append(serverInterceptors.registrations, Registered{
+		Name:   r.name,
+		After:  r.after,
+		Unary:  u,
+		Stream: s,
+	})
 }
 
-func ServerInterceptors() ([]grpc.UnaryServerInterceptor, []grpc.StreamServerInterceptor) {
+func ServerInterceptors() []Registered {
 	interceptorsMu.RLock()
 	defer interceptorsMu.RUnlock()
-
-	unary := serverInterceptors.unary
-	streaming := serverInterceptors.streaming
-	return unary, streaming
+	return serverInterceptors.registrations
 }
 
 func ClientInterceptors() ([]grpc.UnaryClientInterceptor, []grpc.StreamClientInterceptor) {
@@ -74,5 +80,5 @@ func ClientInterceptors() ([]grpc.UnaryClientInterceptor, []grpc.StreamClientInt
 }
 
 func ProvideInterceptorRegistration(ctx context.Context, r *InterceptorRegistration) (Registration, error) {
-	return Registration{owner: core.InstantiationPathFromContext(ctx), name: r.GetName()}, nil
+	return Registration{owner: core.InstantiationPathFromContext(ctx), name: r.GetName(), after: r.GetAfter()}, nil
 }

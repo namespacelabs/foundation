@@ -10,7 +10,10 @@ extension: fn.#Extension & {
 	hasInitializerIn: "GO"
 
 	instantiate: {
-		"interceptors": interceptors.#Exports.InterceptorRegistration
-		"middleware":   middleware.#Exports.Middleware
+		"interceptors": interceptors.#Exports.InterceptorRegistration & {
+			name: "grpc-logging"
+			after: ["namespace-rid"]
+		}
+		"middleware": middleware.#Exports.Middleware
 	}
 }

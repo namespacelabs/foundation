@@ -169,6 +169,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 			if response.NSCR != nil {
 				registryEp = fmt.Sprintf("%s/%s", response.NSCR.EndpointAddress, response.NSCR.Repository)
 			}
+
 			if err := os.WriteFile(*outputRegistryPath, []byte(registryEp), 0644); err != nil {
 				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
 			}
