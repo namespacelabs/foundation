@@ -27,6 +27,10 @@ server: fn.#OpaqueServer & {
 
 configure: {
 	startup: {
+		args: {
+			"memory.max-traces": "2500000"
+		}
+
 		env: {
 			COLLECTOR_OTLP_ENABLED: "true"
 		}
