@@ -131,9 +131,10 @@ do_install() {
   echo "platform for you. You can learn more at https://namespace.so/telemetry."
   echo
 
-  case "$SHELL" in
-    /bin/zsh) shell_profile=".zshrc" ;;
-    *) shell_profile=".bashrc" ;;
+  case `echo $0` in
+    *zsh) shell_profile=".zshrc" ;;
+    *bash) shell_profile=".bashrc" ;;
+    *) shell_profile=".profile" ;;
   esac
   echo "Manually add the directory to your \$HOME/$shell_profile (or similar)"
   echo "  export NS_ROOT=\"$ns_root\""
