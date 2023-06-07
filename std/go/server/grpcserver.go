@@ -32,17 +32,19 @@ type Registrar = servercore.Registrar
 type RunOpts = servercore.RunOpts
 
 func Listen(ctx context.Context, registerServices func(Server)) error {
-	return servercore.Listen(ctx, servercore.ListenOpts{
-		Address:  *listenHostname,
-		GrpcPort: *port,
-		HttpPort: *httpPort,
-	}, registerServices)
+	return servercore.Listen(ctx, makeListenerOpts(), registerServices)
 }
 
 func Run(ctx context.Context, opts RunOpts) {
-	servercore.Run(ctx, opts, servercore.ListenOpts{
-		Address:  *listenHostname,
-		GrpcPort: *port,
-		HttpPort: *httpPort,
-	})
+	servercore.Run(ctx, opts, makeListenerOpts())
+}
+
+func makeListenerOpts() servercore.ListenOpts {
+	opts := servercore.ListenOpts{
+		CreateListener: servercore.MakeTCPListener(*listenHostname, *port),
+	}
+	if *httpPort != 0 {
+		opts.CreateHttpListener = servercore.MakeTCPListener(*listenHostname, *httpPort)
+	}
+	return opts
 }

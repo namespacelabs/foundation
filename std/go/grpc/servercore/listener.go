@@ -30,11 +30,16 @@ import (
 )
 
 type ListenOpts struct {
-	Address  string
-	GrpcPort int
-	HttpPort int
+	CreateListener     func(context.Context) (net.Listener, error)
+	CreateHttpListener func(context.Context) (net.Listener, error)
 
 	DontHandleSigTerm bool
+}
+
+func MakeTCPListener(address string, port int) func(context.Context) (net.Listener, error) {
+	return func(ctx context.Context) (net.Listener, error) {
+		return net.Listen("tcp", fmt.Sprintf("%s:%d", address, port))
+	}
 }
 
 func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server)) error {
@@ -42,7 +47,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		go handleGracefulShutdown()
 	}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", opts.Address, opts.GrpcPort))
+	lis, err := opts.CreateListener(ctx)
 	if err != nil {
 		return err
 	}
@@ -116,10 +121,10 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	go func() { checkReturn("http/debug", debugHTTP.Serve(httpL)) }()
 	go func() { checkReturn("grpc", grpcServer.Serve(anyL)) }()
 
-	if opts.HttpPort != 0 {
+	if opts.CreateHttpListener != nil {
 		httpServer := &http.Server{Handler: httpMux}
 
-		gwLis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", opts.Address, opts.HttpPort))
+		gwLis, err := opts.CreateHttpListener(ctx)
 		if err != nil {
 			return err
 		}
