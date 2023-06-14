@@ -75,7 +75,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [nscloud]
+        os: [ubuntu-latest]
         use_prebuilts: [false, true]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -126,15 +126,15 @@ jobs:
         run: |
           /tmp/ns deploy \
             --use_prebuilts=${{ matrix.use_prebuilts }} \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
             internal/testdata/server/gogrpc
-            # --buildkit_import_cache=type=gha \
-            # --buildkit_export_cache=type=gha,mode=max \
 
       - name: Breakpoint on failure
-        if: failure()
+        # if: failure()
         uses: namespacelabs/breakpoint-action@v0
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
