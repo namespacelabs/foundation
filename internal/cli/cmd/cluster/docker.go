@@ -184,7 +184,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 			fmt.Fprintf(stdout, "\n\nRun your first build with:\n\n  $ nsc build . --name test:v0.0.1 --push")
 		}
 
-		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/builds\n\n")
+		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/faster-builds\n\n")
 
 		if _, err := exec.LookPath(credHelperBinary); err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
