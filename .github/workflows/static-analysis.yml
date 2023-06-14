@@ -84,7 +84,8 @@ jobs:
         run: "staticcheck ./..."
 
       - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
+        # if: failure() && github.ref_name == 'main'
+        if: failure()
         uses: namespacelabs/breakpoint-action@v0
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
