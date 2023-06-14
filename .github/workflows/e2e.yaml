@@ -117,7 +117,7 @@ jobs:
         run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
-        run: kubectl cluster-info
+        run: /tmp/ns kubectl cluster-info
 
       # staging deployments already use buildkit, so only testing golang_use_buildkit=false here.
       - name: Deploy internal/testdata/server/gogrpc
@@ -187,7 +187,7 @@ jobs:
         run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
-        run: kubectl cluster-info
+        run: /tmp/ns kubectl cluster-info
 
       - name: ns dev
         run: |
