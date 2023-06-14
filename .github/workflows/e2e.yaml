@@ -75,7 +75,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [nscloud]
         use_prebuilts: [false, true]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -132,16 +132,6 @@ jobs:
             --naming_no_tls=true \
             --use_orchestrator=false \
             internal/testdata/server/gogrpc
-
-      - name: Breakpoint on failure
-        # if: failure()
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
 
       - name: Upload action log
         uses: actions/upload-artifact@v3
