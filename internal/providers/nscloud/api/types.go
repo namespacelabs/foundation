@@ -195,6 +195,8 @@ type KubernetesCluster struct {
 	GithubWorkflow *GithubWorkflowInfo `json:"github_workflow,omitempty"`
 
 	ServiceState []*Cluster_ServiceState `json:"service_state,omitempty"`
+
+	TlsBackedPort []*KubernetesCluster_TlsBackedPort `json:"tls_backed_port,omitempty"`
 }
 
 type Cluster_ServiceState struct {
@@ -202,6 +204,12 @@ type Cluster_ServiceState struct {
 	Status   string `json:"status,omitempty"`
 	Endpoint string `json:"endpoint,omitempty"` // Service-specific endpoint.
 	Public   bool   `json:"public,omitempty"`
+}
+
+type KubernetesCluster_TlsBackedPort struct {
+	Name       string `json:"name,omitempty"`
+	Port       int32  `json:"port,omitempty"`
+	ServerName string `json:"server_name,omitempty"`
 }
 
 type GithubWorkflowInfo struct {

@@ -44,6 +44,7 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
 	cmd.Flags().MarkHidden("ssh_key")
+	experimental := cmd.Flags().String("experimental", "", "JSON definition of experimental features.")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
 
 	duration := cmd.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
@@ -72,6 +73,18 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			}
 
 			opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, string(keyData))
+		}
+
+		if *experimental != "" && *experimentalFrom != "" {
+			return fnerrors.New("must only set one of --experimental or --experimental_from")
+		}
+
+		if *experimental != "" {
+			var exp any
+			if err := json.Unmarshal([]byte(*experimental), &exp); err != nil {
+				return err
+			}
+			opts.Experimental = exp
 		}
 
 		if *experimentalFrom != "" {
@@ -164,6 +177,16 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 				fmt.Fprintf(stdout, "    $ kubectl get pod -A\n\n")
 				fmt.Fprintf(stdout, "  You can also connect to a shell in the new environment:\n\n")
 				fmt.Fprintf(stdout, "    $ nsc ssh %s\n\n", cluster.ClusterId)
+			}
+
+			if len(cluster.Cluster.TlsBackedPort) > 0 {
+				stdout := console.Stdout(ctx)
+				fmt.Fprintln(stdout)
+				fmt.Fprintf(stdout, "  (Experimental) TLS backend ports:\n\n")
+				for _, port := range cluster.Cluster.TlsBackedPort {
+					fmt.Fprintf(stdout, "    %s (%s/%d)\n", port.ServerName, port.Name, port.Port)
+				}
+				fmt.Fprintln(stdout)
 			}
 		}
 
