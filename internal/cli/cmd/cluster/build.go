@@ -285,6 +285,11 @@ func NewBuildCmd() *cobra.Command {
 
 					fmt.Fprintf(console.Stdout(ctx), "  %s\n", parsed.Name())
 				}
+			} else {
+				fmt.Fprint(console.Stdout(ctx), "Pushed:\n")
+				for _, parsed := range parsedTags {
+					fmt.Fprintf(console.Stdout(ctx), "  %s\n", parsed.Name())
+				}
 			}
 
 		case *dockerLoad:
