@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   gofmt:
-    runs-on: ubuntu-latest
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -35,7 +35,7 @@ jobs:
           slack-announce-channel: "#ci"
 
   vet:
-    runs-on: ubuntu-latest
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
     steps:
       - name: Set up Go
         uses: actions/setup-go@v3
@@ -56,7 +56,7 @@ jobs:
           slack-announce-channel: "#ci"
 
   staticcheck:
-    runs-on: ubuntu-latest
+    runs-on: nscloud
     strategy:
       matrix:
         goos: [linux] # Not running darwin due to it requiring the C integration.
@@ -72,7 +72,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install staticcheck
-        run: "GOBIN=~/.local/bin go install honnef.co/go/tools/cmd/staticcheck"
+        run: "go install honnef.co/go/tools/cmd/staticcheck"
 
       - name: Print staticcheck version
         run: "staticcheck -version"

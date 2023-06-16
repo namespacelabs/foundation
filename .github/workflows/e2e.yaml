@@ -17,7 +17,7 @@ jobs:
     name: Build ns from head
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out
@@ -75,7 +75,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud]
         use_prebuilts: [false, true]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -117,7 +117,7 @@ jobs:
         run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
-        run: kubectl cluster-info
+        run: /tmp/ns kubectl cluster-info
 
       # staging deployments already use buildkit, so only testing golang_use_buildkit=false here.
       - name: Deploy internal/testdata/server/gogrpc
@@ -125,9 +125,9 @@ jobs:
           NS_LOG_TO_FILE: /tmp/action_log
         run: |
           /tmp/ns deploy \
+            --use_prebuilts=${{ matrix.use_prebuilts }} \
             --buildkit_import_cache=type=gha \
             --buildkit_export_cache=type=gha,mode=max \
-            --use_prebuilts=${{ matrix.use_prebuilts }} \
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
@@ -146,7 +146,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
@@ -187,7 +187,7 @@ jobs:
         run: /tmp/ns prepare local
 
       - name: Print kubectl cluster-info
-        run: kubectl cluster-info
+        run: /tmp/ns kubectl cluster-info
 
       - name: ns dev
         run: |
@@ -198,7 +198,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -232,6 +232,7 @@ jobs:
           /tmp/ns test \
             --also_report_start_events \
             --use_prebuilts=true \
+            --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
@@ -268,7 +269,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud-ubuntu-22.04-amd64-2x8]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -313,6 +314,7 @@ jobs:
       - name: Deploy staging
         env:
           NS_LOG_TO_FILE: /tmp/action_log
+          NSC_TOKEN_FILE: ""
         run: |
           /tmp/ns deploy --env=staging \
             internal/testdata/server/gogrpc \
@@ -346,7 +348,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud]
         repo: [examples]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -382,6 +384,7 @@ jobs:
             golang/01-simple/server \
             golang/02-withsecrets/server \
             --use_prebuilts=true \
+            --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
@@ -410,7 +413,7 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [nscloud]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
