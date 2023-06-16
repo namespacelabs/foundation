@@ -76,7 +76,7 @@ func NewDescribeCmd() *cobra.Command {
 			}
 
 			if count > 0 {
-				fmt.Fprintf(console.Warnings(ctx), "The cluster containers Kubernetes resources which are not being output.\n")
+				fmt.Fprintf(console.Warnings(ctx), "The cluster contains Kubernetes resources which are not being output.\n")
 			}
 
 			var containers, ingresses []api.Resource
