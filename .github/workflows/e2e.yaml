@@ -314,6 +314,7 @@ jobs:
       - name: Deploy staging
         env:
           NS_LOG_TO_FILE: /tmp/action_log
+          NSC_TOKEN_FILE: ""
         run: |
           /tmp/ns deploy --env=staging \
             internal/testdata/server/gogrpc \
