@@ -18,6 +18,9 @@
           [
             clang-tools # For clang-format.
             go_1_20
+            gopls
+            go-outline
+            go-tools
             upx
             nodejs
             yarn
