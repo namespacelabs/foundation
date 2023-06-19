@@ -228,6 +228,7 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 		// XXX validate allowed origin syntax.
 		annotations["nginx.ingress.kubernetes.io/enable-cors"] = "true"
 		annotations["nginx.ingress.kubernetes.io/cors-allow-origin"] = strings.Join(cors.AllowedOrigin, ", ")
+		annotations["nginx.ingress.kubernetes.io/cors-expose-headers"] = strings.Join(cors.ExposeHeaders, ", ")
 	}
 
 	if entityLimit != nil {

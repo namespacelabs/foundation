@@ -137,7 +137,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 		return fnerrors.New("failed to pack ProxyBodySize configuration: %v", err)
 	}
 
-	cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}}
+	cors := &schema.HttpCors{Enabled: true, AllowedOrigin: []string{"*"}, ExposeHeaders: []string{"*"}}
 	packedCors, err := anypb.New(cors)
 	if err != nil {
 		return fnerrors.New("failed to pack CORS' configuration: %v", err)
