@@ -47,6 +47,7 @@ func NewExposeCmd() *cobra.Command {
 	prefix := cmd.Flags().String("prefix", "", "If specified, prefixes the allocated URL.")
 	containerName := cmd.Flags().String("container", "", "Which container to export.")
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
+	ingressId := cmd.Flags().String("ingress_id", "", "If specified, pin the ID of the exposed ingress.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	all := cmd.Flags().Bool("all", false, "If set to true, exports one ingress for each exported port of each running container.")
 	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
@@ -56,6 +57,10 @@ func NewExposeCmd() *cobra.Command {
 			return fnerrors.New("one of --all or --container is required")
 		} else if *containerName != "" && *all {
 			return fnerrors.New("only one of --all or --container may be specified")
+		}
+
+		if *ingressId != "" && len(*containerPorts) > 1 {
+			return fnerrors.New("--ingress_id can only be used when exposing a single port")
 		}
 
 		cluster, _, err := selectRunningCluster(ctx, args)
@@ -102,6 +107,7 @@ func NewExposeCmd() *cobra.Command {
 				ClusterId: cluster.ClusterId,
 				Prefix:    p,
 				BackendEndpoint: &api.IngressBackendEndpoint{
+					Id:   *ingressId,
 					Port: port.ExportedPort,
 				},
 				HttpMatchRule: filledIn[k].HttpIngressRules,

@@ -401,8 +401,8 @@ type RegisterIngressRequest struct {
 }
 
 type IngressBackendEndpoint struct {
-	GuestIpAddr string `json:"guest_ip_addr,omitempty"`
-	Port        int32  `json:"port,omitempty"`
+	Id   string `json:"id,omitempty"`
+	Port int32  `json:"port,omitempty"`
 }
 
 type RegisterIngressResponse struct {
