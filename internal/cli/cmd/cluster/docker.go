@@ -191,8 +191,8 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 			style := colors.Ctx(ctx)
 			if errors.Is(err, exec.ErrNotFound) {
 				fmt.Fprintln(stdout)
-				fmt.Fprint(stdout, style.Highlight.Apply("We didn't find docker-credential-nsc in your $PATH."))
-				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have nsc to the $PATH, docker-credential-nsc will also be available.\n")
+				fmt.Fprint(stdout, style.Highlight.Apply(fmt.Sprintf("We didn't find %s in your $PATH.", credHelperBinary)))
+				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have added nsc to the $PATH, %s will also be available.\n", credHelperBinary)
 				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing nscr.io images from docker-based tools won't work.\nBut you can always use nsc build (as per above) or nsc run.\n")
 			} else {
 				return fnerrors.New("failed to look up nsc in $PATH: %w", err)
