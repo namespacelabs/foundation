@@ -59,10 +59,6 @@ func NewExposeCmd() *cobra.Command {
 			return fnerrors.New("only one of --all or --container may be specified")
 		}
 
-		if *ingressId != "" && len(*containerPorts) > 1 {
-			return fnerrors.New("--ingress_id can only be used when exposing a single port")
-		}
-
 		cluster, _, err := selectRunningCluster(ctx, args)
 		if err != nil {
 			return err
@@ -84,6 +80,10 @@ func NewExposeCmd() *cobra.Command {
 			}
 
 			ports = filtered
+		}
+
+		if *ingressId != "" && len(ports) > 1 {
+			return fnerrors.New("--ingress_id can only be used when exposing a single port")
 		}
 
 		portNumbers := make([]int32, len(ports))
