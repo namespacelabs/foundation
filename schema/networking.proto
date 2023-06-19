@@ -106,7 +106,8 @@ message IngressFragmentList {
 
 message HttpCors {
     bool            enabled        = 1;
-    repeated string allowed_origin = 2;
+    repeated string allowed_origin = 2; // Access-Control-Allow-Origin
+    repeated string expose_headers = 3; // Access-Control-Expose-Headers
 }
 
 message ServiceMetadata {
