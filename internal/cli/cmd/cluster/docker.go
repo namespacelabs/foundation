@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -187,8 +188,11 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 		fmt.Fprintf(stdout, "\n\nVisit our docs for more details on Remote Builds:\n\n  https://cloud.namespace.so/docs/features/faster-builds\n\n")
 
 		if _, err := exec.LookPath(credHelperBinary); err != nil {
+			style := colors.Ctx(ctx)
 			if errors.Is(err, exec.ErrNotFound) {
-				fmt.Fprintf(stdout, "\nWe didn't find docker-credential-nsc in your $PATH.\nIt's usually installed along-side nsc; so if you have nsc to the $PATH, docker-credential-nsc will also be available.\n")
+				fmt.Fprintln(stdout)
+				fmt.Fprint(stdout, style.Highlight.Apply("We didn't find docker-credential-nsc in your $PATH."))
+				fmt.Fprintf(stdout, "\nIt's usually installed along-side nsc; so if you have nsc to the $PATH, docker-credential-nsc will also be available.\n")
 				fmt.Fprintf(stdout, "\nWhile your $PATH is not updated, accessing nscr.io images from docker-based tools won't work.\nBut you can always use nsc build (as per above) or nsc run.\n")
 			} else {
 				return fnerrors.New("failed to look up nsc in $PATH: %w", err)
