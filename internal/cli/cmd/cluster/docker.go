@@ -18,6 +18,7 @@ import (
 	"os/exec"
 
 	"github.com/docker/cli/cli/config"
+	"github.com/docker/cli/cli/config/types"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -142,6 +143,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 	}
 
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
+	useCredentialHelper := cmd.Flags().Bool("use_credential_helper", true, "Use nsc's credential helper instead of embedding the credentials.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		stdout := console.Stdout(ctx)
@@ -157,9 +159,30 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 			cfg.CredentialHelpers = map[string]string{}
 		}
 
+		if cfg.AuthConfigs == nil {
+			cfg.AuthConfigs = map[string]types.AuthConfig{}
+		}
+
 		for _, reg := range []*api.ImageRegistry{response.Registry, response.NSCR} {
 			if reg != nil {
-				cfg.CredentialHelpers[reg.EndpointAddress] = nscBinary
+				if *useCredentialHelper {
+					cfg.CredentialHelpers[reg.EndpointAddress] = nscBinary
+
+					delete(cfg.AuthConfigs, reg.EndpointAddress)
+				} else {
+					token, err := fnapi.FetchToken(ctx)
+					if err != nil {
+						return err
+					}
+
+					cfg.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
+						ServerAddress: reg.EndpointAddress,
+						Username:      nscrRegistryUsername,
+						Password:      token.Raw(),
+					}
+
+					delete(cfg.CredentialHelpers, reg.EndpointAddress)
+				}
 			}
 		}
 
