@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/buildkite/go-buildkite/v3/buildkite"
@@ -20,7 +21,13 @@ type scheduler struct {
 	apiToken   string
 
 	discovery chan *buildkite.Job
-	jobState  map[string]bool
+
+	m         sync.Mutex
+	jobStates map[string]jobState
+}
+
+type jobState struct {
+	processedAt time.Time
 }
 
 func newScheduler(agentToken, apiToken string) *scheduler {
@@ -28,7 +35,7 @@ func newScheduler(agentToken, apiToken string) *scheduler {
 		agentToken: agentToken,
 		apiToken:   apiToken,
 		discovery:  make(chan *buildkite.Job),
-		jobState:   make(map[string]bool),
+		jobStates:  make(map[string]jobState),
 	}
 }
 
@@ -38,17 +45,31 @@ func (s *scheduler) runWorker(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case j := <-s.discovery:
-			if s.jobState[*j.ID] || *j.State != "scheduled" {
-				// already processed
-				log.Printf("Skipping job %q", *j.ID)
-				continue
-			}
-			log.Printf("Starting job %q at %v", *j.ID, time.Now())
-			if err := s.startJob(ctx, j); err != nil {
-				log.Printf("Failed to start job %q: %v", *j.ID, err)
-			}
-			s.jobState[*j.ID] = true
+			go s.processScheduledJob(ctx, j)
 		}
+	}
+}
+
+func (s *scheduler) processScheduledJob(ctx context.Context, j *buildkite.Job) {
+	s.m.Lock()
+	newJob := false
+	state := s.jobStates[*j.ID]
+	if state.processedAt.IsZero() {
+		newJob = true
+		state.processedAt = time.Now()
+		s.jobStates[*j.ID] = state
+	}
+	s.m.Unlock()
+
+	if !newJob || *j.State != "scheduled" {
+		// already processed
+		log.Printf("Skipping job %q", *j.ID)
+		return
+	}
+
+	log.Printf("Starting job %q", *j.ID)
+	if err := s.startJob(ctx, j); err != nil {
+		log.Printf("Failed to start job %q: %v", *j.ID, err)
 	}
 }
 
@@ -134,7 +155,15 @@ func (s *scheduler) onJobScheduled(ctx context.Context, event *buildkite.JobSche
 }
 
 func (s *scheduler) onJobFinished(ctx context.Context, event *buildkite.JobFinishedEvent) (bool, error) {
-	log.Printf("Finished job %q metrics: end-to-end %v", *event.Job.ID, event.Job.StartedAt.Sub(event.Job.RunnableAt.Time))
+	s.m.Lock()
+	state := s.jobStates[*event.Job.ID]
+	s.m.Unlock()
+
+	log.Printf("Finished job %q metrics:", *event.Job.ID)
+	log.Printf("  scheduled: %v", event.Job.ScheduledAt.Format(time.StampMilli))
+	log.Printf("  processed: %v (+%v)", state.processedAt.Format(time.StampMilli), state.processedAt.Sub(event.Job.ScheduledAt.Time))
+	log.Printf("  vm ready: unknown")
+	log.Printf("  started: %v (+%v)", event.Job.StartedAt.Format(time.StampMilli), event.Job.StartedAt.Sub(event.Job.ScheduledAt.Time))
 	return false, nil
 }
 
