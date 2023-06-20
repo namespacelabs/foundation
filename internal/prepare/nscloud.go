@@ -50,7 +50,6 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	eg.Go(func(ctx context.Context) error {
 		cfg, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
 			MachineType:     machineType,
-			Ephemeral:       ephemeral,
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,
 			WaitClusterOpts: api.WaitClusterOpts{WaitKind: "kubernetes"},

@@ -41,7 +41,6 @@ func NewSshCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *tag != "" {
 			opts := api.CreateClusterOpts{
-				Ephemeral:       true,
 				KeepAtExit:      true,
 				Purpose:         fmt.Sprintf("Manually created for ssh (%s)", *tag),
 				UniqueTag:       *tag,

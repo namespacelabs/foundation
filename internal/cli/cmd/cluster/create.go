@@ -31,7 +31,7 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	}
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
-	ephemeral := cmd.Flags().Bool("ephemeral", true, "Create an ephemeral cluster.")
+	unusedEphemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
@@ -53,9 +53,12 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 	cmd.Flags().MarkHidden("internal_extra")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *unusedEphemeral {
+			fmt.Fprintf(console.Warnings(ctx), "--ephemeral has been removed and does impact the creation request (try --machine_type instead)")
+		}
+
 		opts := api.CreateClusterOpts{
 			MachineType:   *machineType,
-			Ephemeral:     *ephemeral,
 			KeepAtExit:    true,
 			Purpose:       "Manually created from CLI",
 			Features:      *features,

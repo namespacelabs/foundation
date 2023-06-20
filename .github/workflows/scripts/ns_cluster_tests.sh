@@ -8,7 +8,7 @@ eval `ssh-agent -s`
 ssh-add /tmp/cluster_key
 
 # Test ns cluster create
-$NSC_BIN create --ephemeral --output_to /tmp/cluster_id --ssh_key /tmp/cluster_key.pub
+$NSC_BIN create --output_to /tmp/cluster_id --ssh_key /tmp/cluster_key.pub
 CLUSTER_ID=$(cat /tmp/cluster_id)
 
 # Test ns cluster list
