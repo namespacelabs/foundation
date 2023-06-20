@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 
@@ -21,6 +24,7 @@ var (
 )
 
 func init() {
+	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	api.SetupFlags("", pflag.CommandLine, false)
 	api.Register()
 }
@@ -46,6 +50,14 @@ func main() {
 					listener := StartProxyListener(ctx, *rendezvouzEndpoint, func(endpoint string) {
 						fmt.Printf("Set webhook URL to http://%s/webhook\n", endpoint)
 					})
+					if *webhookSecret == "" {
+						if secret, err := generateSecret(); err != nil {
+							log.Fatalf("could not generate webhook token: %v", err)
+						} else {
+							*webhookSecret = secret
+							fmt.Printf("Set webhook token to %s\n", secret)
+						}
+					}
 					webhookSecret := []byte(*webhookSecret)
 					handler := webhookHandler(webhookSecret, sched.onWebHook)
 					srv := &http.Server{
@@ -59,4 +71,12 @@ func main() {
 			}
 		},
 	})
+}
+
+func generateSecret() (string, error) {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }
