@@ -395,6 +395,7 @@ type GetProfileResponse struct {
 
 type RegisterIngressRequest struct {
 	ClusterId       string                         `json:"cluster_id,omitempty"`
+	ContainerName   string                         `json:"container_name,omitempty"`
 	BackendEndpoint *IngressBackendEndpoint        `json:"backend_endpoint,omitempty"`
 	HttpMatchRule   []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
 }

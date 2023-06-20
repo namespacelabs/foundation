@@ -98,7 +98,8 @@ func NewExposeCmd() *cobra.Command {
 		var exps []exported
 		for k, port := range ports {
 			resp, err := api.RegisterIngress(ctx, api.Endpoint, api.RegisterIngressRequest{
-				ClusterId: cluster.ClusterId,
+				ClusterId:     cluster.ClusterId,
+				ContainerName: port.ContainerName,
 				BackendEndpoint: &api.IngressBackendEndpoint{
 					Name: *name,
 					Port: port.ExportedPort,
