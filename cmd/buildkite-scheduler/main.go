@@ -42,9 +42,11 @@ func main() {
 					return sched.runWorker(ctx)
 				})
 
-				eg.Go(func() error {
-					return sched.runPoller(ctx)
-				})
+				if *apiToken != "" {
+					eg.Go(func() error {
+						return sched.runPoller(ctx)
+					})
+				}
 
 				eg.Go(func() error {
 					listener := StartProxyListener(ctx, *rendezvouzEndpoint, func(endpoint string) {
