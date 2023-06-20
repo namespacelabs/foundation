@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -54,29 +55,45 @@ func NewProxyCmd() *cobra.Command {
 				return err
 			}
 
-			cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", *kind, "--sock_path", *sockPath, "--cluster", resolved.ClusterId)
-			cmd.SysProcAttr = &syscall.SysProcAttr{
-				Foreground: false,
-				Setsid:     true,
-			}
-
-			if err := cmd.Start(); err != nil {
-				return err
-			}
-
-			pid := cmd.Process.Pid
-			// Make sure the child process is not cleaned up on exit.
-			if err := cmd.Process.Release(); err != nil {
-				return err
-			}
-
-			return os.WriteFile(*background, []byte(fmt.Sprintf("%d", pid)), 0644)
+			return setupBackgroundProxy(ctx, resolved.ClusterId, *kind, *sockPath, *background)
 		}
 
 		return deprecateRunProxy(ctx, *cluster, *kind, *sockPath)
 	})
 
 	return cmd
+}
+
+func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFile string) error {
+	cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", kind, "--sock_path", sockPath, "--cluster", clusterId)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Foreground: false,
+		Setsid:     true,
+	}
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	pid := cmd.Process.Pid
+	// Make sure the child process is not cleaned up on exit.
+	if err := cmd.Process.Release(); err != nil {
+		return err
+	}
+
+	ctx, done := context.WithTimeout(ctx, 5*time.Second)
+	defer done()
+
+	// Wait until the socket is up.
+	if err := waitForFile(ctx, sockPath); err != nil {
+		return fnerrors.New("socket didn't come up in time: %v", err)
+	}
+
+	if pidFile != "" {
+		return os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", pid)), 0644)
+	}
+
+	return nil
 }
 
 func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string) error {
@@ -178,4 +195,20 @@ func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterRes
 		Cluster:   response.Cluster,
 		Registry:  response.Registry,
 	}, nil
+}
+
+func waitForFile(ctx context.Context, path string) error {
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return nil
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		time.Sleep(500 * time.Millisecond)
+	}
 }

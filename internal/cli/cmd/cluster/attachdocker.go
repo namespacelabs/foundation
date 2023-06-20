@@ -40,6 +40,7 @@ func newDockerAttachCmd() *cobra.Command {
 	toCluster := cmd.Flags().String("to", "", "Attaches a context to the specified cluster.")
 	new := cmd.Flags().Bool("new", false, "If set, creates a new cluster.")
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
+	background := cmd.Flags().Bool("background", false, "If set, attach in the background.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if !*new && *toCluster == "" {
@@ -63,12 +64,12 @@ func newDockerAttachCmd() *cobra.Command {
 			}
 		}
 
-		state, err := ensureStateDir(*stateDir, "docker/proxy")
+		cluster, err := ensureDockerCluster(ctx, *toCluster, *machineType)
 		if err != nil {
 			return err
 		}
 
-		cluster, err := ensureDockerCluster(ctx, *toCluster, *machineType)
+		state, err := ensureStateDir(*stateDir, "docker/"+cluster.ClusterId)
 		if err != nil {
 			return err
 		}
@@ -77,30 +78,36 @@ func newDockerAttachCmd() *cobra.Command {
 
 		sockPath := filepath.Join(state, "docker.sock")
 
-		eg.Go(func(ctx context.Context) error {
-			// if *new {
-			// 	defer func() {
-			// 		_ = api.Endpoint.ReleaseKubernetesCluster.Do(ctx, api.ReleaseKubernetesClusterRequest{
-			// 			ClusterId: cluster.ClusterId,
-			// 		}, nil)
-			// 	}()
-			// }
+		if *background {
+			if err := setupBackgroundProxy(ctx, cluster.ClusterId, "docker", sockPath, ""); err != nil {
+				return err
+			}
+		} else {
+			eg.Go(func(ctx context.Context) error {
+				// if *new {
+				// 	defer func() {
+				// 		_ = api.Endpoint.ReleaseKubernetesCluster.Do(ctx, api.ReleaseKubernetesClusterRequest{
+				// 			ClusterId: cluster.ClusterId,
+				// 		}, nil)
+				// 	}()
+				// }
 
-			_, err := runUnixSocketProxy(ctx, cluster.ClusterId, unixSockProxyOpts{
-				SocketPath: sockPath,
-				Kind:       "docker",
-				Blocking:   true,
-				Connect: func(ctx context.Context) (net.Conn, error) {
-					token, err := fnapi.FetchToken(ctx)
-					if err != nil {
-						return nil, err
-					}
+				_, err := runUnixSocketProxy(ctx, cluster.ClusterId, unixSockProxyOpts{
+					SocketPath: sockPath,
+					Kind:       "docker",
+					Blocking:   true,
+					Connect: func(ctx context.Context) (net.Conn, error) {
+						token, err := fnapi.FetchToken(ctx)
+						if err != nil {
+							return nil, err
+						}
 
-					return connectToDocker(ctx, token, cluster)
-				},
+						return connectToDocker(ctx, token, cluster)
+					},
+				})
+				return err
 			})
-			return err
-		})
+		}
 
 		ctxName := *name
 		if ctxName == "" {
@@ -126,24 +133,26 @@ func newDockerAttachCmd() *cobra.Command {
 				return err
 			}
 
-			console.SetStickyContent(ctx, "docker", dockerBanner(ctx, ctxName, *use))
+			console.SetStickyContent(ctx, "docker", dockerBanner(ctx, ctxName, *use, *background))
 
 			was := dockerCli.CurrentContext()
 
-			eg.Go(func(ctx context.Context) error {
-				<-ctx.Done() // Wait for cancelation.
+			if !*background {
+				eg.Go(func(ctx context.Context) error {
+					<-ctx.Done() // Wait for cancelation.
 
-				removeErr := s.Remove(ctxName)
-				if *use {
-					if err := updateContext(dockerCli, was, func(current string) bool {
-						return current == ctxName
-					}); err != nil {
-						return multierr.New(removeErr, err)
+					removeErr := s.Remove(ctxName)
+					if *use {
+						if err := updateContext(dockerCli, was, func(current string) bool {
+							return current == ctxName
+						}); err != nil {
+							return multierr.New(removeErr, err)
+						}
 					}
-				}
 
-				return removeErr
-			})
+					return removeErr
+				})
+			}
 
 			if *use {
 				if err := updateContext(dockerCli, ctxName, nil); err != nil {
@@ -160,7 +169,7 @@ func newDockerAttachCmd() *cobra.Command {
 	return cmd
 }
 
-func dockerBanner(ctx context.Context, ctxName string, use bool) string {
+func dockerBanner(ctx context.Context, ctxName string, use, background bool) string {
 	w := wordwrap.NewWriter(80)
 	style := colors.Ctx(ctx)
 
@@ -181,8 +190,10 @@ func dockerBanner(ctx context.Context, ctxName string, use bool) string {
 	fmt.Fprintf(w, "  $ export DOCKER_CONTEXT=%q\n", ctxName)
 	fmt.Fprintf(w, "  $ docker run --rm -it ubuntu\n")
 
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, style.Comment.Apply("Exiting will remove the context configuration."))
+	if !background {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, style.Comment.Apply("Exiting will remove the context configuration."))
+	}
 
 	_ = w.Close()
 	return strings.TrimSpace(w.String())
