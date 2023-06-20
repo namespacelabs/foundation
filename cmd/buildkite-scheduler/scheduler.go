@@ -43,7 +43,7 @@ func (s *scheduler) runWorker(ctx context.Context) error {
 				log.Printf("Skipping job %q", *j.ID)
 				continue
 			}
-			log.Printf("Starting job %q", *j.ID)
+			log.Printf("Starting job %q at %v", *j.ID, time.Now())
 			if err := s.startJob(ctx, j); err != nil {
 				log.Printf("Failed to start job %q: %v", *j.ID, err)
 			}
@@ -74,9 +74,11 @@ func (s *scheduler) runPoller(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("failed to query jobs: %w", err)
 			}
-			log.Printf("Poll discovered %d jobs", len(jobs))
-			for _, j := range jobs {
-				s.discovery <- j
+			if len(jobs) > 0 {
+				log.Printf("Poll discovered %d jobs", len(jobs))
+				for _, j := range jobs {
+					s.discovery <- j
+				}
 			}
 		}
 	}
@@ -119,6 +121,8 @@ func (s *scheduler) onWebHook(ctx context.Context, event interface{}) (bool, err
 		return true, nil
 	case *buildkite.JobScheduledEvent:
 		return s.onJobScheduled(ctx, event.(*buildkite.JobScheduledEvent))
+	case *buildkite.JobFinishedEvent:
+		return s.onJobFinished(ctx, event.(*buildkite.JobFinishedEvent))
 	default:
 		return false, nil
 	}
@@ -127,6 +131,11 @@ func (s *scheduler) onJobScheduled(ctx context.Context, event *buildkite.JobSche
 	log.Printf("Webhook received job %q", *event.Job.ID)
 	s.discovery <- event.Job
 	return true, nil
+}
+
+func (s *scheduler) onJobFinished(ctx context.Context, event *buildkite.JobFinishedEvent) (bool, error) {
+	log.Printf("Finished job %q metrics: end-to-end %v", *event.Job.ID, event.Job.StartedAt.Sub(event.Job.RunnableAt.Time))
+	return false, nil
 }
 
 func webhookHandler(webhookSecret []byte, callback func(ctx context.Context, event interface{}) (bool, error)) http.Handler {
