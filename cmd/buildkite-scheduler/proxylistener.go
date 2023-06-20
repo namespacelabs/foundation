@@ -8,14 +8,9 @@ import (
 	"namespacelabs.dev/breakpoint/pkg/quicproxyclient"
 )
 
-type ProxyListener struct {
-	ch     chan net.Conn
-	cancel func()
-}
-
 func StartProxyListener(baseCtx context.Context, rendezvouz string, onAllocation func(endpoint string)) net.Listener {
 	ctx, cancel := context.WithCancel(baseCtx)
-	l := &ProxyListener{make(chan net.Conn), cancel}
+	l := &proxyListener{make(chan net.Conn), cancel}
 
 	go func() {
 		quicproxyclient.Serve(ctx, *rendezvouzEndpoint, nil, quicproxyclient.Handlers{
@@ -30,8 +25,13 @@ func StartProxyListener(baseCtx context.Context, rendezvouz string, onAllocation
 	return l
 }
 
+type proxyListener struct {
+	ch     chan net.Conn
+	cancel func()
+}
+
 // Accept waits for and returns the next connection to the listener.
-func (l *ProxyListener) Accept() (net.Conn, error) {
+func (l *proxyListener) Accept() (net.Conn, error) {
 	conn, ok := <-l.ch
 	if !ok {
 		return nil, io.ErrClosedPipe
@@ -39,12 +39,12 @@ func (l *ProxyListener) Accept() (net.Conn, error) {
 	return conn, nil
 }
 
-func (l *ProxyListener) Close() error {
+func (l *proxyListener) Close() error {
 	l.cancel()
 	return nil
 }
 
-func (l *ProxyListener) Addr() net.Addr {
+func (l *proxyListener) Addr() net.Addr {
 	return noneAddr{}
 }
 
