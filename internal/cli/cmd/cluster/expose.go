@@ -44,10 +44,9 @@ func NewExposeCmd() *cobra.Command {
 	}
 
 	source := cmd.Flags().String("source", "", "Where to lookup the container.")
-	prefix := cmd.Flags().String("prefix", "", "If specified, prefixes the allocated URL.")
 	containerName := cmd.Flags().String("container", "", "Which container to export.")
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
-	ingressId := cmd.Flags().String("ingress_id", "", "If specified, pin the ID of the exposed ingress.")
+	name := cmd.Flags().String("name", "", "If specified, pin the name of the exposed ingress.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	all := cmd.Flags().Bool("all", false, "If set to true, exports one ingress for each exported port of each running container.")
 	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
@@ -82,8 +81,8 @@ func NewExposeCmd() *cobra.Command {
 			ports = filtered
 		}
 
-		if *ingressId != "" && len(ports) > 1 {
-			return fnerrors.New("--ingress_id can only be used when exposing a single port")
+		if *name != "" && len(ports) > 1 {
+			return fnerrors.New("--name can only be used when exposing a single port")
 		}
 
 		portNumbers := make([]int32, len(ports))
@@ -98,16 +97,10 @@ func NewExposeCmd() *cobra.Command {
 
 		var exps []exported
 		for k, port := range ports {
-			p := *prefix
-			if p == "" {
-				p = port.SuggestedPrefix
-			}
-
 			resp, err := api.RegisterIngress(ctx, api.Endpoint, api.RegisterIngressRequest{
 				ClusterId: cluster.ClusterId,
-				Prefix:    p,
 				BackendEndpoint: &api.IngressBackendEndpoint{
-					Id:   *ingressId,
+					Name: *name,
 					Port: port.ExportedPort,
 				},
 				HttpMatchRule: filledIn[k].HttpIngressRules,
@@ -186,11 +179,10 @@ type exported struct {
 }
 
 type containerPort struct {
-	ContainerID     string
-	ContainerName   string
-	ContainerPort   int32
-	SuggestedPrefix string
-	ExportedPort    int32
+	ContainerID   string
+	ContainerName string
+	ContainerPort int32
+	ExportedPort  int32
 }
 
 type portMap map[int]containerPort
@@ -298,7 +290,7 @@ func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter
 func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) ([]containerPort, error) {
 	exported := portMap{}
 	for _, data := range data {
-		internalName, suggestedPrefix := parseContainerName(data.ID, data.Name)
+		internalName := parseContainerName(data.Name)
 
 		for port, mapping := range data.NetworkSettings.Ports {
 			if port.Proto() == "tcp" {
@@ -310,11 +302,10 @@ func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) ([
 						}
 
 						exported[port.Int()] = containerPort{
-							ContainerID:     data.ID,
-							ContainerName:   internalName,
-							SuggestedPrefix: suggestedPrefix,
-							ContainerPort:   int32(port.Int()),
-							ExportedPort:    int32(parsedPort),
+							ContainerID:   data.ID,
+							ContainerName: internalName,
+							ContainerPort: int32(port.Int()),
+							ExportedPort:  int32(parsedPort),
 						}
 					} else {
 						fmt.Fprintf(console.Warnings(ctx), "%s: Skipping %d/%s exported to %s (unsupported)\n", data.Name, port.Int(), port.Proto(), m.HostIP)
@@ -329,13 +320,10 @@ func buildContainersPortMap(ctx context.Context, data ...types.ContainerJSON) ([
 	return maps.Values(exported), nil
 }
 
-func parseContainerName(id, name string) (string, string) {
-	internalName := strings.TrimPrefix(name, "/")             // docker returns names prefixed by /
-	mangledName := strings.ReplaceAll(internalName, "_", "-") // docker generated names have underscores.
+func parseContainerName(name string) string {
+	internalName := strings.TrimPrefix(name, "/") // docker returns names prefixed by /
 
-	suggestedPrefix := computeSuggestedPrefix(id, mangledName)
-
-	return internalName, suggestedPrefix
+	return internalName
 }
 
 func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *containerd.Client) error) error {
@@ -405,16 +393,15 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 				return err
 			}
 
-			internalName, suggestedPrefix := parseContainerName(ctr.ID(), l[labels.Name])
+			internalName := parseContainerName(l[labels.Name])
 
 			for _, p := range ports {
 				if p.Protocol == "tcp" && (p.HostIP == "0.0.0.0" || p.HostIP == "::") {
 					exported[int(p.ContainerPort)] = containerPort{
-						ContainerID:     ctr.ID(),
-						ContainerName:   internalName,
-						SuggestedPrefix: suggestedPrefix,
-						ContainerPort:   p.ContainerPort,
-						ExportedPort:    p.HostPort,
+						ContainerID:   ctr.ID(),
+						ContainerName: internalName,
+						ContainerPort: p.ContainerPort,
+						ExportedPort:  p.HostPort,
 					}
 				} else {
 					fmt.Fprintf(console.Warnings(ctx), "Skipping %d/%s exported to %s (unsupported)\n", p.ContainerPort, p.Protocol, p.HostIP)
@@ -428,16 +415,6 @@ func selectContainerdPorts(ctx context.Context, cluster *api.KubernetesCluster, 
 	}
 
 	return maps.Values(exported), nil
-}
-
-var simpleLabelRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9-]*$")
-
-func computeSuggestedPrefix(id, name string) string {
-	if len(name) < 24 && simpleLabelRe.MatchString(name) {
-		return name
-	}
-
-	return substr(id)
 }
 
 func substr(id string) string {
