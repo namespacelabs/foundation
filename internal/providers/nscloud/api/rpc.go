@@ -305,8 +305,9 @@ func CreateBuildCluster(ctx context.Context, api API, platform BuildPlatform) (*
 	featuresList := []string{"BUILD_CLUSTER"}
 	featuresList = append(featuresList, buildClusterFeatures(platform)...)
 	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{
-		Purpose:  "Build machine",
-		Features: featuresList,
+		Purpose:    "Build machine",
+		Features:   featuresList,
+		KeepAtExit: true,
 		WaitClusterOpts: WaitClusterOpts{
 			CreateLabel:    fmt.Sprintf("Creating %s Build Cluster", platform),
 			WaitForService: "buildkit",
