@@ -156,10 +156,10 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 			enc := json.NewEncoder(console.Stdout(ctx))
 			enc.SetIndent("", "  ")
 
-			// CreateContainersResponse is used here to make sure that the output is compatible with `nsc run`'s.
-			return enc.Encode(api.CreateContainersResponse{
-				ClusterId:  cluster.ClusterId,
-				ClusterUrl: cluster.Cluster.AppURL,
+			return enc.Encode(createOutput{
+				ClusterId:     cluster.ClusterId,
+				ClusterUrl:    cluster.Cluster.AppURL,
+				IngressDomain: cluster.Cluster.IngressDomain,
 			})
 
 		default:

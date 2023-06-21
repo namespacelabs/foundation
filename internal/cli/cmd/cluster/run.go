@@ -345,7 +345,11 @@ func printResult(ctx context.Context, output string, resp *api.CreateContainersR
 	case "json":
 		d := json.NewEncoder(console.Stdout(ctx))
 		d.SetIndent("", "  ")
-		return d.Encode(resp)
+		return d.Encode(createOutput{
+			ClusterId:  resp.ClusterId,
+			ClusterUrl: resp.ClusterUrl,
+			Container:  resp.Container,
+		})
 
 	default:
 		if output != "" && output != "plain" {
@@ -458,4 +462,11 @@ func generateNameFromImage(image string) string {
 	}
 
 	return ids.NewRandomBase32ID(6)
+}
+
+type createOutput struct {
+	ClusterId     string           `json:"cluster_id,omitempty"`
+	ClusterUrl    string           `json:"cluster_url,omitempty"`
+	Container     []*api.Container `json:"container,omitempty"`
+	IngressDomain string           `json:"ingress_domain,omitempty"`
 }
