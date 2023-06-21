@@ -65,7 +65,7 @@ func NewProxyCmd() *cobra.Command {
 }
 
 func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFile string) error {
-	cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", kind, "--sock_path", sockPath, "--cluster", clusterId)
+	cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", kind, "--sock_path", sockPath, "--cluster", clusterId, "--region", api.RegionName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Foreground: false,
 		Setsid:     true,

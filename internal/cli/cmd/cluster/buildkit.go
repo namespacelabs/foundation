@@ -143,7 +143,7 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 		}
 	}
 
-	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform))
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setsid: true,
 	}

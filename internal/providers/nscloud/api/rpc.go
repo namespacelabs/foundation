@@ -52,11 +52,11 @@ type API struct {
 	RegisterIngress              fnapi.Call[RegisterIngressRequest]
 }
 
-var Endpoint API
-
 var (
+	Endpoint API
+
 	rpcEndpointOverride string
-	regionName          string
+	RegionName          string
 )
 
 func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
@@ -64,7 +64,7 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 	regionFlag := fmt.Sprintf("%sregion", prefix)
 
 	flags.StringVar(&rpcEndpointOverride, endpointFlag, "", "Where to dial to when reaching nscloud.")
-	flags.StringVar(&regionName, regionFlag, "fra1", "Which region to use.")
+	flags.StringVar(&RegionName, regionFlag, "fra1", "Which region to use.")
 
 	if hide {
 		_ = flags.MarkHidden(endpointFlag)
@@ -80,7 +80,7 @@ func Register() {
 	}
 
 	if rpcEndpoint == "" {
-		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
+		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", RegionName)
 	}
 
 	Endpoint = MakeAPI(rpcEndpoint)
