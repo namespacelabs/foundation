@@ -46,7 +46,7 @@ func NewExposeCmd() *cobra.Command {
 	source := cmd.Flags().String("source", "", "Where to lookup the container.")
 	containerName := cmd.Flags().String("container", "", "Which container to export.")
 	containerPorts := cmd.Flags().IntSlice("container_port", nil, "If specified, only exposes the specified ports.")
-	name := cmd.Flags().String("name", "", "If specified, pin the name of the exposed ingress.")
+	name := cmd.Flags().String("name", "", "If specified, set the name of the exposed ingress. Only permitted when exposing a single port. By default, ingress names are generated.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	all := cmd.Flags().Bool("all", false, "If set to true, exports one ingress for each exported port of each running container.")
 	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
