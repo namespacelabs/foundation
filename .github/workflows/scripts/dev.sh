@@ -3,7 +3,7 @@ set -e
 
 NS=$1
 
-tmux new-session -d -s NsDevSession "$NS dev  --buildkit_import_cache=type=gha --buildkit_export_cache=type=gha,mode=max --golang_use_buildkit=true --build_in_nscloud internal/testdata/server/gogrpc"
+tmux new-session -d -s NsDevSession "$NS dev --golang_use_buildkit=true --build_in_nscloud internal/testdata/server/gogrpc"
 
 COUNTER=0
 while true ; do

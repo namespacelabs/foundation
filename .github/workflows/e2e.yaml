@@ -122,8 +122,6 @@ jobs:
         run: |
           /tmp/ns deploy \
             --use_prebuilts=${{ matrix.use_prebuilts }} \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
@@ -337,8 +335,6 @@ jobs:
             internal/testdata/integrations/golang \
             internal/testdata/integrations/nodejs/yarn \
             --use_prebuilts=true \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
             --golang_use_buildkit=true \
             --build_in_nscloud \
             --run_codegen=false
