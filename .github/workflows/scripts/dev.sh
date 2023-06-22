@@ -29,7 +29,7 @@ while true ; do
     fi
 
     COUNTER=$((COUNTER+1))
-    if [[ $COUNTER -ge 10 ]]; then
+    if [[ $COUNTER -ge 20 ]]; then
         echo giving up
         exit 1
     fi
