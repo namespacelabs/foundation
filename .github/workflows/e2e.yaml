@@ -188,7 +188,7 @@ jobs:
           name: ns-${{ runner.os }}
 
       - name: Make ns executable
-        run: chmod +x ns && mv nsc /tmp/ns
+        run: chmod +x ns && mv ns /tmp/ns
 
       - name: Exchange Github token
         run: /tmp/ns auth exchange-github-token
