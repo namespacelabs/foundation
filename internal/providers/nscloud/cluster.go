@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
+	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -162,7 +163,7 @@ func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDom
 	return planner{Planner: base, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry, ephemeral: ephemeral}, nil
 }
 
-func ensureCluster(ctx context.Context, cfg cfg.Configuration, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (*cluster, error) {
+func ensureCluster(ctx context.Context, conf cfg.Configuration, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (*cluster, error) {
 	result, err := provideClusterExt(ctx, clusterId, ephemeral)
 	if err != nil {
 		return nil, err
@@ -174,7 +175,14 @@ func ensureCluster(ctx context.Context, cfg cfg.Configuration, clusterId, ingres
 		return nil, err
 	}
 
-	unbound, err := kubernetes.NewCluster(cli, cfg, kubernetes.NewClusterOpts{
+	newCfg := conf.Derive(kubedef.AdminNamespace, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
+		previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(
+			&PrebuiltCluster{ClusterId: clusterId},
+		))
+		return previous
+	})
+
+	unbound, err := kubernetes.NewCluster(cli, newCfg, kubernetes.NewClusterOpts{
 		FetchSystemInfo: func(ctx context.Context) (*kubedef.SystemInfo, error) {
 			return &kubedef.SystemInfo{
 				NodePlatform:         []string{"linux/amd64"},
