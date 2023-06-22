@@ -25,6 +25,7 @@
             nodejs
             yarn
             git
+            jq
 
             crane
 

@@ -34,7 +34,7 @@ func NewKubectlCmd() *cobra.Command {
 		clusterName := args[0]
 		args = args[1:]
 
-		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, clusterName)
+		response, err := api.GetKubernetesConfig(ctx, api.Methods, clusterName)
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func newWriteKubeconfigCmd(use string, hidden bool) *cobra.Command {
 			return nil
 		}
 
-		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, cluster.ClusterId)
+		response, err := api.GetKubernetesConfig(ctx, api.Methods, cluster.ClusterId)
 		if err != nil {
 			return err
 		}

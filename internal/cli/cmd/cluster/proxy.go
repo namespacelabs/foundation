@@ -140,7 +140,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 	ctx, cancel := context.WithCancel(ctx)
 
 	go func() {
-		_ = api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
+		_ = api.StartRefreshing(ctx, api.Methods, cluster.ClusterId, func(err error) error {
 			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
 			return nil
 		})
@@ -185,7 +185,7 @@ func compatClusterIDAsBuildPlatform(clusterID string) (api.BuildPlatform, bool) 
 }
 
 func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
-	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterID)
+	response, err := api.EnsureCluster(ctx, api.Methods, clusterID)
 	if err != nil {
 		return nil, err
 	}

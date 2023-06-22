@@ -47,7 +47,7 @@ func NewSshCmd() *cobra.Command {
 				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
 			}
 
-			cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
 			if err != nil {
 				return err
 			}
@@ -182,7 +182,7 @@ func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 
 			g := executor.New(ctx, "ssh")
 			cancel := g.GoCancelable(func(ctx context.Context) error {
-				return api.StartRefreshing(ctx, api.Endpoint, cluster.ClusterId, func(err error) error {
+				return api.StartRefreshing(ctx, api.Methods, cluster.ClusterId, func(err error) error {
 					fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
 					return nil
 				})

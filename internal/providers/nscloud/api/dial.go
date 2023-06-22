@@ -102,7 +102,7 @@ func StartBackgroundRefreshing(ctx context.Context, clusterID string) func() {
 	tasks.Action("endpoint.cluster.refresh").Arg("cluster_id", clusterID).LogLevel(1).LogToSink(sink)
 
 	go func() {
-		_ = StartRefreshing(ctx, Endpoint, clusterID, func(err error) error {
+		_ = StartRefreshing(ctx, Methods, clusterID, func(err error) error {
 			if !errors.Is(err, context.Canceled) {
 				fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
 			}

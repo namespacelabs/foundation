@@ -110,7 +110,7 @@ func NewBuildCmd() *cobra.Command {
 		if len(*names) > 0 {
 			// Either tags or names slice is set, but not both.
 			// So, append all names in tags slice
-			resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+			resp, err := api.GetImageRegistry(ctx, api.Methods)
 			if err != nil {
 				return fmt.Errorf("Could not fetch nscr.io repository: %w", err)
 			}

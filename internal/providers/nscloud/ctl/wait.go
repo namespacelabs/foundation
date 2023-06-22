@@ -73,7 +73,7 @@ func WaitContainers(ctx context.Context, clusterId string, ctrs []*api.Container
 		defer cancel()
 
 		return backoff.Retry(func() error {
-			res, err := api.GetClusterSummary(ctx, api.Endpoint, clusterId, []string{"nsc/containers"})
+			res, err := api.GetClusterSummary(ctx, api.Methods, clusterId, []string{"nsc/containers"})
 			if err != nil {
 				return fmt.Errorf("failed to fetch cluster summary: %w", err)
 			}

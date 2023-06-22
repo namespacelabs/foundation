@@ -48,7 +48,7 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 	var mainMessages, buildMessages []proto.Message
 
 	eg.Go(func(ctx context.Context) error {
-		cfg, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+		cfg, err := api.CreateAndWaitCluster(ctx, api.Methods, api.CreateClusterOpts{
 			MachineType:     machineType,
 			KeepAtExit:      true,
 			Purpose:         env.Environment().Name,
@@ -64,7 +64,7 @@ func PrepareNewNamespaceCluster(ctx context.Context, env cfg.Context, machineTyp
 
 	if withBuild {
 		eg.Go(func(ctx context.Context) error {
-			msg, err := nscloud.EnsureBuildCluster(ctx, api.Endpoint)
+			msg, err := nscloud.EnsureBuildCluster(ctx, api.Methods)
 			if err != nil {
 				return err
 			}

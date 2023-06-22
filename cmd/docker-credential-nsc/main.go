@@ -5,8 +5,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 	ia "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
@@ -25,11 +23,6 @@ func main() {
 			root.AddCommand(cluster.NewDockerCredHelperGetCmd(false))
 			root.AddCommand(cluster.NewDockerCredHelperListCmd(false))
 			root.AddCommand(cluster.NewDockerCredHelperEraseCmd(false))
-
-			fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
-				api.Register()
-				return nil
-			})
 		},
 	})
 }

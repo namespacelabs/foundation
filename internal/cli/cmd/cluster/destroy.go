@@ -56,7 +56,7 @@ func newDestroyCmd() *cobra.Command {
 				}
 			}
 
-			if err := api.DestroyCluster(ctx, api.Endpoint, cluster); err != nil {
+			if err := api.DestroyCluster(ctx, api.Methods, cluster); err != nil {
 				return err
 			}
 		}

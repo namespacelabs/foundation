@@ -104,7 +104,7 @@ func NewCreateCmd(hidden bool) *cobra.Command {
 
 		opts.WaitKind = "kubernetes"
 
-		cluster, err := api.CreateAndWaitCluster(ctx, api.Endpoint, opts)
+		cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
 		if err != nil {
 			return err
 		}

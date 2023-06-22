@@ -5,7 +5,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -67,11 +66,6 @@ func main() {
 			root.AddCommand(cluster.NewExecScoped())     // nsc exec-scoped
 
 			root.AddCommand(sdk.NewSdkCmd(true))
-
-			fncobra.PushPreParse(root, func(ctx context.Context, args []string) error {
-				api.Register()
-				return nil
-			})
 		},
 	})
 }

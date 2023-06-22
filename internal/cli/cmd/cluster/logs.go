@@ -103,7 +103,7 @@ func NewLogsCmd() *cobra.Command {
 				return nil
 			}
 
-			return api.TailClusterLogs(ctx, api.Endpoint, &api.LogsOpts{
+			return api.TailClusterLogs(ctx, api.Methods, &api.LogsOpts{
 				ClusterID: clusterID,
 				Include:   includeSelector,
 				Exclude:   excludeSelector,
@@ -120,7 +120,7 @@ func NewLogsCmd() *cobra.Command {
 			logOpts.StartTs = &ts
 		}
 
-		logs, err := api.GetClusterLogs(ctx, api.Endpoint, logOpts)
+		logs, err := api.GetClusterLogs(ctx, api.Methods, logOpts)
 		if err != nil {
 			return fnerrors.New("failed to get cluster logs: %w", err)
 		}

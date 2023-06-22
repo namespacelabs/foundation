@@ -256,7 +256,7 @@ func createContainer(ctx context.Context, machineType string, duration time.Dura
 			}
 
 			var response api.CreateContainersResponse
-			if err := api.Endpoint.CreateContainers.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
+			if err := api.Methods.CreateContainers.Do(ctx, req, api.ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 			return &response, nil
@@ -265,7 +265,7 @@ func createContainer(ctx context.Context, machineType string, duration time.Dura
 			return nil, err
 		}
 
-		if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{
+		if _, err := api.WaitCluster(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
 			CreateLabel: label,
 		}); err != nil {
 			return nil, err
@@ -277,10 +277,10 @@ func createContainer(ctx context.Context, machineType string, duration time.Dura
 	return tasks.Return(ctx, tasks.Action("nscloud.start-containers").HumanReadablef("Starting containers"),
 		func(ctx context.Context) (*api.CreateContainersResponse, error) {
 			var response api.StartContainersResponse
-			if err := api.Endpoint.StartContainers.Do(ctx, api.StartContainersRequest{
+			if err := api.Methods.StartContainers.Do(ctx, api.StartContainersRequest{
 				Id:        target,
 				Container: []*api.ContainerRequest{container},
-			}, fnapi.DecodeJSONResponse(&response)); err != nil {
+			}, api.ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 
@@ -418,10 +418,10 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 
 	resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers"), func(ctx context.Context) (*api.CreateContainersResponse, error) {
 		var response api.CreateContainersResponse
-		if err := api.Endpoint.CreateContainers.Do(ctx, api.CreateContainersRequest{
+		if err := api.Methods.CreateContainers.Do(ctx, api.CreateContainersRequest{
 			Compose:         []*api.ComposeRequest{{Contents: projectYAML}},
 			DevelopmentMode: devmode,
-		}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		}, api.ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -430,7 +430,7 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 		return nil, err
 	}
 
-	if _, err := api.WaitCluster(ctx, api.Endpoint, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+	if _, err := api.WaitCluster(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
 		return nil, err
 	}
 

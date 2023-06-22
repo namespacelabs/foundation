@@ -45,12 +45,12 @@ func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	defer bp.mu.Unlock()
 
 	if bp.previous != nil && (bp.previous.BuildCluster == nil || bp.previous.BuildCluster.Resumable) {
-		if _, err := api.EnsureCluster(ctx, api.Endpoint, bp.previous.ClusterId); err == nil {
+		if _, err := api.EnsureCluster(ctx, api.Methods, bp.previous.ClusterId); err == nil {
 			return bp.rawDial(ctx, bp.previous)
 		}
 	}
 
-	response, err := api.CreateBuildCluster(ctx, api.Endpoint, bp.platform)
+	response, err := api.CreateBuildCluster(ctx, api.Methods, bp.platform)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (bp *BuildClusterInstance) rawDial(ctx context.Context, response *api.Creat
 }
 
 func NewBuildClusterInstance(ctx context.Context, platformStr string) (*BuildClusterInstance, error) {
-	clusterProfiles, err := api.GetProfile(ctx, api.Endpoint)
+	clusterProfiles, err := api.GetProfile(ctx, api.Methods)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +229,7 @@ func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, 
 		newConfig.CredentialsStore = existing.CredentialsStore
 	}
 
-	nsRegs, err := api.GetImageRegistry(ctx, api.Endpoint)
+	nsRegs, err := api.GetImageRegistry(ctx, api.Methods)
 	if err != nil {
 		return nil, err
 	}

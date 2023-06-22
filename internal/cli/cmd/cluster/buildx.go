@@ -370,7 +370,7 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 }
 
 func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
-	profile, err := api.GetProfile(ctx, api.Endpoint)
+	profile, err := api.GetProfile(ctx, api.Methods)
 	if err != nil {
 		return nil, err
 	}

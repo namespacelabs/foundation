@@ -29,7 +29,7 @@ func NewListCmd() *cobra.Command {
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := false
-		clusters, err := api.ListClusters(ctx, api.Endpoint, api.ListOpts{
+		clusters, err := api.ListClusters(ctx, api.Methods, api.ListOpts{
 			PreviousRuns: history,
 			Labels:       *labels,
 		})
@@ -69,7 +69,7 @@ func newHistoryCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		history := true
 		startTs := time.Now().Add(-*since)
-		clusters, err := api.ListClusters(ctx, api.Endpoint, api.ListOpts{
+		clusters, err := api.ListClusters(ctx, api.Methods, api.ListOpts{
 			PreviousRuns: history,
 			NotOlderThan: &startTs,
 			Labels:       *labels,

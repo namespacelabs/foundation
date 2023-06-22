@@ -44,7 +44,7 @@ func NewExecScoped() *cobra.Command {
 			return fnerrors.New("at least one --service is required")
 		}
 
-		response, err := api.EnsureCluster(ctx, api.Endpoint, clusterId)
+		response, err := api.EnsureCluster(ctx, api.Methods, clusterId)
 		if err != nil {
 			return err
 		}
@@ -110,7 +110,7 @@ var constructors = map[string]func(context.Context, *api.KubernetesCluster) (inj
 	},
 
 	"kubernetes": func(ctx context.Context, cluster *api.KubernetesCluster) (injected, error) {
-		response, err := api.GetKubernetesConfig(ctx, api.Endpoint, cluster.ClusterId)
+		response, err := api.GetKubernetesConfig(ctx, api.Methods, cluster.ClusterId)
 		if err != nil {
 			return injected{}, err
 		}

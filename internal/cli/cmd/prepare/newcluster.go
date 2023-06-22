@@ -52,7 +52,7 @@ func newNewBuildClusterCmd() *cobra.Command {
 			return err
 		}
 
-		msg, err := nscloud.EnsureBuildCluster(ctx, api.Endpoint)
+		msg, err := nscloud.EnsureBuildCluster(ctx, api.Methods)
 		if err != nil {
 			return err
 		}

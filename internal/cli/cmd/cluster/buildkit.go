@@ -176,7 +176,7 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 }
 
 func ensureBuildCluster(ctx context.Context, platform api.BuildPlatform) (*api.CreateClusterResult, error) {
-	response, err := api.CreateBuildCluster(ctx, api.Endpoint, platform)
+	response, err := api.CreateBuildCluster(ctx, api.Methods, platform)
 	if err != nil {
 		return nil, err
 	}

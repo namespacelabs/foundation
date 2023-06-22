@@ -80,12 +80,11 @@ func ExchangeUserToken(ctx context.Context, token string, scopes ...string) (Exc
 
 	var res ExchangeUserTokenResponse
 	if err := (Call[ExchangeUserTokenRequest]{
-		Endpoint: EndpointAddress,
-		Method:   "nsl.tenants.TenantsService/ExchangeUserToken",
+		Method: "nsl.tenants.TenantsService/ExchangeUserToken",
 		FetchToken: func(ctx context.Context) (Token, error) {
 			return userToken(token), nil
 		},
-	}.Do(ctx, req, DecodeJSONResponse(&res))); err != nil {
+	}.Do(ctx, req, ResolveStaticEndpoint(EndpointAddress), DecodeJSONResponse(&res))); err != nil {
 		return ExchangeUserTokenResponse{}, err
 	}
 

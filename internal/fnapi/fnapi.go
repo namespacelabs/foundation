@@ -37,23 +37,25 @@ func SetupFlags(flags *pflag.FlagSet) {
 	_ = flags.MarkHidden("fnapi_admin")
 }
 
+func ResolveStaticEndpoint(endpoint string) func(context.Context, Token) (string, error) {
+	return func(context.Context, Token) (string, error) {
+		return endpoint, nil
+	}
+}
+
 // A nil handle indicates that the caller wants to discard the response.
 func AnonymousCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Endpoint:   endpoint,
 		Method:     method,
 		FetchToken: nil, // Callers of this API do not assume that credentials are injected.
-	}.Do(ctx, req, handle)
+	}.Do(ctx, req, ResolveStaticEndpoint(endpoint), handle)
 }
 
 func AuthenticatedCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Endpoint: endpoint,
-		Method:   method,
-		FetchToken: func(ctx context.Context) (Token, error) {
-			return FetchToken(ctx)
-		},
-	}.Do(ctx, req, handle)
+		Method:     method,
+		FetchToken: FetchToken,
+	}.Do(ctx, req, ResolveStaticEndpoint(endpoint), handle)
 }
 
 type Token interface {
@@ -65,7 +67,6 @@ func BearerToken(t Token) string {
 }
 
 type Call[RequestT any] struct {
-	Endpoint   string
 	Method     string
 	FetchToken func(context.Context) (Token, error)
 }
@@ -88,14 +89,17 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 }
 
-func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io.Reader) error) error {
+func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoint func(context.Context, Token) (string, error), handle func(io.Reader) error) error {
 	headers := http.Header{}
 
+	var resolvedToken Token
 	if c.FetchToken != nil {
 		tok, err := c.FetchToken(ctx)
 		if err != nil {
 			return err
 		}
+
+		resolvedToken = tok
 		headers.Add("Authorization", BearerToken(tok))
 	}
 
@@ -106,7 +110,14 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 		return fnerrors.InternalError("failed to marshal request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Endpoint+"/"+c.Method, bytes.NewReader(reqBytes))
+	endpoint, err := resolveEndpoint(ctx, resolvedToken)
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "RPC: %v (endpoint: %v)\n", c.Method, endpoint)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/"+c.Method, bytes.NewReader(reqBytes))
 	if err != nil {
 		return fnerrors.InternalError("failed to construct request: %w", err)
 	}
@@ -141,7 +152,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 
 	st := &spb.Status{}
 	if err := json.Unmarshal(respBody, st); err == nil {
-		return c.handleGrpcStatus(st)
+		return handleGrpcStatus(endpoint, c.Method, st)
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
@@ -156,7 +167,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 			return fnerrors.InternalError("failed to unmarshal grpc details: %w", err)
 		}
 
-		return c.handleGrpcStatus(st)
+		return handleGrpcStatus(endpoint, c.Method, st)
 	}
 
 	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
@@ -168,7 +179,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 			st.Code = int32(intVar)
 			st.Message = grpcMessage[0]
 
-			return c.handleGrpcStatus(st)
+			return handleGrpcStatus(endpoint, c.Method, st)
 		}
 	}
 
@@ -176,30 +187,30 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, handle func(io
 	case http.StatusInternalServerError:
 		return fnerrors.InternalError("namespace api: internal server error: %s", string(respBody))
 	case http.StatusUnauthorized:
-		return fnerrors.ReauthError("%s/%s requires authentication", c.Endpoint, c.Method)
+		return fnerrors.ReauthError("%s/%s requires authentication", endpoint, c.Method)
 	case http.StatusForbidden:
-		return fnerrors.PermissionDeniedError("%s/%s denied access", c.Endpoint, c.Method)
+		return fnerrors.PermissionDeniedError("%s/%s denied access", endpoint, c.Method)
 	default:
-		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, c.Endpoint, response.Status)
+		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
 	}
 }
 
-func (c Call[RequestT]) handleGrpcStatus(st *spb.Status) error {
+func handleGrpcStatus(endpoint, method string, st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
-		return fnerrors.ReauthError("%s/%s requires authentication: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.ReauthError("%s/%s requires authentication: %w", endpoint, method, status.ErrorProto(st))
 
 	case int32(codes.PermissionDenied):
-		return fnerrors.PermissionDeniedError("%s/%s denied access: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.PermissionDeniedError("%s/%s denied access: %w", endpoint, method, status.ErrorProto(st))
 
 	case int32(codes.FailedPrecondition):
 		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).
-		return fnerrors.New("failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.New("failed to call %s/%s: %w", endpoint, method, status.ErrorProto(st))
 
 	case int32(codes.Internal):
-		return fnerrors.InternalError("failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.InternalError("failed to call %s/%s: %w", endpoint, method, status.ErrorProto(st))
 
 	default:
-		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", c.Endpoint, c.Method, status.ErrorProto(st))
+		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", endpoint, method, status.ErrorProto(st))
 	}
 }

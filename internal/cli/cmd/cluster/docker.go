@@ -96,7 +96,7 @@ func runPassthrough(ctx context.Context, clusterId string, args []string) error 
 }
 
 func withDocker(ctx context.Context, clusterId string, callback func(context.Context, string) error) error {
-	response, err := api.EnsureCluster(ctx, api.Endpoint, clusterId)
+	response, err := api.EnsureCluster(ctx, api.Methods, clusterId)
 	if err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		stdout := console.Stdout(ctx)
 
-		response, err := api.GetImageRegistry(ctx, api.Endpoint)
+		response, err := api.GetImageRegistry(ctx, api.Methods)
 		if err != nil {
 			return err
 		}
@@ -261,7 +261,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 		}
 		regURL := string(input)
 
-		resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+		resp, err := api.GetImageRegistry(ctx, api.Methods)
 		if err != nil {
 			return fnerrors.New("failed to get nscloud registries: %w", err)
 		}
@@ -303,7 +303,7 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 		done := console.EnterInputMode(ctx)
 		defer done()
 
-		resp, err := api.GetImageRegistry(ctx, api.Endpoint)
+		resp, err := api.GetImageRegistry(ctx, api.Methods)
 		if err != nil {
 			return fnerrors.New("failed to get nscloud registries: %w", err)
 		}

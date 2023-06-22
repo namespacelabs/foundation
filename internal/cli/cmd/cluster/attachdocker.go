@@ -223,7 +223,7 @@ func updateContext(dockerCli *command.DockerCli, ctxName string, shouldUpdate fu
 
 func ensureDockerCluster(ctx context.Context, specified, machineType string) (*api.KubernetesCluster, error) {
 	if specified != "" {
-		resp, err := api.EnsureCluster(ctx, api.Endpoint, specified)
+		resp, err := api.EnsureCluster(ctx, api.Methods, specified)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +231,7 @@ func ensureDockerCluster(ctx context.Context, specified, machineType string) (*a
 	}
 
 	featuresList := []string{"EXP_DISABLE_KUBERNETES"}
-	resp, err := api.CreateAndWaitCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, api.CreateClusterOpts{
 		Purpose:     "Docker environment",
 		Features:    featuresList,
 		MachineType: machineType,

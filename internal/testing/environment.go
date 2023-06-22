@@ -34,7 +34,7 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) (cfg
 
 	var messages []*anypb.Any
 	if UseNamespaceBuildCluster {
-		msg, err := nscloud.EnsureBuildCluster(ctx, api.Endpoint)
+		msg, err := nscloud.EnsureBuildCluster(ctx, api.Methods)
 		if err != nil {
 			return nil, err
 		}

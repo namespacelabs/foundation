@@ -52,7 +52,7 @@ func NewDescribeCmd() *cobra.Command {
 			return nil
 		}
 
-		response, err := api.GetClusterSummary(ctx, api.Endpoint, cluster.ClusterId, resources)
+		response, err := api.GetClusterSummary(ctx, api.Methods, cluster.ClusterId, resources)
 		if err != nil {
 			return err
 		}

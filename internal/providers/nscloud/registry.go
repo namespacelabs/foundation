@@ -86,7 +86,7 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 		return r.registry, nil
 	}
 
-	resp, err := api.GetCluster(ctx, api.Endpoint, r.clusterID)
+	resp, err := api.GetCluster(ctx, api.Methods, r.clusterID)
 	if err != nil {
 		return nil, err
 	}

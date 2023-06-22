@@ -42,7 +42,6 @@ func SetupFlags(flags *pflag.FlagSet, hide bool) {
 }
 
 func Register() {
-	api.Register()
 	RegisterRegistry()
 	RegisterClusterProvider()
 }
@@ -76,7 +75,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 }
 
 func provideClusterExt(ctx context.Context, clusterId string, ephemeral bool) (client.ClusterConfiguration, error) {
-	wres, err := api.WaitCluster(ctx, api.Endpoint, clusterId, api.WaitClusterOpts{WaitKind: "kubernetes"})
+	wres, err := api.WaitCluster(ctx, api.Methods, clusterId, api.WaitClusterOpts{WaitKind: "kubernetes"})
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
@@ -106,7 +105,7 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 		return nil, fnerrors.BadInputError("%s: no cluster configured", cfg.EnvKey())
 	}
 
-	response, err := api.EnsureCluster(ctx, api.Endpoint, conf.ClusterId)
+	response, err := api.EnsureCluster(ctx, api.Methods, conf.ClusterId)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +121,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	}
 
 	ephemeral := env.Environment().Ephemeral
-	response, err := api.CreateCluster(ctx, api.Endpoint, api.CreateClusterOpts{
+	response, err := api.CreateCluster(ctx, api.Methods, api.CreateClusterOpts{
 		MachineType: defaultMachineType,
 		Purpose:     purpose,
 	})
@@ -135,7 +134,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 
 func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string) (runtime.Planner, error) {
 	if conf, ok := clusterConfigType.CheckGet(env.Configuration()); ok {
-		response, err := api.EnsureCluster(ctx, api.Endpoint, conf.ClusterId)
+		response, err := api.EnsureCluster(ctx, api.Methods, conf.ClusterId)
 		if err != nil {
 			return nil, err
 		}
@@ -143,7 +142,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
 	}
 
-	response, err := api.CreateCluster(ctx, api.Endpoint, api.CreateClusterOpts{Purpose: purpose})
+	response, err := api.CreateCluster(ctx, api.Methods, api.CreateClusterOpts{Purpose: purpose})
 	if err != nil {
 		return nil, err
 	}
@@ -329,7 +328,7 @@ func (cr clusterNamespace) DeleteAllRecursively(ctx context.Context, wait bool, 
 }
 
 func (cr clusterNamespace) deleteCluster(ctx context.Context) (bool, error) {
-	if err := api.DestroyCluster(ctx, api.Endpoint, cr.clusterId); err != nil {
+	if err := api.DestroyCluster(ctx, api.Methods, cr.clusterId); err != nil {
 		if status.Code(err) == codes.NotFound {
 			return false, nil
 		}

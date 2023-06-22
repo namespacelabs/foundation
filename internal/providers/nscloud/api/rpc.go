@@ -7,11 +7,13 @@ package api
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -53,7 +55,7 @@ type API struct {
 }
 
 var (
-	Endpoint API
+	Methods = MakeAPI()
 
 	rpcEndpointOverride string
 	RegionName          string
@@ -72,132 +74,142 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 	}
 }
 
-func Register() {
-	rpcEndpoint := rpcEndpointOverride
-
-	if rpcEndpoint == "" {
-		rpcEndpoint = os.Getenv("NSC_ENDPOINT")
-	}
-
-	if rpcEndpoint == "" {
-		rpcEndpoint = fmt.Sprintf("https://api.%s.nscluster.cloud", RegionName)
-	}
-
-	Endpoint = MakeAPI(rpcEndpoint)
+type tokenClaims struct {
+	TenantID      string `json:"tenant_id"`
+	OwnerID       string `json:"owner_id"`
+	PrimaryRegion string `json:"primary_region"`
 }
 
-func MakeAPI(endpoint string) API {
+func ResolveEndpoint(ctx context.Context, tok fnapi.Token) (string, error) {
+	if rpcEndpointOverride != "" {
+		return rpcEndpointOverride, nil
+	}
+
+	if rpcEndpoint := os.Getenv("NSC_ENDPOINT"); rpcEndpoint != "" {
+		return rpcEndpoint, nil
+	}
+
+	if tok == nil {
+		return "", fnerrors.New("a token is required")
+	}
+
+	parts := strings.Split(tok.Raw(), ".")
+	if len(parts) < 2 {
+		return "", fnerrors.New("invalid token")
+	}
+
+	dec, err := base64.RawStdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", fnerrors.New("invalid token: %w", err)
+	}
+
+	var claims tokenClaims
+	if err := json.Unmarshal(dec, &claims); err != nil {
+		return "", fnerrors.New("invalid claims: %w", err)
+	}
+
+	if claims.PrimaryRegion != "" {
+		return "https://api." + claims.PrimaryRegion, nil
+	}
+
+	rpcEndpoint := fmt.Sprintf("https://api.%s.nscluster.cloud", RegionName)
+
+	return rpcEndpoint, nil
+}
+
+func MakeAPI() API {
 	return API{
 		StartCreateKubernetesCluster: fnapi.Call[CreateKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/StartCreateKubernetesCluster",
 		},
 
 		CreateContainers: fnapi.Call[CreateContainersRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/CreateContainers",
 		},
 
 		StartContainers: fnapi.Call[StartContainersRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/StartContainers",
 		},
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesCluster",
 		},
 
 		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/EnsureKubernetesCluster",
 		},
 
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/WaitKubernetesCluster",
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/ListKubernetesClusters",
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/DestroyKubernetesCluster",
 		},
 
 		SuspendKubernetesCluster: fnapi.Call[SuspendKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/SuspendKubernetesCluster",
 		},
 
 		ReleaseKubernetesCluster: fnapi.Call[ReleaseKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/ReleaseKubernetesCluster",
 		},
 
 		WakeKubernetesCluster: fnapi.Call[WakeKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/WakeKubernetesCluster",
 		},
 
 		RefreshKubernetesCluster: fnapi.Call[RefreshKubernetesClusterRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/RefreshKubernetesCluster",
 		},
 
 		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesClusterSummary",
 		},
 
 		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetKubernetesConfig",
 		},
 
 		GetImageRegistry: fnapi.Call[emptypb.Empty]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetImageRegistry",
 		},
 
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.logging.LoggingService/TailLogs",
 		},
 
 		GetClusterLogs: fnapi.Call[GetLogsRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.logging.LoggingService/GetLogs",
 		},
 
 		GetProfile: fnapi.Call[emptypb.Empty]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/GetProfile",
 		},
 
 		RegisterIngress: fnapi.Call[RegisterIngressRequest]{
-			Endpoint:   endpoint,
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/RegisterIngress",
 		},
@@ -260,7 +272,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 		}
 
 		var response StartCreateKubernetesClusterResponse
-		if err := api.StartCreateKubernetesCluster.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.StartCreateKubernetesCluster.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, fnerrors.New("failed to create cluster: %w", err)
 		}
 
@@ -338,7 +350,7 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 		tries := 0
 		for {
 			// We continue to wait for the cluster to become ready until we observe a READY.
-			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, func(body io.Reader) error {
+			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, ResolveEndpoint, func(body io.Reader) error {
 				// If we get a payload, reset the number of tries.
 				tries = 0
 
@@ -476,13 +488,13 @@ func ClusterService(cluster *KubernetesCluster, name string) *Cluster_ServiceSta
 func DestroyCluster(ctx context.Context, api API, clusterId string) error {
 	return api.DestroyKubernetesCluster.Do(ctx, DestroyKubernetesClusterRequest{
 		ClusterId: clusterId,
-	}, nil)
+	}, ResolveEndpoint, nil)
 }
 
 func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
-		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -492,7 +504,7 @@ func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesC
 func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.ensure").HumanReadablef("Waiting for environment").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
-		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -502,7 +514,7 @@ func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernet
 func GetClusterSummary(ctx context.Context, api API, clusterId string, resources []string) (*GetKubernetesClusterSummaryResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-summary").LogLevel(1).Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterSummaryResponse, error) {
 		var response GetKubernetesClusterSummaryResponse
-		if err := api.GetKubernetesClusterSummary.Do(ctx, GetKubernetesClusterSummaryRequest{ClusterId: clusterId, Resource: resources}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesClusterSummary.Do(ctx, GetKubernetesClusterSummaryRequest{ClusterId: clusterId, Resource: resources}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -512,7 +524,7 @@ func GetClusterSummary(ctx context.Context, api API, clusterId string, resources
 func GetKubernetesConfig(ctx context.Context, api API, clusterId string) (*GetKubernetesConfigResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesConfigResponse, error) {
 		var response GetKubernetesConfigResponse
-		if err := api.GetKubernetesConfig.Do(ctx, GetKubernetesConfigRequest{ClusterId: clusterId}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesConfig.Do(ctx, GetKubernetesConfigRequest{ClusterId: clusterId}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -522,7 +534,7 @@ func GetKubernetesConfig(ctx context.Context, api API, clusterId string) (*GetKu
 func GetImageRegistry(ctx context.Context, api API) (*GetImageRegistryResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-image-registry"), func(ctx context.Context) (*GetImageRegistryResponse, error) {
 		var response GetImageRegistryResponse
-		if err := api.GetImageRegistry.Do(ctx, emptypb.Empty{}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetImageRegistry.Do(ctx, emptypb.Empty{}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -551,7 +563,7 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 		}
 
 		var list ListKubernetesClustersResponse
-		if err := api.ListKubernetesClusters.Do(ctx, req, fnapi.DecodeJSONResponse(&list)); err != nil {
+		if err := api.ListKubernetesClusters.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&list)); err != nil {
 			return nil, err
 		}
 
@@ -577,7 +589,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		UseBlockLabels: true,
 		Include:        opts.Include,
 		Exclude:        opts.Exclude,
-	}, func(r io.Reader) error {
+	}, ResolveEndpoint, func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			var logBlock LogBlock
@@ -618,7 +630,7 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 		}
 
 		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetClusterLogs.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
@@ -629,7 +641,7 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-profile"), func(ctx context.Context) (*GetProfileResponse, error) {
 		var response GetProfileResponse
-		if err := api.GetProfile.Do(ctx, emptypb.Empty{}, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetProfile.Do(ctx, emptypb.Empty{}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -639,7 +651,7 @@ func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
 func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest) (*RegisterIngressResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*RegisterIngressResponse, error) {
 		var response RegisterIngressResponse
-		if err := api.RegisterIngress.Do(ctx, req, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.RegisterIngress.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -657,7 +669,7 @@ func RefreshCluster(ctx context.Context, api API, clusterId string) (*RefreshKub
 	var response RefreshKubernetesClusterResponse
 	if err := api.RefreshKubernetesCluster.Do(ctx, RefreshKubernetesClusterRequest{
 		ClusterId: clusterId,
-	}, fnapi.DecodeJSONResponse(&response)); err != nil {
+	}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 		return nil, err
 	}
 	return &response, nil

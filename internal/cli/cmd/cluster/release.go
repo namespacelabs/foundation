@@ -21,9 +21,9 @@ func newSuspendCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return api.Endpoint.SuspendKubernetesCluster.Do(ctx, api.SuspendKubernetesClusterRequest{
+		return api.Methods.SuspendKubernetesCluster.Do(ctx, api.SuspendKubernetesClusterRequest{
 			ClusterId: args[0],
-		}, nil)
+		}, api.ResolveEndpoint, nil)
 	})
 
 	return cmd
@@ -38,9 +38,9 @@ func newReleaseCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return api.Endpoint.ReleaseKubernetesCluster.Do(ctx, api.ReleaseKubernetesClusterRequest{
+		return api.Methods.ReleaseKubernetesCluster.Do(ctx, api.ReleaseKubernetesClusterRequest{
 			ClusterId: args[0],
-		}, nil)
+		}, api.ResolveEndpoint, nil)
 	})
 
 	return cmd
@@ -55,9 +55,9 @@ func newWakeCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return api.Endpoint.WakeKubernetesCluster.Do(ctx, api.WakeKubernetesClusterRequest{
+		return api.Methods.WakeKubernetesCluster.Do(ctx, api.WakeKubernetesClusterRequest{
 			ClusterId: args[0],
-		}, nil)
+		}, api.ResolveEndpoint, nil)
 	})
 
 	return cmd
