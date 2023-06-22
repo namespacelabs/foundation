@@ -15,10 +15,7 @@ permissions:
 jobs:
   build_fn:
     name: Build ns from head
-    strategy:
-      matrix:
-        os: [nscloud]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud
     steps:
       - name: Check out
         uses: actions/checkout@v3
@@ -71,13 +68,12 @@ jobs:
           slack-announce-channel: "#ci"
 
   run_deploy:
-    name: Test local Namespace (deploy to k3d) os=${{ matrix.os }} use_prebuilts=${{ matrix.use_prebuilts }}
+    name: Test local Namespace (deploy to k3d) use_prebuilts=${{ matrix.use_prebuilts }}
     needs: build_fn
     strategy:
       matrix:
-        os: [nscloud]
         use_prebuilts: [false, true]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud
     timeout-minutes: 15
     steps:
       - name: Check out
@@ -137,18 +133,15 @@ jobs:
       - name: Upload action log
         uses: actions/upload-artifact@v3
         with:
-          name: ns-action-log-${{ github.job }}-${{ matrix.os }}-use_prebuilts-${{ matrix.use_prebuilts }}
+          name: ns-action-log-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
           path: /tmp/action_log
           retention-days: 3
         if: always()
 
   run_dev:
-    name: Test local Namespace dev session os=${{ matrix.os }}
+    name: Test local Namespace dev session
     needs: build_fn
-    strategy:
-      matrix:
-        os: [nscloud]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
     timeout-minutes: 15
     steps:
       - name: Check out
@@ -160,20 +153,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      # Required by buildkit gha cache.
-      - name: Expose GitHub Runtime
-        uses: crazy-max/ghaction-github-runtime@v2
-
-      - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnrun-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnrun-
 
       - name: Download ns
         uses: actions/download-artifact@v3
@@ -197,10 +176,7 @@ jobs:
   run_e2e_tests:
     name: e2e tests
     needs: build_fn
-    strategy:
-      matrix:
-        os: [nscloud]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud
     timeout-minutes: 30
     steps:
       - name: Check out
@@ -210,17 +186,6 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ns-${{ runner.os }}
-
-      - name: Make ns executable
-        run: chmod +x ns && mv ns /tmp/ns
-
-      - name: Download nsc
-        uses: actions/download-artifact@v3
-        with:
-          name: nsc-${{ runner.os }}
-
-      - name: Make nsc executable
-        run: chmod +x nsc && mv nsc /tmp/nsc
 
       - name: Exchange Github token
         run: /tmp/ns auth exchange-github-token
@@ -235,6 +200,8 @@ jobs:
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel \
@@ -248,7 +215,26 @@ jobs:
           retention-days: 3
         if: always()
 
-      - name: Test ns cluster commands
+  run_ns_cluster_tests:
+    name: nsc tests
+    needs: build_fn
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@v3
+
+      - name: Download nsc
+        uses: actions/download-artifact@v3
+        with:
+          name: nsc-${{ runner.os }}
+
+      - name: Make nsc executable
+        run: chmod +x nsc && mv nsc /tmp/nsc
+
+      - name: Exchange Github token
+        run: /tmp/nsc auth exchange-github-token
+      - name: Test nsc cluster commands
         run: |
           ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/nsc
 
@@ -268,10 +254,7 @@ jobs:
       - build_fn
       - run_e2e_tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    strategy:
-      matrix:
-        os: [nscloud-ubuntu-22.04-amd64-2x8]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
     timeout-minutes: 30
     steps:
       - name: Check out
@@ -323,7 +306,10 @@ jobs:
             internal/testdata/integrations/golang \
             internal/testdata/integrations/nodejs/yarn \
             --use_prebuilts=true \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
             --golang_use_buildkit=true \
+            --build_in_nscloud \
             --run_codegen=false
 
       - name: Upload action log
@@ -349,9 +335,8 @@ jobs:
     needs: build_fn
     strategy:
       matrix:
-        os: [nscloud]
         repo: [examples]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud
     timeout-minutes: 30
     steps:
       - name: checkout dependant repo
@@ -387,6 +372,8 @@ jobs:
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
+            --buildkit_import_cache=type=gha \
+            --buildkit_export_cache=type=gha,mode=max \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel
@@ -410,12 +397,9 @@ jobs:
           slack-announce-channel: "#ci"
 
   test_unprepare:
-    name: Test unprepare os=${{ matrix.os }}
+    name: Test unprepare
     needs: build_fn
-    strategy:
-      matrix:
-        os: [nscloud]
-    runs-on: ${{ matrix.os }}
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
     timeout-minutes: 15
     steps:
       - name: Check out
