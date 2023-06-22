@@ -30,7 +30,8 @@ while true ; do
 
     COUNTER=$((COUNTER+1))
     if [[ $COUNTER -ge 20 ]]; then
-        echo giving up
+        echo giving up - final resources in k8s:
+        $NS kubectl -- get all
         exit 1
     fi
 
