@@ -141,7 +141,7 @@ jobs:
   run_dev:
     name: Test local Namespace dev session
     needs: build_fn
-    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    runs-on: nscloud
     timeout-minutes: 15
     steps:
       - name: Check out
@@ -187,6 +187,9 @@ jobs:
         with:
           name: ns-${{ runner.os }}
 
+      - name: Make ns executable
+        run: chmod +x ns && mv nsc /tmp/ns
+
       - name: Exchange Github token
         run: /tmp/ns auth exchange-github-token
 
@@ -200,8 +203,6 @@ jobs:
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel \
@@ -214,6 +215,16 @@ jobs:
           path: /tmp/action_log
           retention-days: 3
         if: always()
+
+      - name: Breakpoint on failure
+        if: failure()
+        uses: namespacelabs/breakpoint-action@v0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          duration: 30m
+          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
+          slack-announce-channel: "#ci"
 
   run_ns_cluster_tests:
     name: nsc tests
@@ -372,8 +383,6 @@ jobs:
             --use_prebuilts=true \
             --deploy_push_prebuilts_to_registry=false \
             --golang_use_buildkit=true \
-            --buildkit_import_cache=type=gha \
-            --buildkit_export_cache=type=gha,mode=max \
             --testing_use_namespace_cloud \
             --testing_use_namespace_cloud_build \
             --parallel
