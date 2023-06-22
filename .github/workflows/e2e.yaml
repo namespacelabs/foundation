@@ -131,6 +131,7 @@ jobs:
             --golang_use_buildkit=false \
             --naming_no_tls=true \
             --use_orchestrator=false \
+            --build_in_nscloud \
             internal/testdata/server/gogrpc
 
       - name: Upload action log
