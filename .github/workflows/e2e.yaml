@@ -289,6 +289,16 @@ jobs:
       - name: Check out
         uses: actions/checkout@v3
 
+      - name: Setup cross-invocation caching (Go)
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-deploystaging-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-go-deploystaging-
+
       - name: Download ns
         uses: actions/download-artifact@v3
         with:
