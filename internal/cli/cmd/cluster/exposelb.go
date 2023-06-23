@@ -67,7 +67,7 @@ func NewExposeLoadBalancerCmd() *cobra.Command {
 		}
 
 		fmt.Fprintf(console.Stdout(ctx), "Exported port %d from %s/%s:\n  https://%s\n\n",
-			*port, *namespace, *service, resp.Fqdn)
+			backend.Port, *namespace, *service, resp.Fqdn)
 
 		return nil
 	})
