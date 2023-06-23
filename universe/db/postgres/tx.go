@@ -24,13 +24,13 @@ func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff
 	var result T
 
 	err := backoff.Retry(func() error {
-		value, err := beginRWTxFunc(ctx, db, f)
+		value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
 		if err == nil {
 			result = value
 			return nil
 		}
 
-		if !errorRetryable(err) {
+		if !ErrorIsRetryable(err) {
 			return backoff.Permanent(err)
 		}
 
@@ -40,10 +40,14 @@ func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff
 	return result, err
 }
 
-func beginRWTxFunc[T any](ctx context.Context, db *DB, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+	return doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
+}
+
+func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	var empty T
 
-	tx, err := db.base.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
+	tx, err := db.base.BeginTx(ctx, txoptions)
 	if err != nil {
 		return empty, TransactionError{err}
 	}
@@ -62,7 +66,7 @@ func beginRWTxFunc[T any](ctx context.Context, db *DB, f func(context.Context, p
 	return value, nil
 }
 
-func errorRetryable(err error) bool {
+func ErrorIsRetryable(err error) bool {
 	var pgerr *pgconn.PgError
 	if !errors.As(err, &pgerr) {
 		return false
