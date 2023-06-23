@@ -29,7 +29,7 @@ func NewBareClusterCmd(hidden bool) *cobra.Command {
 		Hidden: hidden,
 	}
 
-	cmd.AddCommand(NewCreateCmd(true)) // Adding hidden command under `cluster` to support old action versions.
+	cmd.AddCommand(NewCreateCmd()) // Adding hidden command under `cluster` to support old action versions.
 	cmd.AddCommand(newPortForwardCmd())
 	cmd.AddCommand(newDestroyCmd())
 	cmd.AddCommand(newWriteKubeconfigCmd("kubeconfig", true)) // Adding hidden command under `cluster` to support old action versions.
@@ -57,7 +57,7 @@ func NewBareClusterCmd(hidden bool) *cobra.Command {
 func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd := NewBareClusterCmd(hidden)
 
-	cmd.AddCommand(NewCreateCmd(false))
+	cmd.AddCommand(NewCreateCmd())
 	cmd.AddCommand(NewListCmd())
 	cmd.AddCommand(NewSshCmd())
 	cmd.AddCommand(NewKubectlCmd())
