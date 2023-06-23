@@ -589,11 +589,12 @@ func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) (contex
 			span.SetAttributes(attribute.String("anchorID", data.AnchorID.String()))
 		}
 
-		for _, arg := range data.Arguments {
-			// The stored value is serialized in a best-effort way.
-			be, _ := json.MarshalIndent(arg.Msg, "", "  ")
-			span.SetAttributes(attribute.String("arg."+arg.Name, string(be)))
+		attributes := make([]attribute.KeyValue, len(data.Arguments))
+		for k, arg := range data.Arguments {
+			attributes[k] = argToAttribute(arg)
 		}
+
+		span.SetAttributes(attributes...)
 
 		if data.Scope.Len() > 0 {
 			span.SetAttributes(attribute.StringSlice("scope", data.Scope.PackageNamesAsString()))
@@ -601,6 +602,26 @@ func startSpan(ctx context.Context, tracer trace.Tracer, data EventData) (contex
 	}
 
 	return ctx, span
+}
+
+func argToAttribute(arg ActionArgument) attribute.KeyValue {
+	switch x := arg.Msg.(type) {
+	case bool:
+		return attribute.Bool(arg.Name, x)
+
+	case string:
+		return attribute.String(arg.Name, x)
+
+	case int:
+		return attribute.Int64(arg.Name, int64(x))
+	case int32:
+		return attribute.Int64(arg.Name, int64(x))
+	case int64:
+		return attribute.Int64(arg.Name, x)
+
+	default:
+		return attribute.String(arg.Name, serialize(arg.Msg, false))
+	}
 }
 
 func endSpan(span trace.Span, r ResultData, completed time.Time) {
