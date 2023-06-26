@@ -51,10 +51,12 @@ func NewRunCmd() *cobra.Command {
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
 	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
+	enableNsc := run.Flags().Bool("enable_nsc", false, "If set to true, instructs the platform to also setup nsc in the container.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
 	run.Flags().MarkHidden("enable_docker")
+	run.Flags().MarkHidden("enable_nsc")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -90,6 +92,7 @@ func NewRunCmd() *cobra.Command {
 			Labels:        *labels,
 			InternalExtra: *internalExtra,
 			EnableDocker:  *enableDocker,
+			EnableNsc:     *enableNsc,
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
@@ -205,6 +208,7 @@ type createContainerOpts struct {
 	Labels        map[string]string
 	InternalExtra string
 	EnableDocker  bool
+	EnableNsc     bool
 }
 
 type exportContainerPort struct {
@@ -223,6 +227,10 @@ func createContainer(ctx context.Context, machineType string, duration time.Dura
 
 	if opts.EnableDocker {
 		container.DockerSockPath = "/var/run/docker.sock"
+	}
+
+	if opts.EnableNsc {
+		container.NscStatePath = "/var/run/nsc"
 	}
 
 	for _, port := range opts.ExportedPorts {
