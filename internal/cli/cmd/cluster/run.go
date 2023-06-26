@@ -51,10 +51,12 @@ func NewRunCmd() *cobra.Command {
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
 	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
+	forwardNscState := run.Flags().Bool("forward_nsc_state", false, "If set to true, instructs the platform to forward nsc state into the container.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
 	run.Flags().MarkHidden("enable_docker")
+	run.Flags().MarkHidden("forward_nsc_state")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -82,14 +84,15 @@ func NewRunCmd() *cobra.Command {
 		}
 
 		opts := createContainerOpts{
-			Name:          name,
-			Image:         *image,
-			Args:          args,
-			Env:           *env,
-			Features:      *features,
-			Labels:        *labels,
-			InternalExtra: *internalExtra,
-			EnableDocker:  *enableDocker,
+			Name:            name,
+			Image:           *image,
+			Args:            args,
+			Env:             *env,
+			Features:        *features,
+			Labels:          *labels,
+			InternalExtra:   *internalExtra,
+			EnableDocker:    *enableDocker,
+			ForwardNscState: *forwardNscState,
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
@@ -195,16 +198,17 @@ func NewRunComposeCmd() *cobra.Command {
 }
 
 type createContainerOpts struct {
-	Name          string
-	Image         string
-	Args          []string
-	Env           map[string]string
-	Flags         []string
-	ExportedPorts []exportContainerPort
-	Features      []string
-	Labels        map[string]string
-	InternalExtra string
-	EnableDocker  bool
+	Name            string
+	Image           string
+	Args            []string
+	Env             map[string]string
+	Flags           []string
+	ExportedPorts   []exportContainerPort
+	Features        []string
+	Labels          map[string]string
+	InternalExtra   string
+	EnableDocker    bool
+	ForwardNscState bool
 }
 
 type exportContainerPort struct {
@@ -223,6 +227,10 @@ func createContainer(ctx context.Context, machineType string, duration time.Dura
 
 	if opts.EnableDocker {
 		container.DockerSockPath = "/var/run/docker.sock"
+	}
+
+	if opts.ForwardNscState {
+		container.NscStatePath = "/var/run/nsc"
 	}
 
 	for _, port := range opts.ExportedPorts {
