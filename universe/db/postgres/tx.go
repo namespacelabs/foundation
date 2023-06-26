@@ -12,7 +12,9 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"namespacelabs.dev/foundation/framework/tracing"
 )
 
 const (
@@ -21,23 +23,25 @@ const (
 )
 
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	var result T
+	return tracing.Collect1(ctx, db.Tracer(), tracing.Name("pg.TransactionWithRetries"), func(ctx context.Context) (T, error) {
+		var result T
 
-	err := backoff.Retry(func() error {
-		value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
-		if err == nil {
-			result = value
-			return nil
-		}
+		err := backoff.Retry(func() error {
+			value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
+			if err == nil {
+				result = value
+				return nil
+			}
 
-		if !ErrorIsRetryable(err) {
-			return backoff.Permanent(err)
-		}
+			if !ErrorIsRetryable(err) {
+				return backoff.Permanent(err)
+			}
 
-		return err
-	}, b)
+			return err
+		}, b)
 
-	return result, err
+		return result, err
+	})
 }
 
 func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
@@ -45,25 +49,30 @@ func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f
 }
 
 func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	var empty T
+	return tracing.Collect1(ctx, db.Tracer(), tracing.Name("pg.Transaction").Attribute(
+		attribute.String("pg.isolation-level", string(txoptions.IsoLevel)),
+		attribute.String("pg.access-mode", string(txoptions.AccessMode))),
+		func(ctx context.Context) (T, error) {
+			var empty T
 
-	tx, err := db.base.BeginTx(ctx, txoptions)
-	if err != nil {
-		return empty, TransactionError{err}
-	}
+			tx, err := db.base.BeginTx(ctx, txoptions)
+			if err != nil {
+				return empty, TransactionError{err}
+			}
 
-	defer func() { _ = tx.Rollback(ctx) }()
+			defer func() { _ = tx.Rollback(ctx) }()
 
-	value, err := f(ctx, tracingTx{base: tx, t: db.t})
-	if err != nil {
-		return empty, err
-	}
+			value, err := f(ctx, tracingTx{base: tx, t: db.t})
+			if err != nil {
+				return empty, err
+			}
 
-	if err := tx.Commit(ctx); err != nil {
-		return empty, TransactionError{err}
-	}
+			if err := tx.Commit(ctx); err != nil {
+				return empty, TransactionError{err}
+			}
 
-	return value, nil
+			return value, nil
+		})
 }
 
 func ErrorIsRetryable(err error) bool {
