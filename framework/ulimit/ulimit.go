@@ -5,20 +5,10 @@
 package ulimit
 
 import (
-	"context"
-	"fmt"
 	"syscall"
-
-	"namespacelabs.dev/foundation/internal/console"
 )
 
-func SetFileLimit(ctx context.Context, n uint64) {
-	if err := setFileLimit(n); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "Failed to set ulimit on number of open files to %d: %v\n", n, err)
-	}
-}
-
-func setFileLimit(n uint64) error {
+func SetFileLimit(n uint64) error {
 	var rlimit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rlimit); err != nil {
 		return err

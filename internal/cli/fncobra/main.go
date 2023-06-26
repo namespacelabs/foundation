@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
+	"namespacelabs.dev/foundation/framework/ulimit"
 	"namespacelabs.dev/foundation/internal/clerk"
 	fncobraname "namespacelabs.dev/foundation/internal/cli/fncobra/name"
 	"namespacelabs.dev/foundation/internal/cli/nsboot"
@@ -35,7 +36,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
 	"namespacelabs.dev/foundation/internal/fnfs/fscache"
 	"namespacelabs.dev/foundation/internal/storedrun"
-	"namespacelabs.dev/foundation/internal/ulimit"
 	"namespacelabs.dev/foundation/internal/welcome"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/cfg/knobs"
@@ -103,7 +103,9 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	// hundreds of files, between cache reads, cache writes, etc. This is a best
 	// effort attempt at increasing the file limit to a number we can be more
 	// comfortable with. 4096 is the result of experimentation.
-	ulimit.SetFileLimit(rootCtx, 4096)
+	if err := ulimit.SetFileLimit(4096); err != nil {
+		fmt.Fprintf(console.Debug(rootCtx), "Failed to set ulimit on number of open files to %d: %v\n", 4096, err)
+	}
 
 	var run *storedrun.Run
 	var useTelemetry bool
