@@ -3,6 +3,7 @@ package types
 #Proto: {
 	typename: string
 	source: [...string]
+	skip_codegen?: bool
 }
 
 #ImageID: {

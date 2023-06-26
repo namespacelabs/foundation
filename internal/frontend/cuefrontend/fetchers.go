@@ -81,7 +81,8 @@ func FetchServerWorkspace(loc protos.Location) FetcherFunc {
 }
 
 type cueProtoload struct {
-	Sources []string `json:"sources"`
+	Sources     []string `json:"sources"`
+	SkipCodegen bool     `json:"skip_codegen"`
 
 	Types    map[string]cueProto `json:"types"`
 	Services map[string]cueProto `json:"services"`
@@ -108,7 +109,7 @@ func FetchProto(pl pkggraph.PackageLoader, fsys fs.FS, loc pkggraph.Location) Fe
 		load.Services = map[string]cueProto{}
 
 		for _, d := range fds.File {
-			if err := fillFromFile(fds, d, &load); err != nil {
+			if err := fillFromFile(fds, d, &load, load.SkipCodegen); err != nil {
 				return load, err
 			}
 		}
@@ -117,7 +118,7 @@ func FetchProto(pl pkggraph.PackageLoader, fsys fs.FS, loc pkggraph.Location) Fe
 	}
 }
 
-func fillFromFile(fds *protos.FileDescriptorSetAndDeps, d *descriptorpb.FileDescriptorProto, out *cueProtoload) error {
+func fillFromFile(fds *protos.FileDescriptorSetAndDeps, d *descriptorpb.FileDescriptorProto, out *cueProtoload, skipCodegen bool) error {
 	for _, index := range d.PublicDependency {
 		if int(index) >= len(d.Dependency) {
 			return fnerrors.InternalError("%s: public_dependency out of bonds", d.GetName())
@@ -145,22 +146,24 @@ func fillFromFile(fds *protos.FileDescriptorSetAndDeps, d *descriptorpb.FileDesc
 			return fnerrors.InternalError("%s: public_dependency refers to unknown dependency %q", d.GetName(), dep)
 		}
 
-		if err := fillFromFile(fds, filedep, out); err != nil {
+		if err := fillFromFile(fds, filedep, out, skipCodegen); err != nil {
 			return err
 		}
 	}
 
 	for _, t := range d.GetMessageType() {
 		out.Types[t.GetName()] = cueProto{
-			Typename: fmt.Sprintf("%s.%s", d.GetPackage(), t.GetName()),
-			Sources:  out.Sources,
+			Typename:    fmt.Sprintf("%s.%s", d.GetPackage(), t.GetName()),
+			Sources:     out.Sources,
+			SkipCodegen: skipCodegen,
 		}
 	}
 
 	for _, svc := range d.GetService() {
 		out.Services[svc.GetName()] = cueProto{
-			Typename: fmt.Sprintf("%s.%s", d.GetPackage(), svc.GetName()),
-			Sources:  out.Sources,
+			Typename:    fmt.Sprintf("%s.%s", d.GetPackage(), svc.GetName()),
+			Sources:     out.Sources,
+			SkipCodegen: skipCodegen,
 		}
 	}
 

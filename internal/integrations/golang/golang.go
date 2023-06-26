@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/utils/pointer"
@@ -179,8 +180,10 @@ func (impl) GenerateNode(pkg *pkggraph.Package, nodes []*schema.Node) ([]*schema
 	for _, dl := range pkg.Provides {
 		list = append(list, dl)
 	}
-	for _, svc := range pkg.Services {
-		list = append(list, svc)
+	for key, svc := range pkg.Services {
+		if !slices.Contains(pkg.SkipServiceProtogen, key) {
+			list = append(list, svc)
+		}
 	}
 
 	if len(list) > 0 {

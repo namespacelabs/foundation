@@ -34,8 +34,9 @@ import (
 )
 
 type cueProto struct {
-	Typename string   `json:"typename"`
-	Sources  []string `json:"source"`
+	Typename    string   `json:"typename"`
+	Sources     []string `json:"source"`
+	SkipCodegen bool     `json:"skip_codegen"`
 }
 
 type cueExportMethods struct {
@@ -273,13 +274,24 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	}
 
 	if exported := v.LookupPath("exportService"); exported.Exists() {
-		var svc cueProto
-		if err := exported.Val.Decode(&svc); err != nil {
-			return err
+		var services []cueProto
+
+		if exported.Val.Kind() == cue.ListKind {
+			if err := exported.Val.Decode(&services); err != nil {
+				return err
+			}
+		} else {
+			var svc cueProto
+			if err := exported.Val.Decode(&svc); err != nil {
+				return err
+			}
+			services = append(services, svc)
 		}
 
-		if err := handleService(ctx, env, pl, loc, cueExportMethods{Service: svc}, node, out); err != nil {
-			return err
+		for _, svc := range services {
+			if err := handleService(ctx, env, pl, loc, cueExportMethods{Service: svc}, node, out); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -522,6 +534,9 @@ func handleService(ctx context.Context, env *schema.Environment, pl parsing.Earl
 	}
 
 	out.Services[export.Service.Typename] = parsed
+	if export.Service.SkipCodegen {
+		out.SkipServiceProtogen = append(out.SkipServiceProtogen, export.Service.Typename)
+	}
 	return nil
 }
 

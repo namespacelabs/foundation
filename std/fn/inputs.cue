@@ -49,6 +49,7 @@ import fntypes "namespacelabs.dev/foundation/std/fn:types"
 	@fn(input=protoload)
 
 	*{sources: [string, ...string]} | {source: string, sources: [source]}
+	skip_codegen?: bool
 
 	// Set by the runtime.
 	types: [string]:    fntypes.#Proto

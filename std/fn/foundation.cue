@@ -80,7 +80,7 @@ _#Node: {
 
 	ingress: *"PRIVATE" | "INTERNET_FACING"
 
-	exportService?:        types.#Proto
+	exportService?:        types.#Proto | [...types.#Proto]
 	exportServicesAsHttp?: bool // XXX move this to the service definition.
 	exportMethods?: {
 		service: types.#Proto
