@@ -25,6 +25,10 @@ func (c Collected) Attribute(kv ...attribute.KeyValue) Collected {
 }
 
 func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error) error {
+	if tracer == nil {
+		return callback(ctx)
+	}
+
 	ctx, span := tracer.Start(ctx, name.name, trace.WithAttributes(name.attributes...))
 	defer span.End(trace.WithStackTrace(true))
 
@@ -37,6 +41,10 @@ func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback
 }
 
 func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error)) (T, error) {
+	if tracer == nil {
+		return callback(ctx)
+	}
+
 	ctx, span := tracer.Start(ctx, name.name, trace.WithAttributes(name.attributes...))
 	defer span.End(trace.WithStackTrace(true))
 
