@@ -99,3 +99,5 @@ func (db DB) QueryFunc(ctx context.Context, sql string, args []interface{}, scan
 func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	return queryRow(ctx, db.t, db.base, "db.QueryRow", sql, args...)
 }
+
+func (db DB) Tracer() trace.Tracer { return db.t }
