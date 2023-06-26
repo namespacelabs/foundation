@@ -274,18 +274,20 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	}
 
 	if exported := v.LookupPath("exportService"); exported.Exists() {
-		var services []cueProto
+		var svc cueProto
+		if err := exported.Val.Decode(&svc); err != nil {
+			return err
+		}
 
-		if exported.Val.Kind() == cue.ListKind {
-			if err := exported.Val.Decode(&services); err != nil {
-				return err
-			}
-		} else {
-			var svc cueProto
-			if err := exported.Val.Decode(&svc); err != nil {
-				return err
-			}
-			services = append(services, svc)
+		if err := handleService(ctx, env, pl, loc, cueExportMethods{Service: svc}, node, out); err != nil {
+			return err
+		}
+	}
+
+	if exported := v.LookupPath("exportServices"); exported.Exists() {
+		var services []cueProto
+		if err := exported.Val.Decode(&services); err != nil {
+			return err
 		}
 
 		for _, svc := range services {
