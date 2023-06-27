@@ -463,6 +463,10 @@ func newExposeKubernetesCmd() *cobra.Command {
 			return nil
 		}
 
+		if *namespace == "" {
+			return fnerrors.New("--namespace is required")
+		}
+
 		if *service == "" {
 			return fnerrors.New("--service is required")
 		}
