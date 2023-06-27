@@ -264,7 +264,7 @@ func AttachComputedDomains(ctx context.Context, ws string, env cfg.Context, clus
 		return nil, err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "%s: %s: computed domains: %v\n", sch.Server.PackageName, template.GetName(), domains)
+	fmt.Fprintf(console.Debug(ctx), "%s: %s: computed domains: %v (grpc_services: %v)\n", sch.Server.PackageName, template.GetName(), domains, template.GrpcService)
 
 	var ingresses []*schema.IngressFragment
 	for _, domain := range domains {

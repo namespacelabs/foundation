@@ -136,25 +136,31 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, pkg 
 		return nil, nil
 	}
 
-	// XXX should we perhaps export an endpoint per service.
-	short, fqdn := planner.MakeServiceName(n.GetIngressServiceName() + "-grpc")
+	var endpoints []*schema.Endpoint
+	for k, exported := range n.ExportService {
+		name := n.GetIngressServiceName()
+		if k > 0 {
+			name += fmt.Sprintf("-%d", k)
+		}
 
-	endpoint := &schema.Endpoint{
-		ServiceName:        n.GetIngressServiceName(),
-		AllocatedName:      short,
-		FullyQualifiedName: fqdn,
-		EndpointOwner:      n.GetPackageName(),
-		ServerOwner:        server.GetPackageName(),
-		Type:               t,
-		Port:               serverPort,
-		ExportedPort:       serverPort.GetContainerPort(),
-	}
+		// XXX should we perhaps export an endpoint per service.
+		short, fqdn := planner.MakeServiceName(name + "-grpc")
 
-	if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
-		return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
-	}
+		endpoint := &schema.Endpoint{
+			ServiceName:        name,
+			AllocatedName:      short,
+			FullyQualifiedName: fqdn,
+			EndpointOwner:      n.GetPackageName(),
+			ServerOwner:        server.GetPackageName(),
+			Type:               t,
+			Port:               serverPort,
+			ExportedPort:       serverPort.GetContainerPort(),
+		}
 
-	for _, exported := range n.ExportService {
+		if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
+			return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
+		}
+
 		details, err := anypb.New(exported)
 		if err != nil {
 			return nil, err
@@ -194,9 +200,11 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, pkg 
 				}
 			}
 		}
+
+		endpoints = append(endpoints, endpoint)
 	}
 
-	return []*schema.Endpoint{endpoint}, nil
+	return endpoints, nil
 }
 
 func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *schema.Server_ServiceSpec, t schema.Endpoint_Type) (*schema.Endpoint, error) {
