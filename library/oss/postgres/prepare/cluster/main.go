@@ -15,7 +15,10 @@ import (
 	"namespacelabs.dev/foundation/library/oss/postgres"
 )
 
-const providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
+const (
+	providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
+	user        = "postgres"
+)
 
 func main() {
 	_, p := provider.MustPrepare[*postgres.ClusterIntent]()
@@ -37,6 +40,7 @@ func main() {
 
 	instance := &postgresclass.ClusterInstance{
 		Address:  endpoint,
+		User:     user,
 		Password: string(password),
 		Host:     host,
 		Port:     port,

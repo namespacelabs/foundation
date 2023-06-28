@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/library/database/postgres";
 message ClusterInstance {
     // Format: host:port.
     string address  = 1;
+    string user     = 5;
     string password = 2;  // TODO export as secret reference
 
     string host = 3;

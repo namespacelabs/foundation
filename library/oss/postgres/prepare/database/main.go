@@ -21,7 +21,6 @@ import (
 const (
 	providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
 	connBackoff = 500 * time.Millisecond
-	user        = "postgres"
 )
 
 func main() {
@@ -49,7 +48,7 @@ func main() {
 	instance := &postgresclass.DatabaseInstance{
 		ConnectionUri:  connectionUri(cluster, p.Intent.Name),
 		Name:           p.Intent.Name,
-		User:           user,
+		User:           userOrDefault(cluster.User),
 		Password:       cluster.Password,
 		ClusterAddress: cluster.Address,
 		ClusterHost:    cluster.Host,
@@ -123,5 +122,15 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 }
 
 func connectionUri(cluster *postgresclass.ClusterInstance, db string) string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s", user, cluster.Password, cluster.Address, db)
+	return fmt.Sprintf("postgres://%s:%s@%s/%s", userOrDefault(cluster.User), cluster.Password, cluster.Address, db)
+}
+
+// Ensure backwards compatibility
+func userOrDefault(user string) string {
+	if user != "" {
+		return user
+
+	}
+
+	return "postgres"
 }
