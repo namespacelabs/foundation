@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -20,7 +21,9 @@ import (
 
 const (
 	providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
-	connBackoff = 500 * time.Millisecond
+	connBackoff = 1500 * time.Millisecond
+
+	caCertPath = "/tmp/ca.pem"
 )
 
 func main() {
@@ -29,6 +32,13 @@ func main() {
 	cluster := &postgresclass.ClusterInstance{}
 	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
 		log.Fatalf("unable to read required resource \"cluster\": %v", err)
+	}
+
+	// TODO inject file as secret ref.
+	if cluster.CaCert != "" {
+		if err := os.WriteFile(caCertPath, []byte(cluster.CaCert), 0644); err != nil {
+			log.Fatalf("failed to write %q: %v", caCertPath, err)
+		}
 	}
 
 	conn, exists, err := ensureDatabase(ctx, cluster, p.Intent.Name)
@@ -101,7 +111,12 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 }
 
 func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db string) (conn *pgx.Conn, err error) {
-	cfg, err := pgx.ParseConfig(connectionUri(cluster, db))
+	uri := connectionUri(cluster, db)
+	if cluster.CaCert != "" {
+		uri = fmt.Sprintf("%s?sslmode=verify-ca&sslrootcert=%s", uri, caCertPath)
+	}
+
+	cfg, err := pgx.ParseConfig(uri)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +137,9 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 }
 
 func connectionUri(cluster *postgresclass.ClusterInstance, db string) string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s", userOrDefault(cluster.User), cluster.Password, cluster.Address, db)
+	uri := fmt.Sprintf("postgres://%s:%s@%s/%s", userOrDefault(cluster.User), cluster.Password, cluster.Address, db)
+
+	return uri
 }
 
 // Ensure backwards compatibility

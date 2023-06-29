@@ -16,6 +16,8 @@ message ClusterInstance {
 
     string host = 3;
     string port = 4;
+
+    string ca_cert = 6;  // TODO export as secret reference
 }
 
 message DatabaseInstance {
