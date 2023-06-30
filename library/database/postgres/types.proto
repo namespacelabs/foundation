@@ -17,14 +17,15 @@ message ClusterInstance {
     string host = 3;
     string port = 4;
 
-    string ca_cert = 6;  // TODO export as secret reference
+    string ca_cert  = 6;  // TODO export as secret reference
+    string ssl_mode = 7;
 }
 
 message DatabaseInstance {
     string name = 1;
 
     // libpq-compliant Postgres connection URI.
-    // Format: postgres://user:passwort@host:port/database
+    // Format: postgres://user:passwort@host:port/database?option=value
     // https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
     string connection_uri = 3;
 
@@ -34,6 +35,8 @@ message DatabaseInstance {
 
     string cluster_host = 7;
     string cluster_port = 8;
+
+    string ssl_mode = 9;
 
     reserved 2;
 }

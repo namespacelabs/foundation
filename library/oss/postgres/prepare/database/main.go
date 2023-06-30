@@ -34,11 +34,16 @@ func main() {
 		log.Fatalf("unable to read required resource \"cluster\": %v", err)
 	}
 
-	// TODO inject file as secret ref.
+	// TODO inject file as secret ref and propagate secret ref to server, too.
 	if cluster.CaCert != "" {
 		if err := os.WriteFile(caCertPath, []byte(cluster.CaCert), 0644); err != nil {
 			log.Fatalf("failed to write %q: %v", caCertPath, err)
 		}
+
+		if err := os.Setenv("PGSSLROOTCERT", caCertPath); err != nil {
+			log.Fatalf("failed to set PGSSLROOTCERT: %v", err)
+		}
+
 	}
 
 	conn, exists, err := ensureDatabase(ctx, cluster, p.Intent.Name)
@@ -63,6 +68,7 @@ func main() {
 		ClusterAddress: cluster.Address,
 		ClusterHost:    cluster.Host,
 		ClusterPort:    cluster.Port,
+		SslMode:        cluster.SslMode,
 	}
 
 	p.EmitResult(instance)
@@ -111,12 +117,7 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 }
 
 func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db string) (conn *pgx.Conn, err error) {
-	uri := connectionUri(cluster, db)
-	if cluster.CaCert != "" {
-		uri = fmt.Sprintf("%s?sslmode=verify-ca&sslrootcert=%s", uri, caCertPath)
-	}
-
-	cfg, err := pgx.ParseConfig(uri)
+	cfg, err := pgx.ParseConfig(connectionUri(cluster, db))
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +139,10 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 
 func connectionUri(cluster *postgresclass.ClusterInstance, db string) string {
 	uri := fmt.Sprintf("postgres://%s:%s@%s/%s", userOrDefault(cluster.User), cluster.Password, cluster.Address, db)
+
+	if cluster.SslMode != "" {
+		uri = fmt.Sprintf("%s?sslmode=%s", uri, cluster.SslMode)
+	}
 
 	return uri
 }
