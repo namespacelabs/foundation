@@ -34,6 +34,7 @@ func NewCreateCmd() *cobra.Command {
 	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
+	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a cluster with the specified unique tag.")
 
 	legacyOutputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
 	cmd.Flags().MarkDeprecated("output_to", "use cidfile instead")
@@ -62,6 +63,7 @@ func NewCreateCmd() *cobra.Command {
 			Purpose:       "Manually created from CLI",
 			Features:      *features,
 			InternalExtra: *internalExtra,
+			UniqueTag:     *tag,
 		}
 
 		if *duration > 0 {

@@ -35,7 +35,7 @@ func NewSshCmd() *cobra.Command {
 		Args:  cobra.ArbitraryArgs,
 	}
 
-	tag := cmd.Flags().String("tag", "", "If specified, creates a cluster with the specified tag.")
+	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a cluster with the specified unique tag.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
