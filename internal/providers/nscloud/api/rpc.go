@@ -665,11 +665,9 @@ type clusterCreateProgress struct {
 func (crp *clusterCreateProgress) set(status string)      { crp.status.Store(status) }
 func (crp *clusterCreateProgress) FormatProgress() string { return crp.status.Load() }
 
-func RefreshCluster(ctx context.Context, api API, clusterId string) (*RefreshKubernetesClusterResponse, error) {
+func RefreshCluster(ctx context.Context, api API, req RefreshKubernetesClusterRequest) (*RefreshKubernetesClusterResponse, error) {
 	var response RefreshKubernetesClusterResponse
-	if err := api.RefreshKubernetesCluster.Do(ctx, RefreshKubernetesClusterRequest{
-		ClusterId: clusterId,
-	}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+	if err := api.RefreshKubernetesCluster.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 		return nil, err
 	}
 	return &response, nil
@@ -677,7 +675,7 @@ func RefreshCluster(ctx context.Context, api API, clusterId string) (*RefreshKub
 
 func StartRefreshing(ctx context.Context, api API, clusterId string, handle func(error) error) error {
 	for {
-		if _, err := RefreshCluster(ctx, api, clusterId); err != nil {
+		if _, err := RefreshCluster(ctx, api, RefreshKubernetesClusterRequest{ClusterId: clusterId}); err != nil {
 			if err := handle(err); err != nil {
 				return err
 			}

@@ -320,7 +320,9 @@ type Attachment struct {
 }
 
 type RefreshKubernetesClusterRequest struct {
-	ClusterId string `json:"cluster_id,omitempty"`
+	ClusterId         string `json:"cluster_id,omitempty"`
+	ExtendBySecs      int32  `json:"extend_by_secs,omitempty"`
+	EnsureMinimumSecs int32  `json:"ensure_minimum_secs,omitempty"`
 }
 
 type RefreshKubernetesClusterResponse struct {
