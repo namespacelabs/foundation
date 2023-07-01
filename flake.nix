@@ -22,22 +22,21 @@
             go-outline
             go-tools
             upx
-            nodejs
             yarn
-            git
-            jq
-
-            crane
-
 
             goreleaser
 
+            eksctl
+            postgresql
+
+            git
+            nodejs
+            crane
             kubectl
             awscli2
+            jq
             aws-iam-authenticator
-            eksctl
             google-cloud-sdk
-            postgresql
           ];
       };
     });
