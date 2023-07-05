@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -102,6 +103,11 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 		grpcopts = append(grpcopts, grpc.Creds(transportCreds))
 	}
+
+	grpcopts = append(grpcopts, grpc.KeepaliveParams(keepalive.ServerParameters{
+		// Without keepalives Nginx-ingress gives up on long-running streaming RPCs.
+		Time: 30 * time.Second,
+	}))
 
 	grpcServer := grpc.NewServer(grpcopts...)
 
