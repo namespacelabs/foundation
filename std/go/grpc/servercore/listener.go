@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
+	"time"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/rs/zerolog/hlog"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
 	"google.golang.org/grpc"
@@ -40,6 +40,34 @@ func MakeTCPListener(address string, port int) func(context.Context) (net.Listen
 	return func(ctx context.Context) (net.Listener, error) {
 		return net.Listen("tcp", fmt.Sprintf("%s:%d", address, port))
 	}
+}
+
+func NewHTTPMux(middleware ...mux.MiddlewareFunc) *mux.Router {
+	httpMux := mux.NewRouter()
+	httpMux.Use(func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx, rdata := requestid.AllocateRequestID(r.Context())
+
+			log := core.ZLog.With().Str("request_id", string(rdata.RequestID))
+			logger := log.Logger()
+
+			h.ServeHTTP(w, r.WithContext(logger.WithContext(ctx)))
+		})
+	})
+
+	httpMux.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
+		hlog.FromRequest(r).Info().
+			Str("method", r.Method).
+			Stringer("url", r.URL).
+			Int("status", status).
+			Int("size", size).
+			Dur("duration", duration).
+			Send()
+	}))
+
+	httpMux.Use(middleware...)
+	httpMux.Use(proxyHeaders)
+	return httpMux
 }
 
 func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server)) error {
@@ -82,19 +110,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		reflection.Register(grpcServer)
 	}
 
-	httpMux := mux.NewRouter()
-	httpMux.Use(func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, _ := requestid.AllocateRequestID(r.Context())
-
-			h.ServeHTTP(w, r.WithContext(ctx))
-		})
-	})
-	httpMux.Use(middleware.Consume()...)
-	httpMux.Use(proxyHeaders)
-	httpMux.Use(func(h http.Handler) http.Handler {
-		return handlers.CombinedLoggingHandler(os.Stdout, h)
-	})
+	httpMux := NewHTTPMux(middleware.Consume()...)
 
 	s := &ServerImpl{srv: grpcServer, httpMux: httpMux}
 	registerServices(s)

@@ -8,14 +8,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"os"
 	"time"
 
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"namespacelabs.dev/foundation/std/go/core"
 	nsgrpc "namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
@@ -26,7 +25,7 @@ func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
 }
 
-var Log = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.DebugLevel)
+var Log = core.ZLog
 
 func Background() context.Context {
 	return Log.WithContext(context.Background())
@@ -164,20 +163,6 @@ func single(md metadata.MD, key string) string {
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	var interceptor interceptor
 	deps.Interceptors.ForServer(interceptor.unary, interceptor.streaming)
-	deps.Middleware.Add(func(h http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rdata, has := requestid.RequestDataFromContext(r.Context())
-
-			log := Log.With().Str("http_method", r.Method).Stringer("http_url", r.URL)
-			if has {
-				log = log.Str("request_id", string(rdata.RequestID))
-			}
-
-			logger := log.Logger()
-
-			h.ServeHTTP(w, r.WithContext(logger.WithContext(r.Context())))
-		})
-	})
 	return nil
 }
 

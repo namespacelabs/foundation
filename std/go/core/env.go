@@ -43,7 +43,7 @@ type data struct {
 var (
 	// Deprecated: use ZLog.
 	Log  = log.New(os.Stderr, "[ns] ", log.Ldate|log.Ltime|log.Lmicroseconds)
-	ZLog = zerolog.New(os.Stderr).With().Timestamp().Str("kind", "corelog").Logger().Level(zerolog.DebugLevel)
+	ZLog = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 )
 
 func PrepareEnv(specifiedServerName string) *ServerResources {
