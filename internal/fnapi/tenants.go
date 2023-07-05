@@ -51,8 +51,10 @@ type TrustAWSCognitoIdentityPoolRequest struct {
 	AwsCognitoIdentityPool string `json:"aws_cognito_identity_pool,omitempty"` // E.g. eu-central-1:56388dff-961f-42d4-a2ac-6ad118eb7799
 	IdentityProvider       string `json:"identity_provider,omitempty"`         // E.g. namespace.so
 }
+
 type IssueIdTokenRequest struct {
 	Audience string `json:"audience,omitempty"`
+	Version  int    `json:"version,omitempty"`
 }
 
 type IssueIdTokenResponse struct {
@@ -100,8 +102,11 @@ func ExchangeAWSCognitoJWT(ctx context.Context, tenantID, token string) (Exchang
 	return res, nil
 }
 
-func IssueIdToken(ctx context.Context, aud string) (IssueIdTokenResponse, error) {
-	req := IssueIdTokenRequest{Audience: aud}
+func IssueIdToken(ctx context.Context, aud string, version int) (IssueIdTokenResponse, error) {
+	req := IssueIdTokenRequest{
+		Audience: aud,
+		Version:  version,
+	}
 
 	var res IssueIdTokenResponse
 	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/IssueIdToken", req, DecodeJSONResponse(&res)); err != nil {

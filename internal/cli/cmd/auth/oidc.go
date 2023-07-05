@@ -16,7 +16,10 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
-const gcpIamUrl = "https://iam.googleapis.com"
+const (
+	idTokenVersion = 1
+	gcpIamUrl      = "https://iam.googleapis.com"
+)
 
 func NewIssueIdTokenCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -38,7 +41,7 @@ func NewIssueIdTokenCmd() *cobra.Command {
 			audience = fmt.Sprintf("%s/%s", gcpIamUrl, strings.TrimPrefix(audience, "/"))
 		}
 
-		resp, err := fnapi.IssueIdToken(ctx, audience)
+		resp, err := fnapi.IssueIdToken(ctx, audience, idTokenVersion)
 		if err != nil {
 			return err
 		}
