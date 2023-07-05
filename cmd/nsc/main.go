@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
+	"namespacelabs.dev/foundation/internal/cli/cmd/workspace"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
@@ -66,6 +67,8 @@ func main() {
 			root.AddCommand(cluster.NewExecScoped())    // nsc exec-scoped
 
 			root.AddCommand(sdk.NewSdkCmd(true))
+
+			root.AddCommand(workspace.NewWorkspaceCmd()) // nsc workspace
 		},
 	})
 }

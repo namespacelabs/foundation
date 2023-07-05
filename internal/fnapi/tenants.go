@@ -35,8 +35,10 @@ type ExchangeCircleciTokenResponse struct {
 }
 
 type Tenant struct {
-	Name   string `json:"name,omitempty"`
-	AppUrl string `json:"app_url,omitempty"`
+	TenantId      string `json:"tenant_id,omitempty"`
+	Name          string `json:"name,omitempty"`
+	AppUrl        string `json:"app_url,omitempty"`
+	PrimaryRegion string `json:"primary_region,omitempty"`
 }
 
 func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenResponse, error) {
@@ -145,4 +147,19 @@ func FetchToken(ctx context.Context) (Token, error) {
 
 		return auth.LoadTenantToken(ctx)
 	})
+}
+
+type GetTenantResponse struct {
+	Tenant *Tenant `json:"tenant,omitempty"`
+}
+
+func GetTenant(ctx context.Context) (GetTenantResponse, error) {
+	req := struct{}{}
+
+	var res GetTenantResponse
+	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/GetTenant", req, DecodeJSONResponse(&res)); err != nil {
+		return GetTenantResponse{}, err
+	}
+
+	return res, nil
 }
