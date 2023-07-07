@@ -17,6 +17,8 @@ type RunOpts struct {
 }
 
 func Run(ctx context.Context, opts RunOpts, listenOpts ListenOpts) {
+	ctx = core.ZLog.WithContext(ctx)
+
 	resources := core.PrepareEnv(opts.PackageName)
 	defer resources.Close(ctx)
 
