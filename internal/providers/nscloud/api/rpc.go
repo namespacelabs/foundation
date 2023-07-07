@@ -269,6 +269,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			InternalExtra:     opts.InternalExtra,
 			Deadline:          opts.Deadline,
 			Experimental:      opts.Experimental,
+			Interactive:       true,
 		}
 
 		var response StartCreateKubernetesClusterResponse
