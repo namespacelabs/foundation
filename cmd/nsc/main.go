@@ -178,6 +178,9 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 			generic(ww, style, st.Code(), msg, rid)
 		}
 
+	case codes.ResourceExhausted:
+		fmt.Fprintf(ww, "ran out of capacity: %s%s.\n", msg, appendRid(rid))
+
 	default:
 		generic(ww, style, st.Code(), msg, rid)
 	}
@@ -185,6 +188,14 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 	fmt.Fprintln(ww)
 	_ = ww.Close()
 	_, _ = out.Write(ww.Bytes())
+}
+
+func appendRid(rid *protocol.RequestID) string {
+	if rid == nil {
+		return ""
+	}
+
+	return fmt.Sprintf(" (request id: %s)", rid.GetId())
 }
 
 func hasDetail[Msg proto.Message](st *status.Status, detail Msg) (Msg, bool) {
@@ -201,7 +212,7 @@ func hasDetail[Msg proto.Message](st *status.Status, detail Msg) (Msg, bool) {
 }
 
 func generic(ww io.Writer, style colors.Style, code codes.Code, msg string, rid *protocol.RequestID) {
-	fmt.Fprintf(ww, "we got an error from our server: %s (%s)\n", msg, code)
+	fmt.Fprintf(ww, "%s (%s).\n", msg, code)
 
 	fmt.Fprintln(ww)
 	fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),
