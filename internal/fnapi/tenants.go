@@ -6,7 +6,10 @@ package fnapi
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"os"
+	"strings"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/auth"
@@ -32,6 +35,21 @@ type ExchangeCircleciTokenRequest struct {
 type ExchangeCircleciTokenResponse struct {
 	TenantToken string  `json:"tenant_token,omitempty"`
 	Tenant      *Tenant `json:"tenant,omitempty"`
+}
+
+type ExchangeAWSCognitoJWTRequest struct {
+	TenantId        string `json:"tenant_id,omitempty"`
+	AwsCognitoToken string `json:"aws_cognito_token,omitempty"`
+}
+
+type ExchangeTokenResponse struct {
+	TenantToken string  `json:"tenant_token,omitempty"`
+	Tenant      *Tenant `json:"tenant,omitempty"`
+}
+
+type TrustAWSCognitoIdentityPoolRequest struct {
+	AwsCognitoIdentityPool string `json:"aws_cognito_identity_pool,omitempty"` // E.g. eu-central-1:56388dff-961f-42d4-a2ac-6ad118eb7799
+	IdentityProvider       string `json:"identity_provider,omitempty"`         // E.g. namespace.so
 }
 
 type Tenant struct {
@@ -61,6 +79,65 @@ func ExchangeCircleciToken(ctx context.Context, token string) (ExchangeCircleciT
 	}
 
 	return res, nil
+}
+
+func ExchangeAWSCognitoJWT(ctx context.Context, tenantID, token string) (ExchangeTokenResponse, error) {
+	req := ExchangeAWSCognitoJWTRequest{TenantId: tenantID}
+
+	var res ExchangeTokenResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeAWSCognitoJWT", req, DecodeJSONResponse(&res)); err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
+
+type TokenClaims struct {
+	TenantID      string `json:"tenant_id"`
+	OwnerID       string `json:"owner_id"`
+	PrimaryRegion string `json:"primary_region"`
+}
+
+func Claims(tok Token) (*TokenClaims, error) {
+	parts := strings.Split(tok.Raw(), ".")
+	if len(parts) < 2 {
+		return nil, fnerrors.New("invalid token")
+	}
+
+	dec, err := base64.RawStdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return nil, fnerrors.New("invalid token: %w", err)
+	}
+
+	var claims TokenClaims
+	if err := json.Unmarshal(dec, &claims); err != nil {
+		return nil, fnerrors.New("invalid claims: %w", err)
+	}
+
+	return &claims, nil
+}
+
+func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityProvider string) error {
+	req := TrustAWSCognitoIdentityPoolRequest{AwsCognitoIdentityPool: identityPool, IdentityProvider: identityProvider}
+
+	token, err := FetchToken(ctx)
+	if err != nil {
+		return err
+	}
+
+	claims, err := Claims(token)
+	if err != nil {
+		return err
+	}
+
+	if claims.TenantID != tenantID {
+		return fnerrors.New("authenticated as %q, wanted %q", claims.TenantID, tenantID)
+	}
+
+	return Call[any]{
+		Method:     "nsl.tenants.TenantsService/TrustAWSCognitoIdentityPool",
+		FetchToken: func(ctx context.Context) (Token, error) { return token, nil },
+	}.Do(ctx, req, ResolveStaticEndpoint(EndpointAddress), nil)
 }
 
 type userToken string

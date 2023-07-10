@@ -7,13 +7,11 @@ package api
 import (
 	"bufio"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/bcicen/jstream"
@@ -74,12 +72,6 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 	}
 }
 
-type tokenClaims struct {
-	TenantID      string `json:"tenant_id"`
-	OwnerID       string `json:"owner_id"`
-	PrimaryRegion string `json:"primary_region"`
-}
-
 func ResolveEndpoint(ctx context.Context, tok fnapi.Token) (string, error) {
 	if rpcEndpointOverride != "" {
 		return rpcEndpointOverride, nil
@@ -93,19 +85,9 @@ func ResolveEndpoint(ctx context.Context, tok fnapi.Token) (string, error) {
 		return "", fnerrors.New("a token is required")
 	}
 
-	parts := strings.Split(tok.Raw(), ".")
-	if len(parts) < 2 {
-		return "", fnerrors.New("invalid token")
-	}
-
-	dec, err := base64.RawStdEncoding.DecodeString(parts[1])
+	claims, err := fnapi.Claims(tok)
 	if err != nil {
-		return "", fnerrors.New("invalid token: %w", err)
-	}
-
-	var claims tokenClaims
-	if err := json.Unmarshal(dec, &claims); err != nil {
-		return "", fnerrors.New("invalid claims: %w", err)
+		return "", err
 	}
 
 	if claims.PrimaryRegion != "" {
