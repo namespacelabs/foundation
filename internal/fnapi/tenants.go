@@ -82,7 +82,7 @@ func ExchangeCircleciToken(ctx context.Context, token string) (ExchangeCircleciT
 }
 
 func ExchangeAWSCognitoJWT(ctx context.Context, tenantID, token string) (ExchangeTokenResponse, error) {
-	req := ExchangeAWSCognitoJWTRequest{TenantId: tenantID}
+	req := ExchangeAWSCognitoJWTRequest{TenantId: tenantID, AwsCognitoToken: token}
 
 	var res ExchangeTokenResponse
 	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeAWSCognitoJWT", req, DecodeJSONResponse(&res)); err != nil {
