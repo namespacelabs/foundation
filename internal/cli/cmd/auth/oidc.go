@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -18,7 +17,6 @@ import (
 
 const (
 	idTokenVersion = 1
-	gcpIamUrl      = "https://iam.googleapis.com"
 )
 
 func NewIssueIdTokenCmd() *cobra.Command {
@@ -29,19 +27,14 @@ func NewIssueIdTokenCmd() *cobra.Command {
 		Hidden: true,
 	}
 
-	gcpWorkloadProvider := cmd.Flags().String("gcp_workload_identity_provider", "", "The full identifier of the GCP Workload Identity Provider, including the project number, pool name, and provider name.")
+	audience := cmd.Flags().String("audience", "", "The audience of an ID token.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
-		if *gcpWorkloadProvider == "" {
-			return fmt.Errorf("workload identity provider is not provided")
+		if *audience == "" {
+			return fmt.Errorf("ID token audience is not provided")
 		}
 
-		audience := *gcpWorkloadProvider
-		if !strings.HasPrefix(audience, gcpIamUrl) {
-			audience = fmt.Sprintf("%s/%s", gcpIamUrl, strings.TrimPrefix(audience, "/"))
-		}
-
-		resp, err := fnapi.IssueIdToken(ctx, audience, idTokenVersion)
+		resp, err := fnapi.IssueIdToken(ctx, *audience, idTokenVersion)
 		if err != nil {
 			return err
 		}
