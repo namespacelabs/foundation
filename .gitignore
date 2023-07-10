@@ -1,4 +1,5 @@
 .envrc
+.env.local
 .direnv
 
 # Binaries for programs and plugins
