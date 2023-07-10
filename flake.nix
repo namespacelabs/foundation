@@ -23,6 +23,7 @@
             go-tools
             upx
             yarn
+            pre-commit
 
             goreleaser
 
