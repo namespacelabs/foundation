@@ -169,9 +169,10 @@ func fillInIngressRules(ports []int32, ingressRules map[string]string) ([]export
 
 func NewRunComposeCmd() *cobra.Command {
 	run := &cobra.Command{
-		Use:   "run-compose",
-		Short: "Starts a set of containers in an ephemeral environment.",
-		Args:  cobra.NoArgs,
+		Use:    "run-compose",
+		Short:  "Starts a set of containers in an ephemeral environment.",
+		Args:   cobra.NoArgs,
+		Hidden: true,
 	}
 
 	output := run.Flags().StringP("output", "o", "plain", "one of plain or json")
