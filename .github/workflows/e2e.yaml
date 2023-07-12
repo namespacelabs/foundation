@@ -12,6 +12,10 @@ permissions:
   contents: read
   id-token: write # This is required for requesting the JWT
 
+env:
+  # Requires nscloud runner (which we use exclusively)
+  NS_DOCKERHUB_MIRROR: http://169.254.169.43:6001
+
 jobs:
   build_fn:
     name: Build ns from head
