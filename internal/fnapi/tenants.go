@@ -195,26 +195,6 @@ func ExchangeUserToken(ctx context.Context, token string, scopes ...string) (Exc
 	return res, nil
 }
 
-type ExchangeTenantTokenRequest struct {
-	TenantToken string   `json:"tenant_token,omitempty"`
-	Scopes      []string `json:"scopes,omitempty"`
-}
-
-type ExchangeTenantTokenResponse struct {
-	TenantToken string `json:"tenant_token,omitempty"`
-}
-
-func ExchangeTenantToken(ctx context.Context, scopes []string) (ExchangeTenantTokenResponse, error) {
-	req := ExchangeTenantTokenRequest{Scopes: scopes}
-
-	var res ExchangeTenantTokenResponse
-	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeTenantToken", req, DecodeJSONResponse(&res)); err != nil {
-		return ExchangeTenantTokenResponse{}, err
-	}
-
-	return res, nil
-}
-
 func ResolveSpec() (string, error) {
 	if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
 		return spec, nil
