@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -97,29 +96,28 @@ func ParseRefAndKeychain(ctx context.Context, imageRef string, opts RegistryAcce
 		return nil, nil, err
 	}
 
-	ref, mirrorOpts, err := RefAndOptsWithRegistryMirror(ctx, ref)
+	ref, err = RefWithRegistryMirror(ctx, ref)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	options = append(options, mirrorOpts...)
 	return ref, options, nil
 }
 
-func RefAndOptsWithRegistryMirror(ctx context.Context, imageRef name.Reference) (name.Reference, []remote.Option, error) {
+func RefWithRegistryMirror(ctx context.Context, imageRef name.Reference) (name.Reference, error) {
 	// Check if image registry is `index.docker.io` and docker hub mirror is provided.
 	if imageRef.Context().RegistryStr() != name.DefaultRegistry || DockerHubMirror() == "" {
-		return imageRef, nil, nil
+		return imageRef, nil
 	}
 
 	mirrorURL, err := url.Parse(DockerHubMirror())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	defaultMirrorPort, ok := mirrorPortMap[mirrorURL.Scheme]
 	if !ok {
-		return nil, nil, fnerrors.New("docker hub mirror scheme %q is not supported; supported values: %s",
+		return nil, fnerrors.New("docker hub mirror scheme %q is not supported; supported values: %s",
 			mirrorURL.Scheme, strings.Join(maps.Keys(mirrorPortMap), ","))
 	}
 
@@ -135,24 +133,17 @@ func RefAndOptsWithRegistryMirror(ctx context.Context, imageRef name.Reference) 
 
 	fmt.Fprintf(console.Debug(ctx), "using mirror %q for registry %q\n", DockerHubMirror(), name.DefaultRegistry)
 
-	transport := &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			dialer := &net.Dialer{}
-			return dialer.DialContext(ctx, "tcp", mirrorHost)
-		},
-	}
-
 	imageRepo := imageRef.Context()
 	mirrorRegistry, err := name.NewRegistry(mirrorHost, mirrorOpts...)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	imageRepo.Registry = mirrorRegistry
 	return &imageReference{
 		Reference:  imageRef,
 		repository: imageRepo,
-	}, []remote.Option{remote.WithTransport(transport)}, nil
+	}, nil
 }
 
 type keychainSequence struct {
