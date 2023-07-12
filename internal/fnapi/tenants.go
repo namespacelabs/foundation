@@ -118,6 +118,7 @@ func IssueIdToken(ctx context.Context, aud string, version int) (IssueIdTokenRes
 
 type TokenClaims struct {
 	TenantID      string `json:"tenant_id"`
+	InstanceID    string `json:"instance_id"`
 	OwnerID       string `json:"owner_id"`
 	PrimaryRegion string `json:"primary_region"`
 }

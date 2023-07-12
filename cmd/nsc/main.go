@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	ia "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
+	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
@@ -46,6 +47,7 @@ func main() {
 
 			root.AddCommand(auth.NewAuthCmd())
 			root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
+			root.AddCommand(aws.NewAwsCmd())
 
 			root.AddCommand(version.NewVersionCmd())
 
