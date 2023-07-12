@@ -109,6 +109,8 @@ func newAssumeRoleCmd() *cobra.Command {
 func newSTSClient(ctx context.Context, awsProfile string) (*sts.Client, error) {
 	var opts []func(*config.LoadOptions) error
 
+	opts = append(opts, config.WithRegion("us-east-1"))
+
 	if awsProfile != "" {
 		opts = append(opts, config.WithSharedConfigProfile(awsProfile))
 	}
