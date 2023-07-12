@@ -76,9 +76,11 @@ func newAssumeRoleCmd() *cobra.Command {
 			return err
 		}
 
-		sessionName := fmt.Sprintf("nsc.tenant=%s", claims.TenantID)
+		sessionName := ""
 		if claims.InstanceID != "" {
-			sessionName += fmt.Sprintf(",nsc.instance=%s", claims.InstanceID)
+			sessionName = fmt.Sprintf("nsc.instance=%s", claims.InstanceID)
+		} else {
+			sessionName = fmt.Sprintf("nsc.tenant=%s", claims.TenantID)
 		}
 
 		t = time.Now()
