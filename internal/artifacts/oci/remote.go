@@ -7,6 +7,9 @@ package oci
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 
@@ -15,14 +18,26 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"golang.org/x/exp/maps"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 )
 
 var (
 	staticMapping = []keychainMap{}
 
+	mirrorPortMap = map[string]string{
+		"http":  "80",
+		"https": "443",
+	}
+
 	UsePercentageInTracking = false
 )
+
+func DockerHubMirror() string {
+	return os.Getenv("NS_DOCKERHUB_MIRROR")
+}
 
 type KeychainWhen int
 
@@ -81,7 +96,54 @@ func ParseRefAndKeychain(ctx context.Context, imageRef string, opts RegistryAcce
 		return nil, nil, err
 	}
 
+	ref, err = RefWithRegistryMirror(ctx, ref)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return ref, options, nil
+}
+
+func RefWithRegistryMirror(ctx context.Context, imageRef name.Reference) (name.Reference, error) {
+	// Check if image registry is `index.docker.io` and docker hub mirror is provided.
+	if imageRef.Context().RegistryStr() != name.DefaultRegistry || DockerHubMirror() == "" {
+		return imageRef, nil
+	}
+
+	mirrorURL, err := url.Parse(DockerHubMirror())
+	if err != nil {
+		return nil, err
+	}
+
+	defaultMirrorPort, ok := mirrorPortMap[mirrorURL.Scheme]
+	if !ok {
+		return nil, fnerrors.New("docker hub mirror scheme %q is not supported; supported values: %s",
+			mirrorURL.Scheme, strings.Join(maps.Keys(mirrorPortMap), ","))
+	}
+
+	var mirrorOpts []name.Option
+	if mirrorURL.Scheme == "http" {
+		mirrorOpts = append(mirrorOpts, name.Insecure)
+	}
+
+	mirrorHost := mirrorURL.Host
+	if mirrorURL.Port() == "" {
+		mirrorHost = net.JoinHostPort(mirrorHost, defaultMirrorPort)
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "using mirror %q for registry %q\n", DockerHubMirror(), name.DefaultRegistry)
+
+	imageRepo := imageRef.Context()
+	mirrorRegistry, err := name.NewRegistry(mirrorHost, mirrorOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	imageRepo.Registry = mirrorRegistry
+	return &imageReference{
+		Reference:  imageRef,
+		repository: imageRepo,
+	}, nil
 }
 
 type keychainSequence struct {
