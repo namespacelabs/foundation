@@ -135,18 +135,24 @@ message Server {
 }
 
 message ServerFragment {
-    Container main_container              = 1;
-    repeated Server.ServiceSpec service   = 2;
-    repeated Server.ServiceSpec ingress   = 3;
-    repeated Probe probe                  = 4;
-    repeated Volume volume                = 5;
-    ResourcePack resource_pack            = 6;
-    ServerPermissions permissions         = 7;
-    repeated Server.Toleration toleration = 8;
-    repeated string extension             = 9; // Package name.
-    repeated Container sidecar            = 10;
-    repeated Container init_container     = 11;
-    repeated NamedResolvable annotation   = 12;
+    Container main_container                = 1;
+    repeated Server.ServiceSpec service     = 2;
+    repeated Server.ServiceSpec ingress     = 3;
+    repeated Probe probe                    = 4;
+    repeated Volume volume                  = 5;
+    ResourcePack resource_pack              = 6;
+    ServerPermissions permissions           = 7;
+    repeated Server.Toleration toleration   = 8;
+    repeated string extension               = 9; // Package name.
+    repeated Container sidecar              = 10;
+    repeated Container init_container       = 11;
+    repeated NamedResolvable annotation     = 12;
+    repeated NodeSelectorItem node_selector = 13;
+}
+
+message NodeSelectorItem {
+    string key = 1;
+    string value = 2;
 }
 
 // Allocations for a tree of instanced values.

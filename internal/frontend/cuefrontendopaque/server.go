@@ -25,7 +25,7 @@ var (
 	extensionFields = []string{
 		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
-		"resourceLimits", "resourceRequests", "extensions",
+		"resourceLimits", "resourceRequests", "extensions", "nodeSelector",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
@@ -60,6 +60,7 @@ type cueServerExtension struct {
 	Security       *cueServerSecurity              `json:"security,omitempty"`
 	Tolerations    []*schema.Server_Toleration     `json:"tolerations,omitempty"`
 	Annotations    map[string]args.ResolvableValue `json:"annotations,omitempty"`
+	NodeSelector   map[string]string               `json:"nodeSelector,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -331,6 +332,19 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		out.MainContainer.Security = &schema.Container_Security{
 			Privileged:  bits.Security.Privileged,
 			HostNetwork: bits.Security.HostNetwork,
+		}
+	}
+
+	if len(bits.NodeSelector) > 0 {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/nodeSelector"); err != nil {
+			return nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		for k, v := range bits.NodeSelector {
+			out.NodeSelector = append(out.NodeSelector, &schema.NodeSelectorItem{
+				Key:   k,
+				Value: v,
+			})
 		}
 	}
 
