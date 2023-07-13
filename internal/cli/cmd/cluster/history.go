@@ -24,6 +24,7 @@ func NewListCmd() *cobra.Command {
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
+	all := cmd.Flags().Bool("all", false, "If true, returl all clusters, not just manually created ones.")
 
 	cmd.Flags().MarkHidden("label")
 
@@ -32,6 +33,7 @@ func NewListCmd() *cobra.Command {
 		clusters, err := api.ListClusters(ctx, api.Methods, api.ListOpts{
 			PreviousRuns: history,
 			Labels:       *labels,
+			All:          *all,
 		})
 		if err != nil {
 			return err
@@ -63,6 +65,7 @@ func newHistoryCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
 	since := cmd.Flags().Duration("since", time.Hour*24*7, "Contrain list to selected duration.")
+	all := cmd.Flags().Bool("all", false, "If true, returl all clusters, not just manually created ones.")
 
 	cmd.Flags().MarkHidden("label")
 
@@ -73,6 +76,7 @@ func newHistoryCmd() *cobra.Command {
 			PreviousRuns: history,
 			NotOlderThan: &startTs,
 			Labels:       *labels,
+			All:          *all,
 		})
 		if err != nil {
 			return err

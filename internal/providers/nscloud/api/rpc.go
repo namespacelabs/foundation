@@ -528,6 +528,7 @@ type ListOpts struct {
 	PreviousRuns bool
 	NotOlderThan *time.Time
 	Labels       map[string]string
+	All          bool
 }
 
 func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesClustersResponse, error) {
@@ -535,6 +536,11 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 		req := ListKubernetesClustersRequest{
 			IncludePreviousRuns: opts.PreviousRuns,
 			NotOlderThan:        opts.NotOlderThan,
+			KindFilter:          "MANUAL_ONLY",
+		}
+
+		if opts.All {
+			req.KindFilter = "RETURN_ALL"
 		}
 
 		for key, value := range opts.Labels {

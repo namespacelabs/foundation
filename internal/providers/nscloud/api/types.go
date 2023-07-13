@@ -137,6 +137,7 @@ type ListKubernetesClustersRequest struct {
 	PaginationCursor    []byte              `json:"pagination_cursor,omitempty"`
 	MaxEntries          int64               `json:"max_entries,omitempty"`
 	NotOlderThan        *time.Time          `json:"not_older_than,omitempty"`
+	KindFilter          string              `json:"kind_filter,omitempty"`
 	LabelFilter         []*LabelFilterEntry `json:"label_filter,omitempty"`
 }
 
