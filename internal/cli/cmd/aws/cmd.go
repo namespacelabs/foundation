@@ -13,6 +13,7 @@ func NewAwsCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newAssumeRoleCmd())
+	cmd.AddCommand(newSetupWebIdentity())
 
 	return cmd
 }
