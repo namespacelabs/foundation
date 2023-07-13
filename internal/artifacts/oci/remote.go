@@ -134,15 +134,16 @@ func RefWithRegistryMirror(ctx context.Context, imageRef name.Reference) (name.R
 	fmt.Fprintf(console.Debug(ctx), "using mirror %q for registry %q\n", DockerHubMirror(), name.DefaultRegistry)
 
 	imageRepo := imageRef.Context()
-	mirrorRegistry, err := name.NewRegistry(mirrorHost, mirrorOpts...)
+	// We create a new repository here to have full name of repository (e.g. including 'library').
+	mirrorRepo, err := name.NewRepository(fmt.Sprintf("%s/%s", mirrorHost, imageRepo.RepositoryStr()), mirrorOpts...)
 	if err != nil {
 		return nil, err
 	}
 
-	imageRepo.Registry = mirrorRegistry
+	fmt.Fprintf(console.Debug(ctx), "using repository %q\n", mirrorRepo.Name())
 	return &imageReference{
 		Reference:  imageRef,
-		repository: imageRepo,
+		repository: mirrorRepo,
 	}, nil
 }
 
