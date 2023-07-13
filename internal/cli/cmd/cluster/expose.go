@@ -101,6 +101,22 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 			return fnerrors.New("--name can only be used when exposing a single port")
 		}
 
+		if len(ports) == 0 && *output == "plain" {
+			fmt.Fprintf(console.Stdout(ctx), "Found no ports to export.\n")
+
+			podCount, nscContainerCount, err := countApps(ctx, cluster)
+			if err != nil {
+				fmt.Fprintf(console.Debug(ctx), "Failed to create apps summary: %v\n", err)
+
+				// Do not propagate errors to the user as this call is best-effort.
+				return nil
+			}
+
+			if podCount > 0 && nscContainerCount == 0 {
+				fmt.Fprintf(console.Stdout(ctx), "To expose apps from Kubernetes, run `nsc expose kubernetes` instead.\n")
+			}
+		}
+
 		portNumbers := make([]int32, len(ports))
 		for k, x := range ports {
 			portNumbers[k] = x.ContainerPort
@@ -439,6 +455,30 @@ func substr(id string) string {
 	}
 
 	return id
+}
+
+func countApps(ctx context.Context, cluster *api.KubernetesCluster) (int, int, error) {
+	response, err := api.GetClusterSummary(ctx, api.Methods, cluster.ClusterId, []string{"pods", "nsc/containers"})
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var podCount, nscContainerCount int
+	for _, r := range response.Summary {
+		switch r.Resource {
+		case "nsc/containers":
+			nscContainerCount += len(r.PerResource)
+
+		case "pods":
+			for _, r := range r.PerResource {
+				if !slices.Contains(ctl.SystemNamespaces, r.Namespace) {
+					podCount++
+				}
+			}
+		}
+	}
+
+	return podCount, nscContainerCount, nil
 }
 
 func newExposeKubernetesCmd() *cobra.Command {
