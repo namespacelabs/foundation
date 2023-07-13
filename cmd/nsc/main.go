@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
+	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
 	"namespacelabs.dev/foundation/internal/cli/cmd/workspace"
@@ -48,6 +49,7 @@ func main() {
 			root.AddCommand(auth.NewAuthCmd())
 			root.AddCommand(auth.NewLoginCmd()) // register `nsc login` as an alias for `nsc auth login`
 			root.AddCommand(aws.NewAwsCmd())
+			root.AddCommand(gcp.NewGcpCmd())
 
 			root.AddCommand(version.NewVersionCmd())
 
