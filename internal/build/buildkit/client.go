@@ -38,7 +38,10 @@ var (
 	ForwardKeychain = true
 )
 
-var BuildOnNamespaceCloud = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
+var (
+	BuildOnNamespaceCloud           = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
+	BuildOnNamespaceCloudUnlessHost = knobs.Bool("build_in_nscloud_unless_host", "If set to true, builds that match the host platform run locally. All other builds are triggered remotely.", false)
+)
 
 const SSHAgentProviderID = "default"
 
@@ -151,7 +154,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		})
 	}
 
-	if BuildOnNamespaceCloud.Get(c.conf) {
+	if buildRemotely(c.conf, c.platform) {
 		bp, err := cluster.NewBuildClusterInstance(ctx, formatPlatformOrDefault(c.platform))
 		if err != nil {
 			return nil, err
@@ -179,6 +182,21 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	// })
 
 	return newClient(ctx, cli, true)
+}
+
+func buildRemotely(conf cfg.Configuration, platform *specs.Platform) bool {
+	if BuildOnNamespaceCloud.Get(conf) {
+		return true
+	}
+
+	target := formatPlatformOrDefault(platform)
+	host := platforms.Format(docker.HostPlatform())
+
+	if BuildOnNamespaceCloudUnlessHost.Get(conf) && target != host {
+		return true
+	}
+
+	return false
 }
 
 func formatPlatformOrDefault(p *specs.Platform) string {
