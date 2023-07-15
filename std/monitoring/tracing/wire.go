@@ -24,6 +24,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	t "go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
@@ -60,18 +61,17 @@ func ProvideExporter(_ context.Context, args *ExporterArgs, _ ExtensionDeps) (Ex
 	return Exporter{args.Name}, nil
 }
 
-func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	var opts []trace.TracerProviderOption
-
-	exporters := consumeExporters()
+func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter) (*trace.TracerProvider, error) {
 	if len(exporters) == 0 {
 		out, err := stdouttrace.New()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		exporters = append(exporters, out)
 	}
+
+	var opts []trace.TracerProviderOption
 
 	for _, exp := range exporters {
 		if core.EnvIs(schema.Environment_PRODUCTION) {
@@ -80,8 +80,6 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			opts = append(opts, trace.WithSyncer(exp))
 		}
 	}
-
-	serverResources := core.ServerResourcesFrom(ctx)
 
 	// XXX use pod name
 	instanceID := uuid.NewString()
@@ -94,21 +92,33 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			resource.WithProcessRuntimeVersion(),
 			resource.WithProcessRuntimeDescription(),
 			resource.WithAttributes(
-				semconv.ServiceNameKey.String(deps.ServerInfo.ServerName),
-				semconv.ServiceVersionKey.String(deps.ServerInfo.GetVcs().GetRevision()),
+				semconv.ServiceNameKey.String(serverInfo.ServerName),
+				semconv.ServiceVersionKey.String(serverInfo.GetVcs().GetRevision()),
 				semconv.ServiceInstanceIDKey.String(instanceID),
-				semconv.DeploymentEnvironmentKey.String(deps.ServerInfo.EnvName),
-				attribute.String("environment", deps.ServerInfo.EnvName),
+				semconv.DeploymentEnvironmentKey.String(serverInfo.EnvName),
+				attribute.String("environment", serverInfo.EnvName),
 			),
 		)
 	if err != nil {
-		return fmt.Errorf("failed to create resource: %w", err)
+		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	opts = append(opts, trace.WithResource(resource))
 
-	provider := trace.NewTracerProvider(opts...)
-	serverResources.Add(close{provider})
+	return trace.NewTracerProvider(opts...), nil
+}
+
+func Prepare(ctx context.Context, deps ExtensionDeps) error {
+	provider, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters())
+	if err != nil {
+		return err
+	}
+
+	serverResources := core.ServerResourcesFrom(ctx)
+
+	if serverResources != nil {
+		serverResources.Add(close{provider})
+	}
 
 	deps.Interceptors.ForServer(
 		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),

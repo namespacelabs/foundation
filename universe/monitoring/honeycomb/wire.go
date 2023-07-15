@@ -13,6 +13,19 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+func Create(ctx context.Context, key string) (*otlptrace.Exporter, error) {
+	opts := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
+		otlptracegrpc.WithHeaders(map[string]string{
+			"x-honeycomb-team": key,
+		}),
+		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
+	}
+
+	client := otlptracegrpc.NewClient(opts...)
+	return otlptrace.New(ctx, client)
+}
+
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	xHoneycombTeam := os.Getenv("MONITORING_HONEYCOMB_X_HONEYCOMB_TEAM")
 	if xHoneycombTeam == "" {
@@ -20,16 +33,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		return nil
 	}
 
-	opts := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
-		otlptracegrpc.WithHeaders(map[string]string{
-			"x-honeycomb-team": xHoneycombTeam,
-		}),
-		otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
-	}
-
-	client := otlptracegrpc.NewClient(opts...)
-	exporter, err := otlptrace.New(ctx, client)
+	exporter, err := Create(ctx, xHoneycombTeam)
 	if err != nil {
 		return err
 	}
