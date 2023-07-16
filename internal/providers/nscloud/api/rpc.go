@@ -18,6 +18,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/pflag"
 	"go.uber.org/atomic"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -218,6 +220,7 @@ type CreateClusterOpts struct {
 	AuthorizedSshKeys []string
 	UniqueTag         string
 	InternalExtra     string
+	Labels            map[string]string
 	Deadline          *timestamppb.Timestamp
 	Experimental      any
 
@@ -252,6 +255,15 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			Deadline:          opts.Deadline,
 			Experimental:      opts.Experimental,
 			Interactive:       true,
+		}
+
+		labelKeys := maps.Keys(opts.Labels)
+		slices.Sort(labelKeys)
+		for _, key := range labelKeys {
+			req.Label = append(req.Label, &LabelEntry{
+				Name:  key,
+				Value: opts.Labels[key],
+			})
 		}
 
 		var response StartCreateKubernetesClusterResponse
