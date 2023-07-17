@@ -19,3 +19,7 @@ message EnvironmentDoesntExist {
 message UserMessage {
     string message = 1;
 }
+
+message WorkspaceExpired {
+    string message = 1;
+}
