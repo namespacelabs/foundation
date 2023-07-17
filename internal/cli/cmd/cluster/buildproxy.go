@@ -9,12 +9,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"net"
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -31,7 +29,6 @@ import (
 
 const (
 	nscrRegistryUsername = "token"
-	clusterMinDuration   = time.Hour * 1
 )
 
 type BuildClusterInstance struct {
@@ -48,10 +45,8 @@ func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	defer bp.mu.Unlock()
 
 	if bp.previous != nil && (bp.previous.BuildCluster == nil || bp.previous.BuildCluster.Resumable) {
-		if clusterInfo, err := api.EnsureCluster(ctx, api.Methods, bp.previous.ClusterId); err == nil {
-			if err := ensureMinClusterDuration(ctx, clusterInfo.Cluster.ClusterId); err == nil {
-				return bp.rawDial(ctx, bp.previous)
-			}
+		if _, err := api.EnsureCluster(ctx, api.Methods, bp.previous.ClusterId); err == nil {
+			return bp.rawDial(ctx, bp.previous)
 		}
 	}
 
@@ -76,10 +71,6 @@ func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	}
 
 	bp.previous = response
-
-	if err := ensureMinClusterDuration(ctx, response.ClusterId); err != nil {
-		return nil, err
-	}
 
 	return bp.rawDial(ctx, response)
 }
@@ -265,18 +256,4 @@ func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, 
 	}
 
 	return &buildProxyWithRegistry{p.socketPath, tmpDir, p.Cleanup}, nil
-}
-
-func ensureMinClusterDuration(ctx context.Context, clusterID string) error {
-	req := api.RefreshKubernetesClusterRequest{
-		ClusterId:         clusterID,
-		EnsureMinimumSecs: int32(math.Floor(clusterMinDuration.Seconds())),
-	}
-
-	_, err := api.RefreshCluster(ctx, api.Methods, req)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
