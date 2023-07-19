@@ -8,6 +8,8 @@ import (
 _#Base: {
 	// Marker to detect which Namespace parser to run
 	"namespaceInternalParserVersion": 1
+
+	extensions?: [...string]
 }
 
 _#Imports: {
@@ -121,8 +123,6 @@ _#Node: {
 	env: [string]: string | {fromSecret: string}
 
 	urlmap: [...#UrlMapEntry]
-
-	extensions?: [...string]
 
 	#ServiceSpec: {
 		name?:         string

@@ -431,6 +431,12 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		node.ResourcePack = pack
 	}
 
+	if r := v.LookupPath("extensions"); r.Exists() {
+		if err := r.Val.Decode(&node.Extension); err != nil {
+			return err
+		}
+	}
+
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:

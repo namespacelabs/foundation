@@ -171,6 +171,8 @@ func mergeNodeLike(node *schema.Node, out *schema.ServerFragment) error {
 		MergeResourcePack(node.GetResourcePack(), out.ResourcePack)
 	}
 
+	out.Extension = append(out.Extension, node.GetExtension()...)
+
 	return nil
 }
 
