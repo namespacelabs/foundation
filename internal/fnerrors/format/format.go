@@ -313,7 +313,7 @@ func askForSupport() string {
 		return "please run `ns doctor` and file a bug at https://github.com/namespacelabs/foundation/issues"
 
 	default:
-		return "please reach out to support@namespacelabs.com"
+		return "please reach out to support@namespace.so"
 	}
 }
 

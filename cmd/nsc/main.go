@@ -145,7 +145,7 @@ func formatErr(out io.Writer, style colors.Style, err error) {
 			fmt.Fprintln(ww)
 
 			fmt.Fprint(ww, style.Comment.Apply("If this was unexpected, reach out to our team at "),
-				style.CommentHighlight.Apply("support@namespacelabs.com"),
+				style.CommentHighlight.Apply("support@namespace.so"),
 				style.Comment.Apply(" and mention request ID "),
 				style.CommentHighlight.Apply(rid.Id),
 			)
@@ -220,7 +220,7 @@ func generic(ww io.Writer, style colors.Style, code codes.Code, msg string, rid 
 
 	fmt.Fprintln(ww)
 	fmt.Fprint(ww, style.Comment.Apply("This was unexpected. Please reach out to our team at "),
-		style.CommentHighlight.Apply("support@namespacelabs.com"))
+		style.CommentHighlight.Apply("support@namespace.so"))
 
 	if rid != nil {
 		fmt.Fprint(ww,

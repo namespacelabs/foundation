@@ -609,10 +609,10 @@ func selectIpAddr(svc *corev1.Service) (string, error) {
 
 	switch len(ipAddrs) {
 	case 0:
-		return "", fnerrors.New("Service %q has no exported ip addresses. This is unexpected. Please contact support@namespacelabs.com.", svc.Name)
+		return "", fnerrors.New("Service %q has no exported ip addresses. This is unexpected. Please contact support@namespace.so.", svc.Name)
 	case 1:
 		return ipAddrs[0], nil
 	default:
-		return "", fnerrors.New("Service %q has multiple exported ip addresses %v. This is unexpected. Please contact support@namespacelabs.com.", svc.Name, ipAddrs)
+		return "", fnerrors.New("Service %q has multiple exported ip addresses %v. This is unexpected. Please contact support@namespace.so.", svc.Name, ipAddrs)
 	}
 }
