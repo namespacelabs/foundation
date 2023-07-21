@@ -336,8 +336,6 @@ jobs:
         run: |
           /tmp/ns prepare eks --env=staging --cluster=${{ secrets.EKS_STAGING_CLUSTER }} --aws_profile=ns-staging
 
-          /tmp/ns prepare new-build-cluster --env=staging
-
       - name: Deploy staging
         env:
           NS_LOG_TO_FILE: /tmp/action_log
