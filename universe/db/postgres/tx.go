@@ -24,23 +24,19 @@ const (
 
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	return tracing.Collect1(ctx, db.Tracer(), tracing.Name("pg.TransactionWithRetries"), func(ctx context.Context) (T, error) {
-		var result T
-
-		err := backoff.Retry(func() error {
+		return backoff.RetryWithData(func() (T, error) {
 			value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
 			if err == nil {
-				result = value
-				return nil
+				return value, nil
 			}
 
 			if !ErrorIsRetryable(err) {
-				return backoff.Permanent(err)
+				return value, backoff.Permanent(err)
 			}
 
-			return err
+			return value, err
 		}, b)
 
-		return result, err
 	})
 }
 

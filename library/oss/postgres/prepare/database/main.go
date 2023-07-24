@@ -116,7 +116,7 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 	return rows.Next(), nil
 }
 
-func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db string) (conn *pgx.Conn, err error) {
+func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db string) (*pgx.Conn, error) {
 	cfg, err := pgx.ParseConfig(connectionUri(cluster, db))
 	if err != nil {
 		return nil, err
@@ -124,17 +124,15 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 	cfg.ConnectTimeout = connBackoff
 
 	// Retry until backend is ready.
-	err = backoff.Retry(func() error {
-		conn, err = pgx.ConnectConfig(ctx, cfg)
+	return backoff.RetryWithData(func() (*pgx.Conn, error) {
+		conn, err := pgx.ConnectConfig(ctx, cfg)
 		if err == nil {
-			return nil
+			return conn, nil
 		}
 
 		log.Printf("failed to connect to postgres: %v\n", err)
-		return err
+		return nil, err
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
-
-	return conn, err
 }
 
 func connectionUri(cluster *postgresclass.ClusterInstance, db string) string {
