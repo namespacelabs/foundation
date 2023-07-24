@@ -82,10 +82,8 @@ type tenant struct {
 }
 
 func completeLogin(ctx context.Context, id, kind string) (tenant, error) {
-	ephemeralCliId := fnapi.TelemetryOn(ctx).GetClientID()
-
 	if kind == "tenant" {
-		res, err := fnapi.CompleteTenantLogin(ctx, id, ephemeralCliId)
+		res, err := fnapi.CompleteTenantLogin(ctx, id)
 		if err != nil {
 			return tenant{}, err
 		}
@@ -97,7 +95,7 @@ func completeLogin(ctx context.Context, id, kind string) (tenant, error) {
 	}
 
 	// TODO remove old login path
-	userAuth, err := getUserAuth(ctx, id, kind, ephemeralCliId)
+	userAuth, err := getUserAuth(ctx, id, kind)
 	if err != nil {
 		return tenant{}, err
 	}
@@ -119,13 +117,13 @@ func completeLogin(ctx context.Context, id, kind string) (tenant, error) {
 	return tenant{token: tt.TenantToken}, nil
 }
 
-func getUserAuth(ctx context.Context, id, kind, ephemeralCliId string) (*auth.UserAuth, error) {
+func getUserAuth(ctx context.Context, id, kind string) (*auth.UserAuth, error) {
 	switch kind {
 	case "tenant":
 		return nil, fnerrors.InternalError("tenant login cannot produce user auth")
 
 	case "clerk":
-		t, err := fnapi.CompleteClerkLogin(ctx, id, ephemeralCliId)
+		t, err := fnapi.CompleteClerkLogin(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -141,6 +139,6 @@ func getUserAuth(ctx context.Context, id, kind, ephemeralCliId string) (*auth.Us
 		}, nil
 
 	default:
-		return fnapi.CompleteLogin(ctx, id, ephemeralCliId)
+		return fnapi.CompleteLogin(ctx, id)
 	}
 }

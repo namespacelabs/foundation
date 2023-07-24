@@ -30,7 +30,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	"namespacelabs.dev/foundation/internal/console/termios"
-	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors/format"
@@ -118,19 +117,6 @@ func doMain(opts MainOpts) (colors.Style, error) {
 			DeferCheckVersion(ctx, opts.Name)
 		}
 
-		tel := fnapi.TelemetryOn(ctx)
-
-		// XXX move id management out of telemetry, it's used for other purposes too.
-		if tel.IsFirstRun() && !environment.IsRunningInCI() {
-			// First NS run - print a welcome message.
-			welcome.PrintWelcome(ctx, true /* firstRun */, opts.Name)
-		}
-
-		// Now that "useTelemetry" flag is parsed, we can conditionally enable telemetry.
-		if useTelemetry && tel != nil {
-			tel.Enable()
-		}
-
 		if viper.GetBool("enable_pprof") {
 			go ListenPProf(console.Debug(cmd.Context()))
 		}
@@ -139,9 +125,6 @@ func doMain(opts MainOpts) (colors.Style, error) {
 
 		// Setting up container registry logging, which is unfortunately global.
 		crlogs.Warn = log.New(console.TypedOutput(cmd.Context(), "cr-warn", idtypes.CatOutputTool), "", log.LstdFlags|log.Lmicroseconds)
-
-		// Telemetry.
-		tel.RecordInvocation(ctx, cmd, args)
 
 		out := logrus.New()
 		out.SetOutput(console.NamedDebug(ctx, "containerd"))
@@ -206,16 +189,6 @@ func doMain(opts MainOpts) (colors.Style, error) {
 
 	if cleanupTracer != nil {
 		cleanupTracer()
-	}
-
-	if err != nil && !errors.Is(err, context.Canceled) {
-		if tel := fnapi.TelemetryOn(rootCtx); tel != nil {
-			// Record errors only after the user sees them to hide potential latency implications.
-			// We pass the original ctx without sink since logs have already been flushed.
-			tel.RecordError(rootCtx, err)
-		}
-
-		return style, err
 	}
 
 	return style, err
@@ -406,5 +379,5 @@ func setupContext(ctx context.Context, inhibitReport bool, rendered consolesink.
 		flushLogs = func() {}
 	}
 
-	return fnapi.WithTelemetry(ctx), style, flushLogs
+	return ctx, style, flushLogs
 }

@@ -24,8 +24,7 @@ type StartLoginResponse struct {
 }
 
 type CompleteLoginRequest struct {
-	LoginId        string `json:"login_id"`
-	EphemeralCliId string `json:"ephemeral_cli_id"`
+	LoginId string `json:"login_id"`
 }
 
 // Returns the URL which the user should open.
@@ -48,10 +47,9 @@ func StartLogin(ctx context.Context, kind, tenantId string) (*StartLoginResponse
 	return &resp, nil
 }
 
-func CompleteLogin(ctx context.Context, id, ephemeralCliId string) (*auth.UserAuth, error) {
+func CompleteLogin(ctx context.Context, id string) (*auth.UserAuth, error) {
 	req := CompleteLoginRequest{
-		LoginId:        id,
-		EphemeralCliId: ephemeralCliId,
+		LoginId: id,
 	}
 
 	method := "nsl.signin.SigninService/CompleteLogin"
@@ -73,10 +71,9 @@ type CompleteClerkLoginResponse struct {
 	Ticket string `json:"ticket,omitempty"`
 }
 
-func CompleteClerkLogin(ctx context.Context, id, ephemeralCliId string) (*CompleteClerkLoginResponse, error) {
+func CompleteClerkLogin(ctx context.Context, id string) (*CompleteClerkLoginResponse, error) {
 	req := CompleteLoginRequest{
-		LoginId:        id,
-		EphemeralCliId: ephemeralCliId,
+		LoginId: id,
 	}
 
 	method := "nsl.signin.SigninService/CompleteClerkLogin"
@@ -99,10 +96,9 @@ type CompleteTenantLoginResponse struct {
 	TenantName  string `json:"tenant_name,omitempty"`
 }
 
-func CompleteTenantLogin(ctx context.Context, id, ephemeralCliId string) (*CompleteTenantLoginResponse, error) {
+func CompleteTenantLogin(ctx context.Context, id string) (*CompleteTenantLoginResponse, error) {
 	req := CompleteLoginRequest{
-		LoginId:        id,
-		EphemeralCliId: ephemeralCliId,
+		LoginId: id,
 	}
 
 	method := "nsl.signin.SigninService/CompleteTenantLogin"
