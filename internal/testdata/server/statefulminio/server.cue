@@ -24,9 +24,9 @@ server: {
 	mounts: {
 		"/minio": persistent: {
 			// Unique volume identifier
-			id:   "minio-server-data"
-			size: "10GiB"
-            template: true
+			id:       "minio-server-data"
+			size:     "10GiB"
+			template: true
 		}
 	}
 }
