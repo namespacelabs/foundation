@@ -5,10 +5,8 @@
 package kubernetes
 
 import (
-	"fmt"
 	"math"
 
-	"github.com/dustin/go-humanize"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
@@ -24,7 +22,7 @@ type volumeDef struct {
 	isWorkspaceSync bool
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, definitions, error) {
+func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, template bool, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, *applycorev1.PersistentVolumeClaimApplyConfiguration, error) {
 	if sizeBytes >= math.MaxInt64 {
 		return nil, nil, fnerrors.NewWithLocation(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
@@ -33,35 +31,38 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 
 	// Ephemeral environments are short lived, so there is no need for persistent volume claims.
 	// Admin servers are excluded here as they run as singletons in a global namespace.
-	var operations definitions
-	var v *applycorev1.VolumeApplyConfiguration
-
 	if env.GetEphemeral() {
-		v = applycorev1.Volume().
+		return applycorev1.Volume().
 			WithName(name).
 			WithEmptyDir(applycorev1.EmptyDirVolumeSource().
-				WithSizeLimit(*quantity))
+				WithSizeLimit(*quantity)), nil, nil
+	} else if template {
+		return nil, applycorev1.PersistentVolumeClaim(name, ns).
+			WithLabels(kubedef.ManagedByUs()).
+			WithAnnotations(annotations).
+			WithSpec(applycorev1.PersistentVolumeClaimSpec().
+				WithAccessModes(corev1.ReadWriteOnce).
+				WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
+					corev1.ResourceStorage: *quantity,
+				}))), nil
 	} else {
-		v = applycorev1.Volume().
+		v := applycorev1.Volume().
 			WithName(name).
 			WithPersistentVolumeClaim(
 				applycorev1.PersistentVolumeClaimVolumeSource().
 					WithClaimName(persistentId))
 
-		operations = append(operations, kubedef.Apply{
-			Description: fmt.Sprintf("Persistent storage for %s (%s)", owner, humanize.Bytes(sizeBytes)),
-			Resource: applycorev1.PersistentVolumeClaim(persistentId, ns).
-				WithLabels(kubedef.ManagedByUs()).
-				WithAnnotations(annotations).
-				WithSpec(applycorev1.PersistentVolumeClaimSpec().
-					WithAccessModes(corev1.ReadWriteOnce).
-					WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
-						corev1.ResourceStorage: *quantity,
-					}))),
-		})
-	}
+		pvc := applycorev1.PersistentVolumeClaim(persistentId, ns).
+			WithLabels(kubedef.ManagedByUs()).
+			WithAnnotations(annotations).
+			WithSpec(applycorev1.PersistentVolumeClaimSpec().
+				WithAccessModes(corev1.ReadWriteOnce).
+				WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
+					corev1.ResourceStorage: *quantity,
+				})))
 
-	return v, operations, nil
+		return v, pvc, nil
+	}
 }
 
 func toK8sVol(vol *kubedef.SpecExtension_Volume) (*applycorev1.VolumeApplyConfiguration, error) {

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
@@ -466,6 +467,8 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	volumes := deployable.Volumes
 	mounts := deployable.MainContainer.Mounts
 
+	var volumeTemplates []*applycorev1.PersistentVolumeClaimApplyConfiguration
+
 	volumeDefs := map[string]*volumeDef{}
 	for k, volume := range volumes {
 		if volume.Name == "" {
@@ -488,6 +491,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				quantity := resource.NewScaledQuantity(int64(ev.SizeBytes), 0)
 				emptydir = emptydir.WithSizeLimit(*quantity)
 			}
+
 			spec = spec.WithVolumes(applycorev1.Volume().WithName(name).WithEmptyDir(emptydir))
 
 		case constants.VolumeKindHostPath:
@@ -509,17 +513,36 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
 			}
 
+			if pv.Template {
+				if deployable.Class != schema.DeployableClass_STATEFUL {
+					return fnerrors.InternalError("volume %q is a template, but the server is not stateful", volume.Name)
+				}
+			}
+
 			if pv.Id == "" {
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, operations, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, annotations)
+			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, annotations)
 			if err != nil {
 				return err
 			}
 
-			spec = spec.WithVolumes(v)
-			s.operations = append(s.operations, operations...)
+			if v != nil {
+				spec = spec.WithVolumes(v)
+			}
+
+			if pvc != nil {
+				if pv.Template {
+					volumeTemplates = append(volumeTemplates, pvc)
+				} else {
+					// spec = spec.WithVolumes(v)
+					s.operations = append(s.operations, kubedef.Apply{
+						Description: fmt.Sprintf("Persistent storage for %s (%s)", volume.Owner, humanize.Bytes(pv.SizeBytes)),
+						Resource:    pvc,
+					})
+				}
+			}
 
 		case constants.VolumeKindWorkspaceSync:
 			volumeDef.isWorkspaceSync = true
@@ -928,6 +951,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 					WithReplicas(replicas).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
+					WithVolumeClaimTemplates(volumeTemplates...).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))
 			if deployable.ConfigImage != nil {
 				statefulSet.WithAnnotations(map[string]string{

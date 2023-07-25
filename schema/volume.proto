@@ -43,6 +43,7 @@ message EphemeralVolume {
 message PersistentVolume {
     string id         = 1;
     uint64 size_bytes = 2;
+    bool template     = 3;
 }
 
 message HostPathVolume {

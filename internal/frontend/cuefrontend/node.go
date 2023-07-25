@@ -61,6 +61,7 @@ type cueRequiredStorage struct {
 	ByteCount    string `json:"byteCount"`
 	MountPath    string `json:"mountPath"`
 	PersistentID string `json:"persistentId"`
+	Template     bool   `json:"template"`
 }
 
 type cueProvides struct {
@@ -340,6 +341,7 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		pv, err := anypb.New(&schema.PersistentVolume{
 			Id:        d.PersistentID,
 			SizeBytes: uint64(v),
+			Template:  d.Template,
 		})
 		if err != nil {
 			return fnerrors.NewWithLocation(loc, "failed to marshal persistent volume: %w", err)
