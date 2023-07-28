@@ -66,6 +66,8 @@ func WithRefresh(clusterID string) Option {
 }
 
 func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint string, opts ...Option) (net.Conn, error) {
+	fmt.Fprintf(console.Debug(ctx), "Gateway: dialing %v...\n", endpoint)
+
 	d := websocket.Dialer{
 		HandshakeTimeout: 15 * time.Second,
 	}
