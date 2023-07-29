@@ -412,3 +412,19 @@ type IngressBackendEndpoint struct {
 type RegisterIngressResponse struct {
 	Fqdn string `json:"fqdn,omitempty"`
 }
+
+type ListIngressesRequest struct {
+	ClusterId string `json:"cluster_id,omitempty"`
+}
+
+type ListIngressesResponse struct {
+	ExportedInstancePort []*ExportedInstancePort `json:"exported_instance_port,omitempty"`
+}
+
+type ExportedInstancePort struct {
+	Proto         string                         `json:"proto,omitempty"`
+	Port          int32                          `json:"port,omitempty"`
+	IngressFqdn   string                         `json:"ingress_fqdn,omitempty"`
+	HttpMatchRule []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
+	Description   string                         `json:"description,omitempty"`
+}

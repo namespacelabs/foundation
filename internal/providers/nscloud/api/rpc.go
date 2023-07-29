@@ -52,6 +52,7 @@ type API struct {
 	GetClusterLogs               fnapi.Call[GetLogsRequest]
 	GetProfile                   fnapi.Call[emptypb.Empty]
 	RegisterIngress              fnapi.Call[RegisterIngressRequest]
+	ListIngresses                fnapi.Call[ListIngressesRequest]
 }
 
 var (
@@ -196,6 +197,11 @@ func MakeAPI() API {
 		RegisterIngress: fnapi.Call[RegisterIngressRequest]{
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/RegisterIngress",
+		},
+
+		ListIngresses: fnapi.Call[ListIngressesRequest]{
+			FetchToken: fnapi.FetchToken,
+			Method:     "nsl.vm.api.VMService/ListIngresses",
 		},
 	}
 }
@@ -653,6 +659,16 @@ func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest) (
 	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*RegisterIngressResponse, error) {
 		var response RegisterIngressResponse
 		if err := api.RegisterIngress.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+}
+
+func ListIngresses(ctx context.Context, api API, clusterID string) (*ListIngressesResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*ListIngressesResponse, error) {
+		var response ListIngressesResponse
+		if err := api.ListIngresses.Do(ctx, ListIngressesRequest{ClusterId: clusterID}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
