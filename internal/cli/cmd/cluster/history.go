@@ -75,6 +75,10 @@ func transformForOutput(md api.KubernetesClusterMetadata) map[string]any {
 		"labels":         md.UserLabel,
 	}
 
+	if md.DestroyedAt != "" {
+		m["destroyed_at"] = md.DestroyedAt
+	}
+
 	if len(md.Platform) == 1 {
 		m["platform"] = md.Platform[0]
 	}
