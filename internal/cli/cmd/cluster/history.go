@@ -43,16 +43,47 @@ func NewListCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(clusters.Clusters)
+			return enc.Encode(transform(clusters.Clusters))
 		}
+
 		if len(clusters.Clusters) == 0 {
 			printCreateClusterMsg(ctx)
 			return nil
 		}
+
 		return staticTableClusters(ctx, clusters.Clusters, history)
 	})
 
 	return cmd
+}
+
+func transform(mds []api.KubernetesClusterMetadata) []map[string]any {
+	var x []map[string]any
+	for _, md := range mds {
+		x = append(x, transformForOutput(md))
+	}
+	return x
+}
+
+// We keep a validated set of output fields which should not change.
+func transformForOutput(md api.KubernetesClusterMetadata) map[string]any {
+	m := map[string]any{
+		"cluster_id":     md.ClusterId,
+		"created_at":     md.Created,
+		"shape":          md.Shape,
+		"ingress_domain": md.IngressDomain,
+		"labels":         md.UserLabel,
+	}
+
+	if len(md.Platform) == 1 {
+		m["platform"] = md.Platform[0]
+	}
+
+	if md.CreatorId != "" {
+		m["creator_id"] = md.CreatorId
+	}
+
+	return m
 }
 
 func newHistoryCmd() *cobra.Command {

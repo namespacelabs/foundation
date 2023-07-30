@@ -164,7 +164,8 @@ type KubernetesClusterMetadata struct {
 
 	IngressDomain string `json:"ingress_domain,omitempty"`
 
-	Label []*LabelEntry `json:"label,omitempty"`
+	Label     []*LabelEntry     `json:"label,omitempty"`
+	UserLabel map[string]string `json:"user_label,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 
 	CreatorId      string              `json:"creator_id,omitempty"`
 	GithubWorkflow *GithubWorkflowInfo `json:"github_workflow,omitempty"`
