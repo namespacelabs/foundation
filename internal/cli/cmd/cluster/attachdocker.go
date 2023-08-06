@@ -64,7 +64,7 @@ func newDockerAttachCmd() *cobra.Command {
 			}
 		}
 
-		cluster, err := ensureDockerCluster(ctx, *toCluster, *machineType)
+		cluster, err := ensureDockerCluster(ctx, *toCluster, *machineType, *background)
 		if err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func updateContext(dockerCli *command.DockerCli, ctxName string, shouldUpdate fu
 	return nil
 }
 
-func ensureDockerCluster(ctx context.Context, specified, machineType string) (*api.KubernetesCluster, error) {
+func ensureDockerCluster(ctx context.Context, specified, machineType string, background bool) (*api.KubernetesCluster, error) {
 	if specified != "" {
 		resp, err := api.EnsureCluster(ctx, api.Methods, specified)
 		if err != nil {
@@ -234,6 +234,7 @@ func ensureDockerCluster(ctx context.Context, specified, machineType string) (*a
 	resp, err := api.CreateAndWaitCluster(ctx, api.Methods, api.CreateClusterOpts{
 		Purpose:     "Docker environment",
 		Features:    featuresList,
+		KeepAtExit:  background,
 		MachineType: machineType,
 		WaitClusterOpts: api.WaitClusterOpts{
 			CreateLabel:    "Creating Docker environment",
