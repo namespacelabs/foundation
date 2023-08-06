@@ -314,6 +314,8 @@ func newCleanupBuildxCommand() *cobra.Command {
 					if err := process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
 						return err
 					}
+
+					fmt.Fprintf(console.Debug(ctx), "Sent SIGINT to worker handling %s (pid %d).\n", inst.Platform, inst.Pid)
 				}
 			}
 
@@ -322,10 +324,17 @@ func newCleanupBuildxCommand() *cobra.Command {
 					fmt.Sprintf("Warning: deleting state files in %s failed: %v", state, err))
 			}
 
+			fmt.Fprintf(console.Debug(ctx), "Removed local state directory %q.\n", state)
+
 			if md.NodeGroupName != "" {
-				return txn.Remove(md.NodeGroupName)
+				if err := txn.Remove(md.NodeGroupName); err != nil {
+					return err
+				}
+
+				fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", md.NodeGroupName)
 			}
 
+			fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
 			return nil
 		})
 	})
