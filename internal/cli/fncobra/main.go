@@ -107,9 +107,12 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	}
 
 	var run *storedrun.Run
-	var useTelemetry bool
 
 	rootCmd := newRoot(opts.Name, func(cmd *cobra.Command, args []string) error {
+		if err := console.Prepare(); err != nil {
+			return err
+		}
+
 		ctx := cmd.Context()
 
 		// This is a bit of an hack. But don't run version checks when doing an update.
@@ -147,8 +150,8 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		"If set to true, diagnostics and error information are disabled for the command and the command is filtered from `ns command-history`.")
 	rootCmd.PersistentFlags().BoolVar(&console.DebugToConsole, "debug_to_console", console.DebugToConsole,
 		"If set to true, we also output debug log messages to the console.")
-	rootCmd.PersistentFlags().BoolVar(&useTelemetry, "send_usage_data", true,
-		"If set to false, ns does not upload any usage data.")
+	rootCmd.PersistentFlags().StringVar(&console.DebugToFile, "debug_to_file", "",
+		"If set to true, outputs debug messages to the specified file.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
 
@@ -159,9 +162,9 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	// We have too many flags, hide some of them from --help so users can focus on what's important.
 	for _, noisy := range []string{
 		"disable_command_bundle",
-		"send_usage_data",
 		"error_tracing",
 		"debug_to_console",
+		"debug_to_file",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
@@ -172,6 +175,8 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	cmdCtx := tasks.ContextWithThrottler(rootCtx, debugLog, tasks.LoadThrottlerConfig(rootCtx, debugLog))
 
 	err := RunInContext(cmdCtx, func(ctx context.Context) error {
+		defer console.Cleanup()
+
 		return rootCmd.ExecuteContext(ctx)
 	})
 

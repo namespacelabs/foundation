@@ -15,6 +15,7 @@ import (
 	"github.com/kr/text"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -30,7 +31,33 @@ const (
 var (
 	// Configured globally.
 	DebugToConsole = false
+	DebugToFile    string
+
+	debugToWriter *os.File
 )
+
+func Prepare() error {
+	if DebugToFile != "" && DebugToConsole {
+		return fnerrors.New("--debug_to_console and --debug_to_file are exclusive")
+	}
+
+	if DebugToFile != "" {
+		f, err := os.Create(DebugToFile)
+		if err != nil {
+			return err
+		}
+
+		debugToWriter = f
+	}
+
+	return nil
+}
+
+func Cleanup() {
+	if debugToWriter != nil {
+		_ = debugToWriter.Close()
+	}
+}
 
 func Stdout(ctx context.Context) io.Writer {
 	return Output(ctx, idtypes.KnownStdout)
@@ -69,6 +96,10 @@ func TypedOutput(ctx context.Context, name string, cat idtypes.CatOutputType) io
 }
 
 func typedOutput(ctx context.Context, stderr bool, name string, cat idtypes.CatOutputType) io.Writer {
+	if debugToWriter != nil {
+		return debugToWriter
+	}
+
 	if cat == idtypes.CatOutputDebug && !DebugToConsole {
 		return tasks.Attachments(ctx).Output(tasks.Output(name, "text/plain"), cat)
 	}
