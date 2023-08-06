@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -24,7 +25,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const (
@@ -39,7 +39,11 @@ type BuildClusterInstance struct {
 	cancelRefresh func()
 }
 
-func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
+func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, error) {
+	// Wait at most 3 minutes to create a connection to a build cluster.
+	ctx, done := context.WithTimeout(parentCtx, 3*time.Minute)
+	defer done()
+
 	// This is not our usual play; we're doing a lot of work with the lock held.
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
@@ -67,7 +71,7 @@ func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	}
 
 	if response.BuildCluster != nil && !response.BuildCluster.DoesNotRequireRefresh {
-		bp.cancelRefresh = api.StartBackgroundRefreshing(ctx, response.ClusterId)
+		bp.cancelRefresh = api.StartBackgroundRefreshing(parentCtx, response.ClusterId)
 	}
 
 	bp.previous = response
@@ -113,7 +117,6 @@ func NewBuildClusterInstance0(p api.BuildPlatform) *BuildClusterInstance {
 
 type buildProxy struct {
 	socketPath string
-	sink       tasks.ActionSink
 	instance   *BuildClusterInstance
 	listener   net.Listener
 	cleanup    func() error
@@ -162,9 +165,7 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		return nil, err
 	}
 
-	sink := tasks.SinkFrom(ctx)
-
-	return &buildProxy{socketPath, sink, bp, listener, cleanup}, nil
+	return &buildProxy{socketPath, bp, listener, cleanup}, nil
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -178,8 +179,8 @@ func (bp *buildProxy) Cleanup() error {
 }
 
 func (bp *buildProxy) Serve(ctx context.Context) error {
-	if err := serveProxy(ctx, bp.listener, func() (net.Conn, error) {
-		return bp.instance.NewConn(tasks.WithSink(context.Background(), bp.sink))
+	if err := serveProxy(ctx, bp.listener, func(ctx context.Context) (net.Conn, error) {
+		return bp.instance.NewConn(ctx)
 	}); err != nil {
 		if x, ok := err.(*net.OpError); ok {
 			if x.Op == "accept" && errors.Is(x.Err, net.ErrClosed) {

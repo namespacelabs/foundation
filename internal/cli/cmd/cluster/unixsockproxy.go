@@ -88,7 +88,9 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 
 		defer close(ch)
 
-		if err := serveProxy(ctx, listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
+		if err := serveProxy(ctx, listener, func(ctx context.Context) (net.Conn, error) {
+			return opts.Connect(ctx)
+		}); err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return nil, ctxErr
 			}
@@ -99,7 +101,9 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 		return nil, nil
 	} else {
 		go func() {
-			if err := serveProxy(ctx, listener, func() (net.Conn, error) { return opts.Connect(ctx) }); err != nil {
+			if err := serveProxy(ctx, listener, func(ctx context.Context) (net.Conn, error) {
+				return opts.Connect(ctx)
+			}); err != nil {
 				log.Fatal(err)
 			}
 		}()
@@ -110,7 +114,7 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 
 const debug = false
 
-func serveProxy(ctx context.Context, listener net.Listener, connect func() (net.Conn, error)) error {
+func serveProxy(ctx context.Context, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -128,7 +132,7 @@ func serveProxy(ctx context.Context, listener net.Listener, connect func() (net.
 
 			defer conn.Close()
 
-			peerConn, err := connect()
+			peerConn, err := connect(ctx)
 			if err != nil {
 				fmt.Fprintf(console.Stderr(ctx), "Failed to connect: %v\n", err)
 				return
