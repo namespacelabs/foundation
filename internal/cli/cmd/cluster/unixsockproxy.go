@@ -112,22 +112,23 @@ func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProx
 	}
 }
 
-const debug = false
-
 func serveProxy(ctx context.Context, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
 	for {
-		conn, err := listener.Accept()
+		rawConn, err := listener.Accept()
 		if err != nil {
 			return err
 		}
 
+		conn := withAddress{rawConn, fmt.Sprintf("local connection")}
+
 		go func() {
 			var d netcopy.DebugLogFunc
-			if debug {
-				id := ids.NewRandomBase32ID(8)
-				d = func(format string, args ...any) {
-					fmt.Fprintf(console.Stderr(ctx), "["+id+"]: "+format+"\n", args...)
-				}
+
+			id := ids.NewRandomBase32ID(4)
+			fmt.Fprintf(console.Debug(ctx), "[%s] new connection\n", id)
+
+			d = func(format string, args ...any) {
+				fmt.Fprintf(console.Debug(ctx), "["+id+"]: "+format+"\n", args...)
 			}
 
 			defer conn.Close()
@@ -144,3 +145,10 @@ func serveProxy(ctx context.Context, listener net.Listener, connect func(context
 		}()
 	}
 }
+
+type withAddress struct {
+	net.Conn
+	addrDesc string
+}
+
+func (w withAddress) RemoteAddrDebug() string { return w.addrDesc }

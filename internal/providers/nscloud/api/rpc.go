@@ -287,7 +287,11 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			}
 		}
 
+		fmt.Fprintf(console.Debug(ctx), "[nsc] created instance: %s\n", response.ClusterId)
+
 		if !opts.KeepAtExit {
+			fmt.Fprintf(console.Debug(ctx), "[nsc] instance will be removed on exit: %s\n", response.ClusterId)
+
 			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
 				if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
 					// The cluster being gone is an acceptable state (it could have

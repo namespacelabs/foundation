@@ -129,8 +129,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 	}
 
 	if connectAtStart {
-		if _, err := bp.NewConn(ctx); err != nil {
+		if c, err := bp.NewConn(ctx); err != nil {
 			return nil, err
+		} else {
+			_ = c.Close()
 		}
 	}
 

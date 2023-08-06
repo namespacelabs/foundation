@@ -75,6 +75,12 @@ func Copy(debuglog DebugLogFunc, dst, src io.ReadWriteCloser) error {
 
 func addr(src io.ReadWriteCloser) string {
 	if c, ok := src.(interface {
+		RemoteAddrDebug() string
+	}); ok {
+		return c.RemoteAddrDebug()
+	}
+
+	if c, ok := src.(interface {
 		RemoteAddr() net.Addr
 	}); ok {
 		return c.RemoteAddr().String()

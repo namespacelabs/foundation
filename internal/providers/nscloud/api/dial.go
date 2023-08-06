@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 func DialPort(ctx context.Context, cluster *KubernetesCluster, targetPort int) (net.Conn, error) {
@@ -66,7 +67,8 @@ func WithRefresh(clusterID string) Option {
 }
 
 func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint string, opts ...Option) (net.Conn, error) {
-	fmt.Fprintf(console.Debug(ctx), "Gateway: dialing %v...\n", endpoint)
+	tid := ids.NewRandomBase32ID(4)
+	fmt.Fprintf(console.Debug(ctx), "[%s] Gateway: dialing %v...\n", tid, endpoint)
 
 	d := websocket.Dialer{
 		HandshakeTimeout: 15 * time.Second,
@@ -80,14 +82,18 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 		opt(&o)
 	}
 
+	t := time.Now()
 	wsConn, _, err := d.DialContext(ctx, endpoint, hdrs)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Fprintf(console.Debug(ctx), "[%s] Gateway: dialing %v... took %v\n", tid, endpoint, time.Since(t))
+
 	conn := cnet.NewWebSocketConn(wsConn)
 
 	if o.refreshClusterID != "" {
+		fmt.Fprintf(console.Debug(ctx), "[%s] starting background refresh: %s\n", tid, o.refreshClusterID)
 		cancel := StartBackgroundRefreshing(ctx, o.refreshClusterID)
 
 		return forwardClose{conn, cancel}, nil

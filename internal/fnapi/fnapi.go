@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/spf13/pflag"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
@@ -22,6 +23,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
+	"namespacelabs.dev/go-ids"
 )
 
 var (
@@ -111,8 +113,10 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		return err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "RPC: %v (endpoint: %v)\n", c.Method, endpoint)
+	tid := ids.NewRandomBase32ID(4)
+	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v (endpoint: %v)\n", tid, c.Method, endpoint)
 
+	t := time.Now()
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/"+c.Method, bytes.NewReader(reqBytes))
 	if err != nil {
 		return fnerrors.InternalError("failed to construct request: %w", err)
@@ -132,6 +136,8 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 	}
 
 	defer response.Body.Close()
+
+	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v: status %s took %v\n", tid, c.Method, response.Status, time.Since(t))
 
 	if response.StatusCode == http.StatusOK {
 		if handle == nil {
