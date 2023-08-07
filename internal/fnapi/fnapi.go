@@ -192,6 +192,8 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		return fnerrors.ReauthError("%s/%s requires authentication", endpoint, c.Method)
 	case http.StatusForbidden:
 		return fnerrors.PermissionDeniedError("%s/%s denied access", endpoint, c.Method)
+	case http.StatusNotFound:
+		return fnerrors.InternalError("%q not found: %s", endpoint, string(respBody))
 	default:
 		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
 	}
