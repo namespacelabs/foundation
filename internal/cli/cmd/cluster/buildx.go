@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -50,8 +51,13 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	background := cmd.Flags().Bool("background", false, "If true, runs the remote builder context in the background.")
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
 	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
+	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *debugDir != "" && !*background {
+			return fnerrors.New("--background_debug_dir requires --background")
+		}
+
 		dockerCli, err := command.NewDockerCli()
 		if err != nil {
 			return err
@@ -101,7 +107,12 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			instances = append(instances, instance)
 
 			if *background {
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup); err != nil {
+				debugFile := ""
+				if *debugDir != "" {
+					debugFile = path.Join(*debugDir, fmt.Sprintf("%s-proxy.log", p.Platform))
+				}
+
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
