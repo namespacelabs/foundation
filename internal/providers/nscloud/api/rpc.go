@@ -398,6 +398,8 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 				tries++
 				if tries >= 3 {
 					return fnerrors.InvocationError("nscloud", "cluster never became ready (last status was %q, cluster id: %s): %w", lastStatus, clusterId, err)
+				} else {
+					fmt.Fprintf(console.Debug(ctx), "Failed to wait for cluster: %v\n", err)
 				}
 			}
 
