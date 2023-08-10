@@ -14,7 +14,7 @@ import (
 
 func WaitReadiness(ctx context.Context, connect func() (*buildkit.Client, error)) error {
 	const retryDelay = 200 * time.Millisecond
-	const maxRetries = 5 * 60 // 60 seconds
+	const maxRetries = 5 * 30 // 30 seconds
 
 	c, err := connect()
 	if err != nil {

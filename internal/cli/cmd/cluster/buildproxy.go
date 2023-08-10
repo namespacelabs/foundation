@@ -44,6 +44,27 @@ func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, er
 	ctx, done := context.WithTimeout(parentCtx, 3*time.Minute)
 	defer done()
 
+	var lastErr error
+	for retry := 0; retry < 5; retry++ {
+		if conn, err := bp.newConn(ctx, parentCtx); err == nil {
+			return conn, nil
+		} else {
+			fmt.Fprintf(console.Warnings(ctx), "creating new connection failed: %v", err)
+			lastErr = err
+			retry++
+		}
+
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	return nil, lastErr
+}
+
+func (bp *BuildClusterInstance) newConn(ctx, parentCtx context.Context) (net.Conn, error) {
 	// This is not our usual play; we're doing a lot of work with the lock held.
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
@@ -66,7 +87,7 @@ func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, er
 
 	if bp.previous == nil || bp.previous.ClusterId != response.ClusterId {
 		if err := waitUntilReady(ctx, response); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to wait for buildkit to become ready: %v\n", err)
+			return nil, fmt.Errorf("Failed to wait for buildkit to become ready: %w\n", err)
 		}
 	}
 
