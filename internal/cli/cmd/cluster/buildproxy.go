@@ -202,7 +202,7 @@ func (bp *buildProxy) Cleanup() error {
 }
 
 func (bp *buildProxy) Serve(ctx context.Context) error {
-	if err := serveProxy(ctx, bp.listener, func(ctx context.Context) (net.Conn, error) {
+	if err := serveGRPCProxy(ctx, bp.listener, func(ctx context.Context) (net.Conn, error) {
 		return bp.instance.NewConn(ctx)
 	}); err != nil {
 		if x, ok := err.(*net.OpError); ok {
