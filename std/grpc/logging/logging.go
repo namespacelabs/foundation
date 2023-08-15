@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -19,10 +21,17 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
-const maxOutputToTerminal = 1024
+var maxOutputToTerminal = 1024
 
 func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
+	if v := os.Getenv("FOUNDATION_GRPCLOG_MESSAGE_MAX_BYTES"); v != "" {
+		if parsed, err := strconv.ParseInt(v, 10, 32); err != nil {
+			panic(err)
+		} else {
+			maxOutputToTerminal = int(parsed)
+		}
+	}
 }
 
 var Log = core.ZLog
@@ -176,6 +185,7 @@ func serializeMessage(msg interface{}) string {
 	if len(reqStr) > maxOutputToTerminal {
 		return fmt.Sprintf("%s [...%d chars truncated]", reqStr[:maxOutputToTerminal], len(reqStr)-maxOutputToTerminal)
 	}
+
 	return reqStr
 }
 
