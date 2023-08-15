@@ -10,9 +10,11 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -21,7 +23,10 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
-var maxOutputToTerminal = 1024
+var (
+	maxOutputToTerminal = 1024
+	skipLogging         []string
+)
 
 func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano // Setting external package globals does not make me happy.
@@ -31,6 +36,9 @@ func init() {
 		} else {
 			maxOutputToTerminal = int(parsed)
 		}
+	}
+	if v := os.Getenv("FOUNDATION_GRPCLOG_SKIP_METHODS"); v != "" {
+		skipLogging = strings.Split(v, ",")
 	}
 }
 
@@ -50,14 +58,19 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 
 	zero := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
 	logger := zero.Logger()
+	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
-	attachRequestData(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", serializeMessage(req)).Send()
+	if loggable {
+		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", serializeMessage(req)).Send()
+	}
 
 	resp, err := handler(logger.WithContext(ctx), req)
-	if err == nil {
-		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", serializeMessage(resp)).Send()
-	} else {
-		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
+	if loggable {
+		if err == nil {
+			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", serializeMessage(resp)).Send()
+		} else {
+			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
+		}
 	}
 	return resp, err
 }
@@ -72,14 +85,19 @@ func (interceptor) streaming(srv interface{}, stream grpc.ServerStream, info *gr
 
 	zero := prepareLogger(ctx, rdata.RequestID, info.FullMethod)
 	logger := zero.Logger()
+	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
-	attachRequestData(ctx, logger.Info().Str("kind", "grpclog").Str("what", "stream_start")).Send()
+	if loggable {
+		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "stream_start")).Send()
+	}
 
 	err := handler(srv, &serverStream{stream, logger.WithContext(ctx)})
-	if err == nil {
-		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Send()
-	} else {
-		logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Err(err).Send()
+	if loggable {
+		if err == nil {
+			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Send()
+		} else {
+			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "stream_end").Err(err).Send()
+		}
 	}
 	return err
 }
@@ -116,7 +134,7 @@ func prepareLogger(ctx context.Context, reqid requestid.RequestID, fullMethod st
 		Str("request_id", string(reqid))
 }
 
-func attachRequestData(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
+func makeNewEvent(ctx context.Context, ev *zerolog.Event) *zerolog.Event {
 	var authType string
 	p, _ := peer.FromContext(ctx)
 	if p != nil && p.AuthInfo != nil {
