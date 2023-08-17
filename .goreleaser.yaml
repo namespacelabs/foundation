@@ -106,12 +106,6 @@ archives:
       - macos-docker-credential-nsc
     name_template: "nsc_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
-  - id: docker-credential-nsc
-    builds:
-      - linux-docker-credential-nsc
-      - macos-docker-credential-nsc
-    name_template: "docker-credential-nsc_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-
 # signs:
 #   - signature: "${artifact}_macos.dmg"
 #     ids:
