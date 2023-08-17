@@ -141,7 +141,7 @@ changelog:
 brews:
   - tap:
       owner: namespacelabs
-      name: homebrew-repo
+      name: homebrew-namespace
     name: ns
     ids:
       - ns
@@ -152,6 +152,18 @@ brews:
       platform for you. You can learn more at https://namespace.so/telemetry.
 
       Check out our examples at https://namespace.so/docs#examples to get started.
-    url_template: "https://get.namespace.so/packages/{{.ProjectName}}/v{{.Version}}/{{.ArtifactName}}"
+    url_template: "https://get.namespace.so/packages/ns/v{{.Version}}/{{.ArtifactName}}"
     install: |
       bin.install "ns"
+  - tap:
+      owner: namespacelabs
+      name: homebrew-namespace
+    name: nsc
+    ids:
+      - nsc
+    description: "Container-optimized cloud infrastructure that just works."
+    homepage: "https://namespace.so/"
+    url_template: "https://get.namespace.so/packages/nsc/v{{.Version}}/{{.ArtifactName}}"
+    install: |
+      bin.install "nsc"
+      bin.install "docker-credential-nsc"
