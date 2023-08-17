@@ -356,9 +356,6 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 		for {
 			// We continue to wait for the cluster to become ready until we observe a READY.
 			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, ResolveEndpoint, func(body io.Reader) error {
-				// If we get a payload, reset the number of tries.
-				tries = 0
-
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
@@ -367,6 +364,9 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 				// our codebase operates on types.
 
 				for mv := range decoder.Stream() {
+					// If we get a payload, reset the number of tries.
+					tries = 0
+
 					var resp CreateKubernetesClusterResponse
 					if err := jsonreparser.Reparse(mv.Value, &resp); err != nil {
 						return fnerrors.InvocationError("nscloud", "failed to parse response: %w", err)
