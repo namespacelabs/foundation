@@ -198,10 +198,10 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
 			}
 		}
-
 		if err := cfg.Save(); err != nil {
 			return fnerrors.New("failed to save config: %w", err)
 		}
+		fmt.Fprintf(stdout, "Added Namespace credentials to %s.\n", cfg.Filename)
 
 		if nscr := response.NSCR; nscr != nil {
 			fmt.Fprintf(stdout, "\nYou are now logged into your Workspace container registry:\n\n  %s/%s", nscr.EndpointAddress, nscr.Repository)
