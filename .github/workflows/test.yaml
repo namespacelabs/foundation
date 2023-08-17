@@ -28,14 +28,21 @@ jobs:
         run: |
           mkdir -p /cache/gocache/go-build
           mkdir -p /cache/gocache/go/pkg/mod
-          export GOCACHE="/cache/gocache/go-build"
-          export GOMODCACHE="/cache/gocache/go/pkg/mod"
       - name: Test
         run: go test ./...
+        env:
+          GOCACHE: "/cache/gocache/go-build"
+          GOMODCACHE: "/cache/gocache/go/pkg/mod"
       - name: Check Go Formatting
         run: go fmt ./... && git diff --exit-code
+        env:
+          GOCACHE: "/cache/gocache/go-build"
+          GOMODCACHE: "/cache/gocache/go/pkg/mod"
       - name: Check Go Mod Tidyness
         run: go mod tidy && git diff --exit-code
+        env:
+          GOCACHE: "/cache/gocache/go-build"
+          GOMODCACHE: "/cache/gocache/go/pkg/mod"
 
       - name: Breakpoint on failure
         if: failure() && github.ref_name == 'main'
