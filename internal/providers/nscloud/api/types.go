@@ -86,6 +86,7 @@ type ContainerRequest struct {
 	ExportPort     []*ContainerPort  `json:"export_port,omitempty"`
 	DockerSockPath string            `json:"docker_sock_path,omitempty"`
 	NscStatePath   string            `json:"nsc_state_path,omitempty"`
+	Network        string            `json:"network,omitempty"`
 }
 
 type ComposeRequest struct {
