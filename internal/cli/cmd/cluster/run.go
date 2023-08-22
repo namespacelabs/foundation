@@ -52,11 +52,13 @@ func NewRunCmd() *cobra.Command {
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
 	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
 	forwardNscState := run.Flags().Bool("forward_nsc_state", false, "If set to true, instructs the platform to forward nsc state into the container.")
+	network := run.Flags().String("network", "", "The network setting to start the container with.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
 	run.Flags().MarkHidden("enable_docker")
 	run.Flags().MarkHidden("forward_nsc_state")
+	run.Flags().MarkHidden("network")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -93,6 +95,7 @@ func NewRunCmd() *cobra.Command {
 			InternalExtra:   *internalExtra,
 			EnableDocker:    *enableDocker,
 			ForwardNscState: *forwardNscState,
+			Network:         *network,
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
@@ -210,6 +213,7 @@ type createContainerOpts struct {
 	InternalExtra   string
 	EnableDocker    bool
 	ForwardNscState bool
+	Network         string
 }
 
 type exportContainerPort struct {
@@ -219,11 +223,12 @@ type exportContainerPort struct {
 
 func createContainer(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
-		Name:  opts.Name,
-		Image: opts.Image,
-		Args:  opts.Args,
-		Env:   opts.Env,
-		Flag:  []string{"TERMINATE_ON_EXIT"},
+		Name:    opts.Name,
+		Image:   opts.Image,
+		Args:    opts.Args,
+		Env:     opts.Env,
+		Flag:    []string{"TERMINATE_ON_EXIT"},
+		Network: opts.Network,
 	}
 
 	if opts.EnableDocker {
