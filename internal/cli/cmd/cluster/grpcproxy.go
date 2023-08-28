@@ -63,11 +63,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 	defer g.mu.Unlock()
 
 	if g.backendClient != nil {
-		// Try to gRPC connect with the underlying net connection
-		waitCtx, cancel := context.WithTimeout(ctx, time.Second*5)
-		defer cancel()
-		if g.backendClient.GetState() == connectivity.Ready ||
-			g.backendClient.WaitForStateChange(waitCtx, connectivity.Ready) {
+		if g.backendClient.GetState() == connectivity.Ready {
 			fmt.Fprintf(console.Debug(context.Background()), "reused grpc connection\n")
 			return g.backendClient, nil
 		}
