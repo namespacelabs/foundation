@@ -40,46 +40,24 @@ func serveGRPCProxy(parentCtx context.Context, listener net.Listener, connect fu
 			}))
 	}
 
-	p := NewGrpcProxy(grpcConnect)
+	p := newGrpcProxy(grpcConnect)
 	fmt.Fprintf(console.Debug(parentCtx), "[%s] gRPC proxy start\n", id)
 	return p.Serve(listener)
 }
 
 type StreamDirector func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error)
 
-// NewGrpcProxy sets up a simple proxy that forwards all requests to dst.
-func NewGrpcProxy(connect grpcConnectCb, opts ...grpc.ServerOption) *grpc.Server {
-	opts = append(opts, CallbackProxyOpt(connect))
-	// Set up the proxy server and then serve from it like in step one.
+func newGrpcProxy(connect grpcConnectCb, opts ...grpc.ServerOption) *grpc.Server {
+	h := &handler{
+		connectCb: connect,
+	}
+
+	opts = append(opts, grpc.UnknownServiceHandler(h.handler))
 	return grpc.NewServer(opts...)
 }
 
-// CallbackProxyOpt returns an grpc.UnknownServiceHandler with a CallbackDirector.
-func CallbackProxyOpt(connect grpcConnectCb) grpc.ServerOption {
-	return grpc.UnknownServiceHandler(TransparentHandler(CallbackDirector(connect)))
-}
-
-// DefaultDirector returns a very simple forwarding StreamDirector that forwards all
-// calls.
-func CallbackDirector(connect grpcConnectCb) StreamDirector {
-	return func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error) {
-		md, _ := metadata.FromIncomingContext(ctx)
-		ctx = metadata.NewOutgoingContext(ctx, md.Copy())
-		conn, err := connect(ctx)
-		return ctx, conn, err
-	}
-}
-
-// TransparentHandler returns a handler that attempts to proxy all requests that are not registered in the server.
-// The indented use here is as a transparent proxy, where the server doesn't know about the services implemented by the
-// backends. It should be used as a `grpc.UnknownServiceHandler`.
-func TransparentHandler(director StreamDirector) grpc.StreamHandler {
-	streamer := &handler{director: director}
-	return streamer.handler
-}
-
 type handler struct {
-	director StreamDirector
+	connectCb grpcConnectCb
 }
 
 // handler is where the real magic of proxying happens.
@@ -95,23 +73,22 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	}
 	fmt.Fprintf(console.Debug(context.Background()), "handler %s\n", fullMethodName)
 
-	// We require that the director's returned context inherits from the serverStream.Context().
-	outgoingCtx, backendConn, err := s.director(serverStream.Context(), fullMethodName)
+	md, _ := metadata.FromIncomingContext(serverStream.Context())
+	outgoingCtx := metadata.NewOutgoingContext(serverStream.Context(), md.Copy())
+	backendConn, err := s.connectCb(outgoingCtx)
 	if err != nil {
 		fmt.Fprintf(console.Errors(context.Background()), "getting backend connection failed: %v\n", err)
-		return err
+		return status.Errorf(codes.Internal, "failed connect to backend: %v", err)
 	}
 
 	clientCtx, clientCancel := context.WithCancel(outgoingCtx)
 	defer clientCancel()
-	// TODO(mwitkow): Add a `forwarded` header to metadata, https://en.wikipedia.org/wiki/X-Forwarded-For.
+
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
 		return err
 	}
-	// Explicitly *do not close* s2cErrChan and c2sErrChan, otherwise the select below will not terminate.
-	// Channels do not have to be closed, it is just a control flow mechanism, see
-	// https://groups.google.com/forum/#!msg/golang-nuts/pZwdYRGxCIk/qpbHxRRPJdUJ
+
 	s2cErrChan := s.forwardServerToClient(serverStream, clientStream)
 	c2sErrChan := s.forwardClientToServer(clientStream, serverStream)
 	// We don't know which side is going to stop sending first, so we need a select between the two.
@@ -141,6 +118,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 			return nil
 		}
 	}
+
 	return status.Errorf(codes.Internal, "gRPC proxying should never reach this stage.")
 }
 
