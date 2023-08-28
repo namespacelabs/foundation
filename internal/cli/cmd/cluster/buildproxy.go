@@ -25,6 +25,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const (
@@ -39,9 +40,9 @@ type BuildClusterInstance struct {
 	cancelRefresh func()
 }
 
-func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, error) {
+func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	// Wait at most 3 minutes to create a connection to a build cluster.
-	ctx, done := context.WithTimeout(parentCtx, 3*time.Minute)
+	ctx, done := context.WithTimeout(ctx, 3*time.Minute)
 	defer done()
 
 	// This is not our usual play; we're doing a lot of work with the lock held.
@@ -66,12 +67,12 @@ func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, er
 
 	if bp.previous == nil || bp.previous.ClusterId != response.ClusterId {
 		if err := waitUntilReady(ctx, response); err != nil {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to wait for buildkit to become ready: %v\n", err)
+			return nil, fmt.Errorf("Failed to wait for buildkit to become ready: %w\n", err)
 		}
 	}
 
 	if response.BuildCluster != nil && !response.BuildCluster.DoesNotRequireRefresh {
-		bp.cancelRefresh = api.StartBackgroundRefreshing(parentCtx, response.ClusterId)
+		bp.cancelRefresh = api.StartBackgroundRefreshing(ctx, response.ClusterId)
 	}
 
 	bp.previous = response
@@ -181,8 +182,9 @@ func (bp *buildProxy) Cleanup() error {
 }
 
 func (bp *buildProxy) Serve(ctx context.Context) error {
-	if err := serveProxy(ctx, bp.listener, func(ctx context.Context) (net.Conn, error) {
-		return bp.instance.NewConn(ctx)
+	sink := tasks.SinkFrom(ctx)
+	if err := serveGRPCProxy(bp.listener, func(innerCtx context.Context) (net.Conn, error) {
+		return bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
 	}); err != nil {
 		if x, ok := err.(*net.OpError); ok {
 			if x.Op == "accept" && errors.Is(x.Err, net.ErrClosed) {
