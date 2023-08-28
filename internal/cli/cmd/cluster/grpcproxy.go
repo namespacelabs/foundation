@@ -91,10 +91,9 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 }
 
 func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) error {
-	// little bit of gRPC internals never hurt anyone
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
-		err := status.Errorf(codes.Internal, "lowLevelServerStream not exists in context")
+		err := status.Errorf(codes.Internal, "reading method failed")
 		fmt.Fprintf(console.Errors(context.Background()), "reading method failed: %v\n", err)
 		return err
 	}
@@ -104,7 +103,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	outgoingCtx := metadata.NewOutgoingContext(serverStream.Context(), md.Copy())
 	backendConn, err := g.newBackendClient(outgoingCtx)
 	if err != nil {
-		fmt.Fprintf(console.Debug(context.Background()), "creating backend connection failed: %v\n", err)
+		fmt.Fprintf(console.Errors(context.Background()), "creating backend connection failed: %v\n", err)
 		return status.Errorf(codes.Internal, "failed connect to backend: %v", err)
 	}
 
@@ -113,13 +112,13 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
-		fmt.Fprintf(console.Debug(context.Background()), "failed to create client stream: %v\n", err)
+		fmt.Fprintf(console.Errors(context.Background()), "failed to create client stream: %v\n", err)
 		return status.Errorf(codes.Internal, "failed create client: %v", err)
 	}
 
-	s2cErrChan := g.forwardServerToClient(serverStream, clientStream)
-	c2sErrChan := g.forwardClientToServer(clientStream, serverStream)
-	// We don't know which side is going to stop sending first, so we need a select between the two.
+	s2cErrChan := g.proxyServerToClient(serverStream, clientStream)
+	c2sErrChan := g.proxyClientToServer(clientStream, serverStream)
+	// Make sure to close both client and server connections
 	for i := 0; i < 2; i++ {
 		select {
 		case s2cErr := <-s2cErrChan:
@@ -127,7 +126,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 				clientStream.CloseSend()
 			} else {
 				clientCancel()
-				fmt.Fprintf(console.Debug(context.Background()), "failed proxying s2c: %v\n", s2cErr)
+				fmt.Fprintf(console.Errors(context.Background()), "failed proxying s2c: %v\n", s2cErr)
 				return status.Errorf(codes.Internal, "failed proxying s2c: %v", s2cErr)
 			}
 		case c2sErr := <-c2sErrChan:
@@ -135,17 +134,17 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 			serverStream.SetTrailer(clientStream.Trailer())
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
 			if c2sErr != io.EOF {
-				fmt.Fprintf(console.Debug(context.Background()), "failed proxying c2s: %v\n", c2sErr)
+				fmt.Fprintf(console.Errors(context.Background()), "failed proxying c2s: %v\n", c2sErr)
 				return c2sErr
 			}
 			return nil
 		}
 	}
 
-	return status.Errorf(codes.Internal, "gRPC proxying should never reach this stage.")
+	return status.Errorf(codes.Internal, "gRPC proxy should never reach this stage.")
 }
 
-func (g *grpcProxy) forwardClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
+func (g *grpcProxy) proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
 		f := &emptypb.Empty{}
@@ -180,15 +179,16 @@ func (g *grpcProxy) forwardClientToServer(src grpc.ClientStream, dst grpc.Server
 	return ret
 }
 
-func (g *grpcProxy) forwardServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
+func (g *grpcProxy) proxyServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
 		f := &emptypb.Empty{}
 		for {
 			if err := src.RecvMsg(f); err != nil {
-				ret <- err // this can be io.EOF which is happy case
+				ret <- err
 				break
 			}
+
 			if err := dst.SendMsg(f); err != nil {
 				ret <- err
 				break
