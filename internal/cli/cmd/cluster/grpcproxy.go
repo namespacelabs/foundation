@@ -9,15 +9,18 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sync"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/go-ids"
 )
 
 var (
@@ -29,41 +32,76 @@ var (
 
 type grpcConnectCb func(context.Context) (*grpc.ClientConn, error)
 
-func serveGRPCProxy(parentCtx context.Context, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
-	id := ids.NewRandomBase32ID(4)
-	grpcConnect := func(ctx context.Context) (*grpc.ClientConn, error) {
-		return grpc.Dial("",
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-				fmt.Fprintf(console.Debug(parentCtx), "[%s] dial\n", id)
-				return connect(parentCtx)
-			}))
+func serveGRPCProxy(listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
+	p, err := newGrpcProxy(connect)
+	if err != nil {
+		return err
 	}
 
-	p := newGrpcProxy(grpcConnect)
-	fmt.Fprintf(console.Debug(parentCtx), "[%s] gRPC proxy start\n", id)
 	return p.Serve(listener)
 }
 
-type StreamDirector func(ctx context.Context, fullMethodName string) (context.Context, *grpc.ClientConn, error)
+type grpcProxy struct {
+	mu sync.Mutex
+	*grpc.Server
+	backendClient *grpc.ClientConn
+	connect       func(context.Context) (net.Conn, error)
+}
 
-func newGrpcProxy(connect grpcConnectCb, opts ...grpc.ServerOption) *grpc.Server {
-	h := &handler{
-		connectCb: connect,
+func newGrpcProxy(connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
+	g := &grpcProxy{
+		connect: connect,
 	}
 
-	opts = append(opts, grpc.UnknownServiceHandler(h.handler))
-	return grpc.NewServer(opts...)
+	s := grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
+	g.Server = s
+	return g, nil
 }
 
-type handler struct {
-	connectCb grpcConnectCb
+func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.backendClient != nil {
+		// Try to gRPC connect with the underlying net connection
+		waitCtx, cancel := context.WithTimeout(ctx, time.Second*5)
+		defer cancel()
+		if g.backendClient.GetState() == connectivity.Ready ||
+			g.backendClient.WaitForStateChange(waitCtx, connectivity.Ready) {
+			fmt.Fprintf(console.Debug(context.Background()), "reused grpc connection\n")
+			return g.backendClient, nil
+		}
+		fmt.Fprintf(console.Debug(context.Background()), "cached grpc connection invalidated\n")
+		g.backendClient = nil
+	}
+
+	client, err := grpc.Dial("",
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:    time.Second * 30,
+			Timeout: time.Minute,
+		}),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
+			return g.connect(ctx)
+		}))
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(console.Debug(context.Background()), "created new grpc connection\n")
+
+	g.backendClient = client
+	return client, nil
 }
 
-// handler is where the real magic of proxying happens.
-// It is invoked like any gRPC server stream and uses the emptypb.Empty type server
-// to proxy calls between the input and output streams.
-func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error {
+func (g *grpcProxy) invalidateConnection() {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	g.backendClient = nil
+}
+
+func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) error {
 	// little bit of gRPC internals never hurt anyone
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
@@ -75,9 +113,9 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 
 	md, _ := metadata.FromIncomingContext(serverStream.Context())
 	outgoingCtx := metadata.NewOutgoingContext(serverStream.Context(), md.Copy())
-	backendConn, err := s.connectCb(outgoingCtx)
+	backendConn, err := g.newBackendClient(outgoingCtx)
 	if err != nil {
-		fmt.Fprintf(console.Errors(context.Background()), "getting backend connection failed: %v\n", err)
+		fmt.Fprintf(console.Debug(context.Background()), "creating backend connection failed: %v\n", err)
 		return status.Errorf(codes.Internal, "failed connect to backend: %v", err)
 	}
 
@@ -86,33 +124,32 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
-		return err
+		g.invalidateConnection()
+		fmt.Fprintf(console.Debug(context.Background()), "failed to create client stream: %v\n", err)
+		return status.Errorf(codes.Internal, "failed create client: %v", err)
 	}
 
-	s2cErrChan := s.forwardServerToClient(serverStream, clientStream)
-	c2sErrChan := s.forwardClientToServer(clientStream, serverStream)
+	s2cErrChan := g.forwardServerToClient(serverStream, clientStream)
+	c2sErrChan := g.forwardClientToServer(clientStream, serverStream)
 	// We don't know which side is going to stop sending first, so we need a select between the two.
 	for i := 0; i < 2; i++ {
 		select {
 		case s2cErr := <-s2cErrChan:
 			if s2cErr == io.EOF {
-				// this is the happy case where the sender has encountered io.EOF, and won't be sending anymore./
-				// the clientStream>serverStream may continue pumping though.
 				clientStream.CloseSend()
 			} else {
-				// however, we may have gotten a receive error (stream disconnected, a read error etc) in which case we need
-				// to cancel the clientStream to the backend, let all of its goroutines be freed up by the CancelFunc and
-				// exit with an error to the stack
 				clientCancel()
+				fmt.Fprintf(console.Debug(context.Background()), "failed proxying s2c: %v\n", s2cErr)
+				g.invalidateConnection()
 				return status.Errorf(codes.Internal, "failed proxying s2c: %v", s2cErr)
 			}
 		case c2sErr := <-c2sErrChan:
-			// This happens when the clientStream has nothing else to offer (io.EOF), returned a gRPC error. In those two
-			// cases we may have received Trailers as part of the call. In case of other errors (stream closed) the trailers
-			// will be nil.
+
 			serverStream.SetTrailer(clientStream.Trailer())
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
 			if c2sErr != io.EOF {
+				fmt.Fprintf(console.Debug(context.Background()), "failed proxying c2s: %v\n", c2sErr)
+				g.invalidateConnection()
 				return c2sErr
 			}
 			return nil
@@ -122,7 +159,7 @@ func (s *handler) handler(srv interface{}, serverStream grpc.ServerStream) error
 	return status.Errorf(codes.Internal, "gRPC proxying should never reach this stage.")
 }
 
-func (s *handler) forwardClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
+func (g *grpcProxy) forwardClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
 		f := &emptypb.Empty{}
@@ -154,7 +191,7 @@ func (s *handler) forwardClientToServer(src grpc.ClientStream, dst grpc.ServerSt
 	return ret
 }
 
-func (s *handler) forwardServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
+func (g *grpcProxy) forwardServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
 		f := &emptypb.Empty{}

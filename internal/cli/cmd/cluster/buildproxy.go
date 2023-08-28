@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
@@ -25,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const (
@@ -39,32 +39,7 @@ type BuildClusterInstance struct {
 	cancelRefresh func()
 }
 
-func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, error) {
-	// Wait at most 3 minutes to create a connection to a build cluster.
-	ctx, done := context.WithTimeout(parentCtx, 3*time.Minute)
-	defer done()
-
-	var lastErr error
-	for retry := 0; retry < 5; retry++ {
-		if conn, err := bp.newConn(ctx, parentCtx); err == nil {
-			return conn, nil
-		} else {
-			fmt.Fprintf(console.Warnings(ctx), "creating new connection failed: %v", err)
-			lastErr = err
-			retry++
-		}
-
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-
-		time.Sleep(time.Second)
-	}
-
-	return nil, lastErr
-}
-
-func (bp *BuildClusterInstance) newConn(ctx, parentCtx context.Context) (net.Conn, error) {
+func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 	// This is not our usual play; we're doing a lot of work with the lock held.
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
@@ -92,7 +67,7 @@ func (bp *BuildClusterInstance) newConn(ctx, parentCtx context.Context) (net.Con
 	}
 
 	if response.BuildCluster != nil && !response.BuildCluster.DoesNotRequireRefresh {
-		bp.cancelRefresh = api.StartBackgroundRefreshing(parentCtx, response.ClusterId)
+		bp.cancelRefresh = api.StartBackgroundRefreshing(ctx, response.ClusterId)
 	}
 
 	bp.previous = response
@@ -202,8 +177,9 @@ func (bp *buildProxy) Cleanup() error {
 }
 
 func (bp *buildProxy) Serve(ctx context.Context) error {
-	if err := serveGRPCProxy(ctx, bp.listener, func(ctx context.Context) (net.Conn, error) {
-		return bp.instance.NewConn(ctx)
+	sink := tasks.SinkFrom(ctx)
+	if err := serveGRPCProxy(bp.listener, func(innerCtx context.Context) (net.Conn, error) {
+		return bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
 	}); err != nil {
 		if x, ok := err.(*net.OpError); ok {
 			if x.Op == "accept" && errors.Is(x.Err, net.ErrClosed) {
