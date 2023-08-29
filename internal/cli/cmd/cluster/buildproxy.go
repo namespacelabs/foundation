@@ -40,9 +40,9 @@ type BuildClusterInstance struct {
 	cancelRefresh func()
 }
 
-func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
+func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, error) {
 	// Wait at most 3 minutes to create a connection to a build cluster.
-	ctx, done := context.WithTimeout(ctx, 3*time.Minute)
+	ctx, done := context.WithTimeout(parentCtx, 3*time.Minute)
 	defer done()
 
 	// This is not our usual play; we're doing a lot of work with the lock held.
@@ -67,12 +67,12 @@ func (bp *BuildClusterInstance) NewConn(ctx context.Context) (net.Conn, error) {
 
 	if bp.previous == nil || bp.previous.ClusterId != response.ClusterId {
 		if err := waitUntilReady(ctx, response); err != nil {
-			return nil, fmt.Errorf("Failed to wait for buildkit to become ready: %w\n", err)
+			return nil, fmt.Errorf("failed to wait for buildkit to become ready: %w", err)
 		}
 	}
 
 	if response.BuildCluster != nil && !response.BuildCluster.DoesNotRequireRefresh {
-		bp.cancelRefresh = api.StartBackgroundRefreshing(ctx, response.ClusterId)
+		bp.cancelRefresh = api.StartBackgroundRefreshing(parentCtx, response.ClusterId)
 	}
 
 	bp.previous = response
