@@ -64,14 +64,14 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 
 	if g.backendClient != nil {
 		if g.backendClient.GetState() == connectivity.Ready {
-			fmt.Fprintf(console.Debug(context.Background()), "reused grpc connection\n")
+			fmt.Fprintf(console.Debug(ctx), "reused grpc connection\n")
 			return g.backendClient, nil
 		}
-		fmt.Fprintf(console.Debug(context.Background()), "cached grpc connection invalidated\n")
+		fmt.Fprintf(console.Debug(ctx), "cached grpc connection invalidated\n")
 		g.backendClient = nil
 	}
 
-	client, err := grpc.Dial("",
+	client, err := grpc.DialContext(ctx, "",
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:    time.Second * 30,
 			Timeout: time.Minute,
@@ -84,26 +84,27 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 		return nil, err
 	}
 
-	fmt.Fprintf(console.Debug(context.Background()), "created new grpc connection\n")
+	fmt.Fprintf(console.Debug(ctx), "created new grpc connection\n")
 
 	g.backendClient = client
 	return client, nil
 }
 
 func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) error {
+	bgCtx := context.Background()
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
 		err := status.Errorf(codes.Internal, "reading method failed")
-		fmt.Fprintf(console.Errors(context.Background()), "reading method failed: %v\n", err)
+		fmt.Fprintf(console.Errors(bgCtx), "reading method failed: %v\n", err)
 		return err
 	}
-	fmt.Fprintf(console.Debug(context.Background()), "handler %s\n", fullMethodName)
+	fmt.Fprintf(console.Debug(bgCtx), "handler %s\n", fullMethodName)
 
 	md, _ := metadata.FromIncomingContext(serverStream.Context())
 	outgoingCtx := metadata.NewOutgoingContext(serverStream.Context(), md.Copy())
 	backendConn, err := g.newBackendClient(outgoingCtx)
 	if err != nil {
-		fmt.Fprintf(console.Errors(context.Background()), "creating backend connection failed: %v\n", err)
+		fmt.Fprintf(console.Errors(bgCtx), "creating backend connection failed: %v\n", err)
 		return status.Errorf(codes.Internal, "failed connect to backend: %v", err)
 	}
 
@@ -112,7 +113,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
-		fmt.Fprintf(console.Errors(context.Background()), "failed to create client stream: %v\n", err)
+		fmt.Fprintf(console.Errors(bgCtx), "failed to create client stream: %v\n", err)
 		return status.Errorf(codes.Internal, "failed create client: %v", err)
 	}
 
@@ -126,18 +127,24 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 				clientStream.CloseSend()
 			} else {
 				clientCancel()
-				fmt.Fprintf(console.Errors(context.Background()), "failed proxying s2c: %v\n", s2cErr)
+				fmt.Fprintf(console.Errors(bgCtx), "failed proxying s2c: %v\n", s2cErr)
 				return status.Errorf(codes.Internal, "failed proxying s2c: %v", s2cErr)
 			}
+
 		case c2sErr := <-c2sErrChan:
 
 			serverStream.SetTrailer(clientStream.Trailer())
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
 			if c2sErr != io.EOF {
-				fmt.Fprintf(console.Errors(context.Background()), "failed proxying c2s: %v\n", c2sErr)
+				fmt.Fprintf(console.Errors(bgCtx), "failed proxying c2s: %v\n", c2sErr)
 				return c2sErr
 			}
 			return nil
+
+		case <-serverStream.Context().Done():
+			err := serverStream.Context().Err()
+			fmt.Fprintf(console.Debug(bgCtx), "server stream context is done: %v\n", err)
+			return err
 		}
 	}
 
