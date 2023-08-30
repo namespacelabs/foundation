@@ -42,6 +42,11 @@ type ExchangeAWSCognitoJWTRequest struct {
 	AwsCognitoToken string `json:"aws_cognito_token,omitempty"`
 }
 
+type ExchangeOIDCTokenRequest struct {
+	TenantId  string `json:"tenant_id,omitempty"`
+	OidcToken string `json:"oidc_token,omitempty"`
+}
+
 type ExchangeTokenResponse struct {
 	TenantToken string  `json:"tenant_token,omitempty"`
 	Tenant      *Tenant `json:"tenant,omitempty"`
@@ -85,6 +90,17 @@ func ExchangeCircleciToken(ctx context.Context, token string) (ExchangeCircleciT
 	var res ExchangeCircleciTokenResponse
 	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeCircleciToken", req, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeCircleciTokenResponse{}, err
+	}
+
+	return res, nil
+}
+
+func ExchangeOIDCToken(ctx context.Context, tenantID, token string) (ExchangeTokenResponse, error) {
+	req := ExchangeOIDCTokenRequest{TenantId: tenantID, OidcToken: token}
+
+	var res ExchangeTokenResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/ExchangeOIDCToken", req, DecodeJSONResponse(&res)); err != nil {
+		return ExchangeTokenResponse{}, err
 	}
 
 	return res, nil
