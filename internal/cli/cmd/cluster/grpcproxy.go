@@ -117,12 +117,13 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 		return status.Errorf(codes.Internal, "failed create client: %v", err)
 	}
 
-	s2cErrChan := g.proxyServerToClient(serverStream, clientStream)
-	c2sErrChan := g.proxyClientToServer(clientStream, serverStream)
+	s2cErrChan := proxyServerToClient(serverStream, clientStream)
+	c2sErrChan := proxyClientToServer(clientStream, serverStream)
 	// Make sure to close both client and server connections
 	for i := 0; i < 2; i++ {
 		select {
 		case s2cErr := <-s2cErrChan:
+			s2cErrChan = nil // Receive on closed channel does not block, set to nil
 			if s2cErr == io.EOF {
 				clientStream.CloseSend()
 			} else {
@@ -132,6 +133,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 			}
 
 		case c2sErr := <-c2sErrChan:
+			c2sErrChan = nil // Receive on closed channel does not block, set to nil
 			serverStream.SetTrailer(clientStream.Trailer())
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
 			if c2sErr != io.EOF {
@@ -139,6 +141,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 				return c2sErr
 			}
 
+			// Happy case
 			return nil
 
 		case <-ctx.Done():
@@ -151,58 +154,75 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	return status.Errorf(codes.Internal, "gRPC proxy should never reach this stage.")
 }
 
-func (g *grpcProxy) proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
+func proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
-		// Not really empty message. All fields are unmarshalled in Empty.unknownFields.
-		f := &emptypb.Empty{}
-		first := true
-		for {
-			if err := src.RecvMsg(f); err != nil {
-				ret <- err // this can be io.EOF which is happy case
-				break
-			}
+		defer close(ret)
+		// Server headers are only readable after first client msg is
+		// received but must be written to server stream before the first msg is sent
+		if err := propagateHeaders(src, dst); err != nil {
+			ret <- err
+			return
+		}
 
-			if first {
-				first = false
-				// Server headers are only readable after first client msg is
-				// received but must be written to server stream before the first msg is sent
-				md, err := src.Header()
-				if err != nil {
-					ret <- err
-					break
-				}
-				if err := dst.SendHeader(md); err != nil {
-					ret <- err
-					break
-				}
-			}
-
-			if err := dst.SendMsg(f); err != nil {
-				ret <- err
-				break
-			}
+		if err := doProxy(src, dst); err != nil {
+			ret <- err
+			return
 		}
 	}()
 	return ret
 }
 
-func (g *grpcProxy) proxyServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
+func proxyServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
 	ret := make(chan error, 1)
 	go func() {
-		// Not really empty message. All fields are unmarshalled in Empty.unknownFields.
-		f := &emptypb.Empty{}
-		for {
-			if err := src.RecvMsg(f); err != nil {
-				ret <- err
-				break
-			}
-
-			if err := dst.SendMsg(f); err != nil {
-				ret <- err
-				break
-			}
+		defer close(ret)
+		if err := doProxy(src, dst); err != nil {
+			ret <- err
 		}
 	}()
 	return ret
+}
+
+func propagateHeaders(src grpc.ClientStream, dst grpc.ServerStream) error {
+	f := &emptypb.Empty{}
+	if err := src.RecvMsg(f); err != nil {
+		return err // this can be io.EOF which is happy case
+	}
+
+	// Server headers are only readable after first client msg is
+	// received but must be written to server stream before the first msg is sent
+	md, err := src.Header()
+	if err != nil {
+		return err
+	}
+
+	if err := dst.SendHeader(md); err != nil {
+		return err
+	}
+
+	if err := dst.SendMsg(f); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type Stream interface {
+	SendMsg(m interface{}) error
+	RecvMsg(m interface{}) error
+}
+
+func doProxy(src Stream, dst Stream) error {
+	// Not really empty message. All fields are unmarshalled in Empty.unknownFields.
+	f := &emptypb.Empty{}
+	for {
+		if err := src.RecvMsg(f); err != nil {
+			return err
+		}
+
+		if err := dst.SendMsg(f); err != nil {
+			return err
+		}
+	}
 }

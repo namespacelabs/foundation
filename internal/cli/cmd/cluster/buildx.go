@@ -52,6 +52,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
 	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
 	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
+	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", false, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -112,14 +113,14 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					debugFile = path.Join(*debugDir, fmt.Sprintf("%s-proxy.log", p.Platform))
 				}
 
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile, *useGrpcProxy); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
 				}
 			} else {
 				md.Instances[i].Pid = os.Getpid()
-				bp, err := instance.runBuildProxy(ctx, p.SocketPath)
+				bp, err := instance.runBuildProxy(ctx, p.SocketPath, *useGrpcProxy)
 				if err != nil {
 					return err
 				}
