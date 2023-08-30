@@ -76,7 +76,7 @@ func newBuildctlCmd() *cobra.Command {
 			}
 		}
 
-		p, err := runBuildProxyWithRegistry(ctx, plat, false)
+		p, err := runBuildProxyWithRegistry(ctx, plat, false, false)
 		if err != nil {
 			return err
 		}
@@ -100,6 +100,7 @@ func newBuildkitProxy() *cobra.Command {
 	platform := cmd.Flags().String("platform", "amd64", "One of amd64, or arm64.")
 	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
 	createAtStartup := cmd.Flags().Bool("create_at_startup", true, "If true, eagerly creates the build clusters.")
+	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", false, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		plat, err := api.ParseBuildPlatform(*platform)
@@ -112,7 +113,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, "")
+			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, "", *useGrpcProxy)
 			if err != nil {
 				return err
 			}
@@ -120,7 +121,7 @@ func newBuildkitProxy() *cobra.Command {
 			return os.WriteFile(*background, []byte(fmt.Sprintf("%d", pid)), 0644)
 		}
 
-		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup)
+		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup, *useGrpcProxy)
 		if err != nil {
 			return err
 		}
@@ -135,7 +136,7 @@ func newBuildkitProxy() *cobra.Command {
 	return cmd
 }
 
-func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, debugFile string) (int, error) {
+func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, debugFile string, useGrpcProxy bool) (int, error) {
 	if connect {
 		// Make sure the cluster exists before going to the background.
 		if _, err := ensureBuildCluster(ctx, md.Platform); err != nil {
@@ -146,6 +147,10 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName)
 	if debugFile != "" {
 		cmd.Args = append(cmd.Args, "--debug_to_file="+debugFile)
+	}
+
+	if useGrpcProxy {
+		cmd.Args = append(cmd.Args, "--use_grpc_proxy")
 	}
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{
