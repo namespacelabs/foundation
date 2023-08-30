@@ -50,6 +50,9 @@ func NewCreateCmd() *cobra.Command {
 
 	duration := cmd.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
 
+	availableSecrets := cmd.Flags().StringSlice("available_secrets", nil, "Attaches the specified secrets to this instance.")
+	cmd.Flags().MarkHidden("available_secrets")
+
 	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
 	cmd.Flags().MarkHidden("internal_extra")
 
@@ -66,6 +69,7 @@ func NewCreateCmd() *cobra.Command {
 			InternalExtra: *internalExtra,
 			Labels:        *labels,
 			UniqueTag:     *tag,
+			SecretIDs:     *availableSecrets,
 		}
 
 		if *duration > 0 {

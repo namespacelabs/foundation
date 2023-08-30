@@ -229,6 +229,7 @@ type CreateClusterOpts struct {
 	Labels            map[string]string
 	Deadline          *timestamppb.Timestamp
 	Experimental      any
+	SecretIDs         []string
 
 	WaitClusterOpts
 }
@@ -270,6 +271,10 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 				Name:  key,
 				Value: opts.Labels[key],
 			})
+		}
+
+		for _, sid := range opts.SecretIDs {
+			req.AvailableSecrets = append(req.AvailableSecrets, &SecretRef{SecretID: sid})
 		}
 
 		var response StartCreateKubernetesClusterResponse

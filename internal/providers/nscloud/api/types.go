@@ -23,6 +23,11 @@ type CreateKubernetesClusterRequest struct {
 	InternalExtra     string                 `json:"internal_extra,omitempty"`
 	Deadline          *timestamppb.Timestamp `json:"deadline,omitempty"`
 	Experimental      any                    `json:"experimental,omitempty"`
+	AvailableSecrets  []*SecretRef           `json:"available_secrets,omitempty"`
+}
+
+type SecretRef struct {
+	SecretID string `json:"secret_id"`
 }
 
 type GetKubernetesClusterRequest struct {
