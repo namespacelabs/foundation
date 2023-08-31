@@ -39,7 +39,7 @@ type configuration struct{}
 func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, out *provisioning.ApplyOutput) error {
 	var transcoderEndpoint *schema.Endpoint
 	for _, endpoint := range req.Stack.Endpoint {
-		if endpoint.ServerOwner == gatewayServer && endpoint.ServiceName == transcoderServiceName {
+		if endpoint.ServerOwner == gatewayServer && endpoint.ServiceName == transcoderServiceName && len(endpoint.Ports) > 0 {
 			transcoderEndpoint = endpoint
 			break
 		}
@@ -79,7 +79,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 			continue
 		}
 
-		if protoService == "" || endpoint.Port == nil {
+		if protoService == "" || len(endpoint.Ports) == 0 {
 			continue
 		}
 
@@ -176,7 +176,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 				Spec: httpGrpcTranscoderSpec{
 					FullyQualifiedProtoServiceName: x.ProtoService,
 					ServiceAddress:                 x.Endpoint.AllocatedName,
-					ServicePort:                    int(x.Endpoint.Port.ContainerPort),
+					ServicePort:                    int(x.Endpoint.Ports[0].Port.ContainerPort),
 					BackendTLS:                     x.GrpcProtocol == schema.GrpcProtocol,
 					EncodedProtoDescriptor:         base64.StdEncoding.EncodeToString(fds),
 				},
@@ -206,7 +206,7 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 					Path:        fmt.Sprintf("/%s/", x.ProtoService),
 					Owner:       x.Endpoint.EndpointOwner,
 					Service:     transcoderEndpoint.AllocatedName,
-					ServicePort: transcoderEndpoint.GetExportedPort(),
+					ServicePort: transcoderEndpoint.Ports[0].GetExportedPort(),
 				}},
 				Extension: []*anypb.Any{packedCors, packedProxyBodySize},
 				Manager:   "namespacelabs.dev/foundation/std/grpc/httptranscoding",

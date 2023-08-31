@@ -39,7 +39,7 @@ func main() {
 
 		instance := &runtime.IngressInstance{}
 		for _, endpoint := range intent.Endpoint {
-			if endpoint.Port == nil {
+			if len(endpoint.Ports) == 0 {
 				// Maybe fail.
 				continue
 			}
@@ -68,7 +68,7 @@ func main() {
 				Service: &networkingv1.IngressServiceBackend{
 					Name: endpoint.AllocatedName,
 					Port: networkingv1.ServiceBackendPort{
-						Number: endpoint.Port.ContainerPort,
+						Number: endpoint.Ports[0].Port.ContainerPort,
 					},
 				},
 			}
@@ -220,7 +220,7 @@ func main() {
 							Path:        y.Path,
 							Owner:       endpoint.EndpointOwner,
 							Service:     endpoint.AllocatedName,
-							ServicePort: endpoint.GetExportedPort(),
+							ServicePort: endpoint.Ports[0].GetExportedPort(),
 						})
 					}
 				}

@@ -82,10 +82,12 @@ func (impl) ApplyToServer(ctx context.Context, env *schema.Environment, pl pkggr
 	// Make this an extension instead.
 	pkg.Server.Self.Ingress = append(pkg.Server.Self.Ingress, &schema.Server_ServiceSpec{
 		Name: pkg.Server.Name,
-		Port: &schema.Endpoint_Port{
-			Name:          pkg.Server.Name,
-			ContainerPort: servicePort,
-		},
+		Ports: []*schema.Endpoint_PortMap{{
+			Port: &schema.Endpoint_Port{
+				Name:          pkg.Server.Name,
+				ContainerPort: servicePort,
+			},
+		}},
 		Metadata: []*schema.ServiceMetadata{{
 			Protocol: "http",
 			Details:  urlMap,

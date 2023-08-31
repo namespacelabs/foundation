@@ -22,5 +22,9 @@ func (e *Endpoint) HasKind(str string) bool {
 }
 
 func (e *Endpoint) Address() string {
-	return fmt.Sprintf("%s:%d", e.AllocatedName, e.GetPort().GetContainerPort())
+	if len(e.Ports) == 0 {
+		panic("no ports")
+	}
+
+	return fmt.Sprintf("%s:%d", e.AllocatedName, e.Ports[0].GetPort().GetContainerPort())
 }

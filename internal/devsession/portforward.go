@@ -41,11 +41,13 @@ func NewPortFwd(ctx context.Context, obs *Session, env cfg.Context, rt runtime.C
 					}
 				}
 
-				stack.ForwardedPort = append(stack.ForwardedPort, &ForwardedPort{
-					Endpoint:      endpoint,
-					ContainerPort: endpoint.GetPort().GetContainerPort(),
-					LocalPort:     int32(localPort),
-				})
+				for _, port := range endpoint.GetPorts() {
+					stack.ForwardedPort = append(stack.ForwardedPort, &ForwardedPort{
+						Endpoint:      endpoint,
+						ContainerPort: port.Port.GetContainerPort(),
+						LocalPort:     int32(localPort),
+					})
+				}
 			})
 		}
 

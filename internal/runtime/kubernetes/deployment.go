@@ -1080,56 +1080,72 @@ func sidecarName(o runtime.SidecarRunOpts, prefix string) string {
 func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.DeployableSpec, endpoint *schema.Endpoint, s *serverRunState) error {
 	serviceSpec := applycorev1.ServiceSpec().WithSelector(kubedef.SelectById(deployable))
 
-	port := endpoint.Port
-	if port != nil {
-		serviceSpec = serviceSpec.WithPorts(
-			applycorev1.ServicePort().
-				WithProtocol(corev1.ProtocolTCP).
-				WithName(port.Name).
-				WithPort(endpoint.ExportedPort).
-				WithTargetPort(intstr.FromInt(int(port.ContainerPort))))
-
-		if endpoint.Type == schema.Endpoint_LOAD_BALANCER {
-			serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)
+	var applied []*applycorev1.ServicePortApplyConfiguration
+	for _, port := range endpoint.Ports {
+		if port.Port == nil {
+			continue
 		}
 
-		serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
-		if err != nil {
-			return err
+		p := applycorev1.ServicePort().
+			WithName(port.Port.Name).
+			WithPort(port.ExportedPort).
+			WithTargetPort(intstr.FromInt(int(port.Port.ContainerPort)))
+
+		if port.Port.Protocol == schema.Endpoint_Port_UDP {
+			p = p.WithProtocol(corev1.ProtocolUDP)
+		} else {
+			p = p.WithProtocol(corev1.ProtocolTCP)
 		}
 
-		for _, md := range endpoint.ServiceMetadata {
-			x := &schema.ServiceAnnotations{}
-			if md.Details.MessageIs(x) {
-				if err := md.Details.UnmarshalTo(x); err != nil {
-					return fnerrors.InternalError("failed to unmarshal ServiceAnnotations: %w", err)
-				}
-				for _, kv := range x.KeyValue {
-					serviceAnnotations[kv.Key] = kv.Value
-				}
+		applied = append(applied, p)
+	}
+
+	if len(applied) == 0 {
+		return nil
+	}
+
+	serviceSpec = serviceSpec.WithPorts(applied...)
+
+	if endpoint.Type == schema.Endpoint_LOAD_BALANCER {
+		serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)
+	}
+
+	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
+	if err != nil {
+		return err
+	}
+
+	for _, md := range endpoint.ServiceMetadata {
+		x := &schema.ServiceAnnotations{}
+		if md.Details.MessageIs(x) {
+			if err := md.Details.UnmarshalTo(x); err != nil {
+				return fnerrors.InternalError("failed to unmarshal ServiceAnnotations: %w", err)
+			}
+			for _, kv := range x.KeyValue {
+				serviceAnnotations[kv.Key] = kv.Value
 			}
 		}
-
-		if err := validateServiceName(endpoint.AllocatedName); err != nil {
-			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
-		}
-
-		s.operations = append(s.operations, kubedef.Apply{
-			Description: fmt.Sprintf("Service %s:%s", deployable.Name, endpoint.ServiceName),
-			Resource: applycorev1.
-				Service(endpoint.AllocatedName, r.namespace).
-				WithLabels(kubedef.MakeServiceLabels(r.env, deployable, endpoint)).
-				WithAnnotations(serviceAnnotations).
-				WithSpec(serviceSpec),
-			SchedCategory: []string{
-				runtime.OwnedByDeployable(deployable),
-				kubedef.MakeServicesCat(deployable),
-			},
-			SchedAfterCategory: []string{
-				runtime.DeployableCategory(deployable),
-			},
-		})
 	}
+
+	if err := validateServiceName(endpoint.AllocatedName); err != nil {
+		return fnerrors.AttachLocation(deployable.ErrorLocation, err)
+	}
+
+	s.operations = append(s.operations, kubedef.Apply{
+		Description: fmt.Sprintf("Service %s:%s", deployable.Name, endpoint.ServiceName),
+		Resource: applycorev1.
+			Service(endpoint.AllocatedName, r.namespace).
+			WithLabels(kubedef.MakeServiceLabels(r.env, deployable, endpoint)).
+			WithAnnotations(serviceAnnotations).
+			WithSpec(serviceSpec),
+		SchedCategory: []string{
+			runtime.OwnedByDeployable(deployable),
+			kubedef.MakeServicesCat(deployable),
+		},
+		SchedAfterCategory: []string{
+			runtime.DeployableCategory(deployable),
+		},
+	})
 
 	return nil
 }

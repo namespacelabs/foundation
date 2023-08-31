@@ -6,11 +6,16 @@ package testing
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"namespacelabs.dev/foundation/schema"
 )
 
 func MakeHttpUrl(endpoint *schema.Endpoint, subPath string) string {
-	return fmt.Sprintf("http://%s:%d/%s", endpoint.AllocatedName, endpoint.ExportedPort, strings.TrimPrefix(subPath, "/"))
+	if len(endpoint.Ports) == 0 {
+		log.Fatal("endpoint has no ports")
+	}
+
+	return fmt.Sprintf("http://%s:%d/%s", endpoint.AllocatedName, endpoint.Ports[0].ExportedPort, strings.TrimPrefix(subPath, "/"))
 }

@@ -59,13 +59,18 @@ func FetchServer(packages pkggraph.PackageLoader, stack pkggraph.StackEndpoints)
 		server.Endpoints = []cueEndpoint{}
 
 		for _, endpoint := range stack.EndpointsBy(pkg.PackageName()) {
-			server.Endpoints = append(server.Endpoints, cueEndpoint{
+			ep := cueEndpoint{
 				Type:               endpoint.Type.String(),
 				ServiceName:        endpoint.ServiceName,
 				AllocatedName:      endpoint.AllocatedName,
 				FullyQualifiedName: endpoint.FullyQualifiedName,
-				ContainerPort:      endpoint.GetPort().GetContainerPort(),
-			})
+			}
+
+			if len(endpoint.GetPorts()) > 0 {
+				ep.ContainerPort = endpoint.Ports[0].Port.GetContainerPort()
+			}
+
+			server.Endpoints = append(server.Endpoints, ep)
 		}
 
 		return server, nil

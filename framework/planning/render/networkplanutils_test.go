@@ -11,13 +11,14 @@ import (
 	"github.com/bradleyjkemp/cupaloy"
 	"gotest.tools/assert"
 	jsontesting "namespacelabs.dev/foundation/internal/planning/deploy/testing"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/storage"
 )
 
 func TestNetworkPlanToSummary(t *testing.T) {
 	assertSummary(t, "empty", &storage.NetworkPlan{})
 
-	port := &storage.Endpoint_Port{ContainerPort: 1}
+	port := &schema.Endpoint_Port{ContainerPort: 1}
 	assertSummary(t, "basic", &storage.NetworkPlan{
 		LocalHostname:         "localhost",
 		FocusedServerPackages: []string{"main_server1, main_server2"},
@@ -26,9 +27,11 @@ func TestNetworkPlanToSummary(t *testing.T) {
 			{
 				ServiceName:   "http",
 				EndpointOwner: "my/http_service",
-				Port:          &storage.Endpoint_Port{ContainerPort: 123},
-				ExportedPort:  123,
-				ServerOwner:   "main_http_server",
+				Ports: []*schema.Endpoint_PortMap{{
+					Port:         &schema.Endpoint_Port{ContainerPort: 123},
+					ExportedPort: 123,
+				}},
+				ServerOwner: "main_http_server",
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{
 					{Protocol: "http"},
 				},
@@ -37,9 +40,11 @@ func TestNetworkPlanToSummary(t *testing.T) {
 			{
 				ServiceName:   "grpc_service",
 				EndpointOwner: "my/grpc_service",
-				Port:          &storage.Endpoint_Port{ContainerPort: 234},
-				ExportedPort:  234,
-				ServerOwner:   "main_grpc_server",
+				Ports: []*schema.Endpoint_PortMap{{
+					Port:         &schema.Endpoint_Port{ContainerPort: 234},
+					ExportedPort: 234,
+				}},
+				ServerOwner: "main_grpc_server",
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{
 					{Kind: "my.service.MyGrpcService", Protocol: "grpc"},
 				},
@@ -58,12 +63,16 @@ func TestNetworkPlanToSummary(t *testing.T) {
 			},
 			// Private http
 			{
-				Port:            &storage.Endpoint_Port{ContainerPort: 1234},
+				Ports: []*schema.Endpoint_PortMap{{
+					Port: &schema.Endpoint_Port{ContainerPort: 1234},
+				}},
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{{Protocol: "http"}},
 			},
 			// Private grpc
 			{
-				Port: &storage.Endpoint_Port{ContainerPort: 1235},
+				Ports: []*schema.Endpoint_PortMap{{
+					Port: &schema.Endpoint_Port{ContainerPort: 1235},
+				}},
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{
 					{Kind: "my.service4.MyPrivateService", Protocol: "grpc"},
 				},
@@ -74,41 +83,41 @@ func TestNetworkPlanToSummary(t *testing.T) {
 				ServiceMetadata: []*storage.Endpoint_ServiceMetadata{
 					{Kind: "internal-service"},
 				},
-				Port: port,
+				Ports: []*schema.Endpoint_PortMap{{Port: port}},
 			},
 			{
 				ServiceName: "no-port",
 			},
 			{
-				Port:        port,
+				Ports:       []*schema.Endpoint_PortMap{{Port: port}},
 				ServiceName: "http",
 				ServerOwner: "my-http-server",
 			},
 			{
-				Port:        port,
+				Ports:       []*schema.Endpoint_PortMap{{Port: port}},
 				ServerName:  "my-server1",
 				ServiceName: "grpc-gateway",
 			},
 			{
-				Port:         port,
+				Ports:        []*schema.Endpoint_PortMap{{Port: port}},
 				ServerName:   "my-server2",
 				ServiceLabel: "service-label",
 			},
 			{
-				Port:        port,
+				Ports:       []*schema.Endpoint_PortMap{{Port: port}},
 				ServerName:  "my-server3",
 				ServiceName: "my-service3",
 			},
 			{
-				Port:         port,
+				Ports:        []*schema.Endpoint_PortMap{{Port: port}},
 				ServiceLabel: "my-service-label1",
 			},
 			{
-				Port:        port,
+				Ports:       []*schema.Endpoint_PortMap{{Port: port}},
 				ServiceName: "my-service-name1",
 			},
 			{
-				Port:        port,
+				Ports:       []*schema.Endpoint_PortMap{{Port: port}},
 				LocalPort:   1236,
 				ServiceName: "with-local-port",
 			},

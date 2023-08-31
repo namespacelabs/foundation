@@ -20,7 +20,7 @@ import (
 )
 
 // Needs to be consistent with JSON names of cueResourceClass fields.
-var serviceFields = []string{"kind", "port", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes"}
+var serviceFields = []string{"kind", "port", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol"}
 
 type cueService struct {
 	Kind         string     `json:"kind"`
@@ -28,6 +28,7 @@ type cueService struct {
 	ExportedPort int32      `json:"exportedPort"`
 	HostPort     int32      `json:"hostPort"`
 	Ingress      cueIngress `json:"ingress"`
+	Protocol     string     `json:"protocol"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -151,11 +152,30 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		}
 	}
 
+	pm := &schema.Endpoint_PortMap{
+		Port: &schema.Endpoint_Port{
+			Name:          name,
+			ContainerPort: svc.Port,
+			HostPort:      svc.HostPort,
+		},
+		ExportedPort: svc.ExportedPort,
+	}
+
 	parsed := &schema.Server_ServiceSpec{
 		Name:         name,
-		Port:         &schema.Endpoint_Port{Name: name, ContainerPort: svc.Port, HostPort: svc.HostPort},
-		ExportedPort: svc.ExportedPort,
+		Ports:        []*schema.Endpoint_PortMap{pm},
 		EndpointType: endpointType,
+	}
+
+	if svc.Protocol != "" {
+		switch strings.ToLower(svc.Protocol) {
+		case "udp":
+			pm.Port.Protocol = schema.Endpoint_Port_UDP
+		case "tcp":
+			pm.Port.Protocol = schema.Endpoint_Port_TCP
+		default:
+			return nil, nil, fnerrors.New("unsupported port protocol %q", svc.Protocol)
+		}
 	}
 
 	if svc.Kind != "" {

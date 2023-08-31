@@ -63,10 +63,14 @@
         "type": "INTERNET_FACING",
         "service_name": "service1",
         "endpoint_owner": "my/service1",
-        "port": {
-          "name": "port1",
-          "container_port": 1230
-        },
+        "ports": [
+          {
+            "port": {
+              "name": "port1",
+              "container_port": 1230
+            }
+          }
+        ],
         "allocated_name": "allocated1",
         "server_owner": "server1",
         "service_metadata": [
@@ -130,10 +134,14 @@
       "type": "PRIVATE",
       "service_name": "service2",
       "endpoint_owner": "my/service2",
-      "port": {
-        "name": "port2",
-        "container_port": 2340
-      },
+      "ports": [
+        {
+          "port": {
+            "name": "port2",
+            "container_port": 2340
+          }
+        }
+      ],
       "allocated_name": "allocated2",
       "server_owner": "server3",
       "service_label": "label2",
@@ -143,10 +151,14 @@
       "type": "INTERNET_FACING",
       "service_name": "service1",
       "endpoint_owner": "my/service1",
-      "port": {
-        "name": "port1",
-        "container_port": 1230
-      },
+      "ports": [
+        {
+          "port": {
+            "name": "port1",
+            "container_port": 1230
+          }
+        }
+      ],
       "allocated_name": "allocated1",
       "server_owner": "server1",
       "service_metadata": [

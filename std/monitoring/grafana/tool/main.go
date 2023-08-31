@@ -74,12 +74,16 @@ func (tool) Apply(ctx context.Context, r provisioning.StackRequest, out *provisi
 			continue
 		}
 
-		if endpoint.GetPort().GetContainerPort() <= 0 {
+		if len(endpoint.GetPorts()) == 0 {
+			continue
+		}
+
+		port := endpoint.Ports[0].GetPort().GetContainerPort()
+		if port == 0 {
 			continue
 		}
 
 		host := endpoint.GetAllocatedName()
-		port := endpoint.GetPort().GetContainerPort()
 
 		var b bytes.Buffer
 		if err := promTmpl.Execute(&b, promTmplArgs{Host: host, Port: port}); err != nil {

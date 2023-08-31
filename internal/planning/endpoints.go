@@ -103,10 +103,11 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 
 		// We need a http service to hit.
 		endpoints = append(endpoints, &schema.Endpoint{
-			Type:               schema.Endpoint_PRIVATE,
-			ServiceName:        constants.HttpServiceName,
-			Port:               httpPort,
-			ExportedPort:       httpPort.GetContainerPort(),
+			Type:        schema.Endpoint_PRIVATE,
+			ServiceName: constants.HttpServiceName,
+			Ports: []*schema.Endpoint_PortMap{
+				{ExportedPort: httpPort.GetContainerPort(), Port: httpPort},
+			},
 			AllocatedName:      short,
 			FullyQualifiedName: fqdn,
 			EndpointOwner:      server.GetPackageName(),
@@ -153,8 +154,7 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, pkg 
 			EndpointOwner:      n.GetPackageName(),
 			ServerOwner:        server.GetPackageName(),
 			Type:               t,
-			Port:               serverPort,
-			ExportedPort:       serverPort.GetContainerPort(),
+			Ports:              []*schema.Endpoint_PortMap{{ExportedPort: serverPort.GetContainerPort(), Port: serverPort}},
 		}
 
 		if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
@@ -215,8 +215,6 @@ func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *sc
 		ServerOwner:        srv.GetPackageName(),
 		EndpointOwner:      srv.GetPackageName(),
 		Type:               t,
-		Port:               spec.GetPort(),
-		ExportedPort:       spec.GetExportedPort(),
 		AllocatedName:      short,
 		FullyQualifiedName: fqdn,
 		ServiceLabel:       spec.GetLabel(),
@@ -237,8 +235,20 @@ func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *sc
 	ingressSpec.Annotations = spec.IngressAnnotations
 	endpoint.IngressSpec = ingressSpec
 
-	if endpoint.ExportedPort == 0 {
-		endpoint.ExportedPort = spec.GetPort().GetContainerPort()
+	for _, port := range spec.GetPorts() {
+		if port.Port == nil {
+			continue
+		}
+
+		exportedPort := port.ExportedPort
+		if exportedPort == 0 {
+			exportedPort = port.Port.GetContainerPort()
+		}
+
+		endpoint.Ports = append(endpoint.Ports, &schema.Endpoint_PortMap{
+			ExportedPort: exportedPort,
+			Port:         port.Port,
+		})
 	}
 
 	// XXX Rethink this -- i.e. consolidate with InternalEndpoint.

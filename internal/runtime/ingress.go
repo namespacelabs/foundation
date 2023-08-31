@@ -33,9 +33,11 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 	}
 
 	for _, endpoint := range serverEndpoints {
-		if !(endpoint.Type == schema.Endpoint_INTERNET_FACING && endpoint.Port != nil) {
+		if !(endpoint.Type == schema.Endpoint_INTERNET_FACING && len(endpoint.Ports) > 0) {
 			continue
 		}
+
+		pm := endpoint.Ports[0]
 
 		if endpoint.IngressProvider != nil {
 			fmt.Fprintf(console.Debug(ctx), "Skipping endpoint %s/%s: has ingress provider\n", endpoint.EndpointOwner, endpoint.AllocatedName)
@@ -99,7 +101,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 						Kind:        kind,
 						Owner:       target.EndpointOwner,
 						Service:     target.AllocatedName,
-						ServicePort: target.ExportedPort,
+						ServicePort: pm.ExportedPort,
 					})
 				}
 			}
@@ -107,7 +109,9 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 			// XXX still relevant? We used to do this when grpc followed the http path.
 			if len(paths) == 0 {
 				paths = []*schema.IngressFragment_IngressHttpPath{
-					{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner, Service: endpoint.AllocatedName, ServicePort: endpoint.ExportedPort},
+					{Path: "/", Kind: kind, Owner: endpoint.EndpointOwner,
+						Service:     endpoint.AllocatedName,
+						ServicePort: pm.ExportedPort},
 				}
 			}
 
@@ -128,7 +132,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 						GrpcService: p.ProtoTypename,
 						Owner:       endpoint.EndpointOwner,
 						Service:     endpoint.AllocatedName,
-						ServicePort: endpoint.ExportedPort,
+						ServicePort: pm.ExportedPort,
 						Method:      p.Method,
 						BackendTls:  *protocol == schema.GrpcProtocol,
 					})
@@ -138,7 +142,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 							GrpcService: "grpc.reflection.v1alpha.ServerReflection",
 							Owner:       endpoint.EndpointOwner,
 							Service:     endpoint.AllocatedName,
-							ServicePort: endpoint.ExportedPort,
+							ServicePort: pm.ExportedPort,
 							BackendTls:  *protocol == schema.GrpcProtocol,
 						})
 					}
@@ -148,7 +152,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 						AllServices: true,
 						Owner:       endpoint.EndpointOwner,
 						Service:     endpoint.AllocatedName,
-						ServicePort: endpoint.ExportedPort,
+						ServicePort: pm.ExportedPort,
 						BackendTls:  *protocol == schema.GrpcProtocol,
 					})
 
@@ -191,7 +195,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 	if needsHTTP := len(sch.Server.UrlMap) > 0; needsHTTP {
 		var httpEndpoints []*schema.Endpoint
 		for _, endpoint := range serverEndpoints {
-			if endpoint.ServiceName == constants.HttpServiceName {
+			if endpoint.ServiceName == constants.HttpServiceName && len(endpoint.Ports) > 0 {
 				httpEndpoints = append(httpEndpoints, endpoint)
 				break
 			}
@@ -234,7 +238,7 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 					Kind:        u.Kind,
 					Owner:       owner,
 					Service:     httpEndpoint.AllocatedName,
-					ServicePort: httpEndpoint.ExportedPort,
+					ServicePort: httpEndpoint.Ports[0].ExportedPort,
 				})
 			}
 

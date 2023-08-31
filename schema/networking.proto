@@ -13,7 +13,7 @@ import "google/protobuf/descriptor.proto";
 import "schema/domain.proto";
 import "schema/package.proto";
 
-// Next ID: 15
+// Next ID: 16
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -29,30 +29,43 @@ message Endpoint {
     string service_name   = 3;
     string endpoint_owner = 4;  // Package name.
 
-    Port                     port             = 5;
-    int32                    exported_port    = 13;  // If unset, will be port.container_port.
-    string                   allocated_name   = 6;
+    reserved 5, 13;
+    repeated PortMap ports = 15;
+
+    string                   allocated_name       = 6;
     string                   fully_qualified_name = 14;
-    string                   server_owner     = 7;  // Package name.
-    repeated ServiceMetadata service_metadata = 8;
+    string                   server_owner         = 7;  // Package name.
+    repeated ServiceMetadata service_metadata     = 8;
 
     string service_label = 10;
 
     PackageRef  ingress_provider = 11;
     IngressSpec ingress_spec     = 12;
 
+    message PortMap {
+        Port  port          = 1;
+        int32 exported_port = 2;  // If unset, will be port.container_port.
+    }
+
     message Port {
+        enum Protocol {
+            PROTOCOL_UNSPECIFIED = 0;  // Defaults to TCP.
+            TCP                  = 1;
+            UDP                  = 2;
+        }
+
         string name           = 1;
         int32  container_port = 2;
         // Most of the times you DON'T want to use this; this binds the
         // container port to the specified port in the node the pod gets
         // scheduled to.
-        int32  host_port      = 3;
+        int32    host_port = 3;
+        Protocol protocol  = 4;
     }
 
     message IngressSpec {
-        repeated DomainSpec domain = 1;  // If set, exposes this endpoint in the specified domains.
-        ServiceAnnotations annotations = 2;
+        repeated DomainSpec domain      = 1;  // If set, exposes this endpoint in the specified domains.
+        ServiceAnnotations  annotations = 2;
     }
 
     reserved 9;
@@ -106,8 +119,8 @@ message IngressFragmentList {
 
 message HttpCors {
     bool            enabled        = 1;
-    repeated string allowed_origin = 2; // Access-Control-Allow-Origin
-    repeated string expose_headers = 3; // Access-Control-Expose-Headers
+    repeated string allowed_origin = 2;  // Access-Control-Allow-Origin
+    repeated string expose_headers = 3;  // Access-Control-Expose-Headers
 }
 
 message ServiceMetadata {

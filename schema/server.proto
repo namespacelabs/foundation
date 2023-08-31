@@ -95,16 +95,15 @@ message Server {
     message ServiceSpec {
         reserved 2;
 
-        string                   name             = 1;
-        string                   label            = 5;
-        repeated ServiceMetadata metadata         = 6;
-        Endpoint.Port            port             = 3;
-        int32                    exported_port    = 9;
-        bool                     internal         = 4;  // This service is of no relevance for development.
-        Endpoint.Type            endpoint_type    = 7;
-        PackageRef               ingress_provider = 8;
-        repeated DomainSpec      ingress_domain   = 10;  // Only has a meaning if this is an ingress.
-        ServiceAnnotations       ingress_annotations = 11;
+        string                   name                 = 1;
+        string                   label                = 5;
+        repeated ServiceMetadata metadata             = 6;
+        repeated Endpoint.PortMap ports               = 12;
+        bool                      internal            = 4;  // This service is of no relevance for development.
+        Endpoint.Type             endpoint_type       = 7;
+        PackageRef                ingress_provider    = 8;
+        repeated DomainSpec       ingress_domain      = 10;  // Only has a meaning if this is an ingress.
+        ServiceAnnotations        ingress_annotations = 11;
     }
 
     message URLMapEntry {
@@ -135,23 +134,23 @@ message Server {
 }
 
 message ServerFragment {
-    Container main_container                = 1;
-    repeated Server.ServiceSpec service     = 2;
-    repeated Server.ServiceSpec ingress     = 3;
-    repeated Probe probe                    = 4;
-    repeated Volume volume                  = 5;
-    ResourcePack resource_pack              = 6;
-    ServerPermissions permissions           = 7;
-    repeated Server.Toleration toleration   = 8;
-    repeated string extension               = 9; // Package name.
-    repeated Container sidecar              = 10;
-    repeated Container init_container       = 11;
-    repeated NamedResolvable annotation     = 12;
-    repeated NodeSelectorItem node_selector = 13;
+    Container main_container                  = 1;
+    repeated Server.ServiceSpec service       = 2;
+    repeated Server.ServiceSpec ingress       = 3;
+    repeated Probe              probe         = 4;
+    repeated Volume             volume        = 5;
+    ResourcePack                resource_pack = 6;
+    ServerPermissions           permissions   = 7;
+    repeated Server.Toleration toleration     = 8;
+    repeated string            extension      = 9;  // Package name.
+    repeated Container         sidecar        = 10;
+    repeated Container         init_container = 11;
+    repeated NamedResolvable   annotation     = 12;
+    repeated NodeSelectorItem  node_selector  = 13;
 }
 
 message NodeSelectorItem {
-    string key = 1;
+    string key   = 1;
     string value = 2;
 }
 
@@ -205,7 +204,7 @@ message ServerPermissions {
 message ServerExtension {
     reserved 2;
 
-    string owner         = 1;  // Package name.
+    string owner = 1;  // Package name.
 
     repeated Volume             volume           = 3;
     repeated ContainerExtension extend_container = 5;

@@ -99,8 +99,7 @@ func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnsch
 		Type:          endpointType,
 		ServiceName:   endpoint.ServiceName,
 		EndpointOwner: endpoint.EndpointOwner,
-		Port:          convertPort(endpoint.Port),
-		ExportedPort:  endpoint.ExportedPort,
+		Ports:         endpoint.Ports,
 		AllocatedName: endpoint.AllocatedName,
 		ServerOwner:   endpoint.ServerOwner,
 		ServiceLabel:  endpoint.ServiceLabel,
@@ -115,14 +114,6 @@ func convertEndpoint(endpoint *fnschema.Endpoint, localPort uint32, stack *fnsch
 	}
 
 	return result
-}
-
-func convertPort(port *fnschema.Endpoint_Port) *storage.Endpoint_Port {
-	if port == nil {
-		return nil
-	} else {
-		return &storage.Endpoint_Port{Name: port.Name, ContainerPort: port.ContainerPort}
-	}
 }
 
 func convertEndpointType(t fnschema.Endpoint_Type) (storage.Endpoint_Type, error) {

@@ -85,24 +85,30 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 	}
 
 	for _, service := range server.Service {
-		current.Port = append(current.Port, makePort(service))
+		for _, port := range service.Ports {
+			current.Port = append(current.Port, makePort(service, port))
+		}
 	}
 
 	for _, service := range server.Ingress {
-		current.Port = append(current.Port, makePort(service))
+		for _, port := range service.Ports {
+			current.Port = append(current.Port, makePort(service, port))
+		}
 	}
 
 	s, _ := stack.Get(srv.PackageName())
 	for _, endpoint := range s.Endpoints {
 		svc := &runtime.Server_Service{
-			Owner:    endpoint.EndpointOwner,
-			Name:     endpoint.ServiceName,
-			Endpoint: fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
-			Ingress:  makeServiceIngress(stack, endpoint, env),
+			Owner:   endpoint.EndpointOwner,
+			Name:    endpoint.ServiceName,
+			Ingress: makeServiceIngress(stack, endpoint, env),
 		}
 
-		if endpoint.FullyQualifiedName != "" {
-			svc.FullyQualifiedEndpoint = fmt.Sprintf("%s:%d", endpoint.FullyQualifiedName, endpoint.ExportedPort)
+		if len(endpoint.Ports) > 0 {
+			svc.Endpoint = fmt.Sprintf("%s:%d", endpoint.AllocatedName, endpoint.Ports[0].ExportedPort)
+			if endpoint.FullyQualifiedName != "" {
+				svc.FullyQualifiedEndpoint = fmt.Sprintf("%s:%d", endpoint.FullyQualifiedName, endpoint.Ports[0].ExportedPort)
+			}
 		}
 
 		current.Service = append(current.Service, svc)
@@ -131,10 +137,10 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 	return current
 }
 
-func makePort(service *schema.Server_ServiceSpec) *runtime.Server_Port {
+func makePort(service *schema.Server_ServiceSpec, pm *schema.Endpoint_PortMap) *runtime.Server_Port {
 	return &runtime.Server_Port{
 		Name: service.Name,
-		Port: service.Port.ContainerPort,
+		Port: pm.Port.ContainerPort,
 	}
 }
 
@@ -144,9 +150,13 @@ func makeServiceIngress(stack *planning.StackWithIngress, endpoint *schema.Endpo
 	// In the future we could allow the user to annotate domains which would
 	// be accessible from the test environment.
 	if env.Purpose == schema.Environment_TESTING {
+		if len(endpoint.Ports) == 0 {
+			return &runtime.Server_Ingress{}
+		}
+
 		return &runtime.Server_Ingress{
 			Domain: []*runtime.Server_Ingress_Domain{{
-				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
+				BaseUrl: fmt.Sprintf("http://%s:%d", endpoint.AllocatedName, endpoint.Ports[0].ExportedPort),
 			}},
 		}
 	}

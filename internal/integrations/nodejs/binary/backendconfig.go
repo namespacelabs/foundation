@@ -136,7 +136,9 @@ func resolveBackend(loc pkggraph.Location, backend *schema.NodejsBuild_Backend, 
 	bd := &BackendDefinition{}
 	for _, fragment := range matching {
 		if opts != nil && opts.UseInClusterAddresses {
-			bd.Managed = fmt.Sprintf("http://%s:%d", fragment.Endpoint.AllocatedName, fragment.Endpoint.ExportedPort)
+			if len(fragment.Endpoint.Ports) > 0 {
+				bd.Managed = fmt.Sprintf("http://%s:%d", fragment.Endpoint.AllocatedName, fragment.Endpoint.Ports[0].ExportedPort)
+			}
 		} else {
 			d := fragment.Domain
 			if d.Managed == schema.Domain_LOCAL_MANAGED {

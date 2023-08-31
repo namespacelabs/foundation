@@ -8,6 +8,8 @@ package foundation.schema.storage;
 
 option go_package = "namespacelabs.dev/foundation/schema/storage";
 
+import "schema/networking.proto";
+
 message NetworkPlan {
     // TODO: remove once "internal" is migrated to "networkplanutils"
     repeated NetworkPlan.Endpoint endpoint              = 1 [deprecated = true];
@@ -67,7 +69,7 @@ message NetworkPlan {
 // On the other hand, there are additional compatility requirements for these messages,
 // so they may diverge from the original protos as the latter ones evolve.
 
-// Next ID: 14
+// Next ID: 15
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -82,12 +84,12 @@ message Endpoint {
     string service_name   = 3;
     string endpoint_owner = 4;  // Package name.
 
-    Port                     port             = 5;
-    int32                    exported_port    = 13;  // If unset, will be port.container_port.
-    string                   allocated_name   = 6;
-    string                   server_owner     = 7;  // Package name.
-    repeated ServiceMetadata service_metadata = 8;
-    repeated IngressHttpPath http_path        = 9;  // Only valid if type=INTERNET_FACING.
+    reserved 5, 13;
+    repeated foundation.schema.Endpoint.PortMap ports            = 14;
+    string                                      allocated_name   = 6;
+    string                                      server_owner     = 7;  // Package name.
+    repeated ServiceMetadata                    service_metadata = 8;
+    repeated IngressHttpPath                    http_path        = 9;  // Only valid if type=INTERNET_FACING.
 
     string service_label = 10;
 

@@ -200,11 +200,11 @@ func (configuration) Apply(ctx context.Context, req provisioning.StackRequest, o
 	})
 
 	for _, endpoint := range req.Stack.GetEndpoint() {
-		if endpoint.EndpointOwner == "namespacelabs.dev/foundation/std/monitoring/otelcollector" && endpoint.ServiceName == "otel-grpc" {
+		if endpoint.EndpointOwner == "namespacelabs.dev/foundation/std/monitoring/otelcollector" && endpoint.ServiceName == "otel-grpc" && len(endpoint.Ports) > 0 {
 			out.ServerExtensions = append(out.ServerExtensions, &schema.ServerExtension{
 				ExtendContainer: []*schema.ContainerExtension{
 					{Name: "controller", Args: []string{
-						fmt.Sprintf("--otel_endpoint=%s:%d", endpoint.AllocatedName, endpoint.ExportedPort),
+						fmt.Sprintf("--otel_endpoint=%s:%d", endpoint.AllocatedName, endpoint.Ports[0].ExportedPort),
 					}},
 				},
 			})

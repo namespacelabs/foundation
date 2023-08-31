@@ -8,9 +8,9 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/codegen/protos"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -198,11 +198,8 @@ func mergeResourceRefs(src, out *schema.ResourcePack) {
 }
 
 func sortServices(services []*schema.Server_ServiceSpec) {
-	sort.Slice(services, func(i, j int) bool {
-		if services[i].GetPort().GetContainerPort() == services[j].GetPort().GetContainerPort() {
-			return strings.Compare(services[i].Name, services[j].Name) < 0
-		}
-		return services[i].GetPort().GetContainerPort() < services[j].GetPort().GetContainerPort()
+	slices.SortFunc(services, func(a, b *schema.Server_ServiceSpec) bool {
+		return strings.Compare(a.Name, b.Name) < 0
 	})
 }
 

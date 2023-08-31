@@ -94,14 +94,16 @@ func (pi *PortForward) Update(stack *schema.Stack, focus []schema.PackageName, f
 
 	portRequirements := map[string]*portReq{} // server/port --> endpoint state
 	for _, fwd := range newState {
-		portKey := fmt.Sprintf("%s/%d", fwd.endpoint.ServerOwner, fwd.endpoint.Port.ContainerPort)
-		existing, has := portRequirements[portKey]
-		if !has {
-			existing = &portReq{ServerOwner: fwd.endpoint.ServerOwner, ContainerPort: fwd.endpoint.Port.ContainerPort}
-			portRequirements[portKey] = existing
-		}
+		for _, port := range fwd.endpoint.Ports {
+			portKey := fmt.Sprintf("%s/%d", fwd.endpoint.ServerOwner, port.Port.ContainerPort)
+			existing, has := portRequirements[portKey]
+			if !has {
+				existing = &portReq{ServerOwner: fwd.endpoint.ServerOwner, ContainerPort: port.Port.ContainerPort}
+				portRequirements[portKey] = existing
+			}
 
-		existing.Users = append(existing.Users, fwd)
+			existing.Users = append(existing.Users, fwd)
+		}
 	}
 
 	if pi.localPorts == nil {

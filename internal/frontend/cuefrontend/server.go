@@ -244,7 +244,7 @@ func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) 
 	parsed := &schema.Server_ServiceSpec{
 		Name:  name,
 		Label: svc.Label,
-		Port:  &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort},
+		Ports: []*schema.Endpoint_PortMap{{Port: &schema.Endpoint_Port{Name: svc.Name, ContainerPort: svc.ContainerPort}}},
 		Metadata: []*schema.ServiceMetadata{{
 			Kind:     svc.Metadata.Kind,
 			Protocol: svc.Metadata.Protocol,

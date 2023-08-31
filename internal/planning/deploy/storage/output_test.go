@@ -21,7 +21,7 @@ func TestToStorageNetworkPlan(t *testing.T) {
 		Type:          schema.Endpoint_INTERNET_FACING,
 		ServiceName:   "service1",
 		EndpointOwner: "my/service1",
-		Port:          &schema.Endpoint_Port{Name: "port1", ContainerPort: 1230},
+		Ports:         []*schema.Endpoint_PortMap{{Port: &schema.Endpoint_Port{Name: "port1", ContainerPort: 1230}}},
 		AllocatedName: "allocated1",
 		ServerOwner:   "server1",
 		ServiceLabel:  "label1",
@@ -50,7 +50,7 @@ func TestToStorageNetworkPlan(t *testing.T) {
 				Type:          schema.Endpoint_PRIVATE,
 				ServiceName:   "service2",
 				EndpointOwner: "my/service2",
-				Port:          &schema.Endpoint_Port{Name: "port2", ContainerPort: 2340},
+				Ports:         []*schema.Endpoint_PortMap{{Port: &schema.Endpoint_Port{Name: "port2", ContainerPort: 2340}}},
 				AllocatedName: "allocated2",
 				// Not present in the stack, not sure if this can happen.
 				ServerOwner:  "server3",

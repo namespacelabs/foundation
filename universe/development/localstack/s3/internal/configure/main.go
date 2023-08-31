@@ -54,8 +54,8 @@ func collectBuckets(server *schema.Server, owner string) ([]*s3.BucketConfig, er
 
 func getLocalstackEndpoint(s *schema.Stack) string {
 	for _, e := range s.Endpoint {
-		if e.ServiceName == localstackServiceName && e.ServerOwner == localstackPackageName {
-			return fmt.Sprintf("http://%s:%d", e.AllocatedName, e.Port.ContainerPort)
+		if e.ServiceName == localstackServiceName && e.ServerOwner == localstackPackageName && len(e.Ports) > 0 {
+			return fmt.Sprintf("http://%s:%d", e.AllocatedName, e.Ports[0].Port.ContainerPort)
 		}
 	}
 	return ""

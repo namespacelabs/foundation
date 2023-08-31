@@ -525,22 +525,36 @@ func validateServiceRef(ref *schema.ServiceRef, stack *planning.Stack) error {
 
 type endpoint interface {
 	GetServiceMetadata() []*schema.ServiceMetadata
-	GetPort() *schema.Endpoint_Port
+	GetPorts() []*schema.Endpoint_PortMap
 }
 
 func httpProbes(endpoints []*schema.Endpoint, internalEndpoints []*schema.InternalEndpoint) ([]*schema.Probe, error) {
 	var probes []*schema.Probe
 
-	var es []endpoint
 	for _, e := range endpoints {
-		es = append(es, e)
-	}
-	for _, ie := range internalEndpoints {
-		es = append(es, ie)
+		for _, md := range e.GetServiceMetadata() {
+			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
+				http := &schema.HttpExportedService{}
+
+				if err := md.Details.UnmarshalTo(http); err != nil {
+					return nil, fnerrors.InternalError("expected a HttpExportedService: %w", err)
+				}
+
+				for _, port := range e.GetPorts() {
+					probes = append(probes, &schema.Probe{
+						Kind: md.Kind,
+						Http: &schema.Probe_Http{
+							ContainerPort: port.Port.GetContainerPort(),
+							Path:          http.Path,
+						},
+					})
+				}
+			}
+		}
 	}
 
-	for _, e := range es {
-		for _, md := range e.GetServiceMetadata() {
+	for _, ie := range internalEndpoints {
+		for _, md := range ie.GetServiceMetadata() {
 			if md.Kind == runtime.FnServiceLivez || md.Kind == runtime.FnServiceReadyz {
 				http := &schema.HttpExportedService{}
 
@@ -551,7 +565,7 @@ func httpProbes(endpoints []*schema.Endpoint, internalEndpoints []*schema.Intern
 				probes = append(probes, &schema.Probe{
 					Kind: md.Kind,
 					Http: &schema.Probe_Http{
-						ContainerPort: e.GetPort().ContainerPort,
+						ContainerPort: ie.GetPort().ContainerPort,
 						Path:          http.Path,
 					},
 				})
