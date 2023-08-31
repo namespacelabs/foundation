@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -20,20 +21,28 @@ import (
 )
 
 // Needs to be consistent with JSON names of cueResourceClass fields.
-var serviceFields = []string{"kind", "port", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol"}
+var serviceFields = []string{"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol"}
 
 type cueService struct {
-	Kind         string     `json:"kind"`
-	Port         int32      `json:"port"`
-	ExportedPort int32      `json:"exportedPort"`
-	HostPort     int32      `json:"hostPort"`
-	Ingress      cueIngress `json:"ingress"`
-	Protocol     string     `json:"protocol"`
+	Kind         string           `json:"kind"`
+	Port         int32            `json:"port"`
+	ExportedPort int32            `json:"exportedPort"`
+	HostPort     int32            `json:"hostPort"`
+	Protocol     string           `json:"protocol"`
+	Ports        []cueServicePort `json:"ports,omitempty"`
+	Ingress      cueIngress       `json:"ingress"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	ReadinessProbe *cueServiceProbe            `json:"probe"`  // `probe: http: "/"`
 	Probes         map[string]*cueServiceProbe `json:"probes"` // `probes: readiness: http: "/"`
+}
+
+type cueServicePort struct {
+	Port         int32  `json:"port"`
+	ExportedPort int32  `json:"exportedPort"`
+	HostPort     int32  `json:"hostPort"`
+	Protocol     string `json:"protocol"`
 }
 
 type cueServiceProbe struct {
@@ -152,30 +161,46 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		}
 	}
 
-	pm := &schema.Endpoint_PortMap{
-		Port: &schema.Endpoint_Port{
-			Name:          name,
-			ContainerPort: svc.Port,
-			HostPort:      svc.HostPort,
-		},
-		ExportedPort: svc.ExportedPort,
+	if len(svc.Ports) > 0 {
+		if svc.Port != 0 || svc.HostPort != 0 || svc.ExportedPort != 0 || svc.Protocol != "" {
+			return nil, nil, fnerrors.New("use of `ports` and `port` is exclusive")
+		}
+	} else {
+		svc.Ports = append(svc.Ports, cueServicePort{Port: svc.Port, ExportedPort: svc.ExportedPort, HostPort: svc.HostPort, Protocol: svc.Protocol})
 	}
 
 	parsed := &schema.Server_ServiceSpec{
 		Name:         name,
-		Ports:        []*schema.Endpoint_PortMap{pm},
 		EndpointType: endpointType,
 	}
 
-	if svc.Protocol != "" {
-		switch strings.ToLower(svc.Protocol) {
-		case "udp":
-			pm.Port.Protocol = schema.Endpoint_Port_UDP
-		case "tcp":
-			pm.Port.Protocol = schema.Endpoint_Port_TCP
-		default:
-			return nil, nil, fnerrors.New("unsupported port protocol %q", svc.Protocol)
+	for k, p := range svc.Ports {
+		pm := &schema.Endpoint_PortMap{
+			Port: &schema.Endpoint_Port{
+				Name:          name,
+				ContainerPort: p.Port,
+				HostPort:      p.HostPort,
+				Protocol:      schema.Endpoint_Port_TCP,
+			},
+			ExportedPort: p.ExportedPort,
 		}
+
+		if p.Protocol != "" {
+			switch strings.ToLower(p.Protocol) {
+			case "udp":
+				pm.Port.Protocol = schema.Endpoint_Port_UDP
+			case "tcp":
+				pm.Port.Protocol = schema.Endpoint_Port_TCP
+			default:
+				return nil, nil, fnerrors.New("unsupported port protocol %q", p.Protocol)
+			}
+		}
+
+		if k > 0 {
+			pm.Port.Name = fmt.Sprintf("%s-%s-%d", name, strings.ToLower(pm.Port.Protocol.String()), pm.Port.ContainerPort)
+		}
+
+		parsed.Ports = append(parsed.Ports, pm)
 	}
 
 	if svc.Kind != "" {
@@ -265,7 +290,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		probe := &schema.Probe{
 			Kind: runtime.FnServiceReadyz,
 			Http: &schema.Probe_Http{
-				ContainerPort: svc.Port,
+				ContainerPort: parsed.Ports[0].Port.ContainerPort,
 				Path:          svc.ReadinessProbe.Path,
 			},
 		}
@@ -283,7 +308,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		probes = append(probes, &schema.Probe{
 			Kind: kind,
 			Http: &schema.Probe_Http{
-				ContainerPort: svc.Port,
+				ContainerPort: parsed.Ports[0].Port.ContainerPort,
 				Path:          data.Path,
 			},
 		})
