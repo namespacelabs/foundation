@@ -65,6 +65,15 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 					return fnerrors.BadInputError("%s: failed to unmarshal: %w", path, err)
 				}
 
+				for _, ep := range r.Stack.Endpoint {
+					if ep.DeprecatedPort != nil {
+						ep.Ports = append(ep.Ports, &schema.Endpoint_PortMap{
+							Port:         ep.DeprecatedPort,
+							ExportedPort: ep.DeprecatedExportedPort,
+						})
+					}
+				}
+
 			case ingressBinaryPb:
 				list := &schema.IngressFragmentList{}
 				if err := proto.Unmarshal(contents, list); err != nil {

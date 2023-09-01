@@ -29,8 +29,9 @@ message Endpoint {
     string service_name   = 3;
     string endpoint_owner = 4;  // Package name.
 
-    reserved 5, 13;
-    repeated PortMap ports = 15;
+    Port             deprecated_port          = 5;
+    int32            deprecated_exported_port = 13;
+    repeated PortMap ports                    = 15;
 
     string                   allocated_name       = 6;
     string                   fully_qualified_name = 14;
