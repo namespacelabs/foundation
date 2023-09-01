@@ -66,12 +66,7 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 				}
 
 				for _, ep := range r.Stack.Endpoint {
-					if ep.DeprecatedPort != nil {
-						ep.Ports = append(ep.Ports, &schema.Endpoint_PortMap{
-							Port:         ep.DeprecatedPort,
-							ExportedPort: ep.DeprecatedExportedPort,
-						})
-					}
+					patchEndpoint(ep)
 				}
 
 			case ingressBinaryPb:
@@ -79,6 +74,11 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 				if err := proto.Unmarshal(contents, list); err != nil {
 					return fnerrors.BadInputError("%s: failed to unmarshal: %w", path, err)
 				}
+
+				for _, frag := range list.IngressFragment {
+					patchEndpoint(frag.Endpoint)
+				}
+
 				r.IngressFragments = list.IngressFragment
 
 			case computedBinaryPb:
@@ -95,4 +95,17 @@ func Rehydrate(ctx context.Context, srv planning.Server, imageID oci.ImageID) (*
 
 		return &r, nil
 	})
+}
+
+func patchEndpoint(ep *schema.Endpoint) {
+	if ep == nil {
+		return
+	}
+
+	if ep.DeprecatedPort != nil {
+		ep.Ports = append(ep.Ports, &schema.Endpoint_PortMap{
+			Port:         ep.DeprecatedPort,
+			ExportedPort: ep.DeprecatedExportedPort,
+		})
+	}
 }
