@@ -34,6 +34,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		Environment:      deps.ServerInfo.EnvName,
 		Release:          deps.ServerInfo.GetVcs().GetRevision(),
 		TracesSampleRate: 1.0, // XXX should be configurable.
+		AttachStacktrace: true,
 	}); err != nil {
 		return err
 	}
@@ -51,14 +52,11 @@ func unaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServ
 		ctx = sentry.SetHubOnContext(ctx, hub)
 	}
 
-	span := sentry.StartSpan(ctx, "grpc.server", sentry.TransactionName(info.FullMethod))
-	defer span.Finish()
-
-	defer recoverAndReport(ctx, hub)
+	defer recoverAndReport(hub)
 
 	configureScope(ctx, hub, info.FullMethod)
-	result, err = handler(span.Context(), req)
-	finalizeSpan(hub, span, err)
+	result, err = handler(ctx, req)
+	maybeAttachError(hub, err)
 	return result, err
 }
 
@@ -70,14 +68,11 @@ func streamInterceptor(srv interface{}, ss grpc.ServerStream, info *grpc.StreamS
 		ctx = sentry.SetHubOnContext(ctx, hub)
 	}
 
-	span := sentry.StartSpan(ctx, "grpc.server", sentry.TransactionName(info.FullMethod))
-	defer span.Finish()
-
-	defer recoverAndReport(ctx, hub)
+	defer recoverAndReport(hub)
 
 	configureScope(ctx, hub, info.FullMethod)
-	err := handler(srv, &serverStream{ServerStream: ss, ctx: span.Context()})
-	finalizeSpan(hub, span, err)
+	err := handler(srv, &serverStream{ServerStream: ss, ctx: ctx})
+	maybeAttachError(hub, err)
 	return err
 }
 
@@ -112,23 +107,17 @@ func configureScope(ctx context.Context, hub *sentry.Hub, fullMethod string) {
 	scope.SetContext("grpc", grpcData)
 }
 
-func finalizeSpan(hub *sentry.Hub, span *sentry.Span, err error) {
+func maybeAttachError(hub *sentry.Hub, err error) {
 	if err != nil {
 		grpcCode := errorStatus(err)
-		span.Status = statusFromGrpc(grpcCode)
-
 		if hub != nil && !isUserError(grpcCode) {
 			hub.CaptureException(err)
 		}
-	} else {
-		span.Status = sentry.SpanStatusOK
 	}
 }
 
 func MaybeAttachError(ctx context.Context, err error) {
-	if span := sentry.TransactionFromContext(ctx); span != nil {
-		finalizeSpan(sentry.GetHubFromContext(ctx), span, err)
-	}
+	maybeAttachError(sentry.GetHubFromContext(ctx), err)
 }
 
 func isUserError(code codes.Code) bool {
@@ -189,9 +178,9 @@ func statusFromGrpc(code codes.Code) sentry.SpanStatus {
 	return sentry.SpanStatusUnknown
 }
 
-func recoverAndReport(ctx context.Context, hub *sentry.Hub) {
+func recoverAndReport(hub *sentry.Hub) {
 	if err := recover(); err != nil {
-		eventID := hub.RecoverWithContext(ctx, err)
+		eventID := hub.Recover(err)
 		if eventID != nil {
 			hub.Flush(2 * time.Second)
 		}
