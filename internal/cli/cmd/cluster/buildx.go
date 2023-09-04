@@ -52,7 +52,8 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
 	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
 	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
-	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", false, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy")
+	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy")
+	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
