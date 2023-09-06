@@ -85,6 +85,7 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 	t := time.Now()
 	wsConn, _, err := d.DialContext(ctx, endpoint, hdrs)
 	if err != nil {
+		fmt.Fprintf(console.Debug(ctx), "[%s] Gateway: %v: failed: %v\n", tid, endpoint, err)
 		return nil, err
 	}
 
