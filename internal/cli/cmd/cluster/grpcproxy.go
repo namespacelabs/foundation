@@ -154,6 +154,29 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	return status.Errorf(codes.Internal, "gRPC proxy should never reach this stage.")
 }
 
+type wrappedClientStream struct {
+	grpc.ClientStream
+
+	handlers []CustomHandler
+}
+
+func (s wrappedClientStream) RecvMsg(m interface{}) error {
+	return s.ClientStream.RecvMsg(m)
+}
+
+func getClientStream(ctx context.Context, backendConn *grpc.ClientConn, fullMethodName string) (grpc.ClientStream, error) {
+	clientStream, err := grpc.NewClientStream(ctx, clientStreamDescForProxying, backendConn, fullMethodName)
+	if err != nil {
+		return nil, err
+	}
+
+	if fullMethodName == "/moby.buildkit.v1.Control/Solve" {
+
+	}
+
+	return wrappedClientStream{clientStream}, nil
+}
+
 func proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
 	ret := make(chan error, 1)
 	go func() {

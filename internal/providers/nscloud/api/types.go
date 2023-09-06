@@ -435,3 +435,7 @@ type ExportedInstancePort struct {
 	HttpMatchRule []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
 	Description   string                         `json:"description,omitempty"`
 }
+
+type AssociateBuildRequest struct {
+	Ref string `json:"ref,omitempty"`
+}

@@ -53,6 +53,7 @@ type API struct {
 	GetProfile                   fnapi.Call[emptypb.Empty]
 	RegisterIngress              fnapi.Call[RegisterIngressRequest]
 	ListIngresses                fnapi.Call[ListIngressesRequest]
+	AssociateBuild               fnapi.Call[AssociateBuildRequest]
 }
 
 var (
@@ -202,6 +203,11 @@ func MakeAPI() API {
 		ListIngresses: fnapi.Call[ListIngressesRequest]{
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/ListIngresses",
+		},
+
+		AssociateBuild: fnapi.Call[AssociateBuildRequest]{
+			FetchToken: fnapi.FetchToken,
+			Method:     "nsl.vm.builds.BuildsService/AssociateBuild",
 		},
 	}
 }
@@ -683,6 +689,15 @@ func ListIngresses(ctx context.Context, api API, clusterID string) (*ListIngress
 			return nil, err
 		}
 		return &response, nil
+	})
+}
+
+func AssociateBuild(ctx context.Context, api API, ref string) error {
+	return tasks.Return0(ctx, tasks.Action("nscloud.associate-build"), func(ctx context.Context) error {
+		if err := api.AssociateBuild.Do(ctx, AssociateBuildRequest{Ref: ref}, ResolveEndpoint, nil); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
