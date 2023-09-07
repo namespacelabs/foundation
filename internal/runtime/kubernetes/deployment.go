@@ -127,6 +127,9 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		if port.HostPort != 0 {
 			p = p.WithHostPort(port.HostPort)
 		}
+		if port.Protocol == schema.Endpoint_Port_UDP {
+			p = p.WithProtocol(v1.ProtocolUDP)
+		}
 		mainContainer.WithPorts(p)
 	}
 

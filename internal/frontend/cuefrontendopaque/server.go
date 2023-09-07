@@ -66,8 +66,9 @@ type cueServerExtension struct {
 }
 
 type cuePort struct {
-	ContainerPort int32 `json:"containerPort"`
-	HostPort      int32 `json:"hostPort"`
+	ContainerPort int32  `json:"containerPort"`
+	HostPort      int32  `json:"hostPort"`
+	Protocol      string `json:"protocol,omitempty"`
 }
 
 type cuePermissions struct {
@@ -179,11 +180,22 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 	}
 
 	for name, port := range bits.Ports {
-		out.MainContainer.ContainerPort = append(out.MainContainer.ContainerPort, &schema.Endpoint_Port{
+		p := &schema.Endpoint_Port{
 			Name:          name,
 			ContainerPort: port.ContainerPort,
 			HostPort:      port.HostPort,
-		})
+		}
+
+		switch strings.ToLower(port.Protocol) {
+		case "tcp", "":
+			p.Protocol = schema.Endpoint_Port_TCP
+		case "udp":
+			p.Protocol = schema.Endpoint_Port_UDP
+		default:
+			return nil, fnerrors.New("unknown protocol %q", port.Protocol)
+		}
+
+		out.MainContainer.ContainerPort = append(out.MainContainer.ContainerPort, p)
 	}
 
 	slices.SortFunc(out.MainContainer.ContainerPort, func(a, b *schema.Endpoint_Port) bool { return strings.Compare(a.Name, b.Name) < 0 })
