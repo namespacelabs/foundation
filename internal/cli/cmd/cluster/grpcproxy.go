@@ -73,8 +73,9 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 
 	client, err := grpc.DialContext(ctx, "",
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:    time.Second * 30,
-			Timeout: time.Minute,
+			Time:                time.Second * 10,
+			Timeout:             time.Second * 15,
+			PermitWithoutStream: true,
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {

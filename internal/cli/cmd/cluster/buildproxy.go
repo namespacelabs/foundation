@@ -41,8 +41,8 @@ type BuildClusterInstance struct {
 }
 
 func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, error) {
-	// Wait at most 3 minutes to create a connection to a build cluster.
-	ctx, done := context.WithTimeout(parentCtx, 3*time.Minute)
+	// Wait at most 20 seconds to create a connection to a build cluster.
+	ctx, done := context.WithTimeout(parentCtx, 20*time.Second)
 	defer done()
 
 	// This is not our usual play; we're doing a lot of work with the lock held.

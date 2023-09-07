@@ -99,7 +99,7 @@ func newBuildkitProxy() *cobra.Command {
 	sockPath := cmd.Flags().String("sock_path", "", "If specified listens on the specified path.")
 	platform := cmd.Flags().String("platform", "amd64", "One of amd64, or arm64.")
 	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
-	createAtStartup := cmd.Flags().Bool("create_at_startup", true, "If true, eagerly creates the build clusters.")
+	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, eagerly creates the build clusters.")
 	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy.")
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 
