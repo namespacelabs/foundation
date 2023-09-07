@@ -199,6 +199,10 @@ func ensureBuildCluster(ctx context.Context, platform api.BuildPlatform) (*api.C
 }
 
 func resolveBuildkitService(response *api.CreateClusterResult) (*api.Cluster_ServiceState, error) {
+	if override := os.Getenv("NSC_BUILDKIT_ENDPOINT_ADDRESS_OVERRIDE"); override != "" {
+		return &api.Cluster_ServiceState{Endpoint: override}, nil
+	}
+
 	buildkitSvc := api.ClusterService(response.Cluster, "buildkit")
 	if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
 		return nil, fnerrors.New("cluster is missing buildkit")
