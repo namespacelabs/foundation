@@ -18,6 +18,7 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
+	controlapi "github.com/moby/buildkit/api/services/control"
 	"golang.org/x/sys/unix"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/console"
@@ -117,14 +118,15 @@ func NewBuildClusterInstance0(p api.BuildPlatform) *BuildClusterInstance {
 }
 
 type buildProxy struct {
-	socketPath   string
-	instance     *BuildClusterInstance
-	listener     net.Listener
-	cleanup      func() error
-	useGrpcProxy bool
+	socketPath       string
+	instance         *BuildClusterInstance
+	listener         net.Listener
+	cleanup          func() error
+	useGrpcProxy     bool
+	injectWorkerInfo *controlapi.ListWorkersResponse
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
 	if err != nil {
 		return nil, err
@@ -138,10 +140,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 		}
 	}
 
-	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy)
+	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy, workersInfo)
 }
 
-func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool) (*buildProxy, error) {
+func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
@@ -169,7 +171,7 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		return nil, err
 	}
 
-	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy}, nil
+	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy, workersInfo}, nil
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -186,7 +188,7 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	var err error
 	sink := tasks.SinkFrom(ctx)
 	if bp.useGrpcProxy {
-		err = serveGRPCProxy(bp.listener, func(innerCtx context.Context) (net.Conn, error) {
+		err = serveGRPCProxy(bp.injectWorkerInfo, bp.listener, func(innerCtx context.Context) (net.Conn, error) {
 			return bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
 		})
 	} else {
@@ -214,8 +216,8 @@ type buildProxyWithRegistry struct {
 	Cleanup         func() error
 }
 
-func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool) (*buildProxyWithRegistry, error) {
-	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy)
+func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool, workerInfo *controlapi.ListWorkersResponse) (*buildProxyWithRegistry, error) {
+	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy, workerInfo)
 	if err != nil {
 		return nil, err
 	}

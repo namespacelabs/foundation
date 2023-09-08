@@ -21,17 +21,13 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/go-ids"
+
+	controlapi "github.com/moby/buildkit/api/services/control"
 )
 
-var (
-	clientStreamDescForProxying = &grpc.StreamDesc{
-		ServerStreams: true,
-		ClientStreams: true,
-	}
-)
-
-func serveGRPCProxy(listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
-	p, err := newGrpcProxy(connect)
+func serveGRPCProxy(workerInfo *controlapi.ListWorkersResponse, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
+	p, err := newGrpcProxy(workerInfo, connect)
 	if err != nil {
 		return err
 	}
@@ -42,15 +38,17 @@ func serveGRPCProxy(listener net.Listener, connect func(context.Context) (net.Co
 type grpcProxy struct {
 	connect func(context.Context) (net.Conn, error)
 	*grpc.Server
+	workerInfo *controlapi.ListWorkersResponse
 
 	mu sync.Mutex
 	// Fields protected by mutex go below
 	backendClient *grpc.ClientConn
 }
 
-func newGrpcProxy(connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
+func newGrpcProxy(workerInfo *controlapi.ListWorkersResponse, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
 	g := &grpcProxy{
-		connect: connect,
+		connect:    connect,
+		workerInfo: workerInfo,
 	}
 
 	g.Server = grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
@@ -100,7 +98,13 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 		return err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "handler %s\n", fullMethodName)
+	id := ids.NewRandomBase32ID(4)
+	fmt.Fprintf(console.Debug(ctx), "[%s] handler %s\n", id, fullMethodName)
+
+	if fullMethodName == "/moby.buildkit.v1.Control/ListWorkers" && g.workerInfo != nil {
+		return shortcutListWorkers(ctx, id, g.workerInfo, serverStream)
+	}
+
 	md, _ := metadata.FromIncomingContext(serverStream.Context())
 	outgoingCtx := metadata.NewOutgoingContext(serverStream.Context(), md.Copy())
 	backendConn, err := g.newBackendClient(outgoingCtx)
@@ -109,9 +113,13 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 		return status.Errorf(codes.Internal, "failed to connect to backend: %v", err)
 	}
 
+	clientStreamDescForProxying := &grpc.StreamDesc{
+		ServerStreams: true,
+		ClientStreams: true,
+	}
+
 	clientCtx, clientCancel := context.WithCancel(outgoingCtx)
 	defer clientCancel()
-
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to create client stream: %v\n", err)
@@ -183,6 +191,24 @@ func proxyServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan erro
 		}
 	}()
 	return ret
+}
+
+func shortcutListWorkers(ctx context.Context, id string, workerInfo *controlapi.ListWorkersResponse, dst grpc.ServerStream) error {
+	md := map[string][]string{
+		"content-type": {"application/grpc"},
+	}
+
+	if err := dst.SendHeader(md); err != nil {
+		return err
+	}
+
+	if err := dst.SendMsg(workerInfo); err != nil {
+		return err
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "[%s] ListWorkers injected worker info\n", id)
+
+	return nil
 }
 
 func propagateHeaders(src grpc.ClientStream, dst grpc.ServerStream) error {
