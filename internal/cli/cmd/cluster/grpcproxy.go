@@ -6,7 +6,6 @@ package cluster
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -28,8 +27,8 @@ import (
 	controlapi "github.com/moby/buildkit/api/services/control"
 )
 
-func serveGRPCProxy(injectWorkerInfo string, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
-	p, err := newGrpcProxy(injectWorkerInfo, connect)
+func serveGRPCProxy(workerInfo *controlapi.ListWorkersResponse, listener net.Listener, connect func(context.Context) (net.Conn, error)) error {
+	p, err := newGrpcProxy(workerInfo, connect)
 	if err != nil {
 		return err
 	}
@@ -40,17 +39,17 @@ func serveGRPCProxy(injectWorkerInfo string, listener net.Listener, connect func
 type grpcProxy struct {
 	connect func(context.Context) (net.Conn, error)
 	*grpc.Server
-	injectWorkerInfo string
+	workerInfo *controlapi.ListWorkersResponse
 
 	mu sync.Mutex
 	// Fields protected by mutex go below
 	backendClient *grpc.ClientConn
 }
 
-func newGrpcProxy(injectWorkerInfo string, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
+func newGrpcProxy(workerInfo *controlapi.ListWorkersResponse, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
 	g := &grpcProxy{
-		connect:          connect,
-		injectWorkerInfo: injectWorkerInfo,
+		connect:    connect,
+		workerInfo: workerInfo,
 	}
 
 	g.Server = grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
@@ -103,8 +102,8 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	id := ids.NewRandomBase32ID(4)
 	fmt.Fprintf(console.Debug(ctx), "[%s] handler %s\n", id, fullMethodName)
 
-	if strings.Contains(fullMethodName, "ListWorkers") && g.injectWorkerInfo != "" {
-		return shortcutListWorkers(ctx, id, g.injectWorkerInfo, serverStream)
+	if strings.Contains(fullMethodName, "ListWorkers") && g.workerInfo != nil {
+		return shortcutListWorkers(ctx, id, g.workerInfo, serverStream)
 	}
 
 	md, _ := metadata.FromIncomingContext(serverStream.Context())
@@ -195,7 +194,7 @@ func proxyServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan erro
 	return ret
 }
 
-func shortcutListWorkers(ctx context.Context, id string, workerInfo string, dst grpc.ServerStream) error {
+func shortcutListWorkers(ctx context.Context, id string, workerInfo *controlapi.ListWorkersResponse, dst grpc.ServerStream) error {
 	md := map[string][]string{
 		"content-type": {"application/grpc"},
 	}
@@ -204,12 +203,7 @@ func shortcutListWorkers(ctx context.Context, id string, workerInfo string, dst 
 		return err
 	}
 
-	f := &controlapi.ListWorkersResponse{}
-	if err := json.Unmarshal([]byte(workerInfo), f); err != nil {
-		return err
-	}
-
-	if err := dst.SendMsg(f); err != nil {
+	if err := dst.SendMsg(workerInfo); err != nil {
 		return err
 	}
 

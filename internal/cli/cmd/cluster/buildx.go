@@ -54,15 +54,15 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
 	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy")
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
-	injectWorkerInfoFile := cmd.Flags().String("inject_worker_info_file", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
-	_ = cmd.Flags().MarkHidden("inject_worker_info_file")
+	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
+	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
 			return fnerrors.New("--background_debug_dir requires --background")
 		}
 
-		if !*useGrpcProxy && *injectWorkerInfoFile != "" {
+		if !*useGrpcProxy && *staticWorkerDefFile != "" {
 			return fnerrors.New("--inject_worker_info_file requires --use_grpc_proxy")
 		}
 
@@ -120,14 +120,19 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					debugFile = path.Join(*debugDir, fmt.Sprintf("%s-proxy.log", p.Platform))
 				}
 
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile, *useGrpcProxy, *injectWorkerInfoFile); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile, *useGrpcProxy, *staticWorkerDefFile); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
 				}
 			} else {
+				workerInfoResp, err := parseInjectWorkerInfo(*staticWorkerDefFile, p.Platform)
+				if err != nil {
+					return fnerrors.New("failed to parse worker info JSON payload: %v", err)
+				}
+
 				md.Instances[i].Pid = os.Getpid()
-				bp, err := instance.runBuildProxy(ctx, p.SocketPath, *useGrpcProxy, *injectWorkerInfoFile)
+				bp, err := instance.runBuildProxy(ctx, p.SocketPath, *useGrpcProxy, workerInfoResp)
 				if err != nil {
 					return err
 				}

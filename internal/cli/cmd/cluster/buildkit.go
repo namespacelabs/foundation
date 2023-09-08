@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 
+	controlapi "github.com/moby/buildkit/api/services/control"
+	types "github.com/moby/buildkit/api/types"
 	"github.com/moby/buildkit/client"
 	"github.com/spf13/cobra"
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
@@ -76,7 +79,7 @@ func newBuildctlCmd() *cobra.Command {
 			}
 		}
 
-		p, err := runBuildProxyWithRegistry(ctx, plat, false, false, "")
+		p, err := runBuildProxyWithRegistry(ctx, plat, false, false, nil)
 		if err != nil {
 			return err
 		}
@@ -102,8 +105,8 @@ func newBuildkitProxy() *cobra.Command {
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, eagerly creates the build clusters.")
 	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy.")
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
-	injectWorkerInfoFile := cmd.Flags().String("inject_worker_info_file", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
-	_ = cmd.Flags().MarkHidden("inject_worker_info_file")
+	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
+	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		plat, err := api.ParseBuildPlatform(*platform)
@@ -111,7 +114,7 @@ func newBuildkitProxy() *cobra.Command {
 			return err
 		}
 
-		if !*useGrpcProxy && *injectWorkerInfoFile != "" {
+		if !*useGrpcProxy && *staticWorkerDefFile != "" {
 			return fnerrors.New("--inject_worker_info requires --use_grpc_proxy")
 		}
 
@@ -120,7 +123,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, "", *useGrpcProxy, *injectWorkerInfoFile)
+			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, "", *useGrpcProxy, *staticWorkerDefFile)
 			if err != nil {
 				return err
 			}
@@ -128,7 +131,12 @@ func newBuildkitProxy() *cobra.Command {
 			return os.WriteFile(*background, []byte(fmt.Sprintf("%d", pid)), 0644)
 		}
 
-		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup, *useGrpcProxy, *injectWorkerInfoFile)
+		workerInfoResp, err := parseInjectWorkerInfo(*staticWorkerDefFile, plat)
+		if err != nil {
+			return fnerrors.New("failed to parse worker info JSON payload: %v", err)
+		}
+
+		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup, *useGrpcProxy, workerInfoResp)
 		if err != nil {
 			return err
 		}
@@ -143,7 +151,39 @@ func newBuildkitProxy() *cobra.Command {
 	return cmd
 }
 
-func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, debugFile string, useGrpcProxy bool, injectWorkerInfoFile string) (int, error) {
+func parseInjectWorkerInfo(workerInfoFile string, requiredPlatform api.BuildPlatform) (*controlapi.ListWorkersResponse, error) {
+	if workerInfoFile == "" {
+		return nil, nil
+	}
+
+	workerInfo, err := os.ReadFile(workerInfoFile)
+	if err != nil {
+		return nil, err
+	}
+
+	f := &controlapi.ListWorkersResponse{}
+	if err := json.Unmarshal(workerInfo, f); err != nil {
+		return nil, err
+	}
+
+	// Include only the worker definitions that include *at least* one
+	// platform matching the proxy's (e.g. [arm64,amd64] worker matches for arm64 proxy)
+	newRecords := []*types.WorkerRecord{}
+	for _, r := range f.Record {
+	platformLoop:
+		for _, plat := range r.Platforms {
+			if plat.Architecture == string(requiredPlatform) {
+				newRecords = append(newRecords, r)
+				break platformLoop
+			}
+		}
+	}
+
+	f.Record = newRecords
+	return f, nil
+}
+
+func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, debugFile string, useGrpcProxy bool, staticWorkerDefFile string) (int, error) {
 	if connect {
 		// Make sure the cluster exists before going to the background.
 		if _, err := ensureBuildCluster(ctx, md.Platform); err != nil {
@@ -158,8 +198,8 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 
 	if useGrpcProxy {
 		cmd.Args = append(cmd.Args, "--use_grpc_proxy")
-		if injectWorkerInfoFile != "" {
-			cmd.Args = append(cmd.Args, "--inject_worker_info_file", injectWorkerInfoFile)
+		if staticWorkerDefFile != "" {
+			cmd.Args = append(cmd.Args, "--static_worker_definition_path", staticWorkerDefFile)
 		}
 	}
 

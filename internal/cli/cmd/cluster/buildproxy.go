@@ -18,6 +18,7 @@ import (
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
+	controlapi "github.com/moby/buildkit/api/services/control"
 	"golang.org/x/sys/unix"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/console"
@@ -122,10 +123,10 @@ type buildProxy struct {
 	listener         net.Listener
 	cleanup          func() error
 	useGrpcProxy     bool
-	injectWorkerInfo string
+	injectWorkerInfo *controlapi.ListWorkersResponse
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool, injectWorkerInfoFile string) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
 	if err != nil {
 		return nil, err
@@ -139,10 +140,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 		}
 	}
 
-	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy, injectWorkerInfoFile)
+	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy, workersInfo)
 }
 
-func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool, injectWorkerInfoFile string) (*buildProxy, error) {
+func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
@@ -160,12 +161,6 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		}
 	}
 
-	workerInfo, err := os.ReadFile(injectWorkerInfoFile)
-	if err != nil {
-		return nil, err
-	}
-	injectWorkerInfo := string(workerInfo)
-
 	var d net.ListenConfig
 	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
@@ -176,7 +171,7 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		return nil, err
 	}
 
-	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy, injectWorkerInfo}, nil
+	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy, workersInfo}, nil
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -221,8 +216,8 @@ type buildProxyWithRegistry struct {
 	Cleanup         func() error
 }
 
-func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool, injectWorkerInfoFile string) (*buildProxyWithRegistry, error) {
-	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy, injectWorkerInfoFile)
+func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool, workerInfo *controlapi.ListWorkersResponse) (*buildProxyWithRegistry, error) {
+	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy, workerInfo)
 	if err != nil {
 		return nil, err
 	}
