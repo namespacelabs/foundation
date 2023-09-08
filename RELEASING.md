@@ -31,6 +31,8 @@ To issue an actual release:
 3. Run the release `goreleaser release --clean`.
 4. After the release is complete, remember to remove the `dist` directory to keep your workspace
    size small.
+5. **Important**: this creates a _draft_ release in GitHub. Remember to publish it manually from GitHub web UI
+once every artifact is fully uploaded.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.

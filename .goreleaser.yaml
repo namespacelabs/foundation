@@ -119,6 +119,8 @@ release:
   github:
     owner: namespacelabs
     name: foundation
+  draft: true
+  replace_existing_draft: false
   # extra_files:
   #   - glob: ./dist/fn_macos.dmg
   #   - glob: ./dist/fn_macos.zip
