@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -102,7 +101,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	id := ids.NewRandomBase32ID(4)
 	fmt.Fprintf(console.Debug(ctx), "[%s] handler %s\n", id, fullMethodName)
 
-	if strings.Contains(fullMethodName, "ListWorkers") && g.workerInfo != nil {
+	if fullMethodName == "/moby.buildkit.v1.Control/ListWorkers" && g.workerInfo != nil {
 		return shortcutListWorkers(ctx, id, g.workerInfo, serverStream)
 	}
 
