@@ -219,9 +219,7 @@ func shortcutListWorkers(ctx context.Context, id string, workerInfo string, dst 
 }
 
 func propagateHeaders(src grpc.ClientStream, dst grpc.ServerStream) error {
-	var f any
-	f = &emptypb.Empty{}
-
+	f := &emptypb.Empty{}
 	if err := src.RecvMsg(f); err != nil {
 		return err // this can be io.EOF which is happy case
 	}
