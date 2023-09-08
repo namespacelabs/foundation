@@ -117,14 +117,15 @@ func NewBuildClusterInstance0(p api.BuildPlatform) *BuildClusterInstance {
 }
 
 type buildProxy struct {
-	socketPath   string
-	instance     *BuildClusterInstance
-	listener     net.Listener
-	cleanup      func() error
-	useGrpcProxy bool
+	socketPath       string
+	instance         *BuildClusterInstance
+	listener         net.Listener
+	cleanup          func() error
+	useGrpcProxy     bool
+	injectWorkerInfo string
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool, injectWorkerInfoFile string) (*buildProxy, error) {
 	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
 	if err != nil {
 		return nil, err
@@ -138,10 +139,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 		}
 	}
 
-	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy)
+	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy, injectWorkerInfoFile)
 }
 
-func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool) (*buildProxy, error) {
+func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool, injectWorkerInfoFile string) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
@@ -159,6 +160,12 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		}
 	}
 
+	workerInfo, err := os.ReadFile(injectWorkerInfoFile)
+	if err != nil {
+		return nil, err
+	}
+	injectWorkerInfo := string(workerInfo)
+
 	var d net.ListenConfig
 	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
@@ -169,7 +176,7 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		return nil, err
 	}
 
-	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy}, nil
+	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy, injectWorkerInfo}, nil
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -186,7 +193,7 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	var err error
 	sink := tasks.SinkFrom(ctx)
 	if bp.useGrpcProxy {
-		err = serveGRPCProxy(bp.listener, func(innerCtx context.Context) (net.Conn, error) {
+		err = serveGRPCProxy(bp.injectWorkerInfo, bp.listener, func(innerCtx context.Context) (net.Conn, error) {
 			return bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
 		})
 	} else {
@@ -214,8 +221,8 @@ type buildProxyWithRegistry struct {
 	Cleanup         func() error
 }
 
-func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool) (*buildProxyWithRegistry, error) {
-	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy)
+func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool, injectWorkerInfoFile string) (*buildProxyWithRegistry, error) {
+	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy, injectWorkerInfoFile)
 	if err != nil {
 		return nil, err
 	}
