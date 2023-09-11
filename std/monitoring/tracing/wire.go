@@ -121,12 +121,12 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	}
 
 	deps.Interceptors.ForServer(
-		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),
-		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)))
+		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
+		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()))
 
 	deps.Interceptors.ForClient(
-		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),
-		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators)),
+		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
+		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
 	)
 
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
