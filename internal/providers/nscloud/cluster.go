@@ -76,7 +76,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 }
 
 func provideClusterExt(ctx context.Context, clusterId string, ephemeral bool) (client.ClusterConfiguration, error) {
-	wres, err := api.WaitCluster(ctx, api.Methods, clusterId, api.WaitClusterOpts{WaitKind: "kubernetes"})
+	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, api.WaitClusterOpts{WaitKind: "kubernetes"})
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}

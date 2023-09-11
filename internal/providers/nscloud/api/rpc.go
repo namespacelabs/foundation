@@ -320,7 +320,7 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 		return nil, err
 	}
 
-	return WaitCluster(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
+	return WaitClusterReady(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
 func CreateBuildCluster(ctx context.Context, api API, platform BuildPlatform) (*CreateClusterResult, error) {
@@ -346,8 +346,8 @@ func buildClusterFeatures(platform BuildPlatform) []string {
 	return nil
 }
 
-func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
-	ctx, done := context.WithTimeout(ctx, 15*time.Minute) // Wait for cluster creation up to 15 minutes.
+func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
+	ctx, done := context.WithTimeout(ctx, 1*time.Minute) // Wait for cluster creation up to 1 minute.
 	defer done()
 
 	var cr *CreateKubernetesClusterResponse
@@ -395,6 +395,12 @@ func WaitCluster(ctx context.Context, api API, clusterId string, opts WaitCluste
 					if ready {
 						cr = &resp
 						return nil
+					}
+
+					if resp.Cluster.DestroyedAt != "" {
+						// Cluster was destroyed
+						cr = &resp
+						return fnerrors.InvocationError("nscloud", "cluster is destroyed (cluster id: %s)", clusterId)
 					}
 				}
 
