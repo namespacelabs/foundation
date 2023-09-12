@@ -13,3 +13,7 @@ message ExporterArgs {
 }
 
 message NoArgs {}
+
+message TracerProviderArgs {
+    repeated string suppress_full_method = 1;
+}

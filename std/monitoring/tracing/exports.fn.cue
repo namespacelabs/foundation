@@ -29,11 +29,13 @@ package tracing
 		}
 	}
 	TracerProvider: {
+		suppressFullMethod?: [...string]
+
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"
 			type:        "TracerProvider"
 			typeDefinition: {
-				"typename": "foundation.std.monitoring.tracing.NoArgs"
+				"typename": "foundation.std.monitoring.tracing.TracerProviderArgs"
 				"source": [
 					"types.proto",
 				]

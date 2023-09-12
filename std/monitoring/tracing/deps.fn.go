@@ -27,7 +27,7 @@ type _checkProvideHttpClientProvider func(context.Context, *NoArgs, ExtensionDep
 
 var _ _checkProvideHttpClientProvider = ProvideHttpClientProvider
 
-type _checkProvideTracerProvider func(context.Context, *NoArgs, ExtensionDeps) (DeferredTracerProvider, error)
+type _checkProvideTracerProvider func(context.Context, *TracerProviderArgs, ExtensionDeps) (DeferredTracerProvider, error)
 
 var _ _checkProvideTracerProvider = ProvideTracerProvider
 

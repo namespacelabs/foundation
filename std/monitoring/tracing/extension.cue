@@ -21,7 +21,7 @@ extension: fn.#Extension & {
 			}
 		}
 		TracerProvider: {
-			input: $typesProto.types.NoArgs
+			input: $typesProto.types.TracerProviderArgs
 			availableIn: {
 				go: {
 					type: "DeferredTracerProvider"
