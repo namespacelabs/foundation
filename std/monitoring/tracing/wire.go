@@ -10,6 +10,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	t "go.opentelemetry.io/otel/trace"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -120,13 +123,36 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		serverResources.Add(close{provider})
 	}
 
+	filter := func(*otelgrpc.InterceptorInfo) bool { return true } // By default we trace every gRPC method
+	if skipStr := os.Getenv("FOUNDATION_GRPCTRACE_SKIP_METHODS"); skipStr != "" {
+		skipTraces := strings.Split(skipStr, ",")
+		filter = func(info *otelgrpc.InterceptorInfo) bool {
+			if info != nil {
+				if slices.Contains(skipTraces, info.Method) {
+					return false
+				}
+				if info.UnaryServerInfo != nil && slices.Contains(skipTraces, info.UnaryServerInfo.FullMethod) {
+					return false
+				}
+				if info.StreamServerInfo != nil && slices.Contains(skipTraces, info.StreamServerInfo.FullMethod) {
+					return false
+				}
+			}
+			return true
+		}
+	}
+
 	deps.Interceptors.ForServer(
-		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
-		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()))
+		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
+			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
+		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
+			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)))
 
 	deps.Interceptors.ForClient(
-		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
-		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
+		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
+			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
+		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
+			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
 	)
 
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
