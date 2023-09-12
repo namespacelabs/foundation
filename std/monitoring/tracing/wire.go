@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -123,12 +124,21 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		serverResources.Add(close{provider})
 	}
 
-	filter := func(info *otelgrpc.InterceptorInfo) bool { return false }
+	filter := func(*otelgrpc.InterceptorInfo) bool { return false }
 	if skipStr := os.Getenv("FOUNDATION_GRPCTRACE_SKIP_METHODS"); skipStr != "" {
 		skipTraces := strings.Split(skipStr, ",")
 		filter = func(info *otelgrpc.InterceptorInfo) bool {
-			return slices.Contains(skipTraces, info.UnaryServerInfo.FullMethod) ||
-				slices.Contains(skipTraces, info.StreamServerInfo.FullMethod)
+			if info != nil {
+				if info.UnaryServerInfo != nil && slices.Contains(skipTraces, info.UnaryServerInfo.FullMethod) {
+					log.Println("DEBUG", info.Method, info.UnaryServerInfo.FullMethod)
+					return true
+				}
+				if info.StreamServerInfo != nil && slices.Contains(skipTraces, info.StreamServerInfo.FullMethod) {
+					log.Println("DEBUG", info.Method, info.StreamServerInfo.FullMethod)
+					return true
+				}
+			}
+			return false
 		}
 	}
 
