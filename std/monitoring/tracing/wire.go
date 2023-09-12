@@ -9,7 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -124,21 +123,22 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		serverResources.Add(close{provider})
 	}
 
-	filter := func(*otelgrpc.InterceptorInfo) bool { return false }
+	filter := func(*otelgrpc.InterceptorInfo) bool { return true } // By default we trace every gRPC method
 	if skipStr := os.Getenv("FOUNDATION_GRPCTRACE_SKIP_METHODS"); skipStr != "" {
 		skipTraces := strings.Split(skipStr, ",")
 		filter = func(info *otelgrpc.InterceptorInfo) bool {
 			if info != nil {
+				if slices.Contains(skipTraces, info.Method) {
+					return false
+				}
 				if info.UnaryServerInfo != nil && slices.Contains(skipTraces, info.UnaryServerInfo.FullMethod) {
-					log.Println("DEBUG", info.Method, info.UnaryServerInfo.FullMethod)
-					return true
+					return false
 				}
 				if info.StreamServerInfo != nil && slices.Contains(skipTraces, info.StreamServerInfo.FullMethod) {
-					log.Println("DEBUG", info.Method, info.StreamServerInfo.FullMethod)
-					return true
+					return false
 				}
 			}
-			return false
+			return true
 		}
 	}
 
@@ -153,15 +153,6 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
 		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
 			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
-	)
-
-	deps.Interceptors.ForServer(
-		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
-		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()))
-
-	deps.Interceptors.ForClient(
-		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
-		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
 	)
 
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
