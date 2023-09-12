@@ -71,9 +71,9 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 
 	client, err := grpc.DialContext(ctx, "",
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			Time:                time.Second * 10,
-			Timeout:             time.Second * 15,
-			PermitWithoutStream: true,
+			//gRPC server default minimum is 5m, more frequent keepalives can cause "too_many_pings" error
+			Time:    time.Minute * 5,
+			Timeout: time.Second * 30,
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
