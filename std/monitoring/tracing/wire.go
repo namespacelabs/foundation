@@ -10,6 +10,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -110,21 +112,9 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	provider, err := prepare(ctx, nil, deps)
-	if err != nil {
-		return err
-	}
-
-	global.mu.Lock()
-	global.tracerProvider = provider
-	global.mu.Unlock()
-	return nil
-}
-
-func prepare(ctx context.Context, args *TracerProviderArgs, deps ExtensionDeps) (t.TracerProvider, error) {
 	provider, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	serverResources := core.ServerResourcesFrom(ctx)
@@ -133,10 +123,13 @@ func prepare(ctx context.Context, args *TracerProviderArgs, deps ExtensionDeps) 
 		serverResources.Add(close{provider})
 	}
 
-	filter := func(info *otelgrpc.InterceptorInfo) bool {
-		filteredMethods := args.SuppressFullMethod
-		return slices.Contains(filteredMethods, info.UnaryServerInfo.FullMethod) ||
-			slices.Contains(filteredMethods, info.StreamServerInfo.FullMethod)
+	filter := func(info *otelgrpc.InterceptorInfo) bool { return false }
+	if skipStr := os.Getenv("FOUNDATION_GRPCTRACE_SKIP_METHODS"); skipStr != "" {
+		skipTraces := strings.Split(skipStr, ",")
+		filter = func(info *otelgrpc.InterceptorInfo) bool {
+			return slices.Contains(skipTraces, info.UnaryServerInfo.FullMethod) ||
+				slices.Contains(skipTraces, info.StreamServerInfo.FullMethod)
+		}
 	}
 
 	deps.Interceptors.ForServer(
@@ -152,6 +145,15 @@ func prepare(ctx context.Context, args *TracerProviderArgs, deps ExtensionDeps) 
 			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
 	)
 
+	deps.Interceptors.ForServer(
+		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
+		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()))
+
+	deps.Interceptors.ForClient(
+		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
+		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators), otelgrpc.WithMessageEvents()),
+	)
+
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
 		return otelhttp.NewHandler(h, "",
 			otelhttp.WithTracerProvider(provider),
@@ -160,7 +162,11 @@ func prepare(ctx context.Context, args *TracerProviderArgs, deps ExtensionDeps) 
 			}))
 	})
 
-	return provider, nil
+	global.mu.Lock()
+	global.tracerProvider = provider
+	global.mu.Unlock()
+
+	return nil
 }
 
 func consumeExporters() []trace.SpanExporter {
@@ -197,19 +203,12 @@ type DeferredTracerProvider interface {
 	GetTracerProvider() (t.TracerProvider, error)
 }
 
-func ProvideTracerProvider(ctx context.Context, args *TracerProviderArgs, deps ExtensionDeps) (DeferredTracerProvider, error) {
-	provider, err := prepare(ctx, args, deps)
-	if err != nil {
-		return nil, err
-	}
-
-	return deferredTracerProvider{provider}, nil
+func ProvideTracerProvider(context.Context, *NoArgs, ExtensionDeps) (DeferredTracerProvider, error) {
+	return deferredTracerProvider{}, nil
 }
 
-type deferredTracerProvider struct {
-	provider t.TracerProvider
-}
+type deferredTracerProvider struct{}
 
-func (d deferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
-	return d.provider, nil
+func (deferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
+	return getTracerProvider()
 }
