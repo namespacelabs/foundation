@@ -22,6 +22,12 @@ func withSpan(ctx context.Context, tracer trace.Tracer, name, sql string, f func
 		return f(ctx)
 	}
 
+	if s := trace.SpanFromContext(ctx); !s.IsRecording() {
+		// (NSL-1740) If this is the first span of the context, then skip it.
+		// Traces only containing DB transaction are not useful. We want traces that start with a function call.
+		return f(ctx)
+	}
+
 	options := []trace.SpanStartOption{trace.WithSpanKind(trace.SpanKindClient)}
 
 	if sql != "" {
@@ -42,6 +48,12 @@ func withSpan(ctx context.Context, tracer trace.Tracer, name, sql string, f func
 
 func returnWithSpan[T any](ctx context.Context, tracer trace.Tracer, name, sql string, f func(context.Context) (T, error)) (T, error) {
 	if tracer == nil {
+		return f(ctx)
+	}
+
+	if s := trace.SpanFromContext(ctx); !s.IsRecording() {
+		// (NSL-1740) If this is the first span of the context, then skip it.
+		// Traces only containing DB transaction are not useful. We want traces that start with a function call.
 		return f(ctx)
 	}
 
