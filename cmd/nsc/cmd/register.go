@@ -36,6 +36,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewRunCmd())        // nsc run
 	root.AddCommand(cluster.NewRunComposeCmd()) // nsc run-compose
 	root.AddCommand(cluster.NewSshCmd())        // nsc ssh
+	root.AddCommand(cluster.NewTopCmd())        // nsc top
 	root.AddCommand(cluster.NewDockerCmd())     // nsc docker
 	root.AddCommand(cluster.NewDescribeCmd())   // nsc describe
 	root.AddCommand(cluster.NewExecScoped())    // nsc exec-scoped

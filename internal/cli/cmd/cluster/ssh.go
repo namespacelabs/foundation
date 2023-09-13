@@ -74,6 +74,33 @@ func NewSshCmd() *cobra.Command {
 	return cmd
 }
 
+func NewTopCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "top [instance-id]",
+		Short: "Observe resource utilization of the target instance.",
+		Args:  cobra.MaximumNArgs(1),
+	}
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		cluster, _, err := selectRunningCluster(ctx, args)
+		if err != nil {
+			if errors.Is(err, ErrEmptyClusterList) {
+				printCreateClusterMsg(ctx)
+				return nil
+			}
+			return err
+		}
+
+		if cluster == nil {
+			return nil
+		}
+
+		return inlineSsh(ctx, cluster, false, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
+	})
+
+	return cmd
+}
+
 func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *ssh.Client) error) error {
 	sshSvc := api.ClusterService(cluster, "ssh")
 	if sshSvc == nil || sshSvc.Endpoint == "" {
