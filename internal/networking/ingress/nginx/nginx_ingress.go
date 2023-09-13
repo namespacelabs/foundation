@@ -224,10 +224,19 @@ func Annotate(hasTLS bool, backendProtocol kubedef.BackendProtocol, extensions [
 		}
 	}
 
-	if cors != nil {
-		// XXX validate allowed origin syntax.
-		annotations["nginx.ingress.kubernetes.io/enable-cors"] = "true"
+	annotations["nginx.ingress.kubernetes.io/enable-cors"] = "true"
+
+	if len(cors.AllowedOrigin) > 0 {
 		annotations["nginx.ingress.kubernetes.io/cors-allow-origin"] = strings.Join(cors.AllowedOrigin, ", ")
+	}
+
+	allowedHeaders := []string{"DNT", "Keep-Alive", "User-Agent", "X-Requested-With", "If-Modified-Since", "Cache-Control", "Content-Type", "Range", "Authorization"}
+	allowedHeaders = append(allowedHeaders, "Connect-Protocol-Version")
+
+	annotations["nginx.ingress.kubernetes.io/cors-allow-headers"] = strings.Join(allowedHeaders, ",")
+
+	if len(cors.ExposeHeaders) > 0 {
+		// XXX validate allowed origin syntax.
 		annotations["nginx.ingress.kubernetes.io/cors-expose-headers"] = strings.Join(cors.ExposeHeaders, ", ")
 	}
 
