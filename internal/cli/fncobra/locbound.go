@@ -170,7 +170,8 @@ func locationsAndPackageRefsFromArgs(ctx context.Context, mainModuleName string,
 			rel = filepath.Join(cwd, arg)
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "location parsing: %s -> moduleName: %q rel: %q expando: %v isRef: %v\n", origArg, moduleName, rel, expando, isRef)
+		fmt.Fprintf(console.Debug(ctx), "location parsing: %s -> moduleName: %q rel: %q expando: %v isRef: %v (moduleNames: %v)\n",
+			origArg, moduleName, rel, expando, isRef, moduleNames)
 
 		if strings.HasPrefix(rel, "..") {
 			return nil, nil, fnerrors.New("can't refer to packages outside of the module root: %s", rel)

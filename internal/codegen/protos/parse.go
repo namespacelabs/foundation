@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -19,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
+	"sigs.k8s.io/yaml"
 
 	// Include descriptors for generated googleapis.
 	_ "google.golang.org/genproto/googleapis/api/annotations"
@@ -32,9 +34,29 @@ type ParseOpts struct {
 	}
 }
 
+type bufWork struct {
+	Directories []string `json:"directories"`
+}
+
 func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDeps, error) {
+	importPaths := []string{"."}
+
+	bufWorkData, err := fs.ReadFile(fsys, "buf.work.yaml")
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fnerrors.New("failed to load buf.work.yaml: %w", err)
+		}
+	} else {
+		var bw bufWork
+		if err := yaml.Unmarshal(bufWorkData, &bw); err != nil {
+			return nil, fnerrors.New("failed to parse buf.work.yaml: %w", err)
+		}
+
+		importPaths = append(importPaths, bw.Directories...)
+	}
+
 	p := protoparse.Parser{
-		ImportPaths:           []string{"."},
+		ImportPaths:           importPaths,
 		IncludeSourceCodeInfo: true,
 		Accessor: func(filename string) (io.ReadCloser, error) {
 			return fsys.Open(filename)
@@ -82,14 +104,14 @@ func (opts ParseOpts) Parse(fsys fs.FS, files []string) (*FileDescriptorSetAndDe
 		},
 	}
 
-	files, err := expandProtoList(fsys, files)
+	expandedFiles, err := expandProtoList(fsys, files)
 	if err != nil {
 		return nil, err
 	}
 
-	descs, err := p.ParseFiles(files...)
+	descs, err := p.ParseFiles(expandedFiles...)
 	if err != nil {
-		return nil, fnerrors.BadInputError("proto parse failed of %q: %w", files, err)
+		return nil, fnerrors.BadInputError("proto parse failed of %q: %w", expandedFiles, err)
 	}
 
 	protos := protoList{refs: map[string]*dpb.FileDescriptorProto{}}
