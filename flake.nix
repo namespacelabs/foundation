@@ -17,7 +17,7 @@
         buildInputs = with pkgs;
           [
             clang-tools # For clang-format.
-            go_1_20
+            go_1_21
             gopls
             go-outline
             go-tools

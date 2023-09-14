@@ -1,16 +1,23 @@
 {
 	"versions": {
-		"1.20": "1.20",
+		"1.21": "1.21.1",
+		"1.20": "1.20.8",
 		"1.19": "1.19.5",
 		"1.18": "1.18.10"
 	},
 
 	"artifacts": {
-		"1.20": {
-			"linux/amd64": "5a9ebcc65c1cce56e0d2dc616aff4c4cedcfbda8cc6f0288cc08cda3b18dcbf1",
-			"linux/arm64": "17700b6e5108e2a2c3b1a43cd865d3f9c66b7f1c5f0cec26d3672cc131cc0994",
-			"darwin/amd64": "777025500f62d14bb5a4923072cd97431887961d24de08433a60c2fe1120531d",
-			"darwin/arm64": "32864d6fe888714ca7b421b5997269c7f6349d7e2675c3a399133e521787608b"
+		"1.21.1": {
+			"linux/amd64": "b3075ae1ce5dab85f89bc7905d1632de23ca196bd8336afd93fa97434cfa55ae",
+			"linux/arm64": "7da1a3936a928fd0b2602ed4f3ef535b8cd1990f1503b8d3e1acc0fa0759c967",
+			"darwin/amd64": "809f5b0ef4f7dcdd5f51e9630a5b2e5a1006f22a047126d61560cdc365678a19",
+			"darwin/arm64": "ffd40391a1e995855488b008ad9326ff8c2e81803a6e80894401003bae47fcf1"
+		},
+		"1.20.8": {
+			"linux/amd64": "cc97c28d9c252fbf28f91950d830201aa403836cbed702a05932e63f7f0c7bc4",
+			"linux/arm64": "15ab379c6a2b0d086fe3e74be4599420e66549edf7426a300ee0f3809500f89e",
+			"darwin/amd64": "ce3ef6a1f788fa73256304aa5ae45987b1079dd71c2ddc9f79ff839ec1b3ae55",
+			"darwin/arm64": "fb9092592a6cded7edacace18f12d3a92b6ca995ae00ab8f7af0eb66b2b2db50"
 		},
 		"1.19.5": {
 			"linux/amd64": "36519702ae2fd573c9869461990ae550c8c0d955cd28d2827a6b159fda81ff95",
