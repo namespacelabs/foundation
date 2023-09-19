@@ -50,7 +50,6 @@ func NewLargeBuildCmd() *cobra.Command {
 	outTo := cmd.Flags().String("output-to", "./out", "Where to download the final output.")
 	plat := cmd.Flags().String("platform", "linux/amd64", "Set target platform for build.")
 	commands := cmd.Flags().StringSlice("command", nil, "The commands to run.")
-	cwd := cmd.Flags().String("cwd", ".", "Where to run commands from.")
 	cacheDirs := cmd.Flags().StringSlice("cache_dir", nil, "Which directories to cache.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -63,7 +62,7 @@ func NewLargeBuildCmd() *cobra.Command {
 			return err
 		}
 
-		out, err := makeProgram(ctx, platformSpec, *image, *outFrom, *cwd, *cacheDirs, *commands...)
+		out, err := makeProgram(ctx, platformSpec, *image, *outFrom, *cacheDirs, *commands...)
 		if err != nil {
 			return err
 		}
@@ -135,7 +134,7 @@ func NewLargeBuildCmd() *cobra.Command {
 	return cmd
 }
 
-func makeProgram(ctx context.Context, platform specs.Platform, baseImage, outFrom, cwd string, cacheDirs []string, commands ...string) (llb.State, error) {
+func makeProgram(ctx context.Context, platform specs.Platform, baseImage, outFrom string, cacheDirs []string, commands ...string) (llb.State, error) {
 	var zero llb.State
 
 	// E.g. github.com/username/reponame
@@ -179,7 +178,7 @@ func makeProgram(ctx context.Context, platform specs.Platform, baseImage, outFro
 	if len(stashBytes) > 0 {
 		stash := llbutil.AddFile(llb.Scratch(), patchFile, 0700, stashBytes)
 		applyStash := llbutil.Image(baseImage, platform).
-			Dir(filepath.Join("/source", cwd)).
+			Dir("/source").
 			Run(llb.Shlexf("git apply %s", filepath.Join("/stash", patchFile)))
 
 		applyStash.AddMount("/stash", stash)
@@ -199,7 +198,7 @@ func makeProgram(ctx context.Context, platform specs.Platform, baseImage, outFro
 			run.AddMount(d, llb.Scratch(), llb.AsPersistentCacheDir(normalizeName(d), llb.CacheMountShared))
 		}
 
-		run.AddMount("/source", source)
+		source = run.AddMount("/source", source)
 		out = run.AddMount(outFrom, out)
 		base = run.Root()
 	}
