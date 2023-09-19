@@ -7,6 +7,7 @@ package cluster
 import (
 	"context"
 	"net"
+	"path/filepath"
 	"strings"
 
 	"github.com/moby/buildkit/client"
@@ -21,8 +22,8 @@ import (
 )
 
 const (
+	workImage = "golang:1.21.1"
 	patchFile = "/tmp/namespace/changes.patch"
-	workDir   = "/work"
 )
 
 func NewLargeBuildCmd() *cobra.Command {
@@ -34,6 +35,8 @@ func NewLargeBuildCmd() *cobra.Command {
 	}
 
 	image := cmd.Flags().String("image", "", "Base image containing all tools to run.")
+	outFrom := cmd.Flags().String("output-from", "/out", "Which directory to capture for the final output.")
+	outTo := cmd.Flags().String("output-to", "./out", "Where to download the final output.")
 	plat := cmd.Flags().String("platform", "linux/amd64", "Set target platform for build.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -46,8 +49,6 @@ func NewLargeBuildCmd() *cobra.Command {
 			return err
 		}
 
-		base := llbutil.Image(*image, platformSpec)
-
 		// E.g. github.com/username/reponame
 		remote, err := git.RemoteUrl(ctx, ".")
 		if err != nil {
@@ -59,16 +60,13 @@ func NewLargeBuildCmd() *cobra.Command {
 			return err
 		}
 
-		base = base.
-			Run(llb.Shlexf("git clone -b %s https://%s %s", branch, remote, workDir)).Root()
-
 		// create a stash
 		if _, _, err := git.RunGit(ctx, ".", "stash", "save", "-u"); err != nil {
 			return err
 		}
 
 		// grab stash content
-		stash, _, err := git.RunGit(ctx, ".", "stash", "show", "-p", "-u")
+		stashBytes, _, err := git.RunGit(ctx, ".", "stash", "show", "-p", "-u")
 		if err != nil {
 			return err
 		}
@@ -78,12 +76,23 @@ func NewLargeBuildCmd() *cobra.Command {
 			return err
 		}
 
-		base = llbutil.AddFile(base, patchFile, 0700, stash).
-			Dir(workDir).
-			Run(llb.Shlexf("git apply %s", patchFile)).
-			Run(llb.Shlex(strings.Join(args, " "))).Root()
+		repo := llb.Git(remote, branch)
+		stash := llbutil.AddFile(llb.Scratch(), patchFile, 0700, stashBytes)
 
-		def, err := base.Marshal(ctx)
+		applyStash := llbutil.Image(workImage, platformSpec).
+			Dir("/source").
+			Run(llb.Shlexf("git apply %s", filepath.Join("/stash", patchFile)))
+
+		applyStash.AddMount("/stash", stash)
+		source := applyStash.AddMount("/source", repo)
+
+		toolchain := llbutil.Image(*image, platformSpec).
+			Dir("/source").
+			Run(llb.Shlex(strings.Join(args, " ")))
+		toolchain.AddMount("/source", source)
+		out := toolchain.AddMount(*outFrom, llb.Scratch())
+
+		def, err := out.Marshal(ctx)
 		if err != nil {
 			return err
 		}
@@ -101,7 +110,12 @@ func NewLargeBuildCmd() *cobra.Command {
 			return err
 		}
 
-		if _, err := cli.Solve(ctx, def, client.SolveOpt{}, nil); err != nil {
+		if _, err := cli.Solve(ctx, def, client.SolveOpt{
+			Exports: []client.ExportEntry{{
+				Type:      client.ExporterLocal,
+				OutputDir: *outTo,
+			}},
+		}, nil); err != nil {
 			return err
 		}
 
