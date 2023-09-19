@@ -23,7 +23,7 @@ func RunGit(ctx context.Context, dir string, args ...string) ([]byte, []byte, er
 	cmd.Dir = dir
 
 	if err := cmd.Run(); err != nil {
-		return nil, errOut.Bytes(), fnerrors.InvocationError("git", "%w", err)
+		return nil, errOut.Bytes(), fnerrors.InvocationError("git", "%q failed: %w", cmd.String(), err)
 	}
 
 	return out.Bytes(), errOut.Bytes(), nil
