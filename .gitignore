@@ -45,3 +45,5 @@ dist/
 user.secrets
 
 .DS_Store
+
+out/
