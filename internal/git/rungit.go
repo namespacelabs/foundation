@@ -9,6 +9,8 @@ import (
 	"context"
 	"os"
 	"os/exec"
+
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func RunGit(ctx context.Context, dir string, args ...string) ([]byte, []byte, error) {
@@ -21,7 +23,7 @@ func RunGit(ctx context.Context, dir string, args ...string) ([]byte, []byte, er
 	cmd.Dir = dir
 
 	if err := cmd.Run(); err != nil {
-		return nil, errOut.Bytes(), err
+		return nil, errOut.Bytes(), fnerrors.InvocationError("git", "%w", err)
 	}
 
 	return out.Bytes(), errOut.Bytes(), nil

@@ -45,4 +45,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(sdk.NewSdkCmd(true))
 
 	root.AddCommand(workspace.NewWorkspaceCmd()) // nsc workspace
+
+	root.AddCommand(cluster.NewLargeBuildCmd()) // nsc large-build
 }
