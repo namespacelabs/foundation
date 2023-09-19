@@ -60,31 +60,42 @@ func NewLargeBuildCmd() *cobra.Command {
 			return err
 		}
 
-		// create a stash
-		if _, _, err := git.RunGit(ctx, ".", "stash", "save", "-u"); err != nil {
-			return err
-		}
-
-		// grab stash content
-		stashBytes, _, err := git.RunGit(ctx, ".", "stash", "show", "-p", "-u")
+		diff, _, err := git.RunGit(ctx, ".", "diff", "HEAD")
 		if err != nil {
 			return err
 		}
 
-		// restore local state
-		if _, _, err = git.RunGit(ctx, ".", "stash", "pop"); err != nil {
-			return err
+		var stashBytes []byte
+		if len(diff) > 0 {
+			// create a stash
+			if _, _, err := git.RunGit(ctx, ".", "stash", "save", "-u"); err != nil {
+				return err
+			}
+
+			// grab stash content
+			stashBytes, _, err = git.RunGit(ctx, ".", "stash", "show", "-p", "-u")
+			if err != nil {
+				return err
+			}
+
+			// restore local state
+			if _, _, err = git.RunGit(ctx, ".", "stash", "pop"); err != nil {
+				return err
+			}
+
 		}
 
-		repo := llb.Git(remote, branch)
-		stash := llbutil.AddFile(llb.Scratch(), patchFile, 0700, stashBytes)
+		source := llb.Git(remote, branch)
 
-		applyStash := llbutil.Image(workImage, platformSpec).
-			Dir("/source").
-			Run(llb.Shlexf("git apply %s", filepath.Join("/stash", patchFile)))
+		if len(stashBytes) > 0 {
+			stash := llbutil.AddFile(llb.Scratch(), patchFile, 0700, stashBytes)
+			applyStash := llbutil.Image(workImage, platformSpec).
+				Dir("/source").
+				Run(llb.Shlexf("git apply %s", filepath.Join("/stash", patchFile)))
 
-		applyStash.AddMount("/stash", stash)
-		source := applyStash.AddMount("/source", repo)
+			applyStash.AddMount("/stash", stash)
+			source = applyStash.AddMount("/source", source)
+		}
 
 		toolchain := llbutil.Image(*image, platformSpec).
 			Dir("/source").
