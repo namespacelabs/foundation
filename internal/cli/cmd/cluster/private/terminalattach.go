@@ -17,16 +17,21 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func newInternalTerminalAttach() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attach",
 		Short: "Attach to an existing terminal.",
-		Args:  cobra.NoArgs,
+		Args:  cobra.ArbitraryArgs,
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if len(args) == 0 {
+			return fnerrors.New("need at least one command to run")
+		}
+
 		cli, err := containerd.New("/var/run/containerd/containerd.sock")
 		if err != nil {
 			return err
@@ -51,7 +56,14 @@ func newInternalTerminalAttach() *cobra.Command {
 			execArgs = append(execArgs, "-e", "SSH_AUTH_SOCK="+authSock)
 		}
 
+		for _, envvar := range []string{"NSC_ENDPOINT", "NSC_TOKEN_SPEC_FILE"} {
+			if v := os.Getenv(envvar); v != "" {
+				execArgs = append(execArgs, "-e", fmt.Sprintf("%s=%s", envvar, v))
+			}
+		}
+
 		execArgs = append(execArgs, target.ID())
+		execArgs = append(execArgs, args...)
 
 		stdin, err := c.ConsoleFromFile(os.Stdin)
 		if err != nil {
