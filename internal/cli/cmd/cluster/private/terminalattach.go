@@ -9,6 +9,7 @@ import (
 
 	c "github.com/containerd/console"
 	"github.com/containerd/containerd"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -27,7 +28,7 @@ func newInternalTerminalAttach() *cobra.Command {
 			return err
 		}
 
-		containers, err := cli.Containers(ctx, fmt.Sprintf("labels.%q==%s", "nsc/ctr-container-type", "terminal-source"))
+		containers, err := cli.Containers(namespaces.WithNamespace(ctx, "default"), fmt.Sprintf("labels.%q==%s", "nsc/ctr-container-type", "terminal-source"))
 		if err != nil {
 			return err
 		}
