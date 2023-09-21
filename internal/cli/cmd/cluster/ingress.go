@@ -34,7 +34,7 @@ func newListIngressesCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectRunningCluster(ctx, args)
+		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			return err
 		}

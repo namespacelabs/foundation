@@ -52,13 +52,13 @@ func NewSshCmd() *cobra.Command {
 				return err
 			}
 
-			return inlineSsh(ctx, cluster.Cluster, *sshAgent, args)
+			return InlineSsh(ctx, cluster.Cluster, *sshAgent, args)
 		}
 
-		cluster, args, err := selectRunningCluster(ctx, args)
+		cluster, args, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
-				printCreateClusterMsg(ctx)
+				PrintCreateClusterMsg(ctx)
 				return nil
 			}
 			return err
@@ -68,7 +68,7 @@ func NewSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return inlineSsh(ctx, cluster, *sshAgent, args)
+		return InlineSsh(ctx, cluster, *sshAgent, args)
 	})
 
 	return cmd
@@ -82,10 +82,10 @@ func NewTopCmd() *cobra.Command {
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectRunningCluster(ctx, args)
+		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
-				printCreateClusterMsg(ctx)
+				PrintCreateClusterMsg(ctx)
 				return nil
 			}
 			return err
@@ -95,7 +95,7 @@ func NewTopCmd() *cobra.Command {
 			return nil
 		}
 
-		return inlineSsh(ctx, cluster, false, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
+		return InlineSsh(ctx, cluster, false, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
 	})
 
 	return cmd
@@ -140,7 +140,7 @@ func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(
 	return callback(ctx, client)
 }
 
-func inlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
+func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
 	stdin, err := c.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err

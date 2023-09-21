@@ -74,7 +74,7 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 			return fnerrors.New("only one of --all or --container may be specified")
 		}
 
-		cluster, _, err := selectRunningCluster(ctx, args)
+		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			return err
 		}
@@ -494,7 +494,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 	port := cmd.Flags().Int32("port", 0, "Which exported Load Balancer port to expose.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectRunningCluster(ctx, args)
+		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			return err
 		}

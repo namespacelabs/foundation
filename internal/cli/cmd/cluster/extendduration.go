@@ -31,7 +31,7 @@ func newExtendDurationCmd() *cobra.Command {
 			return fnerrors.New("--duration or --ensure_minimum is required")
 		}
 
-		cluster, _, err := selectRunningCluster(ctx, args)
+		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			return err
 		}

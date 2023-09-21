@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/terminal"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
@@ -43,6 +44,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewExecScoped())    // nsc exec-scoped
 	root.AddCommand(cluster.NewIngressCmd())    // nsc ingress
 	root.AddCommand(private.NewInternalCmd())   // nsc internal [hidden]
+	root.AddCommand(terminal.NewTerminalCmd())  // nsc internal [hidden]
 
 	root.AddCommand(sdk.NewSdkCmd(true))
 

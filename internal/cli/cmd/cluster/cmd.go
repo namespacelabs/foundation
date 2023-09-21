@@ -90,7 +90,7 @@ func selectClusterID(ctx context.Context, previousRuns bool) (string, error) {
 	return cl.ClusterId, nil
 }
 
-func selectRunningCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
+func SelectRunningCluster(ctx context.Context, args []string) (*api.KubernetesCluster, []string, error) {
 	var clusterID string
 	if len(args) >= 1 {
 		clusterID = args[0]
@@ -237,7 +237,7 @@ func formatDescription(cluster api.KubernetesCluster, history bool) string {
 		cluster.KubernetesDistribution, cluster.DocumentedPurpose)
 }
 
-func printCreateClusterMsg(ctx context.Context) {
+func PrintCreateClusterMsg(ctx context.Context) {
 	stdout := console.Stdout(ctx)
 
 	var cmd string

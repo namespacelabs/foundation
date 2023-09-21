@@ -30,7 +30,7 @@ func newDestroyCmd() *cobra.Command {
 			selected, err := selectClusterID(ctx, false /* previousRuns */)
 			if err != nil {
 				if errors.Is(err, ErrEmptyClusterList) {
-					printCreateClusterMsg(ctx)
+					PrintCreateClusterMsg(ctx)
 					return nil
 				}
 				return err

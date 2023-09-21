@@ -82,10 +82,10 @@ func newWriteKubeconfigCmd(use string, hidden bool) *cobra.Command {
 	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Kubeconfig to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		cluster, _, err := selectRunningCluster(ctx, args)
+		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			if errors.Is(err, ErrEmptyClusterList) {
-				printCreateClusterMsg(ctx)
+				PrintCreateClusterMsg(ctx)
 				return nil
 			}
 			return err

@@ -47,7 +47,7 @@ func NewListCmd() *cobra.Command {
 		}
 
 		if len(clusters.Clusters) == 0 {
-			printCreateClusterMsg(ctx)
+			PrintCreateClusterMsg(ctx)
 			return nil
 		}
 
@@ -125,7 +125,7 @@ func newHistoryCmd() *cobra.Command {
 		}
 
 		if len(clusters.Clusters) == 0 {
-			printCreateClusterMsg(ctx)
+			PrintCreateClusterMsg(ctx)
 			return nil
 		}
 

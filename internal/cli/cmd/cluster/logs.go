@@ -49,7 +49,7 @@ func NewLogsCmd() *cobra.Command {
 			clusterID, err = selectClusterID(ctx, true /* previousRuns */)
 			if err != nil {
 				if errors.Is(err, ErrEmptyClusterList) {
-					printCreateClusterMsg(ctx)
+					PrintCreateClusterMsg(ctx)
 					return nil
 				}
 				return err

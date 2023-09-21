@@ -85,7 +85,7 @@ func NewRunCmd() *cobra.Command {
 			}
 		}
 
-		opts := createContainerOpts{
+		opts := CreateContainerOpts{
 			Name:            name,
 			Image:           *image,
 			Args:            args,
@@ -105,7 +105,7 @@ func NewRunCmd() *cobra.Command {
 
 		opts.ExportedPorts = exported
 
-		resp, err := createContainer(ctx, *machineType, *duration, *on, *devmode, opts)
+		resp, err := CreateContainerInstance(ctx, *machineType, *duration, *on, *devmode, opts)
 		if err != nil {
 			return err
 		}
@@ -122,7 +122,7 @@ func NewRunCmd() *cobra.Command {
 
 		// This needs to handle the case both of when a cluster is created, and
 		// when StartContainers are called.
-		return printResult(ctx, *output, resp)
+		return PrintCreateContainersResult(ctx, *output, resp)
 	})
 
 	return run
@@ -195,13 +195,13 @@ func NewRunComposeCmd() *cobra.Command {
 			}
 		}
 
-		return printResult(ctx, *output, resp)
+		return PrintCreateContainersResult(ctx, *output, resp)
 	})
 
 	return run
 }
 
-type createContainerOpts struct {
+type CreateContainerOpts struct {
 	Name            string
 	Image           string
 	Args            []string
@@ -221,7 +221,7 @@ type exportContainerPort struct {
 	HttpIngressRules []*api.ContainerPort_HttpMatchRule
 }
 
-func createContainer(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts createContainerOpts) (*api.CreateContainersResponse, error) {
+func CreateContainerInstance(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts CreateContainerOpts) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
 		Name:    opts.Name,
 		Image:   opts.Image,
@@ -354,7 +354,7 @@ func parseEffect(spec string) (*api.ContainerPort_HttpMatchRule, error) {
 	return x, nil
 }
 
-func printResult(ctx context.Context, output string, resp *api.CreateContainersResponse) error {
+func PrintCreateContainersResult(ctx context.Context, output string, resp *api.CreateContainersResponse) error {
 	switch output {
 	case "json":
 		d := json.NewEncoder(console.Stdout(ctx))
