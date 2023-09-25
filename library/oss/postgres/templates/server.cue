@@ -23,7 +23,7 @@ package templates
 	// Postgres mounts a persistent volume which requires a stateful deployment (more conservative update strategy).
 	class: "stateful"
 
-	args: ["-c", "wal_level=logical", "-c", "max_replication_slots=50"]
+	args: ["-c", "wal_level=logical", "-c", "max_replication_slots=30", "-c", "max_wal_senders=30"]
 
 	env: {
 		// PGDATA may not be a mount point but only a subdirectory.
