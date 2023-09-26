@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	oteltrace "go.opentelemetry.io/otel/trace"
 	t "go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/schema"
@@ -212,4 +213,26 @@ type deferredTracerProvider struct{}
 
 func (deferredTracerProvider) GetTracerProvider() (t.TracerProvider, error) {
 	return getTracerProvider()
+}
+
+func Tracer(pkg *core.Package, p DeferredTracerProvider) (oteltrace.Tracer, error) {
+	tracer, err := p.GetTracerProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	if tracer == nil {
+		return nil, nil
+	}
+
+	return tracer.Tracer(pkg.PackageName), nil
+}
+
+func MustTracer(pkg *core.Package, p DeferredTracerProvider) oteltrace.Tracer {
+	t, err := Tracer(pkg, p)
+	if err != nil {
+		panic(err)
+	}
+
+	return t
 }
