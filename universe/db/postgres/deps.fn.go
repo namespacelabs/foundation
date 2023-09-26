@@ -18,6 +18,10 @@ type _checkProvideDatabase func(context.Context, *DatabaseArgs, ExtensionDeps) (
 
 var _ _checkProvideDatabase = ProvideDatabase
 
+type _checkProvideFactory func(context.Context, *FactoryArgs, ExtensionDeps) (Factory, error)
+
+var _ _checkProvideFactory = ProvideFactory
+
 var (
 	Package__sfr1nt = &core.Package{
 		PackageName: "namespacelabs.dev/foundation/universe/db/postgres",

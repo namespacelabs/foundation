@@ -16,4 +16,16 @@ package postgres
 			}
 		}
 	}
+	Factory: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
+			type:        "Factory"
+			typeDefinition: {
+				"typename": "foundation.universe.db.postgres.FactoryArgs"
+				"source": [
+					"provider.proto",
+				]
+			}
+		}
+	}
 }

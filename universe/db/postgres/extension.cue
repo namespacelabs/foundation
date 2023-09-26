@@ -24,5 +24,16 @@ extension: fn.#Extension & {
 				}
 			}
 		}
+
+		Factory: {
+			input: $providerProto.types.FactoryArgs
+
+			availableIn: {
+				go: {
+					package: "namespacelabs.dev/foundation/universe/db/postgres"
+					type:    "Factory"
+				}
+			}
+		}
 	}
 }

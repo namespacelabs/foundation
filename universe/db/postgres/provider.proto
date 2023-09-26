@@ -12,3 +12,5 @@ message DatabaseArgs {
     reserved 1, 2;
     string resource_ref = 3;
 }
+
+message FactoryArgs {}
