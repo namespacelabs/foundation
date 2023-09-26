@@ -33,7 +33,7 @@ func (f Factory) Provide(ctx context.Context, ref string) (*DB, error) {
 	})
 }
 
-func (f Factory) ProvideWithCustomErrors(ctx context.Context, ref string, errW func(error) error) (*DB, error) {
+func (f Factory) ProvideWithCustomErrors(ctx context.Context, ref string, errW func(context.Context, error) error) (*DB, error) {
 	return ConnectToResource(ctx, f.res, ref, NewDBOptions{
 		Tracer:       f.t,
 		ErrorWrapper: errW,

@@ -27,7 +27,7 @@ type DB struct {
 
 type commonOpts struct {
 	t    trace.Tracer
-	errw func(error) error
+	errw func(context.Context, error) error
 }
 
 var (
@@ -58,13 +58,13 @@ func init() {
 
 type NewDBOptions struct {
 	Tracer       trace.Tracer
-	ErrorWrapper func(error) error
+	ErrorWrapper func(context.Context, error) error
 }
 
 func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, o NewDBOptions) *DB {
 	db := &DB{base: conn, opts: commonOpts{o.Tracer, o.ErrorWrapper}}
 	if db.opts.errw == nil {
-		db.opts.errw = func(err error) error { return err }
+		db.opts.errw = func(_ context.Context, err error) error { return err }
 	}
 
 	if instance != nil {
