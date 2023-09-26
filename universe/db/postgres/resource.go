@@ -8,13 +8,12 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v4/pgxpool"
-	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
 
 // Connect to a Postgres Database resource.
-func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, tracer trace.Tracer) (*DB, error) {
+func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, opts NewDBOptions) (*DB, error) {
 	db := &postgrespb.DatabaseInstance{}
 	if err := res.Unmarshal(resourceRef, db); err != nil {
 		return nil, err
@@ -33,5 +32,5 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 		return nil, err
 	}
 
-	return NewDB(db, conn, tracer), nil
+	return NewDB(db, conn, opts), nil
 }

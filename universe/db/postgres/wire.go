@@ -32,5 +32,5 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		t = tracer.Tracer(Package__sfr1nt.PackageName)
 	}
 
-	return ConnectToResource(ctx, res, db.ResourceRef, t)
+	return ConnectToResource(ctx, res, db.ResourceRef, NewDBOptions{Tracer: t})
 }

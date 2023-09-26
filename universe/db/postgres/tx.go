@@ -13,7 +13,6 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/tracing"
 )
 
@@ -58,7 +57,7 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f fun
 
 			defer func() { _ = tx.Rollback(ctx) }()
 
-			value, err := f(ctx, tracingTx{base: tx, t: db.t})
+			value, err := f(ctx, tracingTx{base: tx, opts: db.opts})
 			if err != nil {
 				return empty, err
 			}
@@ -92,38 +91,38 @@ func (p TransactionError) Unwrap() error { return p.InternalErr }
 
 type tracingTx struct {
 	base pgx.Tx
-	t    trace.Tracer
+	opts commonOpts
 }
 
 func (tx tracingTx) Begin(ctx context.Context) (pgx.Tx, error) {
-	return returnWithSpan(ctx, tx.t, "tx.Begin", "", func(ctx context.Context) (pgx.Tx, error) {
+	return returnWithSpan(ctx, tx.opts, "tx.Begin", "", func(ctx context.Context) (pgx.Tx, error) {
 		newtx, err := tx.base.Begin(ctx)
-		return tracingTx{newtx, tx.t}, err
+		return tracingTx{newtx, tx.opts}, err
 	})
 }
 
 func (tx tracingTx) BeginFunc(ctx context.Context, f func(pgx.Tx) error) error {
-	return withSpan(ctx, tx.t, "tx.BeginFunc", "", func(ctx context.Context) error {
+	return withSpan(ctx, tx.opts, "tx.BeginFunc", "", func(ctx context.Context) error {
 		return tx.base.BeginFunc(ctx, func(newtx pgx.Tx) error {
-			return f(tracingTx{base: newtx, t: tx.t})
+			return f(tracingTx{base: newtx, opts: tx.opts})
 		})
 	})
 }
 
 func (tx tracingTx) Commit(ctx context.Context) error {
-	return withSpan(ctx, tx.t, "tx.Commit", "", func(ctx context.Context) error {
+	return withSpan(ctx, tx.opts, "tx.Commit", "", func(ctx context.Context) error {
 		return tx.base.Commit(ctx)
 	})
 }
 
 func (tx tracingTx) Rollback(ctx context.Context) error {
-	return withSpan(ctx, tx.t, "tx.Rollback", "", func(ctx context.Context) error {
+	return withSpan(ctx, tx.opts, "tx.Rollback", "", func(ctx context.Context) error {
 		return tx.base.Commit(ctx)
 	})
 }
 
 func (tx tracingTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
-	return returnWithSpan(ctx, tx.t, "tx.CopyFrom", "", func(ctx context.Context) (int64, error) {
+	return returnWithSpan(ctx, tx.opts, "tx.CopyFrom", "", func(ctx context.Context) (int64, error) {
 		return tx.base.CopyFrom(ctx, tableName, columnNames, rowSrc)
 	})
 }
@@ -137,29 +136,29 @@ func (tx tracingTx) LargeObjects() pgx.LargeObjects {
 }
 
 func (tx tracingTx) Prepare(ctx context.Context, name, sql string) (*pgconn.StatementDescription, error) {
-	return returnWithSpan(ctx, tx.t, "tx.Prepare", fmt.Sprintf("%s = %s", name, sql), func(ctx context.Context) (*pgconn.StatementDescription, error) {
+	return returnWithSpan(ctx, tx.opts, "tx.Prepare", fmt.Sprintf("%s = %s", name, sql), func(ctx context.Context) (*pgconn.StatementDescription, error) {
 		return tx.base.Prepare(ctx, name, sql)
 	})
 }
 
 func (tx tracingTx) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, tx.t, "tx.Exec", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
+	return returnWithSpan(ctx, tx.opts, "tx.Exec", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
 		return tx.base.Exec(ctx, sql, arguments...)
 	})
 }
 
 func (tx tracingTx) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, error) {
-	return returnWithSpan(ctx, tx.t, "tx.Query", sql, func(ctx context.Context) (pgx.Rows, error) {
+	return returnWithSpan(ctx, tx.opts, "tx.Query", sql, func(ctx context.Context) (pgx.Rows, error) {
 		return tx.base.Query(ctx, sql, arguments...)
 	})
 }
 
 func (tx tracingTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	return queryRow(ctx, tx.t, tx.base, "tx.QueryRow", sql, args...)
+	return queryRow(ctx, tx.opts, tx.base, "tx.QueryRow", sql, args...)
 }
 
 func (tx tracingTx) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, tx.t, "tx.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
+	return returnWithSpan(ctx, tx.opts, "tx.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
 		return tx.base.QueryFunc(ctx, sql, args, scans, f)
 	})
 }

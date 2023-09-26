@@ -17,9 +17,9 @@ import (
 	"namespacelabs.dev/foundation/framework/rpcerrors"
 )
 
-func withSpan(ctx context.Context, tracer trace.Tracer, name, sql string, f func(context.Context) error) error {
-	if tracer == nil {
-		return f(ctx)
+func withSpan(ctx context.Context, opts commonOpts, name, sql string, f func(context.Context) error) error {
+	if opts.t == nil {
+		return opts.errw(f(ctx))
 	}
 
 	if s := trace.SpanFromContext(ctx); !s.IsRecording() {
@@ -34,7 +34,7 @@ func withSpan(ctx context.Context, tracer trace.Tracer, name, sql string, f func
 		options = append(options, trace.WithAttributes(semconv.DBStatementKey.String(sql)))
 	}
 
-	ctx, span := tracer.Start(ctx, name, options...)
+	ctx, span := opts.t.Start(ctx, name, options...)
 	defer span.End()
 
 	err := checkErr(f(ctx))
@@ -43,12 +43,13 @@ func withSpan(ctx context.Context, tracer trace.Tracer, name, sql string, f func
 		span.SetStatus(codes.Error, err.Error())
 	}
 
-	return err
+	return opts.errw(err)
 }
 
-func returnWithSpan[T any](ctx context.Context, tracer trace.Tracer, name, sql string, f func(context.Context) (T, error)) (T, error) {
-	if tracer == nil {
-		return f(ctx)
+func returnWithSpan[T any](ctx context.Context, opts commonOpts, name, sql string, f func(context.Context) (T, error)) (T, error) {
+	if opts.t == nil {
+		v, err := f(ctx)
+		return v, opts.errw(err)
 	}
 
 	if s := trace.SpanFromContext(ctx); !s.IsRecording() {
@@ -63,7 +64,7 @@ func returnWithSpan[T any](ctx context.Context, tracer trace.Tracer, name, sql s
 		options = append(options, trace.WithAttributes(semconv.DBStatementKey.String(sql)))
 	}
 
-	ctx, span := tracer.Start(ctx, name, options...)
+	ctx, span := opts.t.Start(ctx, name, options...)
 	defer span.End()
 
 	value, err := f(ctx)
@@ -73,7 +74,7 @@ func returnWithSpan[T any](ctx context.Context, tracer trace.Tracer, name, sql s
 		span.SetStatus(codes.Error, err.Error())
 	}
 
-	return value, err
+	return value, opts.errw(err)
 }
 
 func checkErr(err error) error {

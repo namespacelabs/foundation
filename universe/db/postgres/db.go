@@ -22,7 +22,12 @@ import (
 
 type DB struct {
 	base *pgxpool.Pool
+	opts commonOpts
+}
+
+type commonOpts struct {
 	t    trace.Tracer
+	errw func(error) error
 }
 
 var (
@@ -51,8 +56,16 @@ func init() {
 	}
 }
 
-func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer) *DB {
-	db := &DB{base: conn, t: tracer}
+type NewDBOptions struct {
+	Tracer       trace.Tracer
+	ErrorWrapper func(error) error
+}
+
+func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, o NewDBOptions) *DB {
+	db := &DB{base: conn, opts: commonOpts{o.Tracer, o.ErrorWrapper}}
+	if db.opts.errw == nil {
+		db.opts.errw = func(err error) error { return err }
+	}
 
 	if instance != nil {
 		go func() {
@@ -71,33 +84,33 @@ func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer tra
 }
 
 func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, db.t, "db.Exec", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
+	return returnWithSpan(ctx, db.opts, "db.Exec", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
 		return db.base.Exec(ctx, sql, arguments...)
 	})
 }
 
 func (db DB) BeginTxFunc(ctx context.Context, txOptions pgx.TxOptions, callback func(pgx.Tx) error) error {
-	return withSpan(ctx, db.t, "db.BeginTxFunc", "", func(ctx context.Context) error {
+	return withSpan(ctx, db.opts, "db.BeginTxFunc", "", func(ctx context.Context) error {
 		return db.base.BeginTxFunc(ctx, txOptions, func(newtx pgx.Tx) error {
-			return callback(tracingTx{base: newtx, t: db.t})
+			return callback(tracingTx{base: newtx, opts: db.opts})
 		})
 	})
 }
 
 func (db DB) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, error) {
-	return returnWithSpan(ctx, db.t, "db.Query", sql, func(ctx context.Context) (pgx.Rows, error) {
+	return returnWithSpan(ctx, db.opts, "db.Query", sql, func(ctx context.Context) (pgx.Rows, error) {
 		return db.base.Query(ctx, sql, arguments...)
 	})
 }
 
 func (db DB) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, db.t, "db.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
+	return returnWithSpan(ctx, db.opts, "db.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
 		return db.base.QueryFunc(ctx, sql, args, scans, f)
 	})
 }
 
 func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	return queryRow(ctx, db.t, db.base, "db.QueryRow", sql, args...)
+	return queryRow(ctx, db.opts, db.base, "db.QueryRow", sql, args...)
 }
 
-func (db DB) Tracer() trace.Tracer { return db.t }
+func (db DB) Tracer() trace.Tracer { return db.opts.t }
