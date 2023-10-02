@@ -492,6 +492,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 	namespace := cmd.Flags().String("namespace", "", "Namespace of the service load balancer to expose.")
 	service := cmd.Flags().String("service", "", "Name of the service load balancer to expose.")
 	port := cmd.Flags().Int32("port", 0, "Which exported Load Balancer port to expose.")
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := SelectRunningCluster(ctx, args)
@@ -525,8 +526,28 @@ func newExposeKubernetesCmd() *cobra.Command {
 			return err
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Exported port %d from %s/%s:\n  https://%s\n\n",
-			backend.Port, *namespace, *service, resp.Fqdn)
+		switch *output {
+		case "json":
+			var exported = struct {
+				Name string `json:"string"`
+				Port int32  `json:"port"`
+				URL  string `json:"url"`
+			}{
+				Name: *name,
+				Port: backend.Port,
+				URL:  "https://" + resp.Fqdn,
+			}
+
+			return json.NewEncoder(console.Stdout(ctx)).Encode(exported)
+
+		default:
+			if *output != "" && *output != "plain" {
+				fmt.Fprintf(console.Warnings(ctx), "unsupported output %q, defaulting to plain\n", *output)
+			}
+
+			fmt.Fprintf(console.Stdout(ctx), "Exported port %d from %s/%s:\n  https://%s\n\n",
+				backend.Port, *namespace, *service, resp.Fqdn)
+		}
 
 		return nil
 	})
