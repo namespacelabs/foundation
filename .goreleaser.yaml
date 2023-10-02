@@ -141,7 +141,7 @@ changelog:
       - "^Merge branch"
 
 brews:
-  - tap:
+  - repository:
       owner: namespacelabs
       name: homebrew-namespace
     name: ns
@@ -157,7 +157,7 @@ brews:
     url_template: "https://get.namespace.so/packages/ns/v{{.Version}}/{{.ArtifactName}}"
     install: |
       bin.install "ns"
-  - tap:
+  - repository:
       owner: namespacelabs
       name: homebrew-namespace
     name: nsc
