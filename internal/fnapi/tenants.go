@@ -66,6 +66,14 @@ type IssueIdTokenResponse struct {
 	IdToken string `json:"id_token,omitempty"`
 }
 
+type IssueIngressAccessTokenRequest struct {
+	InstanceId string `json:"instance_id,omitempty"`
+}
+
+type IssueIngressAccessTokenResponse struct {
+	IngressAccessToken string `json:"ingress_access_token,omitempty"`
+}
+
 type Tenant struct {
 	TenantId      string `json:"tenant_id,omitempty"`
 	Name          string `json:"name,omitempty"`
@@ -127,6 +135,19 @@ func IssueIdToken(ctx context.Context, aud string, version int) (IssueIdTokenRes
 	var res IssueIdTokenResponse
 	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/IssueIdToken", req, DecodeJSONResponse(&res)); err != nil {
 		return IssueIdTokenResponse{}, err
+	}
+
+	return res, nil
+}
+
+func IssueIngressAccessToken(ctx context.Context, instanceId string) (IssueIngressAccessTokenResponse, error) {
+	req := IssueIngressAccessTokenRequest{
+		InstanceId: instanceId,
+	}
+
+	var res IssueIngressAccessTokenResponse
+	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/IssueIngressAccessToken", req, DecodeJSONResponse(&res)); err != nil {
+		return IssueIngressAccessTokenResponse{}, err
 	}
 
 	return res, nil

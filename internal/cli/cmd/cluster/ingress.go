@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
@@ -22,6 +23,7 @@ func NewIngressCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newListIngressesCmd())
+	cmd.AddCommand(newGenerateAccessTokenCmd())
 
 	return cmd
 }
@@ -56,6 +58,28 @@ func newListIngressesCmd() *cobra.Command {
 			fmt.Fprintf(console.Stdout(ctx), "https://%s (%s)\n", ingress.IngressFqdn, strings.Join(parts, "; "))
 		}
 
+		return nil
+	})
+
+	return cmd
+}
+
+func newGenerateAccessTokenCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "generate-access-token",
+		Short: "Generate a Namespace Cloud token to access a preview for the current workspace.",
+		Args:  cobra.NoArgs,
+	}
+
+	instance := cmd.Flags().String("instance", "", "Limit the access token to this instance.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		res, err := fnapi.IssueIngressAccessToken(ctx, *instance)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintln(console.Stdout(ctx), res.IngressAccessToken)
 		return nil
 	})
 
