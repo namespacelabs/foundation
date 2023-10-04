@@ -118,7 +118,7 @@ func (stack *Stack) Proto() *schema.Stack {
 
 	for _, srv := range stack.Servers {
 		ent := srv.Server.StackEntry()
-		ent.MergedFragment = ent.MergedFragment
+		ent.MergedFragment = srv.MergedFragment
 		s.Entry = append(s.Entry, ent)
 	}
 
