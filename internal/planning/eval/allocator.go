@@ -11,22 +11,23 @@ import (
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 type AllocState struct {
 	mu        sync.Mutex
-	instances map[string]*schema.NeedAllocation
+	instances map[string]pkggraph.ValueWithPath
 }
 
-type AllocatorFunc func(context.Context, *schema.Node, *schema.Need) (*schema.NeedValue, error)
+type AllocatorFunc func(context.Context, *schema.Node, *schema.Need) (interface{}, error)
 
 func NewAllocState() *AllocState {
 	return &AllocState{
-		instances: map[string]*schema.NeedAllocation{},
+		instances: map[string]pkggraph.ValueWithPath{},
 	}
 }
 
-func (r *AllocState) Alloc(ctx context.Context, server *schema.Server, allocator []AllocatorFunc, n *schema.Node, k int) (*schema.NeedAllocation, error) {
+func (r *AllocState) Alloc(ctx context.Context, server *schema.Server, allocator []AllocatorFunc, n *schema.Node, k int) (pkggraph.ValueWithPath, error) {
 	// Allow for concurrent computations of the same key.
 	key := fmt.Sprintf("%s:%s/%d", server.PackageName, n.PackageName, k)
 
@@ -38,15 +39,15 @@ func (r *AllocState) Alloc(ctx context.Context, server *schema.Server, allocator
 	}
 
 	if k >= len(n.GetNeed()) {
-		return nil, fnerrors.New("k is too large")
+		return pkggraph.ValueWithPath{}, fnerrors.New("k is too large")
 	}
 
 	v, err := r.allocValue(ctx, allocator, n, n.GetNeed()[k])
 	if err != nil {
-		return nil, err
+		return pkggraph.ValueWithPath{}, err
 	}
 
-	vwp := &schema.NeedAllocation{Need: n.GetNeed()[k], Value: v}
+	vwp := pkggraph.ValueWithPath{Need: n.GetNeed()[k], Value: v}
 
 	r.mu.Lock()
 	r.instances[key] = vwp
@@ -55,13 +56,12 @@ func (r *AllocState) Alloc(ctx context.Context, server *schema.Server, allocator
 	return vwp, nil
 }
 
-func (r *AllocState) allocValue(ctx context.Context, allocator []AllocatorFunc, n *schema.Node, need *schema.Need) (*schema.NeedValue, error) {
+func (r *AllocState) allocValue(ctx context.Context, allocator []AllocatorFunc, n *schema.Node, need *schema.Need) (interface{}, error) {
 	for _, alloc := range allocator {
 		v, err := alloc(ctx, n, need)
 		if err != nil || v != nil {
 			return v, err
 		}
 	}
-
 	return nil, nil
 }

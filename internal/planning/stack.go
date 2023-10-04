@@ -98,7 +98,7 @@ type ParsedNode struct {
 	ServerFragments []*schema.ServerFragment
 	Startup         pkggraph.PreStartup
 	ComputePlanWith []*schema.Invocation
-	Allocations     []*schema.NeedAllocation
+	Allocations     []pkggraph.ValueWithPath
 	PrepareProps    planninghooks.ProvisionResult
 }
 
@@ -117,9 +117,7 @@ func (stack *Stack) Proto() *schema.Stack {
 	}
 
 	for _, srv := range stack.Servers {
-		ent := srv.Server.StackEntry()
-		ent.MergedFragment = srv.MergedFragment
-		s.Entry = append(s.Entry, ent)
+		s.Entry = append(s.Entry, srv.Server.StackEntry())
 	}
 
 	return s
@@ -226,34 +224,6 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 	return tasks.Action("provision.evaluate").Scope(server.PackageName()).Run(ctx, func(ctx context.Context) error {
 		deps := server.Deps()
 
-		var depsWithNeeds []*pkggraph.Package
-		for _, p := range deps {
-			if len(p.Node().GetNeed()) > 0 {
-				depsWithNeeds = append(depsWithNeeds, p)
-			}
-		}
-
-		// Make sure that port allocation is stable.
-		sort.Slice(depsWithNeeds, func(i, j int) bool {
-			return strings.Compare(depsWithNeeds[i].PackageName().String(),
-				depsWithNeeds[j].PackageName().String()) < 0
-		})
-
-		var allocatedPorts eval.PortAllocations
-		var allocators []eval.AllocatorFunc
-		allocators = append(allocators, eval.MakePortAllocator(server.Proto(), opts.PortRange, &allocatedPorts))
-
-		state := eval.NewAllocState()
-		allocs := map[schema.PackageName][]*schema.NeedAllocation{}
-		for _, dwn := range depsWithNeeds {
-			r, err := fillNeeds(ctx, server.Proto(), state, allocators, dwn.Node())
-			if err != nil {
-				return err
-			}
-
-			allocs[dwn.PackageName()] = r
-		}
-
 		parsedDeps := make([]*ParsedNode, len(deps))
 		exec := executor.New(ctx, "stack.provision.eval")
 
@@ -262,7 +232,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			node := n // Close n.
 
 			exec.Go(func(ctx context.Context) error {
-				ev, err := EvalProvision(ctx, cs.secrets, server, node, allocs[n.PackageName()])
+				ev, err := EvalProvision(ctx, cs.secrets, server, node)
 				if err != nil {
 					return err
 				}
@@ -274,6 +244,33 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 
 		if err := exec.Wait(); err != nil {
 			return err
+		}
+
+		var allocatedPorts eval.PortAllocations
+		var allocators []eval.AllocatorFunc
+		allocators = append(allocators, eval.MakePortAllocator(server.Proto(), opts.PortRange, &allocatedPorts))
+
+		var depsWithNeeds []*ParsedNode
+		for _, p := range parsedDeps {
+			if len(p.Package.Node().GetNeed()) > 0 {
+				depsWithNeeds = append(depsWithNeeds, p)
+			}
+		}
+
+		// Make sure that port allocation is stable.
+		sort.Slice(depsWithNeeds, func(i, j int) bool {
+			return strings.Compare(depsWithNeeds[i].Package.PackageName().String(),
+				depsWithNeeds[j].Package.PackageName().String()) < 0
+		})
+
+		state := eval.NewAllocState()
+		for _, dwn := range depsWithNeeds {
+			allocs, err := fillNeeds(ctx, server.Proto(), state, allocators, dwn.Package.Node())
+			if err != nil {
+				return err
+			}
+
+			dwn.Allocations = allocs
 		}
 
 		ps.Server = server
@@ -576,9 +573,9 @@ func findVolume(volumes []*schema.Volume, ref *schema.PackageRef) *schema.Volume
 	return nil
 }
 
-func EvalProvision(ctx context.Context, secrets is.SecretsSource, server Server, n *pkggraph.Package, allocs []*schema.NeedAllocation) (*ParsedNode, error) {
+func EvalProvision(ctx context.Context, secrets is.SecretsSource, server Server, n *pkggraph.Package) (*ParsedNode, error) {
 	return tasks.Return(ctx, tasks.Action("package.eval.provisioning").Scope(n.PackageName()).Arg("server", server.PackageName()), func(ctx context.Context) (*ParsedNode, error) {
-		pn, err := evalProvision(ctx, secrets, server, n, allocs)
+		pn, err := evalProvision(ctx, secrets, server, n)
 		if err != nil {
 			return nil, fnerrors.AttachLocation(n.Location, err)
 		}
@@ -587,7 +584,7 @@ func EvalProvision(ctx context.Context, secrets is.SecretsSource, server Server,
 	})
 }
 
-func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, node *pkggraph.Package, allocs []*schema.NeedAllocation) (*ParsedNode, error) {
+func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, node *pkggraph.Package) (*ParsedNode, error) {
 	var combinedProps planninghooks.InternalPrepareProps
 	var fragments []*schema.ServerFragment
 	for _, hook := range node.PrepareHooks {
@@ -690,7 +687,6 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 		Startup:         node.LegacyComputeStartup,
 		ComputePlanWith: append(slices.Clone(node.ComputePlanWith), combinedProps.ComputePlanWith...),
 		ServerFragments: fragments,
-		Allocations:     allocs,
 	}
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
 	parsed.PrepareProps.Extension = combinedProps.Extension
@@ -699,8 +695,8 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 	return parsed, nil
 }
 
-func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]*schema.NeedAllocation, error) {
-	var values []*schema.NeedAllocation
+func fillNeeds(ctx context.Context, server *schema.Server, s *eval.AllocState, allocators []eval.AllocatorFunc, n *schema.Node) ([]pkggraph.ValueWithPath, error) {
+	var values []pkggraph.ValueWithPath
 	for k := 0; k < len(n.GetNeed()); k++ {
 		vwp, err := s.Alloc(ctx, server, allocators, n, k)
 		if err != nil {

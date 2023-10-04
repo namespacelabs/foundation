@@ -11,7 +11,7 @@ import (
 )
 
 type PreStartup interface {
-	EvalStartup(context.Context, Context, StartupInputs, []*schema.NeedAllocation) (*schema.StartupPlan, error)
+	EvalStartup(context.Context, Context, StartupInputs, []ValueWithPath) (*schema.StartupPlan, error)
 }
 
 type ProvisionInputs struct {
@@ -26,4 +26,9 @@ type StartupInputs struct {
 
 type StackEndpoints interface {
 	EndpointsBy(schema.PackageName) []*schema.Endpoint
+}
+
+type ValueWithPath struct {
+	Need  *schema.Need
+	Value any
 }

@@ -510,108 +510,6 @@ type Need_Port_ struct {
 
 func (*Need_Port_) isNeed_Type() {}
 
-type NeedValue struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Port int32 `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
-}
-
-func (x *NeedValue) Reset() {
-	*x = NeedValue{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *NeedValue) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NeedValue) ProtoMessage() {}
-
-func (x *NeedValue) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NeedValue.ProtoReflect.Descriptor instead.
-func (*NeedValue) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *NeedValue) GetPort() int32 {
-	if x != nil {
-		return x.Port
-	}
-	return 0
-}
-
-type NeedAllocation struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	Need  *Need      `protobuf:"bytes,1,opt,name=need,proto3" json:"need,omitempty"`
-	Value *NeedValue `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
-}
-
-func (x *NeedAllocation) Reset() {
-	*x = NeedAllocation{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[5]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *NeedAllocation) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*NeedAllocation) ProtoMessage() {}
-
-func (x *NeedAllocation) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[5]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use NeedAllocation.ProtoReflect.Descriptor instead.
-func (*NeedAllocation) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{5}
-}
-
-func (x *NeedAllocation) GetNeed() *Need {
-	if x != nil {
-		return x.Need
-	}
-	return nil
-}
-
-func (x *NeedAllocation) GetValue() *NeedValue {
-	if x != nil {
-		return x.Value
-	}
-	return nil
-}
-
 type Provides struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -627,7 +525,7 @@ type Provides struct {
 func (x *Provides) Reset() {
 	*x = Provides{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[6]
+		mi := &file_schema_node_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -640,7 +538,7 @@ func (x *Provides) String() string {
 func (*Provides) ProtoMessage() {}
 
 func (x *Provides) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[6]
+	mi := &file_schema_node_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +551,7 @@ func (x *Provides) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provides.ProtoReflect.Descriptor instead.
 func (*Provides) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{6}
+	return file_schema_node_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Provides) GetName() string {
@@ -699,7 +597,7 @@ type TypeDef struct {
 func (x *TypeDef) Reset() {
 	*x = TypeDef{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[7]
+		mi := &file_schema_node_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -712,7 +610,7 @@ func (x *TypeDef) String() string {
 func (*TypeDef) ProtoMessage() {}
 
 func (x *TypeDef) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[7]
+	mi := &file_schema_node_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -725,7 +623,7 @@ func (x *TypeDef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TypeDef.ProtoReflect.Descriptor instead.
 func (*TypeDef) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{7}
+	return file_schema_node_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *TypeDef) GetTypename() string {
@@ -760,7 +658,7 @@ type GrpcExportService struct {
 func (x *GrpcExportService) Reset() {
 	*x = GrpcExportService{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[8]
+		mi := &file_schema_node_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -773,7 +671,7 @@ func (x *GrpcExportService) String() string {
 func (*GrpcExportService) ProtoMessage() {}
 
 func (x *GrpcExportService) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[8]
+	mi := &file_schema_node_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -786,7 +684,7 @@ func (x *GrpcExportService) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcExportService.ProtoReflect.Descriptor instead.
 func (*GrpcExportService) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{8}
+	return file_schema_node_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GrpcExportService) GetProto() []string {
@@ -828,7 +726,7 @@ type GrpcExportAllServices struct {
 func (x *GrpcExportAllServices) Reset() {
 	*x = GrpcExportAllServices{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[9]
+		mi := &file_schema_node_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -841,7 +739,7 @@ func (x *GrpcExportAllServices) String() string {
 func (*GrpcExportAllServices) ProtoMessage() {}
 
 func (x *GrpcExportAllServices) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[9]
+	mi := &file_schema_node_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -854,7 +752,7 @@ func (x *GrpcExportAllServices) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrpcExportAllServices.ProtoReflect.Descriptor instead.
 func (*GrpcExportAllServices) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{9}
+	return file_schema_node_proto_rawDescGZIP(), []int{7}
 }
 
 type Node_EnvironmentRequirement struct {
@@ -869,7 +767,7 @@ type Node_EnvironmentRequirement struct {
 func (x *Node_EnvironmentRequirement) Reset() {
 	*x = Node_EnvironmentRequirement{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[10]
+		mi := &file_schema_node_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -882,7 +780,7 @@ func (x *Node_EnvironmentRequirement) String() string {
 func (*Node_EnvironmentRequirement) ProtoMessage() {}
 
 func (x *Node_EnvironmentRequirement) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[10]
+	mi := &file_schema_node_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -923,7 +821,7 @@ type Need_Port struct {
 func (x *Need_Port) Reset() {
 	*x = Need_Port{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[11]
+		mi := &file_schema_node_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -936,7 +834,7 @@ func (x *Need_Port) String() string {
 func (*Need_Port) ProtoMessage() {}
 
 func (x *Need_Port) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[11]
+	mi := &file_schema_node_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -970,7 +868,7 @@ type Provides_AvailableIn struct {
 func (x *Provides_AvailableIn) Reset() {
 	*x = Provides_AvailableIn{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[12]
+		mi := &file_schema_node_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -983,7 +881,7 @@ func (x *Provides_AvailableIn) String() string {
 func (*Provides_AvailableIn) ProtoMessage() {}
 
 func (x *Provides_AvailableIn) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[12]
+	mi := &file_schema_node_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -996,7 +894,7 @@ func (x *Provides_AvailableIn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provides_AvailableIn.ProtoReflect.Descriptor instead.
 func (*Provides_AvailableIn) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{6, 0}
+	return file_schema_node_proto_rawDescGZIP(), []int{4, 0}
 }
 
 func (x *Provides_AvailableIn) GetGo() *Provides_AvailableIn_Go {
@@ -1018,7 +916,7 @@ type Provides_AvailableIn_Go struct {
 func (x *Provides_AvailableIn_Go) Reset() {
 	*x = Provides_AvailableIn_Go{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_node_proto_msgTypes[13]
+		mi := &file_schema_node_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1031,7 +929,7 @@ func (x *Provides_AvailableIn_Go) String() string {
 func (*Provides_AvailableIn_Go) ProtoMessage() {}
 
 func (x *Provides_AvailableIn_Go) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_node_proto_msgTypes[13]
+	mi := &file_schema_node_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1044,7 +942,7 @@ func (x *Provides_AvailableIn_Go) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Provides_AvailableIn_Go.ProtoReflect.Descriptor instead.
 func (*Provides_AvailableIn_Go) Descriptor() ([]byte, []int) {
-	return file_schema_node_proto_rawDescGZIP(), []int{6, 0, 0}
+	return file_schema_node_proto_rawDescGZIP(), []int{4, 0, 0}
 }
 
 func (x *Provides_AvailableIn_Go) GetPackage() string {
@@ -1191,57 +1089,47 @@ var file_schema_node_proto_rawDesc = []byte{
 	0x64, 0x2e, 0x50, 0x6f, 0x72, 0x74, 0x48, 0x00, 0x52, 0x04, 0x70, 0x6f, 0x72, 0x74, 0x1a, 0x1a,
 	0x0a, 0x04, 0x50, 0x6f, 0x72, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01,
 	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x06, 0x0a, 0x04, 0x74, 0x79,
-	0x70, 0x65, 0x22, 0x1f, 0x0a, 0x09, 0x4e, 0x65, 0x65, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x12,
-	0x12, 0x0a, 0x04, 0x70, 0x6f, 0x72, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x04, 0x70,
-	0x6f, 0x72, 0x74, 0x22, 0x71, 0x0a, 0x0e, 0x4e, 0x65, 0x65, 0x64, 0x41, 0x6c, 0x6c, 0x6f, 0x63,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x2b, 0x0a, 0x04, 0x6e, 0x65, 0x65, 0x64, 0x18, 0x01, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x4e, 0x65, 0x65, 0x64, 0x52, 0x04, 0x6e, 0x65,
-	0x65, 0x64, 0x12, 0x32, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x0b, 0x32, 0x1c, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73,
-	0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x4e, 0x65, 0x65, 0x64, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52,
-	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0xdb, 0x02, 0x0a, 0x08, 0x50, 0x72, 0x6f, 0x76, 0x69,
-	0x64, 0x65, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x2e, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18,
-	0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x54, 0x79, 0x70, 0x65, 0x44, 0x65,
-	0x66, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x4a, 0x0a, 0x0c, 0x61, 0x76, 0x61, 0x69, 0x6c,
-	0x61, 0x62, 0x6c, 0x65, 0x5f, 0x69, 0x6e, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e,
-	0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d,
-	0x61, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76, 0x61, 0x69, 0x6c,
-	0x61, 0x62, 0x6c, 0x65, 0x49, 0x6e, 0x52, 0x0b, 0x61, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c,
-	0x65, 0x49, 0x6e, 0x12, 0x40, 0x0a, 0x0b, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61,
-	0x74, 0x65, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x49, 0x6e, 0x73,
-	0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x52, 0x0b, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e,
-	0x74, 0x69, 0x61, 0x74, 0x65, 0x1a, 0x7d, 0x0a, 0x0b, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62,
-	0x6c, 0x65, 0x49, 0x6e, 0x12, 0x3a, 0x0a, 0x02, 0x67, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b,
-	0x32, 0x2a, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63,
-	0x68, 0x65, 0x6d, 0x61, 0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76,
-	0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65, 0x49, 0x6e, 0x2e, 0x47, 0x6f, 0x52, 0x02, 0x67, 0x6f,
-	0x1a, 0x32, 0x0a, 0x02, 0x47, 0x6f, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65,
-	0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
-	0x74, 0x79, 0x70, 0x65, 0x22, 0x3d, 0x0a, 0x07, 0x54, 0x79, 0x70, 0x65, 0x44, 0x65, 0x66, 0x12,
-	0x1a, 0x0a, 0x08, 0x74, 0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x08, 0x74, 0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73,
-	0x6f, 0x75, 0x72, 0x63, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x73, 0x6f, 0x75,
-	0x72, 0x63, 0x65, 0x22, 0xa6, 0x01, 0x0a, 0x11, 0x47, 0x72, 0x70, 0x63, 0x45, 0x78, 0x70, 0x6f,
-	0x72, 0x74, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x18, 0x01, 0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12,
-	0x25, 0x0a, 0x0e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d,
-	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x54, 0x79,
-	0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64,
-	0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x3c,
-	0x0a, 0x1a, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x5f, 0x72, 0x65, 0x66, 0x6c, 0x65, 0x63, 0x74,
-	0x69, 0x6f, 0x6e, 0x5f, 0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x64, 0x18, 0x04, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x18, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x52, 0x65, 0x66, 0x6c, 0x65, 0x63,
-	0x74, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x64, 0x22, 0x17, 0x0a, 0x15,
-	0x47, 0x72, 0x70, 0x63, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x41, 0x6c, 0x6c, 0x53, 0x65, 0x72,
-	0x76, 0x69, 0x63, 0x65, 0x73, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x70, 0x65, 0x22, 0xdb, 0x02, 0x0a, 0x08, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x12,
+	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
+	0x61, 0x6d, 0x65, 0x12, 0x2e, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1a, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73,
+	0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x54, 0x79, 0x70, 0x65, 0x44, 0x65, 0x66, 0x52, 0x04, 0x74,
+	0x79, 0x70, 0x65, 0x12, 0x4a, 0x0a, 0x0c, 0x61, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65,
+	0x5f, 0x69, 0x6e, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x27, 0x2e, 0x66, 0x6f, 0x75, 0x6e,
+	0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x50, 0x72,
+	0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65,
+	0x49, 0x6e, 0x52, 0x0b, 0x61, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65, 0x49, 0x6e, 0x12,
+	0x40, 0x0a, 0x0b, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x18, 0x04,
+	0x20, 0x03, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74,
+	0x69, 0x61, 0x74, 0x65, 0x52, 0x0b, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74,
+	0x65, 0x1a, 0x7d, 0x0a, 0x0b, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65, 0x49, 0x6e,
+	0x12, 0x3a, 0x0a, 0x02, 0x67, 0x6f, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2a, 0x2e, 0x66,
+	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61,
+	0x2e, 0x50, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x73, 0x2e, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61,
+	0x62, 0x6c, 0x65, 0x49, 0x6e, 0x2e, 0x47, 0x6f, 0x52, 0x02, 0x67, 0x6f, 0x1a, 0x32, 0x0a, 0x02,
+	0x47, 0x6f, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x12, 0x12, 0x0a, 0x04,
+	0x74, 0x79, 0x70, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65,
+	0x22, 0x3d, 0x0a, 0x07, 0x54, 0x79, 0x70, 0x65, 0x44, 0x65, 0x66, 0x12, 0x1a, 0x0a, 0x08, 0x74,
+	0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74,
+	0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63,
+	0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x22,
+	0xa6, 0x01, 0x0a, 0x11, 0x47, 0x72, 0x70, 0x63, 0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x53, 0x65,
+	0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x18, 0x01,
+	0x20, 0x03, 0x28, 0x09, 0x52, 0x05, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x25, 0x0a, 0x0e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0d, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x54, 0x79, 0x70, 0x65, 0x6e, 0x61,
+	0x6d, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x18, 0x03, 0x20, 0x03,
+	0x28, 0x09, 0x52, 0x06, 0x6d, 0x65, 0x74, 0x68, 0x6f, 0x64, 0x12, 0x3c, 0x0a, 0x1a, 0x73, 0x65,
+	0x72, 0x76, 0x65, 0x72, 0x5f, 0x72, 0x65, 0x66, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e, 0x5f,
+	0x69, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x18,
+	0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x52, 0x65, 0x66, 0x6c, 0x65, 0x63, 0x74, 0x69, 0x6f, 0x6e,
+	0x49, 0x6e, 0x63, 0x6c, 0x75, 0x64, 0x65, 0x64, 0x22, 0x17, 0x0a, 0x15, 0x47, 0x72, 0x70, 0x63,
+	0x45, 0x78, 0x70, 0x6f, 0x72, 0x74, 0x41, 0x6c, 0x6c, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65,
+	0x73, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61,
+	0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1257,64 +1145,60 @@ func file_schema_node_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_node_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_schema_node_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_schema_node_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_schema_node_proto_goTypes = []interface{}{
 	(Node_Kind)(0),                      // 0: foundation.schema.Node.Kind
 	(*Node)(nil),                        // 1: foundation.schema.Node
 	(*NodeInitializer)(nil),             // 2: foundation.schema.NodeInitializer
 	(*HttpPath)(nil),                    // 3: foundation.schema.HttpPath
 	(*Need)(nil),                        // 4: foundation.schema.Need
-	(*NeedValue)(nil),                   // 5: foundation.schema.NeedValue
-	(*NeedAllocation)(nil),              // 6: foundation.schema.NeedAllocation
-	(*Provides)(nil),                    // 7: foundation.schema.Provides
-	(*TypeDef)(nil),                     // 8: foundation.schema.TypeDef
-	(*GrpcExportService)(nil),           // 9: foundation.schema.GrpcExportService
-	(*GrpcExportAllServices)(nil),       // 10: foundation.schema.GrpcExportAllServices
-	(*Node_EnvironmentRequirement)(nil), // 11: foundation.schema.Node.EnvironmentRequirement
-	(*Need_Port)(nil),                   // 12: foundation.schema.Need.Port
-	(*Provides_AvailableIn)(nil),        // 13: foundation.schema.Provides.AvailableIn
-	(*Provides_AvailableIn_Go)(nil),     // 14: foundation.schema.Provides.AvailableIn.Go
-	(*Instantiate)(nil),                 // 15: foundation.schema.Instantiate
-	(Endpoint_Type)(0),                  // 16: foundation.schema.Endpoint.Type
-	(Framework)(0),                      // 17: foundation.schema.Framework
-	(*Reference)(nil),                   // 18: foundation.schema.Reference
-	(*anypb.Any)(nil),                   // 19: google.protobuf.Any
-	(*Volume)(nil),                      // 20: foundation.schema.Volume
-	(*Mount)(nil),                       // 21: foundation.schema.Mount
-	(*ResourcePack)(nil),                // 22: foundation.schema.ResourcePack
-	(*Label)(nil),                       // 23: foundation.schema.Label
+	(*Provides)(nil),                    // 5: foundation.schema.Provides
+	(*TypeDef)(nil),                     // 6: foundation.schema.TypeDef
+	(*GrpcExportService)(nil),           // 7: foundation.schema.GrpcExportService
+	(*GrpcExportAllServices)(nil),       // 8: foundation.schema.GrpcExportAllServices
+	(*Node_EnvironmentRequirement)(nil), // 9: foundation.schema.Node.EnvironmentRequirement
+	(*Need_Port)(nil),                   // 10: foundation.schema.Need.Port
+	(*Provides_AvailableIn)(nil),        // 11: foundation.schema.Provides.AvailableIn
+	(*Provides_AvailableIn_Go)(nil),     // 12: foundation.schema.Provides.AvailableIn.Go
+	(*Instantiate)(nil),                 // 13: foundation.schema.Instantiate
+	(Endpoint_Type)(0),                  // 14: foundation.schema.Endpoint.Type
+	(Framework)(0),                      // 15: foundation.schema.Framework
+	(*Reference)(nil),                   // 16: foundation.schema.Reference
+	(*anypb.Any)(nil),                   // 17: google.protobuf.Any
+	(*Volume)(nil),                      // 18: foundation.schema.Volume
+	(*Mount)(nil),                       // 19: foundation.schema.Mount
+	(*ResourcePack)(nil),                // 20: foundation.schema.ResourcePack
+	(*Label)(nil),                       // 21: foundation.schema.Label
 }
 var file_schema_node_proto_depIdxs = []int32{
 	0,  // 0: foundation.schema.Node.kind:type_name -> foundation.schema.Node.Kind
-	15, // 1: foundation.schema.Node.instantiate:type_name -> foundation.schema.Instantiate
+	13, // 1: foundation.schema.Node.instantiate:type_name -> foundation.schema.Instantiate
 	4,  // 2: foundation.schema.Node.need:type_name -> foundation.schema.Need
-	7,  // 3: foundation.schema.Node.provides:type_name -> foundation.schema.Provides
-	9,  // 4: foundation.schema.Node.export_service:type_name -> foundation.schema.GrpcExportService
+	5,  // 3: foundation.schema.Node.provides:type_name -> foundation.schema.Provides
+	7,  // 4: foundation.schema.Node.export_service:type_name -> foundation.schema.GrpcExportService
 	3,  // 5: foundation.schema.Node.export_http:type_name -> foundation.schema.HttpPath
-	16, // 6: foundation.schema.Node.ingress:type_name -> foundation.schema.Endpoint.Type
+	14, // 6: foundation.schema.Node.ingress:type_name -> foundation.schema.Endpoint.Type
 	2,  // 7: foundation.schema.Node.initializers:type_name -> foundation.schema.NodeInitializer
-	17, // 8: foundation.schema.Node.service_framework:type_name -> foundation.schema.Framework
-	18, // 9: foundation.schema.Node.reference:type_name -> foundation.schema.Reference
-	19, // 10: foundation.schema.Node.ext:type_name -> google.protobuf.Any
-	20, // 11: foundation.schema.Node.volume:type_name -> foundation.schema.Volume
-	21, // 12: foundation.schema.Node.mount:type_name -> foundation.schema.Mount
-	11, // 13: foundation.schema.Node.environment_requirement:type_name -> foundation.schema.Node.EnvironmentRequirement
-	22, // 14: foundation.schema.Node.resource_pack:type_name -> foundation.schema.ResourcePack
-	17, // 15: foundation.schema.NodeInitializer.framework:type_name -> foundation.schema.Framework
-	12, // 16: foundation.schema.Need.port:type_name -> foundation.schema.Need.Port
-	4,  // 17: foundation.schema.NeedAllocation.need:type_name -> foundation.schema.Need
-	5,  // 18: foundation.schema.NeedAllocation.value:type_name -> foundation.schema.NeedValue
-	8,  // 19: foundation.schema.Provides.type:type_name -> foundation.schema.TypeDef
-	13, // 20: foundation.schema.Provides.available_in:type_name -> foundation.schema.Provides.AvailableIn
-	15, // 21: foundation.schema.Provides.instantiate:type_name -> foundation.schema.Instantiate
-	23, // 22: foundation.schema.Node.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Label
-	23, // 23: foundation.schema.Node.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Label
-	14, // 24: foundation.schema.Provides.AvailableIn.go:type_name -> foundation.schema.Provides.AvailableIn.Go
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	15, // 8: foundation.schema.Node.service_framework:type_name -> foundation.schema.Framework
+	16, // 9: foundation.schema.Node.reference:type_name -> foundation.schema.Reference
+	17, // 10: foundation.schema.Node.ext:type_name -> google.protobuf.Any
+	18, // 11: foundation.schema.Node.volume:type_name -> foundation.schema.Volume
+	19, // 12: foundation.schema.Node.mount:type_name -> foundation.schema.Mount
+	9,  // 13: foundation.schema.Node.environment_requirement:type_name -> foundation.schema.Node.EnvironmentRequirement
+	20, // 14: foundation.schema.Node.resource_pack:type_name -> foundation.schema.ResourcePack
+	15, // 15: foundation.schema.NodeInitializer.framework:type_name -> foundation.schema.Framework
+	10, // 16: foundation.schema.Need.port:type_name -> foundation.schema.Need.Port
+	6,  // 17: foundation.schema.Provides.type:type_name -> foundation.schema.TypeDef
+	11, // 18: foundation.schema.Provides.available_in:type_name -> foundation.schema.Provides.AvailableIn
+	13, // 19: foundation.schema.Provides.instantiate:type_name -> foundation.schema.Instantiate
+	21, // 20: foundation.schema.Node.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Label
+	21, // 21: foundation.schema.Node.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Label
+	12, // 22: foundation.schema.Provides.AvailableIn.go:type_name -> foundation.schema.Provides.AvailableIn.Go
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_schema_node_proto_init() }
@@ -1378,30 +1262,6 @@ func file_schema_node_proto_init() {
 			}
 		}
 		file_schema_node_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NeedValue); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_schema_node_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NeedAllocation); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_schema_node_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Provides); i {
 			case 0:
 				return &v.state
@@ -1413,7 +1273,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*TypeDef); i {
 			case 0:
 				return &v.state
@@ -1425,7 +1285,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GrpcExportService); i {
 			case 0:
 				return &v.state
@@ -1437,7 +1297,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*GrpcExportAllServices); i {
 			case 0:
 				return &v.state
@@ -1449,7 +1309,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Node_EnvironmentRequirement); i {
 			case 0:
 				return &v.state
@@ -1461,7 +1321,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Need_Port); i {
 			case 0:
 				return &v.state
@@ -1473,7 +1333,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Provides_AvailableIn); i {
 			case 0:
 				return &v.state
@@ -1485,7 +1345,7 @@ func file_schema_node_proto_init() {
 				return nil
 			}
 		}
-		file_schema_node_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
+		file_schema_node_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Provides_AvailableIn_Go); i {
 			case 0:
 				return &v.state
@@ -1507,7 +1367,7 @@ func file_schema_node_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_node_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   14,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

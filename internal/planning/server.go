@@ -22,7 +22,7 @@ type Server struct {
 	Package  *pkggraph.Package
 
 	ComputePlanWith []*schema.Invocation
-	EvalStartup     func(context.Context, pkggraph.Context, pkggraph.StartupInputs, []*schema.NeedAllocation) (*schema.StartupPlan, error)
+	EvalStartup     func(context.Context, pkggraph.Context, pkggraph.StartupInputs, []pkggraph.ValueWithPath) (*schema.StartupPlan, error)
 
 	env       pkggraph.SealedContext // The environment this server instance is bound to.
 	entry     *schema.Stack_Entry    // The stack entry, i.e. all of the server's dependencies.
