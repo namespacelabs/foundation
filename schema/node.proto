@@ -128,6 +128,15 @@ message Need {
     }
 }
 
+message NeedValue {
+    int32 port = 1;
+}
+
+message NeedAllocation {
+    Need need = 1;
+    NeedValue value = 2;
+}
+
 message Provides {
     string               name         = 1;
     TypeDef              type         = 2;

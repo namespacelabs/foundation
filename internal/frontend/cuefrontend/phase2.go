@@ -31,7 +31,7 @@ type cueStartupPlan struct {
 
 var _ pkggraph.PreStartup = phase2plan{}
 
-func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info pkggraph.StartupInputs, allocs []pkggraph.ValueWithPath) (*schema.StartupPlan, error) {
+func (s phase2plan) EvalStartup(ctx context.Context, env pkggraph.Context, info pkggraph.StartupInputs, allocs []*schema.NeedAllocation) (*schema.StartupPlan, error) {
 	plan := &schema.StartupPlan{}
 
 	res, err := fncue.SerializedEval(s.partial, func() (*fncue.CueV, error) {

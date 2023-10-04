@@ -17,10 +17,6 @@ type PortAllocations struct {
 	Ports []*schema.Endpoint_Port
 }
 
-type allocatedPort struct {
-	Port int32 `json:"port"`
-}
-
 type PortRange struct {
 	Base, Max int32
 }
@@ -28,7 +24,7 @@ type PortRange struct {
 func DefaultPortRange() PortRange { return PortRange{40000, 41000} }
 
 func MakePortAllocator(server *schema.Server, portRange PortRange, allocs *PortAllocations) AllocatorFunc {
-	return func(ctx context.Context, _ *schema.Node, n *schema.Need) (interface{}, error) {
+	return func(ctx context.Context, _ *schema.Node, n *schema.Need) (*schema.NeedValue, error) {
 		if p := n.GetPort(); p != nil {
 			const maxRounds = 10
 			// We allocate ports based on the hash of the server name to
@@ -55,7 +51,7 @@ func MakePortAllocator(server *schema.Server, portRange PortRange, allocs *PortA
 						ContainerPort: port,
 					})
 
-					return allocatedPort{Port: port}, nil
+					return &schema.NeedValue{Port: port}, nil
 				}
 			}
 
