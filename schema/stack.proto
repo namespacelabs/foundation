@@ -32,5 +32,6 @@ message Stack {
         Naming         server_naming   = 3;
         repeated Node  node            = 2;
         repeated ServerFragment server_fragment = 4;
+        ServerFragment merged_fragment = 5;
     }
 }
