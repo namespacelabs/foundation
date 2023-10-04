@@ -6,7 +6,6 @@ package servercore
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,7 +17,6 @@ import (
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
@@ -86,22 +84,9 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	httpL := m.Match(cmux.HTTP1())
 	anyL := m.Match(cmux.Any())
 
-	grpcopts := interceptorsAsOpts()
-
-	if gogrpc.ServerCert != nil {
-		cert, err := tls.X509KeyPair(gogrpc.ServerCert.CertificateBundle, gogrpc.ServerCert.PrivateKey)
-		if err != nil {
-			return err
-		}
-
-		config := &tls.Config{
-			Certificates: []tls.Certificate{cert},
-			ClientAuth:   tls.NoClientCert,
-		}
-
-		transportCreds := credentials.NewTLS(config)
-
-		grpcopts = append(grpcopts, grpc.Creds(transportCreds))
+	grpcopts := OrderedServerInterceptors()
+	if gogrpc.ServerCreds != nil {
+		grpcopts = append(grpcopts, grpc.Creds(gogrpc.ServerCreds))
 	}
 
 	grpcopts = append(grpcopts, grpc.KeepaliveParams(keepalive.ServerParameters{

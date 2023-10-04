@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
-func interceptorsAsOpts() []grpc.ServerOption {
+func OrderedServerInterceptors() []grpc.ServerOption {
 	registrations := interceptors.ServerInterceptors()
 
 	var rid requestid.Interceptor

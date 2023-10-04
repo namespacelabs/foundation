@@ -4,14 +4,36 @@
 
 package grpc
 
-import "namespacelabs.dev/foundation/schema"
+import (
+	"crypto/tls"
 
-var ServerCert *schema.Certificate
+	"google.golang.org/grpc/credentials"
+	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/go/core"
+)
 
-// chain := &types.CertificateChain{}
+var ServerCreds credentials.TransportCredentials
 
-// if err := json.Unmarshal(deps.TlsCert.MustValue(), chain); err != nil {
-// 	return rpcerrors.Errorf(codes.Internal, "failed to unwrap tls cert")
-// }
+func SetServerCredentials(creds credentials.TransportCredentials) {
+	core.AssertNotRunning("grpc.SetServerCredentials")
 
-// ServerCert = chain.Server
+	if ServerCreds != nil {
+		panic("serverCreds were already set")
+	}
+
+	ServerCreds = creds
+}
+
+func SetServerOnlyTLS(sc *schema.Certificate) {
+	cert, err := tls.X509KeyPair(sc.CertificateBundle, sc.PrivateKey)
+	if err != nil {
+		panic(err)
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		ClientAuth:   tls.NoClientCert,
+	}
+
+	SetServerCredentials(credentials.NewTLS(config))
+}
