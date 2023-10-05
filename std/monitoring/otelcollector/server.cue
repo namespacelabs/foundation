@@ -4,8 +4,11 @@ server: {
 	imageFrom: binary: "namespacelabs.dev/foundation/std/monitoring/otelcollector/trampoline"
 
 	env: {
-		// JAEGER_ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/std/monitoring/jaeger:otel-grpc"
-		HONEYCOMB_TEAM: fromSecret:           "namespacelabs.dev/foundation/universe/monitoring/honeycomb:xHoneycombTeam"
+		if $env.purpose == "DEVELOPMENT" || $env.purpose == "TESTING" {
+			// We need at least one exporter.
+			JAEGER_ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/std/monitoring/jaeger:otel-grpc"
+		}
+		HONEYCOMB_TEAM: fromSecret: "namespacelabs.dev/foundation/universe/monitoring/honeycomb:xHoneycombTeam"
 	}
 
 	services: {
@@ -19,7 +22,9 @@ server: {
 
 	mounts: "/otel/conf": ephemeral: {}
 
-	// requires: [
-	// 	"namespacelabs.dev/foundation/std/monitoring/jaeger",
-	// ]
+	if $env.purpose == "DEVELOPMENT" || $env.purpose == "TESTING" {
+		requires: [
+			"namespacelabs.dev/foundation/std/monitoring/jaeger",
+		]
+	}
 }
