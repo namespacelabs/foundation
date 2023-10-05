@@ -33,6 +33,8 @@ message Container {
 
     repeated Endpoint.Port container_port = 12;
 
+    int64 termination_grace_period_seconds = 13;
+
     message Security {
         bool privileged   = 1;
         bool host_network = 2;

@@ -938,6 +938,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.MainContainer.ResourceLimits = main.Limits
 	out.MainContainer.ResourceRequests = main.Requests
 	out.MainContainer.ContainerPorts = append(out.MainContainer.ContainerPorts, main.ContainerPort...)
+	out.MainContainer.TerminationGracePeriodSeconds = main.TerminationGracePeriodSeconds
 
 	var err error
 	out.MainContainer.Env, err = support.MergeEnvs(out.MainContainer.Env, main.Env)
@@ -984,6 +985,10 @@ func prepareContainerRunOpts(containers []*schema.Container, resolved ResolvedSe
 				ResourceRequests: container.Requests,
 				ContainerPorts:   container.ContainerPort,
 			},
+		}
+
+		if container.TerminationGracePeriodSeconds > 0 {
+			return fnerrors.BadInputError("termination grace period can't be set on sidecars")
 		}
 
 		transformed, err := support.MergeEnvs(opts.ContainerRunOpts.Env, sidecarBinary.BinaryConfig.GetEnv())

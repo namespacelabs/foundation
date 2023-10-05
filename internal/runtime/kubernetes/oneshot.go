@@ -76,6 +76,10 @@ func makePodSpec(ctx context.Context, name string, runOpts runtime.ContainerRunO
 		return nil, err
 	}
 
+	if runOpts.TerminationGracePeriodSeconds > 0 {
+		podSpec = podSpec.WithTerminationGracePeriodSeconds(runOpts.TerminationGracePeriodSeconds)
+	}
+
 	return podSpec.WithSecurityContext(podSpecSecCtx), nil
 }
 

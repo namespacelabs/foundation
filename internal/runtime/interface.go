@@ -309,19 +309,20 @@ func (d DeployableSpec) GetPackageRef() *schema.PackageRef { return d.PackageRef
 func (d DeployableSpec) GetPackageName() string            { return d.PackageRef.GetPackageName() }
 
 type ContainerRunOpts struct {
-	WorkingDir         string
-	Image              oci.ImageID
-	Command            []string
-	Args               []string
-	Env                []*schema.BinaryConfig_EnvEntry
-	RunAs              *RunAs
-	ReadOnlyFilesystem bool
-	Privileged         bool
-	HostNetwork        bool
-	Mounts             []*schema.Mount
-	ContainerPorts     []*schema.Endpoint_Port
-	ResourceLimits     *schema.Container_ResourceLimits
-	ResourceRequests   *schema.Container_ResourceLimits
+	WorkingDir                    string
+	Image                         oci.ImageID
+	Command                       []string
+	Args                          []string
+	Env                           []*schema.BinaryConfig_EnvEntry
+	RunAs                         *RunAs
+	ReadOnlyFilesystem            bool
+	Privileged                    bool
+	HostNetwork                   bool
+	Mounts                        []*schema.Mount
+	ContainerPorts                []*schema.Endpoint_Port
+	ResourceLimits                *schema.Container_ResourceLimits
+	ResourceRequests              *schema.Container_ResourceLimits
+	TerminationGracePeriodSeconds int64
 }
 
 type ContainerStatus struct {

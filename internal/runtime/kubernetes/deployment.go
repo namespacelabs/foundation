@@ -150,6 +150,10 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 	spec := applycorev1.PodSpec().
 		WithEnableServiceLinks(false) // Disable service injection via environment variables.
 
+	if deployable.MainContainer.TerminationGracePeriodSeconds > 0 {
+		spec = spec.WithTerminationGracePeriodSeconds(deployable.MainContainer.TerminationGracePeriodSeconds)
+	}
+
 	if target.planning != nil {
 		nodeSelector := target.planning.DefaultNodeSelector
 
