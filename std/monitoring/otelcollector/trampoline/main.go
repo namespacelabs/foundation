@@ -35,6 +35,13 @@ func main() {
 		}
 	}
 
+	if len(exporters) == 0 {
+		// Set up at least one exporter so the configuration is valid.
+		exporters["logging"] = obj{
+			"verbosity": "normal",
+		}
+	}
+
 	config := obj{
 		"receivers": obj{
 			"otlp": obj{
