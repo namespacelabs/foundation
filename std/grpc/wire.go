@@ -35,6 +35,11 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 	return client.Dial(ctx, endpoint, grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
 }
 
+func Loopback(ctx context.Context) (*grpc.ClientConn, error) {
+	endpoint := fmt.Sprintf("127.0.0.1:%d", server.ListenPort())
+	return client.Dial(ctx, endpoint, grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
+}
+
 func connMapFromArgs() map[string]string {
 	return parseConn(*connMapStr)
 }
