@@ -44,13 +44,13 @@ func handleGracefulShutdown() {
 
 	core.MarkShutdownStarted()
 
-	if grpc.DrainFunc == nil {
-		time.Sleep(drainTimeout)
-	} else {
-		grpc.DrainFunc()
-	}
-
 	if r2 == syscall.SIGTERM {
+		if grpc.DrainFunc == nil {
+			time.Sleep(drainTimeout)
+		} else {
+			grpc.DrainFunc()
+		}
+
 		os.Exit(0)
 	} else {
 		os.Exit(1)
