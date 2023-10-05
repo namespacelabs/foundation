@@ -17,11 +17,13 @@ import (
 type obj map[string]any
 
 func main() {
-	exporters := obj{
-		"otlp/inclusterjaeger": obj{
-			"endpoint": os.Getenv("JAEGER_ENDPOINT"),
+	exporters := obj{}
+
+	if jaeger := os.Getenv("JAEGER_ENDPOINT"); jaeger != "" {
+		exporters["otlp/inclusterjaeger"] = obj{
+			"endpoint": jaeger,
 			"tls":      obj{"insecure": true},
-		},
+		}
 	}
 
 	if honeyCombTeam := os.Getenv("HONEYCOMB_TEAM"); honeyCombTeam != "" {

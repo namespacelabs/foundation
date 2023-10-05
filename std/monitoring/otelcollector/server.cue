@@ -4,7 +4,7 @@ server: {
 	imageFrom: binary: "namespacelabs.dev/foundation/std/monitoring/otelcollector/trampoline"
 
 	env: {
-		JAEGER_ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/std/monitoring/jaeger:otel-grpc"
+		// JAEGER_ENDPOINT: fromServiceEndpoint: "namespacelabs.dev/foundation/std/monitoring/jaeger:otel-grpc"
 		HONEYCOMB_TEAM: fromSecret:           "namespacelabs.dev/foundation/universe/monitoring/honeycomb:xHoneycombTeam"
 	}
 
@@ -19,7 +19,7 @@ server: {
 
 	mounts: "/otel/conf": ephemeral: {}
 
-	requires: [
-		"namespacelabs.dev/foundation/std/monitoring/jaeger",
-	]
+	// requires: [
+	// 	"namespacelabs.dev/foundation/std/monitoring/jaeger",
+	// ]
 }
