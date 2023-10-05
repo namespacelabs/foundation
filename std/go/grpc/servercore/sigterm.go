@@ -13,6 +13,7 @@ import (
 
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/go/grpc"
 )
 
 const drainTimeout = 30 * time.Second
@@ -42,7 +43,12 @@ func handleGracefulShutdown() {
 	// Then we wait for a bit for traffic to drain out. And then we leave.
 
 	core.MarkShutdownStarted()
-	time.Sleep(drainTimeout)
+
+	if grpc.DrainFunc == nil {
+		time.Sleep(drainTimeout)
+	} else {
+		grpc.DrainFunc()
+	}
 
 	if r2 == syscall.SIGTERM {
 		os.Exit(0)

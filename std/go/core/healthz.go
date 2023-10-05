@@ -140,7 +140,7 @@ func runChecks(rw http.ResponseWriter, r *http.Request, names []string, checkers
 		if errs[k] == nil {
 			fmt.Fprintf(rw, "%s: OK\n", name)
 		} else {
-			fmt.Fprintf(rw, "%s: failed: %v", name, errs[k])
+			fmt.Fprintf(rw, "%s: failed: %v\n", name, errs[k])
 		}
 	}
 }
