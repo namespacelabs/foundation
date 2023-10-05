@@ -67,7 +67,7 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 	regionFlag := fmt.Sprintf("%sregion", prefix)
 
 	flags.StringVar(&rpcEndpointOverride, endpointFlag, "", "Where to dial to when reaching nscloud.")
-	flags.StringVar(&RegionName, regionFlag, "fra1", "Which region to use.")
+	flags.StringVar(&RegionName, regionFlag, "eu", "Which region to use.")
 
 	if hide {
 		_ = flags.MarkHidden(endpointFlag)
