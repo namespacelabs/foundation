@@ -113,10 +113,10 @@ func InvocationError(what, format string, args ...interface{}) error {
 // This error means that Namespace does not meet the minimum version requirements.
 func NamespaceTooOld(what string, expected, got int32) error {
 	if expected == 0 && got == 0 {
-		return New("`ns` needs to be updated to use %q", what)
+		return New("`%s` needs to be updated to use %q", name.CmdName, what)
 	}
 
-	return New("`ns` needs to be updated to use %q, (need api version %d, got %d)", what, expected, got)
+	return New("`%s` needs to be updated to use %q, (need api version %d, got %d)", name.CmdName, what, expected, got)
 }
 
 func NamespaceTooRecent(what string, expected, got int32) error {
