@@ -117,7 +117,8 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v (endpoint: %v)\n", tid, c.Method, endpoint)
 
 	t := time.Now()
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"/"+c.Method, bytes.NewReader(reqBytes))
+	url := endpoint + "/" + c.Method
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBytes))
 	if err != nil {
 		return fnerrors.InternalError("failed to construct request: %w", err)
 	}
@@ -169,7 +170,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 			return fnerrors.InternalError("failed to unmarshal grpc details: %w", err)
 		}
 
-		return handleGrpcStatus(endpoint, c.Method, st)
+		return handleGrpcStatus(url, st)
 	}
 
 	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
@@ -181,7 +182,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 			st.Code = int32(intVar)
 			st.Message = grpcMessage[0]
 
-			return handleGrpcStatus(endpoint, c.Method, st)
+			return handleGrpcStatus(url, st)
 		}
 	}
 
@@ -189,32 +190,32 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 	case http.StatusInternalServerError:
 		return fnerrors.InternalError("namespace api: internal server error: %s", string(respBody))
 	case http.StatusUnauthorized:
-		return fnerrors.ReauthError("%s/%s requires authentication", endpoint, c.Method)
+		return fnerrors.ReauthError("%s requires authentication", url)
 	case http.StatusForbidden:
-		return fnerrors.PermissionDeniedError("%s/%s denied access", endpoint, c.Method)
+		return fnerrors.PermissionDeniedError("%s denied access", url)
 	case http.StatusNotFound:
-		return fnerrors.InternalError("%q not found: %s", endpoint, string(respBody))
+		return fnerrors.InternalError("%s not found: %s", url, string(respBody))
 	default:
 		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
 	}
 }
 
-func handleGrpcStatus(endpoint, method string, st *spb.Status) error {
+func handleGrpcStatus(url string, st *spb.Status) error {
 	switch st.Code {
 	case int32(codes.Unauthenticated):
-		return fnerrors.ReauthError("%s/%s requires authentication: %w", endpoint, method, status.ErrorProto(st))
+		return fnerrors.ReauthError("%s requires authentication: %w", url, status.ErrorProto(st))
 
 	case int32(codes.PermissionDenied):
-		return fnerrors.PermissionDeniedError("%s/%s denied access: %w", endpoint, method, status.ErrorProto(st))
+		return fnerrors.PermissionDeniedError("%s denied access: %w", url, status.ErrorProto(st))
 
 	case int32(codes.FailedPrecondition):
 		// Failed precondition is not retryable so we should not suggest that it is transient (e.g. invocation error suggests this).
-		return fnerrors.New("failed to call %s/%s: %w", endpoint, method, status.ErrorProto(st))
+		return fnerrors.New("failed to call %s: %w", url, status.ErrorProto(st))
 
 	case int32(codes.Internal):
-		return fnerrors.InternalError("failed to call %s/%s: %w", endpoint, method, status.ErrorProto(st))
+		return fnerrors.InternalError("failed to call %s: %w", url, status.ErrorProto(st))
 
 	default:
-		return fnerrors.InvocationError("namespace api", "failed to call %s/%s: %w", endpoint, method, status.ErrorProto(st))
+		return fnerrors.InvocationError("namespace api", "failed to call %s: %w", url, status.ErrorProto(st))
 	}
 }
