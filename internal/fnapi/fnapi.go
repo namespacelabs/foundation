@@ -196,7 +196,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 	case http.StatusNotFound:
 		return fnerrors.InternalError("%s not found: %s", url, string(respBody))
 	default:
-		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, endpoint, response.Status)
+		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, url, response.Status)
 	}
 }
 
