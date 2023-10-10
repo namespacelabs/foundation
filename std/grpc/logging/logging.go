@@ -61,13 +61,13 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 	loggable := !slices.Contains(skipLogging, strings.TrimPrefix(info.FullMethod, "/"))
 
 	if loggable {
-		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", serializeMessage(req)).Send()
+		makeNewEvent(ctx, logger.Info().Str("kind", "grpclog").Str("what", "request")).Str("request_body", SerializeMessage(req)).Send()
 	}
 
 	resp, err := handler(logger.WithContext(ctx), req)
 	if loggable {
 		if err == nil {
-			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", serializeMessage(resp)).Send()
+			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", SerializeMessage(resp)).Send()
 		} else {
 			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
 		}
@@ -193,7 +193,7 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	return nil
 }
 
-func serializeMessage(msg interface{}) string {
+func SerializeMessage(msg interface{}) string {
 	if msg == nil {
 		return "<nil>"
 	}
