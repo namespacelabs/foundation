@@ -120,6 +120,15 @@ func NewLogsCmd() *cobra.Command {
 			logOpts.StartTs = &ts
 		}
 
+		cluster, err := api.GetCluster(ctx, api.Methods, clusterID)
+		if err != nil {
+			return fnerrors.New("failed to get cluster information: %w", err)
+		}
+
+		if cluster.Cluster != nil {
+			logOpts.IngressDomain = cluster.Cluster.IngressDomain
+		}
+
 		logs, err := api.GetClusterLogs(ctx, api.Methods, logOpts)
 		if err != nil {
 			return fnerrors.New("failed to get cluster logs: %w", err)

@@ -596,11 +596,12 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 }
 
 type LogsOpts struct {
-	ClusterID string
-	StartTs   *time.Time
-	EndTs     *time.Time
-	Include   []*LogsSelector
-	Exclude   []*LogsSelector
+	ClusterID     string
+	StartTs       *time.Time
+	EndTs         *time.Time
+	Include       []*LogsSelector
+	Exclude       []*LogsSelector
+	IngressDomain string
 }
 
 var (
@@ -653,8 +654,16 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 			Exclude:        opts.Exclude,
 		}
 
+		resolveEndpoint := func(ctx context.Context, tok fnapi.Token) (string, error) {
+			if opts.IngressDomain != "" {
+				return fmt.Sprintf("https://api.%s", opts.IngressDomain), nil
+			}
+
+			return ResolveEndpoint(ctx, tok)
+		}
+
 		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetClusterLogs.Do(ctx, req, resolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
