@@ -152,17 +152,23 @@ func newBuildkitProxy() *cobra.Command {
 }
 
 func parseInjectWorkerInfo(workerInfoFile string, requiredPlatform api.BuildPlatform) (*controlapi.ListWorkersResponse, error) {
-	if workerInfoFile == "" {
-		return nil, nil
-	}
-
-	workerInfo, err := os.ReadFile(workerInfoFile)
-	if err != nil {
-		return nil, err
+	var workerDefData []byte
+	if workerInfoFile != "" {
+		workerInfo, err := os.ReadFile(workerInfoFile)
+		if err != nil {
+			return nil, err
+		}
+		workerDefData = workerInfo
+	} else {
+		// Settlemint uses the buildx also for local dev, but tenant token expires after 24h.
+		// API returns an authz error, but buildx does not show the error unless we unstuck it from its
+		// known bug where it block on ListWorkers buildkit API call for ever.
+		// So, embed the shortcut list worker payload:
+		workerDefData = []byte(staticWorkerDef)
 	}
 
 	f := &controlapi.ListWorkersResponse{}
-	if err := json.Unmarshal(workerInfo, f); err != nil {
+	if err := json.Unmarshal(workerDefData, f); err != nil {
 		return nil, err
 	}
 
