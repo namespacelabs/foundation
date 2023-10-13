@@ -60,12 +60,14 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 	defer g.mu.Unlock()
 
 	if g.backendClient != nil {
-		if g.backendClient.GetState() == connectivity.Ready {
-			fmt.Fprintf(console.Debug(ctx), "reused grpc connection\n")
+		connState := g.backendClient.GetState()
+		if connState == connectivity.Ready || connState == connectivity.Connecting {
+			fmt.Fprintf(console.Debug(ctx), "reused grpc connection: %v\n", connState)
 			return g.backendClient, nil
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "cached grpc connection invalidated: %v\n", g.backendClient.GetState())
+		closingErr := g.backendClient.Close()
+		fmt.Fprintf(console.Debug(ctx), "cached grpc connection invalidated: %v, closing err: %v\n", connState, closingErr)
 		g.backendClient = nil
 	}
 
