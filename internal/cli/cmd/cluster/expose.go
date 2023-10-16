@@ -493,6 +493,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 	service := cmd.Flags().String("service", "", "Name of the service load balancer to expose.")
 	port := cmd.Flags().Int32("port", 0, "Which exported Load Balancer port to expose.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := SelectRunningCluster(ctx, args)
@@ -517,10 +518,16 @@ func newExposeKubernetesCmd() *cobra.Command {
 			return err
 		}
 
+		filledIn, err := fillInIngressRules([]int32{backend.Port}, *ingressRules)
+		if err != nil {
+			return err
+		}
+
 		resp, err := api.RegisterIngress(ctx, api.Methods, api.RegisterIngressRequest{
 			ClusterId:       cluster.ClusterId,
 			Name:            *name,
 			BackendEndpoint: backend,
+			HttpMatchRule:   filledIn[0].HttpIngressRules,
 		})
 		if err != nil {
 			return err
