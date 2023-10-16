@@ -32,6 +32,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
+var ForceApply = false
+
 func registerApply() {
 	execution.RegisterVFuncs(execution.VFuncs[*kubedef.OpApply, *parsedApply]{
 		Parse: func(ctx context.Context, def *fnschema.SerializedInvocation, apply *kubedef.OpApply) (*parsedApply, error) {
@@ -154,7 +156,9 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 				return fnerrors.InternalError("failed to create client: %w", err)
 			}
 
-			patchOpts := kubedef.Ego().ToPatchOptions()
+			opts := kubedef.Ego()
+			opts.Force = ForceApply
+			patchOpts := opts.ToPatchOptions()
 			req := client.Patch(types.ApplyPatchType)
 			if ns != "" {
 				req = req.Namespace(ns)
