@@ -7,12 +7,14 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
@@ -72,11 +74,20 @@ func newGenerateAccessTokenCmd() *cobra.Command {
 	}
 
 	instance := cmd.Flags().String("instance", "", "Limit the access token to this instance.")
+	outputPath := cmd.Flags().String("output_to", "", "If specified, write the access token to this path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		res, err := fnapi.IssueIngressAccessToken(ctx, *instance)
 		if err != nil {
 			return err
+		}
+
+		if *outputPath != "" {
+			if err := os.WriteFile(*outputPath, []byte(res.IngressAccessToken), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+			}
+
+			return nil
 		}
 
 		fmt.Fprintln(console.Stdout(ctx), res.IngressAccessToken)
