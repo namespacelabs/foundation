@@ -7,6 +7,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -493,7 +494,8 @@ func newExposeKubernetesCmd() *cobra.Command {
 	service := cmd.Flags().String("service", "", "Name of the service load balancer to expose.")
 	port := cmd.Flags().Int32("port", 0, "Which exported Load Balancer port to expose.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
-	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
+	ingressRules := cmd.Flags().StringSlice("ingress", []string{}, "Specify ingress rules. Separate each rule with `,`.")
+	wait := cmd.Flags().Bool("wait", false, "Wait until the provided service got has a valid ingress to expose.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := SelectRunningCluster(ctx, args)
@@ -513,21 +515,25 @@ func newExposeKubernetesCmd() *cobra.Command {
 			return fnerrors.New("--service is required")
 		}
 
-		backend, err := selectBackend(ctx, cluster, *namespace, *service, *port)
+		backend, err := selectBackend(ctx, cluster, *namespace, *service, *port, *wait)
 		if err != nil {
 			return err
 		}
 
-		filledIn, err := fillInIngressRules([]int32{backend.Port}, *ingressRules)
-		if err != nil {
-			return err
+		var rules []*api.ContainerPort_HttpMatchRule
+		for _, rule := range *ingressRules {
+			parsed, err := parseRule(rule)
+			if err != nil {
+				return err
+			}
+			rules = append(rules, parsed)
 		}
 
 		resp, err := api.RegisterIngress(ctx, api.Methods, api.RegisterIngressRequest{
 			ClusterId:       cluster.ClusterId,
 			Name:            *name,
 			BackendEndpoint: backend,
-			HttpMatchRule:   filledIn[0].HttpIngressRules,
+			HttpMatchRule:   rules,
 		})
 		if err != nil {
 			return err
@@ -562,7 +568,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 	return cmd
 }
 
-func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, service string, port int32) (*api.IngressBackendEndpoint, error) {
+func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, service string, port int32, wait bool) (*api.IngressBackendEndpoint, error) {
 	return tasks.Return(ctx, tasks.Action("nsc.expose-lb").HumanReadablef("Querying exported service load balancers"), func(ctx context.Context) (*api.IngressBackendEndpoint, error) {
 		cfg := clientcmd.NewDefaultClientConfig(ctl.MakeConfig(cluster), nil)
 		restcfg, err := cfg.ClientConfig()
@@ -587,6 +593,42 @@ func selectBackend(ctx context.Context, cluster *api.KubernetesCluster, ns, serv
 		port, err := selectPort(svc, port)
 		if err != nil {
 			return nil, err
+		}
+
+		if wait {
+			w, err := cli.CoreV1().Services(ns).Watch(ctx, metav1.ListOptions{})
+			if err != nil {
+				return nil, err
+			}
+			defer w.Stop()
+
+			for ev := range w.ResultChan() {
+				fmt.Fprintf(console.Debug(ctx), "saw a new event\n")
+
+				svc, ok := ev.Object.(*corev1.Service)
+				if !ok {
+					continue
+				}
+
+				if svc.Name != service {
+					continue
+				}
+
+				ipAddr, err := selectIpAddr(svc)
+				if err != nil {
+					var noIp noIpError
+					if errors.As(err, &noIp) {
+						continue
+					}
+
+					return nil, err
+				}
+
+				return &api.IngressBackendEndpoint{
+					IpAddr: ipAddr,
+					Port:   port,
+				}, nil
+			}
 		}
 
 		ipAddr, err := selectIpAddr(svc)
@@ -625,6 +667,14 @@ func selectPort(svc *corev1.Service, requestedPort int32) (int32, error) {
 	}
 }
 
+type noIpError struct {
+	service string
+}
+
+func (e noIpError) Error() string {
+	return fmt.Sprintf("Service %q has no exported ip addresses. This is unexpected. Please contact support@namespace.so.", e.service)
+}
+
 func selectIpAddr(svc *corev1.Service) (string, error) {
 	var ipAddrs []string
 	for _, ingress := range svc.Status.LoadBalancer.Ingress {
@@ -637,7 +687,7 @@ func selectIpAddr(svc *corev1.Service) (string, error) {
 
 	switch len(ipAddrs) {
 	case 0:
-		return "", fnerrors.New("Service %q has no exported ip addresses. This is unexpected. Please contact support@namespace.so.", svc.Name)
+		return "", noIpError{svc.Name}
 	case 1:
 		return ipAddrs[0], nil
 	default:
