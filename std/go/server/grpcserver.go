@@ -21,7 +21,8 @@ var (
 
 const drainTimeout = 30 * time.Second
 
-func ListenPort() int { return *port }
+func ListenPort() int     { return *port }
+func HTTPListenPort() int { return *httpPort }
 
 func InitializationDone() {
 	core.InitializationDone()
