@@ -6,9 +6,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"net"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/servercore"
 )
@@ -17,6 +21,7 @@ var (
 	listenHostname = flag.String("listen_hostname", "localhost", "Hostname to listen on.")
 	port           = flag.Int("grpcserver_port", 0, "Port to listen on.")
 	httpPort       = flag.Int("grpcserver_http_port", 0, "Port to listen HTTP on.")
+	httpOptions    = flag.String("grpc_http_options", "{}", "Options to pass to the HTTP server.")
 )
 
 const drainTimeout = 30 * time.Second
@@ -44,8 +49,18 @@ func makeListenerOpts() servercore.ListenOpts {
 	opts := servercore.ListenOpts{
 		CreateListener: servercore.MakeTCPListener(*listenHostname, *port),
 	}
+
 	if *httpPort != 0 {
-		opts.CreateHttpListener = servercore.MakeTCPListener(*listenHostname, *httpPort)
+		opts.CreateHttpListener = func(ctx context.Context) (net.Listener, servercore.HTTPOptions, error) {
+			var parsed servercore.HTTPOptions
+			if err := json.Unmarshal([]byte(*httpOptions), &parsed); err != nil {
+				return nil, servercore.HTTPOptions{}, rpcerrors.Errorf(codes.Internal, "failed to parse http options: %w", err)
+			}
+
+			lst, err := servercore.MakeTCPListener(*listenHostname, *httpPort)(ctx)
+			return lst, parsed, err
+		}
 	}
+
 	return opts
 }

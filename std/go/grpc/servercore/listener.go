@@ -16,6 +16,8 @@ import (
 	"github.com/rs/zerolog/hlog"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/automaxprocs/maxprocs"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -28,9 +30,23 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
 
+type HTTPOptions struct {
+	HTTP1ReadTimeout       time.Duration `json:"http_read_timeout"`
+	HTTP1ReadHeaderTimeout time.Duration `json:"http_read_header_timeout"`
+	HTTP1WriteTimeout      time.Duration `json:"http_write_timeout"`
+	HTTP1IdleTimeout       time.Duration `json:"http_idle_timeout"`
+	HTTP1MaxHeaderBytes    int           `json:"http_max_header_bytes"`
+
+	HTTP2MaxConcurrentStreams         uint32        `json:"http2_max_concurrent_streams"`
+	HTTP2MaxReadFrameSize             uint32        `json:"http2_max_read_frame_size"`
+	HTTP2IdleTimeout                  time.Duration `json:"http2_idle_timeout"`
+	HTTP2MaxUploadBufferPerConnection int32         `json:"http2_max_upload_buffer_per_connection"`
+	HTTP2MaxUploadBufferPerStream     int32         `json:"http2_max_upload_buffer_per_stream"`
+}
+
 type ListenOpts struct {
 	CreateListener     func(context.Context) (net.Listener, error)
-	CreateHttpListener func(context.Context) (net.Listener, error)
+	CreateHttpListener func(context.Context) (net.Listener, HTTPOptions, error)
 
 	DontHandleSigTerm bool
 }
@@ -129,11 +145,24 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	go func() { checkReturn("grpc", grpcServer.Serve(anyL)) }()
 
 	if opts.CreateHttpListener != nil {
-		httpServer := &http.Server{Handler: httpMux}
-
-		gwLis, err := opts.CreateHttpListener(ctx)
+		gwLis, opts, err := opts.CreateHttpListener(ctx)
 		if err != nil {
 			return err
+		}
+
+		httpServer := &http.Server{
+			Handler: h2c.NewHandler(httpMux, &http2.Server{
+				MaxConcurrentStreams:         opts.HTTP2MaxConcurrentStreams,
+				MaxReadFrameSize:             opts.HTTP2MaxReadFrameSize,
+				IdleTimeout:                  opts.HTTP2IdleTimeout,
+				MaxUploadBufferPerConnection: opts.HTTP2MaxUploadBufferPerConnection,
+				MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
+			}),
+			ReadTimeout:       opts.HTTP1ReadTimeout,
+			ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
+			WriteTimeout:      opts.HTTP1WriteTimeout,
+			IdleTimeout:       opts.HTTP1IdleTimeout,
+			MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
 		}
 
 		core.ZLog.Info().Msgf("Starting HTTP listen on %v", gwLis.Addr())
