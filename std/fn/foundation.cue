@@ -94,8 +94,9 @@ _#Node: {
 }
 
 #HttpPath: {
-	path:  string
-	kind?: string
+	path:      string
+	kind?:     string
+	protocol?: string
 }
 
 #Framework: "GO" | "GO_GRPC" | "WEB"
