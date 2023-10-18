@@ -53,6 +53,8 @@ type API struct {
 	GetProfile                   fnapi.Call[emptypb.Empty]
 	RegisterIngress              fnapi.Call[RegisterIngressRequest]
 	ListIngresses                fnapi.Call[ListIngressesRequest]
+	ListVolumes                  fnapi.Call[emptypb.Empty]
+	DestroyVolumeByTag           fnapi.Call[DestroyVolumeByTagRequest]
 }
 
 var (
@@ -202,6 +204,16 @@ func MakeAPI() API {
 		ListIngresses: fnapi.Call[ListIngressesRequest]{
 			FetchToken: fnapi.FetchToken,
 			Method:     "nsl.vm.api.VMService/ListIngresses",
+		},
+
+		ListVolumes: fnapi.Call[emptypb.Empty]{
+			FetchToken: fnapi.FetchToken,
+			Method:     "nsl.vm.api.VMService/ListVolumes",
+		},
+
+		DestroyVolumeByTag: fnapi.Call[DestroyVolumeByTagRequest]{
+			FetchToken: fnapi.FetchToken,
+			Method:     "nsl.vm.api.VMService/DestroyVolumeByTag",
 		},
 	}
 }
@@ -692,12 +704,31 @@ func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest) (
 }
 
 func ListIngresses(ctx context.Context, api API, clusterID string) (*ListIngressesResponse, error) {
-	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*ListIngressesResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.list-ingresses"), func(ctx context.Context) (*ListIngressesResponse, error) {
 		var response ListIngressesResponse
 		if err := api.ListIngresses.Do(ctx, ListIngressesRequest{ClusterId: clusterID}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
+	})
+}
+
+func ListVolumes(ctx context.Context, api API) (*ListVolumesResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.list-volumes"), func(ctx context.Context) (*ListVolumesResponse, error) {
+		var response ListVolumesResponse
+		if err := api.ListVolumes.Do(ctx, emptypb.Empty{}, ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	})
+}
+
+func DestroyVolumeByTag(ctx context.Context, api API, tag string) error {
+	return tasks.Return0(ctx, tasks.Action("nscloud.destroy-volumes"), func(ctx context.Context) error {
+		if err := api.DestroyVolumeByTag.Do(ctx, DestroyVolumeByTagRequest{Tag: tag}, ResolveEndpoint, nil); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 

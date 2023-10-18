@@ -435,3 +435,19 @@ type ExportedInstancePort struct {
 	HttpMatchRule []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
 	Description   string                         `json:"description,omitempty"`
 }
+
+type ListVolumesResponse struct {
+	Volume []*Volume `json:"volume,omitempty"`
+}
+
+type Volume struct {
+	Id             string     `json:"id,omitempty"`
+	AttachedTo     string     `json:"attached_to,omitempty"`
+	SizeMb         uint32     `json:"size_mb,omitempty"`
+	LastAttachedAt *time.Time `json:"last_attached_at,omitempty"`
+	Tag            string     `json:"tag,omitempty"`
+}
+
+type DestroyVolumeByTagRequest struct {
+	Tag string `json:"tag,omitempty"`
+}
