@@ -244,10 +244,11 @@ func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 		// XXX this should be done upstream.
 		for _, p := range svc.ExportHttp {
 			sealed.Result.Server.UrlMap = append(sealed.Result.Server.UrlMap, &schema.Server_URLMapEntry{
-				PathPrefix:  p.Path,
-				IngressName: svc.IngressServiceName,
-				Kind:        p.Kind,
-				PackageName: svc.PackageName,
+				PathPrefix:      p.Path,
+				IngressName:     svc.IngressServiceName,
+				Kind:            p.Kind,
+				PackageName:     svc.PackageName,
+				BackendProtocol: p.BackendProtocol,
 			})
 		}
 	}

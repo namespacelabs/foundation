@@ -45,8 +45,9 @@ type cueExportMethods struct {
 }
 
 type cueHttpPath struct {
-	Path string `json:"path"`
-	Kind string `json:"kind"`
+	Path     string `json:"path"`
+	Kind     string `json:"kind"`
+	Protocol string `json:"protocol"`
 }
 
 type cueServerRef struct {
@@ -316,10 +317,21 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 
 		for _, p := range paths {
-			node.ExportHttp = append(node.ExportHttp, &schema.HttpPath{
+			path := &schema.HttpPath{
 				Path: p.Path,
 				Kind: p.Kind,
-			})
+			}
+
+			if p.Protocol != "" {
+				v, ok := schema.IngressFragment_IngressHttpPath_BackendProtocol_value[strings.ToUpper(p.Protocol)]
+				if !ok {
+					return fnerrors.NewWithLocation(loc, "unrecognized protocol %q", p.Protocol)
+				}
+
+				path.BackendProtocol = schema.IngressFragment_IngressHttpPath_BackendProtocol(v)
+			}
+
+			node.ExportHttp = append(node.ExportHttp, path)
 		}
 	}
 

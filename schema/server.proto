@@ -107,10 +107,11 @@ message Server {
     }
 
     message URLMapEntry {
-        string path_prefix  = 1;
-        string package_name = 2;
-        string ingress_name = 3;
-        string kind         = 4;
+        string                                          path_prefix      = 1;
+        string                                          package_name     = 2;
+        string                                          ingress_name     = 3;
+        string                                          kind             = 4;
+        IngressFragment.IngressHttpPath.BackendProtocol backend_protocol = 5;
     }
 
     message Description {

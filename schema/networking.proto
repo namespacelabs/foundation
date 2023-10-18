@@ -94,12 +94,20 @@ message IngressFragment {
     repeated google.protobuf.Any extension = 5;
 
     message IngressHttpPath {
-        string path         = 1;
-        string kind         = 2;
-        string owner        = 3;  // Package name.
-        string service      = 4;  // Backend service.
-        int32  service_port = 6;
+        string          path             = 1;
+        string          kind             = 2;
+        string          owner            = 3;  // Package name.
+        string          service          = 4;  // Backend service.
+        int32           service_port     = 6;
+        BackendProtocol backend_protocol = 7;
         reserved 5;
+
+        enum BackendProtocol {
+            BACKEND_PROTOCOL_UNKNOWN = 0;
+            HTTP                     = 1;
+            GRPC                     = 2;
+            GRPCS                    = 3;
+        }
     }
 
     message IngressGrpcService {

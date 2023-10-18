@@ -108,8 +108,9 @@ message NodeInitializer {
 }
 
 message HttpPath {
-    string path = 1;
-    string kind = 2;
+    string                                          path             = 1;
+    string                                          kind             = 2;
+    IngressFragment.IngressHttpPath.BackendProtocol backend_protocol = 3;
 }
 
 // XXX needs are at odds with instanced nodes; both provide means for the node to

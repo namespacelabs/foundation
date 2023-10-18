@@ -234,11 +234,12 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 				}
 
 				paths = append(paths, &schema.IngressFragment_IngressHttpPath{
-					Path:        u.PathPrefix,
-					Kind:        u.Kind,
-					Owner:       owner,
-					Service:     httpEndpoint.AllocatedName,
-					ServicePort: httpEndpoint.Ports[0].ExportedPort,
+					Path:            u.PathPrefix,
+					Kind:            u.Kind,
+					Owner:           owner,
+					Service:         httpEndpoint.AllocatedName,
+					ServicePort:     httpEndpoint.Ports[0].ExportedPort,
+					BackendProtocol: u.BackendProtocol,
 				})
 			}
 

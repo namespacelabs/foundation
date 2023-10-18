@@ -83,7 +83,7 @@ func groupByName(ngs []*schema.IngressFragment) []IngressGroup {
 }
 
 func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *schema.Environment, srv *schema.Stack_Entry, ns string, g IngressGroup) ([]defs.MakeDefinition, error) {
-	var clearTextGrpcCount, grpcCount, nonGrpcCount int
+	var clearTextGrpcCount, grpcCount, httpCount int
 
 	labels := kubedef.MakeLabels(env, srv.Server)
 
@@ -102,7 +102,15 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 
 		var paths []*applynetworkingv1.HTTPIngressPathApplyConfiguration
 		for _, p := range ng.HttpPath {
-			nonGrpcCount++
+			if p.BackendProtocol == schema.IngressFragment_IngressHttpPath_HTTP || p.BackendProtocol == schema.IngressFragment_IngressHttpPath_BACKEND_PROTOCOL_UNKNOWN {
+				httpCount++
+			} else if p.BackendProtocol == schema.IngressFragment_IngressHttpPath_GRPC {
+				clearTextGrpcCount++
+			} else if p.BackendProtocol == schema.IngressFragment_IngressHttpPath_GRPCS {
+				grpcCount++
+			} else {
+				return nil, fnerrors.InternalError("unrecognized backend protocol %v", p.BackendProtocol)
+			}
 
 			if p.ServicePort == 0 {
 				return nil, fnerrors.InternalError("%s: ingress definition without port", filepath.Join(p.Path, p.Service))
@@ -182,7 +190,7 @@ func generateForSrv(ctx context.Context, ingress kubedef.IngressClass, env *sche
 		}
 	}
 
-	if grpcCount > 0 && nonGrpcCount > 0 {
+	if (grpcCount > 0 || clearTextGrpcCount > 0) && httpCount > 0 {
 		return nil, fnerrors.InternalError("can't mix grpc and non-grpc backends in the same ingress")
 	}
 
