@@ -59,11 +59,15 @@ func MakeTCPListener(address string, port int) func(context.Context) (net.Listen
 
 func NewHTTPMux(middleware ...mux.MiddlewareFunc) *mux.Router {
 	httpMux := mux.NewRouter()
+
+	httpMux.Use(proxyHeaders)
+	httpMux.Use(middleware...)
+
 	httpMux.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, rdata := requestid.AllocateRequestID(r.Context())
 
-			log := core.ZLog.With().Str("request_id", string(rdata.RequestID))
+			log := core.ZLog.With().Str("ns.rid", string(rdata.RequestID))
 			logger := log.Logger()
 
 			h.ServeHTTP(w, r.WithContext(logger.WithContext(ctx)))
@@ -80,8 +84,6 @@ func NewHTTPMux(middleware ...mux.MiddlewareFunc) *mux.Router {
 			Send()
 	}))
 
-	httpMux.Use(middleware...)
-	httpMux.Use(proxyHeaders)
 	return httpMux
 }
 
