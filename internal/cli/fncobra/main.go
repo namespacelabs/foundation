@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"runtime/pprof"
 
 	containerdlog "github.com/containerd/containerd/log"
@@ -60,6 +61,12 @@ type MainOpts struct {
 
 func DoMain(opts MainOpts) {
 	fncobraname.CmdName = opts.Name
+
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v, err := version.VersionFrom(info); err == nil {
+			fnapi.UserAgent = fmt.Sprintf("%s/%s", opts.Name, v.Version)
+		}
+	}
 
 	style, err := doMain(opts)
 

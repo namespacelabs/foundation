@@ -30,6 +30,8 @@ var (
 	EndpointAddress             = "https://api.namespacelabs.net"
 	AdminMode                   = false
 	ExchangeGithubToTenantToken = false
+
+	UserAgent = "ns/unknown"
 )
 
 func SetupFlags(flags *pflag.FlagSet) {
@@ -81,6 +83,7 @@ func DecodeJSONResponse(resp any) func(io.Reader) error {
 
 func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.Builtin().APIVersion))
+	headers.Add("User-Agent", UserAgent)
 
 	if AdminMode {
 		headers.Add("NS-API-Mode", "admin")
