@@ -5,11 +5,8 @@
 package welcome
 
 import (
-	"context"
 	"fmt"
 	"strings"
-
-	"namespacelabs.dev/foundation/internal/console"
 )
 
 const logo = `
@@ -66,12 +63,4 @@ Tell us what you think on https://community.namespace.so/discord/.
 	}
 
 	return b.String()
-}
-
-func PrintWelcome(ctx context.Context, firstRun bool, cmd string) {
-	if firstRun && cmd == "nsc" {
-		return
-	}
-
-	fmt.Fprint(console.TypedOutput(ctx, "welcome", console.CatOutputUs), WelcomeMessage(firstRun, cmd))
 }
