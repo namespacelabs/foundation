@@ -78,7 +78,17 @@ func NewBuildCmd() *cobra.Command {
 		}
 
 		// XXX: having multiple outputs is not supported by buildctl.
-		if *push && *dockerLoad && *outputLocal != "" {
+		var activeModes int
+		if *push {
+			activeModes++
+		}
+		if *dockerLoad {
+			activeModes++
+		}
+		if *outputLocal != "" {
+			activeModes++
+		}
+		if activeModes > 1 {
 			return fnerrors.New("only one of --push, --load or --output-local can be used at a time")
 		}
 
