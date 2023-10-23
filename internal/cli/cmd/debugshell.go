@@ -89,7 +89,7 @@ func NewDebugShellCmd() *cobra.Command {
 			}
 
 		default:
-			tag := planner.Registry().AllocateName(env.Workspace().ModuleName() + "/debug")
+			tag := planner.Registry().AllocateName(env.Workspace().ModuleName()+"/debug", "")
 
 			sealedCtx := pkggraph.MakeSealedContext(env, pl.Seal())
 

@@ -652,7 +652,7 @@ func prepareServerImages(ctx context.Context, planner planning.Planner, stack *p
 		pctx := srv.Server.SealedContext()
 		if stack.Focus.Has(srv.PackageName()) && !pctx.Environment().Ephemeral && opts.ProvisionResult != nil && opts.GenerateConfigImage {
 			configImage := prepareConfigImage(ctx, planner, srv.Server, stack, opts.computedOnly())
-			name := planner.Registry.AllocateName(srv.PackageName().String())
+			name := planner.Registry.AllocateName(srv.PackageName().String(), "")
 			images.Config = oci.PublishImage(name, configImage).ImageID()
 		}
 
@@ -676,7 +676,7 @@ func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry regis
 		}
 
 		if MirrorPrebuiltToRegistry {
-			name := registry.AllocateName(p.SourcePackage.String())
+			name := registry.AllocateName(p.SourcePackage.String(), "")
 			r := oci.Prebuilt(imgid, build.PrebuiltResolveOpts())
 			return imagePoster{
 				ImageID:     oci.PublishResolvable(name, r, p),
@@ -687,7 +687,7 @@ func ensureImage(ctx context.Context, env pkggraph.SealedContext, registry regis
 		// Else, we'll create a minimal prebuilt image with only the platforms required for this deployment.
 	}
 
-	name := registry.AllocateName(p.SourcePackage.String())
+	name := registry.AllocateName(p.SourcePackage.String(), "")
 
 	// Leave a hint to where we're pushing to, in case the builder can
 	// use that information for optimization purposes. This may be

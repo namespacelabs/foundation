@@ -47,7 +47,7 @@ func (m manager) Access() oci.RegistryAccess {
 	}
 }
 
-func (m manager) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
+func (m manager) AllocateName(repository, tag string) compute.Computable[oci.RepositoryWithParent] {
 	return compute.Inline(tasks.Action("artifactregistry.allocate-repository").Arg("repository", repository),
 		func(ctx context.Context) (oci.RepositoryWithParent, error) {
 			client, err := artifactregistry.NewClient(ctx, option.WithTokenSource(m.cluster.TokenSource))
@@ -77,6 +77,7 @@ func (m manager) AllocateName(repository string) compute.Computable[oci.Reposito
 			repo := oci.RepositoryWithAccess{
 				RegistryAccess: m.Access(),
 				Repository:     fmt.Sprintf("%s-docker.pkg.dev/%s/%s/%s", location, m.cluster.ProjectID, repoID, repository),
+				UserTag:        tag,
 			}
 
 			return oci.RepositoryWithParent{

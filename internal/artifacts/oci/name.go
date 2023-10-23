@@ -34,6 +34,7 @@ type RegistryAccess struct {
 type RepositoryWithAccess struct {
 	RegistryAccess
 	Repository string
+	UserTag    string
 }
 
 func (t RepositoryWithParent) ComputeDigest(context.Context) (schema.Digest, error) {
@@ -55,7 +56,11 @@ func ParseTag(tag RepositoryWithAccess, digest v1.Hash) (name.Tag, error) {
 		opts = append(opts, name.Insecure)
 	}
 
-	opts = append(opts, name.WithDefaultTag(defaultTag(digest)))
+	if tag.UserTag != "" {
+		opts = append(opts, name.WithDefaultTag(tag.UserTag))
+	} else {
+		opts = append(opts, name.WithDefaultTag(defaultTag(digest)))
+	}
 
 	return name.NewTag(tag.Repository, opts...)
 }

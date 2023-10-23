@@ -36,7 +36,7 @@ func (r nscloudRegistry) Access() oci.RegistryAccess {
 	}
 }
 
-func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
+func (r nscloudRegistry) AllocateName(repository, tag string) compute.Computable[oci.RepositoryWithParent] {
 	return compute.Map(tasks.Action("nscloud.allocate-repository").Arg("repository", repository),
 		compute.Inputs().Str("repository", repository),
 		compute.Output{},
@@ -69,6 +69,7 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 				Parent: r,
 				RepositoryWithAccess: oci.RepositoryWithAccess{
 					Repository:     url,
+					UserTag:        tag,
 					RegistryAccess: r.Access(),
 				},
 			}, nil

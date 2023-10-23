@@ -38,7 +38,7 @@ func Register(name string, make func(context.Context, cfg.Configuration) (Manage
 type Manager interface {
 	Access() oci.RegistryAccess
 
-	AllocateName(repository string) compute.Computable[oci.RepositoryWithParent]
+	AllocateName(repository, tag string) compute.Computable[oci.RepositoryWithParent]
 }
 
 func GetRegistry(ctx context.Context, env cfg.Context) (Manager, error) {

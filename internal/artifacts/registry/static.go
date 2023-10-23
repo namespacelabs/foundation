@@ -32,19 +32,23 @@ func (sr staticRegistry) Access() oci.RegistryAccess {
 	}
 }
 
-func (sr staticRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
+func (sr staticRegistry) AllocateName(repository, tag string) compute.Computable[oci.RepositoryWithParent] {
 	if sr.r.SingleRepository {
 		return StaticRepository(sr, sr.r.Url, sr.Access())
 	}
 
-	return AllocateStaticName(sr, sr.r.Url, repository, sr.Access())
+	return AllocateStaticName(sr, sr.r.Url, repository, tag, sr.Access())
 }
 
-func AllocateStaticName(r Manager, url, repository string, access oci.RegistryAccess) compute.Computable[oci.RepositoryWithParent] {
+func AllocateStaticName(r Manager, url, repository, tag string, access oci.RegistryAccess) compute.Computable[oci.RepositoryWithParent] {
 	if strings.HasSuffix(url, "/") {
 		url += repository
 	} else {
 		url += "/" + repository
+	}
+
+	if tag != "" {
+		url += ":" + tag
 	}
 
 	return StaticRepository(r, url, access)

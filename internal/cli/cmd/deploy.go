@@ -96,7 +96,7 @@ func NewDeployCmd() *cobra.Command {
 			var target compute.Computable[oci.RepositoryWithParent]
 			if uploadTo != "" {
 				if uploadToRegistry {
-					target = p.Registry.AllocateName(uploadTo)
+					target = p.Registry.AllocateName(uploadTo, "")
 				} else {
 					p.Registry = registry.MakeStaticRegistry(&buildr.Registry{
 						Url: uploadTo,

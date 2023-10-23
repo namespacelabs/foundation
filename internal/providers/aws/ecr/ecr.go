@@ -56,7 +56,7 @@ func (em ecrManager) Access() oci.RegistryAccess {
 	}
 }
 
-func (em ecrManager) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
+func (em ecrManager) AllocateName(repository, tag string) compute.Computable[oci.RepositoryWithParent] {
 	keychain := keychainSession(em)
 
 	var repo compute.Computable[string] = &makeRepository{
@@ -78,6 +78,7 @@ func (em ecrManager) AllocateName(repository string) compute.Computable[oci.Repo
 				RepositoryWithAccess: oci.RepositoryWithAccess{
 					RegistryAccess: em.Access(),
 					Repository:     repository,
+					UserTag:        tag,
 				},
 			}, nil
 		},

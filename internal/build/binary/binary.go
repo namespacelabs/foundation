@@ -343,7 +343,7 @@ func EnsureImage(ctx context.Context, env pkggraph.SealedContext, registry regis
 		return oci.ImageID{}, err
 	}
 
-	name := registry.AllocateName(prepared.Name)
+	name := registry.AllocateName(prepared.Name, "")
 
 	return compute.GetValue(ctx, oci.PublishResolvable(name, img, prepared.Plan))
 }

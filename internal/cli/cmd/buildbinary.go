@@ -39,6 +39,7 @@ import (
 func NewBuildBinaryCmd() *cobra.Command {
 	var (
 		baseRepository string
+		userTag        string
 		buildOpts      buildOpts
 		env            cfg.Context
 		cmdLocs        fncobra.Locations
@@ -56,6 +57,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 			flags.StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
 			flags.BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
 			flags.StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
+			flags.StringVar(&userTag, "tag", "", "Which tag to attach to each of the built images.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
@@ -66,7 +68,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 				return err
 			}
 
-			return buildLocations(ctx, env, registry, cmdLocs, baseRepository, buildOpts)
+			return buildLocations(ctx, env, registry, userTag, cmdLocs, baseRepository, buildOpts)
 		})
 }
 
@@ -78,7 +80,7 @@ type buildOpts struct {
 
 const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 
-func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
+func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, userTag string, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
 	pl := parsing.NewPackageLoader(env)
 
 	var pkglist schema.PackageList
@@ -144,7 +146,7 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 			if baseRepository != "" {
 				repository = registry.StaticRepository(nil, filepath.Join(baseRepository, pkg.PackageName().String()), oci.RegistryAccess{})
 			} else {
-				repository = reg.AllocateName(pkg.PackageName().String())
+				repository = reg.AllocateName(pkg.PackageName().String(), userTag)
 			}
 
 			var img compute.Computable[oci.ImageID]
@@ -153,6 +155,7 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 			} else {
 				img = oci.PublishResolvable(repository, image, nil)
 			}
+
 			images = append(images, fromImage(pkg.PackageName(), img))
 		}
 	}

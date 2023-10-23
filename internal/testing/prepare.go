@@ -99,7 +99,7 @@ func (driver *testDriver) Compute(ctx context.Context, r compute.Resolved) (depl
 		return deploy.PreparedDeployable{}, err
 	}
 
-	testBinTag := registry.AllocateName(driver.Location.String())
+	testBinTag := registry.AllocateName(driver.Location.String(), "")
 
 	driverImage, err := compute.GetValue(ctx, oci.PublishResolvable(testBinTag, bin, testBin.Plan))
 	if err != nil {

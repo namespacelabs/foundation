@@ -74,8 +74,8 @@ func (r *k3dRegistry) baseUrl() string {
 	return fmt.Sprintf("%s:%s", r.ContainerName, r.PublicPort)
 }
 
-func (r *k3dRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
-	return registry.AllocateStaticName(r, r.baseUrl(), repository, r.Access())
+func (r *k3dRegistry) AllocateName(repository, tag string) compute.Computable[oci.RepositoryWithParent] {
+	return registry.AllocateStaticName(r, r.baseUrl(), repository, tag, r.Access())
 }
 
 func (r *k3dRegistry) CheckExportRequest(cli *buildkit.GatewayClient, name oci.RepositoryWithParent) (*buildkit.ExportToRegistryRequest, *buildkit.ExportToRegistryRequest) {
