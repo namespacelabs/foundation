@@ -20,18 +20,12 @@ import (
 var DefaultKeychain oci.Keychain = api.DefaultKeychain
 
 type nscloudRegistry struct {
-	clusterID string
-	registry  *api.ImageRegistry
+	registry *api.ImageRegistry
 }
 
 func RegisterRegistry() {
 	registry.Register("nscloud", func(ctx context.Context, ck cfg.Configuration) (registry.Manager, error) {
-		conf, ok := clusterConfigType.CheckGet(ck)
-		if !ok || conf.ClusterId == "" {
-			return nil, fnerrors.InternalError("missing registry configuration")
-		}
-
-		return nscloudRegistry{clusterID: conf.ClusterId}, nil
+		return nscloudRegistry{}, nil
 	})
 }
 
@@ -44,7 +38,7 @@ func (r nscloudRegistry) Access() oci.RegistryAccess {
 
 func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.RepositoryWithParent] {
 	return compute.Map(tasks.Action("nscloud.allocate-repository").Arg("repository", repository),
-		compute.Inputs().Str("repository", repository).Str("clusterID", r.clusterID),
+		compute.Inputs().Str("repository", repository),
 		compute.Output{},
 		func(ctx context.Context, _ compute.Resolved) (oci.RepositoryWithParent, error) {
 			registry, err := r.fetchRegistry(ctx)
@@ -54,7 +48,7 @@ func (r nscloudRegistry) AllocateName(repository string) compute.Computable[oci.
 
 			url := registry.EndpointAddress
 			if url == "" {
-				return oci.RepositoryWithParent{}, fnerrors.InternalError("%s: cluster is missing registry", r.clusterID)
+				return oci.RepositoryWithParent{}, fnerrors.InternalError("registry is missing endpoint")
 			}
 
 			if registry.Repository != "" {
@@ -86,10 +80,14 @@ func (r nscloudRegistry) fetchRegistry(ctx context.Context) (*api.ImageRegistry,
 		return r.registry, nil
 	}
 
-	resp, err := api.GetCluster(ctx, api.Methods, r.clusterID)
+	rs, err := api.GetImageRegistry(ctx, api.Methods)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp.Registry, nil
+	if rs.NSCR == nil {
+		return nil, fnerrors.InternalError("expected nscr to be in response")
+	}
+
+	return rs.NSCR, nil
 }

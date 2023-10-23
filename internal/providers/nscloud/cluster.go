@@ -152,7 +152,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 }
 
 func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
-	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: registry, clusterID: clusterId},
+	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: registry},
 		func(ctx context.Context) (*kubedef.SystemInfo, error) {
 			return &kubedef.SystemInfo{
 				NodePlatform:         []string{"linux/amd64"},
