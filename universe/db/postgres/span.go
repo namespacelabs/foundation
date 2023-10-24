@@ -38,10 +38,7 @@ func withSpan(ctx context.Context, opts commonOpts, name, sql string, f func(con
 	defer span.End()
 
 	err := checkErr(f(ctx))
-	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordErr(span, err)
 
 	return opts.errw(ctx, err)
 }
@@ -69,10 +66,7 @@ func returnWithSpan[T any](ctx context.Context, opts commonOpts, name, sql strin
 
 	value, err := f(ctx)
 	err = checkErr(err)
-	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-	}
+	recordErr(span, err)
 
 	return value, opts.errw(ctx, err)
 }
@@ -83,4 +77,11 @@ func checkErr(err error) error {
 	}
 
 	return err
+}
+
+func recordErr(span trace.Span, err error) {
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, pgx.ErrNoRows) {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
 }
