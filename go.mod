@@ -61,6 +61,7 @@ require (
 	github.com/hpcloud/tail v1.0.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgconn v1.12.1
+	github.com/jackc/pgproto3/v2 v2.3.0
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
@@ -239,7 +240,6 @@ require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/pgtype v1.11.0 // indirect
 	github.com/jackc/puddle v1.2.1 // indirect
