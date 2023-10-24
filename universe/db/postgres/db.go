@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgconn"
@@ -111,6 +112,15 @@ func (db DB) QueryFunc(ctx context.Context, sql string, args []interface{}, scan
 
 func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	return queryRow(ctx, db.opts, db.base, "db.QueryRow", sql, args...)
+}
+
+func (db DB) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults {
+	// Unfortunately can't introspect pgx.Batch
+	sql := fmt.Sprintf("batch(%d)", b.Len())
+	res, _ := returnWithSpan(ctx, db.opts, "db.SendBatch", sql, func(ctx context.Context) (pgx.BatchResults, error) {
+		return db.base.SendBatch(ctx, b), nil
+	})
+	return res
 }
 
 func (db DB) Tracer() trace.Tracer { return db.opts.t }
