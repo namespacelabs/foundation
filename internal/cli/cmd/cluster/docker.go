@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 	"os"
@@ -345,10 +344,17 @@ type credHelperGetOutput struct {
 }
 
 func readStdin() ([]byte, error) {
-	reader := bufio.NewReader(os.Stdin)
-	s, err := reader.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return nil, err
+	scanner := bufio.NewScanner(os.Stdin)
+
+	buffer := new(bytes.Buffer)
+	for scanner.Scan() {
+		buffer.Write(scanner.Bytes())
 	}
-	return bytes.TrimSpace([]byte(s)), nil
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+
+	}
+
+	return bytes.TrimSpace(buffer.Bytes()), nil
 }
