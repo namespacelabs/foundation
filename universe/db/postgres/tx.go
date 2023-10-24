@@ -13,13 +13,24 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"go.opentelemetry.io/otel/attribute"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/tracing"
 )
 
 const (
-	pgSerializationFailure      = "40001"
-	pgUniqueConstraintViolation = "23505"
+	pgSerializationFailure         = "40001"
+	pgDeadlockFailure              = "40P01"
+	pgUniqueConstraintViolation    = "23505"
+	pgExclusionConstraintViolation = "23P01"
 )
+
+// https://www.postgresql.org/docs/current/mvcc-serialization-failure-handling.html
+var retryableSqlStates = []string{
+	pgSerializationFailure,
+	pgDeadlockFailure,
+	pgUniqueConstraintViolation,
+	pgExclusionConstraintViolation,
+}
 
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	return tracing.Collect1(ctx, db.Tracer(), tracing.Name("pg.TransactionWithRetries"), func(ctx context.Context) (T, error) {
@@ -76,10 +87,7 @@ func ErrorIsRetryable(err error) bool {
 		return false
 	}
 
-	// We need to check unique constraint here because some versions of postgres have an error where
-	// unique constraint violations are raised instead of serialization errors.
-	// (e.g. https://www.postgresql.org/message-id/flat/CAGPCyEZG76zjv7S31v_xPeLNRuzj-m%3DY2GOY7PEzu7vhB%3DyQog%40mail.gmail.com)
-	return pgerr.SQLState() == pgSerializationFailure || pgerr.SQLState() == pgUniqueConstraintViolation
+	return slices.Contains(retryableSqlStates, pgerr.SQLState())
 }
 
 type TransactionError struct {
