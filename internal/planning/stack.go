@@ -361,6 +361,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			ps.MergedFragment.Volume = append(ps.MergedFragment.Volume, frag.Volume...)
 			ps.MergedFragment.Toleration = append(ps.MergedFragment.Toleration, frag.Toleration...)
 			ps.MergedFragment.Annotation = append(ps.MergedFragment.Annotation, frag.Annotation...)
+			ps.MergedFragment.NodeSelector = append(ps.MergedFragment.NodeSelector, frag.NodeSelector...)
 
 			if frag.Permissions != nil {
 				if ps.MergedFragment.Permissions == nil {
