@@ -11,14 +11,16 @@ import (
 	"syscall"
 	"time"
 
+	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
-	"namespacelabs.dev/foundation/std/go/grpc"
+	nsgrpc "namespacelabs.dev/foundation/std/go/grpc"
 )
 
-const drainTimeout = 30 * time.Second
+// How long do we expect it would take Kubernetes to notice that we're no longer ready.
+const readinessPropagationDelay = 15 * time.Second
 
-func handleGracefulShutdown() {
+func handleGracefulShutdown(grpcServer *grpc.Server) {
 	if core.EnvIs(schema.Environment_DEVELOPMENT) {
 		// In development, we skip graceful shutdowns for faster iteration cycles.
 		return
@@ -42,14 +44,20 @@ func handleGracefulShutdown() {
 	// So we start failing readiness, so we're removed from the serving set.
 	// Then we wait for a bit for traffic to drain out. And then we leave.
 
+	t := time.Now()
 	core.MarkShutdownStarted()
 
 	if r2 == syscall.SIGTERM {
-		if grpc.DrainFunc == nil {
-			time.Sleep(drainTimeout)
-		} else {
-			grpc.DrainFunc()
+		if nsgrpc.DrainFunc != nil {
+			nsgrpc.DrainFunc()
 		}
+
+		delta := time.Since(t)
+		if delta < readinessPropagationDelay {
+			time.Sleep(readinessPropagationDelay - delta)
+		}
+
+		grpcServer.GracefulStop()
 
 		os.Exit(0)
 	} else {

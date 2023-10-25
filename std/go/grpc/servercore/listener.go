@@ -88,10 +88,6 @@ func NewHTTPMux(middleware ...mux.MiddlewareFunc) *mux.Router {
 }
 
 func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server)) error {
-	if !opts.DontHandleSigTerm {
-		go handleGracefulShutdown()
-	}
-
 	lis, err := opts.CreateListener(ctx)
 	if err != nil {
 		return err
@@ -144,6 +140,11 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 	debugHTTP := &http.Server{Handler: debugMux}
 	go func() { checkReturn("http/debug", debugHTTP.Serve(httpL)) }()
+
+	if !opts.DontHandleSigTerm {
+		go handleGracefulShutdown(grpcServer)
+	}
+
 	go func() { checkReturn("grpc", grpcServer.Serve(anyL)) }()
 
 	if opts.CreateHttpListener != nil {
