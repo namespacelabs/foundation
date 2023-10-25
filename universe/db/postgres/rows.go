@@ -35,13 +35,16 @@ type tracedRows struct {
 }
 
 func (r tracedRows) Close() {
-	r.rows.Close()
+	// Ensure that any error observed while reading rows is reported to a span.
+	_ = withSpan(r.ctx, r.opts, "db.Query.Close", r.sql, func(context.Context) error {
+		r.rows.Close()
+
+		return r.rows.Err()
+	})
 }
 
 func (r tracedRows) Err() error {
-	return withSpan(r.ctx, r.opts, "db.Query.Err", r.sql, func(context.Context) error {
-		return r.rows.Err()
-	})
+	return r.rows.Err()
 }
 
 func (r tracedRows) CommandTag() pgconn.CommandTag {
@@ -57,15 +60,11 @@ func (r tracedRows) Next() bool {
 }
 
 func (r tracedRows) Scan(dest ...interface{}) error {
-	return withSpan(r.ctx, r.opts, "db.Query.Scan", r.sql, func(context.Context) error {
-		return r.rows.Scan(dest...)
-	})
+	return r.rows.Scan(dest...)
 }
 
 func (r tracedRows) Values() ([]interface{}, error) {
-	return returnWithSpan(r.ctx, r.opts, "db.Query.Values", r.sql, func(context.Context) ([]interface{}, error) {
-		return r.rows.Values()
-	})
+	return r.rows.Values()
 }
 
 func (r tracedRows) RawValues() [][]byte {
