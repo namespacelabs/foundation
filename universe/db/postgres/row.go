@@ -10,18 +10,18 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-type hasQuery interface {
-	Query(context.Context, string, ...any) (pgx.Rows, error)
+type hasQueryRow interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
 }
 
-func queryRow(ctx context.Context, opts commonOpts, q hasQuery, name, sql string, args ...any) pgx.Row {
+func queryRow(ctx context.Context, opts commonOpts, q hasQueryRow, name, sql string, args ...any) pgx.Row {
 	return deferredRow{ctx, opts, q, name, sql, args}
 }
 
 type deferredRow struct {
 	ctx  context.Context
 	opts commonOpts
-	q    hasQuery
+	q    hasQueryRow
 	name string
 	sql  string
 	args []any
@@ -29,17 +29,6 @@ type deferredRow struct {
 
 func (d deferredRow) Scan(target ...any) error {
 	return withSpan(d.ctx, d.opts, d.name, d.sql, func(ctx context.Context) error {
-		rows, err := d.q.Query(ctx, d.sql, d.args...)
-		if err != nil {
-			return err
-		}
-
-		defer rows.Close()
-
-		for rows.Next() {
-			return rows.Scan(target...)
-		}
-
-		return pgx.ErrNoRows
+		return d.q.QueryRow(ctx, d.sql, d.args...).Scan(target...)
 	})
 }

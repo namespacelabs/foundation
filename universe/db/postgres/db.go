@@ -98,10 +98,8 @@ func (db DB) BeginTxFunc(ctx context.Context, txOptions pgx.TxOptions, callback 
 	})
 }
 
-func (db DB) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, error) {
-	return returnWithSpan(ctx, db.opts, "db.Query", sql, func(ctx context.Context) (pgx.Rows, error) {
-		return db.base.Query(ctx, sql, arguments...)
-	})
+func (db DB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
+	return query(ctx, db.opts, db.base, "db.Query", sql, args...)
 }
 
 func (db DB) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
