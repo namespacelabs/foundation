@@ -24,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/parsing/platform"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
-	"namespacelabs.dev/foundation/internal/sdk/deno"
 	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/internal/sdk/grpcurl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
@@ -102,7 +101,6 @@ func sdkList(sdks []string, goVersion, nodejsVersion string) []sdk {
 		simpleFileSDK("k3d", k3d.SDK),
 		simpleFileSDK("kubectl", kubectl.SDK),
 		simpleFileSDK("grpcurl", grpcurl.SDK),
-		simpleFileSDK("deno", deno.SDK),
 		simpleFileSDK("buildctl", buildctl.SDK),
 	}
 
