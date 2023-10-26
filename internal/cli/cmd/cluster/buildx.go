@@ -52,6 +52,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	createAtStartup := cmd.Flags().Bool("create_at_startup", false, "If true, creates the build clusters eagerly.")
 	stateDir := cmd.Flags().String("state", "", "If set, stores the remote builder context details in this directory.")
 	debugDir := cmd.Flags().String("background_debug_dir", "", "If set with --background, the tool populates the specified directory with debug log files.")
+	_ = cmd.Flags().MarkHidden("background_debug_dir")
 	useGrpcProxy := cmd.Flags().Bool("use_grpc_proxy", true, "If set, traffic is proxied with transparent grpc proxy instead of raw network proxy")
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
@@ -116,8 +117,15 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 			if *background {
 				debugFile := ""
+				logFilename := fmt.Sprintf("%s-proxy.log", p.Platform)
 				if *debugDir != "" {
-					debugFile = path.Join(*debugDir, fmt.Sprintf("%s-proxy.log", p.Platform))
+					debugFile = path.Join(*debugDir, logFilename)
+				} else {
+					logDir, err := ensureLogDir(proxyDir)
+					if err != nil {
+						return fnerrors.New("failed to create the log folder: %v", err)
+					}
+					debugFile = path.Join(logDir, logFilename)
 				}
 
 				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile, *useGrpcProxy, *staticWorkerDefFile); err != nil {
@@ -233,6 +241,10 @@ func ensureStateDir(specified, dir string) (string, error) {
 	}
 
 	return dirs.Ensure(filepath.Join(s, proxyDir), nil)
+}
+
+func ensureLogDir(dir string) (string, error) {
+	return dirs.Ensure(dirs.Log(dir))
 }
 
 type buildxMetadata struct {

@@ -32,8 +32,9 @@ var (
 	// Configured globally.
 	DebugToConsole = false
 	DebugToFile    string
+	RotatedFile    = false
 
-	debugToWriter *os.File
+	debugToWriter io.WriteCloser
 )
 
 func Prepare() error {
@@ -42,12 +43,8 @@ func Prepare() error {
 	}
 
 	if DebugToFile != "" {
-		f, err := os.Create(DebugToFile)
-		if err != nil {
-			return err
-		}
-
-		debugToWriter = f
+		// Combination of Go's log.Logger and natefinch/lumberjack.v2's rotated logger
+		debugToWriter = newRotatedDebugLogger(DebugToFile)
 	}
 
 	return nil
