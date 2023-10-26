@@ -217,36 +217,6 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 	}.Do(ctx, req, ResolveStaticEndpoint(EndpointAddress), nil)
 }
 
-type userToken string
-
-func (u userToken) Raw() string {
-	return string(u)
-}
-
-type ExchangeUserTokenRequest struct {
-	Scopes []string `json:"scopes,omitempty"`
-}
-
-type ExchangeUserTokenResponse struct {
-	TenantToken string `json:"tenant_token,omitempty"`
-}
-
-func ExchangeUserToken(ctx context.Context, token string, scopes ...string) (ExchangeUserTokenResponse, error) {
-	req := ExchangeUserTokenRequest{Scopes: scopes}
-
-	var res ExchangeUserTokenResponse
-	if err := (Call[ExchangeUserTokenRequest]{
-		Method: "nsl.tenants.TenantsService/ExchangeUserToken",
-		FetchToken: func(ctx context.Context) (Token, error) {
-			return userToken(token), nil
-		},
-	}.Do(ctx, req, ResolveStaticEndpoint(EndpointAddress), DecodeJSONResponse(&res))); err != nil {
-		return ExchangeUserTokenResponse{}, err
-	}
-
-	return res, nil
-}
-
 func ResolveSpec() (string, error) {
 	if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
 		return spec, nil

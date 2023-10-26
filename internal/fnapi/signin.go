@@ -7,7 +7,6 @@ package fnapi
 import (
 	"context"
 
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
@@ -28,10 +27,9 @@ type CompleteLoginRequest struct {
 }
 
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context, kind, tenantId string) (*StartLoginResponse, error) {
+func StartLogin(ctx context.Context, tenantId string) (*StartLoginResponse, error) {
 	req := StartLoginRequest{
-		Kind:           kind,
-		SupportedKinds: []string{"clerk", "tenant"},
+		SupportedKinds: []string{"tenant"},
 		TenantId:       tenantId,
 	}
 
@@ -44,51 +42,11 @@ func StartLogin(ctx context.Context, kind, tenantId string) (*StartLoginResponse
 		return nil, fnerrors.InternalError("bad login response")
 	}
 
+	if resp.Kind != "tenant" {
+		return nil, fnerrors.InternalError("unexpected kind %q", resp.Kind)
+	}
+
 	return &resp, nil
-}
-
-func CompleteLogin(ctx context.Context, id string) (*auth.UserAuth, error) {
-	req := CompleteLoginRequest{
-		LoginId: id,
-	}
-
-	method := "nsl.signin.SigninService/CompleteLogin"
-
-	var resp []auth.UserAuth
-	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
-	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
-		return nil, err
-	}
-
-	if len(resp) != 1 {
-		return nil, fnerrors.InternalError("expected exactly one response (got %d)", len(resp))
-	}
-
-	return &resp[0], nil
-}
-
-type CompleteClerkLoginResponse struct {
-	Ticket string `json:"ticket,omitempty"`
-}
-
-func CompleteClerkLogin(ctx context.Context, id string) (*CompleteClerkLoginResponse, error) {
-	req := CompleteLoginRequest{
-		LoginId: id,
-	}
-
-	method := "nsl.signin.SigninService/CompleteClerkLogin"
-
-	var resp []CompleteClerkLoginResponse
-	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
-	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
-		return nil, err
-	}
-
-	if len(resp) != 1 {
-		return nil, fnerrors.InternalError("expected exactly one response (got %d)", len(resp))
-	}
-
-	return &resp[0], nil
 }
 
 type CompleteTenantLoginResponse struct {

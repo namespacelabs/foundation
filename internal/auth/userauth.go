@@ -26,15 +26,6 @@ type UserAuth struct {
 	IsGithubAction bool         `json:"is_github_action,omitempty"`
 }
 
-func StoreUser(ctx context.Context, userAuth *UserAuth) (string, error) {
-	userAuthData, err := json.Marshal(userAuth)
-	if err != nil {
-		return "", err
-	}
-
-	return userAuth.Username, StoreMarshalledUser(ctx, userAuthData)
-}
-
 func StoreMarshalledUser(ctx context.Context, userAuthData []byte) error {
 	configDir, err := dirs.Ensure(dirs.Config())
 	if err != nil {

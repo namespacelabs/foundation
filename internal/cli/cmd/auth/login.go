@@ -13,15 +13,12 @@ import (
 	"github.com/spf13/cobra"
 
 	"namespacelabs.dev/foundation/internal/auth"
-	"namespacelabs.dev/foundation/internal/clerk"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func NewLoginCmd() *cobra.Command {
-	var kind string
 	var openBrowser bool
 
 	cmd := &cobra.Command{
@@ -30,7 +27,7 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			res, err := fnapi.StartLogin(ctx, kind, auth.Workspace)
+			res, err := fnapi.StartLogin(ctx, auth.Workspace)
 			if err != nil {
 				return err
 			}
@@ -44,7 +41,7 @@ func NewLoginCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
 			}
 
-			tenant, err := completeLogin(ctx, res.LoginId, res.Kind)
+			tenant, err := completeLogin(ctx, res.LoginId)
 			if err != nil {
 				return err
 			}
@@ -63,9 +60,6 @@ func NewLoginCmd() *cobra.Command {
 		}),
 	}
 
-	cmd.Flags().StringVar(&kind, "kind", "", "Internal kind.")
-	_ = cmd.Flags().MarkHidden("kind")
-
 	cmd.Flags().BoolVar(&openBrowser, "browser", true, "Open a browser to login.")
 
 	return cmd
@@ -81,64 +75,14 @@ type tenant struct {
 	name  string
 }
 
-func completeLogin(ctx context.Context, id, kind string) (tenant, error) {
-	if kind == "tenant" {
-		res, err := fnapi.CompleteTenantLogin(ctx, id)
-		if err != nil {
-			return tenant{}, err
-		}
-
-		return tenant{
-			token: res.TenantToken,
-			name:  res.TenantName,
-		}, nil
-	}
-
-	// TODO remove old login path
-	userAuth, err := getUserAuth(ctx, id, kind)
+func completeLogin(ctx context.Context, id string) (tenant, error) {
+	res, err := fnapi.CompleteTenantLogin(ctx, id)
 	if err != nil {
 		return tenant{}, err
 	}
 
-	if _, err := auth.StoreUser(ctx, userAuth); err != nil {
-		return tenant{}, err
-	}
-
-	userToken, err := auth.GenerateTokenFromUserAuth(ctx, userAuth)
-	if err != nil {
-		return tenant{}, err
-	}
-
-	tt, err := fnapi.ExchangeUserToken(ctx, userToken)
-	if err != nil {
-		return tenant{}, err
-	}
-
-	return tenant{token: tt.TenantToken}, nil
-}
-
-func getUserAuth(ctx context.Context, id, kind string) (*auth.UserAuth, error) {
-	switch kind {
-	case "tenant":
-		return nil, fnerrors.InternalError("tenant login cannot produce user auth")
-
-	case "clerk":
-		t, err := fnapi.CompleteClerkLogin(ctx, id)
-		if err != nil {
-			return nil, err
-		}
-
-		n, err := clerk.Login(ctx, t.Ticket)
-		if err != nil {
-			return nil, err
-		}
-
-		return &auth.UserAuth{
-			Username: n.Email,
-			Clerk:    n,
-		}, nil
-
-	default:
-		return fnapi.CompleteLogin(ctx, id)
-	}
+	return tenant{
+		token: res.TenantToken,
+		name:  res.TenantName,
+	}, nil
 }
