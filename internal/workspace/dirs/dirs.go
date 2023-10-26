@@ -82,7 +82,7 @@ func Subdir(rel string) (string, error) {
 	return filepath.Join(cacheDir, rel), nil
 }
 
-func Log(rel string) (string, error) {
+func Logs(rel string) (string, error) {
 	cacheDir, err := Cache()
 	if err != nil {
 		return "", err

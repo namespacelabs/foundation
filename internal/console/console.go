@@ -15,6 +15,7 @@ import (
 	"github.com/kr/text"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/sync"
 	"namespacelabs.dev/foundation/schema/storage"
@@ -43,8 +44,15 @@ func Prepare() error {
 	}
 
 	if DebugToFile != "" {
-		// Combination of Go's log.Logger and natefinch/lumberjack.v2's rotated logger
-		debugToWriter = newRotatedDebugLogger(DebugToFile)
+		rotatedFile := &lumberjack.Logger{
+			Filename:   DebugToFile,
+			MaxSize:    10, // megabytes
+			MaxBackups: 3,
+			MaxAge:     10,   // days
+			Compress:   true, // disabled by default
+		}
+
+		debugToWriter = rotatedFile
 	}
 
 	return nil
@@ -196,4 +204,9 @@ func MakeConsoleName(logid string, key string, suffix string) string {
 	}
 
 	return fmt.Sprintf("%s%s%s", key, logid, suffix)
+}
+
+func DebugWithTimestamp(ctx context.Context, format string, args ...any) {
+	logLine := fmt.Sprintf(format, args...)
+	fmt.Fprintf(Debug(ctx), "%s %s", time.Now().Format(time.RFC3339Nano), logLine)
 }

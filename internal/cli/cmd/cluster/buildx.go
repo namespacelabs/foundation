@@ -244,7 +244,7 @@ func ensureStateDir(specified, dir string) (string, error) {
 }
 
 func ensureLogDir(dir string) (string, error) {
-	return dirs.Ensure(dirs.Log(dir))
+	return dirs.Ensure(dirs.Logs(dir))
 }
 
 type buildxMetadata struct {
