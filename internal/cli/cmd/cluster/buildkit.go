@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -21,6 +22,7 @@ import (
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -107,6 +109,8 @@ func newBuildkitProxy() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
+	statusPort := cmd.Flags().Int("status_port", 0, "If set, it starts an HTTP server that serves status information")
+	_ = cmd.Flags().MarkHidden("status_port")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		plat, err := api.ParseBuildPlatform(*platform)
@@ -143,9 +147,28 @@ func newBuildkitProxy() *cobra.Command {
 
 		fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
 
-		defer bp.Cleanup()
+		eg := executor.New(ctx, "proxy")
 
-		return bp.Serve(ctx)
+		eg.Go(func(ctx context.Context) error {
+			<-ctx.Done()
+			return bp.Cleanup()
+		})
+
+		eg.Go(func(ctx context.Context) error {
+			return bp.Serve(ctx)
+		})
+
+		if *statusPort > 0 {
+			eg.Go(func(ctx context.Context) error {
+				return bp.ServeStatus(ctx, *statusPort)
+			})
+		}
+
+		if err := eg.Wait(); err != nil {
+			return err
+		}
+
+		return nil
 	})
 
 	return cmd
@@ -197,7 +220,7 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 		}
 	}
 
-	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName)
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName, "--status_port="+strconv.Itoa(md.StatusPort))
 	if debugFile != "" {
 		cmd.Args = append(cmd.Args, "--debug_to_file="+debugFile)
 	}
