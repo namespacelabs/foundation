@@ -587,6 +587,7 @@ func newStatusBuildxCommand() *cobra.Command {
 				fmt.Fprintf(stdout, "  Last Update: %v\n", desc.LastUpdate)
 				fmt.Fprintf(stdout, "  Last Error: %v\n", desc.LastError)
 				fmt.Fprintf(stdout, "  Requests Handled: %v\n", desc.Requests)
+				fmt.Fprintf(stdout, "  Log Path: %v\n", desc.LogPath)
 				fmt.Fprintf(stdout, "\n")
 			}
 		}
