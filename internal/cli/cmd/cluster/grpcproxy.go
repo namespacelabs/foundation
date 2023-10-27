@@ -6,7 +6,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -55,19 +54,19 @@ func newGrpcProxy(workerInfo *controlapi.ListWorkersResponse, connect func(conte
 	return g, nil
 }
 
-func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, error) {
+func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.ClientConn, error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
 	if g.backendClient != nil {
 		connState := g.backendClient.GetState()
 		if connState == connectivity.Ready || connState == connectivity.Connecting {
-			fmt.Fprintf(console.Debug(ctx), "reused grpc connection: %v\n", connState)
+			console.DebugWithTimestamp(ctx, "[%s] reused grpc connection: %v\n", id, connState)
 			return g.backendClient, nil
 		}
 
 		closingErr := g.backendClient.Close()
-		fmt.Fprintf(console.Debug(ctx), "cached grpc connection invalidated: %v, closing err: %v\n", connState, closingErr)
+		console.DebugWithTimestamp(ctx, "[%s] cached grpc connection invalidated: %v, closing err: %v\n", id, connState, closingErr)
 		g.backendClient = nil
 	}
 
@@ -85,7 +84,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context) (*grpc.ClientConn, err
 		return nil, err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "created new grpc connection\n")
+	console.DebugWithTimestamp(ctx, "[%s] created new grpc connection\n", id)
 
 	g.backendClient = client
 	return client, nil
@@ -96,12 +95,12 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
 		err := status.Errorf(codes.Internal, "reading method failed")
-		fmt.Fprintf(console.Debug(ctx), "reading method failed: %v\n", err)
+		console.DebugWithTimestamp(ctx, "reading method failed: %v\n", err)
 		return err
 	}
 
 	id := ids.NewRandomBase32ID(4)
-	fmt.Fprintf(console.Debug(ctx), "[%s] handler %s\n", id, fullMethodName)
+	console.DebugWithTimestamp(ctx, "[%s] handler %s\n", id, fullMethodName)
 
 	if fullMethodName == "/moby.buildkit.v1.Control/ListWorkers" && g.workerInfo != nil {
 		return shortcutListWorkers(ctx, id, g.workerInfo, serverStream)
@@ -109,9 +108,9 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 
 	md, _ := metadata.FromIncomingContext(serverStream.Context())
 	outgoingCtx := metadata.NewOutgoingContext(serverStream.Context(), md.Copy())
-	backendConn, err := g.newBackendClient(outgoingCtx)
+	backendConn, err := g.newBackendClient(outgoingCtx, id)
 	if err != nil {
-		fmt.Fprintf(console.Debug(ctx), "creating backend connection failed: %v\n", err)
+		console.DebugWithTimestamp(ctx, "[%s] creating backend connection failed: %v\n", id, err)
 		return status.Errorf(codes.Internal, "failed to connect to backend: %v", err)
 	}
 
@@ -124,7 +123,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	defer clientCancel()
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to create client stream: %v\n", err)
+		console.DebugWithTimestamp(ctx, "[%s] failed to create client stream: %v\n", id, err)
 		return status.Errorf(codes.Internal, "failed create client: %v", err)
 	}
 
@@ -139,7 +138,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 				clientStream.CloseSend()
 			} else {
 				clientCancel()
-				fmt.Fprintf(console.Debug(ctx), "failed proxying s2c: %v\n", s2cErr)
+				console.DebugWithTimestamp(ctx, "[%s] failed proxying s2c: %v\n", id, s2cErr)
 				return status.Errorf(codes.Internal, "failed proxying s2c: %v", s2cErr)
 			}
 
@@ -148,7 +147,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 			serverStream.SetTrailer(clientStream.Trailer())
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
 			if c2sErr != io.EOF {
-				fmt.Fprintf(console.Debug(ctx), "failed proxying c2s: %v\n", c2sErr)
+				console.DebugWithTimestamp(ctx, "[%s] failed proxying c2s: %v\n", id, c2sErr)
 				return c2sErr
 			}
 
@@ -157,12 +156,12 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 
 		case <-ctx.Done():
 			err := ctx.Err()
-			fmt.Fprintf(console.Debug(ctx), "server stream context is done: %v\n", err)
+			console.DebugWithTimestamp(ctx, "[%s] server stream context is done: %v\n", id, err)
 			return err
 		}
 	}
 
-	return status.Errorf(codes.Internal, "gRPC proxy should never reach this stage.")
+	return status.Errorf(codes.Internal, "[%s] gRPC proxy should never reach this stage.", id)
 }
 
 func proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
@@ -208,7 +207,7 @@ func shortcutListWorkers(ctx context.Context, id string, workerInfo *controlapi.
 		return err
 	}
 
-	fmt.Fprintf(console.Debug(ctx), "[%s] ListWorkers injected worker info\n", id)
+	console.DebugWithTimestamp(ctx, "[%s] ListWorkers injected worker info\n", id)
 
 	return nil
 }
