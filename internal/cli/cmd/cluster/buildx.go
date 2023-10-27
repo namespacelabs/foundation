@@ -6,7 +6,10 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -57,6 +60,8 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
+	baseStatusPort := cmd.Flags().Int("status_base_port", 50000, "Base port for status server")
+	_ = cmd.Flags().MarkHidden("status_base_port")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -101,11 +106,14 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		md := buildxMetadata{
 			NodeGroupName: *name,
 		}
-		for _, p := range available {
+		for i, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
+			statusPort := *baseStatusPort + i
 			md.Instances = append(md.Instances, buildxInstanceMetadata{
 				Platform:   p,
 				SocketPath: sockPath,
+				StatusPort: statusPort,
+				Pid:        os.Getpid(), // This will be overwritten if running proxies in background
 			})
 		}
 
@@ -139,7 +147,6 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					return fnerrors.New("failed to parse worker info JSON payload: %v", err)
 				}
 
-				md.Instances[i].Pid = os.Getpid()
 				bp, err := instance.runBuildProxy(ctx, p.SocketPath, *useGrpcProxy, workerInfoResp)
 				if err != nil {
 					return err
@@ -155,6 +162,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 				eg.Go(func(ctx context.Context) error {
 					return bp.Serve(ctx)
 				})
+
+				eg.Go(func(ctx context.Context) error {
+					return bp.ServeStatus(ctx, md.Instances[i].StatusPort)
+				})
 			}
 		}
 
@@ -168,7 +179,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			for _, p := range instances {
 				p := p // Close p
 				eg.Go(func(ctx context.Context) error {
-					_, err := p.NewConn(ctx)
+					_, _, err := p.NewConn(ctx)
 					return err
 				})
 			}
@@ -256,6 +267,7 @@ type buildxInstanceMetadata struct {
 	Platform   api.BuildPlatform `json:"build_platform"`
 	SocketPath string            `json:"socket_path"`
 	Pid        int               `json:"pid"`
+	StatusPort int               `json:"status_port"`
 }
 
 func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {
@@ -478,4 +490,97 @@ func withStore(dockerCli *command.DockerCli, f func(*store.Txn) error) error {
 	defer release()
 
 	return f(txn)
+}
+
+func buildxContextNotConfigured() string {
+	return `Docker buildx context is not configured for Namespace remote builders.
+Try to run:
+
+   nsc docker buildx setup --use --background
+`
+}
+
+func buildxContextNotRunning() string {
+	return `It seems taht Namespace buildx context is not running.
+Try to run to restart it:
+
+   nsc docker buildx cleanup && nsc docker buildx setup --use --background
+`
+}
+
+func newStatusBuildxCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Status information for the local Namespace buildx context.",
+	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	stateDir := cmd.Flags().String("state", "", "If set, looks for the remote builder context in this directory.")
+
+	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		state, err := ensureStateDir(*stateDir, buildkitProxyPath)
+		if err != nil {
+			return err
+		}
+
+		var md buildxMetadata
+		if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				console.SetStickyContent(ctx, "build", buildxContextNotConfigured())
+				return nil
+			}
+			return err
+		}
+
+		descs := []proxyStatusDesc{}
+		for _, proxy := range md.Instances {
+			resp, err := http.Get(fmt.Sprintf("http://localhost:%d/status", proxy.StatusPort))
+			if err != nil {
+				console.SetStickyContent(ctx, "build", buildxContextNotRunning())
+				return nil
+			}
+			defer resp.Body.Close()
+
+			buf, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+
+			var desc proxyStatusDesc
+			if err := json.Unmarshal(buf, &desc); err != nil {
+				return err
+			}
+
+			descs = append(descs, desc)
+		}
+
+		stdout := console.Stdout(ctx)
+		switch *output {
+		case "json":
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			return enc.Encode(descs)
+
+		default:
+			if *output != "plain" {
+				fmt.Fprintf(console.Warnings(ctx), "defaulting output to plain\n")
+			}
+
+			fmt.Fprintf(stdout, "\nBuildx context status:\n\n")
+			for _, desc := range descs {
+				fmt.Fprintf(stdout, "Platform: %s\n", desc.Platform)
+				fmt.Fprintf(stdout, "  Status: %s\n", desc.Status)
+				fmt.Fprintf(stdout, "  Builder ID: %s\n", desc.BuilderID)
+				fmt.Fprintf(stdout, "  Previous Builder ID: %s\n", desc.PreviousBuilderID)
+				fmt.Fprintf(stdout, "  Last Update: %v\n", desc.LastUpdate)
+				fmt.Fprintf(stdout, "  Last Error: %v\n", desc.LastError)
+				fmt.Fprintf(stdout, "  Requests Handled: %v\n", desc.Requests)
+				fmt.Fprintf(stdout, "\n")
+			}
+		}
+
+		return nil
+	})
+
+	return cmd
 }

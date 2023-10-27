@@ -227,7 +227,8 @@ func useBuildClusterCluster(ctx context.Context, bp *cluster.BuildClusterInstanc
 
 	return waitAndConnect(ctx, func() (*client.Client, error) {
 		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			return bp.NewConn(tasks.WithSink(ctx, sink))
+			conn, _, err := bp.NewConn(tasks.WithSink(ctx, sink))
+			return conn, err
 		}))
 	})
 }
