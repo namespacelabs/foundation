@@ -273,7 +273,8 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 }
 
 func (bp *buildProxy) ServeStatus(ctx context.Context, listener net.Listener) error {
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		bp.proxyStatus.mu.RLock()
 		defer bp.proxyStatus.mu.RUnlock()
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -284,7 +285,7 @@ func (bp *buildProxy) ServeStatus(ctx context.Context, listener net.Listener) er
 		}
 	})
 
-	return http.Serve(listener, http.DefaultServeMux)
+	return http.Serve(listener, mux)
 }
 
 type buildProxyWithRegistry struct {

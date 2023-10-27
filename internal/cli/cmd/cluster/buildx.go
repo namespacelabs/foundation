@@ -172,6 +172,8 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 				}
 				defer l.Close()
 
+				md.Instances[i].StatusAddr = l.Addr().String()
+
 				eg.Go(func(ctx context.Context) error {
 					return bp.ServeStatus(ctx, l)
 				})
