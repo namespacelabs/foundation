@@ -62,6 +62,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.Clie
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	g.proxyStatus.updateStatus(RunningProxyStatus, nil, "")
 	if g.backendClient != nil {
 		connState := g.backendClient.GetState()
 		if connState == connectivity.Ready || connState == connectivity.Connecting {
@@ -84,7 +85,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.Clie
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
 			conn, builderID, err := g.connect(ctx)
 			if err != nil {
-				g.proxyStatus.updateStatus(FailingProxyStatus, err, builderID)
+				g.proxyStatus.updateStatus(FailingProxyStatus, err, "")
 			} else {
 				g.proxyStatus.updateStatus(RunningProxyStatus, nil, builderID)
 			}
