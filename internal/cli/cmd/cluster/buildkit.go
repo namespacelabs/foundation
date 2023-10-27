@@ -161,6 +161,7 @@ func newBuildkitProxy() *cobra.Command {
 			return bp.Serve(ctx)
 		})
 
+		// Create listener and let OS pick a port
 		l, err := net.Listen("tcp", "localhost:0")
 		if err != nil {
 			return err
@@ -175,8 +176,9 @@ func newBuildkitProxy() *cobra.Command {
 			fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
 			fmt.Fprintf(console.Stderr(ctx), "Status server listening on %s\n", l.Addr().String())
 		} else {
+			// If we are child process of `nsc docker buildx setup`, then write
+			// the status server info to stderr so the parent process can read them
 			done := console.EnterInputMode(ctx)
-			done()
 			o := StatusServerInfo{
 				StatusServerAddr: l.Addr().String(),
 			}
