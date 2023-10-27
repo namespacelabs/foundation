@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"path"
@@ -61,8 +61,6 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
-	baseStatusPort := cmd.Flags().Int("status_base_port", 50000, "Base port for status server")
-	_ = cmd.Flags().MarkHidden("status_base_port")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -110,13 +108,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 		for _, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
-			// Rand port to avoid collision with previous proxy process that might be shutting down
-			statusPort := *baseStatusPort + rand.Intn(10)
 
 			instanceMD := buildxInstanceMetadata{
 				Platform:   p,
 				SocketPath: sockPath,
-				StatusPort: statusPort,
 				Pid:        os.Getpid(), // This will be overwritten if running proxies in background
 			}
 
@@ -143,10 +138,11 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			instances = append(instances, instance)
 
 			if *background {
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile); err != nil {
+				if pid, statusAddr, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
+					md.Instances[i].StatusAddr = statusAddr
 				}
 			} else {
 				workerInfoResp, err := parseInjectWorkerInfo(*staticWorkerDefFile, p.Platform)
@@ -170,8 +166,14 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					return bp.Serve(ctx)
 				})
 
+				l, err := net.Listen("tcp", "localhost:0")
+				if err != nil {
+					return err
+				}
+				defer l.Close()
+
 				eg.Go(func(ctx context.Context) error {
-					return bp.ServeStatus(ctx, md.Instances[i].StatusPort)
+					return bp.ServeStatus(ctx, l)
 				})
 			}
 		}
@@ -274,7 +276,7 @@ type buildxInstanceMetadata struct {
 	Platform     api.BuildPlatform `json:"build_platform"`
 	SocketPath   string            `json:"socket_path"`
 	Pid          int               `json:"pid"`
-	StatusPort   int               `json:"status_port"`
+	StatusAddr   string            `json:"status_addr"`
 	DebugLogPath string            `json:"debug_log_path"`
 }
 
@@ -542,7 +544,7 @@ func newStatusBuildxCommand() *cobra.Command {
 
 		descs := []proxyStatusDesc{}
 		for _, proxy := range md.Instances {
-			resp, err := http.Get(fmt.Sprintf("http://localhost:%d/status", proxy.StatusPort))
+			resp, err := http.Get(fmt.Sprintf("http://%s/status", proxy.StatusAddr))
 			if err != nil {
 				console.SetStickyContent(ctx, "build", buildxContextNotRunning())
 				return nil

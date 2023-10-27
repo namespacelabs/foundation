@@ -272,20 +272,19 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	return nil
 }
 
-func (bp *buildProxy) ServeStatus(ctx context.Context, port int) error {
+func (bp *buildProxy) ServeStatus(ctx context.Context, listener net.Listener) error {
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		bp.proxyStatus.mu.RLock()
 		defer bp.proxyStatus.mu.RUnlock()
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(w).Encode(*bp.proxyStatus)
-		if err != nil {
+		if err := json.NewEncoder(w).Encode(*bp.proxyStatus); err != nil {
 			fmt.Fprintf(console.Stderr(ctx), "Http Server error: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	})
 
-	return http.ListenAndServe(fmt.Sprintf("localhost:%d", port), nil)
+	return http.Serve(listener, http.DefaultServeMux)
 }
 
 type buildProxyWithRegistry struct {
