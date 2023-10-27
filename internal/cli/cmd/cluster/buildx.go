@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"path"
@@ -106,9 +107,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		md := buildxMetadata{
 			NodeGroupName: *name,
 		}
-		for i, p := range available {
+		for _, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
-			statusPort := *baseStatusPort + i
+			// Rand port to avoid collision with previous proxy process that might be shutting down
+			statusPort := *baseStatusPort + rand.Intn(10)
 			md.Instances = append(md.Instances, buildxInstanceMetadata{
 				Platform:   p,
 				SocketPath: sockPath,
