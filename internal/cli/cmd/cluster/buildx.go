@@ -107,16 +107,33 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		md := buildxMetadata{
 			NodeGroupName: *name,
 		}
+
 		for _, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
 			// Rand port to avoid collision with previous proxy process that might be shutting down
 			statusPort := *baseStatusPort + rand.Intn(10)
-			md.Instances = append(md.Instances, buildxInstanceMetadata{
+
+			instanceMD := buildxInstanceMetadata{
 				Platform:   p,
 				SocketPath: sockPath,
 				StatusPort: statusPort,
 				Pid:        os.Getpid(), // This will be overwritten if running proxies in background
-			})
+			}
+
+			if *background {
+				logFilename := fmt.Sprintf("%s-proxy.log", instanceMD.Platform)
+				if *debugDir != "" {
+					instanceMD.DebugLogPath = path.Join(*debugDir, logFilename)
+				} else {
+					logDir, err := ensureLogDir(proxyDir)
+					if err != nil {
+						return fnerrors.New("failed to create the log folder: %v", err)
+					}
+					instanceMD.DebugLogPath = path.Join(logDir, logFilename)
+				}
+			}
+
+			md.Instances = append(md.Instances, instanceMD)
 		}
 
 		var instances []*BuildClusterInstance
@@ -126,19 +143,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			instances = append(instances, instance)
 
 			if *background {
-				debugFile := ""
-				logFilename := fmt.Sprintf("%s-proxy.log", p.Platform)
-				if *debugDir != "" {
-					debugFile = path.Join(*debugDir, logFilename)
-				} else {
-					logDir, err := ensureLogDir(proxyDir)
-					if err != nil {
-						return fnerrors.New("failed to create the log folder: %v", err)
-					}
-					debugFile = path.Join(logDir, logFilename)
-				}
-
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, debugFile, *useGrpcProxy, *staticWorkerDefFile); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
@@ -266,10 +271,11 @@ type buildxMetadata struct {
 }
 
 type buildxInstanceMetadata struct {
-	Platform   api.BuildPlatform `json:"build_platform"`
-	SocketPath string            `json:"socket_path"`
-	Pid        int               `json:"pid"`
-	StatusPort int               `json:"status_port"`
+	Platform     api.BuildPlatform `json:"build_platform"`
+	SocketPath   string            `json:"socket_path"`
+	Pid          int               `json:"pid"`
+	StatusPort   int               `json:"status_port"`
+	DebugLogPath string            `json:"debug_log_path"`
 }
 
 func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {

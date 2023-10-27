@@ -127,7 +127,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, "", *useGrpcProxy, *staticWorkerDefFile)
+			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile)
 			if err != nil {
 				return err
 			}
@@ -212,7 +212,7 @@ func parseInjectWorkerInfo(workerInfoFile string, requiredPlatform api.BuildPlat
 	return f, nil
 }
 
-func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, debugFile string, useGrpcProxy bool, staticWorkerDefFile string) (int, error) {
+func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, useGrpcProxy bool, staticWorkerDefFile string) (int, error) {
 	if connect {
 		// Make sure the cluster exists before going to the background.
 		if _, err := ensureBuildCluster(ctx, md.Platform); err != nil {
@@ -221,8 +221,8 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 	}
 
 	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName, "--status_port="+strconv.Itoa(md.StatusPort))
-	if debugFile != "" {
-		cmd.Args = append(cmd.Args, "--debug_to_file="+debugFile)
+	if md.DebugLogPath != "" {
+		cmd.Args = append(cmd.Args, "--debug_to_file="+md.DebugLogPath)
 	}
 
 	if useGrpcProxy {
