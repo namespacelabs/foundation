@@ -76,7 +76,7 @@ func main() {
 
 func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (*pgx.Conn, bool, error) {
 	// Postgres needs a database to connect to so we pin one that is guaranteed to exist.
-	postgresConn, err := connect(ctx, cluster, "postgres")
+	postgresConn, err := connect(ctx, cluster, name)
 	if err != nil {
 		return nil, false, err
 	}
