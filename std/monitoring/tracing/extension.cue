@@ -20,6 +20,12 @@ extension: fn.#Extension & {
 				go: type: "Exporter"
 			}
 		}
+		Detector: {
+			input: $typesProto.types.DetectorArgs
+			availableIn: {
+				go: type: "Detector"
+			}
+		}
 		TracerProvider: {
 			input: $typesProto.types.NoArgs
 			availableIn: {

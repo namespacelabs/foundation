@@ -12,4 +12,8 @@ message ExporterArgs {
     string name = 1;
 }
 
+message DetectorArgs {
+    string name = 1;
+}
+
 message NoArgs {}

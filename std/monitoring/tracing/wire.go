@@ -39,6 +39,7 @@ var (
 		mu             sync.Mutex
 		initialized    bool
 		exporters      []trace.SpanExporter
+		detectors      []resource.Detector
 		tracerProvider t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
 	}
 
@@ -65,7 +66,27 @@ func ProvideExporter(_ context.Context, args *ExporterArgs, _ ExtensionDeps) (Ex
 	return Exporter{args.Name}, nil
 }
 
-func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter) (*trace.TracerProvider, error) {
+type Detector struct {
+	name string
+}
+
+func (e Detector) Register(detector resource.Detector) error {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	if global.initialized {
+		return errors.New("Detector.Register after initialization was complete")
+	}
+
+	global.detectors = append(global.detectors, detector)
+	return nil
+}
+
+func ProvideDetector(_ context.Context, args *DetectorArgs, _ ExtensionDeps) (Detector, error) {
+	return Detector{args.Name}, nil
+}
+
+func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter, detectors []resource.Detector) (*trace.TracerProvider, error) {
 	if len(exporters) == 0 {
 		out, err := stdouttrace.New()
 		if err != nil {
@@ -95,6 +116,7 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 			resource.WithProcessRuntimeName(),
 			resource.WithProcessRuntimeVersion(),
 			resource.WithProcessRuntimeDescription(),
+			resource.WithDetectors(detectors...),
 			resource.WithAttributes(
 				semconv.ServiceNameKey.String(serverInfo.ServerName),
 				semconv.ServiceVersionKey.String(serverInfo.GetVcs().GetRevision()),
@@ -113,7 +135,7 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	provider, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters())
+	provider, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeDetectors())
 	if err != nil {
 		return err
 	}
@@ -178,6 +200,15 @@ func consumeExporters() []trace.SpanExporter {
 	exporters := global.exporters
 	global.initialized = true
 	return exporters
+}
+
+func consumeDetectors() []resource.Detector {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	detectors := global.detectors
+	global.initialized = true
+	return detectors
 }
 
 type close struct {

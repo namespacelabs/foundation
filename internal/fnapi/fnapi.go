@@ -118,6 +118,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 
 	tid := ids.NewRandomBase32ID(4)
 	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v (endpoint: %v)\n", tid, c.Method, endpoint)
+	fmt.Fprintf(console.Debug(ctx), "[%s] Body: %s\n", tid, reqBytes)
 
 	t := time.Now()
 	url := endpoint + "/" + c.Method

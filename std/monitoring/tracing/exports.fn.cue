@@ -2,6 +2,20 @@
 package tracing
 
 #Exports: {
+	Detector: {
+		name?: string
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"
+			type:        "Detector"
+			typeDefinition: {
+				"typename": "foundation.std.monitoring.tracing.DetectorArgs"
+				"source": [
+					"types.proto",
+				]
+			}
+		}
+	}
 	Exporter: {
 		name?: string
 

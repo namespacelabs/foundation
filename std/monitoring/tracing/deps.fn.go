@@ -19,6 +19,10 @@ type ExtensionDeps struct {
 	ServerInfo   *types.ServerInfo
 }
 
+type _checkProvideDetector func(context.Context, *DetectorArgs, ExtensionDeps) (Detector, error)
+
+var _ _checkProvideDetector = ProvideDetector
+
 type _checkProvideExporter func(context.Context, *ExporterArgs, ExtensionDeps) (Exporter, error)
 
 var _ _checkProvideExporter = ProvideExporter

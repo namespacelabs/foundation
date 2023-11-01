@@ -71,6 +71,53 @@ func (x *ExporterArgs) GetName() string {
 	return ""
 }
 
+type DetectorArgs struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+func (x *DetectorArgs) Reset() {
+	*x = DetectorArgs{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_std_monitoring_tracing_types_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DetectorArgs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetectorArgs) ProtoMessage() {}
+
+func (x *DetectorArgs) ProtoReflect() protoreflect.Message {
+	mi := &file_std_monitoring_tracing_types_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetectorArgs.ProtoReflect.Descriptor instead.
+func (*DetectorArgs) Descriptor() ([]byte, []int) {
+	return file_std_monitoring_tracing_types_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *DetectorArgs) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type NoArgs struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -80,7 +127,7 @@ type NoArgs struct {
 func (x *NoArgs) Reset() {
 	*x = NoArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_std_monitoring_tracing_types_proto_msgTypes[1]
+		mi := &file_std_monitoring_tracing_types_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -93,7 +140,7 @@ func (x *NoArgs) String() string {
 func (*NoArgs) ProtoMessage() {}
 
 func (x *NoArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_std_monitoring_tracing_types_proto_msgTypes[1]
+	mi := &file_std_monitoring_tracing_types_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -106,7 +153,7 @@ func (x *NoArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoArgs.ProtoReflect.Descriptor instead.
 func (*NoArgs) Descriptor() ([]byte, []int) {
-	return file_std_monitoring_tracing_types_proto_rawDescGZIP(), []int{1}
+	return file_std_monitoring_tracing_types_proto_rawDescGZIP(), []int{2}
 }
 
 var File_std_monitoring_tracing_types_proto protoreflect.FileDescriptor
@@ -118,12 +165,14 @@ var file_std_monitoring_tracing_types_proto_rawDesc = []byte{
 	0x2e, 0x73, 0x74, 0x64, 0x2e, 0x6d, 0x6f, 0x6e, 0x69, 0x74, 0x6f, 0x72, 0x69, 0x6e, 0x67, 0x2e,
 	0x74, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x22, 0x22, 0x0a, 0x0c, 0x45, 0x78, 0x70, 0x6f, 0x72,
 	0x74, 0x65, 0x72, 0x41, 0x72, 0x67, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18,
-	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x08, 0x0a, 0x06, 0x4e,
-	0x6f, 0x41, 0x72, 0x67, 0x73, 0x42, 0x35, 0x5a, 0x33, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
-	0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x74, 0x64, 0x2f, 0x6d, 0x6f, 0x6e, 0x69, 0x74, 0x6f,
-	0x72, 0x69, 0x6e, 0x67, 0x2f, 0x74, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x22, 0x0a, 0x0c, 0x44,
+	0x65, 0x74, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x41, 0x72, 0x67, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e,
+	0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22,
+	0x08, 0x0a, 0x06, 0x4e, 0x6f, 0x41, 0x72, 0x67, 0x73, 0x42, 0x35, 0x5a, 0x33, 0x6e, 0x61, 0x6d,
+	0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66,
+	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x74, 0x64, 0x2f, 0x6d, 0x6f,
+	0x6e, 0x69, 0x74, 0x6f, 0x72, 0x69, 0x6e, 0x67, 0x2f, 0x74, 0x72, 0x61, 0x63, 0x69, 0x6e, 0x67,
+	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -138,10 +187,11 @@ func file_std_monitoring_tracing_types_proto_rawDescGZIP() []byte {
 	return file_std_monitoring_tracing_types_proto_rawDescData
 }
 
-var file_std_monitoring_tracing_types_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_std_monitoring_tracing_types_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_std_monitoring_tracing_types_proto_goTypes = []interface{}{
 	(*ExporterArgs)(nil), // 0: foundation.std.monitoring.tracing.ExporterArgs
-	(*NoArgs)(nil),       // 1: foundation.std.monitoring.tracing.NoArgs
+	(*DetectorArgs)(nil), // 1: foundation.std.monitoring.tracing.DetectorArgs
+	(*NoArgs)(nil),       // 2: foundation.std.monitoring.tracing.NoArgs
 }
 var file_std_monitoring_tracing_types_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type
@@ -170,6 +220,18 @@ func file_std_monitoring_tracing_types_proto_init() {
 			}
 		}
 		file_std_monitoring_tracing_types_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*DetectorArgs); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_std_monitoring_tracing_types_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*NoArgs); i {
 			case 0:
 				return &v.state
@@ -188,7 +250,7 @@ func file_std_monitoring_tracing_types_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_std_monitoring_tracing_types_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
