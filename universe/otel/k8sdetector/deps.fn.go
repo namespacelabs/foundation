@@ -15,20 +15,20 @@ type ExtensionDeps struct {
 }
 
 var (
-	Package__aar2v4 = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing/otel/k8sdetector",
+	Package__27cml6 = &core.Package{
+		PackageName: "namespacelabs.dev/foundation/universe/otel/k8sdetector",
 	}
 
-	Provider__aar2v4 = core.Provider{
-		Package:     Package__aar2v4,
-		Instantiate: makeDeps__aar2v4,
+	Provider__27cml6 = core.Provider{
+		Package:     Package__27cml6,
+		Instantiate: makeDeps__27cml6,
 	}
 
-	Initializers__aar2v4 = []*core.Initializer{
+	Initializers__27cml6 = []*core.Initializer{
 		{
-			Package: Package__aar2v4,
+			Package: Package__27cml6,
 			Do: func(ctx context.Context, di core.Dependencies) error {
-				return di.Instantiate(ctx, Provider__aar2v4, func(ctx context.Context, v interface{}) error {
+				return di.Instantiate(ctx, Provider__27cml6, func(ctx context.Context, v interface{}) error {
 					return Prepare(ctx, v.(ExtensionDeps))
 				})
 			},
@@ -36,7 +36,7 @@ var (
 	}
 )
 
-func makeDeps__aar2v4(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
+func makeDeps__27cml6(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
 
 	if err := di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {

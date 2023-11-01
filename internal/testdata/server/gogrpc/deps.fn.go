@@ -13,7 +13,6 @@ import (
 	"namespacelabs.dev/foundation/std/grpc/logging"
 	"namespacelabs.dev/foundation/std/monitoring/tracing"
 	"namespacelabs.dev/foundation/std/monitoring/tracing/jaeger"
-	"namespacelabs.dev/foundation/std/monitoring/tracing/otel/k8sdetector"
 	"namespacelabs.dev/foundation/universe/go/panicparse"
 )
 
@@ -24,7 +23,6 @@ func RegisterInitializers(di *core.DependencyGraph) {
 	di.AddInitializers(tracing.Initializers__70o2mm...)
 	di.AddInitializers(jaeger.Initializers__33brri...)
 	di.AddInitializers(panicparse.Initializers__99b5nh...)
-	di.AddInitializers(k8sdetector.Initializers__aar2v4...)
 }
 
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {
