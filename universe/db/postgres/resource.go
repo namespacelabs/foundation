@@ -6,6 +6,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	"namespacelabs.dev/foundation/framework/resources"
@@ -26,6 +27,17 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 
 	// Only connect when the pool starts to be used.
 	config.LazyConnect = true
+
+	maxConnIdleTime := time.Minute
+	if db.GetMaxConnIdleTime() != "" {
+		dur, err := time.ParseDuration(db.GetMaxConnIdleTime())
+		if err != nil {
+			return nil, err
+		}
+		maxConnIdleTime = dur
+	}
+
+	config.MaxConnIdleTime = maxConnIdleTime
 
 	conn, err := pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
