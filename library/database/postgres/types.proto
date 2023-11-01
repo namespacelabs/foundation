@@ -36,8 +36,7 @@ message DatabaseInstance {
     string cluster_host = 7;
     string cluster_port = 8;
 
-    string ssl_mode           = 9;
-    string max_conn_idle_time = 10;
+    string ssl_mode = 9;
 
     reserved 2;
 }
