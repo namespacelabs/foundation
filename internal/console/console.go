@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/kr/text"
@@ -44,6 +45,10 @@ func Prepare() error {
 	}
 
 	if DebugToFile != "" {
+		if err := os.MkdirAll(filepath.Dir(DebugToFile), 0755); err != nil {
+			return err
+		}
+
 		rotatedFile := &lumberjack.Logger{
 			Filename:   DebugToFile,
 			MaxSize:    10, // megabytes

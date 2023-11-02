@@ -130,13 +130,14 @@ func NewBuildClusterInstance0(p api.BuildPlatform) *BuildClusterInstance {
 }
 
 type buildProxy struct {
-	socketPath       string
-	instance         *BuildClusterInstance
-	listener         net.Listener
-	cleanup          func() error
-	useGrpcProxy     bool
-	injectWorkerInfo *controlapi.ListWorkersResponse
-	proxyStatus      *proxyStatusDesc
+	socketPath        string
+	controlSocketPath string
+	instance          *BuildClusterInstance
+	listener          net.Listener
+	cleanup           func() error
+	useGrpcProxy      bool
+	injectWorkerInfo  *controlapi.ListWorkersResponse
+	proxyStatus       *proxyStatusDesc
 }
 
 // proxyStatus is used by `nsc docker buildx status` to show user info on
@@ -153,19 +154,28 @@ type proxyStatusDesc struct {
 	Requests          int
 }
 
-func (p *proxyStatusDesc) updateStatus(status ProxyStatus, lastError error, builderID string) {
+func (p *proxyStatusDesc) setBuilderID(status ProxyStatus, builderID string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.Status = status
 	p.LastUpdate = time.Now()
-	if lastError != nil {
-		p.LastError = lastError.Error()
-	}
+	p.PreviousBuilderID = p.BuilderID
+	p.BuilderID = builderID
+}
 
-	if builderID != "" {
-		p.PreviousBuilderID = p.BuilderID
-		p.BuilderID = builderID
-	}
+func (p *proxyStatusDesc) setStatus(status ProxyStatus) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Status = status
+	p.LastUpdate = time.Now()
+}
+
+func (p *proxyStatusDesc) setLastError(status ProxyStatus, lastError error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.Status = status
+	p.LastUpdate = time.Now()
+	p.LastError = lastError.Error()
 }
 
 func (p *proxyStatusDesc) incRequest() {
@@ -176,7 +186,7 @@ func (p *proxyStatusDesc) incRequest() {
 	p.LastUpdate = time.Now()
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath string, connectAtStart, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath, controlSocketPath string, connectAtStart, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
 	if err != nil {
 		return nil, err
@@ -190,10 +200,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 		}
 	}
 
-	return bp.runBuildProxy(ctx, socketPath, useGrpcProxy, workersInfo)
+	return bp.runBuildProxy(ctx, socketPath, controlSocketPath, useGrpcProxy, workersInfo)
 }
 
-func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath string, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
@@ -232,7 +242,7 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath st
 		status.BuilderID = bp.previous.ClusterId
 	}
 
-	return &buildProxy{socketPath, bp, listener, cleanup, useGrpcProxy, workersInfo, status}, nil
+	return &buildProxy{socketPath, controlSocketPath, bp, listener, cleanup, useGrpcProxy, workersInfo, status}, nil
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -272,7 +282,17 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	return nil
 }
 
-func (bp *buildProxy) ServeStatus(ctx context.Context, listener net.Listener) error {
+func (bp *buildProxy) ServeStatus(ctx context.Context) error {
+	if err := unix.Unlink(bp.controlSocketPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	l, err := net.Listen("unix", bp.controlSocketPath)
+	if err != nil {
+		return err
+	}
+	defer l.Close()
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
 		bp.proxyStatus.mu.RLock()
@@ -285,7 +305,7 @@ func (bp *buildProxy) ServeStatus(ctx context.Context, listener net.Listener) er
 		}
 	})
 
-	return http.Serve(listener, mux)
+	return http.Serve(l, mux)
 }
 
 type buildProxyWithRegistry struct {
@@ -295,7 +315,7 @@ type buildProxyWithRegistry struct {
 }
 
 func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool, workerInfo *controlapi.ListWorkersResponse) (*buildProxyWithRegistry, error) {
-	p, err := runBuildProxy(ctx, platform, "", true, useGrpcProxy, workerInfo)
+	p, err := runBuildProxy(ctx, platform, "", "", true, useGrpcProxy, workerInfo)
 	if err != nil {
 		return nil, err
 	}

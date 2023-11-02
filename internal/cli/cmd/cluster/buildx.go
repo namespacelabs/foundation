@@ -108,11 +108,13 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 		for _, p := range available {
 			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
+			controlSockPath := filepath.Join(state, fmt.Sprintf("control_%s.sock", p))
 
 			instanceMD := buildxInstanceMetadata{
-				Platform:   p,
-				SocketPath: sockPath,
-				Pid:        os.Getpid(), // This will be overwritten if running proxies in background
+				Platform:          p,
+				SocketPath:        sockPath,
+				Pid:               os.Getpid(), // This will be overwritten if running proxies in background
+				ControlSocketPath: controlSockPath,
 			}
 
 			if *background {
@@ -138,11 +140,10 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			instances = append(instances, instance)
 
 			if *background {
-				if pid, statusAddr, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
-					md.Instances[i].StatusAddr = statusAddr
 				}
 			} else {
 				workerInfoResp, err := parseInjectWorkerInfo(*staticWorkerDefFile, p.Platform)
@@ -150,12 +151,13 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					return fnerrors.New("failed to parse worker info JSON payload: %v", err)
 				}
 
-				bp, err := instance.runBuildProxy(ctx, p.SocketPath, *useGrpcProxy, workerInfoResp)
+				bp, err := instance.runBuildProxy(ctx, p.SocketPath, p.ControlSocketPath, *useGrpcProxy, workerInfoResp)
 				if err != nil {
 					return err
 				}
 
 				defer os.Remove(p.SocketPath)
+				defer os.Remove(p.ControlSocketPath)
 
 				eg.Go(func(ctx context.Context) error {
 					<-ctx.Done()
@@ -166,16 +168,8 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					return bp.Serve(ctx)
 				})
 
-				l, err := net.Listen("tcp", "localhost:0")
-				if err != nil {
-					return err
-				}
-				defer l.Close()
-
-				md.Instances[i].StatusAddr = l.Addr().String()
-
 				eg.Go(func(ctx context.Context) error {
-					return bp.ServeStatus(ctx, l)
+					return bp.ServeStatus(ctx)
 				})
 			}
 		}
@@ -275,11 +269,11 @@ type buildxMetadata struct {
 }
 
 type buildxInstanceMetadata struct {
-	Platform     api.BuildPlatform `json:"build_platform"`
-	SocketPath   string            `json:"socket_path"`
-	Pid          int               `json:"pid"`
-	StatusAddr   string            `json:"status_addr"`
-	DebugLogPath string            `json:"debug_log_path"`
+	Platform          api.BuildPlatform `json:"build_platform"`
+	SocketPath        string            `json:"socket_path"`
+	Pid               int               `json:"pid"`
+	DebugLogPath      string            `json:"debug_log_path"`
+	ControlSocketPath string            `json:"control_socket_path"`
 }
 
 func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {
@@ -513,11 +507,23 @@ Try to run:
 }
 
 func buildxContextNotRunning() string {
-	return `It seems taht Namespace buildx context is not running.
+	return `It seems that Namespace buildx context is not running.
 Try to run to restart it:
 
    nsc docker buildx cleanup && nsc docker buildx setup --use --background
 `
+}
+
+func makeUnixHTTPClient(unixSockPath string) *http.Client {
+	unixDial := func(proto, addr string) (conn net.Conn, err error) {
+		return net.Dial("unix", unixSockPath)
+	}
+
+	tr := &http.Transport{
+		Dial: unixDial,
+	}
+
+	return &http.Client{Transport: tr}
 }
 
 func newStatusBuildxCommand() *cobra.Command {
@@ -546,10 +552,11 @@ func newStatusBuildxCommand() *cobra.Command {
 
 		descs := []proxyStatusDesc{}
 		for _, proxy := range md.Instances {
-			resp, err := http.Get(fmt.Sprintf("http://%s/status", proxy.StatusAddr))
+			client := makeUnixHTTPClient(proxy.ControlSocketPath)
+			resp, err := client.Get("http://localhost/status")
 			if err != nil {
 				console.SetStickyContent(ctx, "build", buildxContextNotRunning())
-				return nil
+				return err
 			}
 			defer resp.Body.Close()
 

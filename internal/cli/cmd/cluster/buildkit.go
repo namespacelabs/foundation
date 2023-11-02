@@ -14,7 +14,6 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-	"time"
 
 	controlapi "github.com/moby/buildkit/api/services/control"
 	types "github.com/moby/buildkit/api/types"
@@ -114,8 +113,8 @@ func newBuildkitProxy() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
-	isChildProcess := cmd.Flags().Bool("child", false, "If true, if command is called by setup command.")
-	_ = cmd.Flags().MarkHidden("child")
+	controlSockPath := cmd.Flags().String("control_sock_path", "", "If set, status HTTP server listens to this unix socket path.")
+	_ = cmd.Flags().MarkHidden("control_sock_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		plat, err := api.ParseBuildPlatform(*platform)
@@ -132,7 +131,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			pid, _, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile)
+			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat, ControlSocketPath: *controlSockPath}, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile)
 			if err != nil {
 				return err
 			}
@@ -145,7 +144,7 @@ func newBuildkitProxy() *cobra.Command {
 			return fnerrors.New("failed to parse worker info JSON payload: %v", err)
 		}
 
-		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup, *useGrpcProxy, workerInfoResp)
+		bp, err := runBuildProxy(ctx, plat, *sockPath, *controlSockPath, *createAtStartup, *useGrpcProxy, workerInfoResp)
 		if err != nil {
 			return err
 		}
@@ -161,33 +160,14 @@ func newBuildkitProxy() *cobra.Command {
 			return bp.Serve(ctx)
 		})
 
-		// Create listener and let OS pick a port
-		l, err := net.Listen("tcp", "localhost:0")
-		if err != nil {
-			return err
+		if *controlSockPath != "" {
+			eg.Go(func(ctx context.Context) error {
+				return bp.ServeStatus(ctx)
+			})
 		}
-		defer l.Close()
 
-		eg.Go(func(ctx context.Context) error {
-			return bp.ServeStatus(ctx, l)
-		})
-
-		if !*isChildProcess {
-			fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
-			fmt.Fprintf(console.Stderr(ctx), "Status server listening on %s\n", l.Addr().String())
-		} else {
-			// If we are child process of `nsc docker buildx setup`, then write
-			// the status server info to stderr so the parent process can read them
-			done := console.EnterInputMode(ctx)
-			o := StatusServerInfo{
-				StatusServerAddr: l.Addr().String(),
-			}
-
-			if err := json.NewEncoder(os.Stderr).Encode(o); err != nil {
-				return err
-			}
-			done()
-		}
+		fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
+		fmt.Fprintf(console.Stderr(ctx), "Status server listening on %s\n", bp.controlSocketPath)
 
 		if err := eg.Wait(); err != nil {
 			return err
@@ -237,15 +217,16 @@ func parseInjectWorkerInfo(workerInfoFile string, requiredPlatform api.BuildPlat
 	return f, nil
 }
 
-func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, useGrpcProxy bool, staticWorkerDefFile string) (int, string, error) {
+func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, useGrpcProxy bool, staticWorkerDefFile string) (int, error) {
 	if connect {
 		// Make sure the cluster exists before going to the background.
 		if _, err := ensureBuildCluster(ctx, md.Platform); err != nil {
-			return 0, "", err
+			return 0, err
 		}
 	}
 
-	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName, "--child=true")
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath,
+		"--platform="+string(md.Platform), "--region="+api.RegionName, "--control_sock_path="+md.ControlSocketPath)
 	if md.DebugLogPath != "" {
 		cmd.Args = append(cmd.Args, "--debug_to_file="+md.DebugLogPath)
 	}
@@ -266,33 +247,16 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 
 	fmt.Fprintf(console.Debug(ctx), "Running background command %q\n", strings.Join(cmd.Args, " "))
 	if err := cmd.Start(); err != nil {
-		return -1, "", err
+		return -1, err
 	}
 
 	pid := cmd.Process.Pid
 	// Make sure the child process is not cleaned up on exit.
 	if err := cmd.Process.Release(); err != nil {
-		return -1, "", err
+		return -1, err
 	}
 
-	ticker := time.NewTicker(time.Millisecond * 100)
-	defer ticker.Stop()
-	for {
-		// Wait for the status server information (i.e. endpoint address)
-		select {
-		case <-ctx.Done():
-			return -1, "", ctx.Err()
-		case <-ticker.C:
-			if buf.Len() > 0 {
-				var info StatusServerInfo
-				if err := json.NewDecoder(buf).Decode(&info); err != nil {
-					return -1, "", err
-				}
-				return pid, info.StatusServerAddr, nil
-			}
-		}
-
-	}
+	return pid, nil
 }
 
 func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildProxyWithRegistry, args ...string) error {
