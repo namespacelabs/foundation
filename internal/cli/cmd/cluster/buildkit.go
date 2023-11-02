@@ -21,6 +21,7 @@ import (
 	buildkitfw "namespacelabs.dev/foundation/framework/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
@@ -107,6 +108,8 @@ func newBuildkitProxy() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
+	controlSockPath := cmd.Flags().String("control_sock_path", "", "If set, status HTTP server listens to this unix socket path.")
+	_ = cmd.Flags().MarkHidden("control_sock_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {
 		plat, err := api.ParseBuildPlatform(*platform)
@@ -123,7 +126,7 @@ func newBuildkitProxy() *cobra.Command {
 				return fnerrors.New("--background requires --sock_path")
 			}
 
-			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat}, *createAtStartup, "", *useGrpcProxy, *staticWorkerDefFile)
+			pid, err := startBackgroundProxy(ctx, buildxInstanceMetadata{SocketPath: *sockPath, Platform: plat, ControlSocketPath: *controlSockPath}, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile)
 			if err != nil {
 				return err
 			}
@@ -136,16 +139,36 @@ func newBuildkitProxy() *cobra.Command {
 			return fnerrors.New("failed to parse worker info JSON payload: %v", err)
 		}
 
-		bp, err := runBuildProxy(ctx, plat, *sockPath, *createAtStartup, *useGrpcProxy, workerInfoResp)
+		bp, err := runBuildProxy(ctx, plat, *sockPath, *controlSockPath, *createAtStartup, *useGrpcProxy, workerInfoResp)
 		if err != nil {
 			return err
 		}
 
+		eg := executor.New(ctx, "proxy")
+
+		eg.Go(func(ctx context.Context) error {
+			<-ctx.Done()
+			return bp.Cleanup()
+		})
+
+		eg.Go(func(ctx context.Context) error {
+			return bp.Serve(ctx)
+		})
+
+		if *controlSockPath != "" {
+			eg.Go(func(ctx context.Context) error {
+				return bp.ServeStatus(ctx)
+			})
+			fmt.Fprintf(console.Stderr(ctx), "Status server listening on %s\n", bp.controlSocketPath)
+		}
+
 		fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
 
-		defer bp.Cleanup()
+		if err := eg.Wait(); err != nil {
+			return err
+		}
 
-		return bp.Serve(ctx)
+		return nil
 	})
 
 	return cmd
@@ -189,7 +212,7 @@ func parseInjectWorkerInfo(workerInfoFile string, requiredPlatform api.BuildPlat
 	return f, nil
 }
 
-func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, debugFile string, useGrpcProxy bool, staticWorkerDefFile string) (int, error) {
+func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connect bool, useGrpcProxy bool, staticWorkerDefFile string) (int, error) {
 	if connect {
 		// Make sure the cluster exists before going to the background.
 		if _, err := ensureBuildCluster(ctx, md.Platform); err != nil {
@@ -197,9 +220,10 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 		}
 	}
 
-	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath, "--platform="+string(md.Platform), "--region="+api.RegionName)
-	if debugFile != "" {
-		cmd.Args = append(cmd.Args, "--debug_to_file="+debugFile)
+	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath,
+		"--platform="+string(md.Platform), "--region="+api.RegionName, "--control_sock_path="+md.ControlSocketPath)
+	if md.DebugLogPath != "" {
+		cmd.Args = append(cmd.Args, "--debug_to_file="+md.DebugLogPath)
 	}
 
 	if useGrpcProxy {
