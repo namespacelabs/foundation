@@ -6,6 +6,7 @@ package servercore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"go.uber.org/automaxprocs/maxprocs"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -138,22 +140,18 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	debugMux := mux.NewRouter()
 	core.RegisterDebugEndpoints(debugMux)
 
-	debugHTTP := &http.Server{Handler: debugMux}
-	go func() { checkReturn("http/debug", debugHTTP.Serve(httpL)) }()
+	cancelCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	eg, egCtx := errgroup.WithContext(cancelCtx)
 
-	if !opts.DontHandleSigTerm {
-		go handleGracefulShutdown(grpcServer)
-	}
-
-	go func() { checkReturn("grpc", grpcServer.Serve(anyL)) }()
-
+	var httpServer *http.Server
 	if opts.CreateHttpListener != nil {
 		gwLis, opts, err := opts.CreateHttpListener(ctx)
 		if err != nil {
 			return err
 		}
 
-		httpServer := &http.Server{
+		httpServer = &http.Server{
 			Handler: h2c.NewHandler(httpMux, &http2.Server{
 				MaxConcurrentStreams:         opts.HTTP2MaxConcurrentStreams,
 				MaxReadFrameSize:             opts.HTTP2MaxReadFrameSize,
@@ -170,14 +168,83 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 		core.ZLog.Info().Msgf("Starting HTTP listen on %v", gwLis.Addr())
 
-		go func() { checkReturn("http", httpServer.Serve(gwLis)) }()
+		eg.Go(func() error { return listenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
 	}
 
-	return m.Serve()
+	debugHTTP := &http.Server{Handler: debugMux}
+	eg.Go(func() error { return listenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
+
+	eg.Go(func() error { return listenAndGracefullyShutdownGRPC(egCtx, "grpc", grpcServer, anyL) })
+
+	eg.Go(func() error { return ignoreClosure("grpc", m.Serve()) })
+
+	// In development, we skip graceful shutdowns for faster iteration cycles.
+	if !opts.DontHandleSigTerm && !core.EnvIs(schema.Environment_DEVELOPMENT) {
+		eg.Go(func() error {
+			handleGracefulShutdown(egCtx, cancel)
+			return nil
+		})
+	}
+
+	err = eg.Wait()
+	core.ZLog.Info().Err(err).Msg("stopped listening")
+	return err
 }
 
-func checkReturn(what string, err error) {
-	if err != nil {
-		core.ZLog.Fatal().Err(err).Str("what", what).Msg("serving failed")
+func listenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grpc.Server, lis net.Listener) error {
+	return listenAndGracefullyShutdown(ctx, label, func() error {
+		return srv.Serve(lis)
+	}, func() error {
+		srv.GracefulStop()
+		return nil
+	})
+}
+
+func listenAndGracefullyShutdownHTTP(ctx context.Context, label string, srv *http.Server, lis net.Listener) error {
+	return listenAndGracefullyShutdown(ctx, label, func() error {
+		return srv.Serve(lis)
+	}, func() error {
+		// We get here once ctx is already cancelled.
+		// So continue shutting down in the background.
+		return srv.Shutdown(context.Background())
+	})
+}
+
+// Starts listenSync(). Once ctx is canceled runs shutdownSync() and waits for it to finish.
+func listenAndGracefullyShutdown(ctx context.Context, label string, listenSync func() error, shutdownSync func() error) error {
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		err := ignoreClosure(label, listenSync())
+		if err != nil {
+			core.ZLog.Error().Err(err).Str("what", label).Msg("serving failed")
+		}
+		return err
+	})
+	eg.Go(func() error {
+		// When Shutdown is called, Serve, ListenAndServe, and ListenAndServeTLS
+		// immediately return ErrServerClosed. Make sure the program doesn't exit
+		// and waits instead for Shutdown to return.
+		// (https://pkg.go.dev/net/http#Server.Shutdown)
+		<-egCtx.Done()
+		err := ignoreClosure(label, shutdownSync())
+		if err != nil {
+			core.ZLog.Error().Str("what", label).Err(err).Msg("failed to stop server")
+		} else {
+			core.ZLog.Info().Str("what", label).Msg("stopped server")
+		}
+		return err
+	})
+	return eg.Wait()
+}
+
+func ignoreClosure(what string, err error) error {
+	if err == nil ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, http.ErrServerClosed) ||
+		errors.Is(err, cmux.ErrServerClosed) ||
+		errors.Is(err, cmux.ErrListenerClosed) {
+		// normal closure
+		return nil
 	}
+	return fmt.Errorf("%s: %w", what, err)
 }
