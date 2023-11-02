@@ -143,7 +143,7 @@ type buildProxy struct {
 // proxyStatus is used by `nsc docker buildx status` to show user info on
 // proxy current status
 type proxyStatusDesc struct {
-	mu                *sync.RWMutex
+	mu                sync.RWMutex
 	Platform          string
 	Status            ProxyStatus
 	LastError         string
@@ -232,7 +232,6 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, c
 	}
 
 	status := &proxyStatusDesc{
-		mu:       &sync.RWMutex{},
 		Status:   StartingProxyStatus,
 		Platform: string(bp.platform),
 		LogPath:  console.DebugToFile,
@@ -299,7 +298,7 @@ func (bp *buildProxy) ServeStatus(ctx context.Context) error {
 		defer bp.proxyStatus.mu.RUnlock()
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(*bp.proxyStatus); err != nil {
+		if err := json.NewEncoder(w).Encode(bp.proxyStatus); err != nil {
 			fmt.Fprintf(console.Stderr(ctx), "Http Server error: %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}

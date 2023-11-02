@@ -500,7 +500,7 @@ func withStore(dockerCli *command.DockerCli, f func(*store.Txn) error) error {
 
 func buildxContextNotConfigured() string {
 	return `Docker buildx context is not configured for Namespace remote builders.
-Try to run:
+Try running:
 
    nsc docker buildx setup --use --background
 `
@@ -508,7 +508,7 @@ Try to run:
 
 func buildxContextNotRunning() string {
 	return `It seems that Namespace buildx context is not running.
-Try to run to restart it:
+Try running the following to restart it:
 
    nsc docker buildx cleanup && nsc docker buildx setup --use --background
 `
@@ -550,7 +550,7 @@ func newStatusBuildxCommand() *cobra.Command {
 			return err
 		}
 
-		descs := []proxyStatusDesc{}
+		descs := []*proxyStatusDesc{}
 		for _, proxy := range md.Instances {
 			client := makeUnixHTTPClient(proxy.ControlSocketPath)
 			resp, err := client.Get("http://localhost/status")
@@ -570,7 +570,7 @@ func newStatusBuildxCommand() *cobra.Command {
 				return err
 			}
 
-			descs = append(descs, desc)
+			descs = append(descs, &desc)
 		}
 
 		stdout := console.Stdout(ctx)
