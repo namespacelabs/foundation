@@ -42,6 +42,18 @@ package tracing
 			}
 		}
 	}
+	MeterProvider: {
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"
+			type:        "MeterProvider"
+			typeDefinition: {
+				"typename": "foundation.std.monitoring.tracing.NoArgs"
+				"source": [
+					"types.proto",
+				]
+			}
+		}
+	}
 	TracerProvider: {
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/std/monitoring/tracing"

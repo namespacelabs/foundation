@@ -8,6 +8,7 @@ import (
 	"context"
 	"os"
 
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"google.golang.org/grpc/credentials"
@@ -26,6 +27,19 @@ func Create(ctx context.Context, key string) (*otlptrace.Exporter, error) {
 	return otlptrace.New(ctx, client)
 }
 
+func CreateMetricsExporter(ctx context.Context, key, dataSet string) (*otlpmetricgrpc.Exporter, error) {
+	opts := []otlpmetricgrpc.Option{
+		otlpmetricgrpc.WithEndpoint("api.honeycomb.io:443"),
+		otlpmetricgrpc.WithHeaders(map[string]string{
+			"x-honeycomb-team":    key,
+			"x-honeycomb-dataset": dataSet,
+		}),
+		otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
+	}
+
+	return otlpmetricgrpc.New(ctx, opts...)
+}
+
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	xHoneycombTeam := os.Getenv("MONITORING_HONEYCOMB_X_HONEYCOMB_TEAM")
 	if xHoneycombTeam == "" {
@@ -38,5 +52,18 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		return err
 	}
 
-	return deps.OpenTelemetry.Register(exporter)
+	metricExporter, err := CreateMetricsExporter(ctx, xHoneycombTeam, os.Getenv("MONITORING_HONEYCOMB_X_HONEYCOMB_DATASET"))
+	if err != nil {
+		return err
+	}
+
+	if err := deps.OpenTelemetry.Register(exporter); err != nil {
+		return err
+	}
+
+	if err := deps.OpenTelemetry.RegisterMetrics(metricExporter); err != nil {
+		return err
+	}
+
+	return nil
 }

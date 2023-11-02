@@ -34,6 +34,16 @@ extension: fn.#Extension & {
 				}
 			}
 		}
+		MeterProvider: {
+			input: $typesProto.types.NoArgs
+			availableIn: {
+				go: {
+					package: "go.opentelemetry.io/otel/sdk/metric"
+					type:    "*MeterProvider"
+				}
+			}
+		}
+
 		HttpClientProvider: {
 			input: $typesProto.types.NoArgs
 			availableIn: {

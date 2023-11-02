@@ -21,6 +21,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
 	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -36,14 +37,17 @@ var (
 	tracingShutdownTimeout = flag.Duration("tracing_shutdown_timeout", 5*time.Second, "How long to wait for the tracer to shutdown.")
 
 	global struct {
-		mu             sync.Mutex
-		initialized    bool
-		exporters      []trace.SpanExporter
-		detectors      []resource.Detector
-		tracerProvider t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
+		mu              sync.Mutex
+		initialized     bool
+		exporters       []trace.SpanExporter
+		metricExporters []metric.Exporter
+		detectors       []resource.Detector
+		tracerProvider  t.TracerProvider // We don't use otel's global, to ensure that dependency order is respected.
 	}
 
 	propagators = propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{})
+
+	instanceID = uuid.New().String()
 )
 
 type Exporter struct {
@@ -59,6 +63,18 @@ func (e Exporter) Register(exp trace.SpanExporter) error {
 	}
 
 	global.exporters = append(global.exporters, exp)
+	return nil
+}
+
+func (e Exporter) RegisterMetrics(exp metric.Exporter) error {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	if global.initialized {
+		return errors.New("Exporter.Register after initialization was complete")
+	}
+
+	global.metricExporters = append(global.metricExporters, exp)
 	return nil
 }
 
@@ -86,6 +102,24 @@ func ProvideDetector(_ context.Context, args *DetectorArgs, _ ExtensionDeps) (De
 	return Detector{args.Name}, nil
 }
 
+func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors []resource.Detector) (*resource.Resource, error) {
+	return resource.New(ctx,
+		resource.WithSchemaURL(semconv.SchemaURL),
+		resource.WithOS(),
+		resource.WithProcessRuntimeName(),
+		resource.WithProcessRuntimeVersion(),
+		resource.WithProcessRuntimeDescription(),
+		resource.WithDetectors(detectors...),
+		resource.WithAttributes(
+			semconv.ServiceNameKey.String(serverInfo.ServerName),
+			semconv.ServiceVersionKey.String(serverInfo.GetVcs().GetRevision()),
+			semconv.ServiceInstanceIDKey.String(instanceID),
+			semconv.DeploymentEnvironmentKey.String(serverInfo.EnvName),
+			attribute.String("environment", serverInfo.EnvName),
+		),
+	)
+}
+
 func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter, detectors []resource.Detector) (*trace.TracerProvider, error) {
 	if len(exporters) == 0 {
 		out, err := stdouttrace.New()
@@ -106,25 +140,7 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 		}
 	}
 
-	// XXX use pod name
-	instanceID := uuid.NewString()
-
-	resource, err :=
-		resource.New(ctx,
-			resource.WithSchemaURL(semconv.SchemaURL),
-			resource.WithOS(),
-			resource.WithProcessRuntimeName(),
-			resource.WithProcessRuntimeVersion(),
-			resource.WithProcessRuntimeDescription(),
-			resource.WithDetectors(detectors...),
-			resource.WithAttributes(
-				semconv.ServiceNameKey.String(serverInfo.ServerName),
-				semconv.ServiceVersionKey.String(serverInfo.GetVcs().GetRevision()),
-				semconv.ServiceInstanceIDKey.String(instanceID),
-				semconv.DeploymentEnvironmentKey.String(serverInfo.EnvName),
-				attribute.String("environment", serverInfo.EnvName),
-			),
-		)
+	resource, err := CreateResource(ctx, serverInfo, detectors)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
@@ -198,6 +214,15 @@ func consumeExporters() []trace.SpanExporter {
 	defer global.mu.Unlock()
 
 	exporters := global.exporters
+	global.initialized = true
+	return exporters
+}
+
+func consumeMetricsExporters() []metric.Exporter {
+	global.mu.Lock()
+	defer global.mu.Unlock()
+
+	exporters := global.metricExporters
 	global.initialized = true
 	return exporters
 }

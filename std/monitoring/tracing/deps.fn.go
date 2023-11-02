@@ -5,6 +5,7 @@ package tracing
 
 import (
 	"context"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"namespacelabs.dev/foundation/std/core/info"
 	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -30,6 +31,10 @@ var _ _checkProvideExporter = ProvideExporter
 type _checkProvideHttpClientProvider func(context.Context, *NoArgs, ExtensionDeps) (HttpClientProvider, error)
 
 var _ _checkProvideHttpClientProvider = ProvideHttpClientProvider
+
+type _checkProvideMeterProvider func(context.Context, *NoArgs, ExtensionDeps) (*metric.MeterProvider, error)
+
+var _ _checkProvideMeterProvider = ProvideMeterProvider
 
 type _checkProvideTracerProvider func(context.Context, *NoArgs, ExtensionDeps) (DeferredTracerProvider, error)
 
