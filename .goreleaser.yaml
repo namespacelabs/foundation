@@ -169,9 +169,3 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
-    service: |
-      run [opt_bin/"nsc", "docker", "buildx", "setup", "--use", "--debug_to_console"]
-      keep_alive true
-      log_path var/"log/nsc_docker.log"
-      error_log_path var/"log/nsc_docker.log"
-      process_type :background
