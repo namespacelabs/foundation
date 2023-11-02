@@ -7,7 +7,6 @@ package global
 import (
 	"context"
 
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
@@ -26,7 +25,7 @@ func ProvideTracer(ctx context.Context, _ *NoArgs, deps ExtensionDeps) (trace.Tr
 		return nil, rpcerrors.Errorf(codes.Internal, "expected instantiation path")
 	}
 
-	return t.Tracer(p.Last().GetPackageName(), trace.WithInstrumentationAttributes(attribute.String("ns.package_name", p.String()))), nil
+	return t.Tracer(p.Last().GetPackageName()), nil
 }
 
 func ProvideMeter(ctx context.Context, _ *NoArgs, deps ExtensionDeps) (metric.Meter, error) {
