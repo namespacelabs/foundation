@@ -5,7 +5,6 @@
 package cluster
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -94,10 +93,6 @@ func newBuildctlCmd() *cobra.Command {
 	return cmd
 }
 
-type StatusServerInfo struct {
-	StatusServerAddr string
-}
-
 func newBuildkitProxy() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "proxy",
@@ -164,10 +159,10 @@ func newBuildkitProxy() *cobra.Command {
 			eg.Go(func(ctx context.Context) error {
 				return bp.ServeStatus(ctx)
 			})
+			fmt.Fprintf(console.Stderr(ctx), "Status server listening on %s\n", bp.controlSocketPath)
 		}
 
 		fmt.Fprintf(console.Stderr(ctx), "Listening on %s\n", bp.socketPath)
-		fmt.Fprintf(console.Stderr(ctx), "Status server listening on %s\n", bp.controlSocketPath)
 
 		if err := eg.Wait(); err != nil {
 			return err
@@ -230,9 +225,6 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 	if md.DebugLogPath != "" {
 		cmd.Args = append(cmd.Args, "--debug_to_file="+md.DebugLogPath)
 	}
-
-	buf := &bytes.Buffer{}
-	cmd.Stderr = buf
 
 	if useGrpcProxy {
 		cmd.Args = append(cmd.Args, "--use_grpc_proxy")
