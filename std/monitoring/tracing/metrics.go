@@ -6,6 +6,7 @@ import (
 	sync "sync"
 	"time"
 
+	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/sdk/metric"
 )
 
@@ -27,7 +28,12 @@ func ProvideMeterProvider(ctx context.Context, _ *NoArgs, deps ExtensionDeps) (*
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	opts := []metric.Option{metric.WithResource(res)}
+	prom, err := prometheus.New()
+	if err != nil {
+		return nil, err
+	}
+
+	opts := []metric.Option{metric.WithResource(res), metric.WithReader(prom)}
 
 	exports := consumeMetricsExporters()
 	if len(exports) == 0 {
