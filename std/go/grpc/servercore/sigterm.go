@@ -5,14 +5,12 @@
 package servercore
 
 import (
-	"log"
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"google.golang.org/grpc"
-	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
 	nsgrpc "namespacelabs.dev/foundation/std/go/grpc"
 )
@@ -20,34 +18,28 @@ import (
 // How long do we expect it would take Kubernetes to notice that we're no longer ready.
 const readinessPropagationDelay = 15 * time.Second
 
-func handleGracefulShutdown(grpcServer *grpc.Server) {
-	if core.EnvIs(schema.Environment_DEVELOPMENT) {
-		// In development, we skip graceful shutdowns for faster iteration cycles.
-		return
-	}
-
+func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 	sigint := make(chan os.Signal, 1)
 
 	signal.Notify(sigint, os.Interrupt)
 	signal.Notify(sigint, syscall.SIGTERM)
 
-	r2 := <-sigint
+	select {
+	case r2 := <-sigint:
+		core.ZLog.Info().Str("signal", r2.String()).Msg("got signal")
 
-	log.Printf("got %v", r2)
+		// XXX support more graceful shutdown. Although
+		// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
+		// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
+		// you should NOT do is close your listening socket. If you win the
+		// race, you will receive traffic and reject it.""
+		//
+		// So we start failing readiness, so we're removed from the serving set.
+		// Then we wait for a bit for traffic to drain out. And then we leave.
 
-	// XXX support more graceful shutdown. Although
-	// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
-	// "What you SHOULD do is hear the SIGTERM and start wrapping up. What
-	// you should NOT do is close your listening socket. If you win the
-	// race, you will receive traffic and reject it.""
+		t := time.Now()
+		core.MarkShutdownStarted()
 
-	// So we start failing readiness, so we're removed from the serving set.
-	// Then we wait for a bit for traffic to drain out. And then we leave.
-
-	t := time.Now()
-	core.MarkShutdownStarted()
-
-	if r2 == syscall.SIGTERM {
 		if nsgrpc.DrainFunc != nil {
 			nsgrpc.DrainFunc()
 		}
@@ -57,10 +49,8 @@ func handleGracefulShutdown(grpcServer *grpc.Server) {
 			time.Sleep(readinessPropagationDelay - delta)
 		}
 
-		grpcServer.GracefulStop()
-
-		os.Exit(0)
-	} else {
-		os.Exit(1)
+		finishShutdown()
+	case <-ctx.Done():
+		return
 	}
 }
