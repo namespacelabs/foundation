@@ -57,6 +57,23 @@ func NewKubeCtlCmd(hidden bool) *cobra.Command {
 	})
 }
 
+func NewWriteKubeConfigCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "write-kubeconfig",
+		Short: "Emits a kubeconfig for the specified environment.",
+	}
+
+	return fncobra.CmdWithEnv(cmd, func(ctx context.Context, env cfg.Context, args []string) error {
+		cfg, err := writeKubeconfig(ctx, env, true)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(console.Stdout(ctx), "%s\n", cfg.Kubeconfig)
+		return nil
+	})
+}
+
 func writeKubeconfig(ctx context.Context, env cfg.Context, keepConfig bool) (*kubectl.Kubeconfig, error) {
 	cluster, err := kubernetes.ConnectToNamespace(ctx, env)
 	if err != nil {
