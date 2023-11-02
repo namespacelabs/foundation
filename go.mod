@@ -40,12 +40,10 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/envoyproxy/go-control-plane v0.11.1
 	github.com/fsnotify/fsevents v0.1.1
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/getsentry/sentry-go v0.14.0
 	github.com/go-errors/errors v1.4.2
-	github.com/go-logr/zapr v1.2.4
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/protobuf v1.5.3
@@ -177,11 +175,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.5 // indirect
 	github.com/aymanbagabas/go-osc52 v1.2.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
-	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
-	github.com/cncf/xds/go v0.0.0-20230607035331-e9ce68804cb4 // indirect
 	github.com/cockroachdb/apd/v2 v2.0.1 // indirect
 	github.com/containerd/cgroups v1.1.0 // indirect
 	github.com/containerd/continuity v0.4.2 // indirect
@@ -202,7 +197,6 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
-	github.com/envoyproxy/protoc-gen-validate v1.0.2 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
