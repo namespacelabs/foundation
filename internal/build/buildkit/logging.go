@@ -80,7 +80,7 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 			// leads to writes above blocking, as there's no consumer. If those writes block,
 			// then buildkit's Solve can't return, as it's waiting to push a status update. And
 			// that will lead to it never returning from a cancelation (8h+ were spent on this issue).
-			_, err := progressui.DisplaySolveStatus(context.Background(), "", nil,
+			_, err := progressui.DisplaySolveStatus(context.Background(), nil,
 				&timestampPrefixWriter{writers[k], time.Now, true}, chs[k])
 			if err != nil {
 				return fnerrors.InternalError("buildkit progress ui failed: %w", err)

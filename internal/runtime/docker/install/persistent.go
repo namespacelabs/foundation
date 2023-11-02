@@ -136,7 +136,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 		host.NetworkMode = container.NetworkMode("host")
 	}
 
-	created, err := tasks.Return(ctx, tasks.Action("docker.container.create").Arg("name", p.ContainerName), func(ctx context.Context) (container.ContainerCreateCreatedBody, error) {
+	created, err := tasks.Return(ctx, tasks.Action("docker.container.create").Arg("name", p.ContainerName), func(ctx context.Context) (container.CreateResponse, error) {
 		return cli.ContainerCreate(ctx, config, host, &network.NetworkingConfig{}, nil, p.ContainerName)
 	})
 	if err != nil {

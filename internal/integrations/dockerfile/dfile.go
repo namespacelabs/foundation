@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
-	dockerfile "github.com/moby/buildkit/frontend/dockerfile/builder"
 	"github.com/moby/buildkit/frontend/dockerfile/dockerignore"
+	"github.com/moby/buildkit/frontend/dockerui"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/exp/maps"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
@@ -117,8 +117,8 @@ func (g *generateRequest) Compute(ctx context.Context, deps compute.Resolved) (*
 	req := &buildkit.FrontendRequest{
 		Frontend: "dockerfile.v0",
 		FrontendInputs: map[string]llb.State{
-			dockerfile.DefaultLocalNameDockerfile: makeDockerfileState(g.conf.SourceLabel(), []byte(g.dockerfile)),
-			dockerfile.DefaultLocalNameContext:    buildkit.MakeLocalState(dockerContext(g.conf, g.contextRel, g.excludes)),
+			dockerui.DefaultLocalNameDockerfile: makeDockerfileState(g.conf.SourceLabel(), []byte(g.dockerfile)),
+			dockerui.DefaultLocalNameContext:    buildkit.MakeLocalState(dockerContext(g.conf, g.contextRel, g.excludes)),
 		},
 	}
 
