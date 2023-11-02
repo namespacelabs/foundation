@@ -84,7 +84,6 @@ _#Node: {
 
 	exportService?: types.#Proto
 	exportServices?: [...types.#Proto]
-	exportServicesAsHttp?: bool // XXX move this to the service definition.
 	exportMethods?: {
 		service: types.#Proto
 		methods: [...string]

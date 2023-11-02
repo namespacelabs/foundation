@@ -69,18 +69,6 @@ ns build-binary --all --build_platforms=linux/arm64,linux/amd64 \
      --output_prebuilts --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
 ```
 
-#### Specific images
-
-```bash
-nsdev build-binary std/networking/gateway/controller std/networking/gateway/server/configure \
-     --build_platforms=linux/arm64,linux/amd64 --output_prebuilts \
-     --base_repository=us-docker.pkg.dev/foundation-344819/prebuilts/ --log_actions
-```
-
-You can then update the `prebuilt_binary` definitions in `ns-workspace.cue` with the values above.
-
-Also if rebuilding `internal/sdk/buf/image/prebuilt`, update `internal/sdk/buf/image/versions.json`.
-
 ### Changing node definitions (extensions, service, server)
 
 Some servers that you might touch still use our application framework (sometimes referred to as old syntax).

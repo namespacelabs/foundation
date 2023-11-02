@@ -49,9 +49,6 @@ service: fn.#Service & {
 	// Export a grpc-based API, defined within service.proto.
 	exportService: $proto.services.{{.ExportedServiceName}}
 
-	// Make each of the service methods also available as HTTP endpoints.
-	exportServicesAsHttp: true
-
 	// Make this service available to the public Internet.
 	ingress:              "INTERNET_FACING"
 	{{end}}

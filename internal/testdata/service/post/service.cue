@@ -36,6 +36,5 @@ service: fn.#Service & {
 		service: $proto.services.PostService
 		methods: ["Post"]
 	}
-	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
 }

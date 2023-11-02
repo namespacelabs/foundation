@@ -20,12 +20,6 @@ import (
 )
 
 var (
-	// Kubernetes controller settings.
-	controllerPort = flag.Int("controller_port", 18443, "Port that the Kubernetes controller binds to.")
-
-	metricsAddress = flag.String("controller_metrics_address", "0.0.0.0:18080",
-		"Address port pair that the Kubernetes controller metrics endpoint binds to.")
-
 	probeAddress = flag.String("controller_health_probe_bind_address", "0.0.0.0:18081",
 		"Address port pair that the Kubernetes controller health probe endpoint binds to.")
 
@@ -41,8 +35,6 @@ func WireService(context.Context, server.Registrar, ServiceDeps) {
 
 func setupControllers() error {
 	mgr, err := controllerruntime.NewManager(controllerruntime.GetConfigOrDie(), controllerruntime.Options{
-		MetricsBindAddress:     *metricsAddress,
-		Port:                   *controllerPort,
 		HealthProbeBindAddress: *probeAddress,
 		LeaderElection:         *enableLeaderElection,
 		LeaderElectionID:       "64367099.k8s.namespacelabs.dev",

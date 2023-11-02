@@ -53,7 +53,8 @@ message Node {
     // If set to true, these service's GRPC services are to be exported as HTTP
     // as well. Regardless of the ingress configuration here, these endpoints
     // will be public.
-    bool export_services_as_http = 17;
+    reserved "export_services_as_http";
+    reserved 17;
 
     // HTTP paths exported by this service.
     repeated HttpPath export_http = 16;

@@ -230,15 +230,10 @@ func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *pars
 }
 
 func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
-	var needGatewayCount int
 	for _, dep := range sealed.Deps {
 		svc := dep.Service
 		if svc == nil {
 			continue
-		}
-
-		if svc.ExportServicesAsHttp {
-			needGatewayCount++
 		}
 
 		// XXX this should be done upstream.

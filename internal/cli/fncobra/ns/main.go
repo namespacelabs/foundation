@@ -62,12 +62,10 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/gcloud"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/testing"
-	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/orchestration"
 	"namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/universe/aws/iam"
 )
 
@@ -97,26 +95,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				binary.BuildNix = genbinary.NixImageBuilder
 				binary.BuildNodejs = nodebinary.NodejsBuilder
 				binary.BuildStaticFilesServer = genbinary.StaticFilesServerBuilder
-
-				parsing.ExtendNodeHook = append(parsing.ExtendNodeHook, func(ctx context.Context, packages pkggraph.PackageLoader, l pkggraph.Location, n *schema.Node) (*parsing.ExtendNodeHookResult, error) {
-					// Resolve doesn't require that the package actually exists. It just forces loading the module.
-					nodeloc, err := packages.Resolve(ctx, runtime.GrpcHttpTranscodeNode)
-					if err != nil {
-						return nil, err
-					}
-
-					// Check if the namespace version we depend on would have the transcode node.
-					ws := nodeloc.Module.Workspace
-					if ws.GetFoundation().MinimumApi >= versions.IntroducedGrpcTranscodeNode {
-						if n.ExportServicesAsHttp {
-							return &parsing.ExtendNodeHookResult{
-								Import: []schema.PackageName{runtime.GrpcHttpTranscodeNode},
-							}, nil
-						}
-					}
-
-					return nil, nil
-				})
 
 				// Runtime
 				tool.RegisterInjection("schema.ComputedNaming", func(ctx context.Context, env cfg.Context, planner runtime.Planner, s *schema.Stack_Entry) (*schema.ComputedNaming, error) {

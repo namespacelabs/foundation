@@ -268,11 +268,12 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 	}
 
 	if e := v.LookupPath("exportServicesAsHttp"); e.Exists() {
-		vb, err := e.Val.Bool()
+		_, err := e.Val.Bool()
 		if err != nil {
 			return err
 		}
-		node.ExportServicesAsHttp = vb
+
+		return fnerrors.New("exportServicesAsHttp is no longer supported")
 	}
 
 	if exported := v.LookupPath("exportService"); exported.Exists() {

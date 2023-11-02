@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"golang.org/x/exp/slices"
-	"google.golang.org/protobuf/types/descriptorpb"
 	anypb "google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/constants"
@@ -171,35 +170,6 @@ func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, pkg 
 			Protocol: schema.ClearTextGrpcProtocol,
 			Details:  details,
 		})
-
-		if n.ExportServicesAsHttp {
-			details, err := anypb.New(&schema.GrpcExportService{ProtoTypename: exported.ProtoTypename})
-			if err != nil {
-				return nil, err
-			}
-
-			endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
-				Kind:    constants.KindNeedsGrpcGateway,
-				Details: details,
-			})
-
-			if pkg != nil {
-				if def := pkg.Services[exported.ProtoTypename]; def != nil {
-					fds := &descriptorpb.FileDescriptorSet{}
-					fds.File = append(fds.File, def.GetFile()...)
-					fds.File = append(fds.File, def.GetDependency()...)
-
-					details, err := anypb.New(&schema.GrpcHttpTranscoding{
-						FileDescriptorSet: fds,
-					})
-					if err != nil {
-						return nil, err
-					}
-
-					endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{Details: details})
-				}
-			}
-		}
 
 		endpoints = append(endpoints, endpoint)
 	}

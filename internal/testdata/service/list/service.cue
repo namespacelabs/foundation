@@ -34,6 +34,5 @@ service: fn.#Service & {
 	}
 
 	exportService:        $proto.services.ListService
-	exportServicesAsHttp: true
 	ingress:              "INTERNET_FACING"
 }
