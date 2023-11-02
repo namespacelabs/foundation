@@ -24,5 +24,5 @@ service: fn.#Service & {
 		service: $proto.services.PostService
 		methods: ["Fetch"]
 	}
-	ingress:              "INTERNET_FACING"
+	ingress: "INTERNET_FACING"
 }
