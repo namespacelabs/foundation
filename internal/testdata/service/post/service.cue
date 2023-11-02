@@ -36,5 +36,5 @@ service: fn.#Service & {
 		service: $proto.services.PostService
 		methods: ["Post"]
 	}
-	ingress:              "INTERNET_FACING"
+	ingress: "INTERNET_FACING"
 }

@@ -33,6 +33,6 @@ service: fn.#Service & {
 		}
 	}
 
-	exportService:        $proto.services.ListService
-	ingress:              "INTERNET_FACING"
+	exportService: $proto.services.ListService
+	ingress:       "INTERNET_FACING"
 }
