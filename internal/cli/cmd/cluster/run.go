@@ -53,12 +53,14 @@ func NewRunCmd() *cobra.Command {
 	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
 	forwardNscState := run.Flags().Bool("forward_nsc_state", false, "If set to true, instructs the platform to forward nsc state into the container.")
 	network := run.Flags().String("network", "", "The network setting to start the container with.")
+	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
 	run.Flags().MarkHidden("enable_docker")
 	run.Flags().MarkHidden("forward_nsc_state")
 	run.Flags().MarkHidden("network")
+	run.Flags().MarkHidden("experimental")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -96,6 +98,14 @@ func NewRunCmd() *cobra.Command {
 			EnableDocker:    *enableDocker,
 			ForwardNscState: *forwardNscState,
 			Network:         *network,
+		}
+
+		if *experimental != "" {
+			var m any
+			if err := json.Unmarshal([]byte(*experimental), &m); err != nil {
+				return fnerrors.New("failed to parse: %w", err)
+			}
+			opts.Experimental = m
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
@@ -214,6 +224,7 @@ type CreateContainerOpts struct {
 	EnableDocker    bool
 	ForwardNscState bool
 	Network         string
+	Experimental    any
 }
 
 type exportContainerPort struct {
@@ -223,12 +234,13 @@ type exportContainerPort struct {
 
 func CreateContainerInstance(ctx context.Context, machineType string, duration time.Duration, target string, devmode bool, opts CreateContainerOpts) (*api.CreateContainersResponse, error) {
 	container := &api.ContainerRequest{
-		Name:    opts.Name,
-		Image:   opts.Image,
-		Args:    opts.Args,
-		Env:     opts.Env,
-		Flag:    []string{"TERMINATE_ON_EXIT"},
-		Network: opts.Network,
+		Name:         opts.Name,
+		Image:        opts.Image,
+		Args:         opts.Args,
+		Env:          opts.Env,
+		Flag:         []string{"TERMINATE_ON_EXIT"},
+		Network:      opts.Network,
+		Experimental: opts.Experimental,
 	}
 
 	if opts.EnableDocker {

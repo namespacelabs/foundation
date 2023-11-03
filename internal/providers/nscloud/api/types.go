@@ -92,6 +92,7 @@ type ContainerRequest struct {
 	DockerSockPath string            `json:"docker_sock_path,omitempty"`
 	NscStatePath   string            `json:"nsc_state_path,omitempty"`
 	Network        string            `json:"network,omitempty"`
+	Experimental   any               `json:"experimental,omitempty"`
 }
 
 type ComposeRequest struct {
