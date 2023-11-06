@@ -108,8 +108,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 
 	var connect func(context.Context) (net.Conn, error)
 
-	switch kind {
-	case "buildkit":
+	if kind == "buildkit" {
 		buildkitSvc := api.ClusterService(cluster.Cluster, "buildkit")
 		if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
 			return fnerrors.New("cluster is missing buildkit")
@@ -122,19 +121,15 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 		connect = func(ctx context.Context) (net.Conn, error) {
 			return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
 		}
-
-	case "docker":
+	} else {
 		connect = func(ctx context.Context) (net.Conn, error) {
 			token, err := fnapi.FetchToken(ctx)
 			if err != nil {
 				return nil, err
 			}
 
-			return connectToDocker(ctx, token, cluster.Cluster)
+			return connectToSocket(ctx, token, cluster.Cluster, kind)
 		}
-
-	default:
-		return fnerrors.New("unrecognized kind %q", kind)
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

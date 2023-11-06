@@ -120,10 +120,14 @@ func withDocker(ctx context.Context, clusterId string, callback func(context.Con
 	return callback(ctx, p.SocketAddr)
 }
 
-func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.KubernetesCluster) (net.Conn, error) {
+func connectToSocket(ctx context.Context, token fnapi.Token, cluster *api.KubernetesCluster, name string) (net.Conn, error) {
 	vars := url.Values{}
-	vars.Set("name", "docker-socket")
+	vars.Set("name", fmt.Sprintf("%s-socket", name))
 	return api.DialHostedServiceWithToken(ctx, token, cluster, "unixsocket", vars)
+}
+
+func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.KubernetesCluster) (net.Conn, error) {
+	return connectToSocket(ctx, token, cluster, "docker")
 }
 
 func runDocker(ctx context.Context, socketPath string, args ...string) error {
