@@ -75,6 +75,7 @@ type CreateContainersRequest struct {
 	Label           []*LabelEntry          `json:"label,omitempty"`
 	InternalExtra   string                 `json:"internal_extra,omitempty"`
 	Deadline        *timestamppb.Timestamp `json:"deadline,omitempty"`
+	Experimental    any                    `json:"experimental,omitempty"`
 }
 
 type StartContainersRequest struct {

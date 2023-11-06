@@ -212,19 +212,20 @@ func NewRunComposeCmd() *cobra.Command {
 }
 
 type CreateContainerOpts struct {
-	Name            string
-	Image           string
-	Args            []string
-	Env             map[string]string
-	Flags           []string
-	ExportedPorts   []exportContainerPort
-	Features        []string
-	Labels          map[string]string
-	InternalExtra   string
-	EnableDocker    bool
-	ForwardNscState bool
-	Network         string
-	Experimental    any
+	Name                 string
+	Image                string
+	Args                 []string
+	Env                  map[string]string
+	Flags                []string
+	ExportedPorts        []exportContainerPort
+	Features             []string
+	Labels               map[string]string
+	InternalExtra        string
+	EnableDocker         bool
+	ForwardNscState      bool
+	Network              string
+	Experimental         any
+	InstanceExperimental any
 }
 
 type exportContainerPort struct {
@@ -275,6 +276,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 				Label:           labels,
 				Feature:         opts.Features,
 				InternalExtra:   opts.InternalExtra,
+				Experimental:    opts.InstanceExperimental,
 			}
 
 			if duration > 0 {
