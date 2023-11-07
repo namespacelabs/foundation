@@ -8,7 +8,10 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	grpc_codes "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type Collected struct {
@@ -34,7 +37,7 @@ func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback
 
 	err := callback(ctx)
 	if err != nil {
-		span.RecordError(err)
+		maybeCollectError(span, err)
 	}
 
 	return err
@@ -50,8 +53,31 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 
 	value, err := callback(ctx)
 	if err != nil {
-		span.RecordError(err)
+		maybeCollectError(span, err)
 	}
 
 	return value, err
+}
+
+func maybeCollectError(span trace.Span, err error) {
+	span.RecordError(err)
+	s, _ := status.FromError(err)
+	statusCode, msg := serverStatus(s)
+	span.SetStatus(statusCode, msg)
+}
+
+func serverStatus(grpcStatus *status.Status) (codes.Code, string) {
+	switch grpcStatus.Code() {
+	case grpc_codes.Unknown,
+		grpc_codes.DeadlineExceeded,
+		grpc_codes.Unimplemented,
+		grpc_codes.Internal,
+		grpc_codes.Unavailable,
+		grpc_codes.DataLoss,
+		grpc_codes.ResourceExhausted,
+		grpc_codes.FailedPrecondition:
+		return codes.Error, grpcStatus.Message()
+	default:
+		return codes.Unset, ""
+	}
 }
