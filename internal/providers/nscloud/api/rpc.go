@@ -626,7 +626,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		UseBlockLabels: true,
 		Include:        opts.Include,
 		Exclude:        opts.Exclude,
-	}, ResolveEndpoint, func(r io.Reader) error {
+	}, regionEndpointResolver(opts.IngressDomain), func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			var logBlock LogBlock
@@ -666,16 +666,8 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 			Exclude:        opts.Exclude,
 		}
 
-		resolveEndpoint := func(ctx context.Context, tok fnapi.Token) (string, error) {
-			if opts.IngressDomain != "" {
-				return fmt.Sprintf("https://api.%s", opts.IngressDomain), nil
-			}
-
-			return ResolveEndpoint(ctx, tok)
-		}
-
 		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, resolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetClusterLogs.Do(ctx, req, regionEndpointResolver(opts.IngressDomain), fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
@@ -765,5 +757,15 @@ func StartRefreshing(ctx context.Context, api API, clusterId string, handle func
 			case <-time.After(10 * time.Minute):
 			}
 		}
+	}
+}
+
+func regionEndpointResolver(ingressDomain string) func(context.Context, fnapi.Token) (string, error) {
+	return func(ctx context.Context, tok fnapi.Token) (string, error) {
+		if ingressDomain != "" {
+			return fmt.Sprintf("https://api.%s", ingressDomain), nil
+		}
+
+		return ResolveEndpoint(ctx, tok)
 	}
 }

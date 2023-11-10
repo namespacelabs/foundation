@@ -97,27 +97,10 @@ func NewLogsCmd() *cobra.Command {
 
 		lp := newLogPrinter(*raw)
 
-		if *follow {
-			handle := func(lb api.LogBlock) error {
-				lp.Print(ctx, lb)
-				return nil
-			}
-
-			return api.TailClusterLogs(ctx, api.Methods, &api.LogsOpts{
-				ClusterID: clusterID,
-				Include:   includeSelector,
-				Exclude:   excludeSelector,
-			}, handle)
-		}
-
 		logOpts := &api.LogsOpts{
 			ClusterID: clusterID,
 			Include:   includeSelector,
 			Exclude:   excludeSelector,
-		}
-		if *since != time.Duration(0) {
-			ts := time.Now().Add(-1 * (*since))
-			logOpts.StartTs = &ts
 		}
 
 		cluster, err := api.GetCluster(ctx, api.Methods, clusterID)
@@ -127,6 +110,20 @@ func NewLogsCmd() *cobra.Command {
 
 		if cluster.Cluster != nil {
 			logOpts.IngressDomain = cluster.Cluster.IngressDomain
+		}
+
+		if *follow {
+			handle := func(lb api.LogBlock) error {
+				lp.Print(ctx, lb)
+				return nil
+			}
+
+			return api.TailClusterLogs(ctx, api.Methods, logOpts, handle)
+		}
+
+		if *since != time.Duration(0) {
+			ts := time.Now().In(time.UTC).Add(-1 * (*since))
+			logOpts.StartTs = &ts
 		}
 
 		logs, err := api.GetClusterLogs(ctx, api.Methods, logOpts)
