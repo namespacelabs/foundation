@@ -39,7 +39,7 @@ func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPacka
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 
-func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef, externalTypeUrl ...string) (*schema.SecretResult, error) {
+func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
 	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, ref)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef, exter
 	}
 
 	if gsec.Spec.Generate == nil {
-		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: ref, Server: gs.server, ExternalRefTypeUrl: externalTypeUrl})
+		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: ref, Server: gs.server})
 		if err != nil {
 			return nil, err
 		}

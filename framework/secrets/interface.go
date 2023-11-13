@@ -17,9 +17,8 @@ type SecretsSource interface {
 }
 
 type SecretLoadRequest struct {
-	SecretRef          *schema.PackageRef
-	Server             *SecretLoadRequest_ServerRef
-	ExternalRefTypeUrl []string
+	SecretRef *schema.PackageRef
+	Server    *SecretLoadRequest_ServerRef
 }
 
 type SecretLoadRequest_ServerRef struct {
@@ -29,5 +28,5 @@ type SecretLoadRequest_ServerRef struct {
 }
 
 type GroundedSecrets interface {
-	Get(ctx context.Context, secretRef *schema.PackageRef, externalRefTypeUrl ...string) (*schema.SecretResult, error)
+	Get(ctx context.Context, secretRef *schema.PackageRef) (*schema.SecretResult, error)
 }
