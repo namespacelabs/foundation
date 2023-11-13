@@ -3,6 +3,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	"namespacelabs.dev/foundation/std/core"
+	"namespacelabs.dev/foundation/std/monitoring/tracing"
 )
 
 $providerProto: inputs.#Proto & {
@@ -12,6 +13,7 @@ $providerProto: inputs.#Proto & {
 extension: fn.#Extension & {
 	instantiate: {
 		readinessCheck: core.#Exports.ReadinessCheck
+		openTelemetry:  tracing.#Exports.TracerProvider
 	}
 
 	provides: {

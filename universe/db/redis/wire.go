@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/go-redis/redis/extra/redisotel/v8"
 	"github.com/go-redis/redis/v8"
+	"go.opentelemetry.io/otel/attribute"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
@@ -28,6 +30,16 @@ func ProvideRedis(ctx context.Context, args *RedisArgs, deps ExtensionDeps) (*re
 		Password: os.Getenv("REDIS_ROOT_PASSWORD"),
 		DB:       int(args.Database),
 	})
+
+	tp, err := deps.OpenTelemetry.GetTracerProvider()
+	if err != nil {
+		return nil, err
+	}
+
+	client.AddHook(redisotel.NewTracingHook(
+		redisotel.WithAttributes(attribute.Int("redis.db", int(args.Database))),
+		redisotel.WithTracerProvider(tp),
+	))
 
 	// Asynchronously wait until a database connection is ready.
 	deps.ReadinessCheck.Register(fmt.Sprintf("redis/%s", core.InstantiationPathFromContext(ctx)),

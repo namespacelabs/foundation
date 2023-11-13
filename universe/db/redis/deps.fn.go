@@ -8,10 +8,12 @@ import (
 	"github.com/go-redis/redis/v8"
 	fncore "namespacelabs.dev/foundation/std/core"
 	"namespacelabs.dev/foundation/std/go/core"
+	"namespacelabs.dev/foundation/std/monitoring/tracing"
 )
 
 // Dependencies that are instantiated once for the lifetime of the extension.
 type ExtensionDeps struct {
+	OpenTelemetry  tracing.DeferredTracerProvider
 	ReadinessCheck core.Check
 }
 
@@ -32,6 +34,15 @@ var (
 
 func makeDeps__1i719d(ctx context.Context, di core.Dependencies) (_ interface{}, err error) {
 	var deps ExtensionDeps
+
+	if err := di.Instantiate(ctx, tracing.Provider__70o2mm, func(ctx context.Context, v interface{}) (err error) {
+		if deps.OpenTelemetry, err = tracing.ProvideTracerProvider(ctx, nil, v.(tracing.ExtensionDeps)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
 
 	if deps.ReadinessCheck, err = fncore.ProvideReadinessCheck(ctx, nil); err != nil {
 		return nil, err
