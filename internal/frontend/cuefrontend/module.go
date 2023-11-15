@@ -295,6 +295,30 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 		w.EnvSpec = append(w.EnvSpec, out)
 	}
 
+	for _, sb := range m.SecretBindings {
+		ref, err := schema.ParsePackageRef(schema.PackageName(m.ModuleName), sb.Ref)
+		if err != nil {
+			return nil, err
+		}
+
+		msg, err := protos.AllocateFrom(ctx, protos.ParseContext{}, sb.Configuration)
+		if err != nil {
+			return nil, err
+		}
+
+		// This is a bit sad, but alas.
+		packed, err := anypb.New(msg)
+		if err != nil {
+			return nil, fnerrors.New("failed to repack message: %w", err)
+		}
+
+		w.SecretBinding = append(w.SecretBinding, &schema.Workspace_SecretBinding{
+			PackageRef:    ref,
+			Environment:   sb.Environment,
+			Configuration: packed,
+		})
+	}
+
 	slices.SortFunc(w.EnvSpec, func(a, b *schema.Workspace_EnvironmentSpec) bool {
 		return strings.Compare(a.Name, b.Name) < 0
 	})
@@ -584,6 +608,7 @@ type cueModule struct {
 	Environments       map[string]cueEnvironment              `json:"environment"`
 	ProtoModuleImports []*schema.Workspace_ProtoModuleImports `json:"experimentalProtoModuleImports"`
 	EnabledFeatures    []string                               `json:"enabledFeatures"`
+	SecretBindings     []cueSecretBinding                     `json:"secretBinding"`
 }
 
 type cueModuleFoundation struct {
@@ -605,4 +630,10 @@ type cueEnvironment struct {
 	Purpose       string            `json:"purpose"`
 	Labels        map[string]string `json:"labels"`
 	Configuration []map[string]any  `json:"configuration"`
+}
+
+type cueSecretBinding struct {
+	Ref           string         `json:"ref"`
+	Environment   string         `json:"environment"`
+	Configuration map[string]any `json:"configuration"`
 }
