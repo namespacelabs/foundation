@@ -3,7 +3,6 @@ package onepassword
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 
 	"namespacelabs.dev/foundation/framework/secrets/combined"
@@ -18,15 +17,16 @@ func Register() {
 			return nil, fnerrors.BadInputError("invalid 1Password secret configuration: missing field secret_reference")
 		}
 
-		c := exec.CommandContext(ctx, "op", "read", fmt.Sprintf("%q", cfg.SecretReference))
+		c := exec.CommandContext(ctx, "op", "read", cfg.SecretReference)
 
 		var b bytes.Buffer
 		c.Stdout = &b
 		c.Stderr = console.Stderr(ctx)
 		c.Stdin = nil
 		if err := c.Run(); err != nil {
-			return nil, fnerrors.InternalError("failed to invoke: %w", err)
+			return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
 		}
+
 		return b.Bytes(), nil
 	})
 }
