@@ -147,7 +147,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 			return nil, fnerrors.InternalError("failed to connect to co-located build cluster: %w", err)
 		}
 
-		return waitAndConnect(ctx, func() (*client.Client, error) {
+		return waitAndConnect(ctx, func(ctx context.Context) (*client.Client, error) {
 			return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 				return k.RawDialServer(ctx, conf.Namespace, conf.MatchingPodLabels, &schema.Endpoint_Port{ContainerPort: conf.TargetPort})
 			}))
@@ -214,7 +214,7 @@ func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port 
 		return nil, err
 	}
 
-	return waitAndConnect(ctx, func() (*client.Client, error) {
+	return waitAndConnect(ctx, func(ctx context.Context) (*client.Client, error) {
 		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			// Do the expirations work? We don't re-fetch tokens here yet.
 			return api.DialPortWithToken(ctx, token, cluster, port)
@@ -225,26 +225,26 @@ func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port 
 func useBuildClusterCluster(ctx context.Context, bp *cluster.BuildClusterInstance) (*GatewayClient, error) {
 	sink := tasks.SinkFrom(ctx)
 
-	return waitAndConnect(ctx, func() (*client.Client, error) {
-		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-			conn, _, err := bp.NewConn(tasks.WithSink(ctx, sink))
+	return waitAndConnect(ctx, func(innerCtx context.Context) (*client.Client, error) {
+		return client.New(innerCtx, "buildkitd", client.WithContextDialer(func(innerCtx context.Context, _ string) (net.Conn, error) {
+			conn, _, err := bp.NewConn(tasks.WithSink(innerCtx, sink))
 			return conn, err
 		}))
 	})
 }
 
-func waitReadiness(ctx context.Context, connect func() (*buildkit.Client, error)) error {
+func waitReadiness(ctx context.Context, connect func(ctx context.Context) (*buildkit.Client, error)) error {
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
 		return buildkitfw.WaitReadiness(ctx, connect)
 	})
 }
 
-func waitAndConnect(ctx context.Context, connect func() (*client.Client, error)) (*GatewayClient, error) {
+func waitAndConnect(ctx context.Context, connect func(ctx context.Context) (*client.Client, error)) (*GatewayClient, error) {
 	if err := waitReadiness(ctx, connect); err != nil {
 		return nil, err
 	}
 
-	cli, err := connect()
+	cli, err := connect(ctx)
 	if err != nil {
 		return nil, err
 	}

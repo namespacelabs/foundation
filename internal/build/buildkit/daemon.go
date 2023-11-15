@@ -32,7 +32,7 @@ func EnsureBuildkitd(ctx context.Context, containerName string) (string, error) 
 		Version:       vendoredVersion,
 		Image:         "moby/buildkit",
 		WaitUntilRunning: func(ctx context.Context, containerName string) error {
-			return waitReadiness(ctx, func() (*buildkit.Client, error) {
+			return waitReadiness(ctx, func(ctx context.Context) (*buildkit.Client, error) {
 				return buildkit.New(ctx, makeAddr(containerName))
 			})
 		},

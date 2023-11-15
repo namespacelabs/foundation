@@ -301,15 +301,15 @@ func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) erro
 	}
 
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
-		return buildkitfw.WaitReadiness(ctx, func() (*client.Client, error) {
+		return buildkitfw.WaitReadiness(ctx, func(innerCtx context.Context) (*client.Client, error) {
 			// We must fetch a token with our parent context, so we get a task sink etc.
 			token, err := fnapi.FetchToken(ctx)
 			if err != nil {
 				return nil, err
 			}
 
-			return client.New(ctx, response.ClusterId, client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
-				return api.DialEndpointWithToken(ctx, token, buildkitSvc.Endpoint)
+			return client.New(innerCtx, response.ClusterId, client.WithContextDialer(func(innerCtx context.Context, _ string) (net.Conn, error) {
+				return api.DialEndpointWithToken(innerCtx, token, buildkitSvc.Endpoint)
 			}))
 		})
 	})
