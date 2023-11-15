@@ -14,16 +14,16 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-var secretProviders = map[string]func(*anypb.Any) ([]byte, error){}
+var secretProviders = map[string]func(context.Context, *anypb.Any) ([]byte, error){}
 
-func RegisterSecretsProvider[V proto.Message](handle func(V) ([]byte, error), aliases ...string) {
-	secretProviders[protos.TypeUrl[V]()] = func(input *anypb.Any) ([]byte, error) {
+func RegisterSecretsProvider[V proto.Message](handle func(context.Context, V) ([]byte, error), aliases ...string) {
+	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, input *anypb.Any) ([]byte, error) {
 		msg := protos.NewFromType[V]()
 		if err := input.UnmarshalTo(msg); err != nil {
 			return nil, err
 		}
 
-		return handle(msg)
+		return handle(ctx, msg)
 	}
 }
 
@@ -60,7 +60,7 @@ func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.Modules, r
 			return nil, fnerrors.BadInputError("%s: no such secrets provider", b.Configuration.TypeUrl)
 		}
 
-		value, err := p(b.Configuration)
+		value, err := p(ctx, b.Configuration)
 		if err != nil {
 			return nil, err
 		}

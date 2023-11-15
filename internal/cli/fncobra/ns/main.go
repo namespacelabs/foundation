@@ -55,6 +55,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/k3s"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
+	"namespacelabs.dev/foundation/internal/providers/onepassword"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/helm"
@@ -153,6 +154,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				ingress.RegisterIngressClass(nginx.IngressClass())
 				ingress.RegisterIngressClass(nsingress.IngressClass())
 				nscloud.Register()
+				onepassword.Register()
 
 				// Runtimes.
 				kubernetes.Register()
