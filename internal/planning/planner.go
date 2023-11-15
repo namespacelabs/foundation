@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/framework/secrets"
-	"namespacelabs.dev/foundation/framework/secrets/localsecrets"
+	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -27,7 +27,7 @@ func NewPlanner(ctx context.Context, env cfg.Context) (Planner, error) {
 		return Planner{}, err
 	}
 
-	source, err := localsecrets.NewLocalSecrets(env)
+	source, err := combined.NewCombinedSecrets(env)
 	if err != nil {
 		return Planner{}, err
 	}
@@ -41,7 +41,7 @@ func NewPlanner(ctx context.Context, env cfg.Context) (Planner, error) {
 }
 
 func NewPlannerFromExisting(env cfg.Context, planner runtime.Planner) (Planner, error) {
-	source, err := localsecrets.NewLocalSecrets(env)
+	source, err := combined.NewCombinedSecrets(env)
 	if err != nil {
 		return Planner{}, err
 	}
