@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os/exec"
 	"time"
 
@@ -49,6 +50,8 @@ func Register() {
 				if b.String() == "" {
 					return nil, fnerrors.InvocationError("1Password", "no 1Password account configured")
 				}
+
+				fmt.Fprintf(console.Debug(ctx), "Configured 1Password accounts:\n%s\n", b.String())
 			}
 
 			return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
