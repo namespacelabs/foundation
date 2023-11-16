@@ -22,7 +22,9 @@ import (
 const cmdTimeout = time.Minute
 
 func Register() {
-	var p provider
+	p := provider{
+		cache: map[string][]byte{},
+	}
 
 	combined.RegisterSecretsProvider(func(ctx context.Context, cfg *onepassword.Secret) ([]byte, error) {
 		if cfg.SecretReference == "" {
