@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -64,6 +65,11 @@ func (p *provider) ensureAccount(ctx context.Context) error {
 
 	// Only check once if there is an account.
 	p.once.Do(func() {
+		if os.Getenv("OP_SERVICE_ACCOUNT_TOKEN") != "" {
+			return
+		}
+
+		// Handle manual logins.
 		c := exec.CommandContext(ctx, "op", "account", "list")
 
 		var b bytes.Buffer
