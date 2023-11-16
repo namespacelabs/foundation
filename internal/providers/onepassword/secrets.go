@@ -40,6 +40,10 @@ type provider struct {
 }
 
 func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
+	// Serialize reads to ensure there is only one approval pop-up.
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	// If no account is configured, `op read` does not fail but waits for user input.
 	// Hence, we ensure that a user account is indeed configured.
 	if err := p.ensureAccount(ctx); err != nil {
@@ -60,9 +64,6 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 }
 
 func (p *provider) ensureAccount(ctx context.Context) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	// Only check once if there is an account.
 	p.once.Do(func() {
 		if os.Getenv("OP_SERVICE_ACCOUNT_TOKEN") != "" {
