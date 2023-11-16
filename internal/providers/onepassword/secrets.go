@@ -37,12 +37,17 @@ type provider struct {
 	mu               sync.Mutex
 	ensureAccountErr error
 	once             sync.Once
+	cache            map[string][]byte
 }
 
 func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 	// Serialize reads to ensure there is only one approval pop-up.
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	if data, ok := p.cache[ref]; ok {
+		return data, nil
+	}
 
 	// If no account is configured, `op read` does not fail but waits for user input.
 	// Hence, we ensure that a user account is indeed configured.
@@ -60,7 +65,9 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 		return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
 	}
 
-	return b.Bytes(), nil
+	data := b.Bytes()
+	p.cache[ref] = data
+	return data, nil
 }
 
 func (p *provider) ensureAccount(ctx context.Context) error {
