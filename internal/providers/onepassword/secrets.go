@@ -63,11 +63,16 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 	c.Stdout = &b
 	c.Stderr = console.Stderr(ctx)
 	if err := c.Run(); err != nil {
-
 		return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
 	}
 
 	data := b.Bytes()
+
+	// Trim `\n` added by `op read`.
+	if data[len(data)-1] == '\n' {
+		data = data[:len(data)-1]
+	}
+
 	p.cache[ref] = data
 	return data, nil
 }
