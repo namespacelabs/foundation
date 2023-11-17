@@ -61,6 +61,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	_ = cmd.Flags().MarkHidden("use_grpc_proxy")
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
+	forceCleanup := cmd.Flags().Bool("force_cleanup", false, "If set, it forces a cleanup of any previous buildx proxy running in background.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -98,8 +99,23 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
 
 		if proxyAlreadyExists(state) {
-			console.SetStickyContent(ctx, "build", existingProxyMessage(*stateDir))
-			return nil
+			if *forceCleanup {
+				if err := withStore(dockerCli, func(txn *store.Txn) error {
+					return doBuildxCleanup(ctx, state, txn)
+				}); err != nil {
+					console.SetStickyContent(ctx, "build", existingProxyMessage(*stateDir))
+					return err
+				}
+
+				// Cleanup deletes also the state directory, recreate it
+				state, err = ensureStateDir(*stateDir, buildkitProxyPath)
+				if err != nil {
+					return err
+				}
+			} else {
+				console.SetStickyContent(ctx, "build", existingProxyMessage(*stateDir))
+				return nil
+			}
 		}
 
 		md := buildxMetadata{
@@ -209,12 +225,14 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 			return err
 		}
 
+		fmt.Fprintf(console.Debug(ctx), "Cleaning up docker buildx context.\n")
 		if err := withStore(dockerCli, func(txn *store.Txn) error {
 			return txn.Remove(*name)
 		}); err != nil {
 			return err
 		}
 
+		fmt.Fprintf(console.Debug(ctx), "Deleting state file.\n")
 		if err := os.RemoveAll(state); err != nil {
 			return err
 		}
@@ -353,47 +371,51 @@ func newCleanupBuildxCommand() *cobra.Command {
 				return nil
 			}
 
-			var md buildxMetadata
-			if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
-				return err
-			}
-
-			for _, inst := range md.Instances {
-				if inst.Pid > 0 {
-					process, err := os.FindProcess(inst.Pid)
-					if err != nil {
-						return err
-					}
-
-					if err := process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
-						return err
-					}
-
-					fmt.Fprintf(console.Debug(ctx), "Sent SIGINT to worker handling %s (pid %d).\n", inst.Platform, inst.Pid)
-				}
-			}
-
-			if err := os.RemoveAll(state); err != nil {
-				console.SetStickyContent(ctx, "build",
-					fmt.Sprintf("Warning: deleting state files in %s failed: %v", state, err))
-			}
-
-			fmt.Fprintf(console.Debug(ctx), "Removed local state directory %q.\n", state)
-
-			if md.NodeGroupName != "" {
-				if err := txn.Remove(md.NodeGroupName); err != nil {
-					return err
-				}
-
-				fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", md.NodeGroupName)
-			}
-
-			fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
-			return nil
+			return doBuildxCleanup(ctx, state, txn)
 		})
 	})
 
 	return cmd
+}
+
+func doBuildxCleanup(ctx context.Context, state string, txn *store.Txn) error {
+	var md buildxMetadata
+	if err := files.ReadJson(filepath.Join(state, metadataFile), &md); err != nil {
+		return err
+	}
+
+	for _, inst := range md.Instances {
+		if inst.Pid > 0 {
+			process, err := os.FindProcess(inst.Pid)
+			if err != nil {
+				return err
+			}
+
+			if err := process.Signal(os.Interrupt); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				return err
+			}
+
+			fmt.Fprintf(console.Debug(ctx), "Sent SIGINT to worker handling %s (pid %d).\n", inst.Platform, inst.Pid)
+		}
+	}
+
+	if err := os.RemoveAll(state); err != nil {
+		console.SetStickyContent(ctx, "build",
+			fmt.Sprintf("Warning: deleting state files in %s failed: %v", state, err))
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "Removed local state directory %q.\n", state)
+
+	if md.NodeGroupName != "" {
+		if err := txn.Remove(md.NodeGroupName); err != nil {
+			return err
+		}
+
+		fmt.Fprintf(console.Stderr(ctx), "Removed buildx node group %q.\n", md.NodeGroupName)
+	}
+
+	fmt.Fprintf(console.Stderr(ctx), "Cleanup complete.\n")
+	return nil
 }
 
 func newWireBuildxCommand(hidden bool) *cobra.Command {

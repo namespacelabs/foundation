@@ -304,7 +304,23 @@ func (bp *buildProxy) ServeStatus(ctx context.Context) error {
 		}
 	})
 
-	return http.Serve(l, mux)
+	s := http.Server{
+		Handler: mux,
+	}
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.Shutdown(shutdownCtx)
+	}()
+
+	if err := s.Serve(l); err != nil {
+		if !errors.Is(err, http.ErrServerClosed) {
+			return err
+		}
+	}
+	return nil
 }
 
 type buildProxyWithRegistry struct {
