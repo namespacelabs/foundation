@@ -169,3 +169,8 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
+    service: |
+      run [opt_bin/"nsc", "docker", "buildx", "setup", "--use", "--force_cleanup", "--debug_to_file", var/"nsc/log/buildx.log"]
+      run_at_load false
+      keep_alive true
+      environment_variables NS_DO_NOT_UPDATE: true
