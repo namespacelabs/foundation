@@ -32,7 +32,7 @@ func main() {
 	// Consider adding auto updates if we frequently change nsc.
 	fncobra.DoMain(fncobra.MainOpts{
 		Name:                 "nsc",
-		AutoUpdate:           true,
+		NotifyOnNewVersion:   true,
 		ConsoleInhibitReport: true,
 		FormatErr:            formatErr,
 		ConsoleRenderer:      renderLine,

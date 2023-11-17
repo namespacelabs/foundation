@@ -10,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"namespacelabs.dev/foundation/internal/cli/nsboot"
 	"namespacelabs.dev/foundation/internal/cli/version"
 	"namespacelabs.dev/foundation/internal/cli/versioncheck"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -53,7 +52,7 @@ func DeferCheckVersion(ctx context.Context, command string) {
 			return nil
 		}
 
-		if nsboot.NewerVersion(command, status) {
+		if status.NewVersion {
 			compute.On(ctx).Cleanup(tasks.Action(command+".check-updated.notify").LogLevel(1), func(ctx context.Context) error {
 				fmt.Fprintf(console.Stdout(ctx), "\n\n  A new version of %s is available (%s).\n\n", command, status.Version)
 				return nil

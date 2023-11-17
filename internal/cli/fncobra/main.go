@@ -53,6 +53,7 @@ var (
 type MainOpts struct {
 	Name                 string
 	AutoUpdate           bool
+	NotifyOnNewVersion   bool
 	FormatErr            FormatErrorFunc
 	ConsoleInhibitReport bool
 	ConsoleRenderer      consolesink.RendererFunc
@@ -96,8 +97,8 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	rootCtx, style, flushLogs := setupContext(context.Background(), opts.ConsoleInhibitReport, opts.ConsoleRenderer)
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
-	if opts.AutoUpdate {
-		maybeRunLatest(rootCtx, style, flushLogs, opts.Name, opts.Name == "ns")
+	if opts.AutoUpdate && opts.Name == "ns" { // Applies only to ns, not nsc and docker-credential-helper
+		maybeRunLatest(rootCtx, style, flushLogs, opts.Name, true)
 	}
 
 	var cleanupTracer func()
@@ -123,7 +124,7 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		ctx := cmd.Context()
 
 		// This is a bit of an hack. But don't run version checks when doing an update.
-		if opts.AutoUpdate && !slices.Contains(cmd.Aliases, "update-ns") {
+		if opts.NotifyOnNewVersion && !slices.Contains(cmd.Aliases, "update-ns") {
 			DeferCheckVersion(ctx, opts.Name)
 		}
 
