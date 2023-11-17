@@ -66,12 +66,8 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 		return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
 	}
 
-	data := b.Bytes()
-
-	// Trim `\n` added by `op read`.
-	if data[len(data)-1] == '\n' {
-		data = data[:len(data)-1]
-	}
+	// `\n` is added by `op read`.
+	data := bytes.TrimSuffix(b.Bytes(), []byte{'\n'})
 
 	p.cache[ref] = data
 	return data, nil
