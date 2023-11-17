@@ -12,9 +12,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/store/storeutil"
@@ -186,6 +188,19 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 				eg.Go(func(ctx context.Context) error {
 					return bp.ServeStatus(ctx)
+				})
+
+				eg.Go(func(ctx context.Context) error {
+					sigc := make(chan os.Signal, 1)
+					signal.Notify(sigc, os.Interrupt, syscall.SIGTERM, syscall.SIGABRT, syscall.SIGQUIT)
+					select {
+					case <-ctx.Done():
+						fmt.Fprintf(console.Debug(ctx), "Ctx expired.\n")
+					case <-sigc:
+						fmt.Fprintf(console.Debug(ctx), "Received signal to exit.\n")
+						eg.Cancel()
+					}
+					return nil
 				})
 			}
 		}

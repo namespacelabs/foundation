@@ -57,6 +57,10 @@ func (exec *Executor) CancelAndWait() error {
 	return exec.err
 }
 
+func (exec *Executor) Cancel() {
+	exec.cancel()
+}
+
 func (exec *Executor) lowlevelGo(f func() error) {
 	exec.wg.Add(1)
 
