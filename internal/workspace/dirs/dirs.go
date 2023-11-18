@@ -37,6 +37,15 @@ func Config() (string, error) {
 	return filepath.Join(dir, "ns"), nil
 }
 
+func ConfigSubdir(rel string) (string, error) {
+	configPath, err := Config()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(configPath, rel), nil
+}
+
 func ModuleCache(name, ref string) (string, error) {
 	cacheDir, err := ModuleCacheRoot()
 	if err != nil {

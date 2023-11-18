@@ -281,7 +281,20 @@ If you want to create a new remote builder context configuration, cleanup the ol
 
 func ensureStateDir(specified, dir string) (string, error) {
 	if specified == "" {
-		return dirs.Ensure(dirs.Subdir(dir))
+		// Change state dir from cache, which can be removed at any time,
+		// to the app's config folder.
+		// Older state dir might still be under the cache file, so we need to first check that path,
+		// if it does not exist, we can create the new one, under config path.
+		oldStateDirPath, err := dirs.Subdir(dir)
+		if err != nil {
+			return "", err
+		}
+
+		if proxyAlreadyExists(oldStateDirPath) {
+			return oldStateDirPath, nil
+		}
+
+		return dirs.Ensure(dirs.ConfigSubdir(dir))
 	}
 
 	s, err := filepath.Abs(specified)
