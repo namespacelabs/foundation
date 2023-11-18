@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/onepassword"
 )
 
@@ -51,26 +52,28 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 		return data, nil
 	}
 
-	// If no account is configured, `op read` does not fail but waits for user input.
-	// Hence, we ensure that a user account is indeed configured.
-	if err := p.ensureAccount(ctx); err != nil {
-		return nil, err
-	}
+	return tasks.Return(ctx, tasks.Action("1password.read").Arg("ref", ref), func(ctx context.Context) ([]byte, error) {
+		// If no account is configured, `op read` does not fail but waits for user input.
+		// Hence, we ensure that a user account is indeed configured.
+		if err := p.ensureAccount(ctx); err != nil {
+			return nil, err
+		}
 
-	c := exec.CommandContext(ctx, "op", "read", ref)
+		c := exec.CommandContext(ctx, "op", "read", ref)
 
-	var b bytes.Buffer
-	c.Stdout = &b
-	c.Stderr = console.Stderr(ctx)
-	if err := c.Run(); err != nil {
-		return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
-	}
+		var b bytes.Buffer
+		c.Stdout = &b
+		c.Stderr = console.Stderr(ctx)
+		if err := c.Run(); err != nil {
+			return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
+		}
 
-	// `\n` is added by `op read`.
-	data := bytes.TrimSuffix(b.Bytes(), []byte{'\n'})
+		// `\n` is added by `op read`.
+		data := bytes.TrimSuffix(b.Bytes(), []byte{'\n'})
 
-	p.cache[ref] = data
-	return data, nil
+		p.cache[ref] = data
+		return data, nil
+	})
 }
 
 func (p *provider) ensureAccount(ctx context.Context) error {
