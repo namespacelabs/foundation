@@ -169,6 +169,9 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
+    dependencies:
+      - name: namespacelabs/namespace/nsc-remote-builder
+        type: recommended
     service: |
       run [opt_bin/"nsc", "docker", "buildx", "setup", "--use", "--force_cleanup", "--debug_to_file", var/"nsc/log/buildx.log"]
       run_at_load false
