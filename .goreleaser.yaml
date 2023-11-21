@@ -169,6 +169,3 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
-    dependencies:
-      - name: namespacelabs/namespace/nsc-remote-builder
-        type: recommended
