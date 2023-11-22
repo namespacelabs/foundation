@@ -740,22 +740,25 @@ func RefreshCluster(ctx context.Context, api API, req RefreshKubernetesClusterRe
 }
 
 func StartRefreshing(ctx context.Context, api API, clusterId string, handle func(error) error) error {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	var lastRefresh time.Time
 	for {
-		if _, err := RefreshCluster(ctx, api, RefreshKubernetesClusterRequest{ClusterId: clusterId}); err != nil {
-			if err := handle(err); err != nil {
-				return err
+		if lastRefresh.IsZero() || time.Since(lastRefresh) > 5*time.Minute {
+			if _, err := RefreshCluster(ctx, api, RefreshKubernetesClusterRequest{ClusterId: clusterId}); err != nil {
+				if err := handle(err); err != nil {
+					return err
+				}
+			} else {
+				lastRefresh = time.Now()
 			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(time.Minute):
-			}
-		} else {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(10 * time.Minute):
-			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
 		}
 	}
 }
