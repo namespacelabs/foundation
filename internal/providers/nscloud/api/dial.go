@@ -74,8 +74,13 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 		HandshakeTimeout: 15 * time.Second,
 	}
 
+	bt, err := fnapi.BearerToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
 	hdrs := http.Header{}
-	hdrs.Add("Authorization", fnapi.BearerToken(token))
+	hdrs.Add("Authorization", bt)
 
 	var o dialOptions
 	for _, opt := range opts {

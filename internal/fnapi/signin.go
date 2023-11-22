@@ -6,14 +6,16 @@ package fnapi
 
 import (
 	"context"
+	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 type StartLoginRequest struct {
-	Kind           string   `json:"kind"`
-	SupportedKinds []string `json:"supported_kinds"`
-	TenantId       string   `json:"tenant_id,omitempty"`
+	Kind                string   `json:"kind"`
+	SupportedKinds      []string `json:"supported_kinds"`
+	TenantId            string   `json:"tenant_id,omitempty"`
+	SessionDurationSecs int64    `json:"session_duration_secs,omitempty"`
 }
 
 type StartLoginResponse struct {
@@ -26,11 +28,21 @@ type CompleteLoginRequest struct {
 	LoginId string `json:"login_id"`
 }
 
+type IssueTenantTokenFromSessionRequest struct {
+	SessionToken      string `json:"session_token,omitempty"`
+	TokenDurationSecs int64  `json:"token_duration_secs,omitempty"`
+}
+
+type IssueTenantTokenFromSessionResponse struct {
+	TenantToken string `json:"tenant_token,omitempty"`
+}
+
 // Returns the URL which the user should open.
-func StartLogin(ctx context.Context, tenantId string) (*StartLoginResponse, error) {
+func StartLogin(ctx context.Context, tenantId string, sessionDuration time.Duration) (*StartLoginResponse, error) {
 	req := StartLoginRequest{
-		SupportedKinds: []string{"tenant"},
-		TenantId:       tenantId,
+		SupportedKinds:      []string{"tenant"},
+		TenantId:            tenantId,
+		SessionDurationSecs: int64(sessionDuration.Seconds()),
 	}
 
 	var resp StartLoginResponse
@@ -50,8 +62,9 @@ func StartLogin(ctx context.Context, tenantId string) (*StartLoginResponse, erro
 }
 
 type CompleteTenantLoginResponse struct {
-	TenantToken string `json:"tenant_token,omitempty"`
-	TenantName  string `json:"tenant_name,omitempty"`
+	TenantToken  string `json:"tenant_token,omitempty"`
+	TenantName   string `json:"tenant_name,omitempty"`
+	SessionToken string `json:"session_token,omitempty"`
 }
 
 func CompleteTenantLogin(ctx context.Context, id string) (*CompleteTenantLoginResponse, error) {

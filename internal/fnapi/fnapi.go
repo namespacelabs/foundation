@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
@@ -63,11 +64,31 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 }
 
 type Token interface {
-	Raw() string
+	Claims(context.Context) (*auth.TokenClaims, error)
+	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error)) (string, error)
 }
 
-func BearerToken(t Token) string {
-	return "Bearer " + t.Raw()
+func FetchSessionToken(ctx context.Context, sessionToken string, duration time.Duration) (string, error) {
+	req := IssueTenantTokenFromSessionRequest{
+		SessionToken:      sessionToken,
+		TokenDurationSecs: int64(duration.Seconds()),
+	}
+
+	var resp IssueTenantTokenFromSessionResponse
+	if err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/IssueTenantTokenFromSession", req, DecodeJSONResponse(&resp)); err != nil {
+		return "", err
+	}
+
+	return resp.TenantToken, nil
+}
+
+func BearerToken(ctx context.Context, t Token) (string, error) {
+	raw, err := t.IssueToken(ctx, 5*time.Minute, FetchSessionToken)
+	if err != nil {
+		return "", err
+	}
+
+	return "Bearer " + raw, nil
 }
 
 type Call[RequestT any] struct {
@@ -101,7 +122,13 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		}
 
 		resolvedToken = tok
-		headers.Add("Authorization", BearerToken(tok))
+
+		bearerToken, err := BearerToken(ctx, tok)
+		if err != nil {
+			return err
+		}
+
+		headers.Add("Authorization", bearerToken)
 	}
 
 	AddNamespaceHeaders(ctx, &headers)

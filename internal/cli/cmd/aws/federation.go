@@ -47,7 +47,7 @@ func newAssumeRoleCmd() *cobra.Command {
 			return err
 		}
 
-		claims, err := fnapi.Claims(token)
+		claims, err := token.Claims(ctx)
 		if err != nil {
 			return err
 		}

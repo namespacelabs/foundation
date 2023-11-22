@@ -6,10 +6,7 @@ package fnapi
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"os"
-	"strings"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/auth"
@@ -168,32 +165,6 @@ func IssueDevelopmentToken(ctx context.Context) (IssueDevelopmentTokenResponse, 
 	return res, nil
 }
 
-type TokenClaims struct {
-	TenantID      string `json:"tenant_id"`
-	InstanceID    string `json:"instance_id"`
-	OwnerID       string `json:"owner_id"`
-	PrimaryRegion string `json:"primary_region"`
-}
-
-func Claims(tok Token) (*TokenClaims, error) {
-	parts := strings.Split(tok.Raw(), ".")
-	if len(parts) < 2 {
-		return nil, fnerrors.New("invalid token")
-	}
-
-	dec, err := base64.RawStdEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, fnerrors.New("invalid token: %w", err)
-	}
-
-	var claims TokenClaims
-	if err := json.Unmarshal(dec, &claims); err != nil {
-		return nil, fnerrors.New("invalid claims: %w", err)
-	}
-
-	return &claims, nil
-}
-
 func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityProvider string) error {
 	req := TrustAWSCognitoIdentityPoolRequest{AwsCognitoIdentityPool: identityPool, IdentityProvider: identityProvider}
 
@@ -202,7 +173,7 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 		return err
 	}
 
-	claims, err := Claims(token)
+	claims, err := token.Claims(ctx)
 	if err != nil {
 		return err
 	}
@@ -251,6 +222,15 @@ func FetchToken(ctx context.Context) (Token, error) {
 
 		return auth.LoadTenantToken(ctx)
 	})
+}
+
+func IssueToken(ctx context.Context, minDur time.Duration) (string, error) {
+	t, err := FetchToken(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return t.IssueToken(ctx, minDur, FetchSessionToken)
 }
 
 type GetTenantResponse struct {

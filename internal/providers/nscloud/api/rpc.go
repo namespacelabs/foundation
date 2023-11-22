@@ -90,7 +90,7 @@ func ResolveEndpoint(ctx context.Context, tok fnapi.Token) (string, error) {
 		return "", fnerrors.New("a token is required")
 	}
 
-	claims, err := fnapi.Claims(tok)
+	claims, err := tok.Claims(ctx)
 	if err != nil {
 		return "", err
 	}

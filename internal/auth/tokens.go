@@ -46,14 +46,18 @@ func tokenLoc() string {
 }
 
 type Token struct {
-	BearerToken string `json:"bearer_token,omitempty"`
+	path string
+
+	BearerToken  string `json:"bearer_token,omitempty"`
+	SessionToken string `json:"session_token,omitempty"`
 }
 
 // TODO: remove when legacy token.json format is not used anymore.
 func (t *Token) UnmarshalJSON(data []byte) error {
 	var migrateToken struct {
-		BearerToken string `json:"bearer_token,omitempty"`
-		TenantToken string `json:"tenant_token,omitempty"`
+		BearerToken  string `json:"bearer_token,omitempty"`
+		SessionToken string `json:"session_token,omitempty"`
+		TenantToken  string `json:"tenant_token,omitempty"`
 	}
 
 	if err := json.Unmarshal(data, &migrateToken); err != nil {
@@ -61,19 +65,103 @@ func (t *Token) UnmarshalJSON(data []byte) error {
 	}
 
 	t.BearerToken = migrateToken.BearerToken
-	if t.BearerToken == "" {
+	t.SessionToken = migrateToken.SessionToken
+	if migrateToken.TenantToken != "" {
 		t.BearerToken = migrateToken.TenantToken
 	}
 
 	return nil
 }
 
-func (t *Token) Raw() string {
-	return t.BearerToken
+type TokenClaims struct {
+	jwt.RegisteredClaims
+
+	TenantID      string `json:"tenant_id"`
+	InstanceID    string `json:"instance_id"`
+	OwnerID       string `json:"owner_id"`
+	PrimaryRegion string `json:"primary_region"`
+}
+
+func (t *Token) Claims(ctx context.Context) (*TokenClaims, error) {
+	if t.SessionToken != "" {
+		return parseClaims(ctx, strings.TrimPrefix(t.SessionToken, "st_"))
+	}
+
+	switch {
+	case strings.HasPrefix(t.BearerToken, "nsct_"):
+		return parseClaims(ctx, strings.TrimPrefix(t.BearerToken, "nsct_"))
+	case strings.HasPrefix(t.BearerToken, "nscw_"):
+		return parseClaims(ctx, strings.TrimPrefix(t.BearerToken, "nscw_"))
+	default:
+		return nil, fnerrors.ReauthError("not logged in")
+	}
+}
+
+func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
+	parser := jwt.Parser{}
+
+	var claims TokenClaims
+	if _, _, err := parser.ParseUnverified(raw, &claims); err != nil {
+		fmt.Fprintf(console.Debug(ctx), "parsing claims %q failed: %v\n", raw, err)
+		return nil, fnerrors.ReauthError("not logged in")
+	}
+
+	return &claims, nil
+}
+
+func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShortTerm func(context.Context, string, time.Duration) (string, error)) (string, error) {
+	if t.SessionToken != "" {
+		sessionClaims, err := t.Claims(ctx)
+		if err != nil {
+			return "", err
+		}
+
+		if t.path != "" {
+			cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
+			cacheContents, err := os.ReadFile(cachePath)
+			if err != nil {
+				if !os.IsNotExist(err) {
+					return "", err
+				}
+			} else {
+				cacheClaims, err := parseClaims(ctx, strings.TrimPrefix(string(cacheContents), "nsct_"))
+				if err != nil {
+					return "", err
+				}
+
+				if cacheClaims.TenantID == sessionClaims.TenantID {
+					if cacheClaims.VerifyExpiresAt(time.Now().Add(minDur), true) {
+						return string(cacheContents), nil
+					}
+				}
+			}
+		}
+
+		dur := 2 * minDur
+		if dur > time.Hour {
+			dur = time.Hour
+		}
+
+		newToken, err := issueShortTerm(ctx, t.SessionToken, dur)
+		if err == nil && t.path != "" {
+			cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
+			if err := os.WriteFile(cachePath, []byte(newToken), 0600); err != nil {
+				fmt.Fprintf(console.Warnings(ctx), "Failed to write token cache: %v\n", err)
+			}
+		}
+
+		return newToken, err
+	}
+
+	return t.BearerToken, nil
 }
 
 func StoreTenantToken(token string) error {
-	data, err := json.Marshal(Token{BearerToken: token})
+	return StoreToken(Token{BearerToken: token})
+}
+
+func StoreToken(token Token) error {
+	data, err := json.Marshal(token)
 	if err != nil {
 		return err
 	}
@@ -115,31 +203,22 @@ func LoadTokenFromPath(ctx context.Context, path string, validAt time.Time) (*To
 		return nil, err
 	}
 
-	token := &Token{}
+	token := &Token{path: path}
 	if err := json.Unmarshal(data, token); err != nil {
 		fmt.Fprintf(console.Debug(ctx), "failed to unmarshal cached tenant token: %v\n", err)
 		return nil, fnerrors.ReauthError("not logged in")
 	}
 
-	claims := jwt.RegisteredClaims{}
-	parser := jwt.Parser{}
-	var rawToken string
-	switch {
-	case strings.HasPrefix(token.BearerToken, "nsct_"):
-		rawToken = strings.TrimPrefix(token.BearerToken, "nsct_")
-	case strings.HasPrefix(token.BearerToken, "nscw_"):
-		rawToken = strings.TrimPrefix(token.BearerToken, "nscw_")
-	default:
-		fmt.Fprintf(console.Debug(ctx), "unknown token format\n")
-		return nil, fnerrors.ReauthError("not logged in")
-	}
-
-	if _, _, err := parser.ParseUnverified(rawToken, &claims); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to parse tenant JWT: %v\n", err)
-		return nil, fnerrors.ReauthError("not logged in")
+	claims, err := token.Claims(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	if !claims.VerifyExpiresAt(validAt, true) {
+		if token.SessionToken != "" {
+			return nil, fnerrors.ReauthError("session expired")
+		}
+
 		if strings.HasPrefix(token.BearerToken, "nscw_") {
 			return nil, fnerrors.InternalError("workload token expired")
 		}

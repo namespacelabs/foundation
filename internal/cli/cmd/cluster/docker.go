@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/types"
@@ -174,7 +175,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 
 					delete(cfg.AuthConfigs, reg.EndpointAddress)
 				} else {
-					token, err := fnapi.FetchToken(ctx)
+					token, err := fnapi.IssueToken(ctx, 8*time.Hour)
 					if err != nil {
 						return err
 					}
@@ -182,7 +183,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 					cfg.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
 						ServerAddress: reg.EndpointAddress,
 						Username:      nscrRegistryUsername,
-						Password:      token.Raw(),
+						Password:      token,
 					}
 
 					delete(cfg.CredentialHelpers, reg.EndpointAddress)
@@ -272,7 +273,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 
 		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
 			if reg != nil && regURL == reg.EndpointAddress {
-				token, err := fnapi.FetchToken(ctx)
+				token, err := fnapi.IssueToken(ctx, 8*time.Hour)
 				if err != nil {
 					return err
 				}
@@ -280,7 +281,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 				c := credHelperGetOutput{
 					ServerURL: reg.EndpointAddress,
 					Username:  dockerUsername,
-					Secret:    token.Raw(),
+					Secret:    token,
 				}
 
 				enc := json.NewEncoder(os.Stdout)

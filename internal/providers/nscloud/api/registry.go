@@ -6,19 +6,20 @@ package api
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
 func RegistryCreds(ctx context.Context) (*authn.Basic, error) {
-	token, err := fnapi.FetchToken(ctx)
+	token, err := fnapi.IssueToken(ctx, 30*time.Minute)
 	if err != nil {
 		return nil, err
 	}
 
 	return &authn.Basic{
 		Username: "token", // XXX: hardcoded as image-registry expects static username.
-		Password: token.Raw(),
+		Password: token,
 	}, nil
 }

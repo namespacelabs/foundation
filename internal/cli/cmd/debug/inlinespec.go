@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -24,13 +25,13 @@ func newInlineSpecCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			token, err := fnapi.FetchToken(ctx)
+			token, err := fnapi.IssueToken(ctx, 8*time.Hour)
 			if err != nil {
 				return err
 			}
 
 			spec := metadata.MetadataSpec{
-				InlineToken: token.Raw(),
+				InlineToken: token,
 			}
 
 			data, err := json.Marshal(spec)

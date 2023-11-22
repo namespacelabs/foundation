@@ -364,16 +364,17 @@ func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, 
 		return nil, err
 	}
 
-	token, err := fnapi.FetchToken(ctx)
+	token, err := fnapi.IssueToken(ctx, 8*time.Hour)
 	if err != nil {
 		return nil, err
 	}
+
 	for _, reg := range []*api.ImageRegistry{nsRegs.Registry, nsRegs.NSCR} {
 		if reg != nil {
 			newConfig.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
 				ServerAddress: reg.EndpointAddress,
 				Username:      nscrRegistryUsername,
-				Password:      token.Raw(),
+				Password:      token,
 			}
 		}
 	}

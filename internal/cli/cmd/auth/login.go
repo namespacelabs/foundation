@@ -7,6 +7,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/morikuni/aec"
 	"github.com/pkg/browser"
@@ -20,6 +21,7 @@ import (
 
 func NewLoginCmd() *cobra.Command {
 	var openBrowser bool
+	var session bool
 
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -27,7 +29,12 @@ func NewLoginCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
-			res, err := fnapi.StartLogin(ctx, auth.Workspace)
+			var sessionDuration time.Duration
+			if session {
+				sessionDuration = 7 * 24 * time.Hour
+			}
+
+			res, err := fnapi.StartLogin(ctx, auth.Workspace, sessionDuration)
 			if err != nil {
 				return err
 			}
@@ -41,17 +48,24 @@ func NewLoginCmd() *cobra.Command {
 				fmt.Fprintf(stdout, "In order to login, open the following URL in your browser:\n\n  %s\n", res.LoginUrl)
 			}
 
-			tenant, err := completeLogin(ctx, res.LoginId)
+			c, err := fnapi.CompleteTenantLogin(ctx, res.LoginId)
 			if err != nil {
 				return err
 			}
 
-			if err := auth.StoreTenantToken(tenant.token); err != nil {
-				return err
+			if c.SessionToken != "" {
+				if err := auth.StoreToken(auth.Token{SessionToken: c.SessionToken}); err != nil {
+					return err
+				}
+
+			} else {
+				if err := auth.StoreTenantToken(c.TenantToken); err != nil {
+					return err
+				}
 			}
 
-			if tenant.name != "" {
-				fmt.Fprintf(stdout, "\nYou are now logged into workspace %q, have a nice day.\n", tenant.name)
+			if c.TenantName != "" {
+				fmt.Fprintf(stdout, "\nYou are now logged into workspace %q, have a nice day.\n", c.TenantName)
 			} else {
 				fmt.Fprintf(stdout, "\nYou are now logged in, have a nice day.\n")
 			}
@@ -61,6 +75,8 @@ func NewLoginCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&openBrowser, "browser", true, "Open a browser to login.")
+	cmd.Flags().BoolVar(&session, "session", false, "If set, gets a long-lived session.")
+	cmd.Flags().MarkHidden("session")
 
 	return cmd
 }
@@ -68,21 +84,4 @@ func NewLoginCmd() *cobra.Command {
 func openURL(url string) bool {
 	err := browser.OpenURL(url)
 	return err == nil
-}
-
-type tenant struct {
-	token string
-	name  string
-}
-
-func completeLogin(ctx context.Context, id string) (tenant, error) {
-	res, err := fnapi.CompleteTenantLogin(ctx, id)
-	if err != nil {
-		return tenant{}, err
-	}
-
-	return tenant{
-		token: res.TenantToken,
-		name:  res.TenantName,
-	}, nil
 }
