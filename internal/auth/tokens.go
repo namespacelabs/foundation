@@ -120,8 +120,12 @@ func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
 	return &claims, nil
 }
 
-func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShortTerm func(context.Context, string, time.Duration) (string, error)) (string, error) {
+func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShortTerm func(context.Context, string, time.Duration) (string, error), skipCache bool) (string, error) {
 	if t.SessionToken != "" {
+		if skipCache {
+			return issueShortTerm(ctx, t.SessionToken, minDur)
+		}
+
 		sessionClaims, err := t.Claims(ctx)
 		if err != nil {
 			return "", err

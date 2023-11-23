@@ -18,11 +18,11 @@ type Token interface {
 	IsSessionToken() bool
 	Claims(context.Context) (*auth.TokenClaims, error)
 	PrimaryRegion(context.Context) (string, error)
-	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error)) (string, error)
+	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error), bool) (string, error)
 }
 
 func BearerToken(ctx context.Context, t Token) (string, error) {
-	raw, err := t.IssueToken(ctx, 5*time.Minute, IssueTenantTokenFromSession)
+	raw, err := t.IssueToken(ctx, 5*time.Minute, IssueTenantTokenFromSession, false)
 	if err != nil {
 		return "", err
 	}
@@ -84,7 +84,7 @@ func IssueToken(ctx context.Context, minDur time.Duration) (string, error) {
 		return "", err
 	}
 
-	return t.IssueToken(ctx, minDur, IssueTenantTokenFromSession)
+	return t.IssueToken(ctx, minDur, IssueTenantTokenFromSession, false)
 }
 
 func ResolveSpec() (string, error) {

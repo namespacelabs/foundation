@@ -158,7 +158,7 @@ func IssueDevelopmentToken(ctx context.Context) (string, error) {
 	}
 
 	if tok.IsSessionToken() {
-		return tok.IssueToken(ctx, time.Hour, IssueTenantTokenFromSession)
+		return tok.IssueToken(ctx, time.Hour, IssueTenantTokenFromSession, true)
 	}
 
 	req := struct{}{}
