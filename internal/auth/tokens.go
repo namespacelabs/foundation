@@ -82,6 +82,8 @@ type TokenClaims struct {
 	PrimaryRegion string `json:"primary_region"`
 }
 
+func (t *Token) IsSessionToken() bool { return t.SessionToken != "" }
+
 func (t *Token) Claims(ctx context.Context) (*TokenClaims, error) {
 	if t.SessionToken != "" {
 		return parseClaims(ctx, strings.TrimPrefix(t.SessionToken, "st_"))

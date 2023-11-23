@@ -62,7 +62,7 @@ func AuthenticatedCall(ctx context.Context, endpoint string, method string, req 
 	}.Do(ctx, req, StaticEndpoint(endpoint), handle)
 }
 
-func FetchSessionToken(ctx context.Context, sessionToken string, duration time.Duration) (string, error) {
+func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, duration time.Duration) (string, error) {
 	req := IssueTenantTokenFromSessionRequest{
 		TokenDurationSecs: int64(duration.Seconds()),
 	}

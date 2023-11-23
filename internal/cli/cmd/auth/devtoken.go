@@ -33,14 +33,13 @@ func NewGenerateDevTokenCmd() *cobra.Command {
 		}
 
 		if *outputPath != "" {
-			if err := os.WriteFile(*outputPath, []byte(res.DevelopmentToken), 0644); err != nil {
+			if err := os.WriteFile(*outputPath, []byte(res), 0644); err != nil {
 				return fnerrors.New("failed to write %q: %w", *outputPath, err)
 			}
-
-			return nil
+		} else {
+			fmt.Fprintln(console.Stdout(ctx), res)
 		}
 
-		fmt.Fprintln(console.Stdout(ctx), res.DevelopmentToken)
 		return nil
 	})
 }

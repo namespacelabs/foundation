@@ -6,6 +6,7 @@ package fnapi
 
 import (
 	"context"
+	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -150,15 +151,24 @@ func IssueIngressAccessToken(ctx context.Context, instanceId string) (IssueIngre
 	return res, nil
 }
 
-func IssueDevelopmentToken(ctx context.Context) (IssueDevelopmentTokenResponse, error) {
+func IssueDevelopmentToken(ctx context.Context) (string, error) {
+	tok, err := FetchToken(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if tok.IsSessionToken() {
+		return tok.IssueToken(ctx, time.Hour, IssueTenantTokenFromSession)
+	}
+
 	req := struct{}{}
 
 	var res IssueDevelopmentTokenResponse
 	if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.tenants.TenantsService/IssueDevelopmentToken", req, DecodeJSONResponse(&res)); err != nil {
-		return IssueDevelopmentTokenResponse{}, err
+		return "", err
 	}
 
-	return res, nil
+	return res.DevelopmentToken, nil
 }
 
 func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityProvider string) error {
