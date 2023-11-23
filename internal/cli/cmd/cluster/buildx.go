@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/store/storeutil"
@@ -64,6 +65,8 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 	staticWorkerDefFile := cmd.Flags().String("static_worker_definition_path", "", "Injects the gRPC proxy ListWorkers response JSON payload from file")
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
 	forceCleanup := cmd.Flags().Bool("force_cleanup", false, "If set, it forces a cleanup of any previous buildx proxy running in background.")
+	waitForLogin := cmd.Flags().Bool("wait_for_login", false, "If set, it blocks waiting for user to login.")
+	_ = cmd.Flags().MarkHidden("wait_for_login")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -72,6 +75,14 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 
 		if !*useGrpcProxy && *staticWorkerDefFile != "" {
 			return fnerrors.New("--inject_worker_info_file requires --use_grpc_proxy")
+		}
+
+		// NSL-2249 for brew service, block here until user logs in.
+		if *waitForLogin {
+			err := blockWaitForLogin(ctx)
+			if err != nil {
+				return err
+			}
 		}
 
 		dockerCli, err := command.NewDockerCli()
@@ -276,6 +287,27 @@ If you want to create a new remote builder context configuration, cleanup the ol
 
    nsc docker buildx cleanup
 `
+	}
+}
+
+func blockWaitForLogin(ctx context.Context) error {
+	// Check immediately if token is valid by calling Namespace
+	_, err := api.GetProfile(ctx, api.Methods)
+	if err == nil {
+		return err
+	}
+
+	// Else, block
+	for {
+		select {
+		case <-time.After(time.Second * 5):
+			_, err := api.GetProfile(ctx, api.Methods)
+			if err == nil {
+				return err
+			}
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }
 
