@@ -97,6 +97,15 @@ func (t *Token) Claims(ctx context.Context) (*TokenClaims, error) {
 	}
 }
 
+func (t *Token) PrimaryRegion(ctx context.Context) (string, error) {
+	claims, err := t.Claims(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return claims.PrimaryRegion, nil
+}
+
 func parseClaims(ctx context.Context, raw string) (*TokenClaims, error) {
 	parser := jwt.Parser{}
 

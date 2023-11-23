@@ -20,7 +20,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
@@ -42,8 +41,8 @@ func SetupFlags(flags *pflag.FlagSet) {
 	_ = flags.MarkHidden("fnapi_admin")
 }
 
-func ResolveStaticEndpoint(endpoint string) func(context.Context, Token) (string, error) {
-	return func(context.Context, Token) (string, error) {
+func StaticEndpoint(endpoint string) func(context.Context, ResolvedToken) (string, error) {
+	return func(context.Context, ResolvedToken) (string, error) {
 		return endpoint, nil
 	}
 }
@@ -51,49 +50,46 @@ func ResolveStaticEndpoint(endpoint string) func(context.Context, Token) (string
 // A nil handle indicates that the caller wants to discard the response.
 func AnonymousCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Method:     method,
-		FetchToken: nil, // Callers of this API do not assume that credentials are injected.
-	}.Do(ctx, req, ResolveStaticEndpoint(endpoint), handle)
+		Method:           method,
+		IssueBearerToken: nil, // Callers of this API do not assume that credentials are injected.
+	}.Do(ctx, req, StaticEndpoint(endpoint), handle)
 }
 
 func AuthenticatedCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
-		Method:     method,
-		FetchToken: FetchToken,
-	}.Do(ctx, req, ResolveStaticEndpoint(endpoint), handle)
-}
-
-type Token interface {
-	Claims(context.Context) (*auth.TokenClaims, error)
-	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error)) (string, error)
+		Method:           method,
+		IssueBearerToken: IssueBearerToken,
+	}.Do(ctx, req, StaticEndpoint(endpoint), handle)
 }
 
 func FetchSessionToken(ctx context.Context, sessionToken string, duration time.Duration) (string, error) {
 	req := IssueTenantTokenFromSessionRequest{
-		SessionToken:      sessionToken,
 		TokenDurationSecs: int64(duration.Seconds()),
 	}
 
 	var resp IssueTenantTokenFromSessionResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/IssueTenantTokenFromSession", req, DecodeJSONResponse(&resp)); err != nil {
+
+	if err := (Call[IssueTenantTokenFromSessionRequest]{
+		Method: "nsl.signin.SigninService/IssueTenantTokenFromSession",
+		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
+			return ResolvedToken{BearerToken: sessionToken}, nil
+		},
+		ScrubRequest: func(req *IssueTenantTokenFromSessionRequest) {
+			if req.SessionToken != "" {
+				req.SessionToken = "scrubed"
+			}
+		},
+	}).Do(ctx, req, StaticEndpoint(EndpointAddress), DecodeJSONResponse(&resp)); err != nil {
 		return "", err
 	}
 
 	return resp.TenantToken, nil
 }
 
-func BearerToken(ctx context.Context, t Token) (string, error) {
-	raw, err := t.IssueToken(ctx, 5*time.Minute, FetchSessionToken)
-	if err != nil {
-		return "", err
-	}
-
-	return "Bearer " + raw, nil
-}
-
 type Call[RequestT any] struct {
-	Method     string
-	FetchToken func(context.Context) (Token, error)
+	Method           string
+	IssueBearerToken func(context.Context) (ResolvedToken, error)
+	ScrubRequest     func(*RequestT)
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -111,24 +107,19 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 }
 
-func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoint func(context.Context, Token) (string, error), handle func(io.Reader) error) error {
+func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoint func(context.Context, ResolvedToken) (string, error), handle func(io.Reader) error) error {
 	headers := http.Header{}
 
-	var resolvedToken Token
-	if c.FetchToken != nil {
-		tok, err := c.FetchToken(ctx)
+	var resolvedToken ResolvedToken
+	if c.IssueBearerToken != nil {
+		tok, err := c.IssueBearerToken(ctx)
 		if err != nil {
 			return err
 		}
 
 		resolvedToken = tok
 
-		bearerToken, err := BearerToken(ctx, tok)
-		if err != nil {
-			return err
-		}
-
-		headers.Add("Authorization", bearerToken)
+		headers.Add("Authorization", "Bearer "+tok.BearerToken)
 	}
 
 	AddNamespaceHeaders(ctx, &headers)
@@ -145,7 +136,14 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 
 	tid := ids.NewRandomBase32ID(4)
 	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v (endpoint: %v)\n", tid, c.Method, endpoint)
-	fmt.Fprintf(console.Debug(ctx), "[%s] Body: %s\n", tid, reqBytes)
+
+	reqDebugBytes := reqBytes
+	if c.ScrubRequest != nil {
+		c.ScrubRequest(&request)
+		reqDebugBytes, _ = json.Marshal(request)
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "[%s] Body: %s\n", tid, reqDebugBytes)
 
 	t := time.Now()
 	url := endpoint + "/" + c.Method

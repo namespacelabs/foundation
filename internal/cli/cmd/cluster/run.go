@@ -284,7 +284,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			}
 
 			var response api.CreateContainersResponse
-			if err := api.Methods.CreateContainers.Do(ctx, req, api.ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			if err := api.Methods.CreateContainers.Do(ctx, req, api.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 			return &response, nil
@@ -308,7 +308,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			if err := api.Methods.StartContainers.Do(ctx, api.StartContainersRequest{
 				Id:        target,
 				Container: []*api.ContainerRequest{container},
-			}, api.ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			}, api.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 
@@ -449,7 +449,7 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 		if err := api.Methods.CreateContainers.Do(ctx, api.CreateContainersRequest{
 			Compose:         []*api.ComposeRequest{{Contents: projectYAML}},
 			DevelopmentMode: devmode,
-		}, api.ResolveEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		}, api.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

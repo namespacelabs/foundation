@@ -80,7 +80,7 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 	}
 
 	hdrs := http.Header{}
-	hdrs.Add("Authorization", bt)
+	hdrs.Add("Authorization", "Bearer "+bt)
 
 	var o dialOptions
 	for _, opt := range opts {

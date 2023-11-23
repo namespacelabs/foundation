@@ -6,12 +6,8 @@ package fnapi
 
 import (
 	"context"
-	"os"
-	"time"
 
-	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 const AdminScope = "admin"
@@ -183,54 +179,11 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 	}
 
 	return Call[any]{
-		Method:     "nsl.tenants.TenantsService/TrustAWSCognitoIdentityPool",
-		FetchToken: func(ctx context.Context) (Token, error) { return token, nil },
-	}.Do(ctx, req, ResolveStaticEndpoint(EndpointAddress), nil)
-}
-
-func ResolveSpec() (string, error) {
-	if spec := os.Getenv("NSC_TOKEN_SPEC"); spec != "" {
-		return spec, nil
-	}
-
-	if specFile := os.Getenv("NSC_TOKEN_SPEC_FILE"); specFile != "" {
-		contents, err := os.ReadFile(specFile)
-		if err != nil {
-			return "", fnerrors.New("failed to load spec: %w", err)
-		}
-
-		return string(contents), nil
-	}
-
-	return "", nil
-}
-
-func FetchToken(ctx context.Context) (Token, error) {
-	return tasks.Return(ctx, tasks.Action("nsc.fetch-token").LogLevel(1), func(ctx context.Context) (*auth.Token, error) {
-		spec, err := ResolveSpec()
-		if err != nil {
-			return nil, err
-		}
-
-		if spec != "" {
-			return auth.FetchTokenFromSpec(ctx, spec)
-		}
-
-		if specified := os.Getenv("NSC_TOKEN_FILE"); specified != "" {
-			return auth.LoadTokenFromPath(ctx, specified, time.Now())
-		}
-
-		return auth.LoadTenantToken(ctx)
-	})
-}
-
-func IssueToken(ctx context.Context, minDur time.Duration) (string, error) {
-	t, err := FetchToken(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	return t.IssueToken(ctx, minDur, FetchSessionToken)
+		Method: "nsl.tenants.TenantsService/TrustAWSCognitoIdentityPool",
+		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
+			return IssueBearerTokenFromToken(ctx, token)
+		},
+	}.Do(ctx, req, StaticEndpoint(EndpointAddress), nil)
 }
 
 type GetTenantResponse struct {
