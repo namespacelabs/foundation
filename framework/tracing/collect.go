@@ -27,12 +27,14 @@ func (c Collected) Attribute(kv ...attribute.KeyValue) Collected {
 	return Collected{name: c.name, attributes: append(c.attributes, kv...)}
 }
 
-func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error) error {
+func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
 	if tracer == nil {
 		return callback(ctx)
 	}
 
-	ctx, span := tracer.Start(ctx, name.name, trace.WithAttributes(name.attributes...))
+	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
+
+	ctx, span := tracer.Start(ctx, name.name, opts...)
 	defer span.End(trace.WithStackTrace(true))
 
 	err := callback(ctx)
@@ -43,12 +45,14 @@ func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback
 	return err
 }
 
-func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error)) (T, error) {
+func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
 	if tracer == nil {
 		return callback(ctx)
 	}
 
-	ctx, span := tracer.Start(ctx, name.name, trace.WithAttributes(name.attributes...))
+	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
+
+	ctx, span := tracer.Start(ctx, name.name, opts...)
 	defer span.End(trace.WithStackTrace(true))
 
 	value, err := callback(ctx)
