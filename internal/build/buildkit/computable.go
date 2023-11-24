@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	maxExpectedWorkspaceSize uint64 = 32 * 1024 * 1024 // 32MB should be enough for everyone (famous last words).
+	maxExpectedWorkspaceSize uint64 = 64 * 1024 * 1024 // 64MB should be enough for everyone (famous last words++).
 )
 
 var SkipExpectedMaxWorkspaceSizeCheck = false
