@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/containerd/containerd/platforms"
 	moby_buildkit_v1 "github.com/moby/buildkit/api/services/control"
@@ -235,7 +236,7 @@ func useBuildClusterCluster(ctx context.Context, bp *cluster.BuildClusterInstanc
 
 func waitReadiness(ctx context.Context, connect func(ctx context.Context) (*buildkit.Client, error)) error {
 	return tasks.Action("buildkit.wait-until-ready").Run(ctx, func(ctx context.Context) error {
-		return buildkitfw.WaitReadiness(ctx, connect)
+		return buildkitfw.WaitReadiness(ctx, 5*time.Second, connect)
 	})
 }
 

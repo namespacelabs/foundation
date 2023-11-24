@@ -12,11 +12,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func WaitReadiness(ctx context.Context, connect func(ctx context.Context) (*buildkit.Client, error)) error {
+func WaitReadiness(ctx context.Context, maxWait time.Duration, connect func(ctx context.Context) (*buildkit.Client, error)) error {
 	const retryDelay = 200 * time.Millisecond
-	const maxRetries = 10
 
-	for i := 0; i < maxRetries; i++ {
+	maxRetries := maxWait.Milliseconds() / retryDelay.Milliseconds()
+	for i := int64(0); i < maxRetries; i++ {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 		defer cancel()
 		c, err := connect(ctx)
