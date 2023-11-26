@@ -329,7 +329,7 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 func CreateBuildCluster(ctx context.Context, api API, platform BuildPlatform) (*CreateClusterResult, error) {
 	featuresList := []string{"BUILD_CLUSTER"}
 	featuresList = append(featuresList, buildClusterFeatures(platform)...)
-	return CreateAndWaitCluster(ctx, api, CreateClusterOpts{
+	resp, err := CreateAndWaitCluster(ctx, api, CreateClusterOpts{
 		Purpose:    "Build machine",
 		Features:   featuresList,
 		KeepAtExit: true,
@@ -339,6 +339,11 @@ func CreateBuildCluster(ctx context.Context, api API, platform BuildPlatform) (*
 			WaitKind:       "buildcluster",
 		},
 	})
+	if err != nil {
+		return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
+	}
+
+	return resp, nil
 }
 
 func buildClusterFeatures(platform BuildPlatform) []string {
