@@ -185,6 +185,8 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 	st := &spb.Status{}
 	if err := json.Unmarshal(respBody, st); err == nil {
 		return handleGrpcStatus(url, st)
+	} else {
+		fmt.Fprintf(console.Debug(ctx), "did not receive an RPC status: %v\n", err)
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
