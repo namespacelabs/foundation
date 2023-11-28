@@ -308,7 +308,7 @@ func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) erro
 			return err
 		}
 
-		return buildkitfw.WaitReadiness(ctx, 10*time.Second, func(innerCtx context.Context) (*client.Client, error) {
+		return buildkitfw.WaitReadiness(ctx, 1*time.Minute, func(innerCtx context.Context) (*client.Client, error) {
 			return client.New(innerCtx, response.ClusterId, client.WithContextDialer(func(innerCtx context.Context, _ string) (net.Conn, error) {
 				return api.DialEndpointWithToken(innerCtx, token, buildkitSvc.Endpoint)
 			}))
