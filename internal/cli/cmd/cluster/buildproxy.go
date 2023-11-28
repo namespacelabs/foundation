@@ -34,9 +34,9 @@ import (
 type ProxyStatus string
 
 const (
-	StartingProxyStatus = "Starting"
-	RunningProxyStatus  = "Running"
-	FailingProxyStatus  = "Failing"
+	ProxyStatus_Starting ProxyStatus = "Starting"
+	ProxyStatus_Running  ProxyStatus = "Running"
+	ProxyStatus_Failing  ProxyStatus = "Failing"
 )
 
 const (
@@ -45,64 +45,24 @@ const (
 
 type BuildClusterInstance struct {
 	platform api.BuildPlatform
-
-	mu            sync.Mutex
-	previous      *api.CreateClusterResult
-	cancelRefresh func()
 }
 
 func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, string, error) {
-	// Wait at most 60 seconds to create a connection to a build cluster.
-	ctx, done := context.WithTimeout(parentCtx, time.Minute)
+	// Wait at most 5 minutes to create a connection to a build cluster.
+	ctx, done := context.WithTimeout(parentCtx, 5*time.Minute)
 	defer done()
-
-	// This is not our usual play; we're doing a lot of work with the lock held.
-	bp.mu.Lock()
-	defer bp.mu.Unlock()
-
-	if bp.previous != nil && (bp.previous.BuildCluster == nil || bp.previous.BuildCluster.Resumable) {
-		if _, err := api.EnsureCluster(ctx, api.Methods, bp.previous.ClusterId); err == nil {
-			conn, err := bp.rawDial(ctx, bp.previous)
-			return conn, bp.previous.ClusterId, err
-		}
-	}
 
 	response, err := api.CreateBuildCluster(ctx, api.Methods, bp.platform)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if bp.cancelRefresh != nil {
-		bp.cancelRefresh()
-		bp.cancelRefresh = nil
+	if err := waitUntilReady(ctx, response); err != nil {
+		return nil, "", fmt.Errorf("failed to wait for buildkit to become ready: %w", err)
 	}
-
-	if bp.previous == nil || bp.previous.ClusterId != response.ClusterId {
-		if err := waitUntilReady(ctx, response); err != nil {
-			return nil, "", fmt.Errorf("failed to wait for buildkit to become ready: %w", err)
-		}
-	}
-
-	if response.BuildCluster != nil && !response.BuildCluster.DoesNotRequireRefresh {
-		bp.cancelRefresh = api.StartBackgroundRefreshing(parentCtx, response.ClusterId)
-	}
-
-	bp.previous = response
 
 	conn, err := bp.rawDial(ctx, response)
-	return conn, bp.previous.ClusterId, err
-}
-
-func (bp *BuildClusterInstance) Cleanup() error {
-	bp.mu.Lock()
-	defer bp.mu.Unlock()
-
-	if bp.cancelRefresh != nil {
-		bp.cancelRefresh()
-		bp.cancelRefresh = nil
-	}
-
-	return nil
+	return conn, response.ClusterId, err
 }
 
 func (bp *BuildClusterInstance) rawDial(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
@@ -143,29 +103,33 @@ type buildProxy struct {
 // proxyStatus is used by `nsc docker buildx status` to show user info on
 // proxy current status
 type proxyStatusDesc struct {
-	mu                sync.RWMutex
-	Platform          string
-	Status            ProxyStatus
-	LastError         string
-	LogPath           string
-	BuilderID         string
-	PreviousBuilderID string
-	LastUpdate        time.Time
-	Requests          int
+	mu sync.RWMutex
+	StatusData
 }
 
-func (p *proxyStatusDesc) setBuilderID(status ProxyStatus, builderID string) {
+type StatusData struct {
+	Platform       string
+	Status         ProxyStatus
+	LastError      string
+	LogPath        string
+	LastInstanceID string
+	LastUpdate     time.Time
+	Requests       int
+}
+
+func (p *proxyStatusDesc) setLastInstanceID(builderID string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	p.Status = status
+
+	p.Status = ProxyStatus_Running
 	p.LastUpdate = time.Now()
-	p.PreviousBuilderID = p.BuilderID
-	p.BuilderID = builderID
+	p.LastInstanceID = builderID
 }
 
 func (p *proxyStatusDesc) setStatus(status ProxyStatus) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	p.Status = status
 	p.LastUpdate = time.Now()
 }
@@ -173,6 +137,7 @@ func (p *proxyStatusDesc) setStatus(status ProxyStatus) {
 func (p *proxyStatusDesc) setLastError(status ProxyStatus, lastError error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	p.Status = status
 	p.LastUpdate = time.Now()
 	p.LastError = lastError.Error()
@@ -224,21 +189,19 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, c
 	var d net.ListenConfig
 	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
-		_ = bp.Cleanup()
 		if cleanup != nil {
 			_ = cleanup()
 		}
+
 		return nil, err
 	}
 
 	status := &proxyStatusDesc{
-		Status:   StartingProxyStatus,
-		Platform: string(bp.platform),
-		LogPath:  console.DebugToFile,
-	}
-
-	if bp.previous != nil {
-		status.BuilderID = bp.previous.ClusterId
+		StatusData: StatusData{
+			Status:   ProxyStatus_Starting,
+			Platform: string(bp.platform),
+			LogPath:  console.DebugToFile,
+		},
 	}
 
 	return &buildProxy{socketPath, controlSocketPath, bp, listener, cleanup, useGrpcProxy, workersInfo, status}, nil
@@ -247,7 +210,6 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, c
 func (bp *buildProxy) Cleanup() error {
 	var errs []error
 	errs = append(errs, bp.listener.Close())
-	errs = append(errs, bp.instance.Cleanup())
 	if bp.cleanup != nil {
 		errs = append(errs, bp.cleanup())
 	}
@@ -258,13 +220,26 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	var err error
 	sink := tasks.SinkFrom(ctx)
 	if bp.useGrpcProxy {
-		err = serveGRPCProxy(bp.injectWorkerInfo, bp.listener, bp.proxyStatus, func(innerCtx context.Context) (net.Conn, string, error) {
-			return bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
+		err = serveGRPCProxy(bp.injectWorkerInfo, bp.listener, bp.proxyStatus, func(innerCtx context.Context) (net.Conn, error) {
+			conn, instanceID, err := bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
+			if err != nil {
+				bp.proxyStatus.setLastError(ProxyStatus_Failing, err)
+				return nil, err
+			}
+
+			bp.proxyStatus.setLastInstanceID(instanceID)
+			return conn, nil
 		})
 	} else {
 		err = serveProxy(ctx, bp.listener, func(innerCtx context.Context) (net.Conn, error) {
-			conn, _, err := bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
-			return conn, err
+			conn, instanceID, err := bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
+			if err != nil {
+				bp.proxyStatus.setLastError(ProxyStatus_Failing, err)
+				return nil, err
+			}
+
+			bp.proxyStatus.setLastInstanceID(instanceID)
+			return conn, nil
 		})
 	}
 

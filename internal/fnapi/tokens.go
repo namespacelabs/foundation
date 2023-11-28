@@ -21,8 +21,8 @@ type Token interface {
 	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error), bool) (string, error)
 }
 
-func BearerToken(ctx context.Context, t Token) (string, error) {
-	raw, err := t.IssueToken(ctx, 5*time.Minute, IssueTenantTokenFromSession, false)
+func BearerToken(ctx context.Context, t Token, skipCache bool) (string, error) {
+	raw, err := t.IssueToken(ctx, 5*time.Minute, IssueTenantTokenFromSession, skipCache)
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +70,7 @@ func IssueBearerTokenFromToken(ctx context.Context, tok Token) (ResolvedToken, e
 		return ResolvedToken{}, err
 	}
 
-	bt, err := BearerToken(ctx, tok)
+	bt, err := BearerToken(ctx, tok, false)
 	if err != nil {
 		return ResolvedToken{}, err
 	}

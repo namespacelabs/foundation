@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
@@ -47,9 +46,9 @@ const (
 	buildkitProxyPath = "buildkit/" + proxyDir
 )
 
-func newSetupBuildxCmd(cmdName string) *cobra.Command {
+func newSetupBuildxCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   cmdName,
+		Use:   "setup",
 		Short: "Setup buildx in the current machine, to use Namespace Remote builders.",
 	}
 
@@ -109,6 +108,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 		if err != nil {
 			return err
 		}
+
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
 
 		if proxyAlreadyExists(state) {
@@ -155,6 +155,7 @@ func newSetupBuildxCmd(cmdName string) *cobra.Command {
 					if err != nil {
 						return fnerrors.New("failed to create the log folder: %v", err)
 					}
+
 					instanceMD.DebugLogPath = path.Join(logDir, logFilename)
 				}
 			}
@@ -632,7 +633,7 @@ func newStatusBuildxCommand() *cobra.Command {
 			return err
 		}
 
-		descs := []*proxyStatusDesc{}
+		descs := []StatusData{}
 		for _, proxy := range md.Instances {
 			client := makeUnixHTTPClient(proxy.ControlSocketPath)
 			resp, err := client.Get("http://localhost/status")
@@ -642,17 +643,13 @@ func newStatusBuildxCommand() *cobra.Command {
 			}
 			defer resp.Body.Close()
 
-			buf, err := io.ReadAll(resp.Body)
-			if err != nil {
+			var desc StatusData
+			dec := json.NewDecoder(resp.Body)
+			if err := dec.Decode(&desc); err != nil {
 				return err
 			}
 
-			var desc proxyStatusDesc
-			if err := json.Unmarshal(buf, &desc); err != nil {
-				return err
-			}
-
-			descs = append(descs, &desc)
+			descs = append(descs, desc)
 		}
 
 		stdout := console.Stdout(ctx)
@@ -673,8 +670,7 @@ func newStatusBuildxCommand() *cobra.Command {
 			for _, desc := range descs {
 				fmt.Fprintf(stdout, "Platform: %s\n", desc.Platform)
 				fmt.Fprintf(stdout, "  Status: %s\n", desc.Status)
-				fmt.Fprintf(stdout, "  Builder ID: %s\n", desc.BuilderID)
-				fmt.Fprintf(stdout, "  Previous Builder ID: %s\n", desc.PreviousBuilderID)
+				fmt.Fprintf(stdout, "  Last Instance ID: %s\n", desc.LastInstanceID)
 				fmt.Fprintf(stdout, "  Last Update: %v\n", desc.LastUpdate)
 				fmt.Fprintf(stdout, "  Last Error: %v\n", desc.LastError)
 				fmt.Fprintf(stdout, "  Requests Handled: %v\n", desc.Requests)

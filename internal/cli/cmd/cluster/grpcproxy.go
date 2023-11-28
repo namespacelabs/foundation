@@ -25,20 +25,20 @@ import (
 	controlapi "github.com/moby/buildkit/api/services/control"
 )
 
-func serveGRPCProxy(workerInfo *controlapi.ListWorkersResponse, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, string, error)) error {
+func serveGRPCProxy(workerInfo *controlapi.ListWorkersResponse, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) error {
 	p, err := newGrpcProxy(workerInfo, proxyStatus, connect)
 	if err != nil {
-		p.proxyStatus.setLastError(FailingProxyStatus, err)
+		p.proxyStatus.setLastError(ProxyStatus_Failing, err)
 		return err
 	}
 
-	p.proxyStatus.setStatus(RunningProxyStatus)
-	return p.Serve(listener)
+	p.proxyStatus.setStatus(ProxyStatus_Running)
+	return p.server.Serve(listener)
 }
 
 type grpcProxy struct {
-	connect func(context.Context) (net.Conn, string, error)
-	*grpc.Server
+	connect     func(context.Context) (net.Conn, error)
+	server      *grpc.Server
 	workerInfo  *controlapi.ListWorkersResponse
 	proxyStatus *proxyStatusDesc
 
@@ -47,22 +47,23 @@ type grpcProxy struct {
 	backendClient *grpc.ClientConn
 }
 
-func newGrpcProxy(workerInfo *controlapi.ListWorkersResponse, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, string, error)) (*grpcProxy, error) {
+func newGrpcProxy(workerInfo *controlapi.ListWorkersResponse, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
 	g := &grpcProxy{
 		connect:     connect,
 		workerInfo:  workerInfo,
 		proxyStatus: proxyStatus,
 	}
 
-	g.Server = grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
+	g.server = grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
 	return g, nil
 }
 
 func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.ClientConn, error) {
+	g.proxyStatus.setStatus(ProxyStatus_Running)
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	g.proxyStatus.setStatus(RunningProxyStatus)
 	if g.backendClient != nil {
 		connState := g.backendClient.GetState()
 		if connState == connectivity.Ready || connState == connectivity.Connecting {
@@ -77,20 +78,13 @@ func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.Clie
 
 	client, err := grpc.DialContext(ctx, "",
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
-			//gRPC server default minimum is 5m, more frequent keepalives can cause "too_many_pings" error
+			// gRPC server default minimum is 5m, more frequent keepalives can cause "too_many_pings" error
 			Time:    time.Minute * 5,
 			Timeout: time.Second * 30,
 		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-			conn, builderID, err := g.connect(ctx)
-			if err != nil {
-				g.proxyStatus.setLastError(FailingProxyStatus, err)
-			} else {
-				g.proxyStatus.setBuilderID(RunningProxyStatus, builderID)
-			}
-
-			return conn, err
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return g.connect(ctx)
 		}))
 	if err != nil {
 		return nil, err
@@ -104,6 +98,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.Clie
 
 func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) error {
 	g.proxyStatus.incRequest()
+
 	ctx := serverStream.Context()
 	fullMethodName, ok := grpc.MethodFromServerStream(serverStream)
 	if !ok {
@@ -125,7 +120,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	if err != nil {
 		console.DebugWithTimestamp(ctx, "[%s] creating backend connection failed: %v\n", id, err)
 		err := status.Errorf(codes.Internal, "failed to connect to backend: %v", err)
-		g.proxyStatus.setLastError(FailingProxyStatus, err)
+		g.proxyStatus.setLastError(ProxyStatus_Failing, err)
 		return err
 	}
 
@@ -136,11 +131,12 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 
 	clientCtx, clientCancel := context.WithCancel(outgoingCtx)
 	defer clientCancel()
+
 	clientStream, err := grpc.NewClientStream(clientCtx, clientStreamDescForProxying, backendConn, fullMethodName)
 	if err != nil {
 		console.DebugWithTimestamp(ctx, "[%s] failed to create client stream: %v\n", id, err)
 		err := status.Errorf(codes.Internal, "failed create client: %v", err)
-		g.proxyStatus.setLastError(FailingProxyStatus, err)
+		g.proxyStatus.setLastError(ProxyStatus_Failing, err)
 		return err
 	}
 
@@ -157,7 +153,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 				clientCancel()
 				console.DebugWithTimestamp(ctx, "[%s] failed proxying s2c: %v\n", id, s2cErr)
 				err := status.Errorf(codes.Internal, "failed proxying s2c: %v", s2cErr)
-				g.proxyStatus.setLastError(FailingProxyStatus, err)
+				g.proxyStatus.setLastError(ProxyStatus_Failing, err)
 				return err
 			}
 
@@ -167,7 +163,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 			// c2sErr will contain RPC error from client code. If not io.EOF return the RPC error as server stream error.
 			if c2sErr != io.EOF {
 				console.DebugWithTimestamp(ctx, "[%s] failed proxying c2s: %v\n", id, c2sErr)
-				g.proxyStatus.setLastError(FailingProxyStatus, c2sErr)
+				g.proxyStatus.setLastError(ProxyStatus_Failing, c2sErr)
 				return err
 			}
 
@@ -177,7 +173,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 		case <-ctx.Done():
 			err := ctx.Err()
 			console.DebugWithTimestamp(ctx, "[%s] server stream context is done: %v\n", id, err)
-			g.proxyStatus.setLastError(FailingProxyStatus, err)
+			g.proxyStatus.setLastError(ProxyStatus_Failing, err)
 			return err
 		}
 	}

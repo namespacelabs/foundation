@@ -46,7 +46,7 @@ func NewDockerCmd() *cobra.Command {
 	cmd.AddCommand(newDockerLoginCmd(false)) // nsc docker login
 
 	buildx := &cobra.Command{Use: "buildx", Short: "Docker Buildx related functionality."}
-	buildx.AddCommand(newSetupBuildxCmd("setup"))
+	buildx.AddCommand(newSetupBuildxCmd())
 	buildx.AddCommand(newCleanupBuildxCommand())
 	buildx.AddCommand(newWireBuildxCommand(true))
 	buildx.AddCommand(newStatusBuildxCommand())
