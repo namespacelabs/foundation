@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 const (
@@ -49,7 +50,9 @@ func printResult(ctx context.Context, output string, resp fnapi.IssueIdTokenResp
 	case "json":
 		d := json.NewEncoder(console.Stdout(ctx))
 		d.SetIndent("", "  ")
-		return d.Encode(resp)
+		if err := d.Encode(resp); err != nil {
+			return fnerrors.InternalError("failed to encode token as JSON output: %w", err)
+		}
 
 	default:
 		if output != "" && output != "plain" {

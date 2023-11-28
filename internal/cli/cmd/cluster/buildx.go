@@ -660,7 +660,9 @@ func newStatusBuildxCommand() *cobra.Command {
 		case "json":
 			enc := json.NewEncoder(console.Stdout(ctx))
 			enc.SetIndent("", "  ")
-			return enc.Encode(descs)
+			if err := enc.Encode(descs); err != nil {
+				return fnerrors.InternalError("failed to encode status as JSON output: %w", err)
+			}
 
 		default:
 			if *output != "plain" {

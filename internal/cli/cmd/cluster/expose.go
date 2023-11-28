@@ -551,7 +551,9 @@ func newExposeKubernetesCmd() *cobra.Command {
 				URL:  "https://" + resp.Fqdn,
 			}
 
-			return json.NewEncoder(console.Stdout(ctx)).Encode(exported)
+			if err := json.NewEncoder(console.Stdout(ctx)).Encode(exported); err != nil {
+				return fnerrors.InternalError("failed to encode ingress output as JSON output: %w", err)
+			}
 
 		default:
 			if *output != "" && *output != "plain" {

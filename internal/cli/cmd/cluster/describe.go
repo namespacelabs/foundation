@@ -15,6 +15,7 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
@@ -61,7 +62,11 @@ func NewDescribeCmd() *cobra.Command {
 		case "json":
 			enc := json.NewEncoder(console.Stdout(ctx))
 			enc.SetIndent("", "  ")
-			return enc.Encode(response.Summary)
+			if err := enc.Encode(response.Summary); err != nil {
+				return fnerrors.InternalError("failed to encode summary as JSON output: %w", err)
+			}
+
+			return nil
 
 		default:
 			if *output != "plain" {

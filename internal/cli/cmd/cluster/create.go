@@ -163,11 +163,13 @@ func NewCreateCmd() *cobra.Command {
 			enc := json.NewEncoder(console.Stdout(ctx))
 			enc.SetIndent("", "  ")
 
-			return enc.Encode(createOutput{
+			if err := enc.Encode(createOutput{
 				ClusterId:     cluster.ClusterId,
 				ClusterUrl:    cluster.Cluster.AppURL,
 				IngressDomain: cluster.Cluster.IngressDomain,
-			})
+			}); err != nil {
+				return fnerrors.InternalError("failed to encode cluster as JSON output: %w", err)
+			}
 
 		default:
 			if *output != "plain" {

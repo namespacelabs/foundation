@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
 func NewWorkspaceCmd() *cobra.Command {
@@ -46,7 +47,9 @@ func newDescribeCmd() *cobra.Command {
 		case "json":
 			d := json.NewEncoder(stdout)
 			d.SetIndent("", "  ")
-			return d.Encode(res.Tenant)
+			if err := d.Encode(res.Tenant); err != nil {
+				return fnerrors.InternalError("failed to encode tenant as JSON output: %w", err)
+			}
 
 		default:
 			fmt.Fprintf(stdout, "\nWorkspace details:\n\n")

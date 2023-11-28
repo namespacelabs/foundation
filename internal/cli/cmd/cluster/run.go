@@ -373,11 +373,13 @@ func PrintCreateContainersResult(ctx context.Context, output string, resp *api.C
 	case "json":
 		d := json.NewEncoder(console.Stdout(ctx))
 		d.SetIndent("", "  ")
-		return d.Encode(createOutput{
+		if err := d.Encode(createOutput{
 			ClusterId:  resp.ClusterId,
 			ClusterUrl: resp.ClusterUrl,
 			Container:  resp.Container,
-		})
+		}); err != nil {
+			return fnerrors.InternalError("failed to encode countainer creation output as JSON output: %w", err)
+		}
 
 	default:
 		if output != "" && output != "plain" {

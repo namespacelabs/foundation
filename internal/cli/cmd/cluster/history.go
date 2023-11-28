@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
@@ -43,7 +44,11 @@ func NewListCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(transform(clusters.Clusters))
+			if err := enc.Encode(transform(clusters.Clusters)); err != nil {
+				return fnerrors.InternalError("failed to encode cluster list as JSON output: %w", err)
+			}
+
+			return nil
 		}
 
 		if len(clusters.Clusters) == 0 {
@@ -121,7 +126,11 @@ func newHistoryCmd() *cobra.Command {
 			stdout := console.Stdout(ctx)
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
-			return enc.Encode(clusters.Clusters)
+			if err := enc.Encode(clusters.Clusters); err != nil {
+				return fnerrors.InternalError("failed to encode cluster history as JSON output: %w", err)
+			}
+
+			return nil
 		}
 
 		if len(clusters.Clusters) == 0 {
