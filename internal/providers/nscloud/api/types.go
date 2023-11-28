@@ -92,6 +92,7 @@ type ContainerRequest struct {
 	ExportPort     []*ContainerPort  `json:"export_port,omitempty"`
 	DockerSockPath string            `json:"docker_sock_path,omitempty"`
 	NscStatePath   string            `json:"nsc_state_path,omitempty"`
+	ExposeNscBins  string            `json:"expose_nsc_bins,omitempty"`
 	Network        string            `json:"network,omitempty"`
 	Experimental   any               `json:"experimental,omitempty"`
 }

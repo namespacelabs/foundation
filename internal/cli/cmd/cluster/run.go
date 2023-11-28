@@ -52,6 +52,7 @@ func NewRunCmd() *cobra.Command {
 	internalExtra := run.Flags().String("internal_extra", "", "Internal creation details.")
 	enableDocker := run.Flags().Bool("enable_docker", false, "If set to true, instructs the platform to also setup docker in the container.")
 	forwardNscState := run.Flags().Bool("forward_nsc_state", false, "If set to true, instructs the platform to forward nsc state into the container.")
+	exposeNscBins := run.Flags().Bool("expose_nsc_bins", false, "If set to true, exposes Namespace managed nsc binaries to the container.")
 	network := run.Flags().String("network", "", "The network setting to start the container with.")
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 
@@ -61,6 +62,7 @@ func NewRunCmd() *cobra.Command {
 	run.Flags().MarkHidden("forward_nsc_state")
 	run.Flags().MarkHidden("network")
 	run.Flags().MarkHidden("experimental")
+	run.Flags().MarkHidden("expose_nsc_bins")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -97,6 +99,7 @@ func NewRunCmd() *cobra.Command {
 			InternalExtra:   *internalExtra,
 			EnableDocker:    *enableDocker,
 			ForwardNscState: *forwardNscState,
+			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
 		}
 
@@ -223,6 +226,7 @@ type CreateContainerOpts struct {
 	InternalExtra        string
 	EnableDocker         bool
 	ForwardNscState      bool
+	ExposeNscBins        bool
 	Network              string
 	Experimental         any
 	InstanceExperimental any
@@ -250,6 +254,10 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 
 	if opts.ForwardNscState {
 		container.NscStatePath = "/var/run/nsc"
+	}
+
+	if opts.ExposeNscBins {
+		container.ExposeNscBins = "/nsc/bin"
 	}
 
 	for _, port := range opts.ExportedPorts {
