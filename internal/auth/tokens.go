@@ -126,11 +126,6 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShort
 			return issueShortTerm(ctx, t.SessionToken, minDur)
 		}
 
-		sessionClaims, err := t.Claims(ctx)
-		if err != nil {
-			return "", err
-		}
-
 		if t.path != "" {
 			cachePath := filepath.Join(filepath.Dir(t.path), "token.cache")
 			cacheContents, err := os.ReadFile(cachePath)
@@ -140,6 +135,11 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShort
 				}
 			} else {
 				cacheClaims, err := parseClaims(ctx, strings.TrimPrefix(string(cacheContents), "nsct_"))
+				if err != nil {
+					return "", err
+				}
+
+				sessionClaims, err := t.Claims(ctx)
 				if err != nil {
 					return "", err
 				}
