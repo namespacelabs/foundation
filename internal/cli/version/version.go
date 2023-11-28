@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema/storage"
 )
@@ -69,6 +70,10 @@ func isDevelopmentBuild(ver *storage.NamespaceBinaryVersion) bool {
 
 func ShouldCheckUpdate(ver *storage.NamespaceBinaryVersion) bool {
 	if isDevelopmentBuild(ver) {
+		return false
+	}
+
+	if environment.IsRunningInCI() {
 		return false
 	}
 
