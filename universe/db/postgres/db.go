@@ -68,9 +68,14 @@ type NewDBOptions struct {
 }
 
 func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, o NewDBOptions) *DB {
-	db := &DB{base: conn, opts: commonOpts{o.Tracer, o.ErrorWrapper, instance.ClusterAddress, instance.Name}}
+	db := &DB{base: conn, opts: commonOpts{t: o.Tracer, errw: o.ErrorWrapper}}
 	if db.opts.errw == nil {
 		db.opts.errw = func(_ context.Context, err error) error { return err }
+	}
+
+	if instance != nil {
+		db.opts.clusterAddr = instance.ClusterAddress
+		db.opts.databaseName = instance.Name
 	}
 
 	if cfg := conn.Config().ConnConfig; cfg != nil {
