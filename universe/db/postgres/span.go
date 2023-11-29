@@ -28,7 +28,7 @@ func withSpan(ctx context.Context, opts commonOpts, name, sql string, f func(con
 		return f(ctx)
 	}
 
-	options := []trace.SpanStartOption{trace.WithSpanKind(trace.SpanKindClient)}
+	options := []trace.SpanStartOption{trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(opts.TraceAttributes()...)}
 
 	if sql != "" {
 		options = append(options, trace.WithAttributes(semconv.DBStatementKey.String(sql)))
