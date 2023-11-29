@@ -46,7 +46,9 @@ func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 
 		delta := time.Since(t)
 		if delta < readinessPropagationDelay {
-			time.Sleep(readinessPropagationDelay - delta)
+			dur := readinessPropagationDelay - delta
+			core.ZLog.Info().Dur("duration", dur).Msg("sleeping before final shutdown")
+			time.Sleep(dur)
 		}
 
 		finishShutdown()
