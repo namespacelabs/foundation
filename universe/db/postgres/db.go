@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
@@ -22,13 +24,16 @@ import (
 // but that requires database/sql, which does not support pg-specific types.
 
 type DB struct {
-	base *pgxpool.Pool
-	opts commonOpts
+	base   *pgxpool.Pool
+	opts   commonOpts
+	cancel func()
 }
 
 type commonOpts struct {
-	t    trace.Tracer
-	errw func(context.Context, error) error
+	t            trace.Tracer
+	errw         func(context.Context, error) error
+	clusterAddr  string
+	databaseName string
 }
 
 var (
@@ -63,25 +68,68 @@ type NewDBOptions struct {
 }
 
 func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, o NewDBOptions) *DB {
-	db := &DB{base: conn, opts: commonOpts{o.Tracer, o.ErrorWrapper}}
+	db := &DB{base: conn, opts: commonOpts{o.Tracer, o.ErrorWrapper, instance.ClusterAddress, instance.Name}}
 	if db.opts.errw == nil {
 		db.opts.errw = func(_ context.Context, err error) error { return err }
 	}
 
-	if instance != nil {
+	if cfg := conn.Config().ConnConfig; cfg != nil {
+		if db.opts.clusterAddr == "" {
+			db.opts.clusterAddr = fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
+		}
+
+		if db.opts.databaseName == "" {
+			db.opts.databaseName = cfg.Database
+		}
+	}
+
+	if db.opts.clusterAddr != "" && db.opts.databaseName != "" {
+		ctx, cancel := context.WithCancel(context.Background())
+
 		go func() {
-			// Connections never go away, so we never stop updating metrics.
-			time.Sleep(5 * time.Second)
+			t := time.NewTicker(5 * time.Second)
+			defer t.Stop()
 
-			stats := conn.Stat()
+			for {
+				select {
+				case <-ctx.Done():
+					return
 
-			for k, def := range metrics {
-				cols[k].WithLabelValues(instance.ClusterAddress, instance.Name).Set(def.Value(stats))
+				case <-t.C:
+					stats := conn.Stat()
+
+					for k, def := range metrics {
+						cols[k].WithLabelValues(instance.ClusterAddress, instance.Name).Set(def.Value(stats))
+					}
+				}
 			}
 		}()
+
+		db.cancel = cancel
 	}
 
 	return db
+}
+
+func (db commonOpts) TraceAttributes() []attribute.KeyValue {
+	var keyvalues []attribute.KeyValue
+	if db.clusterAddr != "" {
+		keyvalues = append(keyvalues, attribute.String("db.host", db.clusterAddr))
+	}
+
+	if db.databaseName != "" {
+		keyvalues = append(keyvalues, semconv.DBName(db.databaseName))
+	}
+
+	return keyvalues
+}
+
+func (db DB) Close() error {
+	if db.cancel != nil {
+		db.cancel()
+	}
+
+	return nil
 }
 
 func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {

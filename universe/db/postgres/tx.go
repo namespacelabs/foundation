@@ -33,52 +33,55 @@ var retryableSqlStates = []string{
 }
 
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	return tracing.Collect1(ctx, db.Tracer(), tracing.Name("pg.TransactionWithRetries"), func(ctx context.Context) (T, error) {
-		return backoff.RetryWithData(func() (T, error) {
-			value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
-			if err == nil {
-				return value, nil
-			}
+	var attempt int64
+	return backoff.RetryWithData(func() (T, error) {
+		value, err := doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, attempt, f)
+		if err == nil {
+			return value, nil
+		}
 
-			if !ErrorIsRetryable(err) {
-				return value, backoff.Permanent(err)
-			}
+		attempt++
+		if !ErrorIsRetryable(err) {
+			return value, backoff.Permanent(err)
+		}
 
-			return value, err
-		}, b)
-
-	})
+		return value, err
+	}, b)
 }
 
 func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	return doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, f)
+	return doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, 0, f)
 }
 
-func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	return tracing.Collect1(ctx, db.Tracer(), tracing.Name("pg.Transaction").Attribute(
+func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attempt int64, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
+	n := tracing.Name("pg.Transaction").Attribute(
 		attribute.String("pg.isolation-level", string(txoptions.IsoLevel)),
-		attribute.String("pg.access-mode", string(txoptions.AccessMode))),
-		func(ctx context.Context) (T, error) {
-			var empty T
+		attribute.String("pg.access-mode", string(txoptions.AccessMode))).Attribute(db.opts.TraceAttributes()...)
+	if attempt > 0 {
+		n = n.Attribute(attribute.Int64("db.tx_attempt", attempt))
+	}
 
-			tx, err := db.base.BeginTx(ctx, txoptions)
-			if err != nil {
-				return empty, TransactionError{err}
-			}
+	return tracing.Collect1(ctx, db.Tracer(), n, func(ctx context.Context) (T, error) {
+		var empty T
 
-			defer func() { _ = tx.Rollback(ctx) }()
+		tx, err := db.base.BeginTx(ctx, txoptions)
+		if err != nil {
+			return empty, TransactionError{err}
+		}
 
-			value, err := f(ctx, tracingTx{base: tx, opts: db.opts})
-			if err != nil {
-				return empty, err
-			}
+		defer func() { _ = tx.Rollback(ctx) }()
 
-			if err := tx.Commit(ctx); err != nil {
-				return empty, TransactionError{err}
-			}
+		value, err := f(ctx, tracingTx{base: tx, opts: db.opts})
+		if err != nil {
+			return empty, err
+		}
 
-			return value, nil
-		})
+		if err := tx.Commit(ctx); err != nil {
+			return empty, TransactionError{err}
+		}
+
+		return value, nil
+	})
 }
 
 func ErrorIsRetryable(err error) bool {
