@@ -87,6 +87,7 @@ require (
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20220608084003-fc78c767cd6a
 	github.com/rs/zerolog v1.20.0
 	github.com/sirupsen/logrus v1.9.3
+	github.com/slack-go/slack v0.12.3
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5

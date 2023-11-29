@@ -7,7 +7,10 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"os"
+	"time"
 
+	"github.com/slack-go/slack"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
@@ -24,6 +27,7 @@ import (
 const orchestratorVersion = 25
 
 var DeployWithOrchestrator = false
+var DeployUpdateSlackChannel, SlackToken string
 
 func ExecuteOpts() execution.ExecuteOpts {
 	return execution.ExecuteOpts{
@@ -38,14 +42,36 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
 		}
 
+		observeError := func(context.Context, error) {}
+		if DeployUpdateSlackChannel != "" {
+			if SlackToken == "" {
+				return fnerrors.BadInputError("a slack token is required to be able to update a channel")
+			}
+
+			start := time.Now()
+			slackcli := slack.New(os.ExpandEnv(SlackToken))
+			chid, ts, err := slackcli.PostMessageContext(ctx, os.ExpandEnv(DeployUpdateSlackChannel), slack.MsgOptionBlocks(renderSlackMessage(plan, start, time.Time{}, nil)...))
+			if err != nil {
+				fmt.Fprintf(console.Warnings(ctx), "Failed to post to Slack: %v\n", err)
+			} else {
+				observeError = func(ctx context.Context, err error) {
+					if _, _, _, err := slackcli.UpdateMessageContext(ctx, chid, ts, slack.MsgOptionBlocks(renderSlackMessage(plan, start, time.Now(), err)...)); err != nil {
+						fmt.Fprintf(console.Warnings(ctx), "Failed to update Slack: %v\n", err)
+					}
+				}
+			}
+		}
+
 		p := execution.NewPlan(plan.Program.Invocation...)
 
 		// Make sure that the cluster is accessible to a serialized invocation implementation.
-		return execution.ExecuteExt(ctx, "deployment.execute", p,
+		execErr := execution.ExecuteExt(ctx, "deployment.execute", p,
 			deploy.MaybeRenderBlock(env, cluster, outputProgress),
 			ExecuteOpts(),
 			execution.FromContext(env),
 			runtime.InjectCluster(cluster))
+		observeError(ctx, execErr)
+		return execErr
 	}
 
 	return tasks.Action("orchestrator.deploy").Scope(schema.PackageNames(plan.FocusServer...)...).

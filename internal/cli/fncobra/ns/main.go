@@ -225,6 +225,10 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				"If set to true, ns uses the incluster orchestrator for deployment.")
 			rootCmd.PersistentFlags().BoolVar(&orchestration.RenderOrchestratorDeployment, "render_orchestrator_deployment", orchestration.RenderOrchestratorDeployment,
 				"If set to true, we print a render wait block while deploying the orchestrator itself.")
+			rootCmd.PersistentFlags().StringVar(&orchestration.SlackToken, "slack_token", "",
+				"Token used to call Slack.")
+			rootCmd.PersistentFlags().StringVar(&orchestration.DeployUpdateSlackChannel, "deploy_update_slack_channel", "",
+				"Slack channel to send deployment notifications to.")
 			rootCmd.PersistentFlags().BoolVar(&gcloud.UseHostGCloudBinary, "gcloud_use_host_binary", gcloud.UseHostGCloudBinary,
 				"If set to true, uses a gcloud binary that is available at the host, rather than ns's builtin.")
 			rootCmd.PersistentFlags().BoolVar(&filewatcher.FileWatcherUsePolling, "filewatcher_use_polling",
@@ -267,6 +271,8 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				"filewatcher_use_polling",
 				"k3d_ignore_docker_version",
 				"kubernetes_force_apply",
+				"slack_token",
+				"slack_channel",
 				// Hidden for M0
 				"testing_use_namespace_cloud",
 				"testing_use_namespace_cloud_build",
