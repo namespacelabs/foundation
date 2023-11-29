@@ -36,7 +36,7 @@ type tracedRows struct {
 
 func (r tracedRows) Close() {
 	// Ensure that any error observed while reading rows is reported to a span.
-	_ = withSpan(r.ctx, r.opts, "db.Query.Close", r.sql, func(context.Context) error {
+	_ = withSpan(r.ctx, r.opts, "db.rows.Close", r.sql, func(context.Context) error {
 		r.rows.Close()
 
 		return r.rows.Err()
