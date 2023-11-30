@@ -104,7 +104,7 @@ func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, o NewDBOpt
 					stats := conn.Stat()
 
 					for k, def := range metrics {
-						cols[k].WithLabelValues(instance.ClusterAddress, instance.Name).Set(def.Value(stats))
+						cols[k].WithLabelValues(db.opts.clusterAddr, db.opts.databaseName).Set(def.Value(stats))
 					}
 				}
 			}
