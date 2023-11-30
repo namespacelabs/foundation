@@ -233,6 +233,7 @@ type CreateClusterOpts struct {
 	Deadline          *timestamppb.Timestamp
 	Experimental      any
 	SecretIDs         []string
+	Interactive       bool
 
 	WaitClusterOpts
 }
@@ -264,7 +265,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			InternalExtra:     opts.InternalExtra,
 			Deadline:          opts.Deadline,
 			Experimental:      opts.Experimental,
-			Interactive:       true,
+			Interactive:       opts.Interactive,
 		}
 
 		labelKeys := maps.Keys(opts.Labels)
@@ -318,6 +319,8 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 }
 
 func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) (*CreateClusterResult, error) {
+	opts.Interactive = true
+
 	cluster, err := CreateCluster(ctx, api, opts)
 	if err != nil {
 		return nil, err
