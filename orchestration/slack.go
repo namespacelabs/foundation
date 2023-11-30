@@ -26,8 +26,7 @@ func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, err error
 	blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.MarkdownType,
 		strings.Join(servers(plan), "\n"), false, false), nil, nil))
 	if !end.IsZero() {
-		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.MarkdownType,
-			maybeTook(start, end), false, false), nil, nil))
+		blocks = append(blocks, slack.NewContextBlock("", slack.NewTextBlockObject(slack.MarkdownType, maybeTook(start, end), false, false)))
 	}
 	if err != nil {
 		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.MarkdownType,
