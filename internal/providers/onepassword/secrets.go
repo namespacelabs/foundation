@@ -63,7 +63,7 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 
 		var b bytes.Buffer
 		c.Stdout = &b
-		c.Stderr = console.Stderr(ctx)
+		c.Stderr = console.Output(ctx, "1Password")
 		if err := c.Run(); err != nil {
 			return nil, fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
 		}
@@ -88,7 +88,7 @@ func (p *provider) ensureAccount(ctx context.Context) error {
 
 		var b bytes.Buffer
 		c.Stdout = &b
-		c.Stderr = console.Stderr(ctx)
+		c.Stderr = console.Output(ctx, "1Password")
 		if err := c.Run(); err != nil {
 			p.ensureAccountErr = fnerrors.InvocationError("1Password", "failed to invoke %q: %w", c.String(), err)
 		} else if b.String() == "" {
