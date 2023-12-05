@@ -65,7 +65,10 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	purpose := fmt.Sprintf("Test cluster for %s", testPkg.Location)
 
 	// This can block for some time.
-	planner, err := deferred.Planner(ctx, env, purpose)
+	planner, err := deferred.Planner(ctx, env, purpose, map[string]string{
+		"nsc.source":              "foundation",
+		"foundation.test_package": testPkg.Location.String(),
+	})
 	if err != nil {
 		return nil, fnerrors.AttachLocation(testPkg.Location, err)
 	}

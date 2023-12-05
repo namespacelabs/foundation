@@ -107,7 +107,7 @@ func (d kubernetesClass) EnsureCluster(ctx context.Context, env cfg.Context, pur
 	return ConnectToCluster(ctx, env.Configuration())
 }
 
-func (d kubernetesClass) Planner(ctx context.Context, cfg cfg.Context, purpose string) (runtime.Planner, error) {
+func (d kubernetesClass) Planner(ctx context.Context, cfg cfg.Context, purpose string, labels map[string]string) (runtime.Planner, error) {
 	cluster, err := ConnectToCluster(ctx, cfg.Configuration())
 	if err != nil {
 		return nil, err

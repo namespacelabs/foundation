@@ -133,7 +133,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	return ensureCluster(ctx, config, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, ephemeral)
 }
 
-func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string) (runtime.Planner, error) {
+func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string, labels map[string]string) (runtime.Planner, error) {
 	if conf, ok := clusterConfigType.CheckGet(env.Configuration()); ok {
 		response, err := api.EnsureCluster(ctx, api.Methods, conf.ClusterId)
 		if err != nil {
@@ -143,7 +143,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
 	}
 
-	response, err := api.CreateCluster(ctx, api.Methods, api.CreateClusterOpts{Purpose: purpose})
+	response, err := api.CreateCluster(ctx, api.Methods, api.CreateClusterOpts{Purpose: purpose, Labels: labels})
 	if err != nil {
 		return nil, err
 	}

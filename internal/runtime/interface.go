@@ -45,7 +45,7 @@ type Class interface {
 
 	// Planner produces a planner for this runtime class. This may instantiate a
 	// new cluster, but will attempt to do so lazily.
-	Planner(context.Context, cfg.Context, string) (Planner, error)
+	Planner(context.Context, cfg.Context, string, map[string]string) (Planner, error)
 }
 
 // A cluster represents a cluster where Namespace is capable of deployment one

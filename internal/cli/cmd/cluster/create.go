@@ -72,6 +72,12 @@ func NewCreateCmd() *cobra.Command {
 			SecretIDs:     *availableSecrets,
 		}
 
+		if len(opts.Labels) == 0 {
+			opts.Labels = map[string]string{
+				"nsc.source": "nsc",
+			}
+		}
+
 		if *duration > 0 {
 			opts.Deadline = timestamppb.New(time.Now().Add(*duration))
 		}
