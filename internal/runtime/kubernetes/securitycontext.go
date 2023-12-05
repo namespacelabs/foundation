@@ -5,16 +5,33 @@
 package kubernetes
 
 import (
+	"fmt"
+	"io"
 	"io/fs"
 	"strconv"
 
+	k8sv1 "k8s.io/api/core/v1"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"sigs.k8s.io/yaml"
 )
 
-func makeSecurityContext(opts runtime.ContainerRunOpts) (*applycorev1.SecurityContextApplyConfiguration, error) {
+// Effective rules:
+//
+// PodSecurityContext
+//   * defaults/pod.podsecuritycontext.yaml
+//   * kubedef.SpecExtension
+//   * MainContainer.RunAs
+//
+// SecurityContext (main or sidecar):
+//   * defaults/container.securitycontext.yaml
+//   * Container.Privileged -> RunAsUser=RunAsGroup=0, RunAsNonRoot=false
+//   * Container.Capabilities
+//
+// Sidecar.RunAs ignored.
+
+func makeSecurityContext(opts runtime.ContainerRunOpts, containerName string, debugLog io.Writer) (*applycorev1.SecurityContextApplyConfiguration, error) {
 	secCtx := applycorev1.SecurityContext()
 
 	const path = "defaults/container.securitycontext.yaml"
@@ -28,8 +45,22 @@ func makeSecurityContext(opts runtime.ContainerRunOpts) (*applycorev1.SecurityCo
 	}
 
 	if opts.Privileged {
-		secCtx = secCtx.WithPrivileged(true).WithAllowPrivilegeEscalation(true)
+		fmt.Fprintf(debugLog, "privileged container %q will run as root\n", containerName)
+		secCtx = secCtx.
+			WithPrivileged(true).
+			WithAllowPrivilegeEscalation(true).
+			WithRunAsUser(0).
+			WithRunAsGroup(0).
+			WithRunAsNonRoot(false)
 	}
+
+	var caps []k8sv1.Capability
+	for _, cap := range opts.Capabilities {
+		caps = append(caps, k8sv1.Capability(cap))
+	}
+	secCtx = secCtx.WithCapabilities(&applycorev1.CapabilitiesApplyConfiguration{
+		Add: caps,
+	})
 
 	if opts.ReadOnlyFilesystem {
 		secCtx = secCtx.WithReadOnlyRootFilesystem(true)

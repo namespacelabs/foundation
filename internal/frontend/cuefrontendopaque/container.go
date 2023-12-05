@@ -23,6 +23,7 @@ type cueContainer struct {
 
 	Requests *schema.Container_ResourceLimits `json:"resourceRequests"`
 	Limits   *schema.Container_ResourceLimits `json:"resourceLimits"`
+	Security *cueServerSecurity               `json:"security,omitempty"`
 }
 
 type parsedCueContainer struct {
@@ -51,6 +52,18 @@ func parseCueContainer(ctx context.Context, env *schema.Environment, pl parsing.
 			Limits:   bits.Limits,
 			Requests: bits.Requests,
 		},
+	}
+
+	if bits.Security != nil {
+		if err := parsing.RequireFeature(loc.Module, "experimental/container/security"); err != nil {
+			return nil, fnerrors.AttachLocation(loc, err)
+		}
+
+		out.container.Security = &schema.Container_Security{
+			Privileged:   bits.Security.Privileged,
+			HostNetwork:  bits.Security.HostNetwork,
+			Capabilities: bits.Security.Capabilities,
+		}
 	}
 
 	if mounts := v.LookupPath("mounts"); mounts.Exists() {
