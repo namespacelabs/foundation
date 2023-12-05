@@ -30,6 +30,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -98,7 +99,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		return fnerrors.InternalError("kubernetes: no repository defined in image: %v", deployable.MainContainer.Image)
 	}
 
-	secCtx, err := makeSecurityContext(deployable.MainContainer)
+	secCtx, err := makeSecurityContext(deployable.MainContainer, deployable.Name, console.Debug(ctx))
 	if err != nil {
 		return err
 	}
@@ -760,7 +761,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 		containers = append(containers, name)
 
-		sidecarSecCtx, err := makeSecurityContext(sidecar.ContainerRunOpts)
+		sidecarSecCtx, err := makeSecurityContext(sidecar.ContainerRunOpts, sidecar.Name, console.Debug(ctx))
 		if err != nil {
 			return fnerrors.AttachLocation(deployable.ErrorLocation, err)
 		}
@@ -863,10 +864,6 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 	if _, err := runAsToPodSecCtx(podSecCtx, deployable.MainContainer.RunAs); err != nil {
 		return fnerrors.AttachLocation(deployable.ErrorLocation, err)
-	}
-
-	if deployable.MainContainer.Privileged {
-		podSecCtx = podSecCtx.WithRunAsUser(0).WithRunAsGroup(0)
 	}
 
 	if deployable.MainContainer.HostNetwork {

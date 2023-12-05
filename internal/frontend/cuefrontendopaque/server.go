@@ -79,8 +79,9 @@ type cuePermissions struct {
 }
 
 type cueServerSecurity struct {
-	Privileged  bool `json:"privileged"`
-	HostNetwork bool `json:"hostNetwork"`
+	Privileged   bool     `json:"privileged"`
+	HostNetwork  bool     `json:"hostNetwork"`
+	Capabilities []string `json:"capabilities"`
 }
 
 // TODO: converge the relevant parts with parseCueContainer.
@@ -347,8 +348,9 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		}
 
 		out.MainContainer.Security = &schema.Container_Security{
-			Privileged:  bits.Security.Privileged,
-			HostNetwork: bits.Security.HostNetwork,
+			Privileged:   bits.Security.Privileged,
+			HostNetwork:  bits.Security.HostNetwork,
+			Capabilities: bits.Security.Capabilities,
 		}
 	}
 
