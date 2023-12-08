@@ -67,7 +67,7 @@ func PrepareTest(ctx context.Context, pl *parsing.PackageLoader, env cfg.Context
 	// This can block for some time.
 	planner, err := deferred.Planner(ctx, env, purpose, map[string]string{
 		"nsc.source":              "foundation",
-		"foundation.test_package": testPkg.Location.String(),
+		"foundation.test-package": testPkg.Location.String(),
 	})
 	if err != nil {
 		return nil, fnerrors.AttachLocation(testPkg.Location, err)
