@@ -13,9 +13,11 @@ import (
 	"strings"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 var (
@@ -25,6 +27,7 @@ var (
 type Endpoint struct {
 	User           string
 	PrivateKeyPath string
+	AgentSockPath  string
 	Address        string
 }
 
@@ -51,6 +54,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 	}
 
 	var auths []ssh.AuthMethod
+
 	key, keyKey, err := parseAuth(endpoint.PrivateKeyPath)
 	if err != nil {
 		return nil, err
@@ -58,6 +62,23 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 
 	if key != nil {
 		auths = append(auths, key)
+	}
+
+	if endpoint.AgentSockPath != "" {
+		path, err := dirs.ExpandHome(os.ExpandEnv(endpoint.AgentSockPath))
+		if err != nil {
+			return nil, fnerrors.New("failed to resolve ssh agent path: %w", err)
+		}
+
+		keyKey += ":agent=" + path
+
+		conn, err := net.Dial("unix", path)
+		if err != nil {
+			return nil, fnerrors.New("failed to connect to ssh agent: %w", err)
+		}
+
+		agentClient := agent.NewClient(conn)
+		auths = append(auths, ssh.PublicKeysCallback(agentClient.Signers))
 	}
 
 	config := ssh.ClientConfig{

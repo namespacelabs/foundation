@@ -36,6 +36,7 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 			User:           t.Ssh.User,
 			PrivateKeyPath: t.Ssh.PrivateKeyPath,
 			Address:        t.Ssh.SshAddr,
+			AgentSockPath:  t.Ssh.AgentSockPath,
 		})
 		if err != nil {
 			return nil, err

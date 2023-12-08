@@ -49,6 +49,7 @@ func Register() {
 						User:           remote.Endpoint.User,
 						PrivateKeyPath: remote.Endpoint.PrivateKeyPath,
 						SshAddr:        remote.Endpoint.Address,
+						AgentSockPath:  remote.Endpoint.AgentSockPath,
 					},
 				},
 			},
@@ -69,6 +70,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 	config, err := makeRemoteConfig(ctx, fmt.Sprintf("https://%s:6443", conf.Address), ssh.Endpoint{
 		User:           conf.User,
 		PrivateKeyPath: conf.PrivateKeyPath,
+		AgentSockPath:  conf.AgentSockPath,
 		Address:        conf.Address,
 	})
 	if err != nil {

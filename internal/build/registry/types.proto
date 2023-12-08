@@ -28,5 +28,6 @@ message RegistryTransport {
         string private_key_path = 2;
         string ssh_addr         = 3;
         string remote_addr      = 4;
+        string agent_sock_path  = 5;
     }
 }
