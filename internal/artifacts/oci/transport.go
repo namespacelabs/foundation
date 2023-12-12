@@ -43,7 +43,7 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 		}
 
 		transport, err := sshHttpTransports.Compute(deferred.CacheKey, func() (*http.Transport, error) {
-			conn, err := deferred.Dial()
+			conn, err := deferred.Dial(ctx)
 			if err != nil {
 				return nil, err
 			}

@@ -24,10 +24,11 @@ message RegistryTransport {
     SSH ssh = 1;
 
     message SSH {
-        string user             = 1;
-        string private_key_path = 2;
-        string ssh_addr         = 3;
-        string remote_addr      = 4;
-        string agent_sock_path  = 5;
+        string user                  = 1;
+        string private_key_path      = 2;
+        string ssh_addr              = 3;
+        string remote_addr           = 4;
+        string agent_sock_path       = 5;
+        string teleport_profile_name = 6;
     }
 }

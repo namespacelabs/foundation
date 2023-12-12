@@ -46,10 +46,11 @@ func Register() {
 				Url: remote.Registry,
 				Transport: &registry.RegistryTransport{
 					Ssh: &registry.RegistryTransport_SSH{
-						User:           remote.Endpoint.User,
-						PrivateKeyPath: remote.Endpoint.PrivateKeyPath,
-						SshAddr:        remote.Endpoint.Address,
-						AgentSockPath:  remote.Endpoint.AgentSockPath,
+						User:                remote.Endpoint.User,
+						PrivateKeyPath:      remote.Endpoint.PrivateKeyPath,
+						SshAddr:             remote.Endpoint.Address,
+						AgentSockPath:       remote.Endpoint.AgentSockPath,
+						TeleportProfileName: remote.Endpoint.TeleportProfileName,
 					},
 				},
 			},
@@ -68,10 +69,11 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 
 	// XXX use ssh tunnel
 	config, err := makeRemoteConfig(ctx, fmt.Sprintf("https://%s:6443", conf.Address), ssh.Endpoint{
-		User:           conf.User,
-		PrivateKeyPath: conf.PrivateKeyPath,
-		AgentSockPath:  conf.AgentSockPath,
-		Address:        conf.Address,
+		User:                conf.User,
+		PrivateKeyPath:      conf.PrivateKeyPath,
+		AgentSockPath:       conf.AgentSockPath,
+		Address:             conf.Address,
+		TeleportProfileName: conf.TeleportProfileName,
 	})
 	if err != nil {
 		return client.ClusterConfiguration{}, err
@@ -89,7 +91,7 @@ func makeRemoteConfig(ctx context.Context, publicEndpoint string, endpoint ssh.E
 			return nil, err
 		}
 
-		conn, err := deferred.Dial()
+		conn, err := deferred.Dial(ctx)
 		if err != nil {
 			return nil, err
 		}

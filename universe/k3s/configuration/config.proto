@@ -14,8 +14,9 @@ message Remote {
 }
 
 message SshEndpoint {
-    string user             = 1;
-    string private_key_path = 2;
-    string agent_sock_path  = 4;
-    string address          = 3;
+    string user                  = 1;
+    string private_key_path      = 2;
+    string agent_sock_path       = 4;
+    string address               = 3;
+    string teleport_profile_name = 5;
 }
