@@ -243,8 +243,8 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		}
 	}
 
-	slices.SortFunc(result.Nodes, func(a, b *schema.Node) bool {
-		return strings.Compare(a.PackageName, b.PackageName) < 0
+	slices.SortFunc(result.Nodes, func(a, b *schema.Node) int {
+		return strings.Compare(a.PackageName, b.PackageName)
 	})
 
 	digest := make([]schema.Digest, len(result.ServerFragments))

@@ -45,8 +45,8 @@ func (cem *EnvMap) Parsed(ctx context.Context, pl pkggraph.PackageLoader, loc pk
 		env = append(env, &schema.BinaryConfig_EnvEntry{Name: key, Value: out})
 	}
 
-	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) bool {
-		return strings.Compare(a.Name, b.Name) < 0
+	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	return env, nil

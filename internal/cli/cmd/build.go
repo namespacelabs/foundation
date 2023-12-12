@@ -103,8 +103,8 @@ func NewBuildCmd() *cobra.Command {
 func outputResults(ctx context.Context, results []compute.ResultWithTimestamp[deploy.ResolvedServerImages]) {
 	out := console.TypedOutput(ctx, "build", console.CatOutputUs)
 
-	slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[deploy.ResolvedServerImages]) bool {
-		return a.Value.PackageRef.Compare(b.Value.PackageRef) < 0
+	slices.SortFunc(results, func(a, b compute.ResultWithTimestamp[deploy.ResolvedServerImages]) int {
+		return a.Value.PackageRef.Compare(b.Value.PackageRef)
 	})
 
 	style := colors.Ctx(ctx)

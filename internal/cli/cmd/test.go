@@ -213,8 +213,12 @@ func NewTestCmd() *cobra.Command {
 		}
 
 		// Sorting after processing results since the indices need to be synchronized with other slices.
-		slices.SortFunc(completed, func(a, b *storage.TestRuns_Run) bool {
-			return a.TestSummary.Result.Success && !b.TestSummary.Result.Success
+		slices.SortFunc(completed, func(a, b *storage.TestRuns_Run) int {
+			if a.TestSummary.Result.Success && !b.TestSummary.Result.Success {
+				return -1
+			}
+
+			return 0
 		})
 
 		if len(pending) > 0 {

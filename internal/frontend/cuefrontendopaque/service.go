@@ -265,11 +265,11 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		for key, value := range svc.Annotations {
 			x.KeyValue = append(x.KeyValue, &schema.ServiceAnnotations_KeyValue{Key: key, Value: value})
 		}
-		slices.SortFunc(x.KeyValue, func(a, b *schema.ServiceAnnotations_KeyValue) bool {
+		slices.SortFunc(x.KeyValue, func(a, b *schema.ServiceAnnotations_KeyValue) int {
 			if a.Key == b.Key {
-				return strings.Compare(a.Value, b.Value) < 0
+				return strings.Compare(a.Value, b.Value)
 			}
-			return strings.Compare(a.Key, b.Key) < 0
+			return strings.Compare(a.Key, b.Key)
 		})
 
 		serialized, err := anypb.New(x)

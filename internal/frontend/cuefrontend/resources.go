@@ -127,12 +127,12 @@ func ParseResourceInstanceFromCue(ctx context.Context, env *schema.Environment, 
 		}
 	}
 
-	slices.SortFunc(instance.InputResource, func(a, b *schema.ResourceInstance_InputResource) bool {
+	slices.SortFunc(instance.InputResource, func(a, b *schema.ResourceInstance_InputResource) int {
 		x := a.Name.Compare(b.Name)
 		if x == 0 {
-			return strings.Compare(a.GetResourceRef().Canonical(), b.GetResourceRef().Canonical()) < 0
+			return strings.Compare(a.GetResourceRef().Canonical(), b.GetResourceRef().Canonical())
 		}
-		return x < 0
+		return x
 	})
 
 	return instance, multierr.New(parseErrs...)

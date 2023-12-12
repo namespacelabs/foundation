@@ -276,11 +276,11 @@ func (ar ApplyRoleBinding) ToDefinition(scope ...schema.PackageName) (*schema.Se
 		op.Annotation = append(op.Annotation, &OpApplyRoleBinding_KeyValue{Key: k, Value: v})
 	}
 
-	compare := func(a, b *OpApplyRoleBinding_KeyValue) bool {
+	compare := func(a, b *OpApplyRoleBinding_KeyValue) int {
 		if a.Key == b.Key {
-			return strings.Compare(a.Value, b.Value) < 0
+			return strings.Compare(a.Value, b.Value)
 		}
-		return strings.Compare(a.Key, b.Key) < 0
+		return strings.Compare(a.Key, b.Key)
 	}
 
 	slices.SortFunc(op.Label, compare)

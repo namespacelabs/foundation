@@ -28,8 +28,8 @@ func PlanIngress(ctx context.Context, ingressPlanner kubedef.IngressClass, ns st
 
 	groups := groupByName(fragments)
 
-	slices.SortFunc(groups, func(a, b IngressGroup) bool {
-		return strings.Compare(a.Name, b.Name) < 0
+	slices.SortFunc(groups, func(a, b IngressGroup) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	for _, g := range groups {

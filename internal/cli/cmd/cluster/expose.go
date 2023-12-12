@@ -156,8 +156,8 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 		}
 
 		if *output == "json" {
-			slices.SortFunc(exps, func(a, b exported) bool {
-				return a.ContainerPort < b.ContainerPort
+			slices.SortFunc(exps, func(a, b exported) int {
+				return int(a.ContainerPort - b.ContainerPort)
 			})
 
 			return json.NewEncoder(console.Stdout(ctx)).Encode(exps)

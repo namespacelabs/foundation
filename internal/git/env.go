@@ -70,8 +70,8 @@ func (vars EnvVars) Deterministic() TupleList {
 	for k, v := range vars {
 		t = append(t, [2]string{k, v})
 	}
-	slices.SortFunc(t, func(a, b [2]string) bool {
-		return strings.Compare(a[0], b[0]) < 0
+	slices.SortFunc(t, func(a, b [2]string) int {
+		return strings.Compare(a[0], b[0])
 	})
 	return t
 }

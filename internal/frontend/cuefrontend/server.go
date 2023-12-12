@@ -148,8 +148,8 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		return nil, nil, err
 	}
 
-	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) bool {
-		return strings.Compare(a.Name, b.Name) < 0
+	slices.SortFunc(env, func(a, b *schema.BinaryConfig_EnvEntry) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	out.Self.MainContainer.Env = env

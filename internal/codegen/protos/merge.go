@@ -5,9 +5,9 @@
 package protos
 
 import (
+	"slices"
 	"strings"
 
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -51,12 +51,12 @@ func Merge(files ...*FileDescriptorSetAndDeps) (*FileDescriptorSetAndDeps, error
 		}
 	}
 
-	slices.SortFunc(merged.File, func(a, b *descriptorpb.FileDescriptorProto) bool {
-		return strings.Compare(a.GetName(), b.GetName()) < 0
+	slices.SortFunc(merged.File, func(a, b *descriptorpb.FileDescriptorProto) int {
+		return strings.Compare(a.GetName(), b.GetName())
 	})
 
-	slices.SortFunc(merged.Dependency, func(a, b *descriptorpb.FileDescriptorProto) bool {
-		return strings.Compare(a.GetName(), b.GetName()) < 0
+	slices.SortFunc(merged.Dependency, func(a, b *descriptorpb.FileDescriptorProto) int {
+		return strings.Compare(a.GetName(), b.GetName())
 	})
 
 	return merged, nil

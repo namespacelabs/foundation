@@ -71,8 +71,8 @@ func computeSystemInfo(ctx context.Context, cli *kubernetes.Clientset) (*kubedef
 	sort.Strings(sysInfo.Regions)
 	sort.Strings(sysInfo.Zones)
 
-	less := func(a, b *kubedef.NodeDistribution) bool {
-		return strings.Compare(a.Location, b.Location) < 0
+	less := func(a, b *kubedef.NodeDistribution) int {
+		return strings.Compare(a.Location, b.Location)
 	}
 
 	slices.SortFunc(sysInfo.RegionDistribution, less)

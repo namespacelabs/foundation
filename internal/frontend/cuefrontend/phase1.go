@@ -176,11 +176,11 @@ func parseContainers(loc pkggraph.Location, kind string, v cue.Value) ([]*schema
 	return parsed, nil
 }
 
-func sortAdditional(a, b *schema.Naming_AdditionalDomainName) bool {
+func sortAdditional(a, b *schema.Naming_AdditionalDomainName) int {
 	if a.AllocatedName == b.AllocatedName {
-		return strings.Compare(a.Fqdn, b.Fqdn) < 0
+		return strings.Compare(a.Fqdn, b.Fqdn)
 	}
-	return strings.Compare(a.AllocatedName, b.AllocatedName) < 0
+	return strings.Compare(a.AllocatedName, b.AllocatedName)
 }
 
 func lookupTransition(vv *fncue.CueV, name string) *fncue.CueV {

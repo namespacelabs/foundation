@@ -285,7 +285,7 @@ loop:
 						content: bytes.Split(msg.setSticky.contents, []byte("\n")),
 					})
 
-					slices.SortStableFunc(c.stickyContent, func(a, b *stickyContent) bool {
+					slices.SortStableFunc(c.stickyContent, func(a, b *stickyContent) int {
 						var acost, bcost int
 
 						if p, ok := StickyPriorities[a.name]; ok {
@@ -300,7 +300,7 @@ loop:
 							bcost = DefaultStickyPriority
 						}
 
-						return acost < bcost
+						return acost - bcost
 					})
 				}
 			}

@@ -87,8 +87,8 @@ func prepareImage(ctx context.Context, env pkggraph.SealedContext, plan build.Pl
 
 	// Sort platforms, so we yield a stable image order.
 	platforms = slices.Clone(platforms)
-	slices.SortFunc(platforms, func(a, b specs.Platform) bool {
-		return strings.Compare(platform.FormatPlatform(a), platform.FormatPlatform(b)) < 0
+	slices.SortFunc(platforms, func(a, b specs.Platform) int {
+		return strings.Compare(platform.FormatPlatform(a), platform.FormatPlatform(b))
 	})
 
 	r, err := prepareMultiPlatformPlan(ctx, plan, platforms)

@@ -441,16 +441,16 @@ func (sealed sealedPackages) Ensure(ctx context.Context, original schema.Package
 
 func (sealed sealedPackages) Modules() []*pkggraph.Module {
 	mods := maps.Values(sealed.modules)
-	slices.SortFunc(mods, func(a, b *pkggraph.Module) bool {
-		return strings.Compare(a.ModuleName(), b.ModuleName()) < 0
+	slices.SortFunc(mods, func(a, b *pkggraph.Module) int {
+		return strings.Compare(a.ModuleName(), b.ModuleName())
 	})
 	return mods
 }
 
 func (sealed sealedPackages) Packages() []*pkggraph.Package {
 	packages := maps.Values(sealed.packages)
-	slices.SortFunc(packages, func(a, b *pkggraph.Package) bool {
-		return strings.Compare(a.PackageName().String(), b.PackageName().String()) < 0
+	slices.SortFunc(packages, func(a, b *pkggraph.Package) int {
+		return strings.Compare(a.PackageName().String(), b.PackageName().String())
 	})
 	return packages
 }

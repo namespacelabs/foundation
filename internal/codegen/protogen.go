@@ -94,8 +94,8 @@ func RegisterGraphHandlers() {
 				Protos:    protos,
 			})
 		}
-		slices.SortFunc(multi.Protos, func(a, b *OpMultiProtoGen_ProtosByFramework) bool {
-			return int(a.Framework) < int(b.Framework)
+		slices.SortFunc(multi.Protos, func(a, b *OpMultiProtoGen_ProtosByFramework) int {
+			return int(a.Framework) - int(b.Framework)
 		})
 
 		return []*schema.SerializedInvocation{

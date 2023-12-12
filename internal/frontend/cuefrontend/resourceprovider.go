@@ -134,12 +134,12 @@ func parseResourceProvider(ctx context.Context, env *schema.Environment, pl pars
 		return nil, err
 	}
 
-	slices.SortFunc(rp.ResourceInput, func(a, b *schema.ResourceProvider_ResourceInput) bool {
+	slices.SortFunc(rp.ResourceInput, func(a, b *schema.ResourceProvider_ResourceInput) int {
 		x := a.Name.Compare(b.Name)
 		if x == 0 {
-			return a.Class.Compare(b.Class) < 0
+			return a.Class.Compare(b.Class)
 		}
-		return x < 0
+		return x
 	})
 
 	rp.PrepareWith, err = binary.ParseBinaryInvocationField(ctx, env, pl, pkg, "genb-res-prep-"+key /* binaryName */, "prepareWith" /* cuePath */, v)

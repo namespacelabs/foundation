@@ -50,8 +50,8 @@ func reportWorkspaceSize(ctx context.Context, fsys fs.FS, matcher *patternmatche
 		return nil
 	})
 
-	slices.SortFunc(w.Files, func(a, b fileAndSize) bool {
-		return a.Size > b.Size
+	slices.SortFunc(w.Files, func(a, b fileAndSize) int {
+		return int(b.Size - a.Size)
 	})
 
 	return w, err

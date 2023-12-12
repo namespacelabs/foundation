@@ -202,7 +202,7 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		out.MainContainer.ContainerPort = append(out.MainContainer.ContainerPort, p)
 	}
 
-	slices.SortFunc(out.MainContainer.ContainerPort, func(a, b *schema.Endpoint_Port) bool { return strings.Compare(a.Name, b.Name) < 0 })
+	slices.SortFunc(out.MainContainer.ContainerPort, func(a, b *schema.Endpoint_Port) int { return strings.Compare(a.Name, b.Name) })
 
 	var err error
 	out.Probe, err = parseProbes(loc, serviceProbes, bits)
@@ -389,8 +389,8 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 			out.Annotation = append(out.Annotation, &schema.NamedResolvable{Name: k, Value: entry})
 		}
 
-		slices.SortFunc(out.Annotation, func(a, b *schema.NamedResolvable) bool {
-			return strings.Compare(a.Name, b.Name) < 0
+		slices.SortFunc(out.Annotation, func(a, b *schema.NamedResolvable) int {
+			return strings.Compare(a.Name, b.Name)
 		})
 	}
 

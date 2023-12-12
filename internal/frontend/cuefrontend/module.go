@@ -216,11 +216,11 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 		})
 	}
 
-	slices.SortFunc(w.Replace, func(a, b *schema.Workspace_Replace) bool {
+	slices.SortFunc(w.Replace, func(a, b *schema.Workspace_Replace) int {
 		if a.ModuleName == b.ModuleName {
-			return strings.Compare(a.Path, b.Path) < 0
+			return strings.Compare(a.Path, b.Path)
 		}
-		return strings.Compare(a.ModuleName, b.ModuleName) < 0
+		return strings.Compare(a.ModuleName, b.ModuleName)
 	})
 
 	for moduleName, dep := range m.Dependencies {
@@ -230,11 +230,11 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 		})
 	}
 
-	slices.SortFunc(w.Dep, func(a, b *schema.Workspace_Dependency) bool {
+	slices.SortFunc(w.Dep, func(a, b *schema.Workspace_Dependency) int {
 		if a.ModuleName == b.ModuleName {
-			return strings.Compare(a.Version, b.Version) < 0
+			return strings.Compare(a.Version, b.Version)
 		}
-		return strings.Compare(a.ModuleName, b.ModuleName) < 0
+		return strings.Compare(a.ModuleName, b.ModuleName)
 	})
 
 	if m.Prebuilts != nil {
@@ -247,11 +247,11 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 			})
 		}
 
-		slices.SortFunc(w.PrebuiltBinary, func(a, b *schema.Workspace_BinaryDigest) bool {
+		slices.SortFunc(w.PrebuiltBinary, func(a, b *schema.Workspace_BinaryDigest) int {
 			if a.PackageName == b.PackageName {
-				return strings.Compare(a.Digest, b.Digest) < 0
+				return strings.Compare(a.Digest, b.Digest)
 			}
-			return strings.Compare(a.PackageName, b.PackageName) < 0
+			return strings.Compare(a.PackageName, b.PackageName)
 		})
 	}
 
@@ -271,11 +271,11 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 			out.Labels = append(out.Labels, &schema.Label{Name: k, Value: v})
 		}
 
-		slices.SortFunc(out.Labels, func(a, b *schema.Label) bool {
+		slices.SortFunc(out.Labels, func(a, b *schema.Label) int {
 			if a.GetName() == b.GetName() {
-				return strings.Compare(a.GetValue(), b.GetValue()) < 0
+				return strings.Compare(a.GetValue(), b.GetValue())
 			}
-			return strings.Compare(a.GetName(), b.GetName()) < 0
+			return strings.Compare(a.GetName(), b.GetName())
 		})
 
 		for _, kv := range env.Configuration {
@@ -319,8 +319,8 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 		})
 	}
 
-	slices.SortFunc(w.EnvSpec, func(a, b *schema.Workspace_EnvironmentSpec) bool {
-		return strings.Compare(a.Name, b.Name) < 0
+	slices.SortFunc(w.EnvSpec, func(a, b *schema.Workspace_EnvironmentSpec) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	w.ExperimentalProtoModuleImports = m.ProtoModuleImports

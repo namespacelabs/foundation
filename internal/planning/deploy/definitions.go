@@ -132,8 +132,8 @@ func (hr handlerResult) MergedComputedConfigurations() *schema.ComputedConfigura
 		computed.Entry = append(computed.Entry, srv.ComputedConfigurations.GetEntry()...)
 	}
 
-	slices.SortFunc(computed.Entry, func(a, b *schema.ComputedConfigurations_Entry) bool {
-		return strings.Compare(a.ServerPackage, b.ServerPackage) < 0
+	slices.SortFunc(computed.Entry, func(a, b *schema.ComputedConfigurations_Entry) int {
+		return strings.Compare(a.ServerPackage, b.ServerPackage)
 	})
 
 	return computed
@@ -285,8 +285,8 @@ func (r *finishInvokeHandlers) Compute(ctx context.Context, deps compute.Resolve
 
 	for _, sr := range perServer {
 		for _, computed := range sr.ComputedConfigurations.GetEntry() {
-			slices.SortFunc(computed.Configuration, func(a, b *schema.ComputedConfiguration) bool {
-				return strings.Compare(a.GetOwner(), b.GetOwner()) < 0
+			slices.SortFunc(computed.Configuration, func(a, b *schema.ComputedConfiguration) int {
+				return strings.Compare(a.GetOwner(), b.GetOwner())
 			})
 		}
 	}

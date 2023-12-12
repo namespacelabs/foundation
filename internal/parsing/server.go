@@ -198,8 +198,8 @@ func mergeResourceRefs(src, out *schema.ResourcePack) {
 }
 
 func sortServices(services []*schema.Server_ServiceSpec) {
-	slices.SortFunc(services, func(a, b *schema.Server_ServiceSpec) bool {
-		return strings.Compare(a.Name, b.Name) < 0
+	slices.SortFunc(services, func(a, b *schema.Server_ServiceSpec) int {
+		return strings.Compare(a.Name, b.Name)
 	})
 }
 

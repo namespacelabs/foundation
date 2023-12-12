@@ -459,8 +459,8 @@ func (rp *resourceList) Resources() []*resourceInstance {
 	for _, res := range rp.resources {
 		resources = append(resources, res)
 	}
-	slices.SortFunc(resources, func(a, b *resourceInstance) bool {
-		return strings.Compare(a.ID, b.ID) < 0
+	slices.SortFunc(resources, func(a, b *resourceInstance) int {
+		return strings.Compare(a.ID, b.ID)
 	})
 	return resources
 }

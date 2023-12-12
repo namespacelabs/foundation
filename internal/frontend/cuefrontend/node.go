@@ -488,11 +488,11 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 }
 
 func sortLabels(labels []*schema.Label) []*schema.Label {
-	slices.SortFunc(labels, func(a, b *schema.Label) bool {
+	slices.SortFunc(labels, func(a, b *schema.Label) int {
 		if a.GetName() == b.GetName() {
-			return strings.Compare(a.GetValue(), b.GetValue()) < 0
+			return strings.Compare(a.GetValue(), b.GetValue())
 		}
-		return strings.Compare(a.GetName(), b.GetName()) < 0
+		return strings.Compare(a.GetName(), b.GetName())
 	})
 	return labels
 }

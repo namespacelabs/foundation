@@ -717,8 +717,8 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 	// Before sidecars so they have access to the "runtime config" volume.
 	if deployable.RuntimeConfig != nil || len(regularResources) > 0 || len(injected) > 0 {
-		slices.SortFunc(regularResources, func(a, b *resources.ResourceDependency) bool {
-			return strings.Compare(a.ResourceInstanceId, b.ResourceInstanceId) < 0
+		slices.SortFunc(regularResources, func(a, b *resources.ResourceDependency) int {
+			return strings.Compare(a.ResourceInstanceId, b.ResourceInstanceId)
 		})
 
 		ensureConfig := kubedef.EnsureRuntimeConfig{
