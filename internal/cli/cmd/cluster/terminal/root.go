@@ -15,6 +15,7 @@ func NewTerminalCmd() *cobra.Command {
 
 	cmd.AddCommand(newCreateCmd())
 	cmd.AddCommand(newAttachCmd())
+	cmd.AddCommand(newRunScriptCmd())
 
 	return cmd
 }

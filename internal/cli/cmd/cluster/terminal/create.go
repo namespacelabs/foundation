@@ -30,6 +30,7 @@ func newCreateCmd() *cobra.Command {
 	duration := run.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
 	envFile := run.Flags().String("envfile", "", "If specified, passes the contents of the envfile to the container.")
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
+	output := run.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *image == "" {
@@ -67,7 +68,7 @@ func newCreateCmd() *cobra.Command {
 			return err
 		}
 
-		return cluster.PrintCreateContainersResult(ctx, "plain", resp)
+		return cluster.PrintCreateContainersResult(ctx, *output, resp)
 	})
 
 	return run
