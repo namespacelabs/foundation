@@ -8,14 +8,20 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 )
 
 func ListenPort(ctx context.Context, localAddr string, localPort, containerPort int) (net.Listener, error) {
+	host := localAddr
+	if isIPv6 := strings.Count(localAddr, ":") >= 2; isIPv6 {
+		host = fmt.Sprintf("[%s]", localAddr)
+	}
+
 	var cfg net.ListenConfig
 
 	if localPort == 0 && containerPort != 0 {
 		// First we try to listen on a local port that matches the container port.
-		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, containerPort))
+		lst, err := cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", host, containerPort))
 		if err == nil {
 			return lst, nil
 		}
@@ -23,5 +29,5 @@ func ListenPort(ctx context.Context, localAddr string, localPort, containerPort 
 		// Any failures fallback to the open any port path.
 	}
 
-	return cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", localAddr, localPort))
+	return cfg.Listen(ctx, "tcp", fmt.Sprintf("%s:%d", host, localPort))
 }
