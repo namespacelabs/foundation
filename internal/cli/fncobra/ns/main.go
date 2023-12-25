@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/binary/genbinary"
@@ -21,7 +22,6 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	dockerfileparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/dockerfile"
@@ -29,7 +29,6 @@ import (
 	nodejsparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
 	shellparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/shellscript"
 	webparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/web"
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontendopaque"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/integrations/golang"
 	nodebinary "namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
@@ -38,7 +37,6 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/networking/ingress"
 	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
-	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
 	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
@@ -83,11 +81,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				// Used for devhost/environment validation.
 				devhost.HasRuntime = runtime.HasRuntime
 
-				parsing.ModuleLoader = cuefrontend.ModuleLoader
-				parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
-					return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)
-				}
-
+				module.WireDefaults()
 				filewatcher.SetupFileWatcher()
 
 				binary.BuildGo = golang.GoBuilder
