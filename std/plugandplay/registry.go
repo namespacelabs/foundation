@@ -5,15 +5,18 @@
 package plugandplay
 
 import (
-	_ "namespacelabs.dev/foundation/internal/build/registry" // For type.googleapis.com/foundation.build.registry.Registry
+	_ "namespacelabs.dev/foundation/internal/artifacts/registry" // For type.googleapis.com/foundation.build.registry.Registry
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
 	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
+	_ "namespacelabs.dev/foundation/internal/providers/k3d" // For type.googleapis.com/foundation.providers.k3d.Configuration
 	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
 	"namespacelabs.dev/foundation/internal/providers/k3s"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/onepassword"
+	_ "namespacelabs.dev/foundation/internal/runtime/kubernetes"
+	_ "namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 )
 
 func RegisterConfigurationProvider() {
