@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/nodejs"
-	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

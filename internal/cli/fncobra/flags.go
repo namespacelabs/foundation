@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/internal/parsing/module"
+	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/std/cfg"
 )
 

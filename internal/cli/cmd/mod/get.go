@@ -8,9 +8,9 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/parsing/module"
 )
 
 func newGetCmd() *cobra.Command {

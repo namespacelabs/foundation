@@ -19,6 +19,7 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/go-ids"
 
+	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/build"
@@ -35,7 +36,6 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
-	"namespacelabs.dev/foundation/internal/parsing/module"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
