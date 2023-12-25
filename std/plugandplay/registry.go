@@ -5,6 +5,7 @@
 package plugandplay
 
 import (
+	_ "namespacelabs.dev/foundation/internal/build/registry" // For type.googleapis.com/foundation.build.registry.Registry
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
