@@ -19,7 +19,6 @@ import (
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/go-ids"
 
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/build"
@@ -42,6 +41,7 @@ import (
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/schema/storage"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )

@@ -9,7 +9,6 @@ import (
 	"io"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -18,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 

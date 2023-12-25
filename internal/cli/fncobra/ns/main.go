@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/binary"
 	"namespacelabs.dev/foundation/internal/build/binary/genbinary"
@@ -65,6 +64,7 @@ import (
 	"namespacelabs.dev/foundation/orchestration/client"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/universe/aws/iam"
 )
 

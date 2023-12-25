@@ -16,7 +16,6 @@ import (
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
@@ -30,6 +29,7 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
 	"namespacelabs.dev/foundation/internal/sdk/nodejs"
+	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 

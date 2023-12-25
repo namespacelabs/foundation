@@ -8,8 +8,8 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 )
 
 func EnvFromValue(cmd *cobra.Command, env *string) *cfg.Context {

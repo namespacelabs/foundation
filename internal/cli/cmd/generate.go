@@ -9,7 +9,6 @@ import (
 
 	"github.com/philopon/go-toposort"
 	"github.com/spf13/cobra"
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/codegen/genpackage"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -20,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/uniquestrings"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 )
 
 func NewGenerateCmd() *cobra.Command {

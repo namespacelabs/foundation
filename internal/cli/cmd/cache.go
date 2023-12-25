@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
-	"namespacelabs.dev/foundation/framework/module"
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 )
 
 func NewCacheCmd() *cobra.Command {
