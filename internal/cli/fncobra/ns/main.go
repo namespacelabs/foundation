@@ -36,7 +36,6 @@ import (
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/networking/ingress"
 	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
-	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
 	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
 	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
@@ -72,9 +71,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			registerCommands(rootCmd)
 
 			fncobra.PushPreParse(rootCmd, func(ctx context.Context, args []string) error {
-				// Used for devhost/environment validation.
-				devhost.HasRuntime = runtime.HasRuntime
-
 				module.WireDefaults()
 				filewatcher.SetupFileWatcher()
 

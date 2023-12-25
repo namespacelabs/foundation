@@ -6,6 +6,7 @@ package plugandplay
 
 import (
 	_ "namespacelabs.dev/foundation/internal/artifacts/registry" // For type.googleapis.com/foundation.build.registry.Registry
+	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
@@ -15,11 +16,15 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/k3s"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/onepassword"
+	"namespacelabs.dev/foundation/internal/runtime"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	_ "namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	_ "namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 )
 
 func RegisterConfigurationProvider() {
+	devhost.HasRuntime = runtime.HasRuntime
+
 	ecr.Register()
 	eks.Register()
 	gke.Register()
@@ -28,4 +33,6 @@ func RegisterConfigurationProvider() {
 	k3s.Register()
 	nscloud.Register()
 	onepassword.Register()
+
+	kubernetes.Register()
 }
