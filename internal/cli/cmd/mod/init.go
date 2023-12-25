@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/framework/findroot"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"

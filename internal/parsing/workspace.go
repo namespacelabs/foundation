@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"namespacelabs.dev/foundation/internal/findroot"
+	"namespacelabs.dev/foundation/framework/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/schema"

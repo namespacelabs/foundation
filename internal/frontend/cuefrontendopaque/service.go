@@ -166,7 +166,12 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 			return nil, nil, fnerrors.New("use of `ports` and `port` is exclusive")
 		}
 	} else {
-		svc.Ports = append(svc.Ports, cueServicePort{Port: svc.Port, ExportedPort: svc.ExportedPort, HostPort: svc.HostPort, Protocol: svc.Protocol})
+		svc.Ports = append(svc.Ports, cueServicePort{
+			Port:         svc.Port,
+			ExportedPort: svc.ExportedPort,
+			HostPort:     svc.HostPort,
+			Protocol:     svc.Protocol,
+		})
 	}
 
 	parsed := &schema.Server_ServiceSpec{

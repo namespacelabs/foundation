@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"golang.org/x/mod/modfile"
-	"namespacelabs.dev/foundation/internal/findroot"
+	"namespacelabs.dev/foundation/framework/findroot"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
