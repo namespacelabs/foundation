@@ -44,15 +44,8 @@ import (
 	webapplier "namespacelabs.dev/foundation/internal/parsing/integration/web"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/tool"
-	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
-	"namespacelabs.dev/foundation/internal/providers/aws/eks"
-	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
-	artifactregistry "namespacelabs.dev/foundation/internal/providers/gcp/registry"
-	k3dp "namespacelabs.dev/foundation/internal/providers/k3d"
-	"namespacelabs.dev/foundation/internal/providers/k3s"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/nsingress"
-	"namespacelabs.dev/foundation/internal/providers/onepassword"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/helm"
@@ -65,6 +58,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/module"
+	"namespacelabs.dev/foundation/std/plugandplay"
 	"namespacelabs.dev/foundation/universe/aws/iam"
 )
 
@@ -138,17 +132,10 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				codegen.RegisterGraphHandlers()
 
 				// Providers.
-				ecr.Register()
-				eks.Register()
-				gke.Register()
-				artifactregistry.Register()
+				plugandplay.RegisterConfigurationProvider()
 				iam.RegisterGraphHandlers()
-				k3dp.Register()
-				k3s.Register()
 				ingress.RegisterIngressClass(nginx.IngressClass())
 				ingress.RegisterIngressClass(nsingress.IngressClass())
-				nscloud.Register()
-				onepassword.Register()
 
 				// Runtimes.
 				kubernetes.Register()
