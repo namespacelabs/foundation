@@ -22,7 +22,7 @@ import (
 	_ "namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 )
 
-func RegisterConfigurationProvider() {
+func RegisterProviders() {
 	devhost.HasRuntime = runtime.HasRuntime
 
 	ecr.Register()

@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func WireDefaults() {
+func WireModuleLoader() {
 	parsing.ModuleLoader = cuefrontend.ModuleLoader
 	parsing.MakeFrontend = func(pl parsing.EarlyPackageLoader, env *schema.Environment) parsing.Frontend {
 		return cuefrontend.NewFrontend(pl, cuefrontendopaque.NewFrontend(env, pl), env)

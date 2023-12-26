@@ -57,7 +57,7 @@ func NewLocalSecrets(env SecretsContext) (secrets.SecretsSource, error) {
 	}, nil
 }
 
-func (l *localSecrets) Load(ctx context.Context, modules pkggraph.Modules, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
+func (l *localSecrets) Load(ctx context.Context, modules pkggraph.ModuleResolver, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	// Ordered by lookup order.
 	var bundles []*Bundle
 
@@ -97,7 +97,7 @@ func (l *localSecrets) MissingError(missing *schema.PackageRef, missingSpec *sch
 		"There are secrets required which have not been specified")
 }
 
-func (l *localSecrets) loadSecretsFor(ctx context.Context, modules pkggraph.Modules, moduleName, secretFile string) (*Bundle, error) {
+func (l *localSecrets) loadSecretsFor(ctx context.Context, modules pkggraph.ModuleResolver, moduleName, secretFile string) (*Bundle, error) {
 	if strings.Contains(moduleName, ":") {
 		return nil, fnerrors.InternalError("module names can't contain colons")
 	}
@@ -125,16 +125,15 @@ func (l *localSecrets) loadSecretsFor(ctx context.Context, modules pkggraph.Modu
 	return loaded, nil
 }
 
-func (l *localSecrets) moduleFS(modules pkggraph.Modules, moduleName string) fs.FS {
+func (l *localSecrets) moduleFS(modules pkggraph.ModuleResolver, moduleName string) fs.FS {
 	if l.workspaceModule == moduleName {
 		return l.workspaceFS
 	}
 
 	if modules != nil {
-		for _, mod := range modules.Modules() {
-			if mod.ModuleName() == moduleName {
-				return mod.ReadOnlyFS()
-			}
+		mod := modules.ResolveModule(moduleName)
+		if mod != nil {
+			return mod.ReadOnlyFS()
 		}
 	}
 

@@ -57,7 +57,7 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 	}, nil
 }
 
-func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.Modules, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
+func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleResolver, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	if b, ok := cs.bindings[req.SecretRef.Canonical()]; ok {
 		p := secretProviders[b.Configuration.TypeUrl]
 		if p == nil {

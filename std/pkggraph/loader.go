@@ -28,9 +28,14 @@ type Modules interface {
 	Modules() []*Module
 }
 
+type ModuleResolver interface {
+	ResolveModule(name string) *Module
+}
+
 type SealedPackageLoader interface {
 	PackageLoader
 	Modules
+	ModuleResolver
 
 	Packages() []*Package
 }

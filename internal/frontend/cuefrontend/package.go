@@ -107,5 +107,22 @@ func ParsePackage(ctx context.Context, env *schema.Environment, pl parsing.Early
 		parsedPkg.Binaries = append(parsedPkg.Binaries, parsedBinary)
 	}
 
+	if vars := v.LookupPath("vars"); vars.Exists() {
+		it, err := vars.Val.Fields()
+		if err != nil {
+			return nil, err
+		}
+
+		parsedPkg.Vars = map[string]string{}
+		for it.Next() {
+			var value string
+			if err := it.Value().Decode(&value); err != nil {
+				return nil, err
+			}
+
+			parsedPkg.Vars[it.Label()] = value
+		}
+	}
+
 	return parsedPkg, nil
 }

@@ -447,6 +447,16 @@ func (sealed sealedPackages) Modules() []*pkggraph.Module {
 	return mods
 }
 
+func (sealed sealedPackages) ResolveModule(name string) *pkggraph.Module {
+	for _, mod := range sealed.modules {
+		if mod.ModuleName() == name {
+			return mod
+		}
+	}
+
+	return nil
+}
+
 func (sealed sealedPackages) Packages() []*pkggraph.Package {
 	packages := maps.Values(sealed.packages)
 	slices.SortFunc(packages, func(a, b *pkggraph.Package) int {

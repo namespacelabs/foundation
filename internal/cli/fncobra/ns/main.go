@@ -71,7 +71,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 			registerCommands(rootCmd)
 
 			fncobra.PushPreParse(rootCmd, func(ctx context.Context, args []string) error {
-				module.WireDefaults()
+				module.WireModuleLoader()
 				filewatcher.SetupFileWatcher()
 
 				binary.BuildGo = golang.GoBuilder
@@ -128,7 +128,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				codegen.RegisterGraphHandlers()
 
 				// Providers.
-				plugandplay.RegisterConfigurationProvider()
+				plugandplay.RegisterProviders()
 				iam.RegisterGraphHandlers()
 				ingress.RegisterIngressClass(nginx.IngressClass())
 				ingress.RegisterIngressClass(nsingress.IngressClass())
@@ -139,7 +139,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				helm.Register()
 				orchestration.RegisterPrepare()
 
-				cfg.ValidateNoConfigTypeCollisions()
+				cfg.Seal()
 
 				if deprecatedToolsInvocation {
 					fmt.Fprintf(console.Warnings(ctx), "Flag without effect: --tools_invocation_can_use_buildkit is now the default.\n")

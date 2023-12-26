@@ -12,7 +12,7 @@ import (
 )
 
 type SecretsSource interface {
-	Load(context.Context, pkggraph.Modules, *SecretLoadRequest) (*schema.SecretResult, error)
+	Load(context.Context, pkggraph.ModuleResolver, *SecretLoadRequest) (*schema.SecretResult, error)
 	MissingError(*schema.PackageRef, *schema.SecretSpec, schema.PackageName) error
 }
 
@@ -29,4 +29,18 @@ type SecretLoadRequest_ServerRef struct {
 
 type GroundedSecrets interface {
 	Get(ctx context.Context, secretRef *schema.PackageRef) (*schema.SecretResult, error)
+}
+
+func Load(ctx context.Context, src SecretsSource, mods pkggraph.ModuleResolver, owner schema.PackageNameLike, ref string) (*schema.SecretResult, error) {
+	resolved, err := schema.ParsePackageRef(owner, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	return src.Load(ctx, mods, &SecretLoadRequest{
+		SecretRef: &schema.PackageRef{
+			PackageName: resolved.PackageName,
+			Name:        resolved.Name,
+		},
+	})
 }

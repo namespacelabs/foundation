@@ -50,7 +50,7 @@ func LookupConfigMessage(name protoreflect.FullName) protoreflect.MessageType {
 	return wellKnownTypes[string(name)]
 }
 
-func ValidateNoConfigTypeCollisions() {
+func Seal() {
 	seen := map[string]stacktrace.StackTrace{}
 	m := map[string]protoreflect.MessageType{}
 	for _, wkt := range registeredKnownTypes {

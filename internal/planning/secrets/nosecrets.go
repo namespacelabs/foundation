@@ -19,7 +19,7 @@ type noSecrets struct{}
 
 var _ secrets.SecretsSource = noSecrets{}
 
-func (noSecrets) Load(context.Context, pkggraph.Modules, *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
+func (noSecrets) Load(context.Context, pkggraph.ModuleResolver, *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	return nil, fnerrors.New("secrets are not available in this path")
 }
 
