@@ -43,16 +43,15 @@ func withSpan(ctx context.Context, opts commonOpts, name, sql string, f func(con
 	return opts.errw(ctx, err)
 }
 
-func returnWithSpan[T any](ctx context.Context, opts commonOpts, name, sql string, f func(context.Context) (T, error)) (T, error) {
+func createSpan(ctx context.Context, opts commonOpts, name, sql string) (context.Context, trace.Span) {
 	if opts.t == nil {
-		v, err := f(ctx)
-		return v, opts.errw(ctx, err)
+		return ctx, nil
 	}
 
+	// (NSL-1740) If this is the first span of the context, then skip it.
+	// Traces only containing DB transaction are not useful. We want traces that start with a function call.
 	if s := trace.SpanFromContext(ctx); !s.IsRecording() {
-		// (NSL-1740) If this is the first span of the context, then skip it.
-		// Traces only containing DB transaction are not useful. We want traces that start with a function call.
-		return f(ctx)
+		return ctx, nil
 	}
 
 	options := []trace.SpanStartOption{trace.WithSpanKind(trace.SpanKindClient), trace.WithAttributes(opts.TraceAttributes()...)}
@@ -61,14 +60,33 @@ func returnWithSpan[T any](ctx context.Context, opts commonOpts, name, sql strin
 		options = append(options, trace.WithAttributes(semconv.DBStatementKey.String(sql)))
 	}
 
-	ctx, span := opts.t.Start(ctx, name, options...)
+	return opts.t.Start(ctx, name, options...)
+}
+
+func returnWithSpan[T any](ctx context.Context, opts commonOpts, name, sql string, f func(context.Context) (T, error)) (T, error) {
+	ctx, span := createSpan(ctx, opts, name, sql)
+	if span == nil {
+		v, err := f(ctx)
+		return v, opts.errw(ctx, err)
+	}
+
 	defer span.End()
 
 	value, err := f(ctx)
-	err = checkErr(err)
-	recordErr(span, err)
+	return value, processError(ctx, span, opts, err)
+}
 
-	return value, opts.errw(ctx, err)
+func processError(ctx context.Context, span trace.Span, opts commonOpts, origErr error) error {
+	if origErr == nil {
+		return nil
+	}
+
+	err := checkErr(origErr)
+	if span != nil {
+		recordErr(span, err)
+	}
+
+	return opts.errw(ctx, err)
 }
 
 func checkErr(err error) error {

@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgproto3/v2"
 	"github.com/jackc/pgx/v4"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type hasQuery interface {
@@ -17,30 +18,42 @@ type hasQuery interface {
 }
 
 func query(ctx context.Context, opts commonOpts, q hasQuery, name, sql string, args ...any) (pgx.Rows, error) {
-	rows, err := returnWithSpan(ctx, opts, name, sql, func(ctx context.Context) (pgx.Rows, error) {
-		return q.Query(ctx, sql, args...)
-	})
+	// span may be nil.
+	ctx, span := createSpan(ctx, opts, name, sql)
+
+	rows, err := q.Query(ctx, sql, args...)
 	if err != nil {
-		return nil, err
+		if span != nil {
+			defer span.End()
+		}
+
+		return nil, processError(ctx, span, opts, err)
 	}
 
-	return tracedRows{ctx, opts, sql, rows}, nil
+	if span == nil {
+		return rows, nil
+	}
+
+	span.AddEvent("QueryReturned")
+
+	return tracedRows{span, rows}, nil
 }
 
 type tracedRows struct {
-	ctx  context.Context
-	opts commonOpts
-	sql  string
+	span trace.Span
 	rows pgx.Rows
 }
 
-func (r tracedRows) Close() {
-	// Ensure that any error observed while reading rows is reported to a span.
-	_ = withSpan(r.ctx, r.opts, "db.rows.Close", r.sql, func(context.Context) error {
-		r.rows.Close()
+var _ pgx.Rows = tracedRows{}
 
-		return r.rows.Err()
-	})
+func (r tracedRows) Close() {
+	defer r.span.End()
+
+	r.rows.Close()
+	// Ensure that any error observed while reading rows is reported to a span.
+	if err := r.rows.Err(); err != nil {
+		recordErr(r.span, err)
+	}
 }
 
 func (r tracedRows) Err() error {
