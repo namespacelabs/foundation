@@ -6,10 +6,12 @@ package oci
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/gravitational/teleport/api/utils/keys"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/ssh"
@@ -58,6 +60,22 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 		})
 		if err != nil {
 			return nil, err
+		}
+
+		return []remote.Option{remote.WithTransport(transport)}, nil
+	case t.Tls != nil:
+		transport := &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				cert, err := keys.LoadX509KeyPair(t.Tls.GetCert(), t.Tls.GetKey())
+				if err != nil {
+					return nil, err
+				}
+
+				tlsConf := &tls.Config{
+					Certificates: []tls.Certificate{cert},
+				}
+				return tls.Dial("tcp", t.Tls.GetEndpoint(), tlsConf)
+			},
 		}
 
 		return []remote.Option{remote.WithTransport(transport)}, nil

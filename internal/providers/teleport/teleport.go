@@ -1,0 +1,146 @@
+package teleport
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+
+	"github.com/gravitational/teleport/api/profile"
+	"google.golang.org/protobuf/proto"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/internal/build/registry"
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
+	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/universe/teleport/configuration"
+)
+
+const (
+	tshBin = "tsh"
+)
+
+var (
+	teleportConfigType = cfg.DefineConfigType[*configuration.TeleportProxy]()
+)
+
+func Register() {
+	client.RegisterConfigurationProvider("teleport", provideCluster)
+
+	cfg.RegisterConfigurationProvider(func(conf *configuration.Configuration) ([]proto.Message, error) {
+		if conf.GetProxy() == nil {
+			return nil, fnerrors.BadInputError("teleport proxy must be specified")
+		}
+
+		if conf.Registry == "" {
+			return nil, fnerrors.BadInputError("registry must be specified")
+		}
+
+		profile, err := profile.FromDir("", conf.GetProxy().GetProfile())
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to resolve teleport profile")
+		}
+
+		tpRegistryApp := conf.GetProxy().GetRegistryApp()
+		if err := tshAppsLogin(tpRegistryApp); err != nil {
+			fnerrors.InvocationError("tsh", "failed to login to app %q", tpRegistryApp)
+		}
+
+		messages := []proto.Message{
+			&client.HostEnv{Provider: "teleport"},
+			&registry.Registry{
+				Url: conf.Registry,
+				Transport: &registry.RegistryTransport{
+					Tls: &registry.RegistryTransport_TLS{
+						Endpoint: fmt.Sprintf("%s.%s", tpRegistryApp, profile.WebProxyAddr),
+						Cert:     profile.AppCertPath(tpRegistryApp),
+						Key:      profile.UserKeyPath(),
+					},
+				},
+			},
+			conf.Proxy,
+		}
+
+		return messages, nil
+	})
+}
+
+func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterConfiguration, error) {
+	conf, ok := teleportConfigType.CheckGet(cfg)
+	if !ok {
+		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
+	}
+
+	profile, err := profile.FromDir("", conf.GetProfile())
+	if err != nil {
+		return client.ClusterConfiguration{}, fnerrors.InternalError("failed to resolve teleport profile")
+	}
+
+	tshBinPath, err := exec.LookPath(tshBin)
+	if err != nil {
+		return client.ClusterConfiguration{}, fnerrors.InternalError("missing tsh binary")
+	}
+
+	caData, err := os.ReadFile(profile.TLSCAPathCluster(profile.SiteName))
+	if err != nil {
+		return client.ClusterConfiguration{}, fnerrors.InternalError("failed to reat root CA")
+	}
+
+	clusterName := conf.GetKubeCluster()
+	contextName := fmt.Sprintf("%s-%s", profile.SiteName, clusterName)
+	return client.ClusterConfiguration{
+		Config: clientcmdapi.Config{
+			Clusters: map[string]*clientcmdapi.Cluster{
+				clusterName: {
+					Server:                   fmt.Sprintf("https://%s", profile.KubeProxyAddr),
+					TLSServerName:            "kube-teleport-proxy-alpn." + profile.SiteName,
+					CertificateAuthorityData: []byte(caData),
+				},
+			},
+			Contexts: map[string]*clientcmdapi.Context{
+				contextName: {
+					Cluster: clusterName,
+					Extensions: map[string]runtime.Object{
+						"teleport.kube.name": &runtime.Unknown{
+							// We need to wrap the kubeName in quotes to make sure it is parsed as a string.
+							Raw: []byte(fmt.Sprintf("%q", clusterName)),
+						},
+					},
+					AuthInfo: contextName,
+				},
+			},
+			CurrentContext: contextName,
+			AuthInfos: map[string]*clientcmdapi.AuthInfo{
+				contextName: {
+					Exec: &clientcmdapi.ExecConfig{
+						APIVersion: "client.authentication.k8s.io/v1beta1",
+						Command:    tshBinPath,
+						Args: []string{"kube", "credentials",
+							"--kube-cluster", conf.GetKubeCluster(),
+							"--teleport-cluster", profile.SiteName,
+							"--proxy", profile.KubeProxyAddr,
+						},
+						Env:             []clientcmdapi.ExecEnvVar{},
+						InteractiveMode: clientcmdapi.NeverExecInteractiveMode,
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+func tshAppsLogin(app string) error {
+	// TODO: wrap with tasks.Return0
+	tshBinPath, err := exec.LookPath(tshBin)
+	if err != nil {
+		return fnerrors.InternalError("missing tsh binary")
+	}
+
+	c := exec.Command(tshBinPath, "apps", "login", app, "--ttl", "60")
+	if err := c.Run(); err != nil {
+		return err
+	}
+
+	return nil
+}

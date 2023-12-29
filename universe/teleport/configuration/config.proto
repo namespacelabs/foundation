@@ -1,0 +1,20 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
+syntax = "proto3";
+
+package foundation.universe.teleport.configuration;
+
+option go_package = "namespacelabs.dev/foundation/universe/teleport/configuration";
+
+message Configuration {
+    TeleportProxy proxy    = 1;
+    string        registry = 2;
+}
+
+message TeleportProxy {
+    string profile      = 1;
+    string kube_cluster = 2;
+    string registry_app = 3;
+}

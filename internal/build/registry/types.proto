@@ -22,6 +22,7 @@ message Provider {
 
 message RegistryTransport {
     SSH ssh = 1;
+    TLS tls = 2;
 
     message SSH {
         string user                  = 1;
@@ -30,5 +31,11 @@ message RegistryTransport {
         string remote_addr           = 4;
         string agent_sock_path       = 5;
         string teleport_profile_name = 6;
+    }
+
+    message TLS {
+        string endpoint = 1;
+        string cert     = 2;
+        string key      = 3;
     }
 }
