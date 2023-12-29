@@ -65,6 +65,24 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 	return value, err
 }
 
+func Collect2[T any, R any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, R, error), opts ...trace.SpanStartOption) (T, R, error) {
+	if tracer == nil {
+		return callback(ctx)
+	}
+
+	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
+
+	ctx, span := tracer.Start(ctx, name.name, opts...)
+	defer span.End(trace.WithStackTrace(true))
+
+	value0, value1, err := callback(ctx)
+	if err != nil {
+		maybeCollectError(span, err)
+	}
+
+	return value0, value1, err
+}
+
 func CollectAndLog0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
 	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
 
