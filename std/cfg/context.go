@@ -5,6 +5,8 @@
 package cfg
 
 import (
+	"context"
+
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
@@ -27,12 +29,12 @@ func MakeUnverifiedContext(config Configuration, env *schema.Environment) Contex
 	return ctx{config: config, env: env}
 }
 
-func LoadContext(parent RootContext, name string) (Context, error) {
+func LoadContext(ctx context.Context, parent RootContext, name string) (Context, error) {
 	for _, env := range EnvsOrDefault(parent.DevHost(), parent.Workspace().Proto()) {
 		if env.Name == name {
 			schemaEnv := schema.SpecToEnv(env)[0]
 
-			cfg, err := makeConfigurationCompat(parent, parent.Workspace(), ConfigurationSlice{
+			cfg, err := makeConfigurationCompat(ctx, parent, parent.Workspace(), ConfigurationSlice{
 				Configuration:         env.Configuration,
 				PlatformConfiguration: env.PlatformConfiguration,
 			}, parent.DevHost(), schemaEnv)

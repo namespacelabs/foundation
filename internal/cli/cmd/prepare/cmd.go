@@ -86,7 +86,7 @@ func NewPrepareIngressCmd() *cobra.Command {
 			return err
 		}
 
-		env, err := cfg.LoadContext(root, *env)
+		env, err := cfg.LoadContext(ctx, root, *env)
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func NewPrepareBuildClusterCmd() *cobra.Command {
 			return err
 		}
 
-		env, err := cfg.LoadContext(root, *env)
+		env, err := cfg.LoadContext(ctx, root, *env)
 		if err != nil {
 			return err
 		}
@@ -200,7 +200,7 @@ func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, er
 				return err
 			}
 
-			env, err := cfg.LoadContext(root, envRef)
+			env, err := cfg.LoadContext(ctx, root, envRef)
 			if err != nil {
 				return err
 			}

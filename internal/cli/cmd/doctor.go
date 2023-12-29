@@ -207,7 +207,7 @@ func NewDoctorCmd() *cobra.Command {
 				buildkitI := errorOr[DoctorResults_BuildkitResults]{err: fnerrors.New("no workspace")}
 				if workspaceI.err == nil {
 					buildkitI = runDiagnostic(ctx, "doctor.build", func(ctx context.Context) (DoctorResults_BuildkitResults, error) {
-						env, err := cfg.LoadContext(workspaceI.v, *envRef)
+						env, err := cfg.LoadContext(ctx, workspaceI.v, *envRef)
 						if err != nil {
 							return DoctorResults_BuildkitResults{}, err
 						}
@@ -242,7 +242,7 @@ func NewDoctorCmd() *cobra.Command {
 				if workspaceI.err == nil {
 					kubernetesI = runDiagnostic(ctx, "doctor.kube", func(ctx context.Context) (DoctorResults_KubeResults, error) {
 						var r DoctorResults_KubeResults
-						env, err := cfg.LoadContext(workspaceI.v, *envRef)
+						env, err := cfg.LoadContext(ctx, workspaceI.v, *envRef)
 						if err != nil {
 							return r, err
 						}

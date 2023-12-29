@@ -25,7 +25,7 @@ func CmdWithEnv(cmd *cobra.Command, f func(context.Context, cfg.Context, []strin
 			return err
 		}
 
-		env, err := cfg.LoadContext(root, envRef)
+		env, err := cfg.LoadContext(ctx, root, envRef)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ func (p *parseEnv) Parse(ctx context.Context, args []string) error {
 		return err
 	}
 
-	env, err := cfg.LoadContext(root, p.envRef)
+	env, err := cfg.LoadContext(ctx, root, p.envRef)
 	if err != nil {
 		return err
 	}

@@ -16,7 +16,7 @@ func InstantiateKube(ctx context.Context, env cfg.Context, conf *schema.DevHost_
 	devhost := &schema.DevHost{}
 	devhost.Configure = append(devhost.Configure, conf)
 
-	config, err := cfg.MakeConfigurationCompat(env, env.Workspace(), devhost, env.Environment())
+	config, err := cfg.MakeConfigurationCompat(ctx, env, env.Workspace(), devhost, env.Environment())
 	if err != nil {
 		return nil, err
 	}

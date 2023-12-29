@@ -51,7 +51,7 @@ func RegisterClusterProvider() {
 	client.RegisterConfigurationProvider("nscloud", provideCluster)
 	kubernetes.RegisterOverrideClass("nscloud", provideClass)
 
-	cfg.RegisterConfigurationProvider(func(cluster *configuration.Cluster) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(ctx context.Context, cluster *configuration.Cluster) ([]proto.Message, error) {
 		if cluster.ClusterId == "" {
 			return nil, fnerrors.BadInputError("cluster_id must be specified")
 		}

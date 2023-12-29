@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/teleport/configuration"
 )
 
@@ -28,7 +29,7 @@ var (
 func Register() {
 	client.RegisterConfigurationProvider("teleport", provideCluster)
 
-	cfg.RegisterConfigurationProvider(func(conf *configuration.Configuration) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(ctx context.Context, conf *configuration.Configuration) ([]proto.Message, error) {
 		if conf.GetProxy() == nil {
 			return nil, fnerrors.BadInputError("teleport proxy must be specified")
 		}
@@ -43,7 +44,7 @@ func Register() {
 		}
 
 		tpRegistryApp := conf.GetProxy().GetRegistryApp()
-		if err := tshAppsLogin(tpRegistryApp); err != nil {
+		if err := tshAppsLogin(ctx, tpRegistryApp); err != nil {
 			fnerrors.InvocationError("tsh", "failed to login to app %q", tpRegistryApp)
 		}
 
@@ -116,7 +117,8 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 					Exec: &clientcmdapi.ExecConfig{
 						APIVersion: "client.authentication.k8s.io/v1beta1",
 						Command:    tshBinPath,
-						Args: []string{"kube", "credentials",
+						Args: []string{
+							"kube", "credentials",
 							"--kube-cluster", conf.GetKubeCluster(),
 							"--teleport-cluster", profile.SiteName,
 							"--proxy", profile.KubeProxyAddr,
@@ -130,17 +132,18 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 	}, nil
 }
 
-func tshAppsLogin(app string) error {
-	// TODO: wrap with tasks.Return0
-	tshBinPath, err := exec.LookPath(tshBin)
-	if err != nil {
-		return fnerrors.InternalError("missing tsh binary")
-	}
+func tshAppsLogin(ctx context.Context, app string) error {
+	return tasks.Return0(ctx, tasks.Action("tsh.apps.login").Arg("app", app), func(ctx context.Context) error {
+		tshBinPath, err := exec.LookPath(tshBin)
+		if err != nil {
+			return fnerrors.InternalError("missing tsh binary")
+		}
 
-	c := exec.Command(tshBinPath, "apps", "login", app, "--ttl", "60")
-	if err := c.Run(); err != nil {
-		return err
-	}
+		c := exec.Command(tshBinPath, "apps", "login", app, "--ttl", "60")
+		if err := c.Run(); err != nil {
+			return err
+		}
 
-	return nil
+		return nil
+	})
 }

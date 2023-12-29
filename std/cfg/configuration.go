@@ -5,6 +5,7 @@
 package cfg
 
 import (
+	"context"
 	"strings"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -46,7 +47,7 @@ func GetMultiple[V proto.Message](config Configuration) ([]V, error) {
 	return result, nil
 }
 
-func MakeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
+func MakeConfigurationCompat(ctx context.Context, errorloc fnerrors.Location, ws Workspace, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	var base ConfigurationSlice
 	for _, spec := range ws.Proto().EnvSpec {
 		if spec.Name == env.Name {
@@ -55,10 +56,10 @@ func MakeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, devHost *
 		}
 	}
 
-	return makeConfigurationCompat(errorloc, ws, base, devHost, env)
+	return makeConfigurationCompat(ctx, errorloc, ws, base, devHost, env)
 }
 
-func makeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, base ConfigurationSlice, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
+func makeConfigurationCompat(ctx context.Context, errorloc fnerrors.Location, ws Workspace, base ConfigurationSlice, devHost *schema.DevHost, env *schema.Environment) (Configuration, error) {
 	rest := selectByEnv(devHost, env)
 	rest.PlatformConfiguration = append(rest.PlatformConfiguration, devHost.ConfigurePlatform...)
 
@@ -67,14 +68,14 @@ func makeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, base Conf
 		PlatformConfiguration: append(slices.Clone(base.PlatformConfiguration), rest.PlatformConfiguration...),
 	}
 
-	if p, err := applyProvider(errorloc, merged.Configuration); err == nil {
+	if p, err := applyProvider(ctx, errorloc, merged.Configuration); err == nil {
 		merged.Configuration = p
 	} else {
 		return nil, err
 	}
 
 	for _, plat := range merged.PlatformConfiguration {
-		if p, err := applyProvider(errorloc, plat.Configuration); err == nil {
+		if p, err := applyProvider(ctx, errorloc, plat.Configuration); err == nil {
 			plat.Configuration = p
 		} else {
 			return nil, err
@@ -84,11 +85,11 @@ func makeConfigurationCompat(errorloc fnerrors.Location, ws Workspace, base Conf
 	return MakeConfigurationWith(env.Name, ws, merged), nil
 }
 
-func applyProvider(errorloc fnerrors.Location, merged []*anypb.Any) ([]*anypb.Any, error) {
+func applyProvider(ctx context.Context, errorloc fnerrors.Location, merged []*anypb.Any) ([]*anypb.Any, error) {
 	var parsed []*anypb.Any
 	for _, m := range merged {
 		if p, ok := configProviders[m.TypeUrl]; ok {
-			messages, err := p(m)
+			messages, err := p(ctx, m)
 			if err != nil {
 				return nil, fnerrors.NewWithLocation(errorloc, "%s: %w", m.TypeUrl, err)
 			}

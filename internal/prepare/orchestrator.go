@@ -41,7 +41,7 @@ func Orchestrator() ClusterStage {
 
 func PrepareOrchestratorInKube(ctx context.Context, env cfg.Context, devhost *schema.DevHost_ConfigureEnvironment, kube *kubernetes.Cluster) error {
 	return tasks.Action("orchestrator.prepare").Run(ctx, func(ctx context.Context) error {
-		config, err := cfg.MakeConfigurationCompat(env, env.Workspace(), &schema.DevHost{
+		config, err := cfg.MakeConfigurationCompat(ctx, env, env.Workspace(), &schema.DevHost{
 			Configure: []*schema.DevHost_ConfigureEnvironment{devhost}}, env.Environment())
 		if err != nil {
 			return err
