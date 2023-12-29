@@ -17,7 +17,8 @@ message EnvironmentDoesntExist {
 }
 
 message UserMessage {
-    string message = 1;
+    string              message = 1;
+    map<string, string> context = 2;
 }
 
 message WorkspaceExpired {
