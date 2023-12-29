@@ -6,7 +6,9 @@ package tracing
 
 import (
 	"context"
+	"time"
 
+	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -61,6 +63,48 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 	}
 
 	return value, err
+}
+
+func CollectAndLog0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
+	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+
+	zlb.Info().Msgf("%s", name.name)
+	return Collect0(ctx, tracer, name, callback, opts...)
+}
+
+func CollectAndLog1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
+	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+
+	zlb.Info().Msgf("%s", name.name)
+	return Collect1[T](ctx, tracer, name, callback, opts...)
+}
+
+func CollectAndLogDuration0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
+	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+
+	t := time.Now()
+	zlb.Info().Msgf("%s (started)", name.name)
+	err := Collect0(ctx, tracer, name, callback, opts...)
+	zlb.Info().Dur("took", time.Since(t)).Msgf("%s (done)", name.name)
+	return err
+}
+
+func CollectAndLogDuration1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
+	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+
+	t := time.Now()
+	zlb.Info().Msgf("%s (started)", name.name)
+	v, err := Collect1[T](ctx, tracer, name, callback, opts...)
+	zlb.Info().Dur("took", time.Since(t)).Msgf("%s (done)", name.name)
+	return v, err
+}
+
+func loggerFromAttrs(zlb zerolog.Context, attrs []attribute.KeyValue) zerolog.Context {
+	for _, attr := range attrs {
+		zlb = zlb.Interface(string(attr.Key), attr.Value.AsInterface())
+	}
+
+	return zlb
 }
 
 func maybeCollectError(span trace.Span, err error) {
