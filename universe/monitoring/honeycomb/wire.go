@@ -14,6 +14,26 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+type HoneycombConfiguration struct {
+	Endpoint string
+	Headers  map[string]string
+}
+
+func Configuration() (HoneycombConfiguration, bool) {
+	xHoneycombTeam := os.Getenv("MONITORING_HONEYCOMB_X_HONEYCOMB_TEAM")
+	if xHoneycombTeam == "" {
+		// No secret specified.
+		return HoneycombConfiguration{}, false
+	}
+
+	return HoneycombConfiguration{
+		Endpoint: "https://api.honeycomb.io:443",
+		Headers: map[string]string{
+			"x-honeycomb-team": xHoneycombTeam,
+		},
+	}, true
+}
+
 func Create(ctx context.Context, key string) (*otlptrace.Exporter, error) {
 	opts := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint("api.honeycomb.io:443"),
