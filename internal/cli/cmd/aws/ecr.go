@@ -122,6 +122,11 @@ func newEcrDockerLoginCmd() *cobra.Command {
 			Password:      parts[1],
 		}
 
+		if err := dockerCfg.Save(); err != nil {
+			return fnerrors.New("failed to save config: %w", err)
+		}
+		fmt.Fprintf(console.Stdout(ctx), "Added ECR credentials to %s.\n", dockerCfg.Filename)
+
 		return nil
 	})
 }
