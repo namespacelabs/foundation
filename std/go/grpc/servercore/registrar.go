@@ -5,11 +5,9 @@
 package servercore
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/std/go/core"
 )
@@ -22,7 +20,6 @@ type Registrar interface {
 }
 
 type Server interface {
-	InternalRegisterGrpcGateway(reg func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error)
 	Scope(*core.Package) Registrar
 }
 
@@ -32,8 +29,6 @@ var _ Server = &ServerImpl{}
 type ServerImpl struct {
 	srv     *grpc.Server
 	httpMux *mux.Router
-
-	gatewayRegistrations []func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error
 }
 
 func (s *ServerImpl) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
@@ -42,15 +37,6 @@ func (s *ServerImpl) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
 
 func (s *ServerImpl) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	return s.Handle(path, http.HandlerFunc(f))
-}
-
-func (s *ServerImpl) InternalRegisterGrpcGateway(reg func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error) {
-	s.gatewayRegistrations = append(s.gatewayRegistrations, reg)
-}
-
-// Deprecated; should use InternalRegisterGrpcGateway.
-func (g *ServerImpl) RegisterGrpcGateway(reg func(context.Context, *runtime.ServeMux, *grpc.ClientConn) error) {
-	g.InternalRegisterGrpcGateway(reg)
 }
 
 func (s *ServerImpl) Handle(path string, p http.Handler) *mux.Route {
