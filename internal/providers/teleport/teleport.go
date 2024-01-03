@@ -1,3 +1,7 @@
+// Copyright 2022 Namespace Labs Inc; All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+
 package teleport
 
 import (
@@ -155,7 +159,7 @@ func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app str
 			return err
 		}
 
-		// If certificate is not valid for 1h then relogin.
+		// If certificate is not valid after 1h then relogin.
 		if cert.NotAfter.Before(time.Now().Add(time.Hour * 1)) {
 			return errors.New("app certificate expires soon")
 		}
