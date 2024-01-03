@@ -2,9 +2,13 @@ package teleport
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/gravitational/teleport/api/profile"
 	"google.golang.org/protobuf/proto"
@@ -19,7 +23,8 @@ import (
 )
 
 const (
-	tshBin = "tsh"
+	tshBin          = "tsh"
+	appLoginTTLMins = "720" // 12h
 )
 
 var (
@@ -44,7 +49,7 @@ func Register() {
 		}
 
 		tpRegistryApp := conf.GetProxy().GetRegistryApp()
-		if err := tshAppsLogin(ctx, tpRegistryApp); err != nil {
+		if err := tshAppsLogin(ctx, profile, tpRegistryApp); err != nil {
 			fnerrors.InvocationError("tsh", "failed to login to app %q", tpRegistryApp)
 		}
 
@@ -132,14 +137,41 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 	}, nil
 }
 
-func tshAppsLogin(ctx context.Context, app string) error {
+func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app string) error {
+	// First we check if there is already certifi
+	if err := tasks.Return0(ctx, tasks.Action("teleport.apps.cert").Arg("app", app), func(ctx context.Context) error {
+		b, err := os.ReadFile(teleportProfile.AppCertPath(app))
+		if err != nil {
+			return err
+		}
+
+		certData, _ := pem.Decode(b)
+		if certData == nil {
+			return errors.New("not pem formatted certificate")
+		}
+
+		cert, err := x509.ParseCertificate(certData.Bytes)
+		if err != nil {
+			return err
+		}
+
+		// If certificate is not valid for 1h then relogin.
+		if cert.NotAfter.Before(time.Now().Add(time.Hour * 1)) {
+			return errors.New("app certificate expires soon")
+		}
+
+		return nil
+	}); err == nil {
+		return nil
+	}
+
 	return tasks.Return0(ctx, tasks.Action("tsh.apps.login").Arg("app", app), func(ctx context.Context) error {
 		tshBinPath, err := exec.LookPath(tshBin)
 		if err != nil {
 			return fnerrors.InternalError("missing tsh binary")
 		}
 
-		c := exec.Command(tshBinPath, "apps", "login", app, "--ttl", "60")
+		c := exec.Command(tshBinPath, "apps", "login", app, "--ttl", appLoginTTLMins)
 		if err := c.Run(); err != nil {
 			return err
 		}
