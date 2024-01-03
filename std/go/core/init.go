@@ -27,7 +27,8 @@ type Reference struct {
 }
 
 type Package struct {
-	PackageName string
+	PackageName       string
+	ConfigurationName string
 }
 
 type Provider struct {

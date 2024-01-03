@@ -20,7 +20,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__luc6um = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/testdata/service/simplewithconfiguration",
+		PackageName:       "namespacelabs.dev/foundation/internal/testdata/service/simplewithconfiguration",
+		ConfigurationName: "mtls",
 	}
 
 	Provider__luc6um = core.Provider{

@@ -5,7 +5,6 @@
 package servercore
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -18,7 +17,6 @@ type Registrar interface {
 
 	Handle(path string, p http.Handler) *mux.Route
 	PathPrefix(path string) *mux.Route
-	GrpcRegistrar(config string) grpc.ServiceRegistrar
 }
 
 type Server interface {
@@ -33,10 +31,6 @@ type ServerImpl struct {
 	httpMux *mux.Router
 }
 
-func (s *ServerImpl) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
-	s.GrpcRegistrar("").RegisterService(desc, impl)
-}
-
 func (s *ServerImpl) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
 	return s.Handle(path, http.HandlerFunc(f))
 }
@@ -49,26 +43,26 @@ func (s *ServerImpl) PathPrefix(path string) *mux.Route {
 	return s.httpMux.PathPrefix(path)
 }
 
-func (s *ServerImpl) GrpcRegistrar(config string) grpc.ServiceRegistrar {
+func (s *ServerImpl) RegisterServiceAtConfiguration(config string, desc *grpc.ServiceDesc, impl interface{}) {
 	if srv, ok := s.srv[config]; ok {
-		return srv
+		core.ZLog.Info().Str("configuration", config).Msgf("Registered %v", desc.ServiceName)
+		srv.RegisterService(desc, impl)
+	} else {
+		core.ZLog.Fatal().Msgf("servercore: no such configuration %q (registering %v)", config, desc.ServiceName)
 	}
-
-	log.Fatalf("servercore: no such configuration %q", config)
-	return nil
 }
 
 func (s *ServerImpl) Scope(pkg *core.Package) Registrar {
-	return &scopedServer{parent: s, pkg: pkg.PackageName}
+	return &scopedServer{parent: s, configurationName: pkg.ConfigurationName}
 }
 
 type scopedServer struct {
-	pkg    string
-	parent *ServerImpl
+	configurationName string
+	parent            *ServerImpl
 }
 
 func (s *scopedServer) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
-	s.parent.RegisterService(desc, impl)
+	s.parent.RegisterServiceAtConfiguration(s.configurationName, desc, impl)
 }
 
 func (s *scopedServer) Handle(path string, p http.Handler) *mux.Route {
@@ -77,10 +71,6 @@ func (s *scopedServer) Handle(path string, p http.Handler) *mux.Route {
 
 func (s *scopedServer) PathPrefix(path string) *mux.Route {
 	return s.parent.PathPrefix(path)
-}
-
-func (s *scopedServer) GrpcRegistrar(config string) grpc.ServiceRegistrar {
-	return s.parent.GrpcRegistrar(config)
 }
 
 func proxyHeaders(h http.Handler) http.Handler {
