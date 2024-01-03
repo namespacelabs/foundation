@@ -46,22 +46,9 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 			}
 		}
 
-		// XXX this needs to be thought through, it's convention by naming.
-		portName := "server-port"
-		if service.ConfigurationName != "" {
-			portName += "-" + service.ConfigurationName
-		}
-
-		var serverPort *schema.Endpoint_Port
-		for _, port := range serverPorts {
-			if port.Name == portName {
-				serverPort = port
-				break
-			}
-		}
-
-		if service.ConfigurationName != "" && serverPort == nil {
-			return nil, nil, fnerrors.New("configuration %q is missing a corresponding port %q", service.ConfigurationName, portName)
+		serverPort := findPort(serverPorts, service.ConfigurationName, "server-port")
+		if serverPort == nil {
+			return nil, nil, fnerrors.New("configuration %q is missing a corresponding port", service.ConfigurationName)
 		}
 
 		nd, err := computeServiceEndpoint(planner, sch.Server, pkg, service, service.GetIngress(), serverPort)
@@ -100,13 +87,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 
 	// Handle HTTP.
 	if needsHTTP := len(server.UrlMap) > 0; needsHTTP {
-		var httpPort *schema.Endpoint_Port
-		for _, port := range serverPorts {
-			if port.Name == "http-port" {
-				httpPort = port
-				break
-			}
-		}
+		httpPort := findPort(serverPorts, "", "http-port")
 
 		short, fqdn := planner.MakeServiceName(server.Name)
 
@@ -138,6 +119,20 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 	}
 
 	return endpoints, internal, nil
+}
+
+func findPort(serverPorts []*schema.Endpoint_Port, configName, name string) *schema.Endpoint_Port {
+	if configName != "" {
+		name += "-" + configName
+	}
+
+	for _, port := range serverPorts {
+		if port.Name == name {
+			return port
+		}
+	}
+
+	return nil
 }
 
 // XXX this should be somewhere else.
