@@ -287,6 +287,12 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 	}
 
+	if configurationName := v.LookupPath("configuration"); configurationName.Exists() {
+		if err := configurationName.Val.Decode(&node.ConfigurationName); err != nil {
+			return err
+		}
+	}
+
 	if exported := v.LookupPath("exportServices"); exported.Exists() {
 		var services []cueProto
 		if err := exported.Val.Decode(&services); err != nil {

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,6 +26,8 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
+	"namespacelabs.dev/foundation/framework/runtime"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/go/core"
 	gogrpc "namespacelabs.dev/foundation/std/go/grpc"
@@ -47,8 +50,9 @@ type HTTPOptions struct {
 }
 
 type ListenOpts struct {
-	CreateListener     func(context.Context) (net.Listener, error)
-	CreateHttpListener func(context.Context) (net.Listener, HTTPOptions, error)
+	CreateListener      func(context.Context) (net.Listener, error)
+	CreateNamedListener func(context.Context, string) (net.Listener, error)
+	CreateHttpListener  func(context.Context) (net.Listener, HTTPOptions, error)
 
 	DontHandleSigTerm bool
 }
@@ -110,24 +114,47 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		Time: 30 * time.Second,
 	}))
 
-	grpcServer := grpc.NewServer(grpcopts...)
+	defaultServer := grpc.NewServer(grpcopts...)
+	serversByConfiguration := map[string]*grpc.Server{
+		"": defaultServer,
+	}
+
+	rt, err := runtime.LoadRuntimeConfig()
+	if err != nil {
+		return err
+	}
+
+	for _, cfg := range rt.ServiceConfiguration {
+		if c := gogrpc.ServiceConfiguration(cfg.Name); c != nil {
+			x := append(slices.Clone(grpcopts), c.ServerOpts()...)
+			if creds := c.TransportCredentials(); creds != nil {
+				x = append(x, grpc.Creds(creds))
+			}
+			serversByConfiguration[cfg.Name] = grpc.NewServer(x...)
+		} else {
+			return fnerrors.New("missing grpc configuration for %q", cfg.Name)
+		}
+	}
 
 	if core.EnvPurpose() != schema.Environment_PRODUCTION {
 		// Enable tooling to query which gRPC services, etc are exported by this server.
-		reflection.Register(grpcServer)
+		reflection.Register(defaultServer)
 	}
 
 	httpMux := NewHTTPMux(middleware.Consume()...)
 
-	s := &ServerImpl{srv: grpcServer, httpMux: httpMux}
+	s := &ServerImpl{srv: serversByConfiguration, httpMux: httpMux}
 	registerServices(s)
 
-	// Export standard metrics.
-	grpc_prometheus.Register(grpcServer)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
+	// Export standard metrics.
+	for _, srv := range serversByConfiguration {
+		grpc_prometheus.Register(srv)
+		grpc_health_v1.RegisterHealthServer(srv, health.NewServer())
+	}
+
 	// XXX keep track of per-service health.
-	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 
 	// XXX configurable logging.
 	core.ZLog.Info().Msgf("Starting to listen on %v", lis.Addr())
@@ -174,7 +201,23 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	debugHTTP := &http.Server{Handler: debugMux}
 	eg.Go(func() error { return listenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
 
-	eg.Go(func() error { return listenAndGracefullyShutdownGRPC(egCtx, "grpc", grpcServer, anyL) })
+	eg.Go(func() error { return listenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
+
+	for k, srv := range serversByConfiguration {
+		k := k     // Close k.
+		srv := srv // Close srv.
+
+		if k != "" {
+			grpcLis, err := opts.CreateNamedListener(ctx, "server-port-"+k)
+			if err != nil {
+				return err
+			}
+
+			core.ZLog.Info().Msgf("Starting configuration %q listen on %v", k, grpcLis.Addr())
+
+			eg.Go(func() error { return listenAndGracefullyShutdownGRPC(egCtx, "grpc-"+k, srv, grpcLis) })
+		}
+	}
 
 	eg.Go(func() error { return ignoreClosure("grpc", m.Serve()) })
 

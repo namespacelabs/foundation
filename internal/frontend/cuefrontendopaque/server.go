@@ -50,8 +50,8 @@ type cueServerExtension struct {
 	Requests *schema.Container_ResourceLimits `json:"resourceRequests"`
 	Limits   *schema.Container_ResourceLimits `json:"resourceLimits"`
 
-	Services map[string]cueService `json:"services"`
-	Ports    map[string]cuePort    `json:"ports"`
+	Services map[string]cueService          `json:"services"`
+	Ports    map[string]cuefrontend.CuePort `json:"ports"`
 
 	UnstablePermissions *cuePermissions `json:"unstable_permissions,omitempty"`
 	Permissions         *cuePermissions `json:"permissions,omitempty"`
@@ -66,12 +66,6 @@ type cueServerExtension struct {
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
-}
-
-type cuePort struct {
-	ContainerPort int32  `json:"containerPort"`
-	HostPort      int32  `json:"hostPort"`
-	Protocol      string `json:"protocol,omitempty"`
 }
 
 type cuePermissions struct {

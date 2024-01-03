@@ -82,6 +82,7 @@ _#Node: {
 
 	ingress: *"PRIVATE" | "INTERNET_FACING"
 
+	configuration?: string
 	exportService?: types.#Proto
 	exportServices?: [...types.#Proto]
 	exportMethods?: {
@@ -123,6 +124,11 @@ _#Node: {
 	env: [string]: string | {fromSecret: string}
 
 	urlmap: [...#UrlMapEntry]
+
+	staticPorts: [string]: {
+		containerPort: int
+		protocol?: string
+	}
 
 	#ServiceSpec: {
 		name?:         string

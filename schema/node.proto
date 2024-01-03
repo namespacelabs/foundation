@@ -16,10 +16,7 @@ import "schema/resource.proto";
 import "schema/server.proto";
 import "schema/volume.proto";
 
-// This is temporary; without extensions protos are pretty monolithic.
-// And we don't want to be in a situation where all possible integrations
-// have to be known ahead of time.
-// Next ID: 28
+// Next ID: 29
 message Node {
     // The package name (computed).
     string package_name = 1;
@@ -49,6 +46,9 @@ message Node {
     // may become dependencies in the future, i.e. an exported service
     // is kind of an instance of a declared gRPC service.
     repeated GrpcExportService export_service = 9;
+
+    // Deploy services of this node into a separate configuration.
+    string configuration_name = 28;
 
     // If set to true, these service's GRPC services are to be exported as HTTP
     // as well. Regardless of the ingress configuration here, these endpoints

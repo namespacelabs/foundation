@@ -29,21 +29,13 @@ func RegisterEndpointProvider(fmwk schema.Framework, f EndpointProvider) {
 
 func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.ServerFragment, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
 	sch := srv.StackEntry()
-	serverPorts := append([]*schema.Endpoint_Port{}, sch.Server.StaticPort...)
+	serverPorts := append([]*schema.Endpoint_Port{}, merged.StaticPort...)
 	serverPorts = append(serverPorts, allocatedPorts...)
 
 	// XXX figure out a story to handle collisions within a server!
 	// XXX should this be by exported RPC service instead?
 
 	var endpoints []*schema.Endpoint
-
-	var serverPort *schema.Endpoint_Port
-	for _, port := range serverPorts {
-		if port.Name == "server-port" { // XXX this needs to be thought through, it's convention by naming.
-			serverPort = port
-			break
-		}
-	}
 
 	for _, service := range sch.Services() {
 		var pkg *pkggraph.Package
@@ -52,6 +44,24 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 				pkg = p
 				break
 			}
+		}
+
+		// XXX this needs to be thought through, it's convention by naming.
+		portName := "server-port"
+		if service.ConfigurationName != "" {
+			portName += "-" + service.ConfigurationName
+		}
+
+		var serverPort *schema.Endpoint_Port
+		for _, port := range serverPorts {
+			if port.Name == portName {
+				serverPort = port
+				break
+			}
+		}
+
+		if service.ConfigurationName != "" && serverPort == nil {
+			return nil, nil, fnerrors.New("configuration %q is missing a corresponding port %q", service.ConfigurationName, portName)
 		}
 
 		nd, err := computeServiceEndpoint(planner, sch.Server, pkg, service, service.GetIngress(), serverPort)

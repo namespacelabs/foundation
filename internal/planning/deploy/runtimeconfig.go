@@ -38,6 +38,12 @@ func serverToRuntimeConfig(stack *planning.StackWithIngress, ps planning.Planned
 		config.StackEntry = append(config.StackEntry, makeServerConfig(stack, ref, env))
 	}
 
+	for _, cfg := range ps.Server.Proto().GetConfigurations() {
+		config.ServiceConfiguration = append(config.ServiceConfiguration, &runtime.RuntimeConfig_ServiceConfiguration{
+			Name: cfg.Name,
+		})
+	}
+
 	return config, nil
 }
 
@@ -94,6 +100,13 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 		for _, port := range service.Ports {
 			current.Port = append(current.Port, makePort(service, port))
 		}
+	}
+
+	for _, port := range server.StaticPort {
+		current.Port = append(current.Port, &runtime.Server_Port{
+			Name: port.Name,
+			Port: port.ContainerPort,
+		})
 	}
 
 	s, _ := stack.Get(srv.PackageName())

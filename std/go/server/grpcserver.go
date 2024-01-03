@@ -13,6 +13,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/rpcerrors"
+	"namespacelabs.dev/foundation/framework/runtime"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/servercore"
 )
@@ -48,6 +49,20 @@ func Run(ctx context.Context, opts RunOpts) {
 func makeListenerOpts() servercore.ListenOpts {
 	opts := servercore.ListenOpts{
 		CreateListener: servercore.MakeTCPListener(*listenHostname, *port),
+		CreateNamedListener: func(ctx context.Context, name string) (net.Listener, error) {
+			rt, err := runtime.LoadRuntimeConfig()
+			if err != nil {
+				return nil, err
+			}
+
+			for _, port := range rt.Current.Port {
+				if port.Name == name {
+					return servercore.MakeTCPListener(*listenHostname, int(port.Port))(ctx)
+				}
+			}
+
+			return nil, rpcerrors.Errorf(codes.InvalidArgument, "no such server port %q", name)
+		},
 	}
 
 	if *httpPort != 0 {

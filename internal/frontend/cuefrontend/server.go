@@ -37,9 +37,16 @@ type cueServer struct {
 	Env         *args.EnvMap               `json:"env"`
 	Binary      interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
 	Extensions  []string                   `json:"extensions,omitempty"`
+	Port        map[string]CuePort         `json:"staticPorts,omitempty"`
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
+}
+
+type CuePort struct {
+	ContainerPort int32  `json:"containerPort"`
+	HostPort      int32  `json:"hostPort"`
+	Protocol      string `json:"protocol,omitempty"`
 }
 
 type cueURLMapEntry struct {
@@ -197,6 +204,14 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		out.Self.Extension = append(out.Self.Extension, ext)
 	}
 
+	for name, port := range bits.Port {
+		pm, err := ParsePort(name, port)
+		if err != nil {
+			return nil, nil, err
+		}
+		out.Self.StaticPort = append(out.Self.StaticPort, pm)
+	}
+
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {
 		switch key {
 		case fncue.InputKeyword:
@@ -275,4 +290,26 @@ func runByDefault(bits cueServer) bool {
 	}
 
 	return true
+}
+
+func ParsePort(name string, port CuePort) (*schema.Endpoint_Port, error) {
+	pm := &schema.Endpoint_Port{
+		Name:          name,
+		ContainerPort: port.ContainerPort,
+		HostPort:      port.HostPort,
+		Protocol:      schema.Endpoint_Port_TCP,
+	}
+
+	if port.Protocol != "" {
+		switch strings.ToLower(port.Protocol) {
+		case "udp":
+			pm.Protocol = schema.Endpoint_Port_UDP
+		case "tcp":
+			pm.Protocol = schema.Endpoint_Port_TCP
+		default:
+			return nil, fnerrors.New("unsupported port protocol %q", port.Protocol)
+		}
+	}
+
+	return pm, nil
 }

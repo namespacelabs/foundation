@@ -5,6 +5,7 @@
 package servercore
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -17,6 +18,7 @@ type Registrar interface {
 
 	Handle(path string, p http.Handler) *mux.Route
 	PathPrefix(path string) *mux.Route
+	GrpcRegistrar(config string) grpc.ServiceRegistrar
 }
 
 type Server interface {
@@ -27,12 +29,12 @@ var _ Server = &ServerImpl{}
 
 // Implements the grpc.ServiceRegistrar interface.
 type ServerImpl struct {
-	srv     *grpc.Server
+	srv     map[string]*grpc.Server // Key is configuration name; "" is the default.
 	httpMux *mux.Router
 }
 
 func (s *ServerImpl) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
-	s.srv.RegisterService(desc, impl)
+	s.GrpcRegistrar("").RegisterService(desc, impl)
 }
 
 func (s *ServerImpl) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
@@ -45,6 +47,15 @@ func (s *ServerImpl) Handle(path string, p http.Handler) *mux.Route {
 
 func (s *ServerImpl) PathPrefix(path string) *mux.Route {
 	return s.httpMux.PathPrefix(path)
+}
+
+func (s *ServerImpl) GrpcRegistrar(config string) grpc.ServiceRegistrar {
+	if srv, ok := s.srv[config]; ok {
+		return srv
+	}
+
+	log.Fatalf("servercore: no such configuration %q", config)
+	return nil
 }
 
 func (s *ServerImpl) Scope(pkg *core.Package) Registrar {
@@ -66,6 +77,10 @@ func (s *scopedServer) Handle(path string, p http.Handler) *mux.Route {
 
 func (s *scopedServer) PathPrefix(path string) *mux.Route {
 	return s.parent.PathPrefix(path)
+}
+
+func (s *scopedServer) GrpcRegistrar(config string) grpc.ServiceRegistrar {
+	return s.parent.GrpcRegistrar(config)
 }
 
 func proxyHeaders(h http.Handler) http.Handler {

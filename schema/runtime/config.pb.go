@@ -36,7 +36,8 @@ type RuntimeConfig struct {
 	Environment *RuntimeConfig_Environment `protobuf:"bytes,1,opt,name=environment,proto3" json:"environment,omitempty"`
 	Current     *Server                    `protobuf:"bytes,2,opt,name=current,proto3" json:"current,omitempty"`
 	// References to other servers that this server depends on.
-	StackEntry []*Server `protobuf:"bytes,3,rep,name=stack_entry,json=stackEntry,proto3" json:"stack_entry,omitempty"`
+	StackEntry           []*Server                             `protobuf:"bytes,3,rep,name=stack_entry,json=stackEntry,proto3" json:"stack_entry,omitempty"`
+	ServiceConfiguration []*RuntimeConfig_ServiceConfiguration `protobuf:"bytes,4,rep,name=service_configuration,json=serviceConfiguration,proto3" json:"service_configuration,omitempty"`
 }
 
 func (x *RuntimeConfig) Reset() {
@@ -88,6 +89,13 @@ func (x *RuntimeConfig) GetCurrent() *Server {
 func (x *RuntimeConfig) GetStackEntry() []*Server {
 	if x != nil {
 		return x.StackEntry
+	}
+	return nil
+}
+
+func (x *RuntimeConfig) GetServiceConfiguration() []*RuntimeConfig_ServiceConfiguration {
+	if x != nil {
+		return x.ServiceConfiguration
 	}
 	return nil
 }
@@ -306,6 +314,53 @@ func (x *RuntimeConfig_Environment) GetEphemeral() bool {
 	return false
 }
 
+type RuntimeConfig_ServiceConfiguration struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+}
+
+func (x *RuntimeConfig_ServiceConfiguration) Reset() {
+	*x = RuntimeConfig_ServiceConfiguration{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_runtime_config_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RuntimeConfig_ServiceConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeConfig_ServiceConfiguration) ProtoMessage() {}
+
+func (x *RuntimeConfig_ServiceConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_runtime_config_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeConfig_ServiceConfiguration.ProtoReflect.Descriptor instead.
+func (*RuntimeConfig_ServiceConfiguration) Descriptor() ([]byte, []int) {
+	return file_schema_runtime_config_proto_rawDescGZIP(), []int{0, 1}
+}
+
+func (x *RuntimeConfig_ServiceConfiguration) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type Server_Port struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -318,7 +373,7 @@ type Server_Port struct {
 func (x *Server_Port) Reset() {
 	*x = Server_Port{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_config_proto_msgTypes[4]
+		mi := &file_schema_runtime_config_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -331,7 +386,7 @@ func (x *Server_Port) String() string {
 func (*Server_Port) ProtoMessage() {}
 
 func (x *Server_Port) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_config_proto_msgTypes[4]
+	mi := &file_schema_runtime_config_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -376,7 +431,7 @@ type Server_Service struct {
 func (x *Server_Service) Reset() {
 	*x = Server_Service{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_config_proto_msgTypes[5]
+		mi := &file_schema_runtime_config_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -389,7 +444,7 @@ func (x *Server_Service) String() string {
 func (*Server_Service) ProtoMessage() {}
 
 func (x *Server_Service) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_config_proto_msgTypes[5]
+	mi := &file_schema_runtime_config_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -451,7 +506,7 @@ type Server_Ingress struct {
 func (x *Server_Ingress) Reset() {
 	*x = Server_Ingress{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_config_proto_msgTypes[6]
+		mi := &file_schema_runtime_config_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -464,7 +519,7 @@ func (x *Server_Ingress) String() string {
 func (*Server_Ingress) ProtoMessage() {}
 
 func (x *Server_Ingress) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_config_proto_msgTypes[6]
+	mi := &file_schema_runtime_config_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -500,7 +555,7 @@ type Server_InternalEndpoint struct {
 func (x *Server_InternalEndpoint) Reset() {
 	*x = Server_InternalEndpoint{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_config_proto_msgTypes[7]
+		mi := &file_schema_runtime_config_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -513,7 +568,7 @@ func (x *Server_InternalEndpoint) String() string {
 func (*Server_InternalEndpoint) ProtoMessage() {}
 
 func (x *Server_InternalEndpoint) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_config_proto_msgTypes[7]
+	mi := &file_schema_runtime_config_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +617,7 @@ type Server_Ingress_Domain struct {
 func (x *Server_Ingress_Domain) Reset() {
 	*x = Server_Ingress_Domain{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_config_proto_msgTypes[8]
+		mi := &file_schema_runtime_config_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -575,7 +630,7 @@ func (x *Server_Ingress_Domain) String() string {
 func (*Server_Ingress_Domain) ProtoMessage() {}
 
 func (x *Server_Ingress_Domain) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_config_proto_msgTypes[8]
+	mi := &file_schema_runtime_config_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +665,7 @@ type Server_InternalEndpoint_ExportedHttp struct {
 func (x *Server_InternalEndpoint_ExportedHttp) Reset() {
 	*x = Server_InternalEndpoint_ExportedHttp{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_runtime_config_proto_msgTypes[9]
+		mi := &file_schema_runtime_config_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -623,7 +678,7 @@ func (x *Server_InternalEndpoint_ExportedHttp) String() string {
 func (*Server_InternalEndpoint_ExportedHttp) ProtoMessage() {}
 
 func (x *Server_InternalEndpoint_ExportedHttp) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_runtime_config_proto_msgTypes[9]
+	mi := &file_schema_runtime_config_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -659,7 +714,7 @@ var file_schema_runtime_config_proto_rawDesc = []byte{
 	0x0a, 0x1b, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65,
 	0x2f, 0x63, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x19, 0x66,
 	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61,
-	0x2e, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x22, 0xc3, 0x02, 0x0a, 0x0d, 0x52, 0x75, 0x6e,
+	0x2e, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x22, 0xe3, 0x03, 0x0a, 0x0d, 0x52, 0x75, 0x6e,
 	0x74, 0x69, 0x6d, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x56, 0x0a, 0x0b, 0x65, 0x6e,
 	0x76, 0x69, 0x72, 0x6f, 0x6e, 0x6d, 0x65, 0x6e, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
 	0x34, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68,
@@ -674,12 +729,22 @@ var file_schema_runtime_config_proto_rawDesc = []byte{
 	0x20, 0x03, 0x28, 0x0b, 0x32, 0x21, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
 	0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65,
 	0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x52, 0x0a, 0x73, 0x74, 0x61, 0x63, 0x6b, 0x45, 0x6e,
-	0x74, 0x72, 0x79, 0x1a, 0x59, 0x0a, 0x0b, 0x45, 0x6e, 0x76, 0x69, 0x72, 0x6f, 0x6e, 0x6d, 0x65,
-	0x6e, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x75, 0x72, 0x70, 0x6f, 0x73,
-	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x75, 0x72, 0x70, 0x6f, 0x73, 0x65,
-	0x12, 0x1c, 0x0a, 0x09, 0x65, 0x70, 0x68, 0x65, 0x6d, 0x65, 0x72, 0x61, 0x6c, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x08, 0x52, 0x09, 0x65, 0x70, 0x68, 0x65, 0x6d, 0x65, 0x72, 0x61, 0x6c, 0x22, 0xb4,
+	0x74, 0x72, 0x79, 0x12, 0x72, 0x0a, 0x15, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x5f, 0x63,
+	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x03,
+	0x28, 0x0b, 0x32, 0x3d, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e,
+	0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2e, 0x52,
+	0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x2e, 0x53, 0x65, 0x72,
+	0x76, 0x69, 0x63, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x52, 0x14, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
+	0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x1a, 0x59, 0x0a, 0x0b, 0x45, 0x6e, 0x76, 0x69, 0x72,
+	0x6f, 0x6e, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x75,
+	0x72, 0x70, 0x6f, 0x73, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x70, 0x75, 0x72,
+	0x70, 0x6f, 0x73, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x65, 0x70, 0x68, 0x65, 0x6d, 0x65, 0x72, 0x61,
+	0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x09, 0x65, 0x70, 0x68, 0x65, 0x6d, 0x65, 0x72,
+	0x61, 0x6c, 0x1a, 0x2a, 0x0a, 0x14, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x43, 0x6f, 0x6e,
+	0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61,
+	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0xb4,
 	0x07, 0x0a, 0x06, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x61, 0x63,
 	0x6b, 0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
 	0x0b, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1f, 0x0a, 0x0b,
@@ -764,34 +829,36 @@ func file_schema_runtime_config_proto_rawDescGZIP() []byte {
 	return file_schema_runtime_config_proto_rawDescData
 }
 
-var file_schema_runtime_config_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_schema_runtime_config_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_schema_runtime_config_proto_goTypes = []interface{}{
 	(*RuntimeConfig)(nil),                        // 0: foundation.schema.runtime.RuntimeConfig
 	(*Server)(nil),                               // 1: foundation.schema.runtime.Server
 	(*BuildVCS)(nil),                             // 2: foundation.schema.runtime.BuildVCS
 	(*RuntimeConfig_Environment)(nil),            // 3: foundation.schema.runtime.RuntimeConfig.Environment
-	(*Server_Port)(nil),                          // 4: foundation.schema.runtime.Server.Port
-	(*Server_Service)(nil),                       // 5: foundation.schema.runtime.Server.Service
-	(*Server_Ingress)(nil),                       // 6: foundation.schema.runtime.Server.Ingress
-	(*Server_InternalEndpoint)(nil),              // 7: foundation.schema.runtime.Server.InternalEndpoint
-	(*Server_Ingress_Domain)(nil),                // 8: foundation.schema.runtime.Server.Ingress.Domain
-	(*Server_InternalEndpoint_ExportedHttp)(nil), // 9: foundation.schema.runtime.Server.InternalEndpoint.ExportedHttp
+	(*RuntimeConfig_ServiceConfiguration)(nil),   // 4: foundation.schema.runtime.RuntimeConfig.ServiceConfiguration
+	(*Server_Port)(nil),                          // 5: foundation.schema.runtime.Server.Port
+	(*Server_Service)(nil),                       // 6: foundation.schema.runtime.Server.Service
+	(*Server_Ingress)(nil),                       // 7: foundation.schema.runtime.Server.Ingress
+	(*Server_InternalEndpoint)(nil),              // 8: foundation.schema.runtime.Server.InternalEndpoint
+	(*Server_Ingress_Domain)(nil),                // 9: foundation.schema.runtime.Server.Ingress.Domain
+	(*Server_InternalEndpoint_ExportedHttp)(nil), // 10: foundation.schema.runtime.Server.InternalEndpoint.ExportedHttp
 }
 var file_schema_runtime_config_proto_depIdxs = []int32{
-	3, // 0: foundation.schema.runtime.RuntimeConfig.environment:type_name -> foundation.schema.runtime.RuntimeConfig.Environment
-	1, // 1: foundation.schema.runtime.RuntimeConfig.current:type_name -> foundation.schema.runtime.Server
-	1, // 2: foundation.schema.runtime.RuntimeConfig.stack_entry:type_name -> foundation.schema.runtime.Server
-	4, // 3: foundation.schema.runtime.Server.port:type_name -> foundation.schema.runtime.Server.Port
-	5, // 4: foundation.schema.runtime.Server.service:type_name -> foundation.schema.runtime.Server.Service
-	7, // 5: foundation.schema.runtime.Server.internal_endpoint:type_name -> foundation.schema.runtime.Server.InternalEndpoint
-	6, // 6: foundation.schema.runtime.Server.Service.ingress:type_name -> foundation.schema.runtime.Server.Ingress
-	8, // 7: foundation.schema.runtime.Server.Ingress.domain:type_name -> foundation.schema.runtime.Server.Ingress.Domain
-	9, // 8: foundation.schema.runtime.Server.InternalEndpoint.exported:type_name -> foundation.schema.runtime.Server.InternalEndpoint.ExportedHttp
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	3,  // 0: foundation.schema.runtime.RuntimeConfig.environment:type_name -> foundation.schema.runtime.RuntimeConfig.Environment
+	1,  // 1: foundation.schema.runtime.RuntimeConfig.current:type_name -> foundation.schema.runtime.Server
+	1,  // 2: foundation.schema.runtime.RuntimeConfig.stack_entry:type_name -> foundation.schema.runtime.Server
+	4,  // 3: foundation.schema.runtime.RuntimeConfig.service_configuration:type_name -> foundation.schema.runtime.RuntimeConfig.ServiceConfiguration
+	5,  // 4: foundation.schema.runtime.Server.port:type_name -> foundation.schema.runtime.Server.Port
+	6,  // 5: foundation.schema.runtime.Server.service:type_name -> foundation.schema.runtime.Server.Service
+	8,  // 6: foundation.schema.runtime.Server.internal_endpoint:type_name -> foundation.schema.runtime.Server.InternalEndpoint
+	7,  // 7: foundation.schema.runtime.Server.Service.ingress:type_name -> foundation.schema.runtime.Server.Ingress
+	9,  // 8: foundation.schema.runtime.Server.Ingress.domain:type_name -> foundation.schema.runtime.Server.Ingress.Domain
+	10, // 9: foundation.schema.runtime.Server.InternalEndpoint.exported:type_name -> foundation.schema.runtime.Server.InternalEndpoint.ExportedHttp
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_schema_runtime_config_proto_init() }
@@ -849,7 +916,7 @@ func file_schema_runtime_config_proto_init() {
 			}
 		}
 		file_schema_runtime_config_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Port); i {
+			switch v := v.(*RuntimeConfig_ServiceConfiguration); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -861,7 +928,7 @@ func file_schema_runtime_config_proto_init() {
 			}
 		}
 		file_schema_runtime_config_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Service); i {
+			switch v := v.(*Server_Port); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -873,7 +940,7 @@ func file_schema_runtime_config_proto_init() {
 			}
 		}
 		file_schema_runtime_config_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Ingress); i {
+			switch v := v.(*Server_Service); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -885,7 +952,7 @@ func file_schema_runtime_config_proto_init() {
 			}
 		}
 		file_schema_runtime_config_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_InternalEndpoint); i {
+			switch v := v.(*Server_Ingress); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -897,7 +964,7 @@ func file_schema_runtime_config_proto_init() {
 			}
 		}
 		file_schema_runtime_config_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Ingress_Domain); i {
+			switch v := v.(*Server_InternalEndpoint); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -909,6 +976,18 @@ func file_schema_runtime_config_proto_init() {
 			}
 		}
 		file_schema_runtime_config_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Server_Ingress_Domain); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_runtime_config_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Server_InternalEndpoint_ExportedHttp); i {
 			case 0:
 				return &v.state
@@ -927,7 +1006,7 @@ func file_schema_runtime_config_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_runtime_config_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

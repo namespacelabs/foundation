@@ -20,6 +20,8 @@ message RuntimeConfig {
     // References to other servers that this server depends on.
     repeated Server stack_entry = 3;
 
+    repeated ServiceConfiguration service_configuration = 4;
+
     message Environment {
         string name    = 1;  // Empty if ephemeral is true.
         string purpose = 2;
@@ -27,14 +29,18 @@ message RuntimeConfig {
         // Typically only set for tests. Signals that this environment is single-use and not meant to be user serviceable.
         bool ephemeral = 3;
     }
+
+    message ServiceConfiguration {
+        string name = 1;
+    }
 }
 
 message Server {
     string package_name = 1;
     string module_name  = 2;
 
-    repeated Port    port    = 3;
-    repeated Service service = 4;
+    repeated Port             port              = 3;
+    repeated Service          service           = 4;
     repeated InternalEndpoint internal_endpoint = 6;
 
     string image_ref = 5;  // Only set for current.
@@ -45,11 +51,11 @@ message Server {
     }
 
     message Service {
-        string  owner    = 1;  // Package name.
-        string  name     = 2;  // Scoped to package name.
-        string  endpoint = 3;  // E.g. hostname:port.
-        string  fully_qualified_endpoint = 5; // E.g. fully_qualified_hostname:port.
-        Ingress ingress  = 4;  // Computed ingress for this service.
+        string  owner                    = 1;  // Package name.
+        string  name                     = 2;  // Scoped to package name.
+        string  endpoint                 = 3;  // E.g. hostname:port.
+        string  fully_qualified_endpoint = 5;  // E.g. fully_qualified_hostname:port.
+        Ingress ingress                  = 4;  // Computed ingress for this service.
     }
 
     message Ingress {
@@ -62,9 +68,9 @@ message Server {
     }
 
     message InternalEndpoint {
-        string port_name = 1;
-        int32 container_port = 2;
-        repeated ExportedHttp exported = 3;
+        string                port_name      = 1;
+        int32                 container_port = 2;
+        repeated ExportedHttp exported       = 3;
 
         message ExportedHttp {
             string path = 1;

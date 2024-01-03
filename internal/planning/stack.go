@@ -362,6 +362,7 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			ps.MergedFragment.Toleration = append(ps.MergedFragment.Toleration, frag.Toleration...)
 			ps.MergedFragment.Annotation = append(ps.MergedFragment.Annotation, frag.Annotation...)
 			ps.MergedFragment.NodeSelector = append(ps.MergedFragment.NodeSelector, frag.NodeSelector...)
+			ps.MergedFragment.StaticPort = append(ps.MergedFragment.StaticPort, frag.StaticPort...)
 
 			if frag.Permissions != nil {
 				if ps.MergedFragment.Permissions == nil {

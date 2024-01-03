@@ -31,7 +31,7 @@ enum Framework {
     OPAQUE_NODEJS = 5;
 }
 
-// Next ID: 43
+// Next ID: 44
 message Server {
     reserved 9, 13, 17, 19, 20, 27, 28, 30, 32, 34;
 
@@ -80,10 +80,7 @@ message Server {
     // Set of URL prefixes this server declares supporting.
     repeated URLMapEntry url_map = 15;
 
-    // A set of ports that this server exports and require no configuration.
-    repeated Endpoint.Port static_port = 16;
-
-    reserved 10, 11, 18, 22, 36, 26, 33, 35, 37, 38, 40;
+    reserved 10, 11, 16, 18, 22, 36, 26, 33, 35, 37, 38, 40;
 
     repeated EnvironmentRequirement environment_requirement = 24;
 
@@ -91,6 +88,8 @@ message Server {
     ServerFragment self = 41;
 
     Naming server_naming = 42;
+
+    repeated Configuration configurations = 43;
 
     message ServiceSpec {
         reserved 2;
@@ -132,6 +131,10 @@ message Server {
         string value    = 3;
         string effect   = 4;
     }
+
+    message Configuration {
+        string name = 1;
+    }
 }
 
 message ServerFragment {
@@ -148,6 +151,7 @@ message ServerFragment {
     repeated Container         init_container = 11;
     repeated NamedResolvable   annotation     = 12;
     repeated NodeSelectorItem  node_selector  = 13;
+    repeated Endpoint.Port static_port        = 14;
 }
 
 message NodeSelectorItem {
