@@ -29,9 +29,7 @@ jobs:
       - name: Setup runner cache
         uses: namespacelabs/nscloud-cache-action@v1
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
+          cache: go
 
       - name: Test
         run: go test ./...
