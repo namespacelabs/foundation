@@ -75,6 +75,13 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 			return fnerrors.New("only one of --all or --container may be specified")
 		}
 
+		if hidden && *output == "plain" {
+			out := console.Warnings(ctx)
+			fmt.Fprintf(out, "`nsc %s` is deprecated. For backwards compatibility it behaves as `nsc expose container [cluster-id]`.\n", use)
+			fmt.Fprintln(out, "To expose an exported port on a running container `nsc expose container [cluster-id].")
+			fmt.Fprintln(out, "To exponse a Kubernentes Load Balancer use `nsc expose kubernetes [cluster-id]`.")
+		}
+
 		cluster, _, err := SelectRunningCluster(ctx, args)
 		if err != nil {
 			return err
