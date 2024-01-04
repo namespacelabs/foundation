@@ -20,7 +20,7 @@ message RuntimeConfig {
     // References to other servers that this server depends on.
     repeated Server stack_entry = 3;
 
-    repeated ServiceConfiguration service_configuration = 4;
+    repeated ListenerConfiguration listener_configuration = 4;
 
     message Environment {
         string name    = 1;  // Empty if ephemeral is true.
@@ -30,8 +30,10 @@ message RuntimeConfig {
         bool ephemeral = 3;
     }
 
-    message ServiceConfiguration {
-        string name = 1;
+    message ListenerConfiguration {
+        string name           = 1;
+        string protocol       = 2;  // grpc, or the empty string.
+        int32  container_port = 3;
     }
 }
 

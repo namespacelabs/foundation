@@ -133,16 +133,16 @@ func generateNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggra
 	}
 
 	return generateGoSource(ctx, fs, loc.Rel(depsFilename), imports, serviceTmpl, nodeTmplOptions{
-		Type:              typ,
-		Singleton:         single,
-		PackageName:       loc.PackageName,
-		ConfigurationName: n.ConfigurationName,
-		Imports:           imports,
-		Provides:          provides,
-		Scoped:            scoped,
-		NeedsSingleton:    len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(single.DepVars) > 0,
-		Providers:         providers,
-		Initializers:      initializers,
+		Type:           typ,
+		Singleton:      single,
+		PackageName:    loc.PackageName,
+		ListenerName:   n.ListenerName,
+		Imports:        imports,
+		Provides:       provides,
+		Scoped:         scoped,
+		NeedsSingleton: len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(single.DepVars) > 0,
+		Providers:      providers,
+		Initializers:   initializers,
 	})
 }
 
@@ -164,14 +164,14 @@ type depsType struct {
 }
 
 type nodeTmplOptions struct {
-	Type              string
-	Singleton         *depsType
-	PackageName       schema.PackageName
-	ConfigurationName string
-	Imports           *gosupport.GoImports
-	Provides          []*typeProvider
-	Scoped            []*depsType // Same indexing as `Provisioned`.
-	NeedsSingleton    bool
+	Type           string
+	Singleton      *depsType
+	PackageName    schema.PackageName
+	ListenerName   string
+	Imports        *gosupport.GoImports
+	Provides       []*typeProvider
+	Scoped         []*depsType // Same indexing as `Provisioned`.
+	NeedsSingleton bool
 
 	Providers    []*nodeWithDeps
 	Initializers []goInitializer
@@ -247,7 +247,7 @@ var _ _check{{$v.Method}} = {{$v.Method}}
 var (
 	{{longPackageType $opts.PackageName}} = &{{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}Package{
 		PackageName: "{{$opts.PackageName}}",
-{{if $opts.ConfigurationName}}ConfigurationName: "{{$opts.ConfigurationName}}",{{end}}
+{{if $opts.ListenerName}}ListenerConfiguration: "{{$opts.ListenerName}}",{{end}}
 	}
 
 {{range $k, $v := $opts.Providers -}}

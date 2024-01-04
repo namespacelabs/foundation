@@ -80,9 +80,10 @@ _#Node: {
 
 	framework: #Framework
 
-	ingress: *"PRIVATE" | "INTERNET_FACING"
+	ingress: *"PRIVATE" | "INTERNET_FACING" | "LOAD_BALANCER"
 
-	configuration?: string
+	listener?: string
+	exportedPort?: int
 	exportService?: types.#Proto
 	exportServices?: [...types.#Proto]
 	exportMethods?: {
@@ -125,9 +126,12 @@ _#Node: {
 
 	urlmap: [...#UrlMapEntry]
 
-	staticPorts: [string]: {
-		containerPort: int
+	listeners?: [string]: {
 		protocol?: string
+		port: {
+			containerPort: int
+			protocol?:     string
+		}
 	}
 
 	#ServiceSpec: {

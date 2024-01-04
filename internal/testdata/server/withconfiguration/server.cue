@@ -8,14 +8,23 @@ server: fn.#Server & {
 	name:      "withconfiguration"
 	framework: "GO"
 
-	staticPorts: {
-		"server-port-mtls": {
-			containerPort: 12345
+	listeners: {
+		"mtls": {
+			protocol: "grpc"
+			port: {
+				containerPort: 12345
+			}
+		}
+		"second": {
+			port: {
+				containerPort: 12346
+			}
 		}
 	}
 
 	import: [
-		"namespacelabs.dev/foundation/internal/testdata/service/simplewithconfiguration",
+		"namespacelabs.dev/foundation/internal/testdata/service/grpclistener",
+		"namespacelabs.dev/foundation/internal/testdata/service/rawlistener",
 		"namespacelabs.dev/foundation/std/grpc/logging",
 	]
 }

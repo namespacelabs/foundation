@@ -287,8 +287,14 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 	}
 
-	if configurationName := v.LookupPath("configuration"); configurationName.Exists() {
-		if err := configurationName.Val.Decode(&node.ConfigurationName); err != nil {
+	if listener := v.LookupPath("listener"); listener.Exists() {
+		if err := listener.Val.Decode(&node.ListenerName); err != nil {
+			return err
+		}
+	}
+
+	if exportedPort := v.LookupPath("exportedPort"); exportedPort.Exists() {
+		if err := exportedPort.Val.Decode(&node.ExportedPort); err != nil {
 			return err
 		}
 	}

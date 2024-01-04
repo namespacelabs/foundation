@@ -5,7 +5,8 @@ package main
 
 import (
 	"context"
-	"namespacelabs.dev/foundation/internal/testdata/service/simplewithconfiguration"
+	"namespacelabs.dev/foundation/internal/testdata/service/grpclistener"
+	"namespacelabs.dev/foundation/internal/testdata/service/rawlistener"
 	"namespacelabs.dev/foundation/std/go/core"
 	"namespacelabs.dev/foundation/std/go/grpc/metrics"
 	"namespacelabs.dev/foundation/std/go/server"
@@ -20,8 +21,15 @@ func RegisterInitializers(di *core.DependencyGraph) {
 func WireServices(ctx context.Context, srv server.Server, depgraph core.Dependencies) []error {
 	var errs []error
 
-	if err := depgraph.Instantiate(ctx, simplewithconfiguration.Provider__luc6um, func(ctx context.Context, v interface{}) error {
-		simplewithconfiguration.WireService(ctx, srv.Scope(simplewithconfiguration.Package__luc6um), v.(simplewithconfiguration.ServiceDeps))
+	if err := depgraph.Instantiate(ctx, rawlistener.Provider__7f1eor, func(ctx context.Context, v interface{}) error {
+		rawlistener.WireService(ctx, srv.Scope(rawlistener.Package__7f1eor), v.(rawlistener.ServiceDeps))
+		return nil
+	}); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := depgraph.Instantiate(ctx, grpclistener.Provider__s03k63, func(ctx context.Context, v interface{}) error {
+		grpclistener.WireService(ctx, srv.Scope(grpclistener.Package__s03k63), v.(grpclistener.ServiceDeps))
 		return nil
 	}); err != nil {
 		errs = append(errs, err)

@@ -5,6 +5,8 @@
 package servercore
 
 import (
+	"context"
+	"net"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -17,6 +19,7 @@ type Registrar interface {
 
 	Handle(path string, p http.Handler) *mux.Route
 	PathPrefix(path string) *mux.Route
+	RegisterListener(func(context.Context, net.Listener) error)
 }
 
 type Server interface {
@@ -27,8 +30,15 @@ var _ Server = &ServerImpl{}
 
 // Implements the grpc.ServiceRegistrar interface.
 type ServerImpl struct {
-	srv     map[string]*grpc.Server // Key is configuration name; "" is the default.
-	httpMux *mux.Router
+	srv       map[string]*grpc.Server // Key is configuration name; "" is the default.
+	listeners []listenerRegistration
+	httpMux   *mux.Router
+}
+
+type listenerRegistration struct {
+	PackageName       string
+	ConfigurationName string
+	Handler           func(context.Context, net.Listener) error
 }
 
 func (s *ServerImpl) HandleFunc(path string, f func(http.ResponseWriter, *http.Request)) *mux.Route {
@@ -43,26 +53,35 @@ func (s *ServerImpl) PathPrefix(path string) *mux.Route {
 	return s.httpMux.PathPrefix(path)
 }
 
-func (s *ServerImpl) RegisterServiceAtConfiguration(config string, desc *grpc.ServiceDesc, impl interface{}) {
+func (s *ServerImpl) registerService(pkg, config string, desc *grpc.ServiceDesc, impl interface{}) {
 	if srv, ok := s.srv[config]; ok {
-		core.ZLog.Info().Str("configuration", config).Msgf("Registered %v", desc.ServiceName)
+		core.ZLog.Info().Str("package_name", pkg).Str("configuration", config).Msgf("Registered %v", desc.ServiceName)
 		srv.RegisterService(desc, impl)
 	} else {
-		core.ZLog.Fatal().Msgf("servercore: no such configuration %q (registering %v)", config, desc.ServiceName)
+		core.ZLog.Fatal().Str("package_name", pkg).Msgf("servercore: no such configuration %q (registering %v)", config, desc.ServiceName)
 	}
 }
 
+func (s *ServerImpl) registerListener(pkg, config string, handler func(context.Context, net.Listener) error) {
+	s.listeners = append(s.listeners, listenerRegistration{
+		PackageName:       pkg,
+		ConfigurationName: config,
+		Handler:           handler,
+	})
+}
+
 func (s *ServerImpl) Scope(pkg *core.Package) Registrar {
-	return &scopedServer{parent: s, configurationName: pkg.ConfigurationName}
+	return &scopedServer{pkg: pkg.PackageName, configurationName: pkg.ListenerConfiguration, parent: s}
 }
 
 type scopedServer struct {
+	pkg               string
 	configurationName string
 	parent            *ServerImpl
 }
 
 func (s *scopedServer) RegisterService(desc *grpc.ServiceDesc, impl interface{}) {
-	s.parent.RegisterServiceAtConfiguration(s.configurationName, desc, impl)
+	s.parent.registerService(s.pkg, s.configurationName, desc, impl)
 }
 
 func (s *scopedServer) Handle(path string, p http.Handler) *mux.Route {
@@ -71,6 +90,10 @@ func (s *scopedServer) Handle(path string, p http.Handler) *mux.Route {
 
 func (s *scopedServer) PathPrefix(path string) *mux.Route {
 	return s.parent.PathPrefix(path)
+}
+
+func (s *scopedServer) RegisterListener(handler func(context.Context, net.Listener) error) {
+	s.parent.registerListener(s.pkg, s.configurationName, handler)
 }
 
 func proxyHeaders(h http.Handler) http.Handler {

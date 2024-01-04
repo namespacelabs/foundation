@@ -55,9 +55,9 @@ func makeListenerOpts() servercore.ListenOpts {
 				return nil, err
 			}
 
-			for _, port := range rt.Current.Port {
+			for _, port := range rt.ListenerConfiguration {
 				if port.Name == name {
-					return servercore.MakeTCPListener(*listenHostname, int(port.Port))(ctx)
+					return servercore.MakeTCPListener(*listenHostname, int(port.ContainerPort))(ctx)
 				}
 			}
 

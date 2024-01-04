@@ -124,15 +124,35 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		return err
 	}
 
-	for _, cfg := range rt.ServiceConfiguration {
-		if c := gogrpc.ServiceConfiguration(cfg.Name); c != nil {
-			x := append(slices.Clone(grpcopts), c.ServerOpts()...)
-			if creds := c.TransportCredentials(); creds != nil {
-				x = append(x, grpc.Creds(creds))
+	listeners := map[string]net.Listener{}
+	for _, cfg := range rt.ListenerConfiguration {
+		c := listenerConfiguration(cfg.Name)
+		if c == nil {
+			return fnerrors.New("missing listener configuration for %q", cfg.Name)
+		}
+
+		switch cfg.Protocol {
+		case "grpc":
+			if cgrp, ok := c.(GrpcListenerConfiguration); ok {
+				x := append(slices.Clone(grpcopts), cgrp.ServerOpts(cfg.Name)...)
+				if creds := cgrp.TransportCredentials(cfg.Name); creds != nil {
+					x = append(x, grpc.Creds(creds))
+				}
+				serversByConfiguration[cfg.Name] = grpc.NewServer(x...)
+			} else {
+				return fnerrors.New("listener configuration for %q does not support grpc", cfg.Name)
 			}
-			serversByConfiguration[cfg.Name] = grpc.NewServer(x...)
-		} else {
-			return fnerrors.New("missing grpc configuration for %q", cfg.Name)
+
+		case "":
+			lst, err := c.CreateListener(ctx, cfg.Name, opts)
+			if err != nil {
+				return err
+			}
+
+			listeners[cfg.Name] = lst
+
+		default:
+			return fnerrors.New("unsupported service protocol %q", cfg.Protocol)
 		}
 	}
 
@@ -178,48 +198,45 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 			return err
 		}
 
-		httpServer = &http.Server{
-			Handler: h2c.NewHandler(httpMux, &http2.Server{
-				MaxConcurrentStreams:         opts.HTTP2MaxConcurrentStreams,
-				MaxReadFrameSize:             opts.HTTP2MaxReadFrameSize,
-				IdleTimeout:                  opts.HTTP2IdleTimeout,
-				MaxUploadBufferPerConnection: opts.HTTP2MaxUploadBufferPerConnection,
-				MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
-			}),
-			ReadTimeout:       opts.HTTP1ReadTimeout,
-			ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
-			WriteTimeout:      opts.HTTP1WriteTimeout,
-			IdleTimeout:       opts.HTTP1IdleTimeout,
-			MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
-		}
+		httpServer = NewHttp2CapableServer(httpMux, opts)
 
 		core.ZLog.Info().Msgf("Starting HTTP listen on %v", gwLis.Addr())
 
-		eg.Go(func() error { return listenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
+		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
 	}
 
 	debugHTTP := &http.Server{Handler: debugMux}
-	eg.Go(func() error { return listenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
+	eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http/debug", debugHTTP, httpL) })
 
-	eg.Go(func() error { return listenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
+	eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
 
 	for k, srv := range serversByConfiguration {
 		k := k     // Close k.
 		srv := srv // Close srv.
 
 		if k != "" {
-			grpcLis, err := opts.CreateNamedListener(ctx, "server-port-"+k)
+			grpcLis, err := listenerConfiguration(k).CreateListener(ctx, k, opts)
 			if err != nil {
 				return err
 			}
 
 			core.ZLog.Info().Msgf("Starting configuration %q listen on %v", k, grpcLis.Addr())
 
-			eg.Go(func() error { return listenAndGracefullyShutdownGRPC(egCtx, "grpc-"+k, srv, grpcLis) })
+			eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc-"+k, srv, grpcLis) })
 		}
 	}
 
 	eg.Go(func() error { return ignoreClosure("grpc", m.Serve()) })
+
+	for _, reg := range s.listeners {
+		lst := listeners[reg.ConfigurationName]
+		if lst == nil {
+			return fnerrors.New("%q registered for a listener with %q, but there's none", reg.PackageName, reg.ConfigurationName)
+		}
+
+		reg := reg // Close reg.
+		eg.Go(func() error { return reg.Handler(egCtx, lst) })
+	}
 
 	// In development, we skip graceful shutdowns for faster iteration cycles.
 	if !opts.DontHandleSigTerm && !core.EnvIs(schema.Environment_DEVELOPMENT) {
@@ -234,7 +251,24 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	return err
 }
 
-func listenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grpc.Server, lis net.Listener) error {
+func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
+	return &http.Server{
+		Handler: h2c.NewHandler(mux, &http2.Server{
+			MaxConcurrentStreams:         opts.HTTP2MaxConcurrentStreams,
+			MaxReadFrameSize:             opts.HTTP2MaxReadFrameSize,
+			IdleTimeout:                  opts.HTTP2IdleTimeout,
+			MaxUploadBufferPerConnection: opts.HTTP2MaxUploadBufferPerConnection,
+			MaxUploadBufferPerStream:     opts.HTTP2MaxUploadBufferPerStream,
+		}),
+		ReadTimeout:       opts.HTTP1ReadTimeout,
+		ReadHeaderTimeout: opts.HTTP1ReadHeaderTimeout,
+		WriteTimeout:      opts.HTTP1WriteTimeout,
+		IdleTimeout:       opts.HTTP1IdleTimeout,
+		MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
+	}
+}
+
+func ListenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grpc.Server, lis net.Listener) error {
 	return listenAndGracefullyShutdown(ctx, label, func() error {
 		return srv.Serve(lis)
 	}, func() error {
@@ -243,7 +277,7 @@ func listenAndGracefullyShutdownGRPC(ctx context.Context, label string, srv *grp
 	})
 }
 
-func listenAndGracefullyShutdownHTTP(ctx context.Context, label string, srv *http.Server, lis net.Listener) error {
+func ListenAndGracefullyShutdownHTTP(ctx context.Context, label string, srv *http.Server, lis net.Listener) error {
 	return listenAndGracefullyShutdown(ctx, label, func() error {
 		return srv.Serve(lis)
 	}, func() error {

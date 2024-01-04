@@ -24,23 +24,28 @@ import (
 )
 
 type cueServer struct {
-	ID          string                     `json:"id"`
-	Name        string                     `json:"name"`
-	Description *schema.Server_Description `json:"description"`
-	Framework   string                     `json:"framework"`
-	IsStateful  bool                       `json:"isStateful"`
-	PerNode     bool                       `json:"perNode"`
-	TestOnly    bool                       `json:"testonly"`
-	Import      []string                   `json:"import"`
-	Services    map[string]cueServiceSpec  `json:"service"`
-	Ingress     map[string]cueServiceSpec  `json:"ingress"`
-	Env         *args.EnvMap               `json:"env"`
-	Binary      interface{}                `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
-	Extensions  []string                   `json:"extensions,omitempty"`
-	Port        map[string]CuePort         `json:"staticPorts,omitempty"`
+	ID          string                              `json:"id"`
+	Name        string                              `json:"name"`
+	Description *schema.Server_Description          `json:"description"`
+	Framework   string                              `json:"framework"`
+	IsStateful  bool                                `json:"isStateful"`
+	PerNode     bool                                `json:"perNode"`
+	TestOnly    bool                                `json:"testonly"`
+	Import      []string                            `json:"import"`
+	Services    map[string]cueServiceSpec           `json:"service"`
+	Ingress     map[string]cueServiceSpec           `json:"ingress"`
+	Env         *args.EnvMap                        `json:"env"`
+	Binary      interface{}                         `json:"binary"` // Polymorphic: either package name, or cueServerBinary.
+	Extensions  []string                            `json:"extensions,omitempty"`
+	Listeners   map[string]cueListenerConfiguration `json:"listeners,omitempty"`
 
 	// XXX this should be somewhere else.
 	URLMap []cueURLMapEntry `json:"urlmap"`
+}
+
+type cueListenerConfiguration struct {
+	Protocol string  `json:"protocol,omitempty"`
+	Port     CuePort `json:"port"`
 }
 
 type CuePort struct {
@@ -204,12 +209,19 @@ func parseCueServer(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkgg
 		out.Self.Extension = append(out.Self.Extension, ext)
 	}
 
-	for name, port := range bits.Port {
-		pm, err := ParsePort(name, port)
+	for name, lst := range bits.Listeners {
+		pm, err := ParsePort("server-port-"+name, lst.Port)
 		if err != nil {
 			return nil, nil, err
 		}
-		out.Self.StaticPort = append(out.Self.StaticPort, pm)
+
+		l := &schema.Listener{
+			Name:     name,
+			Protocol: lst.Protocol,
+			Port:     pm,
+		}
+
+		out.Self.Listener = append(out.Self.Listener, l)
 	}
 
 	if err := fncue.WalkAttrs(parent.Val, func(v cue.Value, key, value string) error {

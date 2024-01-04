@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -242,24 +241,6 @@ func (s *sealer) finishSealing(ctx context.Context) (Sealed, error) {
 		if frag := p.ServerFragment; frag != nil {
 			result.ServerFragments = append(result.ServerFragments, frag)
 		}
-	}
-
-	if s.server != nil {
-		configurations := map[string]*schema.Server_Configuration{}
-		for _, p := range s.parsed {
-			if n := p.Node(); n.GetConfigurationName() != "" {
-				if _, has := configurations[n.ConfigurationName]; !has {
-					configurations[n.ConfigurationName] = &schema.Server_Configuration{
-						Name: n.ConfigurationName,
-					}
-				}
-			}
-		}
-
-		result.Server.Configurations = maps.Values(configurations)
-		slices.SortFunc(result.Server.Configurations, func(a, b *schema.Server_Configuration) int {
-			return strings.Compare(a.Name, b.Name)
-		})
 	}
 
 	slices.SortFunc(result.Nodes, func(a, b *schema.Node) int {

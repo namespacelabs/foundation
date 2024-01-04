@@ -83,8 +83,8 @@ func TransformNode(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.
 
 	if kind == schema.Node_SERVICE {
 		node.IngressServiceName = filepath.Base(loc.PackageName.String())
-		if node.ConfigurationName != "" {
-			node.IngressServiceName += "-" + node.ConfigurationName
+		if node.ListenerName != "" {
+			node.IngressServiceName += "-" + node.ListenerName
 		}
 	}
 

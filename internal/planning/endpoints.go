@@ -27,10 +27,8 @@ func RegisterEndpointProvider(fmwk schema.Framework, f EndpointProvider) {
 	endpointProviderByFramework[fmwk.String()] = f
 }
 
-func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.ServerFragment, allocatedPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
+func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.ServerFragment, serverPorts []*schema.Endpoint_Port) ([]*schema.Endpoint, []*schema.InternalEndpoint, error) {
 	sch := srv.StackEntry()
-	serverPorts := append([]*schema.Endpoint_Port{}, merged.StaticPort...)
-	serverPorts = append(serverPorts, allocatedPorts...)
 
 	// XXX figure out a story to handle collisions within a server!
 	// XXX should this be by exported RPC service instead?
@@ -46,15 +44,33 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 			}
 		}
 
-		serverPort := findPort(serverPorts, service.ConfigurationName, "server-port")
-		if serverPort == nil {
-			return nil, nil, fnerrors.New("configuration %q is missing a corresponding port", service.ConfigurationName)
+		var lst *schema.Listener
+		if service.ListenerName != "" {
+			for _, l := range merged.Listener {
+				if l.Name == service.ListenerName {
+					lst = l
+				}
+			}
+
+			if lst == nil {
+				return nil, nil, fnerrors.New("service %q refers to non-existing listener %q", pkg.PackageName(), service.ListenerName)
+			}
+		} else {
+			serverPort := findPort(serverPorts, "server-port")
+			if serverPort == nil {
+				return nil, nil, fnerrors.New("listener %q is missing a corresponding port", service.ListenerName)
+			}
+
+			lst = &schema.Listener{
+				Port: serverPort,
+			}
 		}
 
-		nd, err := computeServiceEndpoint(planner, sch.Server, pkg, service, service.GetIngress(), serverPort)
+		nd, err := computeServiceEndpoint(planner, sch.Server, lst, pkg, service, service.GetIngress())
 		if err != nil {
 			return nil, nil, err
 		}
+
 		endpoints = append(endpoints, nd...)
 	}
 
@@ -87,7 +103,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 
 	// Handle HTTP.
 	if needsHTTP := len(server.UrlMap) > 0; needsHTTP {
-		httpPort := findPort(serverPorts, "", "http-port")
+		httpPort := findPort(serverPorts, "http-port")
 
 		short, fqdn := planner.MakeServiceName(server.Name)
 
@@ -112,7 +128,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 
 	if f, ok := endpointProviderByFramework[server.Framework.String()]; ok {
 		var err error
-		internal, err = f.InternalEndpoints(srv.SealedContext().Environment(), server, allocatedPorts)
+		internal, err = f.InternalEndpoints(srv.SealedContext().Environment(), server, serverPorts)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -121,11 +137,7 @@ func ComputeEndpoints(planner runtime.Planner, srv Server, merged *schema.Server
 	return endpoints, internal, nil
 }
 
-func findPort(serverPorts []*schema.Endpoint_Port, configName, name string) *schema.Endpoint_Port {
-	if configName != "" {
-		name += "-" + configName
-	}
-
+func findPort(serverPorts []*schema.Endpoint_Port, name string) *schema.Endpoint_Port {
 	for _, port := range serverPorts {
 		if port.Name == name {
 			return port
@@ -136,47 +148,67 @@ func findPort(serverPorts []*schema.Endpoint_Port, configName, name string) *sch
 }
 
 // XXX this should be somewhere else.
-func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, pkg *pkggraph.Package, n *schema.Node, t schema.Endpoint_Type, serverPort *schema.Endpoint_Port) ([]*schema.Endpoint, error) {
-	if len(n.ExportService) == 0 {
-		return nil, nil
+func computeServiceEndpoint(planner runtime.Planner, server *schema.Server, listener *schema.Listener, pkg *pkggraph.Package, n *schema.Node, t schema.Endpoint_Type) ([]*schema.Endpoint, error) {
+	var endpoints []*schema.Endpoint
+
+	exportedPort := n.ExportedPort
+	if exportedPort == 0 {
+		exportedPort = listener.Port.ContainerPort
 	}
 
-	var endpoints []*schema.Endpoint
-	for k, exported := range n.ExportService {
-		name := n.GetIngressServiceName()
-		if k > 0 {
-			name += fmt.Sprintf("-%d", k)
+	if len(n.ExportService) == 0 {
+		if n.ListenerName != "" {
+			// XXX should we perhaps export an endpoint per service.
+			name := n.GetIngressServiceName()
+			short, fqdn := planner.MakeServiceName(name)
+
+			endpoints = append(endpoints, &schema.Endpoint{
+				ServiceName:        name,
+				AllocatedName:      short,
+				FullyQualifiedName: fqdn,
+				EndpointOwner:      n.GetPackageName(),
+				ServerOwner:        server.GetPackageName(),
+				Type:               t,
+				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
+			})
 		}
+	} else {
+		for k, exported := range n.ExportService {
+			name := n.GetIngressServiceName()
+			if k > 0 {
+				name += fmt.Sprintf("-%d", k)
+			}
 
-		// XXX should we perhaps export an endpoint per service.
-		short, fqdn := planner.MakeServiceName(name + "-grpc")
+			// XXX should we perhaps export an endpoint per service.
+			short, fqdn := planner.MakeServiceName(name + "-grpc")
 
-		endpoint := &schema.Endpoint{
-			ServiceName:        name,
-			AllocatedName:      short,
-			FullyQualifiedName: fqdn,
-			EndpointOwner:      n.GetPackageName(),
-			ServerOwner:        server.GetPackageName(),
-			Type:               t,
-			Ports:              []*schema.Endpoint_PortMap{{ExportedPort: serverPort.GetContainerPort(), Port: serverPort}},
+			endpoint := &schema.Endpoint{
+				ServiceName:        name,
+				AllocatedName:      short,
+				FullyQualifiedName: fqdn,
+				EndpointOwner:      n.GetPackageName(),
+				ServerOwner:        server.GetPackageName(),
+				Type:               t,
+				Ports:              []*schema.Endpoint_PortMap{{ExportedPort: exportedPort, Port: listener.Port}},
+			}
+
+			if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
+				return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
+			}
+
+			details, err := anypb.New(exported)
+			if err != nil {
+				return nil, err
+			}
+
+			endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
+				Kind:     exported.ProtoTypename,
+				Protocol: schema.ClearTextGrpcProtocol,
+				Details:  details,
+			})
+
+			endpoints = append(endpoints, endpoint)
 		}
-
-		if slices.Contains(constants.ReservedServiceNames, endpoint.ServiceName) {
-			return nil, fnerrors.InternalError("%s: %q is a reserved service name", n.PackageName, endpoint.ServiceName)
-		}
-
-		details, err := anypb.New(exported)
-		if err != nil {
-			return nil, err
-		}
-
-		endpoint.ServiceMetadata = append(endpoint.ServiceMetadata, &schema.ServiceMetadata{
-			Kind:     exported.ProtoTypename,
-			Protocol: schema.ClearTextGrpcProtocol,
-			Details:  details,
-		})
-
-		endpoints = append(endpoints, endpoint)
 	}
 
 	return endpoints, nil
