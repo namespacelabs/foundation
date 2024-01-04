@@ -58,7 +58,7 @@ func Register() {
 			return nil, fnerrors.InternalError("failed to load user's certificate")
 		}
 
-		if cert.NotAfter.Before(time.Now().Add(loginMinValidityTTL)) {
+		if time.Until(cert.NotAfter) < loginMinValidityTTL {
 			usage := fmt.Sprintf(
 				"Login with 'tsh login --proxy=%s --user=%s %s'",
 				profile.WebProxyAddr, profile.Username, profile.SiteName,
@@ -68,7 +68,7 @@ func Register() {
 
 		tpRegistryApp := conf.GetProxy().GetRegistryApp()
 		if err := tshAppsLogin(ctx, profile, tpRegistryApp); err != nil {
-			fnerrors.InvocationError("tsh", "failed to login to app %q", tpRegistryApp)
+			return nil, fnerrors.InvocationError("tsh", "failed to login to app %q", tpRegistryApp)
 		}
 
 		messages := []proto.Message{
@@ -162,7 +162,7 @@ func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app str
 		}
 
 		// If certificate is not valid after 10m then relogin.
-		if cert.NotAfter.Before(time.Now().Add(loginMinValidityTTL)) {
+		if time.Until(cert.NotAfter) < loginMinValidityTTL {
 			return errors.New("app certificate expires soon")
 		}
 
@@ -177,7 +177,7 @@ func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app str
 			return fnerrors.InternalError("missing tsh binary")
 		}
 
-		c := exec.Command(tshBinPath, "apps", "login", app, "--ttl", appLoginTTLMins)
+		c := exec.CommandContext(ctx, tshBinPath, "apps", "login", app, "--ttl", appLoginTTLMins)
 		if err := c.Run(); err != nil {
 			return err
 		}
