@@ -82,8 +82,8 @@ _#Node: {
 
 	ingress: *"PRIVATE" | "INTERNET_FACING" | "LOAD_BALANCER"
 
-	listener?: string
-	exportedPort?: int
+	listener?:      string
+	exportedPort?:  int
 	exportService?: types.#Proto
 	exportServices?: [...types.#Proto]
 	exportMethods?: {
