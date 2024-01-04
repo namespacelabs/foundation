@@ -161,7 +161,7 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 		reflection.Register(defaultServer)
 	}
 
-	httpMux := NewHTTPMux(middleware.Consume()...)
+	httpMux := NewHTTPMux(middleware.Registered()...)
 
 	s := &ServerImpl{srv: serversByConfiguration, httpMux: httpMux}
 	registerServices(s)

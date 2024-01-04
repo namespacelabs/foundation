@@ -6,6 +6,7 @@ package middleware
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -33,14 +34,11 @@ func (r Middleware) Add(middleware mux.MiddlewareFunc) {
 	middlewares.middlewares = append(middlewares.middlewares, middleware)
 }
 
-func Consume() []mux.MiddlewareFunc {
+func Registered() []mux.MiddlewareFunc {
 	middlewares.mu.Lock()
 	defer middlewares.mu.Unlock()
 
-	unary := middlewares.middlewares
-	middlewares.registrations = nil
-	middlewares.middlewares = nil
-	return unary
+	return slices.Clone(middlewares.middlewares)
 }
 
 func ProvideMiddleware(ctx context.Context, r *MiddlewareRegistration) (Middleware, error) {
