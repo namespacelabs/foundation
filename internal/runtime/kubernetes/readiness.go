@@ -10,6 +10,7 @@ import (
 	"net"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
@@ -39,6 +40,10 @@ func AreServicesReady(ctx context.Context, cli *kubernetes.Clientset, namespace 
 
 	for _, s := range services.Items {
 		for _, port := range s.Spec.Ports {
+			if port.Protocol != v1.ProtocolTCP {
+				continue
+			}
+
 			addr := fmt.Sprintf("%s.%s.svc.cluster.local:%d", s.Name, s.Namespace, port.Port)
 
 			conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
