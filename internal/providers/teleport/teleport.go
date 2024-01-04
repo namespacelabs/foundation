@@ -49,7 +49,20 @@ func Register() {
 
 		profile, err := profile.FromDir("", conf.GetProxy().GetProfile())
 		if err != nil {
-			return nil, fnerrors.InternalError("failed to resolve teleport profile")
+			return nil, fnerrors.UsageError("Login with 'tsh login'", "Teleport profile is not found.")
+		}
+
+		cert, err := parseCertificate(ctx, profile.TLSCertPath())
+		if err != nil {
+			return nil, fnerrors.InternalError("failed to load user's certificate")
+		}
+
+		if cert.NotAfter.Before(time.Now().Add(time.Minute * 10)) {
+			usage := fmt.Sprintf(
+				"Login with 'tsh login --proxy=%s --user=%s %s'",
+				profile.WebProxyAddr, profile.Username, profile.SiteName,
+			)
+			return nil, fnerrors.UsageError(usage, "Teleport credentials have expired.")
 		}
 
 		tpRegistryApp := conf.GetProxy().GetRegistryApp()
@@ -144,17 +157,7 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app string) error {
 	// First we check if there is already certifi
 	if err := tasks.Return0(ctx, tasks.Action("teleport.apps.cert").Arg("app", app), func(ctx context.Context) error {
-		b, err := os.ReadFile(teleportProfile.AppCertPath(app))
-		if err != nil {
-			return err
-		}
-
-		certData, _ := pem.Decode(b)
-		if certData == nil {
-			return errors.New("not pem formatted certificate")
-		}
-
-		cert, err := x509.ParseCertificate(certData.Bytes)
+		cert, err := parseCertificate(ctx, teleportProfile.AppCertPath(app))
 		if err != nil {
 			return err
 		}
@@ -182,4 +185,18 @@ func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app str
 
 		return nil
 	})
+}
+
+func parseCertificate(ctx context.Context, certPath string) (*x509.Certificate, error) {
+	b, err := os.ReadFile(certPath)
+	if err != nil {
+		return nil, err
+	}
+
+	certData, _ := pem.Decode(b)
+	if certData == nil {
+		return nil, errors.New("not pem formatted certificate")
+	}
+
+	return x509.ParseCertificate(certData.Bytes)
 }
