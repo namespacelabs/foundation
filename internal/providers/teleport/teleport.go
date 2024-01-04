@@ -32,7 +32,8 @@ const (
 )
 
 var (
-	teleportConfigType = cfg.DefineConfigType[*configuration.TeleportProxy]()
+	loginMinValidityTTL = time.Minute * 10
+	teleportConfigType  = cfg.DefineConfigType[*configuration.TeleportProxy]()
 )
 
 func Register() {
@@ -57,7 +58,7 @@ func Register() {
 			return nil, fnerrors.InternalError("failed to load user's certificate")
 		}
 
-		if cert.NotAfter.Before(time.Now().Add(time.Minute * 10)) {
+		if cert.NotAfter.Before(time.Now().Add(loginMinValidityTTL)) {
 			usage := fmt.Sprintf(
 				"Login with 'tsh login --proxy=%s --user=%s %s'",
 				profile.WebProxyAddr, profile.Username, profile.SiteName,
@@ -140,10 +141,8 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 						APIVersion: "client.authentication.k8s.io/v1beta1",
 						Command:    tshBinPath,
 						Args: []string{
-							"kube", "credentials",
-							"--kube-cluster", conf.GetKubeCluster(),
-							"--teleport-cluster", profile.SiteName,
-							"--proxy", profile.KubeProxyAddr,
+							"kube", "credentials", "--kube-cluster", conf.GetKubeCluster(),
+							"--teleport-cluster", profile.SiteName, "--proxy", profile.KubeProxyAddr,
 						},
 						Env:             []clientcmdapi.ExecEnvVar{},
 						InteractiveMode: clientcmdapi.NeverExecInteractiveMode,
@@ -155,15 +154,15 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 }
 
 func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app string) error {
-	// First we check if there is already certifi
+	// First we check if there is already a valid certificate as `tsh apps login` is very slow (>3s).
 	if err := tasks.Return0(ctx, tasks.Action("teleport.apps.cert").Arg("app", app), func(ctx context.Context) error {
 		cert, err := parseCertificate(ctx, teleportProfile.AppCertPath(app))
 		if err != nil {
 			return err
 		}
 
-		// If certificate is not valid after 1h then relogin.
-		if cert.NotAfter.Before(time.Now().Add(time.Hour * 1)) {
+		// If certificate is not valid after 10m then relogin.
+		if cert.NotAfter.Before(time.Now().Add(loginMinValidityTTL)) {
 			return errors.New("app certificate expires soon")
 		}
 
