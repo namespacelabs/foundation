@@ -8,6 +8,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
 func newEcrDockerLoginCmd() *cobra.Command {
@@ -36,6 +39,8 @@ func newEcrDockerLoginCmd() *cobra.Command {
 	awsProfile := cmd.Flags().String("aws_profile", "", "Use the specified AWS profile.")
 	region := cmd.Flags().String("region", "", "Use the specified AWS region.")
 	duration := cmd.Flags().Duration("duration", time.Hour, "For how long the resulting AWS credentials should be valid for.")
+	temp := cmd.Flags().Bool("temp", false, "Create a temporary Docker config file with the added credentials.")
+	outputPath := cmd.Flags().String("output_to", "", "If specified, write the path of the Docker config to this path.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		if *roleArn == "" {
@@ -122,10 +127,41 @@ func newEcrDockerLoginCmd() *cobra.Command {
 			Password:      parts[1],
 		}
 
-		if err := dockerCfg.Save(); err != nil {
-			return fnerrors.New("failed to save config: %w", err)
+		filename := dockerCfg.Filename
+
+		if *temp {
+			tmpDir, err := dirs.CreateUserTempDir("dockerconfig", "*")
+			if err != nil {
+				return fnerrors.New("failed to create temp dir: %w", err)
+			}
+
+			tmpFile, err := os.OpenFile(filepath.Join(tmpDir, "config.json"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+			if err != nil {
+				return fnerrors.New("failed to create temp file: %w", err)
+			}
+
+			if err := dockerCfg.SaveToWriter(tmpFile); err != nil {
+				return fnerrors.New("failed to save config: %w", err)
+			}
+
+			if err := tmpFile.Close(); err != nil {
+				return fnerrors.New("failed to close docker config: %w", err)
+			}
+
+			filename = tmpFile.Name()
+		} else {
+			if err := dockerCfg.Save(); err != nil {
+				return fnerrors.New("failed to save config: %w", err)
+			}
 		}
-		fmt.Fprintf(console.Stdout(ctx), "Added ECR credentials to %s.\n", dockerCfg.Filename)
+
+		fmt.Fprintf(console.Stderr(ctx), "Added ECR credentials to %s.\n", filename)
+
+		if *outputPath != "" {
+			if err := os.WriteFile(*outputPath, []byte(filename), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", *outputPath, err)
+			}
+		}
 
 		return nil
 	})
