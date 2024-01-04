@@ -58,7 +58,6 @@ require (
 	github.com/gravitational/teleport/api v0.0.0-20231212204825-da589355d4ea
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0
 	github.com/hpcloud/tail v1.0.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/jackc/pgconn v1.12.1
@@ -241,6 +240,7 @@ require (
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/gravitational/trace v1.3.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
