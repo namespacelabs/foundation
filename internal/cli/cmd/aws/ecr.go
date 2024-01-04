@@ -27,6 +27,8 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
+const dockerCfgName = "config.json"
+
 func newEcrDockerLoginCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "ecr-docker-login",
@@ -135,7 +137,7 @@ func newEcrDockerLoginCmd() *cobra.Command {
 				return fnerrors.New("failed to create temp dir: %w", err)
 			}
 
-			tmpFile, err := os.OpenFile(filepath.Join(tmpDir, "config.json"), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+			tmpFile, err := os.OpenFile(filepath.Join(tmpDir, dockerCfgName), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 			if err != nil {
 				return fnerrors.New("failed to create temp file: %w", err)
 			}
