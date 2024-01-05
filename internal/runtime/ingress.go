@@ -212,6 +212,10 @@ func ComputeIngress(ctx context.Context, env cfg.Context, planner Planner, sch *
 		ingressNames := uniquestrings.List{}
 
 		for _, url := range sch.Server.UrlMap {
+			if !url.Public {
+				continue
+			}
+
 			ingressName := url.IngressName
 			alias := url.IngressName
 			if ingressName == "" {

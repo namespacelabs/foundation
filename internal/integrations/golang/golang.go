@@ -244,6 +244,7 @@ func (impl) PostParseServer(ctx context.Context, sealed *parsing.Sealed) error {
 				Kind:            p.Kind,
 				PackageName:     svc.PackageName,
 				BackendProtocol: p.BackendProtocol,
+				Public:          svc.Ingress == schema.Endpoint_INTERNET_FACING,
 			})
 		}
 	}

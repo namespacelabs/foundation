@@ -109,6 +109,7 @@ message Server {
         string                                          ingress_name     = 3;
         string                                          kind             = 4;
         IngressFragment.IngressHttpPath.BackendProtocol backend_protocol = 5;
+        bool public                                                      = 6;
     }
 
     message Description {
