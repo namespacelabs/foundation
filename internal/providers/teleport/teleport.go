@@ -172,12 +172,7 @@ func tshAppsLogin(ctx context.Context, teleportProfile *profile.Profile, app str
 	}
 
 	return tasks.Return0(ctx, tasks.Action("tsh.apps.login").Arg("app", app), func(ctx context.Context) error {
-		tshBinPath, err := exec.LookPath(tshBin)
-		if err != nil {
-			return fnerrors.InternalError("missing tsh binary")
-		}
-
-		c := exec.CommandContext(ctx, tshBinPath, "apps", "login", app, "--ttl", appLoginTTLMins)
+		c := exec.CommandContext(ctx, tshBin, "apps", "login", app, "--ttl", appLoginTTLMins)
 		if err := c.Run(); err != nil {
 			return err
 		}
