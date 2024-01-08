@@ -171,7 +171,7 @@ func loadWorkspace(ctx context.Context, absRoot, envName string) (cfg.Context, e
 		return nil, err
 	}
 
-	return cfg.LoadContext(ctx, root, envName)
+	return cfg.LoadContext(root, envName)
 }
 
 type sinkObserver struct{ s *Session }

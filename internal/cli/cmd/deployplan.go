@@ -50,7 +50,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		config, err := cfg.MakeConfigurationCompat(ctx, root, root.Workspace(), root.DevHost(), plan.Environment)
+		config, err := cfg.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
 		if err != nil {
 			return err
 		}

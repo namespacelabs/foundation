@@ -31,7 +31,7 @@ var (
 func Register() {
 	client.RegisterConfigurationProvider("k3s-ssh", provideCluster)
 
-	cfg.RegisterConfigurationProvider(func(ctx context.Context, remote *configuration.Remote) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(remote *configuration.Remote) ([]proto.Message, error) {
 		if remote.Endpoint == nil {
 			return nil, fnerrors.BadInputError("remote must be specified")
 		}

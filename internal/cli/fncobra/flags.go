@@ -26,7 +26,7 @@ func EnvFromValue(cmd *cobra.Command, env *string) *cfg.Context {
 			sourceEnv = "dev"
 		}
 
-		env, err := cfg.LoadContext(ctx, root, sourceEnv)
+		env, err := cfg.LoadContext(root, sourceEnv)
 		if err != nil {
 			return err
 		}

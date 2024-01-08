@@ -42,7 +42,7 @@ func Register() {
 	client.RegisterConfigurationProvider("eks", provideEKS)
 	client.RegisterConfigurationProvider("aws/eks", provideEKS)
 
-	cfg.RegisterConfigurationProvider(func(ctx context.Context, cluster *eksconfig.Cluster) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(cluster *eksconfig.Cluster) ([]proto.Message, error) {
 		if cluster.Name == "" {
 			return nil, fnerrors.BadInputError("cluster name must be specified")
 		}

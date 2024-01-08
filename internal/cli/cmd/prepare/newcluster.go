@@ -47,7 +47,7 @@ func newNewBuildClusterCmd() *cobra.Command {
 			return err
 		}
 
-		env, err := cfg.LoadContext(ctx, root, envRef)
+		env, err := cfg.LoadContext(root, envRef)
 		if err != nil {
 			return err
 		}

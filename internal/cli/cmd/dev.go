@@ -102,7 +102,7 @@ func NewDevCmd() *cobra.Command {
 						view.NetworkPlanKeybinding{Name: "stack"},
 						logtail.Keybinding{
 							LoadEnvironment: func(envName string) (cfg.Context, error) {
-								return cfg.LoadContext(ctx, locs.Root, envName)
+								return cfg.LoadContext(locs.Root, envName)
 							},
 						},
 					},

@@ -45,7 +45,7 @@ func (s *server) WorkspaceForFile(ctx context.Context, absPath string) (ws *FnWo
 	}
 	wsPath = loc.RelPath
 
-	env, err := cfg.LoadContext(ctx, root, "dev")
+	env, err := cfg.LoadContext(root, "dev")
 	if err != nil {
 		return nil, "", err
 	}

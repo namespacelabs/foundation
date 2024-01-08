@@ -47,7 +47,7 @@ func newKubernetesCmd() *cobra.Command {
 				return err
 			}
 
-			env, err := cfg.LoadContext(ctx, root, envBound)
+			env, err := cfg.LoadContext(root, envBound)
 			if err != nil {
 				return err
 			}
@@ -93,7 +93,7 @@ func newObservePodsCmd() *cobra.Command {
 				return err
 			}
 
-			env, err := cfg.LoadContext(ctx, root, envBound)
+			env, err := cfg.LoadContext(root, envBound)
 			if err != nil {
 				return err
 			}

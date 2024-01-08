@@ -41,7 +41,7 @@ var (
 func Register() {
 	client.RegisterConfigurationProvider("teleport", provideCluster)
 
-	cfg.RegisterConfigurationProvider(func(ctx context.Context, conf *configuration.Configuration) ([]proto.Message, error) {
+	cfg.RegisterConfigurationProvider(func(conf *configuration.Configuration) ([]proto.Message, error) {
 		if conf.GetTeleport() == nil {
 			return nil, fnerrors.BadInputError("teleport configuration must be specified")
 		}
@@ -58,23 +58,6 @@ func Register() {
 			profile, err := profile.FromDir("", conf.GetTeleport().GetUserProfile())
 			if err != nil {
 				return nil, fnerrors.UsageError("Login with 'tsh login'", "Teleport profile is not found.")
-			}
-
-			cert, err := parseCertificate(ctx, profile.TLSCertPath())
-			if err != nil {
-				return nil, fnerrors.InternalError("failed to load user's certificate")
-			}
-
-			if time.Until(cert.NotAfter) < loginMinValidityTTL {
-				usage := fmt.Sprintf(
-					"Login with 'tsh login --proxy=%s --user=%s %s'",
-					profile.WebProxyAddr, profile.Username, profile.SiteName,
-				)
-				return nil, fnerrors.UsageError(usage, "Teleport credentials have expired.")
-			}
-
-			if err := tshAppsLogin(ctx, tpRegistryApp, profile.AppCertPath(tpRegistryApp)); err != nil {
-				return nil, fnerrors.InvocationError("tsh", "failed to login to app %q", tpRegistryApp)
 			}
 
 			registryTransport = &registry.RegistryTransport{
@@ -119,6 +102,28 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 
 	switch {
 	case conf.GetUserProfile() != "":
+		profile, err := profile.FromDir("", conf.GetUserProfile())
+		if err != nil {
+			return client.ClusterConfiguration{}, fnerrors.InternalError("failed to resolve teleport profile")
+		}
+
+		cert, err := parseCertificate(ctx, profile.TLSCertPath())
+		if err != nil {
+			return client.ClusterConfiguration{}, fnerrors.InternalError("failed to load user's certificate")
+		}
+
+		if time.Until(cert.NotAfter) < loginMinValidityTTL {
+			usage := fmt.Sprintf(
+				"Login with 'tsh login --proxy=%s --user=%s %s'",
+				profile.WebProxyAddr, profile.Username, profile.SiteName,
+			)
+			return client.ClusterConfiguration{}, fnerrors.UsageError(usage, "Teleport credentials have expired or expire soon.")
+		}
+
+		if err := tshAppsLogin(ctx, conf.GetRegistryApp(), profile.AppCertPath(conf.GetRegistryApp())); err != nil {
+			return client.ClusterConfiguration{}, fnerrors.InvocationError("tsh", "failed to login to app %q", conf.GetRegistryApp())
+		}
+
 		return teleportUserKubeconfig(ctx, conf)
 	case conf.GetKubeCertsDir() != "" && conf.GetRegistryCertsDir() != "":
 		return teleportBotKubeconfig(ctx, conf)
@@ -253,7 +258,7 @@ func tshAppsLogin(ctx context.Context, app, appCertPath string) error {
 
 		// If certificate is not valid after 10m then relogin.
 		if time.Until(cert.NotAfter) < loginMinValidityTTL {
-			return errors.New("certificate expires soon")
+			return errors.New("certificate has expired or expires soon")
 		}
 
 		return nil
