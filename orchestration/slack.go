@@ -20,7 +20,7 @@ func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, err error
 	blocks = append(blocks, slack.NewHeaderBlock(slack.NewTextBlockObject(slack.PlainTextType, timeEmoji(end, err)+" "+deployLabel(end), true, false)))
 
 	if message := os.Getenv("BUILDKITE_MESSAGE"); message != "" {
-		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.PlainTextType, message, false, false), nil, nil, nil))
+		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.PlainTextType, message, false, false), nil, nil))
 	}
 
 	blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.MarkdownType,
