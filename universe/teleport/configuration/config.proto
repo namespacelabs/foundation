@@ -9,12 +9,15 @@ package foundation.universe.teleport.configuration;
 option go_package = "namespacelabs.dev/foundation/universe/teleport/configuration";
 
 message Configuration {
-    TeleportProxy proxy    = 1;
-    string        registry = 2;
+    Teleport teleport = 1;
+    string   registry = 2;
 }
 
-message TeleportProxy {
-    string profile      = 1;
-    string kube_cluster = 2;
-    string registry_app = 3;
+message Teleport {
+    string user_profile       = 1;
+    string proxy_url          = 2;
+    string kube_certs_dir     = 3;
+    string kube_cluster       = 4;
+    string registry_certs_dir = 5;
+    string registry_app       = 6;
 }
