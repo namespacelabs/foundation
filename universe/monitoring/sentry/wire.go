@@ -122,7 +122,7 @@ func MaybeAttachError(ctx context.Context, err error) {
 
 func isUserError(code codes.Code) bool {
 	switch code {
-	case codes.Canceled, codes.InvalidArgument, codes.NotFound, codes.PermissionDenied, codes.Unauthenticated:
+	case codes.Canceled, codes.InvalidArgument, codes.NotFound, codes.PermissionDenied, codes.Unauthenticated, codes.ResourceExhausted:
 		return true
 	}
 
