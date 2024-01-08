@@ -104,7 +104,13 @@ func maybeFrom() string {
 			bkUrl += "#" + jobId
 		}
 
-		return fmt.Sprintf(" from <%s|%s>", bkUrl, name)
+		from := fmt.Sprintf(" from <%s|%s>", bkUrl, name)
+
+		if author := os.Getenv("BUILDKITE_BUILD_CREATOR"); author != "" {
+			from += " by " + author
+		}
+
+		return from
 	}
 
 	return ""
