@@ -230,9 +230,6 @@ func createConnection(ctx context.Context, streamConn httpstream.Connection, pod
 		return nil, makeErr("failed to create error stream", err)
 	}
 
-	// we're not writing to this stream
-	errorStream.Close()
-
 	// create data stream
 	headers.Set(v1.StreamType, v1.StreamTypeData)
 	dataStream, err := streamConn.CreateStream(headers)
@@ -242,6 +239,7 @@ func createConnection(ctx context.Context, streamConn httpstream.Connection, pod
 
 	// The assumption is that if an error is received, the dataStream will also fail.
 	go func() {
+		defer errorStream.Close()
 		defer streamConn.Close()
 
 		message, err := io.ReadAll(errorStream)
