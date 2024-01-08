@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
@@ -32,7 +33,7 @@ import (
 // module, what's the relative path to the context, and within that context,
 // what's the relative path to the Dockerfile.
 func Build(rel string, d *schema.ImageBuildPlan_DockerBuild) (build.Spec, error) {
-	return dockerfileBuild{rel, d}, nil
+	return dockerfileBuild{filepath.Join(rel, d.ContextDir), d}, nil
 }
 
 type dockerfileBuild struct {
