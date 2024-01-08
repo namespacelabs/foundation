@@ -16,13 +16,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnnet"
 )
 
-func ListenPProf(debugSink io.Writer) {
-	if err := listenPProf(debugSink); err != nil {
-		fmt.Fprintf(debugSink, "pprof: failed to listen: %v\n", err)
+func ListenPProf(infoSink io.Writer) {
+	if err := listenPProf(infoSink); err != nil {
+		fmt.Fprintf(infoSink, "pprof: failed to listen: %v\n", err)
 	}
 }
 
-func listenPProf(debugSink io.Writer) error {
+func listenPProf(infoSink io.Writer) error {
 	const target = 6060
 
 	h := mux.NewRouter()
@@ -33,7 +33,7 @@ func listenPProf(debugSink io.Writer) error {
 	}
 
 	localPort := lst.Addr().(*net.TCPAddr).Port
-	fmt.Fprintf(debugSink, "pprof: listening on http://127.0.0.1:%d/debug/pprof/\n", localPort)
+	fmt.Fprintf(infoSink, "pprof: listening on http://127.0.0.1:%d/debug/pprof/\n", localPort)
 
 	return http.Serve(lst, h)
 }
