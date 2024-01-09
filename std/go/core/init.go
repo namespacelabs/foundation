@@ -71,7 +71,12 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 		if singleton.err != nil {
 			return singleton.err
 		}
-		return f(ctx, singleton.res)
+
+		if err := f(ctx, singleton.res); err != nil {
+			return rpcerrors.Errorf(codes.Internal, "failed to initialize w/ singleton %q: %w", provider.Package.PackageName, err)
+		}
+
+		return nil
 	}
 
 	isSingleton := provider.Typename == ""
@@ -86,7 +91,7 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 	res, err := provider.Instantiate(childctx, di)
 	if err != nil {
 		// Do it here, so it's also stored.
-		err = rpcerrors.Errorf(codes.Internal, "failed to initialize %q: %w", provider.Package.PackageName, err)
+		err = rpcerrors.Errorf(codes.Internal, "failed to initialize %q dependencies: %w", provider.Package.PackageName, err)
 	}
 
 	if isSingleton {
@@ -104,7 +109,11 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 		ZLog.Printf("[provider] %s took %v (log thresh is %v)", provider.key(), took, maximumInitTime)
 	}
 
-	return f(ctx, res)
+	if err := f(ctx, res); err != nil {
+		return rpcerrors.Errorf(codes.Internal, "failed to initialize %q: %w", provider.Package.PackageName, err)
+	}
+
+	return nil
 }
 
 type Initializer struct {
