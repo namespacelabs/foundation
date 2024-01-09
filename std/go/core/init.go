@@ -12,7 +12,9 @@ import (
 	"time"
 
 	toposort "github.com/philopon/go-toposort"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/schema"
 )
 
@@ -82,6 +84,11 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 
 	start := time.Now()
 	res, err := provider.Instantiate(childctx, di)
+	if err != nil {
+		// Do it here, so it's also stored.
+		err = rpcerrors.Errorf(codes.Internal, "failed to initialize %q: %w", provider.Package.PackageName, err)
+	}
+
 	if isSingleton {
 		di.singletons[provider.key()] = result{
 			res: res,
@@ -91,6 +98,7 @@ func (di *DependencyGraph) Instantiate(ctx context.Context, provider Provider, f
 	if err != nil {
 		return err
 	}
+
 	took := time.Since(start)
 	if took > maximumInitTime {
 		ZLog.Printf("[provider] %s took %v (log thresh is %v)", provider.key(), took, maximumInitTime)
