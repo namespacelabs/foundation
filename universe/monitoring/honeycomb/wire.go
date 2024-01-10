@@ -27,7 +27,7 @@ func Configuration() (HoneycombConfiguration, bool) {
 	}
 
 	return HoneycombConfiguration{
-		Endpoint: "https://api.honeycomb.io:443",
+		Endpoint: "api.honeycomb.io:443",
 		Headers: map[string]string{
 			"x-honeycomb-team": xHoneycombTeam,
 		},
