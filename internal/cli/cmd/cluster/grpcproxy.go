@@ -140,8 +140,12 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 		return err
 	}
 
-	s2cErrChan := proxyServerToClient(serverStream, clientStream)
-	c2sErrChan := proxyClientToServer(clientStream, serverStream)
+	s2cInterceptors := map[string]proxyFunc{
+		"/moby.buildkit.v1.Control/Solve": shortcutSolveRequest,
+	}
+
+	s2cErrChan := proxyServerToClient(ctx, id, fullMethodName, serverStream, clientStream, s2cInterceptors)
+	c2sErrChan := proxyClientToServer(ctx, id, fullMethodName, clientStream, serverStream, nil)
 	// Make sure to close both client and server connections
 	for i := 0; i < 2; i++ {
 		select {
@@ -181,7 +185,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	return status.Errorf(codes.Internal, "[%s] gRPC proxy should never reach this stage.", id)
 }
 
-func proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan error {
+func proxyClientToServer(ctx context.Context, id, fullMethodName string, src grpc.ClientStream, dst grpc.ServerStream, interceptorsMap map[string]proxyFunc) chan error {
 	ret := make(chan error, 1)
 	go func() {
 		defer close(ret)
@@ -192,7 +196,7 @@ func proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan erro
 			return
 		}
 
-		if err := doProxy(src, dst); err != nil {
+		if err := doProxy(ctx, id, fullMethodName, src, dst, interceptorsMap); err != nil {
 			ret <- err
 			return
 		}
@@ -200,11 +204,11 @@ func proxyClientToServer(src grpc.ClientStream, dst grpc.ServerStream) chan erro
 	return ret
 }
 
-func proxyServerToClient(src grpc.ServerStream, dst grpc.ClientStream) chan error {
+func proxyServerToClient(ctx context.Context, id, fullMethodName string, src grpc.ServerStream, dst grpc.ClientStream, interceptorsMap map[string]proxyFunc) chan error {
 	ret := make(chan error, 1)
 	go func() {
 		defer close(ret)
-		if err := doProxy(src, dst); err != nil {
+		if err := doProxy(ctx, id, fullMethodName, src, dst, interceptorsMap); err != nil {
 			ret <- err
 		}
 	}()
@@ -225,6 +229,21 @@ func shortcutListWorkers(ctx context.Context, id string, workerInfo *controlapi.
 	}
 
 	console.DebugWithTimestamp(ctx, "[%s] ListWorkers injected worker info\n", id)
+
+	return nil
+}
+
+func shortcutSolveRequest(ctx context.Context, id, fullMethodName string, src Stream, dst Stream) error {
+	solveReq := &controlapi.SolveRequest{}
+	if err := src.RecvMsg(solveReq); err != nil {
+		return err
+	}
+
+	console.DebugWithTimestamp(ctx, "[%s] shortcutSolveRequest: %v\n", id, solveReq.String())
+
+	if err := dst.SendMsg(solveReq); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -258,10 +277,18 @@ type Stream interface {
 	RecvMsg(m interface{}) error
 }
 
-func doProxy(src Stream, dst Stream) error {
-	// Not really empty message. All fields are unmarshalled in Empty.unknownFields.
-	f := &emptypb.Empty{}
+type proxyFunc func(context.Context, string, string, Stream, Stream) error
+
+func doProxy(ctx context.Context, id, fullMethodName string, src Stream, dst Stream, interceptorsMap map[string]proxyFunc) error {
 	for {
+		if cb, ok := interceptorsMap[fullMethodName]; ok {
+			if err := cb(ctx, id, fullMethodName, src, dst); err != nil {
+				return err
+			}
+		}
+
+		// Not really empty message. All fields are unmarshalled in Empty.unknownFields.
+		f := &emptypb.Empty{}
 		if err := src.RecvMsg(f); err != nil {
 			return err
 		}
