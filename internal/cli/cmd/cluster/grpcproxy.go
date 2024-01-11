@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"connectrpc.com/connect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -20,13 +21,15 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 	"namespacelabs.dev/go-ids"
 
+	instancev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/instance"
 	controlapi "github.com/moby/buildkit/api/services/control"
 )
 
-func serveGRPCProxy(workerInfo *controlapi.ListWorkersResponse, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) error {
-	p, err := newGrpcProxy(workerInfo, proxyStatus, connect)
+func serveGRPCProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) error {
+	p, err := newGrpcProxy(ctx, workerInfo, proxyStatus, connect)
 	if err != nil {
 		p.proxyStatus.setLastError(ProxyStatus_Failing, err)
 		return err
@@ -41,17 +44,25 @@ type grpcProxy struct {
 	server      *grpc.Server
 	workerInfo  *controlapi.ListWorkersResponse
 	proxyStatus *proxyStatusDesc
+	instanceCli *private.InstanceServiceClient
 
 	mu sync.Mutex
 	// Fields protected by mutex go below
 	backendClient *grpc.ClientConn
 }
 
-func newGrpcProxy(workerInfo *controlapi.ListWorkersResponse, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
+func newGrpcProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
+	instanceCli, err := private.MakeInstanceClient()
+	if err != nil {
+		console.DebugWithTimestamp(ctx, "failed to create instance client: %v\n", err)
+		// Continue running, we'll skip sending ref attachments to guest instance service
+	}
+
 	g := &grpcProxy{
 		connect:     connect,
 		workerInfo:  workerInfo,
 		proxyStatus: proxyStatus,
+		instanceCli: instanceCli,
 	}
 
 	g.server = grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
@@ -141,7 +152,7 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 	}
 
 	s2cInterceptors := map[string]proxyFunc{
-		"/moby.buildkit.v1.Control/Solve": shortcutSolveRequest,
+		"/moby.buildkit.v1.Control/Solve": shortcutSolveRequest(g.instanceCli),
 	}
 
 	s2cErrChan := proxyServerToClient(ctx, id, fullMethodName, serverStream, clientStream, s2cInterceptors)
@@ -233,19 +244,33 @@ func shortcutListWorkers(ctx context.Context, id string, workerInfo *controlapi.
 	return nil
 }
 
-func shortcutSolveRequest(ctx context.Context, id, fullMethodName string, src Stream, dst Stream) error {
-	solveReq := &controlapi.SolveRequest{}
-	if err := src.RecvMsg(solveReq); err != nil {
-		return err
+func shortcutSolveRequest(instanceCli *private.InstanceServiceClient) proxyFunc {
+	return func(ctx context.Context, id, fullMethodName string, src Stream, dst Stream) error {
+		solveReq := &controlapi.SolveRequest{}
+		if err := src.RecvMsg(solveReq); err != nil {
+			return err
+		}
+
+		console.DebugWithTimestamp(ctx, "[%s] shortcutSolveRequest: %v\n", id, solveReq.String())
+		if instanceCli != nil {
+			if _, err := instanceCli.AddAttachment(ctx, connect.NewRequest(
+				&instancev1beta.AddAttachmentRequest{
+					BuildAttachment: &instancev1beta.BuildAttachment{
+						BuildRef: solveReq.GetRef(),
+					},
+				},
+			)); err != nil {
+				console.DebugWithTimestamp(ctx, "[%s] AddAttachment failed with: %v\n", id, err)
+				return err
+			}
+		}
+
+		if err := dst.SendMsg(solveReq); err != nil {
+			return err
+		}
+
+		return nil
 	}
-
-	console.DebugWithTimestamp(ctx, "[%s] shortcutSolveRequest: %v\n", id, solveReq.String())
-
-	if err := dst.SendMsg(solveReq); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func propagateHeaders(src grpc.ClientStream, dst grpc.ServerStream) error {

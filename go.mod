@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.21.5
 
 require (
+	buf.build/gen/go/namespace/cloud/connectrpc/go v1.14.0-20240111112358-350d6886f112.1
 	cloud.google.com/go/artifactregistry v1.14.1
 	cloud.google.com/go/container v1.26.0
 	cuelang.org/go v0.4.3
@@ -128,7 +129,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20230920204549-e6e6cdab5c13
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231009173412-8bfb1ae86b6c
 	google.golang.org/grpc v1.59.0
-	google.golang.org/protobuf v1.31.0
+	google.golang.org/protobuf v1.32.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
@@ -147,11 +148,13 @@ require (
 )
 
 require (
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.32.0-20240111112358-350d6886f112.1 // indirect
 	cloud.google.com/go v0.110.8 // indirect
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.2 // indirect
 	cloud.google.com/go/longrunning v0.5.1 // indirect
+	connectrpc.com/connect v1.14.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect

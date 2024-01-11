@@ -220,7 +220,7 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	var err error
 	sink := tasks.SinkFrom(ctx)
 	if bp.useGrpcProxy {
-		err = serveGRPCProxy(bp.injectWorkerInfo, bp.listener, bp.proxyStatus, func(innerCtx context.Context) (net.Conn, error) {
+		err = serveGRPCProxy(ctx, bp.injectWorkerInfo, bp.listener, bp.proxyStatus, func(innerCtx context.Context) (net.Conn, error) {
 			conn, instanceID, err := bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
 			if err != nil {
 				bp.proxyStatus.setLastError(ProxyStatus_Failing, err)
