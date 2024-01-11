@@ -28,7 +28,7 @@ func MakeInstanceClient() (*InstanceServiceClient, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.DialContext(context.Background(), "https://"+md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	conn, err := grpc.DialContext(context.Background(), md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
 		return nil, err
 	}
