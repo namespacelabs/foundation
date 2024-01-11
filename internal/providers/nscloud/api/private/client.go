@@ -53,7 +53,17 @@ func makeTLSConfigFromInstance(md metadata.InstanceMetadata) (*tls.Config, error
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
 
-	keyPair, err := tls.LoadX509KeyPair(md.Certs.PublicPemPath, md.Certs.PrivateKeyPath)
+	publicCert, err := os.ReadFile(md.Certs.PublicPemPath)
+	if err != nil {
+		return nil, fnerrors.New("could not public cert file: %v", err)
+	}
+
+	privateKey, err := os.ReadFile(md.Certs.PrivateKeyPath)
+	if err != nil {
+		return nil, fnerrors.New("could not private key file: %v", err)
+	}
+
+	keyPair, err := tls.X509KeyPair(publicCert, privateKey)
 	if err != nil {
 		return nil, fnerrors.New("could not load instance keys: %v", err)
 	}
