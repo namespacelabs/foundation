@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"connectrpc.com/connect"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
@@ -253,13 +252,12 @@ func shortcutSolveRequest(instanceCli *private.InstanceServiceClient) proxyFunc 
 
 		console.DebugWithTimestamp(ctx, "[%s] shortcutSolveRequest: %v\n", id, solveReq.String())
 		if instanceCli != nil {
-			if _, err := instanceCli.AddAttachment(ctx, connect.NewRequest(
-				&instancev1beta.AddAttachmentRequest{
-					BuildAttachment: &instancev1beta.BuildAttachment{
-						BuildRef: solveReq.GetRef(),
-					},
+			if _, err := instanceCli.AddAttachment(ctx, &instancev1beta.AddAttachmentRequest{
+				BuildAttachment: &instancev1beta.BuildAttachment{
+					BuildRef: solveReq.GetRef(),
 				},
-			)); err != nil {
+			},
+			); err != nil {
 				console.DebugWithTimestamp(ctx, "[%s] AddAttachment failed with: %v\n", id, err)
 				return err
 			}

@@ -1,14 +1,14 @@
 package private
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"net/http"
 	"os"
-	"time"
 
-	instance "buf.build/gen/go/namespace/cloud/connectrpc/go/proto/namespace/private/instance/instancev1betaconnect"
-	"connectrpc.com/connect"
+	instance "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/private/instance/instancev1betagrpc"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
@@ -28,19 +28,12 @@ func MakeInstanceClient() (*InstanceServiceClient, error) {
 		return nil, err
 	}
 
-	client := &http.Client{
-		Timeout: time.Minute,
-		Transport: &http.Transport{
-			TLSClientConfig: tlsConfig,
-		},
+	conn, err := grpc.DialContext(context.Background(), "https://"+md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	if err != nil {
+		return nil, err
 	}
 
-	cli := instance.NewInstanceServiceClient(
-		client,
-		"https://"+md.InstanceEndpoint,
-		connect.WithGRPC(), //TODO check if okay or connect protocol?
-	)
-
+	cli := instance.NewInstanceServiceClient(conn)
 	return &InstanceServiceClient{cli}, nil
 }
 

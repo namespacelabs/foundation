@@ -5,11 +5,10 @@ go 1.21
 toolchain go1.21.5
 
 require (
-	buf.build/gen/go/namespace/cloud/connectrpc/go v1.14.0-20240111112358-350d6886f112.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.3.0-20240111112358-350d6886f112.2
 	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.32.0-20240111112358-350d6886f112.1
 	cloud.google.com/go/artifactregistry v1.14.1
 	cloud.google.com/go/container v1.26.0
-	connectrpc.com/connect v1.14.0
 	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
 	github.com/agext/levenshtein v1.2.3
