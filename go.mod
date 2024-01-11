@@ -6,8 +6,10 @@ toolchain go1.21.5
 
 require (
 	buf.build/gen/go/namespace/cloud/connectrpc/go v1.14.0-20240111112358-350d6886f112.1
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.32.0-20240111112358-350d6886f112.1
 	cloud.google.com/go/artifactregistry v1.14.1
 	cloud.google.com/go/container v1.26.0
+	connectrpc.com/connect v1.14.0
 	cuelang.org/go v0.4.3
 	filippo.io/age v1.0.0
 	github.com/agext/levenshtein v1.2.3
@@ -148,13 +150,11 @@ require (
 )
 
 require (
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.32.0-20240111112358-350d6886f112.1 // indirect
 	cloud.google.com/go v0.110.8 // indirect
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.2 // indirect
 	cloud.google.com/go/longrunning v0.5.1 // indirect
-	connectrpc.com/connect v1.14.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20230306123547-8075edf89bb0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
