@@ -129,7 +129,7 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		}
 
 		if viper.GetBool("enable_pprof") {
-			go ListenPProf(console.Output(cmd.Context(), "pprof"))
+			go ListenPProf(console.Warnings(cmd.Context()))
 		}
 
 		run = storedrun.New()
