@@ -28,6 +28,8 @@ func InstanceMetadataFromFile() (InstanceMetadata, error) {
 		return md, err
 	}
 
+	//XXX check version first, then unmarshal to right struct
+
 	if err := json.Unmarshal(data, &md); err != nil {
 		return md, fnerrors.New("instance metadata is invalid: %w", err)
 	}

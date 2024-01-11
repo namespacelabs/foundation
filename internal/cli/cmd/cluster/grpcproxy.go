@@ -51,7 +51,7 @@ type grpcProxy struct {
 }
 
 func newGrpcProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
-	instanceCli, err := private.MakeInstanceClient()
+	instanceCli, err := private.MakeInstanceClient(ctx)
 	if err != nil {
 		console.DebugWithTimestamp(ctx, "failed to create instance client: %v\n", err)
 		// Continue running, we'll skip sending ref attachments to guest instance service

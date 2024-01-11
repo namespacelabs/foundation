@@ -9,6 +9,7 @@ import (
 	instance "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/private/instance/instancev1betagrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
@@ -17,18 +18,21 @@ type InstanceServiceClient struct {
 	instance.InstanceServiceClient
 }
 
-func MakeInstanceClient() (*InstanceServiceClient, error) {
+func MakeInstanceClient(ctx context.Context) (*InstanceServiceClient, error) {
 	md, err := metadata.InstanceMetadataFromFile()
 	if err != nil {
 		return nil, err
 	}
 
-	tlsConfig, err := makeTLSConfigFromInstance(md)
+	// TODO remove
+	console.DebugWithTimestamp(ctx, "loaded metadata: %+v\n", md)
+
+	tlsConfig, err := makeTLSConfigFromInstance(ctx, md)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := grpc.DialContext(context.Background(), md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	conn, err := grpc.DialContext(ctx, md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +41,7 @@ func MakeInstanceClient() (*InstanceServiceClient, error) {
 	return &InstanceServiceClient{cli}, nil
 }
 
-func makeTLSConfigFromInstance(md metadata.InstanceMetadata) (*tls.Config, error) {
+func makeTLSConfigFromInstance(ctx context.Context, md metadata.InstanceMetadata) (*tls.Config, error) {
 	caCert, err := os.ReadFile(md.Certs.HostPublicPemPath)
 	if err != nil {
 		return nil, fnerrors.New("could not ca open certificate file: %v", err)
@@ -60,6 +64,11 @@ func makeTLSConfigFromInstance(md metadata.InstanceMetadata) (*tls.Config, error
 	if err != nil {
 		return nil, fnerrors.New("could not load instance keys: %v", err)
 	}
+
+	// TODO remove
+	console.DebugWithTimestamp(ctx, "ca cert: %v\n", string(caCert))
+	console.DebugWithTimestamp(ctx, "public cert: %v\n", string(publicCert))
+	console.DebugWithTimestamp(ctx, "private key: %v\n", string(privateKey))
 
 	return &tls.Config{
 		RootCAs:      caCertPool,
