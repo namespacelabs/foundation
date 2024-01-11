@@ -48,7 +48,9 @@ func makeTLSConfigFromInstance(ctx context.Context, md metadata.InstanceMetadata
 	}
 
 	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, fnerrors.New("failed to append ca certificate to pool: %v", err)
+	}
 
 	publicCert, err := os.ReadFile(md.Certs.PublicPemPath)
 	if err != nil {
