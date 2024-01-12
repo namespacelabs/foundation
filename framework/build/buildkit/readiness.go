@@ -12,11 +12,13 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func WaitReadiness(ctx context.Context, maxWait time.Duration, connect func(ctx context.Context) (*buildkit.Client, error)) error {
-	const retryDelay = 200 * time.Millisecond
+const retryDelay = 200 * time.Millisecond
 
+func WaitReadiness(ctx context.Context, maxWait time.Duration, connect func(ctx context.Context) (*buildkit.Client, error)) error {
 	maxRetries := maxWait.Milliseconds() / retryDelay.Milliseconds()
-	for i := int64(0); i < maxRetries; i++ {
+
+	var i int64
+	for {
 		ctx, cancel := context.WithTimeout(ctx, time.Second*10)
 		defer cancel()
 		c, err := connect(ctx)
@@ -24,12 +26,16 @@ func WaitReadiness(ctx context.Context, maxWait time.Duration, connect func(ctx 
 			return err
 		}
 
-		if _, err := c.ListWorkers(ctx); err == nil {
+		_, err = c.ListWorkers(ctx)
+		if err == nil {
 			return nil
 		}
 
+		if i >= maxRetries {
+			return fnerrors.New("buildkit never became ready, last error: %w", err)
+		}
+
+		i++
 		time.Sleep(retryDelay)
 	}
-
-	return fnerrors.New("buildkit never became ready")
 }
