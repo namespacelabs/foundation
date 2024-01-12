@@ -66,6 +66,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	forceCleanup := cmd.Flags().Bool("force_cleanup", false, "If set, it forces a cleanup of any previous buildx proxy running in background.")
 	waitForLogin := cmd.Flags().Bool("wait_for_login", false, "If set, it blocks waiting for user to login.")
 	_ = cmd.Flags().MarkHidden("wait_for_login")
+	annotateBuild := cmd.Flags().Bool("annotate_build", false, "If set, it enable builds annotation when running in Namespace instances.")
+	_ = cmd.Flags().MarkHidden("annotate_build")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -170,7 +172,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			instances = append(instances, instance)
 
 			if *background {
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *staticWorkerDefFile); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *annotateBuild, *staticWorkerDefFile); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
@@ -181,7 +183,7 @@ func newSetupBuildxCmd() *cobra.Command {
 					return fnerrors.New("failed to parse worker info JSON payload: %v", err)
 				}
 
-				bp, err := instance.runBuildProxy(ctx, p.SocketPath, p.ControlSocketPath, *useGrpcProxy, workerInfoResp)
+				bp, err := instance.runBuildProxy(ctx, p.SocketPath, p.ControlSocketPath, *useGrpcProxy, *annotateBuild, workerInfoResp)
 				if err != nil {
 					return err
 				}

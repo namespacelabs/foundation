@@ -28,10 +28,10 @@ import (
 	controlapi "github.com/moby/buildkit/api/services/control"
 )
 
-func serveGRPCProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) error {
-	p, err := newGrpcProxy(ctx, workerInfo, proxyStatus, connect)
+func serveGRPCProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, annotateBuild bool, listener net.Listener, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) error {
+	p, err := newGrpcProxy(ctx, workerInfo, annotateBuild, proxyStatus, connect)
 	if err != nil {
-		p.proxyStatus.setLastError(ProxyStatus_Failing, err)
+		proxyStatus.setLastError(ProxyStatus_Failing, err)
 		return err
 	}
 
@@ -40,29 +40,34 @@ func serveGRPCProxy(ctx context.Context, workerInfo *controlapi.ListWorkersRespo
 }
 
 type grpcProxy struct {
-	connect     func(context.Context) (net.Conn, error)
-	server      *grpc.Server
-	workerInfo  *controlapi.ListWorkersResponse
-	proxyStatus *proxyStatusDesc
-	instanceCli *private.InstanceServiceClient
+	connect       func(context.Context) (net.Conn, error)
+	server        *grpc.Server
+	workerInfo    *controlapi.ListWorkersResponse
+	proxyStatus   *proxyStatusDesc
+	annotateBuild bool
+	instanceCli   *private.InstanceServiceClient
 
 	mu sync.Mutex
 	// Fields protected by mutex go below
 	backendClient *grpc.ClientConn
 }
 
-func newGrpcProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
-	instanceCli, err := private.MakeInstanceClient(ctx)
-	if err != nil {
-		console.DebugWithTimestamp(ctx, "failed to create instance client: %v\n", err)
-		// Continue running, we'll skip sending ref attachments to guest instance service
+func newGrpcProxy(ctx context.Context, workerInfo *controlapi.ListWorkersResponse, annotateBuild bool, proxyStatus *proxyStatusDesc, connect func(context.Context) (net.Conn, error)) (*grpcProxy, error) {
+	g := &grpcProxy{
+		connect:       connect,
+		workerInfo:    workerInfo,
+		proxyStatus:   proxyStatus,
+		annotateBuild: annotateBuild,
 	}
 
-	g := &grpcProxy{
-		connect:     connect,
-		workerInfo:  workerInfo,
-		proxyStatus: proxyStatus,
-		instanceCli: instanceCli,
+	if g.annotateBuild {
+		instanceCli, err := private.MakeInstanceClient(ctx)
+		if err != nil {
+			console.DebugWithTimestamp(ctx, "failed to create instance client: %v\n", err)
+			return nil, fmt.Errorf("failed to create instance client, you may not be running in a Namespace instance: %w", err)
+		}
+
+		g.instanceCli = instanceCli
 	}
 
 	g.server = grpc.NewServer(grpc.UnknownServiceHandler(g.handler))
@@ -151,8 +156,11 @@ func (g *grpcProxy) handler(srv interface{}, serverStream grpc.ServerStream) err
 		return err
 	}
 
-	s2cInterceptors := map[string]proxyFunc{
-		"/moby.buildkit.v1.Control/Solve": shortcutSolveRequest(g.instanceCli),
+	var s2cInterceptors map[string]proxyFunc = nil
+	if g.annotateBuild {
+		s2cInterceptors = map[string]proxyFunc{
+			"/moby.buildkit.v1.Control/Solve": shortcutSolveRequest(g.instanceCli),
+		}
 	}
 
 	s2cErrChan := proxyServerToClient(ctx, id, fullMethodName, serverStream, clientStream, s2cInterceptors)

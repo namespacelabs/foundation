@@ -98,6 +98,7 @@ type buildProxy struct {
 	useGrpcProxy      bool
 	injectWorkerInfo  *controlapi.ListWorkersResponse
 	proxyStatus       *proxyStatusDesc
+	annotateBuild     bool
 }
 
 // proxyStatus is used by `nsc docker buildx status` to show user info on
@@ -151,7 +152,7 @@ func (p *proxyStatusDesc) incRequest() {
 	p.LastUpdate = time.Now()
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath, controlSocketPath string, connectAtStart, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath, controlSocketPath string, connectAtStart, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
 	if err != nil {
 		return nil, err
@@ -165,10 +166,10 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 		}
 	}
 
-	return bp.runBuildProxy(ctx, socketPath, controlSocketPath, useGrpcProxy, workersInfo)
+	return bp.runBuildProxy(ctx, socketPath, controlSocketPath, useGrpcProxy, annotateBuild, workersInfo)
 }
 
-func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
 	var cleanup func() error
 	if socketPath == "" {
 		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
@@ -204,7 +205,7 @@ func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, c
 		},
 	}
 
-	return &buildProxy{socketPath, controlSocketPath, bp, listener, cleanup, useGrpcProxy, workersInfo, status}, nil
+	return &buildProxy{socketPath, controlSocketPath, bp, listener, cleanup, useGrpcProxy, workersInfo, status, annotateBuild}, nil
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -220,7 +221,7 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 	var err error
 	sink := tasks.SinkFrom(ctx)
 	if bp.useGrpcProxy {
-		err = serveGRPCProxy(ctx, bp.injectWorkerInfo, bp.listener, bp.proxyStatus, func(innerCtx context.Context) (net.Conn, error) {
+		err = serveGRPCProxy(ctx, bp.injectWorkerInfo, bp.annotateBuild, bp.listener, bp.proxyStatus, func(innerCtx context.Context) (net.Conn, error) {
 			conn, instanceID, err := bp.instance.NewConn(tasks.WithSink(innerCtx, sink))
 			if err != nil {
 				bp.proxyStatus.setLastError(ProxyStatus_Failing, err)
@@ -304,8 +305,8 @@ type buildProxyWithRegistry struct {
 	Cleanup         func() error
 }
 
-func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy bool, workerInfo *controlapi.ListWorkersResponse) (*buildProxyWithRegistry, error) {
-	p, err := runBuildProxy(ctx, platform, "", "", true, useGrpcProxy, workerInfo)
+func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy, annotateBuild bool, workerInfo *controlapi.ListWorkersResponse) (*buildProxyWithRegistry, error) {
+	p, err := runBuildProxy(ctx, platform, "", "", true, useGrpcProxy, annotateBuild, workerInfo)
 	if err != nil {
 		return nil, err
 	}
