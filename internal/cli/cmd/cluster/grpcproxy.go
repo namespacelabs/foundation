@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -259,7 +260,7 @@ func shortcutSolveRequest(instanceCli *private.InstanceServiceClient) proxyFunc 
 			},
 			); err != nil {
 				console.DebugWithTimestamp(ctx, "[%s] AddAttachment failed with: %v\n", id, err)
-				return err
+				return fmt.Errorf("failed to annotate docker build to Namespace systems: %w", err)
 			}
 		}
 
