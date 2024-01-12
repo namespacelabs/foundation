@@ -9,7 +9,6 @@ import (
 	instance "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/private/instance/instancev1betagrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
@@ -24,10 +23,7 @@ func MakeInstanceClient(ctx context.Context) (*InstanceServiceClient, error) {
 		return nil, err
 	}
 
-	// TODO remove
-	console.DebugWithTimestamp(ctx, "loaded metadata: %+v\n", md)
-
-	tlsConfig, err := makeTLSConfigFromInstance(ctx, md)
+	tlsConfig, err := makeTLSConfigFromInstance(md)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +37,7 @@ func MakeInstanceClient(ctx context.Context) (*InstanceServiceClient, error) {
 	return &InstanceServiceClient{cli}, nil
 }
 
-func makeTLSConfigFromInstance(ctx context.Context, md metadata.InstanceMetadata) (*tls.Config, error) {
+func makeTLSConfigFromInstance(md metadata.InstanceMetadata) (*tls.Config, error) {
 	caCert, err := os.ReadFile(md.Certs.HostPublicPemPath)
 	if err != nil {
 		return nil, fnerrors.New("could not ca open certificate file: %v", err)
@@ -67,13 +63,14 @@ func makeTLSConfigFromInstance(ctx context.Context, md metadata.InstanceMetadata
 		return nil, fnerrors.New("could not load instance keys: %v", err)
 	}
 
-	// TODO remove
-	console.DebugWithTimestamp(ctx, "ca cert: %v\n", string(caCert))
-	console.DebugWithTimestamp(ctx, "public cert: %v\n", string(publicCert))
-	console.DebugWithTimestamp(ctx, "private key: %v\n", string(privateKey))
-
 	return &tls.Config{
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{keyPair},
+		RootCAs: caCertPool,
+		GetClientCertificate: func(cri *tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return &keyPair, nil
+		},
+		// Instance certificates are not in the CA pool, so Go library will automatically
+		// exclude them and client won't send its certificate, to force it to
+		// send use GetClientCertificate instead
+		// Certificates: []tls.Certificate{keyPair},
 	}, nil
 }
