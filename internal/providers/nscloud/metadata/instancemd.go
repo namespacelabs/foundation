@@ -21,14 +21,14 @@ type InstanceMetadata struct {
 	} `json:"certs,omitempty"`
 }
 
-func InstanceMetadataFromFile() (InstanceMetadata, error) {
+func FetchInstanceMetadata() (InstanceMetadata, error) {
 	var md InstanceMetadata
 	data, err := os.ReadFile(wellKnownMetadataPath)
 	if err != nil {
 		return md, err
 	}
 
-	//XXX check version first, then unmarshal to right struct
+	// XXX check version first, then unmarshal to right struct.
 
 	if err := json.Unmarshal(data, &md); err != nil {
 		return md, fnerrors.New("instance metadata is invalid: %w", err)

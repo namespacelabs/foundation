@@ -19,7 +19,7 @@ type InstanceServiceClient struct {
 }
 
 func MakeInstanceClient(ctx context.Context) (*InstanceServiceClient, error) {
-	md, err := metadata.InstanceMetadataFromFile()
+	md, err := metadata.FetchInstanceMetadata()
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func makeTLSConfigFromInstance(ctx context.Context, md metadata.InstanceMetadata
 		return nil, fnerrors.New("could not private key file: %v", err)
 	}
 
-	keyPair, err := tls.X509KeyPair(publicCert, privateKey)
+	cert, err := tls.X509KeyPair(publicCert, privateKey)
 	if err != nil {
 		return nil, fnerrors.New("could not load instance keys: %v", err)
 	}
@@ -73,7 +73,9 @@ func makeTLSConfigFromInstance(ctx context.Context, md metadata.InstanceMetadata
 	console.DebugWithTimestamp(ctx, "private key: %v\n", string(privateKey))
 
 	return &tls.Config{
-		RootCAs:      caCertPool,
-		Certificates: []tls.Certificate{keyPair},
+		RootCAs: caCertPool,
+		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return &cert, nil
+		},
 	}, nil
 }
