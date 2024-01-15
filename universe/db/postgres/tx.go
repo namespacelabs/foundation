@@ -22,6 +22,7 @@ const (
 	pgDeadlockFailure              = "40P01"
 	pgUniqueConstraintViolation    = "23505"
 	pgExclusionConstraintViolation = "23P01"
+	pgAdminShutdown                = "57P01" // PG restarts
 )
 
 // https://www.postgresql.org/docs/current/mvcc-serialization-failure-handling.html
@@ -30,6 +31,7 @@ var retryableSqlStates = []string{
 	pgDeadlockFailure,
 	pgUniqueConstraintViolation,
 	pgExclusionConstraintViolation,
+	pgAdminShutdown,
 }
 
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
