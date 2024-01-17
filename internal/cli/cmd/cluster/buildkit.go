@@ -111,7 +111,7 @@ func newBuildkitProxy() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("static_worker_definition_path")
 	controlSockPath := cmd.Flags().String("control_sock_path", "", "If set, status HTTP server listens to this unix socket path.")
 	_ = cmd.Flags().MarkHidden("control_sock_path")
-	annotateBuild := cmd.Flags().Bool("annotate_build", false, "If set, annotate builds when running in Namespace instances.")
+	annotateBuild := cmd.Flags().Bool("annotate_build", true, "If set, annotate builds when running in Namespace instances.")
 	_ = cmd.Flags().MarkHidden("annotate_build")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, _ []string) error {

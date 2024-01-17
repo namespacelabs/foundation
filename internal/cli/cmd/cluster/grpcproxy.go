@@ -6,9 +6,11 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -62,7 +64,7 @@ func newGrpcProxy(ctx context.Context, workerInfo *controlapi.ListWorkersRespons
 
 	if g.annotateBuild {
 		instanceCli, err := private.MakeInstanceClient(ctx)
-		if err != nil {
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			console.DebugWithTimestamp(ctx, "failed to create instance client: %v\n", err)
 			return nil, fmt.Errorf("failed to create instance client, you may not be running in a Namespace instance: %w", err)
 		}
@@ -260,7 +262,8 @@ func shortcutSolveRequest(instanceCli *private.InstanceServiceClient) proxyFunc 
 		}
 
 		console.DebugWithTimestamp(ctx, "[%s] shortcutSolveRequest: %v\n", id, solveReq.String())
-		if instanceCli != nil {
+		if instanceCli != nil && !solveReq.Internal {
+			// Buildx calls `Solve` with Internal: true when discovering remote driver capabilities, we'll skip this ref annotation
 			if _, err := instanceCli.AddAttachment(ctx, &instancev1beta.AddAttachmentRequest{
 				BuildAttachment: &instancev1beta.BuildAttachment{
 					BuildRef: solveReq.GetRef(),
