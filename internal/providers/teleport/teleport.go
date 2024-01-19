@@ -10,20 +10,20 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"time"
 
 	"github.com/gravitational/teleport/api/profile"
 	"google.golang.org/protobuf/proto"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/cfg"
-	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/teleport/configuration"
 )
 
@@ -50,42 +50,20 @@ func Register() {
 			return nil, fnerrors.BadInputError("registry must be specified")
 		}
 
-		var registryTransport *registry.RegistryTransport
-		tpRegistryApp := conf.GetTeleport().GetRegistryApp()
+		if conf.GetTeleport().GetEcrCredentialsProxyApp() != "" {
+			oci.RegisterDomainKeychain(registryHost(conf.Registry), ecrTeleportKeychain{conf: conf}, oci.Keychain_UseAlways)
+		}
 
-		switch {
-		case conf.GetTeleport().GetUserProfile() != "":
-			profile, err := profile.FromDir("", conf.GetTeleport().GetUserProfile())
-			if err != nil {
-				return nil, fnerrors.UsageError("Login with 'tsh login'", "Teleport profile is not found.")
-			}
-
-			registryTransport = &registry.RegistryTransport{
-				Tls: &registry.RegistryTransport_TLS{
-					Endpoint: fmt.Sprintf("%s.%s", tpRegistryApp, profile.WebProxyAddr),
-					Cert:     profile.AppCertPath(tpRegistryApp),
-					Key:      profile.UserKeyPath(),
-				},
-			}
-		case conf.GetTeleport().GetRegistryCertsDir() != "":
-			certPath := filepath.Join(conf.GetTeleport().GetRegistryCertsDir(), "tlscert")
-			keyPath := filepath.Join(conf.GetTeleport().GetRegistryCertsDir(), "key")
-			registryTransport = &registry.RegistryTransport{
-				Tls: &registry.RegistryTransport_TLS{
-					Endpoint: fmt.Sprintf("%s.%s", tpRegistryApp, conf.GetTeleport().GetProxyUrl()),
-					Cert:     certPath,
-					Key:      keyPath,
-				},
-			}
-		default:
-			return nil, fnerrors.BadInputError("either user_profile or bot_destination_dir must be set")
+		regTransport, err := registryTransport(conf)
+		if err != nil {
+			return nil, err
 		}
 
 		messages := []proto.Message{
 			&client.HostEnv{Provider: "teleport"},
 			&registry.Registry{
 				Url:       conf.Registry,
-				Transport: registryTransport,
+				Transport: regTransport,
 			},
 			conf.Teleport,
 		}
@@ -102,26 +80,8 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 
 	switch {
 	case conf.GetUserProfile() != "":
-		profile, err := profile.FromDir("", conf.GetUserProfile())
-		if err != nil {
-			return client.ClusterConfiguration{}, fnerrors.InternalError("failed to resolve teleport profile")
-		}
-
-		cert, err := parseCertificate(ctx, profile.TLSCertPath())
-		if err != nil {
-			return client.ClusterConfiguration{}, fnerrors.InternalError("failed to load user's certificate")
-		}
-
-		if time.Until(cert.NotAfter) < loginMinValidityTTL {
-			usage := fmt.Sprintf(
-				"Login with 'tsh login --proxy=%s --user=%s %s'",
-				profile.WebProxyAddr, profile.Username, profile.SiteName,
-			)
-			return client.ClusterConfiguration{}, fnerrors.UsageError(usage, "Teleport credentials have expired or expire soon.")
-		}
-
-		if err := tshAppsLogin(ctx, conf.GetRegistryApp(), profile.AppCertPath(conf.GetRegistryApp())); err != nil {
-			return client.ClusterConfiguration{}, fnerrors.InvocationError("tsh", "failed to login to app %q", conf.GetRegistryApp())
+		if err := tshEnsureLogin(ctx, conf); err != nil {
+			return client.ClusterConfiguration{}, err
 		}
 
 		return teleportUserKubeconfig(ctx, conf)
@@ -248,32 +208,39 @@ func teleportBotKubeconfig(ctx context.Context, conf *configuration.Teleport) (c
 	}, nil
 }
 
-func tshAppsLogin(ctx context.Context, app, appCertPath string) error {
-	// First we check if there is already a valid certificate as `tbot apps login` is very slow (>3s).
-	if err := tasks.Return0(ctx, tasks.Action("teleport.validate.cert").Arg("certificate", appCertPath), func(ctx context.Context) error {
-		cert, err := parseCertificate(ctx, appCertPath)
-		if err != nil {
-			return err
-		}
-
-		// If certificate is not valid after 10m then relogin.
-		if time.Until(cert.NotAfter) < loginMinValidityTTL {
-			return errors.New("certificate has expired or expires soon")
-		}
-
-		return nil
-	}); err == nil {
-		return nil
+func tshEnsureLogin(ctx context.Context, conf *configuration.Teleport) error {
+	profile, err := profile.FromDir("", conf.GetUserProfile())
+	if err != nil {
+		return fnerrors.InternalError("failed to resolve teleport profile")
 	}
 
-	return tasks.Return0(ctx, tasks.Action("tsh.apps.login").Arg("app", app), func(ctx context.Context) error {
-		c := exec.CommandContext(ctx, tshBin, "apps", "login", app, "--ttl", appLoginTTLMins)
-		if err := c.Run(); err != nil {
-			return err
-		}
+	cert, err := parseCertificate(ctx, profile.TLSCertPath())
+	if err != nil {
+		return fnerrors.InternalError("failed to load user's certificate")
+	}
 
-		return nil
-	})
+	if time.Until(cert.NotAfter) < loginMinValidityTTL {
+		usage := fmt.Sprintf("Login with 'tsh login --proxy=%s --user=%s %s'",
+			profile.WebProxyAddr, profile.Username, profile.SiteName,
+		)
+		return fnerrors.UsageError(usage, "Teleport credentials have expired or expire soon.")
+	}
+
+	var appsLogin []string
+	if app := conf.GetRegistryApp(); app != "" {
+		appsLogin = append(appsLogin, app)
+	}
+	if app := conf.GetEcrCredentialsProxyApp(); app != "" {
+		appsLogin = append(appsLogin, app)
+	}
+
+	for _, app := range appsLogin {
+		if err := tshAppsLogin(ctx, app, profile.AppCertPath(app)); err != nil {
+			return fnerrors.InvocationError("tsh", "failed to login to app %q", app)
+		}
+	}
+
+	return nil
 }
 
 func parseCertificate(ctx context.Context, certPath string) (*x509.Certificate, error) {
@@ -284,8 +251,39 @@ func parseCertificate(ctx context.Context, certPath string) (*x509.Certificate, 
 
 	certData, _ := pem.Decode(b)
 	if certData == nil {
-		return nil, errors.New("not pem formatted certificate")
+		return nil, errors.New("not a pem formatted certificate")
 	}
 
 	return x509.ParseCertificate(certData.Bytes)
+}
+
+func registryHost(registry string) string {
+	rHost := registry
+	if u, _ := url.Parse(registry); u != nil && u.Host != "" {
+		rHost = u.Host
+	}
+
+	return rHost
+}
+
+func registryTransport(conf *configuration.Configuration) (*registry.RegistryTransport, error) {
+	registryApp := conf.GetTeleport().GetRegistryApp()
+	// If Teleport Registry App is not configured, then no need for custom transport as we access directly registry.
+
+	appCreds, err := resolveTeleportAppCreds(conf.GetTeleport(), registryApp)
+	if err != nil {
+		return nil, err
+	}
+
+	if appCreds == nil {
+		return nil, nil
+	}
+
+	return &registry.RegistryTransport{
+		Tls: &registry.RegistryTransport_TLS{
+			Endpoint: appCreds.endpoint,
+			Cert:     appCreds.certFile,
+			Key:      appCreds.keyFile,
+		},
+	}, nil
 }

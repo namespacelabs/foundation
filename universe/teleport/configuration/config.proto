@@ -20,4 +20,7 @@ message Teleport {
     string kube_cluster       = 4;
     string registry_certs_dir = 5;
     string registry_app       = 6;
+
+    string ecr_credentials_proxy_app       = 7;
+    string ecr_credentials_proxy_certs_dir = 8;
 }
