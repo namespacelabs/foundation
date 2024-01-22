@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
 func NewWorkspaceCmd() *cobra.Command {
@@ -35,9 +36,19 @@ func newDescribeCmd() *cobra.Command {
 	}
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
+	jsonKey := cmd.Flags().StringP("key", "k", "", "Select a field to print if in json output mode.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *jsonKey != "" && *output != "json" {
+			return fnerrors.New("--key requires --output=json")
+		}
+
 		res, err := fnapi.GetTenant(ctx)
+		if err != nil {
+			return err
+		}
+
+		imgReg, err := api.GetImageRegistry(ctx, api.Methods)
 		if err != nil {
 			return err
 		}
@@ -45,20 +56,60 @@ func newDescribeCmd() *cobra.Command {
 		stdout := console.Stdout(ctx)
 		switch *output {
 		case "json":
-			d := json.NewEncoder(stdout)
-			d.SetIndent("", "  ")
-			if err := d.Encode(res.Tenant); err != nil {
+			out := jsonOut{Tenant: res.Tenant}
+			if nscr := imgReg.NSCR; nscr != nil {
+				out.RegistryUrl = fmt.Sprintf("%s/%s", nscr.EndpointAddress, nscr.Repository)
+			}
+
+			if *jsonKey == "" {
+				d := json.NewEncoder(stdout)
+				d.SetIndent("", "  ")
+				if err := d.Encode(out); err != nil {
+					return fnerrors.InternalError("failed to encode tenant as JSON output: %w", err)
+				}
+
+				return nil
+			}
+
+			data, err := json.Marshal(out)
+			if err != nil {
 				return fnerrors.InternalError("failed to encode tenant as JSON output: %w", err)
 			}
+
+			// XXX All selectable keys are strings for now.
+			// Parsing into string to make it obvious if this assumption ever breaks.
+			parsed := map[string]string{}
+			if err := json.Unmarshal(data, &parsed); err != nil {
+				return fnerrors.InternalError("failed to decode JSON: %w", err)
+			}
+
+			selected, ok := parsed[*jsonKey]
+			if !ok {
+				return fnerrors.New("selected json key %q not found in response", *jsonKey)
+			}
+
+			// As all selectable values are strings, we do not JSON marshal here, to keep
+			// the output easy to consume programatically (e.g. no quotation of plain strings).
+			fmt.Fprintf(stdout, "%v\n", selected)
 
 		default:
 			fmt.Fprintf(stdout, "\nWorkspace details:\n\n")
 			fmt.Fprintf(stdout, "Name: %s\n", res.Tenant.Name)
 			fmt.Fprintf(stdout, "Tenant ID: %s\n", res.Tenant.TenantId)
+
+			if nscr := imgReg.NSCR; nscr != nil {
+				fmt.Fprintf(stdout, "Registry URL: %s/%s\n", nscr.EndpointAddress, nscr.Repository)
+			}
 		}
 
 		return nil
 	})
 
 	return cmd
+}
+
+type jsonOut struct {
+	*fnapi.Tenant
+
+	RegistryUrl string `json:"registry_url,omitempty"`
 }
