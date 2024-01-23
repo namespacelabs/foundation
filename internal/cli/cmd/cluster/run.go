@@ -106,11 +106,15 @@ func NewRunCmd() *cobra.Command {
 		}
 
 		if *experimental != "" {
-			var m any
-			if err := json.Unmarshal([]byte(*experimental), &m); err != nil {
+			if err := json.Unmarshal([]byte(*experimental), &opts.Experimental); err != nil {
 				return fnerrors.New("failed to parse: %w", err)
 			}
-			opts.Experimental = m
+		}
+
+		if *instanceExperimental != "" {
+			if err := json.Unmarshal([]byte(*instanceExperimental), &opts.InstanceExperimental); err != nil {
+				return fnerrors.New("failed to parse: %w", err)
+			}
 		}
 
 		if *instanceExperimental != "" {
