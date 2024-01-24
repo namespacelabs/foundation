@@ -79,25 +79,24 @@ func (em keychainSession) refreshPrivateAuth(ctx context.Context) (*dockertypes.
 		return nil, fnerrors.New("aws/ecr: no credentials available")
 	}
 
-	return tasks.Return(ctx, tasks.Action("aws.ecr.auth"),
-		func(ctx context.Context) (*dockertypes.AuthConfig, error) {
-			return refreshAuth(ctx,
-				func(ctx context.Context) ([]types.AuthorizationData, error) {
-					resp, err := compute.GetValue[*ecr.GetAuthorizationTokenOutput](ctx, &cachedAuthToken{sesh: em.sesh})
-					if err != nil {
-						return nil, err
-					}
-					return resp.AuthorizationData, nil
-				},
-				func(ctx context.Context) (string, error) {
-					res, err := compute.Get(ctx, em.resolveAccount())
-					if err != nil {
-						return "", err
-					}
+	return tasks.Return(ctx, tasks.Action("aws.ecr.auth"), func(ctx context.Context) (*dockertypes.AuthConfig, error) {
+		return RefreshAuth(ctx,
+			func(ctx context.Context) ([]types.AuthorizationData, error) {
+				resp, err := compute.GetValue[*ecr.GetAuthorizationTokenOutput](ctx, &cachedAuthToken{sesh: em.sesh})
+				if err != nil {
+					return nil, err
+				}
+				return resp.AuthorizationData, nil
+			},
+			func(ctx context.Context) (string, error) {
+				res, err := compute.Get(ctx, em.resolveAccount())
+				if err != nil {
+					return "", err
+				}
 
-					return repoURL(em.sesh.Config(), res.Value), nil
-				})
-		})
+				return repoURL(em.sesh.Config(), res.Value), nil
+			})
+	})
 }
 
 func (em keychainSession) resolveAccount() compute.Computable[*sts.GetCallerIdentityOutput] {

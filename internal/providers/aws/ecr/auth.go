@@ -17,7 +17,7 @@ import (
 type tokenProducerFunc func(context.Context) ([]types.AuthorizationData, error)
 type makeServerAddressFunc func(context.Context) (string, error)
 
-func refreshAuth(ctx context.Context, login tokenProducerFunc, makeServerAddress makeServerAddressFunc) (*dockertypes.AuthConfig, error) {
+func RefreshAuth(ctx context.Context, login tokenProducerFunc, makeServerAddress makeServerAddressFunc) (*dockertypes.AuthConfig, error) {
 	authData, err := login(ctx)
 	if err != nil {
 		return nil, err

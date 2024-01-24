@@ -173,12 +173,23 @@ type defaultKeychain struct {
 	writing bool
 }
 
-func (ks defaultKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+func (dk defaultKeychain) Resolve(resource authn.Resource) (authn.Authenticator, error) {
+	useKeychain := func(k keychainMap) bool {
+		return k.When == Keychain_UseAlways || (k.When == Keychain_UseOnWrites && dk.writing)
+	}
+
+	// First we search for an exact match of a registry.
 	for _, kc := range staticMapping {
-		if resource.RegistryStr() == kc.Domain || strings.HasSuffix(resource.RegistryStr(), "."+kc.Domain) {
-			if kc.When == Keychain_UseAlways || (kc.When == Keychain_UseOnWrites && ks.writing) {
-				return kc.Keychain.Resolve(ks.ctx, resource)
-			}
+		if resource.RegistryStr() == kc.Domain && useKeychain(kc) {
+			return kc.Keychain.Resolve(dk.ctx, resource)
+		}
+	}
+
+	// Then for parent domain match, useful for registering Cloud container registries (e.g. per account registries in
+	// amazonaws.com or pkg.dev) to use the same keychain for all the AWS or GCP registries.
+	for _, kc := range staticMapping {
+		if strings.HasSuffix(resource.RegistryStr(), "."+kc.Domain) && useKeychain(kc) {
+			return kc.Keychain.Resolve(dk.ctx, resource)
 		}
 	}
 
