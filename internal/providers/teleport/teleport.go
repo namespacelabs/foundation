@@ -85,10 +85,10 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 		}
 
 		return teleportUserKubeconfig(ctx, conf)
-	case conf.GetKubeCertsDir() != "" && conf.GetRegistryCertsDir() != "":
+	case conf.GetKubeCertsDir() != "":
 		return teleportBotKubeconfig(ctx, conf)
 	default:
-		return client.ClusterConfiguration{}, fnerrors.BadInputError("either user_profile or kube_certs_dir and registry_certs_dir must be set")
+		return client.ClusterConfiguration{}, fnerrors.BadInputError("either user_profile or kube_certs_dir must be set")
 	}
 }
 
