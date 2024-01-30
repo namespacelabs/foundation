@@ -55,6 +55,7 @@ func NewRunCmd() *cobra.Command {
 	exposeNscBins := run.Flags().Bool("expose_nsc_bins", false, "If set to true, exposes Namespace managed nsc binaries to the container.")
 	network := run.Flags().String("network", "", "The network setting to start the container with.")
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
+	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
@@ -62,6 +63,7 @@ func NewRunCmd() *cobra.Command {
 	run.Flags().MarkHidden("forward_nsc_state")
 	run.Flags().MarkHidden("network")
 	run.Flags().MarkHidden("experimental")
+	run.Flags().MarkHidden("instance_experimental")
 	run.Flags().MarkHidden("expose_nsc_bins")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -109,6 +111,14 @@ func NewRunCmd() *cobra.Command {
 				return fnerrors.New("failed to parse: %w", err)
 			}
 			opts.Experimental = m
+		}
+
+		if *instanceExperimental != "" {
+			var m any
+			if err := json.Unmarshal([]byte(*instanceExperimental), &m); err != nil {
+				return fnerrors.New("failed to parse: %w", err)
+			}
+			opts.InstanceExperimental = m
 		}
 
 		exported, err := fillInIngressRules(*exportedPorts, *ingressRules)
