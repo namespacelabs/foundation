@@ -41,7 +41,7 @@ jobs:
           CGO_ENABLED: 0
         run: go build -v -o ns ./cmd/ns
       - name: Upload ns
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ns-${{ runner.os }}
           path: ns
@@ -54,7 +54,7 @@ jobs:
         run: go build -v -o nsc ./cmd/nsc
 
       - name: Upload nsc
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: nsc-${{ runner.os }}
           path: nsc
@@ -133,7 +133,7 @@ jobs:
             internal/testdata/server/gogrpc
 
       - name: Upload action log
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ns-action-log-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
           path: /tmp/action_log
@@ -231,7 +231,7 @@ jobs:
             --all
 
       - name: Upload action log
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
@@ -352,7 +352,7 @@ jobs:
             --run_codegen=false
 
       - name: Upload action log
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
@@ -416,7 +416,7 @@ jobs:
             --parallel
 
       - name: Upload action log
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
