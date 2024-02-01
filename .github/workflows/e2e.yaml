@@ -26,7 +26,7 @@ jobs:
       - nscloud-cache-tag-foundation-golang
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -81,7 +81,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Log in to the Container registry
         uses: docker/login-action@v2
@@ -147,7 +147,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Log in to the Container registry
         uses: docker/login-action@v2
@@ -202,7 +202,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download ns
         uses: actions/download-artifact@v3
@@ -255,7 +255,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download nsc
         uses: actions/download-artifact@v3
@@ -291,7 +291,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup cross-invocation caching (Go)
         uses: actions/cache@v3
@@ -379,7 +379,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: checkout dependant repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: namespacelabs/${{ matrix.repo }}
           path: external-repo
@@ -440,7 +440,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Check out
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup cross-invocation caching (Go)
         uses: actions/cache@v3

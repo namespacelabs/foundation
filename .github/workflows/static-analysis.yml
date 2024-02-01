@@ -17,7 +17,7 @@ jobs:
     runs-on: nscloud-ubuntu-22.04-amd64-2x8
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
@@ -42,7 +42,7 @@ jobs:
         with:
           go-version: 1.21.x
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Run go vet
         run: go vet ./...
       - name: Breakpoint on failure
@@ -69,7 +69,7 @@ jobs:
           go-version: 1.21.x
 
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install staticcheck
         run: "go install honnef.co/go/tools/cmd/staticcheck"
