@@ -10,13 +10,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"time"
 
 	"github.com/bcicen/jstream"
 	"github.com/dustin/go-humanize"
-	"github.com/spf13/pflag"
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -29,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -59,41 +58,7 @@ type API struct {
 
 var (
 	Methods = MakeAPI()
-
-	rpcEndpointOverride string
-	RegionName          string
 )
-
-func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
-	endpointFlag := fmt.Sprintf("%sendpoint", prefix)
-	regionFlag := fmt.Sprintf("%sregion", prefix)
-
-	flags.StringVar(&rpcEndpointOverride, endpointFlag, "", "Where to dial to when reaching nscloud.")
-	flags.StringVar(&RegionName, regionFlag, "eu", "Which region to use.")
-
-	if hide {
-		_ = flags.MarkHidden(endpointFlag)
-		_ = flags.MarkHidden(regionFlag)
-	}
-}
-
-func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
-	if rpcEndpointOverride != "" {
-		return rpcEndpointOverride, nil
-	}
-
-	if rpcEndpoint := os.Getenv("NSC_ENDPOINT"); rpcEndpoint != "" {
-		return rpcEndpoint, nil
-	}
-
-	if tok.PrimaryRegion != "" {
-		return "https://api." + tok.PrimaryRegion, nil
-	}
-
-	rpcEndpoint := fmt.Sprintf("https://api.%s.nscluster.cloud", RegionName)
-
-	return rpcEndpoint, nil
-}
 
 func MakeAPI() API {
 	return API{
@@ -282,7 +247,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 		}
 
 		var response StartCreateKubernetesClusterResponse
-		if err := api.StartCreateKubernetesCluster.Do(ctx, req, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.StartCreateKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, fnerrors.New("failed to create cluster: %w", err)
 		}
 
@@ -371,7 +336,7 @@ func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitC
 		tries := 0
 		for {
 			// We continue to wait for the cluster to become ready until we observe a READY.
-			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, ResolveRegionalEndpoint, func(body io.Reader) error {
+			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, func(body io.Reader) error {
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
@@ -517,13 +482,13 @@ func ClusterService(cluster *KubernetesCluster, name string) *Cluster_ServiceSta
 func DestroyCluster(ctx context.Context, api API, clusterId string) error {
 	return api.DestroyKubernetesCluster.Do(ctx, DestroyKubernetesClusterRequest{
 		ClusterId: clusterId,
-	}, ResolveRegionalEndpoint, nil)
+	}, endpoint.ResolveRegionalEndpoint, nil)
 }
 
 func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
-		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesCluster.Do(ctx, GetKubernetesClusterRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -533,7 +498,7 @@ func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesC
 func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.ensure").HumanReadablef("Waiting for environment").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
-		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -543,7 +508,7 @@ func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernet
 func GetClusterSummary(ctx context.Context, api API, clusterId string, resources []string) (*GetKubernetesClusterSummaryResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-summary").LogLevel(1).Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterSummaryResponse, error) {
 		var response GetKubernetesClusterSummaryResponse
-		if err := api.GetKubernetesClusterSummary.Do(ctx, GetKubernetesClusterSummaryRequest{ClusterId: clusterId, Resource: resources}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesClusterSummary.Do(ctx, GetKubernetesClusterSummaryRequest{ClusterId: clusterId, Resource: resources}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -553,7 +518,7 @@ func GetClusterSummary(ctx context.Context, api API, clusterId string, resources
 func GetKubernetesConfig(ctx context.Context, api API, clusterId string) (*GetKubernetesConfigResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesConfigResponse, error) {
 		var response GetKubernetesConfigResponse
-		if err := api.GetKubernetesConfig.Do(ctx, GetKubernetesConfigRequest{ClusterId: clusterId}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetKubernetesConfig.Do(ctx, GetKubernetesConfigRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -563,7 +528,7 @@ func GetKubernetesConfig(ctx context.Context, api API, clusterId string) (*GetKu
 func GetImageRegistry(ctx context.Context, api API) (*GetImageRegistryResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-image-registry"), func(ctx context.Context) (*GetImageRegistryResponse, error) {
 		var response GetImageRegistryResponse
-		if err := api.GetImageRegistry.Do(ctx, emptypb.Empty{}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetImageRegistry.Do(ctx, emptypb.Empty{}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -598,7 +563,7 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 		}
 
 		var list ListKubernetesClustersResponse
-		if err := api.ListKubernetesClusters.Do(ctx, req, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&list)); err != nil {
+		if err := api.ListKubernetesClusters.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&list)); err != nil {
 			return nil, err
 		}
 
@@ -677,7 +642,7 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.get-profile"), func(ctx context.Context) (*GetProfileResponse, error) {
 		var response GetProfileResponse
-		if err := api.GetProfile.Do(ctx, emptypb.Empty{}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetProfile.Do(ctx, emptypb.Empty{}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -687,7 +652,7 @@ func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
 func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest) (*RegisterIngressResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*RegisterIngressResponse, error) {
 		var response RegisterIngressResponse
-		if err := api.RegisterIngress.Do(ctx, req, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.RegisterIngress.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -697,7 +662,7 @@ func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest) (
 func ListIngresses(ctx context.Context, api API, clusterID string) (*ListIngressesResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.list-ingresses"), func(ctx context.Context) (*ListIngressesResponse, error) {
 		var response ListIngressesResponse
-		if err := api.ListIngresses.Do(ctx, ListIngressesRequest{ClusterId: clusterID}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.ListIngresses.Do(ctx, ListIngressesRequest{ClusterId: clusterID}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -707,7 +672,7 @@ func ListIngresses(ctx context.Context, api API, clusterID string) (*ListIngress
 func ListVolumes(ctx context.Context, api API) (*ListVolumesResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.list-volumes"), func(ctx context.Context) (*ListVolumesResponse, error) {
 		var response ListVolumesResponse
-		if err := api.ListVolumes.Do(ctx, emptypb.Empty{}, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.ListVolumes.Do(ctx, emptypb.Empty{}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -716,7 +681,7 @@ func ListVolumes(ctx context.Context, api API) (*ListVolumesResponse, error) {
 
 func DestroyVolumeByTag(ctx context.Context, api API, tag string) error {
 	return tasks.Return0(ctx, tasks.Action("nscloud.destroy-volumes"), func(ctx context.Context) error {
-		if err := api.DestroyVolumeByTag.Do(ctx, DestroyVolumeByTagRequest{Tag: tag}, ResolveRegionalEndpoint, nil); err != nil {
+		if err := api.DestroyVolumeByTag.Do(ctx, DestroyVolumeByTagRequest{Tag: tag}, endpoint.ResolveRegionalEndpoint, nil); err != nil {
 			return err
 		}
 		return nil
@@ -732,7 +697,7 @@ func (crp *clusterCreateProgress) FormatProgress() string { return crp.status.Lo
 
 func RefreshCluster(ctx context.Context, api API, req RefreshKubernetesClusterRequest) (*RefreshKubernetesClusterResponse, error) {
 	var response RefreshKubernetesClusterResponse
-	if err := api.RefreshKubernetesCluster.Do(ctx, req, ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+	if err := api.RefreshKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 		return nil, err
 	}
 	return &response, nil
@@ -768,6 +733,6 @@ func regionEndpointResolver(ingressDomain string) func(context.Context, fnapi.Re
 			return fmt.Sprintf("https://api.%s", ingressDomain), nil
 		}
 
-		return ResolveRegionalEndpoint(ctx, tok)
+		return endpoint.ResolveRegionalEndpoint(ctx, tok)
 	}
 }

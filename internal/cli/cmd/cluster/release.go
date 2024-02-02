@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
 
 func newSuspendCmd() *cobra.Command {
@@ -23,7 +24,7 @@ func newSuspendCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		return api.Methods.SuspendKubernetesCluster.Do(ctx, api.SuspendKubernetesClusterRequest{
 			ClusterId: args[0],
-		}, api.ResolveRegionalEndpoint, nil)
+		}, endpoint.ResolveRegionalEndpoint, nil)
 	})
 
 	return cmd
@@ -40,7 +41,7 @@ func newReleaseCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		return api.Methods.ReleaseKubernetesCluster.Do(ctx, api.ReleaseKubernetesClusterRequest{
 			ClusterId: args[0],
-		}, api.ResolveRegionalEndpoint, nil)
+		}, endpoint.ResolveRegionalEndpoint, nil)
 	})
 
 	return cmd
@@ -57,7 +58,7 @@ func newWakeCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		return api.Methods.WakeKubernetesCluster.Do(ctx, api.WakeKubernetesClusterRequest{
 			ClusterId: args[0],
-		}, api.ResolveRegionalEndpoint, nil)
+		}, endpoint.ResolveRegionalEndpoint, nil)
 	})
 
 	return cmd

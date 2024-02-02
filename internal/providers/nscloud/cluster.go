@@ -19,6 +19,7 @@ import (
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
@@ -37,7 +38,7 @@ var (
 )
 
 func SetupFlags(flags *pflag.FlagSet, hide bool) {
-	api.SetupFlags("nscloud_", flags, hide)
+	endpoint.SetupFlags("nscloud_", flags, hide)
 	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_machine_type")
 }

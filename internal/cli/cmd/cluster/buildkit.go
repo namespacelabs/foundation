@@ -27,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/localexec"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/internal/sdk/buildctl"
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -224,7 +225,7 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 	}
 
 	cmd := exec.Command(os.Args[0], "buildkit", "proxy", "--sock_path="+md.SocketPath,
-		"--platform="+string(md.Platform), "--region="+api.RegionName, "--control_sock_path="+md.ControlSocketPath)
+		"--platform="+string(md.Platform), "--region="+endpoint.RegionName, "--control_sock_path="+md.ControlSocketPath)
 	if md.DebugLogPath != "" {
 		cmd.Args = append(cmd.Args, "--debug_to_file="+md.DebugLogPath)
 	}

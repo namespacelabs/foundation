@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
@@ -27,6 +28,7 @@ import (
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api/public"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -52,26 +54,25 @@ func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, st
 	ctx, done := context.WithTimeout(parentCtx, 5*time.Minute)
 	defer done()
 
-	response, err := api.CreateBuildCluster(ctx, api.Methods, bp.platform)
+	cli, err := public.NewBuilderServiceClient(ctx)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if err := waitUntilReady(ctx, response); err != nil {
-		return nil, "", fmt.Errorf("failed to wait for buildkit to become ready: %w", err)
-	}
-
-	conn, err := bp.rawDial(ctx, response)
-	return conn, response.ClusterId, err
-}
-
-func (bp *BuildClusterInstance) rawDial(ctx context.Context, response *api.CreateClusterResult) (net.Conn, error) {
-	buildkitSvc, err := resolveBuildkitService(response)
+	ctx, err = api.ContextWithBearerToken(ctx)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return api.DialEndpoint(ctx, buildkitSvc.Endpoint)
+	response, err := cli.EnsureBuildInstance(ctx, &builderv1beta.EnsureBuildInstanceRequest{
+		Platform: string(bp.platform),
+	})
+	if err != nil {
+		return nil, "", err
+	}
+
+	conn, err := api.DialEndpoint(ctx, response.Endpoint)
+	return conn, response.InstanceId, err
 }
 
 func NewBuildClusterInstance(ctx context.Context, platformStr string) (*BuildClusterInstance, error) {

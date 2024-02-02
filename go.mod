@@ -5,8 +5,8 @@ go 1.21
 toolchain go1.21.5
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.3.0-20240111112358-350d6886f112.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.32.0-20240111112358-350d6886f112.1
+	buf.build/gen/go/namespace/cloud/grpc/go v1.3.0-20240202094328-7e6c2a95449c.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.32.0-20240202094328-7e6c2a95449c.1
 	cloud.google.com/go/artifactregistry v1.14.1
 	cloud.google.com/go/container v1.26.0
 	cuelang.org/go v0.4.3

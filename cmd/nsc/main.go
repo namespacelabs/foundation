@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/consolesink"
 	ghenv "namespacelabs.dev/foundation/internal/github/env"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/internal/text/timefmt"
 	v1 "namespacelabs.dev/foundation/public/nscloud/proto/v1"
 	"namespacelabs.dev/foundation/std/protocol"
@@ -37,7 +37,7 @@ func main() {
 		FormatErr:            formatErr,
 		ConsoleRenderer:      renderLine,
 		RegisterCommands: func(root *cobra.Command) {
-			api.SetupFlags("", root.PersistentFlags(), false)
+			endpoint.SetupFlags("", root.PersistentFlags(), false)
 			ia.SetupFlags(root.PersistentFlags())
 			nsccmd.RegisterCommands(root)
 		},

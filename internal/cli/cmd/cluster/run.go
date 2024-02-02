@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
@@ -306,7 +307,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			}
 
 			var response api.CreateContainersResponse
-			if err := api.Methods.CreateContainers.Do(ctx, req, api.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			if err := api.Methods.CreateContainers.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 			return &response, nil
@@ -330,7 +331,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			if err := api.Methods.StartContainers.Do(ctx, api.StartContainersRequest{
 				Id:        target,
 				Container: []*api.ContainerRequest{container},
-			}, api.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 
@@ -473,7 +474,7 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 		if err := api.Methods.CreateContainers.Do(ctx, api.CreateContainersRequest{
 			Compose:         []*api.ComposeRequest{{Contents: projectYAML}},
 			DevelopmentMode: devmode,
-		}, api.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

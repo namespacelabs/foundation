@@ -9,14 +9,14 @@ import (
 	ia "namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
 
 func main() {
 	fncobra.DoMain(fncobra.MainOpts{
 		Name: "docker-credential-nsc",
 		RegisterCommands: func(root *cobra.Command) {
-			api.SetupFlags("", root.PersistentFlags(), false)
+			endpoint.SetupFlags("", root.PersistentFlags(), false)
 			ia.SetupFlags(root.PersistentFlags())
 
 			root.AddCommand(cluster.NewDockerCredHelperStoreCmd(false))
