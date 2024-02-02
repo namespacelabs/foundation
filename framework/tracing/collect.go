@@ -52,6 +52,10 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 		return callback(ctx)
 	}
 
+	if !trace.SpanFromContext(ctx).IsRecording() {
+		return callback(ctx)
+	}
+
 	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
 
 	ctx, span := tracer.Start(ctx, name.name, opts...)
