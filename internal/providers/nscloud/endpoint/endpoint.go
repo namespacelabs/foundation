@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
+
 var (
 	rpcEndpointOverride string
 	RegionName          string
