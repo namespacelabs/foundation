@@ -46,7 +46,7 @@ func StartLogin(ctx context.Context, tenantId string, sessionDuration time.Durat
 	}
 
 	var resp StartLoginResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(&resp)); err != nil {
+	if err := AnonymousCall(ctx, ResolveIAMEndpoint, "nsl.signin.SigninService/StartLogin", req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
@@ -76,7 +76,7 @@ func CompleteTenantLogin(ctx context.Context, id string) (*CompleteTenantLoginRe
 
 	var resp []CompleteTenantLoginResponse
 	// Explicitly use CallAPI() so we don't surface an action to the user while waiting.
-	if err := AnonymousCall(ctx, EndpointAddress, method, req, DecodeJSONResponse(&resp)); err != nil {
+	if err := AnonymousCall(ctx, ResolveIAMEndpoint, method, req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 

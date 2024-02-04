@@ -56,7 +56,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/mux v1.8.0
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.1
 	github.com/gravitational/teleport/api v0.0.0-20231212204825-da589355d4ea
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
@@ -67,7 +67,7 @@ require (
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
-	github.com/jpillora/chisel v1.7.7
+	github.com/jpillora/chisel v1.9.1
 	github.com/keikoproj/aws-auth v0.4.0
 	github.com/klauspost/compress v1.16.3
 	github.com/kr/text v0.2.0
@@ -126,7 +126,7 @@ require (
 	golang.org/x/sync v0.3.0
 	golang.org/x/sys v0.15.0
 	golang.org/x/term v0.15.0
-	google.golang.org/api v0.128.0
+	google.golang.org/api v0.136.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230920204549-e6e6cdab5c13
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231009173412-8bfb1ae86b6c
 	google.golang.org/grpc v1.59.0
@@ -136,14 +136,15 @@ require (
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.13.1
 	honnef.co/go/tools v0.4.2
-	inet.af/tcpproxy v0.0.0-20221017015627-91f861402626
+	inet.af/tcpproxy v0.0.0-20231102063150-2862066fc2a9
 	k8s.io/api v0.28.3
 	k8s.io/apiextensions-apiserver v0.28.3
 	k8s.io/apimachinery v0.28.3
 	k8s.io/client-go v0.28.3
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
-	namespacelabs.dev/go-ids v0.0.0-20220708072700-49c0a87d068b
+	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
+	namespacelabs.dev/integrations v0.0.0-20240204225341-7cf4fb25b256
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/yaml v1.3.0
 )
@@ -235,7 +236,7 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/googleapis/enterprise-certificate-proxy v0.2.4 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.12.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect

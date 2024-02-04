@@ -81,7 +81,7 @@ func AllocateName(ctx context.Context, opts AllocateOpts) (*NameResource, error)
 
 		var nr IssueResponse
 
-		if err := AuthenticatedCall(ctx, EndpointAddress, "nsl.naming.NamingService/Issue", req, DecodeJSONResponse(&nr)); err != nil {
+		if err := AuthenticatedCall(ctx, ResolveGlobalEndpoint, "nsl.naming.NamingService/Issue", req, DecodeJSONResponse(&nr)); err != nil {
 			return nil, err
 		}
 

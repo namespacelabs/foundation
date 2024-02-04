@@ -24,10 +24,11 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/go-ids"
+	"namespacelabs.dev/integrations/nsc/apienv"
 )
 
 var (
-	EndpointAddress             = "https://api.namespacelabs.net"
+	globalEndpointOverride      string
 	AdminMode                   = false
 	ExchangeGithubToTenantToken = false
 
@@ -35,31 +36,41 @@ var (
 )
 
 func SetupFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&EndpointAddress, "fnapi_endpoint", EndpointAddress, "The fnapi endpoint address.")
+	flags.StringVar(&globalEndpointOverride, "fnapi_endpoint", "", "The fnapi endpoint address.")
 	_ = flags.MarkHidden("fnapi_endpoint")
 	flags.BoolVar(&AdminMode, "fnapi_admin", AdminMode, "Whether to enable admin mode.")
 	_ = flags.MarkHidden("fnapi_admin")
 }
 
-func StaticEndpoint(endpoint string) func(context.Context, ResolvedToken) (string, error) {
-	return func(context.Context, ResolvedToken) (string, error) {
-		return endpoint, nil
+func ResolveGlobalEndpoint(ctx context.Context, tok ResolvedToken) (string, error) {
+	if globalEndpointOverride != "" {
+		return globalEndpointOverride, nil
 	}
+
+	return apienv.GlobalEndpoint(), nil
+}
+
+func ResolveIAMEndpoint(ctx context.Context, tok ResolvedToken) (string, error) {
+	if globalEndpointOverride != "" {
+		return globalEndpointOverride, nil
+	}
+
+	return apienv.IAMEndpoint(), nil
 }
 
 // A nil handle indicates that the caller wants to discard the response.
-func AnonymousCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
+func AnonymousCall(ctx context.Context, endpoint ResolveFunc, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
 		Method:           method,
 		IssueBearerToken: nil, // Callers of this API do not assume that credentials are injected.
-	}.Do(ctx, req, StaticEndpoint(endpoint), handle)
+	}.Do(ctx, req, endpoint, handle)
 }
 
-func AuthenticatedCall(ctx context.Context, endpoint string, method string, req interface{}, handle func(io.Reader) error) error {
+func AuthenticatedCall(ctx context.Context, endpoint ResolveFunc, method string, req interface{}, handle func(io.Reader) error) error {
 	return Call[any]{
 		Method:           method,
 		IssueBearerToken: IssueBearerToken,
-	}.Do(ctx, req, StaticEndpoint(endpoint), handle)
+	}.Do(ctx, req, endpoint, handle)
 }
 
 func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, duration time.Duration) (string, error) {
@@ -79,7 +90,7 @@ func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, durat
 				req.SessionToken = "scrubed"
 			}
 		},
-	}).Do(ctx, req, StaticEndpoint(EndpointAddress), DecodeJSONResponse(&resp)); err != nil {
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&resp)); err != nil {
 		return "", err
 	}
 
@@ -107,7 +118,9 @@ func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	}
 }
 
-func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoint func(context.Context, ResolvedToken) (string, error), handle func(io.Reader) error) error {
+type ResolveFunc func(context.Context, ResolvedToken) (string, error)
+
+func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoint ResolveFunc, handle func(io.Reader) error) error {
 	headers := http.Header{}
 
 	var resolvedToken ResolvedToken

@@ -30,7 +30,7 @@ type Artifact struct {
 
 func GetLatestVersion(ctx context.Context, req map[string]any) (*GetLatestResponse, error) {
 	var resp GetLatestResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatest", req, DecodeJSONResponse(&resp)); err != nil {
+	if err := AnonymousCall(ctx, ResolveGlobalEndpoint, "nsl.versions.VersionsService/GetLatest", req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
@@ -57,7 +57,7 @@ func GetLatestPrebuilts(ctx context.Context, pkgs ...schema.PackageName) (*GetLa
 	}
 
 	var resp GetLatestPrebuiltsResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestPrebuilts", &req, DecodeJSONResponse(&resp)); err != nil {
+	if err := AnonymousCall(ctx, ResolveGlobalEndpoint, "nsl.versions.VersionsService/GetLatestPrebuilts", &req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
@@ -85,7 +85,7 @@ func GetLatestDeployPlans(ctx context.Context, pkgs ...schema.PackageName) (*Get
 	}
 
 	var resp GetLatestDeployPlansResponse
-	if err := AnonymousCall(ctx, EndpointAddress, "nsl.versions.VersionsService/GetLatestDeployPlans", &req, DecodeJSONResponse(&resp)); err != nil {
+	if err := AnonymousCall(ctx, ResolveGlobalEndpoint, "nsl.versions.VersionsService/GetLatestDeployPlans", &req, DecodeJSONResponse(&resp)); err != nil {
 		return nil, err
 	}
 
