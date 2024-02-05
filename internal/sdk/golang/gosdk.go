@@ -24,7 +24,7 @@ var (
 
 type LocalSDK = host.LocalSDK
 
-func MatchSDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
+func vv(version string) string {
 	v := v.Get()
 
 	for ver := range v.Versions {
@@ -33,7 +33,23 @@ func MatchSDK(version string, platform specs.Platform) (compute.Computable[Local
 		}
 	}
 
-	return SDK(version, platform)
+	return version
+}
+
+func MatchExactVersion(version string) string {
+	v := v.Get()
+
+	for ver, m := range v.Versions {
+		if version == ver {
+			return m
+		}
+	}
+
+	return version
+}
+
+func MatchSDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
+	return SDK(vv(version), platform)
 }
 
 func SDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {

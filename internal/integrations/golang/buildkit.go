@@ -24,6 +24,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/llbutil"
+	"namespacelabs.dev/foundation/internal/sdk/golang"
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
@@ -43,7 +44,9 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 		return nil, fnerrors.InternalError("go: target platform is missing")
 	}
 
-	base := makeGoBuildBase(ctx, bin.GoVersion, *conf.TargetPlatform())
+	version := golang.MatchExactVersion(bin.GoVersion)
+
+	base := makeGoBuildBase(ctx, version, *conf.TargetPlatform())
 
 	var prodBase llb.State
 
@@ -67,7 +70,7 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 	}
 
 	goBuild := []string{"build"}
-	goBuild = append(goBuild, quoteArgs(goBuildArgs(bin.GoVersion, bin.StripBinary))...)
+	goBuild = append(goBuild, quoteArgs(goBuildArgs(version, bin.StripBinary))...)
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
 	relPath, err := makePkg(bin.GoWorkspacePath, bin.SourcePath)
@@ -127,10 +130,10 @@ func prepareGoMod(base, src llb.State, platform *specs.Platform) llb.ExecState {
 }
 
 func makeGoImage(version string) string {
-	return fmt.Sprintf("docker.io/library/golang:%s-alpine", version)
+	return fmt.Sprintf("docker.io/library/golang:%s", version)
 }
 
-func goAlpine(ctx context.Context, version string, platform specs.Platform) llb.State {
+func goBase(ctx context.Context, version string, platform specs.Platform) llb.State {
 	img := makeGoImage(version)
 
 	if r, err := pins.CheckImage(img); err == nil {
@@ -143,12 +146,10 @@ func goAlpine(ctx context.Context, version string, platform specs.Platform) llb.
 }
 
 func makeGoBuildBase(ctx context.Context, version string, platform specs.Platform) llb.State {
-	st := goAlpine(ctx, version, platform).
+	st := goBase(ctx, version, platform).
 		AddEnv("CGO_ENABLED", "0").
 		AddEnv("PATH", "/usr/local/go/bin:"+system.DefaultPathEnvUnix).
-		AddEnv("GOPATH", "/go").
-		Run(llb.Shlex("apk add --no-cache git openssh"),
-			llb.WithCustomName("[prepare build image] apk add --no-cache git openssh")).Root()
+		AddEnv("GOPATH", "/go")
 
 	for _, ent := range git.NoPromptEnv() {
 		st = st.AddEnv(ent[0], ent[1])

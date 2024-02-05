@@ -4,6 +4,7 @@
 		"docker.io/library/golang:1.19-alpine": "2381c1e5f8350a901597d633b2e517775eeac7a6682be39225a93b22cfd0f8bb",
 		"docker.io/library/golang:1.20-alpine": "1e2917143ce7e7bf8d1add2ac5c5fa3d358b2b5ddaae2bd6f54169ce68530ef0",
 		"docker.io/library/golang:1.21-alpine": "feceecc0e1d73d085040a8844de11a2858ba4a0c58c16a672f1736daecc2a4ff",
+		"docker.io/library/golang:1.21.6": "7b575fe0d9c2e01553b04d9de8ffea6d35ca3ab3380d2a8db2acc8f0f1519a53",
 		"docker.io/library/alpine:3.14": "e1c082e3d3c45cccac829840a25941e679c25d438cc8412c2fa221cf1a824e6a",
 		"docker.io/library/node:16.13-alpine": "2f50f4a428f8b5280817c9d4d896dbee03f072e93f4e0c70b90cc84bd1fcfe0d",
 		"hello-world": "aa0cc8055b82dc2509bed2e19b275c8f463506616377219d9642221ab53cf9fe"
