@@ -66,7 +66,7 @@ func newListVolumesCmd() *cobra.Command {
 		}
 
 		cols := []tui.Column{
-			{Key: tagColKey, Title: "Tag", MinWidth: 5, MaxWidth: 30},
+			{Key: tagColKey, Title: "Tag", MinWidth: 5, MaxWidth: 70},
 			{Key: sizeColKey, Title: "Size", MinWidth: 3, MaxWidth: 20},
 			{Key: attachedToColKey, Title: "Attached To", MinWidth: 5, MaxWidth: 20},
 			{Key: lastUsedColKey, Title: "Last Used", MinWidth: 5, MaxWidth: 30},
