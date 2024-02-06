@@ -9,13 +9,19 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
+	"syscall"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	"github.com/spf13/pflag"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -101,6 +107,7 @@ type Call[RequestT any] struct {
 	Method           string
 	IssueBearerToken func(context.Context) (ResolvedToken, error)
 	ScrubRequest     func(*RequestT)
+	Retryable        bool
 }
 
 func DecodeJSONResponse(resp any) func(io.Reader) error {
@@ -158,90 +165,135 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 
 	fmt.Fprintf(console.Debug(ctx), "[%s] Body: %s\n", tid, reqDebugBytes)
 
-	t := time.Now()
-	url := endpoint + "/" + c.Method
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBytes))
-	if err != nil {
-		return fnerrors.InternalError("failed to construct request: %w", err)
-	}
-
-	for k, v := range headers {
-		httpReq.Header[k] = append(httpReq.Header[k], v...)
-	}
-
-	client := &http.Client{
-		Transport: http.DefaultTransport,
-	}
-
-	response, err := client.Do(httpReq)
-	if err != nil {
-		return fnerrors.InvocationError("namespace api", "http call failed: %w", err)
-	}
-
-	defer response.Body.Close()
-
-	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v: status %s took %v\n", tid, c.Method, response.Status, time.Since(t))
-
-	if response.StatusCode == http.StatusOK {
-		if handle == nil {
-			return nil
-		}
-
-		return handle(response.Body)
-	}
-
-	respBody, err := io.ReadAll(response.Body)
-	if err != nil {
-		return fnerrors.InvocationError("namespace api", "reading response body: %w", err)
-	}
-
-	st := &spb.Status{}
-	if err := json.Unmarshal(respBody, st); err == nil {
-		return handleGrpcStatus(url, st)
-	} else {
-		fmt.Fprintf(console.Debug(ctx), "did not receive an RPC status: %v\n", err)
-	}
-
-	fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
-
-	if grpcDetails := response.Header[http.CanonicalHeaderKey("grpc-status-details-bin")]; len(grpcDetails) > 0 {
-		data, err := base64.RawStdEncoding.DecodeString(grpcDetails[0])
+	return callSideEffectFree(ctx, c.Retryable, func(ctx context.Context) error {
+		t := time.Now()
+		url := endpoint + "/" + c.Method
+		httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBytes))
 		if err != nil {
-			return fnerrors.InternalError("failed to decode grpc details: %w", err)
+			return fnerrors.InternalError("failed to construct request: %w", err)
 		}
 
-		if err := proto.Unmarshal(data, st); err != nil {
-			return fnerrors.InternalError("failed to unmarshal grpc details: %w", err)
+		for k, v := range headers {
+			httpReq.Header[k] = append(httpReq.Header[k], v...)
 		}
 
-		return handleGrpcStatus(url, st)
-	}
+		client := &http.Client{
+			Transport: http.DefaultTransport,
+		}
 
-	grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
-	grpcStatus := response.Header[http.CanonicalHeaderKey("grpc-status")]
+		response, err := client.Do(httpReq)
+		if err != nil {
+			return fnerrors.InvocationError("namespace api", "http call failed: %w", err)
+		}
 
-	if len(grpcMessage) > 0 && len(grpcStatus) > 0 {
-		intVar, err := strconv.Atoi(grpcStatus[0])
-		if err == nil {
-			st.Code = int32(intVar)
-			st.Message = grpcMessage[0]
+		defer response.Body.Close()
+
+		fmt.Fprintf(console.Debug(ctx), "[%s] RPC: %v: status %s took %v\n", tid, c.Method, response.Status, time.Since(t))
+
+		if response.StatusCode == http.StatusOK {
+			if handle == nil {
+				return nil
+			}
+
+			return handle(response.Body)
+		}
+
+		respBody, err := io.ReadAll(response.Body)
+		if err != nil {
+			return fnerrors.InvocationError("namespace api", "reading response body: %w", err)
+		}
+
+		st := &spb.Status{}
+		if err := json.Unmarshal(respBody, st); err == nil {
+			return handleGrpcStatus(url, st)
+		} else {
+			fmt.Fprintf(console.Debug(ctx), "did not receive an RPC status: %v\n", err)
+		}
+
+		fmt.Fprintf(console.Debug(ctx), "Error body response: %s\n", string(respBody))
+
+		if grpcDetails := response.Header[http.CanonicalHeaderKey("grpc-status-details-bin")]; len(grpcDetails) > 0 {
+			data, err := base64.RawStdEncoding.DecodeString(grpcDetails[0])
+			if err != nil {
+				return fnerrors.InternalError("failed to decode grpc details: %w", err)
+			}
+
+			if err := proto.Unmarshal(data, st); err != nil {
+				return fnerrors.InternalError("failed to unmarshal grpc details: %w", err)
+			}
 
 			return handleGrpcStatus(url, st)
 		}
+
+		grpcMessage := response.Header[http.CanonicalHeaderKey("grpc-message")]
+		grpcStatus := response.Header[http.CanonicalHeaderKey("grpc-status")]
+
+		if len(grpcMessage) > 0 && len(grpcStatus) > 0 {
+			intVar, err := strconv.Atoi(grpcStatus[0])
+			if err == nil {
+				st.Code = int32(intVar)
+				st.Message = grpcMessage[0]
+
+				return handleGrpcStatus(url, st)
+			}
+		}
+
+		switch response.StatusCode {
+		case http.StatusInternalServerError:
+			return fnerrors.InternalError("namespace api: internal server error: %s", string(respBody))
+		case http.StatusUnauthorized:
+			return fnerrors.ReauthError("%s requires authentication", url)
+		case http.StatusForbidden:
+			return fnerrors.PermissionDeniedError("%s denied access", url)
+		case http.StatusNotFound:
+			return fnerrors.InternalError("%s not found: %s", url, string(respBody))
+		default:
+			return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, url, response.Status)
+		}
+	})
+}
+
+func callSideEffectFree(ctx context.Context, retryable bool, method func(context.Context) error) error {
+	if !retryable {
+		return method(ctx)
 	}
 
-	switch response.StatusCode {
-	case http.StatusInternalServerError:
-		return fnerrors.InternalError("namespace api: internal server error: %s", string(respBody))
-	case http.StatusUnauthorized:
-		return fnerrors.ReauthError("%s requires authentication", url)
-	case http.StatusForbidden:
-		return fnerrors.PermissionDeniedError("%s denied access", url)
-	case http.StatusNotFound:
-		return fnerrors.InternalError("%s not found: %s", url, string(respBody))
-	default:
-		return fnerrors.InvocationError("namespace api", "unexpected %d error reaching %q: %s", response.StatusCode, url, response.Status)
+	b := &backoff.ExponentialBackOff{
+		InitialInterval:     500 * time.Millisecond,
+		RandomizationFactor: 0.5,
+		Multiplier:          1.5,
+		MaxInterval:         5 * time.Second,
+		MaxElapsedTime:      2 * time.Minute,
+		Clock:               backoff.SystemClock,
 	}
+
+	b.Reset()
+
+	span := trace.SpanFromContext(ctx)
+
+	return backoff.Retry(func() error {
+		if methodErr := method(ctx); methodErr != nil {
+			// grpc's ConnectionError have a Temporary() signature. If we, for example, write to
+			// a channel and that channel is gone, then grpc observes a ECONNRESET. And propagates
+			// it as a temporary error. It doesn't know though whether it's safe to retry, so it
+			// doesn't.
+			if temp, ok := methodErr.(interface{ Temporary() bool }); ok && temp.Temporary() {
+				span.RecordError(methodErr, trace.WithAttributes(attribute.Bool("grpc.temporary_error", true)))
+				return methodErr
+			}
+
+			var netErr *net.OpError
+			if errors.As(methodErr, &netErr) {
+				if errno, ok := netErr.Err.(syscall.Errno); ok && errno == syscall.ECONNRESET {
+					return methodErr // Retry
+				}
+			}
+
+			return backoff.Permanent(methodErr)
+		}
+
+		return nil
+	}, backoff.WithContext(b, ctx))
 }
 
 func handleGrpcStatus(url string, st *spb.Status) error {

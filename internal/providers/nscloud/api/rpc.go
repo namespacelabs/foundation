@@ -81,6 +81,7 @@ func MakeAPI() API {
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/GetKubernetesCluster",
+			Retryable:        true,
 		},
 
 		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
@@ -91,11 +92,13 @@ func MakeAPI() API {
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/WaitKubernetesCluster",
+			Retryable:        true,
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/ListKubernetesClusters",
+			Retryable:        true,
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
@@ -126,16 +129,19 @@ func MakeAPI() API {
 		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/GetKubernetesClusterSummary",
+			Retryable:        true,
 		},
 
 		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/GetKubernetesConfig",
+			Retryable:        true,
 		},
 
 		GetImageRegistry: fnapi.Call[emptypb.Empty]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/GetImageRegistry",
+			Retryable:        true,
 		},
 
 		TailClusterLogs: fnapi.Call[TailLogsRequest]{
@@ -151,6 +157,7 @@ func MakeAPI() API {
 		GetProfile: fnapi.Call[emptypb.Empty]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/GetProfile",
+			Retryable:        true,
 		},
 
 		RegisterIngress: fnapi.Call[RegisterIngressRequest]{
@@ -161,11 +168,13 @@ func MakeAPI() API {
 		ListIngresses: fnapi.Call[ListIngressesRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/ListIngresses",
+			Retryable:        true,
 		},
 
 		ListVolumes: fnapi.Call[emptypb.Empty]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/ListVolumes",
+			Retryable:        true,
 		},
 
 		DestroyVolume: fnapi.Call[DestroyVolumeRequest]{

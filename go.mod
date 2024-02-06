@@ -25,6 +25,7 @@ require (
 	github.com/aws/smithy-go v1.14.2
 	github.com/bcicen/jstream v1.0.1
 	github.com/bradleyjkemp/cupaloy v2.3.0+incompatible
+	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/charmbracelet/bubbles v0.14.0

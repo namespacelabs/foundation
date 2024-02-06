@@ -83,7 +83,11 @@ func ExchangeGithubToken(ctx context.Context, jwt string) (ExchangeGithubTokenRe
 	req := ExchangeGithubTokenRequest{GithubToken: jwt}
 
 	var res ExchangeGithubTokenResponse
-	if err := AnonymousCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/ExchangeGithubToken", req, DecodeJSONResponse(&res)); err != nil {
+
+	if err := (Call[ExchangeGithubTokenRequest]{
+		Method:    "nsl.tenants.TenantsService/ExchangeGithubToken",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeGithubTokenResponse{}, err
 	}
 
@@ -94,7 +98,10 @@ func ExchangeCircleciToken(ctx context.Context, token string) (ExchangeCircleciT
 	req := ExchangeCircleciTokenRequest{CircleciToken: token}
 
 	var res ExchangeCircleciTokenResponse
-	if err := AnonymousCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/ExchangeCircleciToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[ExchangeCircleciTokenRequest]{
+		Method:    "nsl.tenants.TenantsService/ExchangeCircleciToken",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeCircleciTokenResponse{}, err
 	}
 
@@ -105,7 +112,10 @@ func ExchangeOIDCToken(ctx context.Context, tenantID, token string) (ExchangeTok
 	req := ExchangeOIDCTokenRequest{TenantId: tenantID, OidcToken: token}
 
 	var res ExchangeTokenResponse
-	if err := AnonymousCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/ExchangeOIDCToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[ExchangeOIDCTokenRequest]{
+		Method:    "nsl.tenants.TenantsService/ExchangeOIDCToken",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return ExchangeTokenResponse{}, err
 	}
 
@@ -116,9 +126,11 @@ func ExchangeAWSCognitoJWT(ctx context.Context, tenantID, token string) (Exchang
 	req := ExchangeAWSCognitoJWTRequest{TenantId: tenantID, AwsCognitoToken: token}
 
 	var res ExchangeTokenResponse
-	if err := AnonymousCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/ExchangeAWSCognitoJWT", req, DecodeJSONResponse(&res)); err != nil {
-		return res, err
-
+	if err := (Call[ExchangeAWSCognitoJWTRequest]{
+		Method:    "nsl.tenants.TenantsService/ExchangeAWSCognitoJWT",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
+		return ExchangeTokenResponse{}, err
 	}
 
 	return res, nil
@@ -131,7 +143,10 @@ func IssueIdToken(ctx context.Context, aud string, version int) (IssueIdTokenRes
 	}
 
 	var res IssueIdTokenResponse
-	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/IssueIdToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[IssueIdTokenRequest]{
+		Method:    "nsl.tenants.TenantsService/IssueIdToken",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return IssueIdTokenResponse{}, err
 	}
 
@@ -144,7 +159,10 @@ func IssueIngressAccessToken(ctx context.Context, instanceId string) (IssueIngre
 	}
 
 	var res IssueIngressAccessTokenResponse
-	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/IssueIngressAccessToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[IssueIngressAccessTokenRequest]{
+		Method:    "nsl.tenants.TenantsService/IssueIngressAccessToken",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return IssueIngressAccessTokenResponse{}, err
 	}
 
@@ -164,7 +182,10 @@ func IssueDevelopmentToken(ctx context.Context) (string, error) {
 	req := struct{}{}
 
 	var res IssueDevelopmentTokenResponse
-	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/IssueDevelopmentToken", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[any]{
+		Method:    "nsl.tenants.TenantsService/IssueDevelopmentToken",
+		Retryable: true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return "", err
 	}
 
@@ -188,7 +209,7 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 		return fnerrors.New("authenticated as %q, wanted %q", claims.TenantID, tenantID)
 	}
 
-	return Call[any]{
+	return Call[TrustAWSCognitoIdentityPoolRequest]{
 		Method: "nsl.tenants.TenantsService/TrustAWSCognitoIdentityPool",
 		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
 			return IssueBearerTokenFromToken(ctx, token)
@@ -204,7 +225,11 @@ func GetTenant(ctx context.Context) (GetTenantResponse, error) {
 	req := struct{}{}
 
 	var res GetTenantResponse
-	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.tenants.TenantsService/GetTenant", req, DecodeJSONResponse(&res)); err != nil {
+	if err := (Call[any]{
+		Method:           "nsl.tenants.TenantsService/GetTenant",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return GetTenantResponse{}, err
 	}
 
