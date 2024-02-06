@@ -12,12 +12,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog"
-	"google.golang.org/protobuf/encoding/prototext"
-	"namespacelabs.dev/foundation/framework/runtime"
+	fnruntime "namespacelabs.dev/foundation/framework/runtime"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
 	"namespacelabs.dev/foundation/std/core/types"
@@ -62,12 +62,12 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 }
 
 func loadData(specifiedServerName string) (data, error) {
-	rt, err := runtime.LoadRuntimeConfig()
+	rt, err := fnruntime.LoadRuntimeConfig()
 	if err != nil {
 		return data{}, err
 	}
 
-	rtVcs, err := runtime.LoadBuildVCS()
+	rtVcs, err := fnruntime.LoadBuildVCS()
 	if err != nil {
 		return data{}, err
 	}
@@ -132,10 +132,23 @@ func StatusHandler(registered []string) http.Handler {
 
 		w.WriteHeader(http.StatusOK)
 
-		vcsStr, _ := json.Marshal(data.rtVcs)
+		vals, _ := json.MarshalIndent(struct {
+			VCS            any    `json:"vcs"`
+			ImageVersion   string `json:"image_version"`
+			RuntimeVersion string `json:"runtime_version"`
+			GOOS           string `json:"GOOS"`
+			GOARCH         string `json:"GOARCH"`
+			Environment    any    `json:"env"`
+		}{
+			VCS:            data.rtVcs,
+			ImageVersion:   data.rt.Current.ImageRef,
+			RuntimeVersion: runtime.Version(),
+			GOOS:           runtime.GOOS,
+			GOARCH:         runtime.GOARCH,
+			Environment:    data.rt.Environment,
+		}, "", "  ")
 
-		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s\nimage_version=%s\n%s\n%s</pre>",
-			data.serverName, data.rt.Current.ImageRef, prototext.Format(data.rt.Environment), vcsStr)
+		fmt.Fprintf(w, "<!doctype html><html><body><pre>%s\n\n%s\n</pre>", data.serverName, vals)
 
 		fmt.Fprintf(w, "<b>Registered endpoints</b></br><ul>")
 		for _, endpoint := range registered {
