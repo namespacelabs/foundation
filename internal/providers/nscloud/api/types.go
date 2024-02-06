@@ -451,6 +451,10 @@ type Volume struct {
 	Tag            string     `json:"tag,omitempty"`
 }
 
+type DestroyVolumeRequest struct {
+	Id string `json:"volume_id,omitempty"`
+}
+
 type DestroyVolumeByTagRequest struct {
 	Tag string `json:"tag,omitempty"`
 }

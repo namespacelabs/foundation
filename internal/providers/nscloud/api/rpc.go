@@ -53,6 +53,7 @@ type API struct {
 	RegisterIngress              fnapi.Call[RegisterIngressRequest]
 	ListIngresses                fnapi.Call[ListIngressesRequest]
 	ListVolumes                  fnapi.Call[emptypb.Empty]
+	DestroyVolume                fnapi.Call[DestroyVolumeRequest]
 	DestroyVolumeByTag           fnapi.Call[DestroyVolumeByTagRequest]
 }
 
@@ -165,6 +166,11 @@ func MakeAPI() API {
 		ListVolumes: fnapi.Call[emptypb.Empty]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/ListVolumes",
+		},
+
+		DestroyVolume: fnapi.Call[DestroyVolumeRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "nsl.vm.api.VMService/DestroyVolume",
 		},
 
 		DestroyVolumeByTag: fnapi.Call[DestroyVolumeByTagRequest]{
@@ -676,6 +682,15 @@ func ListVolumes(ctx context.Context, api API) (*ListVolumesResponse, error) {
 			return nil, err
 		}
 		return &response, nil
+	})
+}
+
+func DestroyVolume(ctx context.Context, api API, id string) error {
+	return tasks.Return0(ctx, tasks.Action("nscloud.destroy-single-volume"), func(ctx context.Context) error {
+		if err := api.DestroyVolume.Do(ctx, DestroyVolumeRequest{Id: id}, endpoint.ResolveRegionalEndpoint, nil); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
