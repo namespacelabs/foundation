@@ -120,7 +120,7 @@ release:
     owner: namespacelabs
     name: foundation
   draft: true
-  replace_existing_draft: false
+  replace_existing_draft: true
   # extra_files:
   #   - glob: ./dist/fn_macos.dmg
   #   - glob: ./dist/fn_macos.zip
