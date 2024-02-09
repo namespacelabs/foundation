@@ -37,7 +37,7 @@ func NewProxyCmd() *cobra.Command {
 
 	kind := cmd.Flags().String("kind", "", "The service being proxied.")
 	sockPath := cmd.Flags().String("sock_path", "", "If specified listens on the specified path.")
-	cluster := cmd.Flags().String("cluster", "", "Cluster ID to proxy; or 'build-cluster' and 'build-cluster-arm64' to proxy the build cluster.")
+	cluster := cmd.Flags().String("cluster", "", "Cluster ID to proxy.")
 	background := cmd.Flags().String("background", "", "If specified runs the proxy in the background, and writes the process PID to the specified path.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -51,7 +51,7 @@ func NewProxyCmd() *cobra.Command {
 			}
 
 			// Make sure the cluster exists before going to the background.
-			resolved, err := compatEnsureCluster(ctx, *cluster)
+			resolved, err := ensureCluster(ctx, *cluster)
 			if err != nil {
 				return err
 			}
@@ -102,7 +102,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 		return fnerrors.New("--cluster and --kind are required")
 	}
 
-	cluster, err := compatEnsureCluster(ctx, clusterReq)
+	cluster, err := ensureCluster(ctx, clusterReq)
 	if err != nil {
 		return err
 	}
@@ -157,27 +157,6 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 	}
 
 	return nil
-}
-
-func compatEnsureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
-	// This is to be removed; but we used to select the build cluster by passing "build-cluster" as the cluster ID.
-	if platform, ok := compatClusterIDAsBuildPlatform(clusterID); ok {
-		return ensureBuildCluster(ctx, platform)
-	}
-
-	return ensureCluster(ctx, clusterID)
-}
-
-func compatClusterIDAsBuildPlatform(clusterID string) (api.BuildPlatform, bool) {
-	switch clusterID {
-	case buildCluster:
-		return "amd64", true
-
-	case buildClusterArm64:
-		return "arm64", true
-	}
-
-	return "", false
 }
 
 func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {

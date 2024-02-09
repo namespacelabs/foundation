@@ -14,23 +14,15 @@ import (
 	builder "buf.build/gen/go/namespace/cloud/grpc/go/proto/namespace/cloud/builder/v1beta/builderv1betagrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 )
 
-type BuilderServiceClient struct {
-	builder.BuilderServiceClient
-}
-
-func NewBuilderServiceClient(ctx context.Context) (BuilderServiceClient, error) {
-	token, err := fnapi.IssueBearerToken(ctx)
-	if err != nil {
-		return BuilderServiceClient{}, err
-	}
-
+func NewBuilderServiceClient(ctx context.Context, tid string, token fnapi.ResolvedToken) (builder.BuilderServiceClient, *grpc.ClientConn, error) {
 	rawEndpoint, err := endpoint.ResolveRegionalEndpoint(ctx, token)
 	if err != nil {
-		return BuilderServiceClient{}, err
+		return nil, nil, err
 	}
 
 	parsedEP, err := url.Parse(rawEndpoint)
@@ -40,13 +32,13 @@ func NewBuilderServiceClient(ctx context.Context) (BuilderServiceClient, error) 
 
 	serverName := parsedEP.Hostname()
 	endpoint := fmt.Sprintf("%s:443", serverName)
-	conn, err := grpc.DialContext(ctx, endpoint,
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: serverName})))
+
+	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: connecting to builder service (endpoint: %s)\n", tid, endpoint)
+
+	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})), WithBearerPerRPC(token.BearerToken))
 	if err != nil {
-		return BuilderServiceClient{}, err
+		return nil, nil, err
 	}
 
-	return BuilderServiceClient{
-		BuilderServiceClient: builder.NewBuilderServiceClient(conn),
-	}, nil
+	return builder.NewBuilderServiceClient(conn), conn, nil
 }

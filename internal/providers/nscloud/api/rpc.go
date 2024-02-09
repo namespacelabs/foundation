@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"time"
 
+	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/bcicen/jstream"
 	"github.com/dustin/go-humanize"
 	"go.uber.org/atomic"
@@ -27,8 +28,10 @@ import (
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/api/public"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/go-ids"
 )
 
 type API struct {
@@ -309,24 +312,36 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitClusterReady(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
-func CreateBuildCluster(ctx context.Context, api API, platform BuildPlatform) (*CreateClusterResult, error) {
-	featuresList := []string{"BUILD_CLUSTER"}
-	featuresList = append(featuresList, buildClusterFeatures(platform)...)
-	resp, err := CreateAndWaitCluster(ctx, api, CreateClusterOpts{
-		Purpose:    "Build machine",
-		Features:   featuresList,
-		KeepAtExit: true,
-		WaitClusterOpts: WaitClusterOpts{
-			CreateLabel:    fmt.Sprintf("Creating %s Build Cluster", platform),
-			WaitForService: "buildkit",
-			WaitKind:       "buildcluster",
-		},
-	})
+func EnsureBuildCluster(ctx context.Context, platform BuildPlatform) (*builderv1beta.EnsureBuildInstanceResponse, error) {
+	token, err := fnapi.IssueBearerToken(ctx)
 	if err != nil {
-		return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
+		return nil, err
 	}
 
-	return resp, nil
+	return tasks.Return(ctx, tasks.Action("nsc.ensure-build-cluster").HumanReadablef(fmt.Sprintf("Creating %s Build Cluster", platform)),
+		func(ctx context.Context) (*builderv1beta.EnsureBuildInstanceResponse, error) {
+			tid := ids.NewRandomBase32ID(4)
+
+			cli, conn, err := public.NewBuilderServiceClient(ctx, tid, token)
+			if err != nil {
+				return nil, err
+			}
+
+			defer conn.Close()
+
+			t := time.Now()
+			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: calling EnsureBuildInstance {platform: %v}\n", tid, platform)
+			response, err := cli.EnsureBuildInstance(ctx, &builderv1beta.EnsureBuildInstanceRequest{
+				Platform: string(platform),
+			})
+			if err != nil {
+				return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
+			}
+
+			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: got instance_id=%s endpoint=%s authentication=%s encapsulation=%s (took %v)\n",
+				tid, response.InstanceId, response.Endpoint, response.Authentication, response.Encapsulation, time.Since(t))
+			return response, nil
+		})
 }
 
 func buildClusterFeatures(platform BuildPlatform) []string {

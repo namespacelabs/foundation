@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/docker/cli/cli/config"
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
@@ -28,7 +27,6 @@ import (
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/providers/nscloud/api/public"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 )
@@ -54,19 +52,7 @@ func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, st
 	ctx, done := context.WithTimeout(parentCtx, 5*time.Minute)
 	defer done()
 
-	cli, err := public.NewBuilderServiceClient(ctx)
-	if err != nil {
-		return nil, "", err
-	}
-
-	ctx, err = api.ContextWithBearerToken(ctx)
-	if err != nil {
-		return nil, "", err
-	}
-
-	response, err := cli.EnsureBuildInstance(ctx, &builderv1beta.EnsureBuildInstanceRequest{
-		Platform: string(bp.platform),
-	})
+	response, err := api.EnsureBuildCluster(ctx, bp.platform)
 	if err != nil {
 		return nil, "", err
 	}

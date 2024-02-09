@@ -19,6 +19,7 @@ message Overrides {
 message HostedBuildCluster {
     string cluster_id  = 1;
     int32  target_port = 2;
+    string endpoint    = 3;
 }
 
 message ColocatedBuildCluster {

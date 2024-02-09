@@ -8,24 +8,19 @@ import (
 	"context"
 
 	"namespacelabs.dev/foundation/internal/build/buildkit"
-	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
 func EnsureBuildCluster(ctx context.Context, x api.API) (*buildkit.Overrides, error) {
-	cfg, err := api.CreateBuildCluster(ctx, x, "amd64")
+	cfg, err := api.EnsureBuildCluster(ctx, "amd64")
 	if err != nil {
 		return nil, err
 	}
 
-	if cfg.BuildCluster != nil {
-		return &buildkit.Overrides{
-			HostedBuildCluster: &buildkit.HostedBuildCluster{
-				ClusterId:  cfg.BuildCluster.Colocated.ClusterId,
-				TargetPort: cfg.BuildCluster.Colocated.TargetPort,
-			},
-		}, nil
-	} else {
-		return nil, fnerrors.InternalError("%s: expected build machine", cfg.ClusterId)
-	}
+	return &buildkit.Overrides{
+		HostedBuildCluster: &buildkit.HostedBuildCluster{
+			ClusterId: cfg.InstanceId,
+			Endpoint:  cfg.Endpoint,
+		},
+	}, nil
 }

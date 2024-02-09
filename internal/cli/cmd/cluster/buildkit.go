@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	controlapi "github.com/moby/buildkit/api/services/control"
 	types "github.com/moby/buildkit/api/types"
 	"github.com/moby/buildkit/client"
@@ -67,19 +68,9 @@ func newBuildctlCmd() *cobra.Command {
 			return fnerrors.New("failed to download buildctl: %w", err)
 		}
 
-		var plat api.BuildPlatform
-		if *platform != "" {
-			p, err := api.ParseBuildPlatform(*platform)
-			if err != nil {
-				return err
-			}
-			plat = p
-		} else {
-			if p, ok := compatClusterIDAsBuildPlatform(buildClusterOrDefault(*buildCluster)); ok {
-				plat = p
-			} else {
-				return fnerrors.New("expected --cluster=build-cluster or build-cluster-arm64")
-			}
+		plat, err := api.ParseBuildPlatform(*platform)
+		if err != nil {
+			return err
 		}
 
 		p, err := runBuildProxyWithRegistry(ctx, plat, false, false, false, nil)
@@ -271,8 +262,8 @@ func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildPro
 	return localexec.RunInteractive(ctx, buildctl)
 }
 
-func ensureBuildCluster(ctx context.Context, platform api.BuildPlatform) (*api.CreateClusterResult, error) {
-	response, err := api.CreateBuildCluster(ctx, api.Methods, platform)
+func ensureBuildCluster(ctx context.Context, platform api.BuildPlatform) (*builderv1beta.EnsureBuildInstanceResponse, error) {
+	response, err := api.EnsureBuildCluster(ctx, platform)
 	if err != nil {
 		return nil, err
 	}
@@ -284,25 +275,24 @@ func ensureBuildCluster(ctx context.Context, platform api.BuildPlatform) (*api.C
 	return response, nil
 }
 
-func resolveBuildkitService(response *api.CreateClusterResult) (*api.Cluster_ServiceState, error) {
+func resolveBuildkitService(response *builderv1beta.EnsureBuildInstanceResponse) (string, error) {
 	if override := os.Getenv("NSC_BUILDKIT_ENDPOINT_ADDRESS_OVERRIDE"); override != "" {
-		return &api.Cluster_ServiceState{Endpoint: override}, nil
+		return override, nil
 	}
 
-	buildkitSvc := api.ClusterService(response.Cluster, "buildkit")
-	if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
-		return nil, fnerrors.New("cluster is missing buildkit")
+	if response.Encapsulation != builderv1beta.Encapsulation_WEBSOCKET_TCPPROXY {
+		return "", fnerrors.New("unsupported encapsulation: %v", response.Encapsulation)
 	}
 
-	if buildkitSvc.Status != "READY" {
-		return nil, fnerrors.New("expected buildkit to be READY, saw %q", buildkitSvc.Status)
+	if response.Authentication != builderv1beta.Authentication_BEARER_TOKEN {
+		return "", fnerrors.New("unsupported authentication: %v", response.Authentication)
 	}
 
-	return buildkitSvc, nil
+	return response.Endpoint, nil
 }
 
-func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) error {
-	buildkitSvc, err := resolveBuildkitService(response)
+func waitUntilReady(ctx context.Context, response *builderv1beta.EnsureBuildInstanceResponse) error {
+	buildkitEndpoint, err := resolveBuildkitService(response)
 	if err != nil {
 		return err
 	}
@@ -315,8 +305,8 @@ func waitUntilReady(ctx context.Context, response *api.CreateClusterResult) erro
 		}
 
 		return buildkitfw.WaitReadiness(ctx, 1*time.Minute, func(innerCtx context.Context) (*client.Client, error) {
-			return client.New(innerCtx, response.ClusterId, client.WithContextDialer(func(innerCtx context.Context, _ string) (net.Conn, error) {
-				return api.DialEndpointWithToken(innerCtx, token, buildkitSvc.Endpoint)
+			return client.New(innerCtx, response.InstanceId, client.WithContextDialer(func(innerCtx context.Context, _ string) (net.Conn, error) {
+				return api.DialEndpointWithToken(innerCtx, token, buildkitEndpoint)
 			}))
 		})
 	})
@@ -326,5 +316,6 @@ func buildClusterOrDefault(bp string) string {
 	if bp == "" {
 		return buildCluster
 	}
+
 	return bp
 }

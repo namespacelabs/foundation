@@ -127,16 +127,19 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		return newClient(ctx, cli, false)
 	}
 
-	if c.overrides.HostedBuildCluster != nil {
-		fmt.Fprintf(console.Debug(ctx), "buildkit: connecting to nscloud %s/%d\n",
-			c.overrides.HostedBuildCluster.ClusterId, c.overrides.HostedBuildCluster.TargetPort)
+	if x := c.overrides.HostedBuildCluster; x != nil {
+		fmt.Fprintf(console.Debug(ctx), "buildkit: connecting to nscloud %s (port: %d endpoint: %s)\n", x.ClusterId, x.TargetPort, x.Endpoint)
 
-		cluster, err := api.EnsureCluster(ctx, api.Methods, c.overrides.HostedBuildCluster.ClusterId)
-		if err != nil {
-			return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
+		if x.Endpoint == "" {
+			cluster, err := api.EnsureCluster(ctx, api.Methods, x.ClusterId)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
+			}
+
+			return useRemoteCluster(ctx, cluster.Cluster, int(x.TargetPort))
 		}
 
-		return useRemoteCluster(ctx, cluster.Cluster, int(c.overrides.HostedBuildCluster.TargetPort))
+		return useRemoteClusterViaEndpoint(ctx, x.Endpoint)
 	}
 
 	if c.overrides.ColocatedBuildCluster != nil {
@@ -219,6 +222,21 @@ func useRemoteCluster(ctx context.Context, cluster *api.KubernetesCluster, port 
 		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			// Do the expirations work? We don't re-fetch tokens here yet.
 			return api.DialPortWithToken(ctx, token, cluster, port)
+		}))
+	})
+}
+
+func useRemoteClusterViaEndpoint(ctx context.Context, endpoint string) (*GatewayClient, error) {
+	// We must fetch a token with our parent context, so we get a task sink etc.
+	token, err := fnapi.FetchToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return waitAndConnect(ctx, func(ctx context.Context) (*client.Client, error) {
+		return client.New(ctx, "buildkitd", client.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			// Do the expirations work? We don't re-fetch tokens here yet.
+			return api.DialEndpointWithToken(ctx, token, endpoint)
 		}))
 	})
 }
