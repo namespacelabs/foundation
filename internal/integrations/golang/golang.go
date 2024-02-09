@@ -94,14 +94,18 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 		GoModule:        ext.GoModule,
 		GoVersion:       ext.GoVersion,
 		SourcePath:      server.Location.Rel(),
-		BinaryName:      "server",
+		BinaryName:      serverName(server),
 	}
 
 	return bin, nil
 }
 
+func serverName(server planning.PlannedServer) string {
+	return server.Package.Server.Name + "-" + server.Package.Server.Id
+}
+
 func (impl) PrepareRun(ctx context.Context, t planning.PlannedServer, run *runtime.ContainerRunOpts) error {
-	run.Command = []string{"/server"}
+	run.Command = []string{"/" + serverName(t)}
 	run.ReadOnlyFilesystem = true
 	// XXX lift this as this is done by loose contract.
 	run.RunAs = production.NonRootRunAsWithID(65532, pointer.Int(65532))
