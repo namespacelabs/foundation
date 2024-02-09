@@ -14,7 +14,9 @@ release:
     owner: namespacelabs
     name: foundation
 
-    skip_upload: true
+  draft: true
+  replace_existing_draft: false
+  skip_upload: true
 
   # extra_files:
   #   - glob: ./dist/fn_macos.dmg
@@ -37,6 +39,13 @@ brews:
   - repository:
       owner: namespacelabs
       name: homebrew-namespace
+      branch: "goreleaser-ns-v{{.Version}}"
+      pull_request:
+        enabled: true
+        base:
+          owner: namespacelabs
+          name: homebrew-namespace
+          branch: main
 
     name: ns
     ids:
@@ -55,6 +64,13 @@ brews:
   - repository:
       owner: namespacelabs
       name: homebrew-namespace
+      branch: "goreleaser-nsc-v{{.Version}}"
+      pull_request:
+        enabled: true
+        base:
+          owner: namespacelabs
+          name: homebrew-namespace
+          branch: main
 
     name: nsc
     ids:
