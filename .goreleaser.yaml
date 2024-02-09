@@ -148,6 +148,10 @@ brews:
       branch: "goreleaser-ns-v{{.Version}}"
       pull_request:
         enabled: true
+        base:
+          owner: namespacelabs
+          name: homebrew-namespace
+          branch: main
 
     name: ns
     ids:
@@ -170,6 +174,10 @@ brews:
       branch: "goreleaser-nsc-v{{.Version}}"
       pull_request:
         enabled: true
+        base:
+          owner: namespacelabs
+          name: homebrew-namespace
+          branch: main
 
     name: nsc
     ids:
@@ -180,7 +188,3 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
-
-publishers:
-  - name: Remind to promote drafts
-    cmd: echo "Remember to publish the release on GitHub and to merge the Homebrew PRs."
