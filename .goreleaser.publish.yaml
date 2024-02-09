@@ -120,8 +120,8 @@ release:
     owner: namespacelabs
     name: foundation
 
-  make_latest: false
-  skip_upload: true
+  make_latest: true
+  skip_upload: true # Do not re-upload files to guarantee availability
 
   # extra_files:
   #   - glob: ./dist/fn_macos.dmg
@@ -141,7 +141,6 @@ changelog:
       - "^nochangelog"
       - "^Merge pull request"
       - "^Merge branch"
-
 # brews:
 #   - repository:
 #       owner: namespacelabs
