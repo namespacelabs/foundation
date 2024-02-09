@@ -144,6 +144,11 @@ brews:
   - repository:
       owner: namespacelabs
       name: homebrew-namespace
+
+      branch: "goreleaser-ns-v{{.Version}}"
+      pull_request:
+        enabled: true
+
     name: ns
     ids:
       - ns
@@ -157,9 +162,15 @@ brews:
     url_template: "https://get.namespace.so/packages/ns/v{{.Version}}/{{.ArtifactName}}"
     install: |
       bin.install "ns"
+
   - repository:
       owner: namespacelabs
       name: homebrew-namespace
+
+      branch: "goreleaser-nsc-v{{.Version}}"
+      pull_request:
+        enabled: true
+
     name: nsc
     ids:
       - nsc
@@ -169,3 +180,7 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
+
+publishers:
+  - name: Remind to promote drafts
+    cmd: echo "Remember to publish the release on GitHub and to merge the Homebrew PRs."
