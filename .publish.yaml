@@ -1,0 +1,67 @@
+project_name: publish
+
+# signs:
+#   - signature: "${artifact}_macos.dmg"
+#     ids:
+#       - macos
+#     cmd: gon
+#     args:
+#       - cmd/ns/gon.hcl
+#     artifacts: all
+
+release:
+  github:
+    owner: namespacelabs
+    name: foundation
+
+    skip_upload: true
+
+  # extra_files:
+  #   - glob: ./dist/fn_macos.dmg
+  #   - glob: ./dist/fn_macos.zip
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^nochangelog"
+      - "^Merge pull request"
+      - "^Merge branch"
+
+brews:
+  - repository:
+      owner: namespacelabs
+      name: homebrew-namespace
+
+    name: ns
+    ids:
+      - ns
+    description: "Developer platform with a unified experience from development to production."
+    homepage: "https://namespacelabs.com/"
+    caveats: |
+      Note: ns collects usage telemetry. This data helps us build a better
+      platform for you. You can learn more at https://namespace.so/telemetry.
+
+      Check out our examples at https://namespace.so/docs#examples to get started.
+    url_template: "https://get.namespace.so/packages/ns/v{{.Version}}/{{.ArtifactName}}"
+    install: |
+      bin.install "ns"
+
+  - repository:
+      owner: namespacelabs
+      name: homebrew-namespace
+
+    name: nsc
+    ids:
+      - nsc
+    description: "Container-optimized cloud infrastructure that just works."
+    homepage: "https://namespace.so/"
+    url_template: "https://get.namespace.so/packages/nsc/v{{.Version}}/{{.ArtifactName}}"
+    install: |
+      bin.install "nsc"
+      bin.install "docker-credential-nsc"
