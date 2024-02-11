@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/attribute"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/tracing"
@@ -107,18 +107,12 @@ type tracingTx struct {
 	opts commonOpts
 }
 
+var _ pgx.Tx = tracingTx{}
+
 func (tx tracingTx) Begin(ctx context.Context) (pgx.Tx, error) {
 	return returnWithSpan(ctx, tx.opts, "tx.Begin", "", func(ctx context.Context) (pgx.Tx, error) {
 		newtx, err := tx.base.Begin(ctx)
 		return tracingTx{newtx, tx.opts}, err
-	})
-}
-
-func (tx tracingTx) BeginFunc(ctx context.Context, f func(pgx.Tx) error) error {
-	return withSpan(ctx, tx.opts, "tx.BeginFunc", "", func(ctx context.Context) error {
-		return tx.base.BeginFunc(ctx, func(newtx pgx.Tx) error {
-			return f(tracingTx{base: newtx, opts: tx.opts})
-		})
 	})
 }
 
@@ -168,12 +162,6 @@ func (tx tracingTx) Query(ctx context.Context, sql string, arguments ...interfac
 
 func (tx tracingTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
 	return queryRow(ctx, tx.opts, tx.base, "tx.QueryRow", sql, args...)
-}
-
-func (tx tracingTx) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, tx.opts, "tx.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
-		return tx.base.QueryFunc(ctx, sql, args, scans, f)
-	})
 }
 
 func (tx tracingTx) Conn() *pgx.Conn { return tx.base.Conn() }

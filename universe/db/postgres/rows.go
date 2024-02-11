@@ -7,9 +7,8 @@ package postgres
 import (
 	"context"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgproto3/v2"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -64,7 +63,7 @@ func (r tracedRows) CommandTag() pgconn.CommandTag {
 	return r.rows.CommandTag()
 }
 
-func (r tracedRows) FieldDescriptions() []pgproto3.FieldDescription {
+func (r tracedRows) FieldDescriptions() []pgconn.FieldDescription {
 	return r.rows.FieldDescriptions()
 }
 
@@ -82,4 +81,8 @@ func (r tracedRows) Values() ([]interface{}, error) {
 
 func (r tracedRows) RawValues() [][]byte {
 	return r.rows.RawValues()
+}
+
+func (r tracedRows) Conn() *pgx.Conn {
+	return r.rows.Conn()
 }

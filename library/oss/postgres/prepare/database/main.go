@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
 	"namespacelabs.dev/foundation/library/oss/postgres"

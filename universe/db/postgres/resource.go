@@ -7,7 +7,7 @@ package postgres
 import (
 	"context"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"namespacelabs.dev/foundation/framework/resources"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
@@ -24,10 +24,10 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 		return nil, err
 	}
 
-	// Only connect when the pool starts to be used.
-	config.LazyConnect = true
+	// XXX TODO
+	// config.ConnConfig.Tracer = ...
 
-	conn, err := pgxpool.ConnectConfig(ctx, config)
+	conn, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}

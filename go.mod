@@ -63,9 +63,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hpcloud/tail v1.0.0
 	github.com/iancoleman/strcase v0.2.0
-	github.com/jackc/pgconn v1.12.1
 	github.com/jackc/pgproto3/v2 v2.3.0
-	github.com/jackc/pgx/v4 v4.16.1
+	github.com/jackc/pgx/v5 v5.5.3
 	github.com/jet/kube-webhook-certgen v1.5.2
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
 	github.com/jpillora/chisel v1.9.1
@@ -119,7 +118,7 @@ require (
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
 	go.uber.org/zap v1.25.0
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
 	golang.org/x/mod v0.11.0
 	golang.org/x/net v0.19.0
@@ -255,9 +254,8 @@ require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
-	github.com/jackc/pgtype v1.11.0 // indirect
-	github.com/jackc/puddle v1.2.1 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
+	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/jonboulle/clockwork v0.4.0 // indirect

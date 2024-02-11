@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
@@ -19,9 +19,11 @@ import (
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
 
-// pgx does not provide for instrumentation hooks, only logging. So we wrap access to it, retaining the API.
-// Alternatively, https://github.com/uptrace/opentelemetry-go-extra/tree/otelsql/v0.1.12/otelsql could be used
-// but that requires database/sql, which does not support pg-specific types.
+// pgx didn't used to provide for instrumentation hooks, only logging. So we
+// wrap access to it, retaining the API. Alternatively,
+// https://github.com/uptrace/opentelemetry-go-extra/tree/otelsql/v0.1.12/otelsql
+// could be used but that requires database/sql, which does not support
+// pg-specific types.
 
 type DB struct {
 	base   *pgxpool.Pool
@@ -143,22 +145,8 @@ func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pg
 	})
 }
 
-func (db DB) BeginTxFunc(ctx context.Context, txOptions pgx.TxOptions, callback func(pgx.Tx) error) error {
-	return withSpan(ctx, db.opts, "db.BeginTxFunc", "", func(ctx context.Context) error {
-		return db.base.BeginTxFunc(ctx, txOptions, func(newtx pgx.Tx) error {
-			return callback(tracingTx{base: newtx, opts: db.opts})
-		})
-	})
-}
-
 func (db DB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
 	return query(ctx, db.opts, db.base, "db.Query", sql, args...)
-}
-
-func (db DB) QueryFunc(ctx context.Context, sql string, args []interface{}, scans []interface{}, f func(pgx.QueryFuncRow) error) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, db.opts, "db.QueryFunc", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
-		return db.base.QueryFunc(ctx, sql, args, scans, f)
-	})
 }
 
 func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {

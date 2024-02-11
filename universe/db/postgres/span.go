@@ -9,7 +9,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	"go.opentelemetry.io/otel/trace"
