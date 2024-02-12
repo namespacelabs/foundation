@@ -7,9 +7,9 @@ package postgres
 import (
 	"context"
 
+	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/std/monitoring/tracing"
 )
 
 func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) (*DB, error) {
@@ -22,15 +22,15 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		return nil, err
 	}
 
-	tracer, err := tracing.Tracer(Package__sfr1nt, deps.OpenTelemetry)
+	tp, err := deps.OpenTelemetry.GetTracerProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	return ConnectToResource(ctx, res, db.ResourceRef, NewDBOptions{Tracer: tracer})
+	return ConnectToResource(ctx, res, db.ResourceRef, tp)
 }
 
-func ProvideDatabaseFromResourceRef(ctx context.Context, ref string, opts NewDBOptions) (*DB, error) {
+func ProvideDatabaseFromResourceRef(ctx context.Context, ref string, tp trace.TracerProvider) (*DB, error) {
 	if ref == "" {
 		return nil, fnerrors.New("resourceRef is required")
 	}
@@ -40,5 +40,5 @@ func ProvideDatabaseFromResourceRef(ctx context.Context, ref string, opts NewDBO
 		return nil, err
 	}
 
-	return ConnectToResource(ctx, res, ref, opts)
+	return ConnectToResource(ctx, res, ref, tp)
 }

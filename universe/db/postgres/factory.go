@@ -9,12 +9,11 @@ import (
 
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
-	"namespacelabs.dev/foundation/std/monitoring/tracing"
 )
 
 type Factory struct {
 	res *resources.Parsed
-	t   trace.Tracer
+	tp  trace.TracerProvider
 }
 
 func ProvideFactory(ctx context.Context, _ *FactoryArgs, deps ExtensionDeps) (Factory, error) {
@@ -23,23 +22,14 @@ func ProvideFactory(ctx context.Context, _ *FactoryArgs, deps ExtensionDeps) (Fa
 		return Factory{}, err
 	}
 
-	tracer, err := tracing.Tracer(Package__sfr1nt, deps.OpenTelemetry)
+	tp, err := deps.OpenTelemetry.GetTracerProvider()
 	if err != nil {
 		return Factory{}, err
 	}
 
-	return Factory{res, tracer}, nil
+	return Factory{res, tp}, nil
 }
 
 func (f Factory) Provide(ctx context.Context, ref string) (*DB, error) {
-	return ConnectToResource(ctx, f.res, ref, NewDBOptions{
-		Tracer: f.t,
-	})
-}
-
-func (f Factory) ProvideWithCustomErrors(ctx context.Context, ref string, errW func(context.Context, error) error) (*DB, error) {
-	return ConnectToResource(ctx, f.res, ref, NewDBOptions{
-		Tracer:       f.t,
-		ErrorWrapper: errW,
-	})
+	return ConnectToResource(ctx, f.res, ref, f.tp)
 }

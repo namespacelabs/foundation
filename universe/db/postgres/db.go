@@ -33,7 +33,6 @@ type DB struct {
 
 type commonOpts struct {
 	t            trace.Tracer
-	errw         func(context.Context, error) error
 	clusterAddr  string
 	databaseName string
 }
@@ -64,16 +63,8 @@ func init() {
 	}
 }
 
-type NewDBOptions struct {
-	Tracer       trace.Tracer
-	ErrorWrapper func(context.Context, error) error
-}
-
-func NewDB(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, o NewDBOptions) *DB {
-	db := &DB{base: conn, opts: commonOpts{t: o.Tracer, errw: o.ErrorWrapper}}
-	if db.opts.errw == nil {
-		db.opts.errw = func(_ context.Context, err error) error { return err }
-	}
+func NewDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer) *DB {
+	db := &DB{base: conn, opts: commonOpts{t: tracer}}
 
 	if instance != nil {
 		db.opts.clusterAddr = instance.ClusterAddress

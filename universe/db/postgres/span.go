@@ -19,7 +19,7 @@ import (
 
 func withSpan(ctx context.Context, opts commonOpts, name, sql string, f func(context.Context) error) error {
 	if opts.t == nil {
-		return opts.errw(ctx, f(ctx))
+		return f(ctx)
 	}
 
 	if s := trace.SpanFromContext(ctx); !s.IsRecording() {
@@ -40,7 +40,7 @@ func withSpan(ctx context.Context, opts commonOpts, name, sql string, f func(con
 	err := checkErr(f(ctx))
 	recordErr(span, err)
 
-	return opts.errw(ctx, err)
+	return err
 }
 
 func createSpan(ctx context.Context, opts commonOpts, name, sql string) (context.Context, trace.Span) {
@@ -67,7 +67,7 @@ func returnWithSpan[T any](ctx context.Context, opts commonOpts, name, sql strin
 	ctx, span := createSpan(ctx, opts, name, sql)
 	if span == nil {
 		v, err := f(ctx)
-		return v, opts.errw(ctx, err)
+		return v, err
 	}
 
 	defer span.End()
@@ -86,7 +86,7 @@ func processError(ctx context.Context, span trace.Span, opts commonOpts, origErr
 		recordErr(span, err)
 	}
 
-	return opts.errw(ctx, err)
+	return err
 }
 
 func checkErr(err error) error {

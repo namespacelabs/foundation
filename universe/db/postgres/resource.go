@@ -7,30 +7,37 @@ package postgres
 import (
 	"context"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
 
 // Connect to a Postgres Database resource.
-func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, opts NewDBOptions) (*DB, error) {
+func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, tp trace.TracerProvider) (*DB, error) {
 	db := &postgrespb.DatabaseInstance{}
 	if err := res.Unmarshal(resourceRef, db); err != nil {
 		return nil, err
 	}
 
-	config, err := pgxpool.ParseConfig(db.ConnectionUri)
+	return NewDatabaseFromConnectionUri(ctx, db, db.ConnectionUri, tp)
+}
+
+func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider) (*DB, error) {
+	config, err := pgxpool.ParseConfig(connuri)
 	if err != nil {
 		return nil, err
 	}
 
-	// XXX TODO
-	// config.ConnConfig.Tracer = ...
+	if tp != nil {
+		config.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTracerProvider(tp))
+	}
 
 	conn, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewDB(db, conn, opts), nil
+	return NewDatabase(db, conn, nil), nil
 }
