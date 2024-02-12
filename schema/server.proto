@@ -63,7 +63,7 @@ message Server {
 
     string deployable_class = 31;
 
-    int32 replicas = 39;
+    reserved 39;
 
     // This server is meant to be used for tests, and should not be deployed by default.
     bool testonly = 21;
@@ -151,6 +151,7 @@ message ServerFragment {
     repeated NamedResolvable   annotation     = 12;
     repeated NodeSelectorItem  node_selector  = 13;
     repeated Listener          listener       = 14;
+    int32                      replicas       = 15;
 }
 
 message Listener {

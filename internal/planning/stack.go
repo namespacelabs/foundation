@@ -364,6 +364,14 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 			ps.MergedFragment.NodeSelector = append(ps.MergedFragment.NodeSelector, frag.NodeSelector...)
 			ps.MergedFragment.Listener = append(ps.MergedFragment.Listener, frag.Listener...)
 
+			if frag.Replicas != 0 {
+				if ps.MergedFragment.Replicas != 0 && frag.Replicas != ps.MergedFragment.Replicas {
+					return fnerrors.New("incompatible replicas definition")
+				} else if ps.MergedFragment.Replicas == 0 {
+					ps.MergedFragment.Replicas = frag.Replicas
+				}
+			}
+
 			if frag.Permissions != nil {
 				if ps.MergedFragment.Permissions == nil {
 					ps.MergedFragment.Permissions = &schema.ServerPermissions{}
@@ -699,6 +707,7 @@ func evalProvision(ctx context.Context, secs is.SecretsSource, server Server, no
 		ComputePlanWith: append(slices.Clone(node.ComputePlanWith), combinedProps.ComputePlanWith...),
 		ServerFragments: fragments,
 	}
+
 	parsed.PrepareProps.ProvisionInput = combinedProps.ProvisionInput
 	parsed.PrepareProps.Extension = combinedProps.Extension
 	parsed.PrepareProps.ServerExtension = combinedProps.ServerExtension

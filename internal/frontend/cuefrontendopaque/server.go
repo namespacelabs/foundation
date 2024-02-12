@@ -26,19 +26,17 @@ var (
 		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
-		"extensions", "nodeSelector",
+		"extensions", "nodeSelector", "replicas",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
 	serverFields = append(slices.Clone(extensionFields),
-		"name", "class", "integration", "image", "imageFrom", "unstable_naming", "replicas", "spec")
+		"name", "class", "integration", "image", "imageFrom", "unstable_naming", "spec")
 )
 
 type cueServer struct {
 	Name  string `json:"name"`
 	Class string `json:"class"`
-
-	Replicas int32 `json:"replicas"`
 
 	cueServerExtension
 }
@@ -64,6 +62,8 @@ type cueServerExtension struct {
 	NodeSelector   map[string]string               `json:"nodeSelector,omitempty"`
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
+
+	Replicas int32 `json:"replicas"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -100,7 +100,6 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		Name:         bits.Name,
 		Framework:    schema.Framework_OPAQUE,
 		RunByDefault: true,
-		Replicas:     bits.Replicas,
 		Self:         fragment,
 	}
 
@@ -111,9 +110,6 @@ func parseCueServer(ctx context.Context, env *schema.Environment, pl parsing.Ear
 		out.DeployableClass = string(schema.DeployableClass_STATEFUL)
 	case "daemonset", string(schema.DeployableClass_DAEMONSET):
 		out.DeployableClass = string(schema.DeployableClass_DAEMONSET)
-		if bits.Replicas > 0 {
-			return nil, fnerrors.NewWithLocation(loc, "daemon set deployments do not support custom replica counts")
-		}
 	default:
 		return nil, fnerrors.NewWithLocation(loc, "%s: server class is not supported", bits.Class)
 	}
@@ -386,6 +382,10 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		slices.SortFunc(out.Annotation, func(a, b *schema.NamedResolvable) int {
 			return strings.Compare(a.Name, b.Name)
 		})
+	}
+
+	if bits.Replicas > 0 {
+		out.Replicas = bits.Replicas
 	}
 
 	for _, ext := range bits.Extensions {
