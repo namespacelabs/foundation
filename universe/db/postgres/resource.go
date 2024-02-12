@@ -30,8 +30,10 @@ func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseIn
 		return nil, err
 	}
 
+	var t trace.Tracer
 	if tp != nil {
 		config.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTracerProvider(tp))
+		t = tp.Tracer("namespacelabs.dev/foundation/universe/db/postgres")
 	}
 
 	conn, err := pgxpool.NewWithConfig(ctx, config)
@@ -39,5 +41,5 @@ func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseIn
 		return nil, err
 	}
 
-	return NewDatabase(db, conn, nil), nil
+	return newDatabase(db, conn, t), nil
 }

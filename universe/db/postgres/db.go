@@ -19,20 +19,14 @@ import (
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
 
-// pgx didn't used to provide for instrumentation hooks, only logging. So we
-// wrap access to it, retaining the API. Alternatively,
-// https://github.com/uptrace/opentelemetry-go-extra/tree/otelsql/v0.1.12/otelsql
-// could be used but that requires database/sql, which does not support
-// pg-specific types.
-
 type DB struct {
 	base   *pgxpool.Pool
 	opts   commonOpts
+	t      trace.Tracer
 	cancel func()
 }
 
 type commonOpts struct {
-	t            trace.Tracer
 	clusterAddr  string
 	databaseName string
 }
@@ -63,8 +57,8 @@ func init() {
 	}
 }
 
-func NewDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer) *DB {
-	db := &DB{base: conn, opts: commonOpts{t: tracer}}
+func newDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer) *DB {
+	db := &DB{base: conn, t: tracer}
 
 	if instance != nil {
 		db.opts.clusterAddr = instance.ClusterAddress
@@ -109,14 +103,14 @@ func NewDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, trac
 	return db
 }
 
-func (db commonOpts) TraceAttributes() []attribute.KeyValue {
+func (db DB) traceAttributes() []attribute.KeyValue {
 	var keyvalues []attribute.KeyValue
-	if db.clusterAddr != "" {
-		keyvalues = append(keyvalues, attribute.String("db.host", db.clusterAddr))
+	if db.opts.clusterAddr != "" {
+		keyvalues = append(keyvalues, attribute.String("db.host", db.opts.clusterAddr))
 	}
 
-	if db.databaseName != "" {
-		keyvalues = append(keyvalues, semconv.DBName(db.databaseName))
+	if db.opts.databaseName != "" {
+		keyvalues = append(keyvalues, semconv.DBName(db.opts.databaseName))
 	}
 
 	return keyvalues
@@ -131,26 +125,17 @@ func (db DB) Close() error {
 }
 
 func (db DB) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, db.opts, "db.Exec", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
-		return db.base.Exec(ctx, sql, arguments...)
-	})
+	return db.base.Exec(ctx, sql, arguments...)
 }
 
 func (db DB) Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error) {
-	return query(ctx, db.opts, db.base, "db.Query", sql, args...)
+	return db.base.Query(ctx, sql, args...)
 }
 
 func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	return queryRow(ctx, db.opts, db.base, "db.QueryRow", sql, args...)
+	return db.base.QueryRow(ctx, sql, args...)
 }
 
 func (db DB) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults {
-	// Unfortunately can't introspect pgx.Batch
-	sql := fmt.Sprintf("batch(%d)", b.Len())
-	res, _ := returnWithSpan(ctx, db.opts, "db.SendBatch", sql, func(ctx context.Context) (pgx.BatchResults, error) {
-		return db.base.SendBatch(ctx, b), nil
-	})
-	return res
+	return db.base.SendBatch(ctx, b)
 }
-
-func (db DB) Tracer() trace.Tracer { return db.opts.t }

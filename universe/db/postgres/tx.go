@@ -7,7 +7,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
@@ -58,12 +57,12 @@ func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f
 func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attempt int64, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
 	n := tracing.Name("pg.Transaction").Attribute(
 		attribute.String("pg.isolation-level", string(txoptions.IsoLevel)),
-		attribute.String("pg.access-mode", string(txoptions.AccessMode))).Attribute(db.opts.TraceAttributes()...)
+		attribute.String("pg.access-mode", string(txoptions.AccessMode))).Attribute(db.traceAttributes()...)
 	if attempt > 0 {
 		n = n.Attribute(attribute.Int64("db.tx_attempt", attempt))
 	}
 
-	return tracing.Collect1(ctx, db.Tracer(), n, func(ctx context.Context) (T, error) {
+	return tracing.Collect1(ctx, db.t, n, func(ctx context.Context) (T, error) {
 		var empty T
 
 		tx, err := db.base.BeginTx(ctx, txoptions)
@@ -73,7 +72,7 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attem
 
 		defer func() { _ = tx.Rollback(ctx) }()
 
-		value, err := f(ctx, tracingTx{base: tx, opts: db.opts})
+		value, err := f(ctx, tx)
 		if err != nil {
 			return empty, err
 		}
@@ -101,67 +100,3 @@ type TransactionError struct {
 
 func (p TransactionError) Error() string { return p.InternalErr.Error() }
 func (p TransactionError) Unwrap() error { return p.InternalErr }
-
-type tracingTx struct {
-	base pgx.Tx
-	opts commonOpts
-}
-
-var _ pgx.Tx = tracingTx{}
-
-func (tx tracingTx) Begin(ctx context.Context) (pgx.Tx, error) {
-	return returnWithSpan(ctx, tx.opts, "tx.Begin", "", func(ctx context.Context) (pgx.Tx, error) {
-		newtx, err := tx.base.Begin(ctx)
-		return tracingTx{newtx, tx.opts}, err
-	})
-}
-
-func (tx tracingTx) Commit(ctx context.Context) error {
-	return withSpan(ctx, tx.opts, "tx.Commit", "", func(ctx context.Context) error {
-		return tx.base.Commit(ctx)
-	})
-}
-
-func (tx tracingTx) Rollback(ctx context.Context) error {
-	return withSpan(ctx, tx.opts, "tx.Rollback", "", func(ctx context.Context) error {
-		return tx.base.Commit(ctx)
-	})
-}
-
-func (tx tracingTx) CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error) {
-	return returnWithSpan(ctx, tx.opts, "tx.CopyFrom", "", func(ctx context.Context) (int64, error) {
-		return tx.base.CopyFrom(ctx, tableName, columnNames, rowSrc)
-	})
-}
-
-func (tx tracingTx) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults {
-	return tx.base.SendBatch(ctx, b)
-}
-
-func (tx tracingTx) LargeObjects() pgx.LargeObjects {
-	return tx.base.LargeObjects()
-}
-
-func (tx tracingTx) Prepare(ctx context.Context, name, sql string) (*pgconn.StatementDescription, error) {
-	return returnWithSpan(ctx, tx.opts, "tx.Prepare", fmt.Sprintf("%s = %s", name, sql), func(ctx context.Context) (*pgconn.StatementDescription, error) {
-		return tx.base.Prepare(ctx, name, sql)
-	})
-}
-
-func (tx tracingTx) Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error) {
-	return returnWithSpan(ctx, tx.opts, "tx.Exec", sql, func(ctx context.Context) (pgconn.CommandTag, error) {
-		return tx.base.Exec(ctx, sql, arguments...)
-	})
-}
-
-func (tx tracingTx) Query(ctx context.Context, sql string, arguments ...interface{}) (pgx.Rows, error) {
-	return returnWithSpan(ctx, tx.opts, "tx.Query", sql, func(ctx context.Context) (pgx.Rows, error) {
-		return tx.base.Query(ctx, sql, arguments...)
-	})
-}
-
-func (tx tracingTx) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row {
-	return queryRow(ctx, tx.opts, tx.base, "tx.QueryRow", sql, args...)
-}
-
-func (tx tracingTx) Conn() *pgx.Conn { return tx.base.Conn() }
