@@ -19,6 +19,7 @@ import (
 type Collected struct {
 	name       string
 	attributes []attribute.KeyValue
+	newroot    bool
 }
 
 func Name(name string) Collected {
@@ -29,12 +30,21 @@ func (c Collected) Attribute(kv ...attribute.KeyValue) Collected {
 	return Collected{name: c.name, attributes: append(c.attributes, kv...)}
 }
 
+func (c Collected) NewRoot() Collected {
+	copy := c
+	copy.newroot = true
+	return copy
+}
+
 func Collect0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
 	if tracer == nil {
 		return callback(ctx)
 	}
 
 	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
+	if name.newroot {
+		opts = append(opts, trace.WithNewRoot())
+	}
 
 	ctx, span := tracer.Start(ctx, name.name, opts...)
 	defer span.End(trace.WithStackTrace(true))
@@ -57,6 +67,9 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 	}
 
 	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
+	if name.newroot {
+		opts = append(opts, trace.WithNewRoot())
+	}
 
 	ctx, span := tracer.Start(ctx, name.name, opts...)
 	defer span.End(trace.WithStackTrace(true))
@@ -75,6 +88,9 @@ func Collect2[T any, R any](ctx context.Context, tracer trace.Tracer, name Colle
 	}
 
 	opts = append([]trace.SpanStartOption{trace.WithAttributes(name.attributes...)}, opts...)
+	if name.newroot {
+		opts = append(opts, trace.WithNewRoot())
+	}
 
 	ctx, span := tracer.Start(ctx, name.name, opts...)
 	defer span.End(trace.WithStackTrace(true))
