@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/maps"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -73,6 +74,14 @@ func ManagedByUs() map[string]string {
 	}
 }
 
+func ServerPackageLabels(srv runtime.Deployable) map[string]string {
+	m := map[string]string{}
+	if pkg := srv.GetPackageRef().GetPackageName(); pkg != "" {
+		m[K8sServerPackageName] = kubenaming.LabelLike(pkg)
+	}
+	return m
+}
+
 // Env may be nil; srv may be nil.
 func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]string {
 	// XXX add recommended labels https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
@@ -91,9 +100,7 @@ func MakeLabels(env *schema.Environment, srv runtime.Deployable) map[string]stri
 	}
 
 	if srv != nil {
-		if pkg := srv.GetPackageRef().GetPackageName(); pkg != "" {
-			m[K8sServerPackageName] = kubenaming.LabelLike(pkg)
-		}
+		maps.Copy(m, ServerPackageLabels(srv))
 	}
 
 	return m

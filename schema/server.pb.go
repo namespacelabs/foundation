@@ -282,21 +282,22 @@ type ServerFragment struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	MainContainer *Container            `protobuf:"bytes,1,opt,name=main_container,json=mainContainer,proto3" json:"main_container,omitempty"`
-	Service       []*Server_ServiceSpec `protobuf:"bytes,2,rep,name=service,proto3" json:"service,omitempty"`
-	Ingress       []*Server_ServiceSpec `protobuf:"bytes,3,rep,name=ingress,proto3" json:"ingress,omitempty"`
-	Probe         []*Probe              `protobuf:"bytes,4,rep,name=probe,proto3" json:"probe,omitempty"`
-	Volume        []*Volume             `protobuf:"bytes,5,rep,name=volume,proto3" json:"volume,omitempty"`
-	ResourcePack  *ResourcePack         `protobuf:"bytes,6,opt,name=resource_pack,json=resourcePack,proto3" json:"resource_pack,omitempty"`
-	Permissions   *ServerPermissions    `protobuf:"bytes,7,opt,name=permissions,proto3" json:"permissions,omitempty"`
-	Toleration    []*Server_Toleration  `protobuf:"bytes,8,rep,name=toleration,proto3" json:"toleration,omitempty"`
-	Extension     []string              `protobuf:"bytes,9,rep,name=extension,proto3" json:"extension,omitempty"` // Package name.
-	Sidecar       []*Container          `protobuf:"bytes,10,rep,name=sidecar,proto3" json:"sidecar,omitempty"`
-	InitContainer []*Container          `protobuf:"bytes,11,rep,name=init_container,json=initContainer,proto3" json:"init_container,omitempty"`
-	Annotation    []*NamedResolvable    `protobuf:"bytes,12,rep,name=annotation,proto3" json:"annotation,omitempty"`
-	NodeSelector  []*NodeSelectorItem   `protobuf:"bytes,13,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty"`
-	Listener      []*Listener           `protobuf:"bytes,14,rep,name=listener,proto3" json:"listener,omitempty"`
-	Replicas      int32                 `protobuf:"varint,15,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	MainContainer   *Container            `protobuf:"bytes,1,opt,name=main_container,json=mainContainer,proto3" json:"main_container,omitempty"`
+	Service         []*Server_ServiceSpec `protobuf:"bytes,2,rep,name=service,proto3" json:"service,omitempty"`
+	Ingress         []*Server_ServiceSpec `protobuf:"bytes,3,rep,name=ingress,proto3" json:"ingress,omitempty"`
+	Probe           []*Probe              `protobuf:"bytes,4,rep,name=probe,proto3" json:"probe,omitempty"`
+	Volume          []*Volume             `protobuf:"bytes,5,rep,name=volume,proto3" json:"volume,omitempty"`
+	ResourcePack    *ResourcePack         `protobuf:"bytes,6,opt,name=resource_pack,json=resourcePack,proto3" json:"resource_pack,omitempty"`
+	Permissions     *ServerPermissions    `protobuf:"bytes,7,opt,name=permissions,proto3" json:"permissions,omitempty"`
+	Toleration      []*Server_Toleration  `protobuf:"bytes,8,rep,name=toleration,proto3" json:"toleration,omitempty"`
+	Extension       []string              `protobuf:"bytes,9,rep,name=extension,proto3" json:"extension,omitempty"` // Package name.
+	Sidecar         []*Container          `protobuf:"bytes,10,rep,name=sidecar,proto3" json:"sidecar,omitempty"`
+	InitContainer   []*Container          `protobuf:"bytes,11,rep,name=init_container,json=initContainer,proto3" json:"init_container,omitempty"`
+	Annotation      []*NamedResolvable    `protobuf:"bytes,12,rep,name=annotation,proto3" json:"annotation,omitempty"`
+	NodeSelector    []*NodeSelectorItem   `protobuf:"bytes,13,rep,name=node_selector,json=nodeSelector,proto3" json:"node_selector,omitempty"`
+	Listener        []*Listener           `protobuf:"bytes,14,rep,name=listener,proto3" json:"listener,omitempty"`
+	Replicas        int32                 `protobuf:"varint,15,opt,name=replicas,proto3" json:"replicas,omitempty"`
+	PodAntiAffinity *PodAntiAffinity      `protobuf:"bytes,16,opt,name=pod_anti_affinity,json=podAntiAffinity,proto3" json:"pod_anti_affinity,omitempty"`
 }
 
 func (x *ServerFragment) Reset() {
@@ -436,6 +437,13 @@ func (x *ServerFragment) GetReplicas() int32 {
 	return 0
 }
 
+func (x *ServerFragment) GetPodAntiAffinity() *PodAntiAffinity {
+	if x != nil {
+		return x.PodAntiAffinity
+	}
+	return nil
+}
+
 type Listener struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -554,6 +562,53 @@ func (x *NodeSelectorItem) GetValue() string {
 	return ""
 }
 
+type PodAntiAffinity struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	TopologyKey string `protobuf:"bytes,1,opt,name=topology_key,json=topologyKey,proto3" json:"topology_key,omitempty"`
+}
+
+func (x *PodAntiAffinity) Reset() {
+	*x = PodAntiAffinity{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_schema_server_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *PodAntiAffinity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PodAntiAffinity) ProtoMessage() {}
+
+func (x *PodAntiAffinity) ProtoReflect() protoreflect.Message {
+	mi := &file_schema_server_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PodAntiAffinity.ProtoReflect.Descriptor instead.
+func (*PodAntiAffinity) Descriptor() ([]byte, []int) {
+	return file_schema_server_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *PodAntiAffinity) GetTopologyKey() string {
+	if x != nil {
+		return x.TopologyKey
+	}
+	return ""
+}
+
 // Allocations for a tree of instanced values.
 type Allocation struct {
 	state         protoimpl.MessageState
@@ -566,7 +621,7 @@ type Allocation struct {
 func (x *Allocation) Reset() {
 	*x = Allocation{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[4]
+		mi := &file_schema_server_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -579,7 +634,7 @@ func (x *Allocation) String() string {
 func (*Allocation) ProtoMessage() {}
 
 func (x *Allocation) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[4]
+	mi := &file_schema_server_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -592,7 +647,7 @@ func (x *Allocation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Allocation.ProtoReflect.Descriptor instead.
 func (*Allocation) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{4}
+	return file_schema_server_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *Allocation) GetInstance() []*Allocation_Instance {
@@ -617,7 +672,7 @@ type Instantiate struct {
 func (x *Instantiate) Reset() {
 	*x = Instantiate{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[5]
+		mi := &file_schema_server_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -630,7 +685,7 @@ func (x *Instantiate) String() string {
 func (*Instantiate) ProtoMessage() {}
 
 func (x *Instantiate) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[5]
+	mi := &file_schema_server_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -643,7 +698,7 @@ func (x *Instantiate) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Instantiate.ProtoReflect.Descriptor instead.
 func (*Instantiate) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{5}
+	return file_schema_server_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *Instantiate) GetPackageName() string {
@@ -688,7 +743,7 @@ type RequiredStorage struct {
 func (x *RequiredStorage) Reset() {
 	*x = RequiredStorage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[6]
+		mi := &file_schema_server_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -701,7 +756,7 @@ func (x *RequiredStorage) String() string {
 func (*RequiredStorage) ProtoMessage() {}
 
 func (x *RequiredStorage) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[6]
+	mi := &file_schema_server_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -714,7 +769,7 @@ func (x *RequiredStorage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequiredStorage.ProtoReflect.Descriptor instead.
 func (*RequiredStorage) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{6}
+	return file_schema_server_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RequiredStorage) GetOwner() string {
@@ -756,7 +811,7 @@ type ServerPermissions struct {
 func (x *ServerPermissions) Reset() {
 	*x = ServerPermissions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[7]
+		mi := &file_schema_server_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -769,7 +824,7 @@ func (x *ServerPermissions) String() string {
 func (*ServerPermissions) ProtoMessage() {}
 
 func (x *ServerPermissions) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[7]
+	mi := &file_schema_server_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -782,7 +837,7 @@ func (x *ServerPermissions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerPermissions.ProtoReflect.Descriptor instead.
 func (*ServerPermissions) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{7}
+	return file_schema_server_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ServerPermissions) GetClusterRole() []*ServerPermissions_ClusterRole {
@@ -806,7 +861,7 @@ type ServerExtension struct {
 func (x *ServerExtension) Reset() {
 	*x = ServerExtension{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[8]
+		mi := &file_schema_server_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -819,7 +874,7 @@ func (x *ServerExtension) String() string {
 func (*ServerExtension) ProtoMessage() {}
 
 func (x *ServerExtension) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[8]
+	mi := &file_schema_server_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -832,7 +887,7 @@ func (x *ServerExtension) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerExtension.ProtoReflect.Descriptor instead.
 func (*ServerExtension) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{8}
+	return file_schema_server_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ServerExtension) GetOwner() string {
@@ -875,7 +930,7 @@ type Server_ServiceSpec struct {
 func (x *Server_ServiceSpec) Reset() {
 	*x = Server_ServiceSpec{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[9]
+		mi := &file_schema_server_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -888,7 +943,7 @@ func (x *Server_ServiceSpec) String() string {
 func (*Server_ServiceSpec) ProtoMessage() {}
 
 func (x *Server_ServiceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[9]
+	mi := &file_schema_server_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -983,7 +1038,7 @@ type Server_URLMapEntry struct {
 func (x *Server_URLMapEntry) Reset() {
 	*x = Server_URLMapEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[10]
+		mi := &file_schema_server_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -996,7 +1051,7 @@ func (x *Server_URLMapEntry) String() string {
 func (*Server_URLMapEntry) ProtoMessage() {}
 
 func (x *Server_URLMapEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[10]
+	mi := &file_schema_server_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1067,7 +1122,7 @@ type Server_Description struct {
 func (x *Server_Description) Reset() {
 	*x = Server_Description{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[11]
+		mi := &file_schema_server_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1080,7 +1135,7 @@ func (x *Server_Description) String() string {
 func (*Server_Description) ProtoMessage() {}
 
 func (x *Server_Description) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[11]
+	mi := &file_schema_server_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1130,7 +1185,7 @@ type Server_EnvironmentRequirement struct {
 func (x *Server_EnvironmentRequirement) Reset() {
 	*x = Server_EnvironmentRequirement{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[12]
+		mi := &file_schema_server_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1143,7 +1198,7 @@ func (x *Server_EnvironmentRequirement) String() string {
 func (*Server_EnvironmentRequirement) ProtoMessage() {}
 
 func (x *Server_EnvironmentRequirement) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[12]
+	mi := &file_schema_server_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1194,7 +1249,7 @@ type Server_Toleration struct {
 func (x *Server_Toleration) Reset() {
 	*x = Server_Toleration{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[13]
+		mi := &file_schema_server_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1207,7 +1262,7 @@ func (x *Server_Toleration) String() string {
 func (*Server_Toleration) ProtoMessage() {}
 
 func (x *Server_Toleration) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[13]
+	mi := &file_schema_server_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1262,7 +1317,7 @@ type Server_Configuration struct {
 func (x *Server_Configuration) Reset() {
 	*x = Server_Configuration{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[14]
+		mi := &file_schema_server_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1275,7 +1330,7 @@ func (x *Server_Configuration) String() string {
 func (*Server_Configuration) ProtoMessage() {}
 
 func (x *Server_Configuration) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[14]
+	mi := &file_schema_server_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1318,7 +1373,7 @@ type Allocation_Instance struct {
 func (x *Allocation_Instance) Reset() {
 	*x = Allocation_Instance{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[15]
+		mi := &file_schema_server_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1331,7 +1386,7 @@ func (x *Allocation_Instance) String() string {
 func (*Allocation_Instance) ProtoMessage() {}
 
 func (x *Allocation_Instance) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[15]
+	mi := &file_schema_server_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1344,7 +1399,7 @@ func (x *Allocation_Instance) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Allocation_Instance.ProtoReflect.Descriptor instead.
 func (*Allocation_Instance) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{4, 0}
+	return file_schema_server_proto_rawDescGZIP(), []int{5, 0}
 }
 
 func (x *Allocation_Instance) GetInstanceOwner() string {
@@ -1394,7 +1449,7 @@ type ServerPermissions_ClusterRole struct {
 func (x *ServerPermissions_ClusterRole) Reset() {
 	*x = ServerPermissions_ClusterRole{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_schema_server_proto_msgTypes[16]
+		mi := &file_schema_server_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1407,7 +1462,7 @@ func (x *ServerPermissions_ClusterRole) String() string {
 func (*ServerPermissions_ClusterRole) ProtoMessage() {}
 
 func (x *ServerPermissions_ClusterRole) ProtoReflect() protoreflect.Message {
-	mi := &file_schema_server_proto_msgTypes[16]
+	mi := &file_schema_server_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1420,7 +1475,7 @@ func (x *ServerPermissions_ClusterRole) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServerPermissions_ClusterRole.ProtoReflect.Descriptor instead.
 func (*ServerPermissions_ClusterRole) Descriptor() ([]byte, []int) {
-	return file_schema_server_proto_rawDescGZIP(), []int{7, 0}
+	return file_schema_server_proto_rawDescGZIP(), []int{8, 0}
 }
 
 func (x *ServerPermissions_ClusterRole) GetLabel() string {
@@ -1600,7 +1655,7 @@ var file_schema_server_proto_rawDesc = []byte{
 	0x08, 0x10, 0x10, 0x11, 0x4a, 0x04, 0x08, 0x12, 0x10, 0x13, 0x4a, 0x04, 0x08, 0x16, 0x10, 0x17,
 	0x4a, 0x04, 0x08, 0x24, 0x10, 0x25, 0x4a, 0x04, 0x08, 0x1a, 0x10, 0x1b, 0x4a, 0x04, 0x08, 0x21,
 	0x10, 0x22, 0x4a, 0x04, 0x08, 0x23, 0x10, 0x24, 0x4a, 0x04, 0x08, 0x25, 0x10, 0x26, 0x4a, 0x04,
-	0x08, 0x26, 0x10, 0x27, 0x4a, 0x04, 0x08, 0x28, 0x10, 0x29, 0x22, 0x8c, 0x07, 0x0a, 0x0e, 0x53,
+	0x08, 0x26, 0x10, 0x27, 0x4a, 0x04, 0x08, 0x28, 0x10, 0x29, 0x22, 0xdc, 0x07, 0x0a, 0x0e, 0x53,
 	0x65, 0x72, 0x76, 0x65, 0x72, 0x46, 0x72, 0x61, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x43, 0x0a,
 	0x0e, 0x6d, 0x61, 0x69, 0x6e, 0x5f, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x18,
 	0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69,
@@ -1657,7 +1712,12 @@ var file_schema_server_proto_rawDesc = []byte{
 	0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x65,
 	0x6e, 0x65, 0x72, 0x52, 0x08, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x12, 0x1a, 0x0a,
 	0x08, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x73, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x05, 0x52,
-	0x08, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x73, 0x22, 0x70, 0x0a, 0x08, 0x4c, 0x69, 0x73,
+	0x08, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x73, 0x12, 0x4e, 0x0a, 0x11, 0x70, 0x6f, 0x64,
+	0x5f, 0x61, 0x6e, 0x74, 0x69, 0x5f, 0x61, 0x66, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x18, 0x10,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
+	0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x50, 0x6f, 0x64, 0x41, 0x6e, 0x74, 0x69,
+	0x41, 0x66, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x52, 0x0f, 0x70, 0x6f, 0x64, 0x41, 0x6e, 0x74,
+	0x69, 0x41, 0x66, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x22, 0x70, 0x0a, 0x08, 0x4c, 0x69, 0x73,
 	0x74, 0x65, 0x6e, 0x65, 0x72, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x1a, 0x0a, 0x08, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x70, 0x72, 0x6f,
@@ -1668,78 +1728,82 @@ var file_schema_server_proto_rawDesc = []byte{
 	0x6f, 0x64, 0x65, 0x53, 0x65, 0x6c, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x49, 0x74, 0x65, 0x6d, 0x12,
 	0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65,
 	0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0xde, 0x02, 0x0a, 0x0a, 0x41, 0x6c, 0x6c, 0x6f,
-	0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x42, 0x0a, 0x08, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e,
-	0x63, 0x65, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x26, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64,
-	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x41, 0x6c, 0x6c,
-	0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65,
-	0x52, 0x08, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x1a, 0x8b, 0x02, 0x0a, 0x08, 0x49,
-	0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x25, 0x0a, 0x0e, 0x69, 0x6e, 0x73, 0x74, 0x61,
-	0x6e, 0x63, 0x65, 0x5f, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
-	0x0d, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x4f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x21,
-	0x0a, 0x0c, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02,
+	0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x22, 0x34, 0x0a, 0x0f, 0x50, 0x6f, 0x64, 0x41, 0x6e,
+	0x74, 0x69, 0x41, 0x66, 0x66, 0x69, 0x6e, 0x69, 0x74, 0x79, 0x12, 0x21, 0x0a, 0x0c, 0x74, 0x6f,
+	0x70, 0x6f, 0x6c, 0x6f, 0x67, 0x79, 0x5f, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x0b, 0x74, 0x6f, 0x70, 0x6f, 0x6c, 0x6f, 0x67, 0x79, 0x4b, 0x65, 0x79, 0x22, 0xde, 0x02,
+	0x0a, 0x0a, 0x41, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x12, 0x42, 0x0a, 0x08,
+	0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x26,
+	0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65,
+	0x6d, 0x61, 0x2e, 0x41, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x49, 0x6e,
+	0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x08, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65,
+	0x1a, 0x8b, 0x02, 0x0a, 0x08, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x25, 0x0a,
+	0x0e, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x5f, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18,
+	0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x4f,
+	0x77, 0x6e, 0x65, 0x72, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x5f,
+	0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x61, 0x63, 0x6b,
+	0x61, 0x67, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x6c, 0x6c, 0x6f, 0x63,
+	0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x6c, 0x6c,
+	0x6f, 0x63, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x42, 0x0a, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e,
+	0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x66,
+	0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61,
+	0x2e, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x52, 0x0c, 0x69, 0x6e,
+	0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64, 0x12, 0x52, 0x0a, 0x15, 0x64, 0x6f,
+	0x77, 0x6e, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x5f, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x66, 0x6f, 0x75, 0x6e,
+	0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x41, 0x6c,
+	0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x14, 0x64, 0x6f, 0x77, 0x6e, 0x73, 0x74,
+	0x72, 0x65, 0x61, 0x6d, 0x41, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x90,
+	0x01, 0x0a, 0x0b, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x12, 0x21,
+	0x0a, 0x0c, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03,
 	0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x4e, 0x61, 0x6d,
-	0x65, 0x12, 0x1d, 0x0a, 0x0a, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18,
-	0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x4e, 0x61, 0x6d, 0x65,
-	0x12, 0x42, 0x0a, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x64,
-	0x18, 0x04, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1e, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
-	0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x49, 0x6e, 0x73, 0x74, 0x61,
-	0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x52, 0x0c, 0x69, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x74, 0x69,
-	0x61, 0x74, 0x65, 0x64, 0x12, 0x52, 0x0a, 0x15, 0x64, 0x6f, 0x77, 0x6e, 0x73, 0x74, 0x72, 0x65,
-	0x61, 0x6d, 0x5f, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x18, 0x05, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x1d, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x41, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x14, 0x64, 0x6f, 0x77, 0x6e, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6d, 0x41, 0x6c,
-	0x6c, 0x6f, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x22, 0x90, 0x01, 0x0a, 0x0b, 0x49, 0x6e, 0x73,
-	0x74, 0x61, 0x6e, 0x74, 0x69, 0x61, 0x74, 0x65, 0x12, 0x21, 0x0a, 0x0c, 0x70, 0x61, 0x63, 0x6b,
-	0x61, 0x67, 0x65, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b,
-	0x70, 0x61, 0x63, 0x6b, 0x61, 0x67, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x74,
-	0x79, 0x70, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x74, 0x79, 0x70, 0x65, 0x12,
-	0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e,
-	0x61, 0x6d, 0x65, 0x12, 0x36, 0x0a, 0x0b, 0x63, 0x6f, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74,
-	0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c,
-	0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x41, 0x6e, 0x79, 0x52, 0x0b,
-	0x63, 0x6f, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x6f, 0x72, 0x22, 0x8a, 0x01, 0x0a, 0x0f,
-	0x52, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x64, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x12,
-	0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05,
-	0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x23, 0x0a, 0x0d, 0x70, 0x65, 0x72, 0x73, 0x69, 0x73, 0x74,
-	0x65, 0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x70, 0x65,
-	0x72, 0x73, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x74, 0x49, 0x64, 0x12, 0x1d, 0x0a, 0x0a, 0x62, 0x79,
-	0x74, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x04, 0x52, 0x09,
-	0x62, 0x79, 0x74, 0x65, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x1d, 0x0a, 0x0a, 0x6d, 0x6f, 0x75,
-	0x6e, 0x74, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x6d,
-	0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61, 0x74, 0x68, 0x22, 0xae, 0x01, 0x0a, 0x11, 0x53, 0x65, 0x72,
-	0x76, 0x65, 0x72, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x12, 0x53,
-	0x0a, 0x0c, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x5f, 0x72, 0x6f, 0x6c, 0x65, 0x18, 0x01,
-	0x20, 0x03, 0x28, 0x0b, 0x32, 0x30, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f,
-	0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x50,
-	0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x43, 0x6c, 0x75, 0x73, 0x74,
-	0x65, 0x72, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x0b, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x52,
-	0x6f, 0x6c, 0x65, 0x1a, 0x44, 0x0a, 0x0b, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x52, 0x6f,
-	0x6c, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x05, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x12, 0x1f, 0x0a, 0x0b, 0x72, 0x65, 0x73, 0x6f,
-	0x75, 0x72, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x72,
-	0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x22, 0xb8, 0x01, 0x0a, 0x0f, 0x53, 0x65,
-	0x72, 0x76, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x14, 0x0a,
-	0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f, 0x77,
-	0x6e, 0x65, 0x72, 0x12, 0x31, 0x0a, 0x06, 0x76, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x18, 0x03, 0x20,
-	0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e,
-	0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x52, 0x06,
-	0x76, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x12, 0x50, 0x0a, 0x10, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x64,
-	0x5f, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x18, 0x05, 0x20, 0x03, 0x28, 0x0b,
-	0x32, 0x25, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63,
-	0x68, 0x65, 0x6d, 0x61, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x45, 0x78,
-	0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x0f, 0x65, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x43,
-	0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x4a, 0x04, 0x08, 0x02, 0x10, 0x03, 0x4a, 0x04,
-	0x08, 0x04, 0x10, 0x05, 0x2a, 0x59, 0x0a, 0x09, 0x46, 0x72, 0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72,
-	0x6b, 0x12, 0x19, 0x0a, 0x15, 0x46, 0x52, 0x41, 0x4d, 0x45, 0x57, 0x4f, 0x52, 0x4b, 0x5f, 0x55,
-	0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x06, 0x0a, 0x02,
-	0x47, 0x4f, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x4f, 0x50, 0x41, 0x51, 0x55, 0x45, 0x10, 0x04,
-	0x12, 0x11, 0x0a, 0x0d, 0x4f, 0x50, 0x41, 0x51, 0x55, 0x45, 0x5f, 0x4e, 0x4f, 0x44, 0x45, 0x4a,
-	0x53, 0x10, 0x05, 0x22, 0x04, 0x08, 0x02, 0x10, 0x02, 0x22, 0x04, 0x08, 0x03, 0x10, 0x03, 0x42,
-	0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61, 0x63, 0x65, 0x6c, 0x61, 0x62, 0x73,
-	0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f,
-	0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x12, 0x12, 0x0a, 0x04, 0x74, 0x79, 0x70, 0x65, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x04, 0x74, 0x79, 0x70, 0x65, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x36, 0x0a, 0x0b, 0x63, 0x6f, 0x6e,
+	0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x6f, 0x72, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x14,
+	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
+	0x2e, 0x41, 0x6e, 0x79, 0x52, 0x0b, 0x63, 0x6f, 0x6e, 0x73, 0x74, 0x72, 0x75, 0x63, 0x74, 0x6f,
+	0x72, 0x22, 0x8a, 0x01, 0x0a, 0x0f, 0x52, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x64, 0x53, 0x74,
+	0x6f, 0x72, 0x61, 0x67, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x23, 0x0a, 0x0d, 0x70,
+	0x65, 0x72, 0x73, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0c, 0x70, 0x65, 0x72, 0x73, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x74, 0x49, 0x64,
+	0x12, 0x1d, 0x0a, 0x0a, 0x62, 0x79, 0x74, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x04, 0x52, 0x09, 0x62, 0x79, 0x74, 0x65, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12,
+	0x1d, 0x0a, 0x0a, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x70, 0x61, 0x74, 0x68, 0x18, 0x04, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x09, 0x6d, 0x6f, 0x75, 0x6e, 0x74, 0x50, 0x61, 0x74, 0x68, 0x22, 0xae,
+	0x01, 0x0a, 0x11, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73,
+	0x69, 0x6f, 0x6e, 0x73, 0x12, 0x53, 0x0a, 0x0c, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x5f,
+	0x72, 0x6f, 0x6c, 0x65, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x30, 0x2e, 0x66, 0x6f, 0x75,
+	0x6e, 0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x53,
+	0x65, 0x72, 0x76, 0x65, 0x72, 0x50, 0x65, 0x72, 0x6d, 0x69, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x73,
+	0x2e, 0x43, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x52, 0x6f, 0x6c, 0x65, 0x52, 0x0b, 0x63, 0x6c,
+	0x75, 0x73, 0x74, 0x65, 0x72, 0x52, 0x6f, 0x6c, 0x65, 0x1a, 0x44, 0x0a, 0x0b, 0x43, 0x6c, 0x75,
+	0x73, 0x74, 0x65, 0x72, 0x52, 0x6f, 0x6c, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x6c, 0x61, 0x62, 0x65,
+	0x6c, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x6c, 0x61, 0x62, 0x65, 0x6c, 0x12, 0x1f,
+	0x0a, 0x0b, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x5f, 0x69, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0a, 0x72, 0x65, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x22,
+	0xb8, 0x01, 0x0a, 0x0f, 0x53, 0x65, 0x72, 0x76, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73,
+	0x69, 0x6f, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x18, 0x01, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x05, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x12, 0x31, 0x0a, 0x06, 0x76, 0x6f, 0x6c,
+	0x75, 0x6d, 0x65, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x66, 0x6f, 0x75, 0x6e,
+	0x64, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x56, 0x6f,
+	0x6c, 0x75, 0x6d, 0x65, 0x52, 0x06, 0x76, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x12, 0x50, 0x0a, 0x10,
+	0x65, 0x78, 0x74, 0x65, 0x6e, 0x64, 0x5f, 0x63, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72,
+	0x18, 0x05, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x25, 0x2e, 0x66, 0x6f, 0x75, 0x6e, 0x64, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x2e, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x61,
+	0x69, 0x6e, 0x65, 0x72, 0x45, 0x78, 0x74, 0x65, 0x6e, 0x73, 0x69, 0x6f, 0x6e, 0x52, 0x0f, 0x65,
+	0x78, 0x74, 0x65, 0x6e, 0x64, 0x43, 0x6f, 0x6e, 0x74, 0x61, 0x69, 0x6e, 0x65, 0x72, 0x4a, 0x04,
+	0x08, 0x02, 0x10, 0x03, 0x4a, 0x04, 0x08, 0x04, 0x10, 0x05, 0x2a, 0x59, 0x0a, 0x09, 0x46, 0x72,
+	0x61, 0x6d, 0x65, 0x77, 0x6f, 0x72, 0x6b, 0x12, 0x19, 0x0a, 0x15, 0x46, 0x52, 0x41, 0x4d, 0x45,
+	0x57, 0x4f, 0x52, 0x4b, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44,
+	0x10, 0x00, 0x12, 0x06, 0x0a, 0x02, 0x47, 0x4f, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x4f, 0x50,
+	0x41, 0x51, 0x55, 0x45, 0x10, 0x04, 0x12, 0x11, 0x0a, 0x0d, 0x4f, 0x50, 0x41, 0x51, 0x55, 0x45,
+	0x5f, 0x4e, 0x4f, 0x44, 0x45, 0x4a, 0x53, 0x10, 0x05, 0x22, 0x04, 0x08, 0x02, 0x10, 0x02, 0x22,
+	0x04, 0x08, 0x03, 0x10, 0x03, 0x42, 0x25, 0x5a, 0x23, 0x6e, 0x61, 0x6d, 0x65, 0x73, 0x70, 0x61,
+	0x63, 0x65, 0x6c, 0x61, 0x62, 0x73, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x66, 0x6f, 0x75, 0x6e, 0x64,
+	0x61, 0x74, 0x69, 0x6f, 0x6e, 0x2f, 0x73, 0x63, 0x68, 0x65, 0x6d, 0x61, 0x62, 0x06, 0x70, 0x72,
+	0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -1755,90 +1819,92 @@ func file_schema_server_proto_rawDescGZIP() []byte {
 }
 
 var file_schema_server_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_schema_server_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_schema_server_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_schema_server_proto_goTypes = []interface{}{
 	(Framework)(0),                                       // 0: foundation.schema.Framework
 	(*Server)(nil),                                       // 1: foundation.schema.Server
 	(*ServerFragment)(nil),                               // 2: foundation.schema.ServerFragment
 	(*Listener)(nil),                                     // 3: foundation.schema.Listener
 	(*NodeSelectorItem)(nil),                             // 4: foundation.schema.NodeSelectorItem
-	(*Allocation)(nil),                                   // 5: foundation.schema.Allocation
-	(*Instantiate)(nil),                                  // 6: foundation.schema.Instantiate
-	(*RequiredStorage)(nil),                              // 7: foundation.schema.RequiredStorage
-	(*ServerPermissions)(nil),                            // 8: foundation.schema.ServerPermissions
-	(*ServerExtension)(nil),                              // 9: foundation.schema.ServerExtension
-	(*Server_ServiceSpec)(nil),                           // 10: foundation.schema.Server.ServiceSpec
-	(*Server_URLMapEntry)(nil),                           // 11: foundation.schema.Server.URLMapEntry
-	(*Server_Description)(nil),                           // 12: foundation.schema.Server.Description
-	(*Server_EnvironmentRequirement)(nil),                // 13: foundation.schema.Server.EnvironmentRequirement
-	(*Server_Toleration)(nil),                            // 14: foundation.schema.Server.Toleration
-	(*Server_Configuration)(nil),                         // 15: foundation.schema.Server.Configuration
-	(*Allocation_Instance)(nil),                          // 16: foundation.schema.Allocation.Instance
-	(*ServerPermissions_ClusterRole)(nil),                // 17: foundation.schema.ServerPermissions.ClusterRole
-	(*anypb.Any)(nil),                                    // 18: google.protobuf.Any
-	(*Reference)(nil),                                    // 19: foundation.schema.Reference
-	(*Naming)(nil),                                       // 20: foundation.schema.Naming
-	(*Container)(nil),                                    // 21: foundation.schema.Container
-	(*Probe)(nil),                                        // 22: foundation.schema.Probe
-	(*Volume)(nil),                                       // 23: foundation.schema.Volume
-	(*ResourcePack)(nil),                                 // 24: foundation.schema.ResourcePack
-	(*NamedResolvable)(nil),                              // 25: foundation.schema.NamedResolvable
-	(*Endpoint_Port)(nil),                                // 26: foundation.schema.Endpoint.Port
-	(*ContainerExtension)(nil),                           // 27: foundation.schema.ContainerExtension
-	(*ServiceMetadata)(nil),                              // 28: foundation.schema.ServiceMetadata
-	(*Endpoint_PortMap)(nil),                             // 29: foundation.schema.Endpoint.PortMap
-	(Endpoint_Type)(0),                                   // 30: foundation.schema.Endpoint.Type
-	(*PackageRef)(nil),                                   // 31: foundation.schema.PackageRef
-	(*DomainSpec)(nil),                                   // 32: foundation.schema.DomainSpec
-	(*ServiceAnnotations)(nil),                           // 33: foundation.schema.ServiceAnnotations
-	(IngressFragment_IngressHttpPath_BackendProtocol)(0), // 34: foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
-	(*Label)(nil),                                        // 35: foundation.schema.Label
+	(*PodAntiAffinity)(nil),                              // 5: foundation.schema.PodAntiAffinity
+	(*Allocation)(nil),                                   // 6: foundation.schema.Allocation
+	(*Instantiate)(nil),                                  // 7: foundation.schema.Instantiate
+	(*RequiredStorage)(nil),                              // 8: foundation.schema.RequiredStorage
+	(*ServerPermissions)(nil),                            // 9: foundation.schema.ServerPermissions
+	(*ServerExtension)(nil),                              // 10: foundation.schema.ServerExtension
+	(*Server_ServiceSpec)(nil),                           // 11: foundation.schema.Server.ServiceSpec
+	(*Server_URLMapEntry)(nil),                           // 12: foundation.schema.Server.URLMapEntry
+	(*Server_Description)(nil),                           // 13: foundation.schema.Server.Description
+	(*Server_EnvironmentRequirement)(nil),                // 14: foundation.schema.Server.EnvironmentRequirement
+	(*Server_Toleration)(nil),                            // 15: foundation.schema.Server.Toleration
+	(*Server_Configuration)(nil),                         // 16: foundation.schema.Server.Configuration
+	(*Allocation_Instance)(nil),                          // 17: foundation.schema.Allocation.Instance
+	(*ServerPermissions_ClusterRole)(nil),                // 18: foundation.schema.ServerPermissions.ClusterRole
+	(*anypb.Any)(nil),                                    // 19: google.protobuf.Any
+	(*Reference)(nil),                                    // 20: foundation.schema.Reference
+	(*Naming)(nil),                                       // 21: foundation.schema.Naming
+	(*Container)(nil),                                    // 22: foundation.schema.Container
+	(*Probe)(nil),                                        // 23: foundation.schema.Probe
+	(*Volume)(nil),                                       // 24: foundation.schema.Volume
+	(*ResourcePack)(nil),                                 // 25: foundation.schema.ResourcePack
+	(*NamedResolvable)(nil),                              // 26: foundation.schema.NamedResolvable
+	(*Endpoint_Port)(nil),                                // 27: foundation.schema.Endpoint.Port
+	(*ContainerExtension)(nil),                           // 28: foundation.schema.ContainerExtension
+	(*ServiceMetadata)(nil),                              // 29: foundation.schema.ServiceMetadata
+	(*Endpoint_PortMap)(nil),                             // 30: foundation.schema.Endpoint.PortMap
+	(Endpoint_Type)(0),                                   // 31: foundation.schema.Endpoint.Type
+	(*PackageRef)(nil),                                   // 32: foundation.schema.PackageRef
+	(*DomainSpec)(nil),                                   // 33: foundation.schema.DomainSpec
+	(*ServiceAnnotations)(nil),                           // 34: foundation.schema.ServiceAnnotations
+	(IngressFragment_IngressHttpPath_BackendProtocol)(0), // 35: foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
+	(*Label)(nil),                                        // 36: foundation.schema.Label
 }
 var file_schema_server_proto_depIdxs = []int32{
-	12, // 0: foundation.schema.Server.description:type_name -> foundation.schema.Server.Description
-	18, // 1: foundation.schema.Server.ext:type_name -> google.protobuf.Any
-	5,  // 2: foundation.schema.Server.allocation:type_name -> foundation.schema.Allocation
+	13, // 0: foundation.schema.Server.description:type_name -> foundation.schema.Server.Description
+	19, // 1: foundation.schema.Server.ext:type_name -> google.protobuf.Any
+	6,  // 2: foundation.schema.Server.allocation:type_name -> foundation.schema.Allocation
 	0,  // 3: foundation.schema.Server.framework:type_name -> foundation.schema.Framework
-	19, // 4: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
-	11, // 5: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
-	13, // 6: foundation.schema.Server.environment_requirement:type_name -> foundation.schema.Server.EnvironmentRequirement
+	20, // 4: foundation.schema.Server.reference:type_name -> foundation.schema.Reference
+	12, // 5: foundation.schema.Server.url_map:type_name -> foundation.schema.Server.URLMapEntry
+	14, // 6: foundation.schema.Server.environment_requirement:type_name -> foundation.schema.Server.EnvironmentRequirement
 	2,  // 7: foundation.schema.Server.self:type_name -> foundation.schema.ServerFragment
-	20, // 8: foundation.schema.Server.server_naming:type_name -> foundation.schema.Naming
-	21, // 9: foundation.schema.ServerFragment.main_container:type_name -> foundation.schema.Container
-	10, // 10: foundation.schema.ServerFragment.service:type_name -> foundation.schema.Server.ServiceSpec
-	10, // 11: foundation.schema.ServerFragment.ingress:type_name -> foundation.schema.Server.ServiceSpec
-	22, // 12: foundation.schema.ServerFragment.probe:type_name -> foundation.schema.Probe
-	23, // 13: foundation.schema.ServerFragment.volume:type_name -> foundation.schema.Volume
-	24, // 14: foundation.schema.ServerFragment.resource_pack:type_name -> foundation.schema.ResourcePack
-	8,  // 15: foundation.schema.ServerFragment.permissions:type_name -> foundation.schema.ServerPermissions
-	14, // 16: foundation.schema.ServerFragment.toleration:type_name -> foundation.schema.Server.Toleration
-	21, // 17: foundation.schema.ServerFragment.sidecar:type_name -> foundation.schema.Container
-	21, // 18: foundation.schema.ServerFragment.init_container:type_name -> foundation.schema.Container
-	25, // 19: foundation.schema.ServerFragment.annotation:type_name -> foundation.schema.NamedResolvable
+	21, // 8: foundation.schema.Server.server_naming:type_name -> foundation.schema.Naming
+	22, // 9: foundation.schema.ServerFragment.main_container:type_name -> foundation.schema.Container
+	11, // 10: foundation.schema.ServerFragment.service:type_name -> foundation.schema.Server.ServiceSpec
+	11, // 11: foundation.schema.ServerFragment.ingress:type_name -> foundation.schema.Server.ServiceSpec
+	23, // 12: foundation.schema.ServerFragment.probe:type_name -> foundation.schema.Probe
+	24, // 13: foundation.schema.ServerFragment.volume:type_name -> foundation.schema.Volume
+	25, // 14: foundation.schema.ServerFragment.resource_pack:type_name -> foundation.schema.ResourcePack
+	9,  // 15: foundation.schema.ServerFragment.permissions:type_name -> foundation.schema.ServerPermissions
+	15, // 16: foundation.schema.ServerFragment.toleration:type_name -> foundation.schema.Server.Toleration
+	22, // 17: foundation.schema.ServerFragment.sidecar:type_name -> foundation.schema.Container
+	22, // 18: foundation.schema.ServerFragment.init_container:type_name -> foundation.schema.Container
+	26, // 19: foundation.schema.ServerFragment.annotation:type_name -> foundation.schema.NamedResolvable
 	4,  // 20: foundation.schema.ServerFragment.node_selector:type_name -> foundation.schema.NodeSelectorItem
 	3,  // 21: foundation.schema.ServerFragment.listener:type_name -> foundation.schema.Listener
-	26, // 22: foundation.schema.Listener.port:type_name -> foundation.schema.Endpoint.Port
-	16, // 23: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
-	18, // 24: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
-	17, // 25: foundation.schema.ServerPermissions.cluster_role:type_name -> foundation.schema.ServerPermissions.ClusterRole
-	23, // 26: foundation.schema.ServerExtension.volume:type_name -> foundation.schema.Volume
-	27, // 27: foundation.schema.ServerExtension.extend_container:type_name -> foundation.schema.ContainerExtension
-	28, // 28: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
-	29, // 29: foundation.schema.Server.ServiceSpec.ports:type_name -> foundation.schema.Endpoint.PortMap
-	30, // 30: foundation.schema.Server.ServiceSpec.endpoint_type:type_name -> foundation.schema.Endpoint.Type
-	31, // 31: foundation.schema.Server.ServiceSpec.ingress_provider:type_name -> foundation.schema.PackageRef
-	32, // 32: foundation.schema.Server.ServiceSpec.ingress_domain:type_name -> foundation.schema.DomainSpec
-	33, // 33: foundation.schema.Server.ServiceSpec.ingress_annotations:type_name -> foundation.schema.ServiceAnnotations
-	34, // 34: foundation.schema.Server.URLMapEntry.backend_protocol:type_name -> foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
-	35, // 35: foundation.schema.Server.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Label
-	35, // 36: foundation.schema.Server.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Label
-	6,  // 37: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
-	5,  // 38: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
-	39, // [39:39] is the sub-list for method output_type
-	39, // [39:39] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	5,  // 22: foundation.schema.ServerFragment.pod_anti_affinity:type_name -> foundation.schema.PodAntiAffinity
+	27, // 23: foundation.schema.Listener.port:type_name -> foundation.schema.Endpoint.Port
+	17, // 24: foundation.schema.Allocation.instance:type_name -> foundation.schema.Allocation.Instance
+	19, // 25: foundation.schema.Instantiate.constructor:type_name -> google.protobuf.Any
+	18, // 26: foundation.schema.ServerPermissions.cluster_role:type_name -> foundation.schema.ServerPermissions.ClusterRole
+	24, // 27: foundation.schema.ServerExtension.volume:type_name -> foundation.schema.Volume
+	28, // 28: foundation.schema.ServerExtension.extend_container:type_name -> foundation.schema.ContainerExtension
+	29, // 29: foundation.schema.Server.ServiceSpec.metadata:type_name -> foundation.schema.ServiceMetadata
+	30, // 30: foundation.schema.Server.ServiceSpec.ports:type_name -> foundation.schema.Endpoint.PortMap
+	31, // 31: foundation.schema.Server.ServiceSpec.endpoint_type:type_name -> foundation.schema.Endpoint.Type
+	32, // 32: foundation.schema.Server.ServiceSpec.ingress_provider:type_name -> foundation.schema.PackageRef
+	33, // 33: foundation.schema.Server.ServiceSpec.ingress_domain:type_name -> foundation.schema.DomainSpec
+	34, // 34: foundation.schema.Server.ServiceSpec.ingress_annotations:type_name -> foundation.schema.ServiceAnnotations
+	35, // 35: foundation.schema.Server.URLMapEntry.backend_protocol:type_name -> foundation.schema.IngressFragment.IngressHttpPath.BackendProtocol
+	36, // 36: foundation.schema.Server.EnvironmentRequirement.environment_has_label:type_name -> foundation.schema.Label
+	36, // 37: foundation.schema.Server.EnvironmentRequirement.environment_does_not_have_label:type_name -> foundation.schema.Label
+	7,  // 38: foundation.schema.Allocation.Instance.instantiated:type_name -> foundation.schema.Instantiate
+	6,  // 39: foundation.schema.Allocation.Instance.downstream_allocation:type_name -> foundation.schema.Allocation
+	40, // [40:40] is the sub-list for method output_type
+	40, // [40:40] is the sub-list for method input_type
+	40, // [40:40] is the sub-list for extension type_name
+	40, // [40:40] is the sub-list for extension extendee
+	0,  // [0:40] is the sub-list for field type_name
 }
 
 func init() { file_schema_server_proto_init() }
@@ -1907,7 +1973,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Allocation); i {
+			switch v := v.(*PodAntiAffinity); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1919,7 +1985,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Instantiate); i {
+			switch v := v.(*Allocation); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1931,7 +1997,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RequiredStorage); i {
+			switch v := v.(*Instantiate); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1943,7 +2009,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServerPermissions); i {
+			switch v := v.(*RequiredStorage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1955,7 +2021,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServerExtension); i {
+			switch v := v.(*ServerPermissions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1967,7 +2033,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_ServiceSpec); i {
+			switch v := v.(*ServerExtension); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1979,7 +2045,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_URLMapEntry); i {
+			switch v := v.(*Server_ServiceSpec); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -1991,7 +2057,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Description); i {
+			switch v := v.(*Server_URLMapEntry); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2003,7 +2069,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_EnvironmentRequirement); i {
+			switch v := v.(*Server_Description); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2015,7 +2081,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Toleration); i {
+			switch v := v.(*Server_EnvironmentRequirement); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2027,7 +2093,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Server_Configuration); i {
+			switch v := v.(*Server_Toleration); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2039,7 +2105,7 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Allocation_Instance); i {
+			switch v := v.(*Server_Configuration); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2051,6 +2117,18 @@ func file_schema_server_proto_init() {
 			}
 		}
 		file_schema_server_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Allocation_Instance); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_schema_server_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ServerPermissions_ClusterRole); i {
 			case 0:
 				return &v.state
@@ -2069,7 +2147,7 @@ func file_schema_server_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_schema_server_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

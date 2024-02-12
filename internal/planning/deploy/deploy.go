@@ -873,6 +873,7 @@ func PrepareRunOpts(ctx context.Context, stack *planning.Stack, srv planning.Pla
 	out.PackageRef = srv.Proto().GetPackageRef()
 	out.Class = schema.DeployableClass(proto.DeployableClass)
 	out.Replicas = frag.Replicas
+	out.PodAntiAffinity = frag.PodAntiAffinity
 	out.Id = proto.Id
 	out.Name = proto.Name
 	out.Volumes = append(out.Volumes, frag.Volume...)

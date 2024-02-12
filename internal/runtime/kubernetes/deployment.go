@@ -203,14 +203,24 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 		archs = append(archs, plat.Architecture)
 	}
 
-	spec = spec.WithAffinity(applycorev1.Affinity().WithNodeAffinity(
+	aff := applycorev1.Affinity().WithNodeAffinity(
 		applycorev1.NodeAffinity().WithRequiredDuringSchedulingIgnoredDuringExecution(
 			applycorev1.NodeSelector().WithNodeSelectorTerms(
 				applycorev1.NodeSelectorTerm().WithMatchExpressions(
 					applycorev1.NodeSelectorRequirement().
 						WithKey(kubedef.KubernetesIoArch).
 						WithOperator("In").
-						WithValues(archs...))))))
+						WithValues(archs...)))))
+
+	if deployable.PodAntiAffinity.GetTopologyKey() != "" {
+		aff = aff.WithPodAntiAffinity(applycorev1.PodAntiAffinity().WithRequiredDuringSchedulingIgnoredDuringExecution(
+			applycorev1.PodAffinityTerm().WithTopologyKey(deployable.PodAntiAffinity.GetTopologyKey()).WithLabelSelector(
+				applymetav1.LabelSelector().WithMatchLabels(kubedef.ServerPackageLabels(deployable)),
+			),
+		))
+	}
+
+	spec = spec.WithAffinity(aff)
 
 	labels := kubedef.MakeLabels(target.env, deployable)
 	annotations := kubedef.MakeAnnotations(target.env)

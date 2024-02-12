@@ -26,7 +26,7 @@ var (
 		"args", "env", "services", "ports", "unstable_permissions", "permissions", "probe", "probes", "security",
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
-		"extensions", "nodeSelector", "replicas",
+		"extensions", "nodeSelector", "replicas", "pod_anti_affinity",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
@@ -63,7 +63,8 @@ type cueServerExtension struct {
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 
-	Replicas int32 `json:"replicas"`
+	Replicas        int32                   `json:"replicas"`
+	PodAntiAffinity *schema.PodAntiAffinity `json:"pod_anti_affinity,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -384,9 +385,8 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		})
 	}
 
-	if bits.Replicas > 0 {
-		out.Replicas = bits.Replicas
-	}
+	out.Replicas = bits.Replicas
+	out.PodAntiAffinity = bits.PodAntiAffinity
 
 	for _, ext := range bits.Extensions {
 		pkg := schema.PackageName(ext)

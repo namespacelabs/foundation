@@ -237,16 +237,17 @@ type DeployableSpec struct {
 	Focused    bool // Set to true if the user explicitly asked for this object to be deployed.
 	Attachable AttachableKind
 
-	Description  string
-	Class        schema.DeployableClass
-	Id           string // Must not be empty.
-	Name         string // Can be empty.
-	Volumes      []*schema.Volume
-	Permissions  *schema.ServerPermissions
-	Replicas     int32
-	Tolerations  []*schema.Server_Toleration
-	Annotations  []*schema.NamedResolvable // Annotations that apply to individual pods.
-	NodeSelector []*schema.NodeSelectorItem
+	Description     string
+	Class           schema.DeployableClass
+	Id              string // Must not be empty.
+	Name            string // Can be empty.
+	Volumes         []*schema.Volume
+	Permissions     *schema.ServerPermissions
+	Replicas        int32
+	Tolerations     []*schema.Server_Toleration
+	Annotations     []*schema.NamedResolvable // Annotations that apply to individual pods.
+	NodeSelector    []*schema.NodeSelectorItem
+	PodAntiAffinity *schema.PodAntiAffinity
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts

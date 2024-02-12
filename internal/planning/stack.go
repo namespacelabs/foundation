@@ -372,6 +372,14 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				}
 			}
 
+			if frag.PodAntiAffinity != nil {
+				if ps.MergedFragment.PodAntiAffinity != nil {
+					return fnerrors.New("pod_anti_affinity defined more than once")
+				}
+
+				ps.MergedFragment.PodAntiAffinity = frag.PodAntiAffinity
+			}
+
 			if frag.Permissions != nil {
 				if ps.MergedFragment.Permissions == nil {
 					ps.MergedFragment.Permissions = &schema.ServerPermissions{}
