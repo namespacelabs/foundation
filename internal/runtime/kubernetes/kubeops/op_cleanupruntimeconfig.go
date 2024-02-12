@@ -7,6 +7,7 @@ package kubeops
 import (
 	"context"
 	"fmt"
+	"time"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -104,6 +105,10 @@ func registerCleanup() {
 
 				for _, cfg := range configs.Items {
 					if _, ok := usedConfigs[cfg.Name]; ok {
+						continue
+					}
+
+					if time.Since(cfg.CreationTimestamp.Time) < time.Hour {
 						continue
 					}
 
