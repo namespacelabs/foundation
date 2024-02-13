@@ -213,11 +213,12 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 						WithValues(archs...)))))
 
 	if deployable.PodAntiAffinity.GetTopologyKey() != "" {
-		aff = aff.WithPodAntiAffinity(applycorev1.PodAntiAffinity().WithRequiredDuringSchedulingIgnoredDuringExecution(
-			applycorev1.PodAffinityTerm().WithTopologyKey(deployable.PodAntiAffinity.GetTopologyKey()).WithLabelSelector(
-				applymetav1.LabelSelector().WithMatchLabels(kubedef.ServerPackageLabels(deployable)),
-			),
-		))
+		aff = aff.WithPodAntiAffinity(applycorev1.PodAntiAffinity().WithPreferredDuringSchedulingIgnoredDuringExecution(
+			applycorev1.WeightedPodAffinityTerm().
+				WithWeight(1).
+				WithPodAffinityTerm(applycorev1.PodAffinityTerm().
+					WithLabelSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.ServerPackageLabels(deployable))).
+					WithTopologyKey(deployable.PodAntiAffinity.GetTopologyKey()))))
 	}
 
 	spec = spec.WithAffinity(aff)
