@@ -33,6 +33,7 @@ To issue an actual release:
    size small.
 5. **Important**: this creates a _draft_ release in GitHub. Remember to publish it manually from GitHub web UI
 once every artifact is fully uploaded.
+6. **Important**: Go to [namespacelabs/homebrew-namespace](https://github.com/namespacelabs/homebrew-namespace/pulls) repo and merge the two PRs that goreleaser created.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
