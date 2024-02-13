@@ -74,6 +74,10 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 	var dialer DialFunc
 
 	if teleportProxy := endpoint.TeleportProxy; teleportProxy != nil {
+		if teleportProxy.Host == "" {
+			return nil, fnerrors.New("transport.ssh: teleport host is required")
+		}
+
 		// Hardcoded default port. See https://github.com/gravitational/teleport/blob/da589355d4ea55de276062db09f440c6fefdb2d6/lib/defaults/defaults.go#L48
 		sshPort = "3022"
 		sshAddr = teleportProxy.Host
@@ -115,6 +119,14 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 				return nil, err
 			}
 		case teleportProxy.TbotIdentityDir != "":
+			if teleportProxy.ProxyAddress == "" {
+				return nil, fnerrors.New("transport.ssh: teleport proxy address is required")
+			}
+
+			if teleportProxy.Cluster == "" {
+				return nil, fnerrors.New("transport.ssh: teleport cluster is required")
+			}
+
 			tbotIdentity, err := identityfile.ReadFile(filepath.Join(teleportProxy.TbotIdentityDir, "identity"))
 			if err != nil {
 				return nil, err
