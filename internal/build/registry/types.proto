@@ -25,12 +25,20 @@ message RegistryTransport {
     TLS tls = 2;
 
     message SSH {
-        string user                  = 1;
-        string private_key_path      = 2;
-        string ssh_addr              = 3;
-        string remote_addr           = 4;
-        string agent_sock_path       = 5;
-        string teleport_profile_name = 6;
+        string        user             = 1;
+        string        private_key_path = 2;
+        string        ssh_addr         = 3;
+        string        remote_addr      = 4;
+        string        agent_sock_path  = 5;
+        TeleportProxy teleport_proxy   = 6;
+    }
+
+    message TeleportProxy {
+        string profile_name      = 1;
+        string tbot_identity_dir = 2;
+        string host              = 3;
+        string proxy_address     = 4;
+        string cluster           = 5;
     }
 
     message TLS {

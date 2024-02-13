@@ -40,17 +40,28 @@ func Register() {
 			return nil, fnerrors.BadInputError("registry must be specified")
 		}
 
+		var teleportProxy *registry.RegistryTransport_TeleportProxy
+		if tp := remote.Endpoint.TeleportProxy; tp != nil {
+			teleportProxy = &registry.RegistryTransport_TeleportProxy{
+				ProfileName:     tp.ProfileName,
+				TbotIdentityDir: tp.TbotIdentityDir,
+				Host:            tp.Host,
+				Cluster:         tp.Cluster,
+				ProxyAddress:    tp.ProxyAddress,
+			}
+		}
+
 		messages := []proto.Message{
 			&client.HostEnv{Provider: "k3s-ssh"},
 			&registry.Registry{
 				Url: remote.Registry,
 				Transport: &registry.RegistryTransport{
 					Ssh: &registry.RegistryTransport_SSH{
-						User:                remote.Endpoint.User,
-						PrivateKeyPath:      remote.Endpoint.PrivateKeyPath,
-						SshAddr:             remote.Endpoint.Address,
-						AgentSockPath:       remote.Endpoint.AgentSockPath,
-						TeleportProfileName: remote.Endpoint.TeleportProfileName,
+						User:           remote.Endpoint.User,
+						PrivateKeyPath: remote.Endpoint.PrivateKeyPath,
+						SshAddr:        remote.Endpoint.Address,
+						AgentSockPath:  remote.Endpoint.AgentSockPath,
+						TeleportProxy:  teleportProxy,
 					},
 				},
 			},
@@ -67,13 +78,23 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
 	}
 
+	var teleportProxy *ssh.TeleportProxy
+	if tp := conf.TeleportProxy; tp != nil {
+		teleportProxy = &ssh.TeleportProxy{
+			ProfileName:     tp.ProfileName,
+			Host:            tp.Host,
+			TbotIdentityDir: tp.TbotIdentityDir,
+			Cluster:         tp.Cluster,
+			ProxyAddress:    tp.ProxyAddress,
+		}
+	}
 	// XXX use ssh tunnel
 	config, err := makeRemoteConfig(ctx, fmt.Sprintf("https://%s:6443", conf.Address), ssh.Endpoint{
-		User:                conf.User,
-		PrivateKeyPath:      conf.PrivateKeyPath,
-		AgentSockPath:       conf.AgentSockPath,
-		Address:             conf.Address,
-		TeleportProfileName: conf.TeleportProfileName,
+		User:           conf.User,
+		PrivateKeyPath: conf.PrivateKeyPath,
+		AgentSockPath:  conf.AgentSockPath,
+		Address:        conf.Address,
+		TeleportProxy:  teleportProxy,
 	})
 	if err != nil {
 		return client.ClusterConfiguration{}, err

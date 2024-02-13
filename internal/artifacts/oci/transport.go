@@ -33,11 +33,23 @@ func parseTransport(ctx context.Context, t *registry.RegistryTransport) ([]remot
 			return nil, fnerrors.New("transport.ssh: missing remote address")
 		}
 
+		var teleportProxy *ssh.TeleportProxy
+		if tp := t.Ssh.GetTeleportProxy(); tp != nil {
+			teleportProxy = &ssh.TeleportProxy{
+				ProfileName:     tp.ProfileName,
+				Host:            tp.Host,
+				TbotIdentityDir: tp.TbotIdentityDir,
+				Cluster:         tp.Cluster,
+				ProxyAddress:    tp.ProxyAddress,
+			}
+		}
+
 		deferred, err := ssh.Establish(ctx, ssh.Endpoint{
 			User:           t.Ssh.User,
 			PrivateKeyPath: t.Ssh.PrivateKeyPath,
 			Address:        t.Ssh.SshAddr,
 			AgentSockPath:  t.Ssh.AgentSockPath,
+			TeleportProxy:  teleportProxy,
 		})
 		if err != nil {
 			return nil, err

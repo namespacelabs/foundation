@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 
 	"github.com/gravitational/teleport/api/client/proxy"
+	"github.com/gravitational/teleport/api/identityfile"
 	"github.com/gravitational/teleport/api/profile"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -25,12 +27,22 @@ var (
 	sshTransports = tcache.NewCache[*ssh.Client]()
 )
 
+type DialFunc func(context.Context, string) (net.Conn, error)
+
 type Endpoint struct {
-	User                string
-	PrivateKeyPath      string
-	AgentSockPath       string
-	Address             string
-	TeleportProfileName string
+	User           string
+	PrivateKeyPath string
+	AgentSockPath  string
+	Address        string
+	TeleportProxy  *TeleportProxy
+}
+
+type TeleportProxy struct {
+	ProfileName     string
+	Host            string
+	TbotIdentityDir string
+	ProxyAddress    string
+	Cluster         string
 }
 
 type Deferred struct {
@@ -39,8 +51,6 @@ type Deferred struct {
 }
 
 func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
-	debugLogger := console.Debug(ctx)
-
 	if endpoint.User == "" {
 		return nil, fnerrors.New("transport.ssh: user is required")
 	}
@@ -61,57 +71,82 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 	}
 
 	var config *ssh.ClientConfig
-	var dialer func(context.Context, string) (net.Conn, error)
+	var dialer DialFunc
 
-	if endpoint.TeleportProfileName != "" {
-		if endpoint.AgentSockPath != "" {
-			return nil, fnerrors.New("ssh: can't use both teleport_profile_name and agent_sock_path")
-		}
-
-		if endpoint.PrivateKeyPath != "" {
-			return nil, fnerrors.New("ssh: can't use private_key_path with teleport_profile_name")
-		}
-
-		p, err := profile.FromDir("", endpoint.TeleportProfileName)
-		if err != nil {
-			return nil, err
-		}
-
-		tlscfg, err := p.TLSConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		sshcfg, err := p.SSHClientConfig()
-		if err != nil {
-			return nil, err
-		}
-
-		clt, err := proxy.NewClient(ctx, proxy.ClientConfig{
-			ProxyAddress:            p.WebProxyAddr,
-			TLSRoutingEnabled:       p.TLSRoutingEnabled,
-			TLSConfig:               tlscfg,
-			SSHConfig:               sshcfg,
-			ALPNConnUpgradeRequired: p.TLSRoutingConnUpgradeRequired && p.TLSRoutingEnabled,
-		})
-		if err != nil {
-			return nil, err
-		}
-
+	if teleportProxy := endpoint.TeleportProxy; teleportProxy != nil {
 		// Hardcoded default port. See https://github.com/gravitational/teleport/blob/da589355d4ea55de276062db09f440c6fefdb2d6/lib/defaults/defaults.go#L48
 		sshPort = "3022"
+		sshAddr = teleportProxy.Host
 
-		fmt.Fprintf(debugLogger, "ssh: using teleport via %q\n", p.SiteName)
+		switch {
+		case teleportProxy.ProfileName != "":
+			if endpoint.AgentSockPath != "" {
+				return nil, fnerrors.New("ssh: can't use both teleport_profile_name and agent_sock_path")
+			}
 
-		config = sshcfg
-		dialer = func(ctx context.Context, addr string) (net.Conn, error) {
-			conn, _, err := clt.DialHost(ctx, addr, p.SiteName, nil)
-			return conn, err
+			if endpoint.PrivateKeyPath != "" {
+				return nil, fnerrors.New("ssh: can't use private_key_path with teleport_profile_name")
+			}
+
+			p, err := profile.FromDir("", teleportProxy.ProfileName)
+			if err != nil {
+				return nil, err
+			}
+
+			tlscfg, err := p.TLSConfig()
+			if err != nil {
+				return nil, err
+			}
+
+			sshcfg, err := p.SSHClientConfig()
+			if err != nil {
+				return nil, err
+			}
+			config = sshcfg
+
+			dialer, err = teleportDialer(ctx, p.SiteName, proxy.ClientConfig{
+				ProxyAddress:            p.WebProxyAddr,
+				TLSRoutingEnabled:       p.TLSRoutingEnabled,
+				TLSConfig:               tlscfg,
+				SSHConfig:               sshcfg,
+				ALPNConnUpgradeRequired: p.TLSRoutingConnUpgradeRequired && p.TLSRoutingEnabled,
+			})
+			if err != nil {
+				return nil, err
+			}
+		case teleportProxy.TbotIdentityDir != "":
+			tbotIdentity, err := identityfile.ReadFile(filepath.Join(teleportProxy.TbotIdentityDir, "identity"))
+			if err != nil {
+				return nil, err
+			}
+
+			tlscfg, err := tbotIdentity.TLSConfig()
+			if err != nil {
+				return nil, err
+			}
+
+			sshcfg, err := tbotIdentity.SSHClientConfig()
+			if err != nil {
+				return nil, err
+			}
+			config = sshcfg
+
+			dialer, err = teleportDialer(ctx, teleportProxy.Cluster, proxy.ClientConfig{
+				ProxyAddress:      teleportProxy.ProxyAddress,
+				TLSRoutingEnabled: true, // TODO: make it configurable.
+				TLSConfig:         tlscfg,
+				SSHConfig:         sshcfg,
+			})
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fnerrors.New("transport.ssh: teleport profile and tbot identity dir is required")
 		}
 	} else {
 		config = &ssh.ClientConfig{
 			HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-				fmt.Fprintf(debugLogger, "ssh: connected to %q (%s)\n", hostname, remote)
+				fmt.Fprintf(console.Debug(ctx), "ssh: connected to %q (%s)\n", hostname, remote)
 				return nil
 			},
 		}
@@ -151,7 +186,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 		CacheKey: cachekey,
 		Dial: func(ctx context.Context) (*ssh.Client, error) {
 			return sshTransports.Compute(cachekey, func() (*ssh.Client, error) {
-				fmt.Fprintf(debugLogger, "ssh: will dial to %s:%s\n", sshAddr, sshPort)
+				fmt.Fprintf(console.Debug(ctx), "ssh: will dial to %s:%s\n", sshAddr, sshPort)
 
 				addrport := fmt.Sprintf("%s:%s", sshAddr, sshPort)
 				conn, err := dialer(ctx, addrport)
@@ -190,4 +225,19 @@ func parsePrivateKey(keyPath string) (ssh.Signer, error) {
 		return nil, err
 	}
 	return ssh.ParsePrivateKey(buff)
+}
+
+func teleportDialer(ctx context.Context, cluster string, proxyCfg proxy.ClientConfig) (DialFunc, error) {
+	clt, err := proxy.NewClient(ctx, proxyCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "ssh: using teleport via %q\n", cluster)
+
+	return func(ctx context.Context, addr string) (net.Conn, error) {
+		fmt.Fprintf(console.Debug(ctx), "ssh: dialing %q via %q\n", addr, cluster)
+		conn, _, err := clt.DialHost(ctx, addr, cluster, nil)
+		return conn, err
+	}, nil
 }

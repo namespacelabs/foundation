@@ -14,9 +14,17 @@ message Remote {
 }
 
 message SshEndpoint {
-    string user                  = 1;
-    string private_key_path      = 2;
-    string agent_sock_path       = 4;
-    string address               = 3;
-    string teleport_profile_name = 5;
+    string        user             = 1;
+    string        private_key_path = 2;
+    string        agent_sock_path  = 4;
+    string        address          = 3;
+    TeleportProxy teleport_proxy   = 5;
+}
+
+message TeleportProxy {
+    string profile_name      = 1;
+    string tbot_identity_dir = 2;
+    string host              = 3;
+    string proxy_address     = 4;
+    string cluster           = 5;
 }
