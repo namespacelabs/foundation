@@ -9,6 +9,7 @@ import (
 	"errors"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"go.opentelemetry.io/otel/attribute"
@@ -16,21 +17,13 @@ import (
 	"namespacelabs.dev/foundation/framework/tracing"
 )
 
-const (
-	pgSerializationFailure         = "40001"
-	pgDeadlockFailure              = "40P01"
-	pgUniqueConstraintViolation    = "23505"
-	pgExclusionConstraintViolation = "23P01"
-	pgAdminShutdown                = "57P01" // PG restarts
-)
-
 // https://www.postgresql.org/docs/current/mvcc-serialization-failure-handling.html
 var retryableSqlStates = []string{
-	pgSerializationFailure,
-	pgDeadlockFailure,
-	pgUniqueConstraintViolation,
-	pgExclusionConstraintViolation,
-	pgAdminShutdown,
+	pgerrcode.SerializationFailure,
+	pgerrcode.DeadlockDetected,
+	pgerrcode.UniqueViolation,
+	pgerrcode.ExclusionViolation,
+	pgerrcode.AdminShutdown,
 }
 
 func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
