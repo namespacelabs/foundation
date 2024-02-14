@@ -62,7 +62,7 @@ func Collect1[T any](ctx context.Context, tracer trace.Tracer, name Collected, c
 		return callback(ctx)
 	}
 
-	if !trace.SpanFromContext(ctx).IsRecording() {
+	if !trace.SpanFromContext(ctx).IsRecording() && !name.newroot {
 		return callback(ctx)
 	}
 
