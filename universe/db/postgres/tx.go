@@ -44,7 +44,7 @@ func ReturnFromReadWriteTx[T any](ctx context.Context, db *DB, b backoff.BackOff
 }
 
 func ReturnFromTx[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
-	return doTxFunc(ctx, db, pgx.TxOptions{IsoLevel: pgx.Serializable}, 0, f)
+	return doTxFunc(ctx, db, txoptions, 0, f)
 }
 
 func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attempt int64, f func(context.Context, pgx.Tx) (T, error)) (T, error) {
