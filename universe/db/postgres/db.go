@@ -139,3 +139,7 @@ func (db DB) QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.
 func (db DB) SendBatch(ctx context.Context, b *pgx.Batch) pgx.BatchResults {
 	return db.base.SendBatch(ctx, b)
 }
+
+func (db DB) PgxPool() *pgxpool.Pool {
+	return db.base
+}
