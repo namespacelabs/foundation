@@ -65,7 +65,12 @@ func AttachRequestIDToError(err error, reqid RequestID) error {
 		return nil
 	}
 
-	st, _ := status.FromError(err)
+	st, ok := status.FromError(err)
+	if !ok {
+		// Convert non-status application error to a status error with code
+		// Unknown, but handle context errors specifically.
+		st = status.FromContextError(err)
+	}
 	tSt, tErr := st.WithDetails(&protocol.RequestID{Id: string(reqid)})
 	if tErr == nil {
 		return tSt.Err()
