@@ -159,7 +159,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 	}
 
 	if buildRemotely(c.conf, c.platform) {
-		bp, err := cluster.NewBuildClusterInstance(ctx, formatPlatformOrDefault(c.platform))
+		bp, err := cluster.NewBuildCluster(ctx, formatPlatformOrDefault(c.platform), "")
 		if err != nil {
 			return nil, err
 		}
@@ -241,7 +241,7 @@ func useRemoteClusterViaEndpoint(ctx context.Context, endpoint string) (*Gateway
 	})
 }
 
-func useBuildClusterCluster(ctx context.Context, bp *cluster.BuildClusterInstance) (*GatewayClient, error) {
+func useBuildClusterCluster(ctx context.Context, bp cluster.BuildCluster) (*GatewayClient, error) {
 	sink := tasks.SinkFrom(ctx)
 
 	return waitAndConnect(ctx, func(innerCtx context.Context) (*client.Client, error) {

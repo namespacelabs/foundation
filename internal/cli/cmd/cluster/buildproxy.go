@@ -43,11 +43,59 @@ const (
 	nscrRegistryUsername = "token"
 )
 
-type BuildClusterInstance struct {
+type BuildCluster interface {
+	NewConn(ctx context.Context) (net.Conn, string, error)
+	GetPlatform() string
+	RunBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error)
+}
+
+func NewBuildCluster(ctx context.Context, platformStr, buildkitSockPath string) (BuildCluster, error) {
+	if buildkitSockPath == "" {
+		clusterProfiles, err := api.GetProfile(ctx, api.Methods)
+		if err != nil {
+			return nil, err
+		}
+
+		platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, platformStr)
+
+		return NewRemoteBuildClusterInstance0(platform), nil
+	} else {
+		return NewLocalBuilderInstance(buildkitSockPath)
+	}
+}
+
+type LocalBuilderInstance struct {
+	buildkitSockPath string
+}
+
+func NewLocalBuilderInstance(buildkitSockPath string) (*LocalBuilderInstance, error) {
+	return &LocalBuilderInstance{
+		buildkitSockPath: buildkitSockPath,
+	}, nil
+}
+
+func (l *LocalBuilderInstance) NewConn(parentCtx context.Context) (net.Conn, string, error) {
+	conn, err := net.Dial("unix", l.buildkitSockPath)
+	return conn, "", err
+}
+
+func (l *LocalBuilderInstance) RunBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+	return internalRunProxy(ctx, l, socketPath, controlSocketPath, useGrpcProxy, annotateBuild, workersInfo)
+}
+
+func (l *LocalBuilderInstance) GetPlatform() string {
+	return "local"
+}
+
+type RemoteBuildClusterInstance struct {
 	platform api.BuildPlatform
 }
 
-func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, string, error) {
+func NewRemoteBuildClusterInstance0(p api.BuildPlatform) *RemoteBuildClusterInstance {
+	return &RemoteBuildClusterInstance{platform: p}
+}
+
+func (bp *RemoteBuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, string, error) {
 	// Wait at most 5 minutes to create a connection to a build cluster.
 	ctx, done := context.WithTimeout(parentCtx, 5*time.Minute)
 	defer done()
@@ -60,26 +108,57 @@ func (bp *BuildClusterInstance) NewConn(parentCtx context.Context) (net.Conn, st
 	conn, err := api.DialEndpoint(ctx, response.Endpoint)
 	return conn, response.InstanceId, err
 }
+func (bp *RemoteBuildClusterInstance) GetPlatform() string {
+	return string(bp.platform)
+}
 
-func NewBuildClusterInstance(ctx context.Context, platformStr string) (*BuildClusterInstance, error) {
-	clusterProfiles, err := api.GetProfile(ctx, api.Methods)
+func (bp *RemoteBuildClusterInstance) RunBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+	return internalRunProxy(ctx, bp, socketPath, controlSocketPath, useGrpcProxy, annotateBuild, workersInfo)
+}
+
+func internalRunProxy(ctx context.Context, b BuildCluster, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+	var cleanup func() error
+	if socketPath == "" {
+		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", b.GetPlatform()))
+		if err != nil {
+			return nil, err
+		}
+
+		socketPath = filepath.Join(sockDir, "buildkit.sock")
+		cleanup = func() error {
+			return os.RemoveAll(sockDir)
+		}
+	} else {
+		if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+
+	var d net.ListenConfig
+	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
+		if cleanup != nil {
+			_ = cleanup()
+		}
+
 		return nil, err
 	}
 
-	platform := determineBuildClusterPlatform(clusterProfiles.ClusterPlatform, platformStr)
+	status := &proxyStatusDesc{
+		StatusData: StatusData{
+			Status:   ProxyStatus_Starting,
+			Platform: string(b.GetPlatform()),
+			LogPath:  console.DebugToFile,
+		},
+	}
 
-	return NewBuildClusterInstance0(platform), nil
-}
-
-func NewBuildClusterInstance0(p api.BuildPlatform) *BuildClusterInstance {
-	return &BuildClusterInstance{platform: p}
+	return &buildProxy{socketPath, controlSocketPath, b, listener, cleanup, useGrpcProxy, workersInfo, status, annotateBuild}, nil
 }
 
 type buildProxy struct {
 	socketPath        string
 	controlSocketPath string
-	instance          *BuildClusterInstance
+	instance          BuildCluster
 	listener          net.Listener
 	cleanup           func() error
 	useGrpcProxy      bool
@@ -139,8 +218,8 @@ func (p *proxyStatusDesc) incRequest() {
 	p.LastUpdate = time.Now()
 }
 
-func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath, controlSocketPath string, connectAtStart, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
-	bp, err := NewBuildClusterInstance(ctx, fmt.Sprintf("linux/%s", requestedPlatform))
+func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, socketPath, controlSocketPath, buildkitSockPath string, connectAtStart, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
+	bp, err := NewBuildCluster(ctx, fmt.Sprintf("linux/%s", requestedPlatform), buildkitSockPath)
 	if err != nil {
 		return nil, err
 	}
@@ -153,46 +232,7 @@ func runBuildProxy(ctx context.Context, requestedPlatform api.BuildPlatform, soc
 		}
 	}
 
-	return bp.runBuildProxy(ctx, socketPath, controlSocketPath, useGrpcProxy, annotateBuild, workersInfo)
-}
-
-func (bp *BuildClusterInstance) runBuildProxy(ctx context.Context, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
-	var cleanup func() error
-	if socketPath == "" {
-		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", bp.platform))
-		if err != nil {
-			return nil, err
-		}
-
-		socketPath = filepath.Join(sockDir, "buildkit.sock")
-		cleanup = func() error {
-			return os.RemoveAll(sockDir)
-		}
-	} else {
-		if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-
-	var d net.ListenConfig
-	listener, err := d.Listen(ctx, "unix", socketPath)
-	if err != nil {
-		if cleanup != nil {
-			_ = cleanup()
-		}
-
-		return nil, err
-	}
-
-	status := &proxyStatusDesc{
-		StatusData: StatusData{
-			Status:   ProxyStatus_Starting,
-			Platform: string(bp.platform),
-			LogPath:  console.DebugToFile,
-		},
-	}
-
-	return &buildProxy{socketPath, controlSocketPath, bp, listener, cleanup, useGrpcProxy, workersInfo, status, annotateBuild}, nil
+	return bp.RunBuildProxy(ctx, socketPath, controlSocketPath, useGrpcProxy, annotateBuild, workersInfo)
 }
 
 func (bp *buildProxy) Cleanup() error {
@@ -293,7 +333,7 @@ type buildProxyWithRegistry struct {
 }
 
 func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, nscrOnlyRegistry, useGrpcProxy, annotateBuild bool, workerInfo *controlapi.ListWorkersResponse) (*buildProxyWithRegistry, error) {
-	p, err := runBuildProxy(ctx, platform, "", "", true, useGrpcProxy, annotateBuild, workerInfo)
+	p, err := runBuildProxy(ctx, platform, "", "", "", true, useGrpcProxy, annotateBuild, workerInfo)
 	if err != nil {
 		return nil, err
 	}

@@ -68,6 +68,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("wait_for_login")
 	annotateBuild := cmd.Flags().Bool("annotate_build", true, "If set, it enable builds annotation when running in Namespace instances.")
 	_ = cmd.Flags().MarkHidden("annotate_build")
+	buildkitSockPath := cmd.Flags().String("buildkit_sock_path", "", "If set, the proxy connect to a local unix socket rather than remote builder.")
+	_ = cmd.Flags().MarkHidden("buildkit_sock_path")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -165,14 +167,17 @@ func newSetupBuildxCmd() *cobra.Command {
 			md.Instances = append(md.Instances, instanceMD)
 		}
 
-		var instances []*BuildClusterInstance
+		var instances []BuildCluster
 		for i, p := range md.Instances {
 			// Always create one, in case it's needed below. This instance has a zero-ish cost if we never call NewConn.
-			instance := NewBuildClusterInstance0(p.Platform)
+			instance, err := NewBuildCluster(ctx, string(p.Platform), *buildkitSockPath)
+			if err != nil {
+				return fnerrors.New("failed to create builder: %w", err)
+			}
 			instances = append(instances, instance)
 
 			if *background {
-				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *annotateBuild, *staticWorkerDefFile); err != nil {
+				if pid, err := startBackgroundProxy(ctx, p, *createAtStartup, *useGrpcProxy, *annotateBuild, *staticWorkerDefFile, *buildkitSockPath); err != nil {
 					return err
 				} else {
 					md.Instances[i].Pid = pid
@@ -183,7 +188,7 @@ func newSetupBuildxCmd() *cobra.Command {
 					return fnerrors.New("failed to parse worker info JSON payload: %v", err)
 				}
 
-				bp, err := instance.runBuildProxy(ctx, p.SocketPath, p.ControlSocketPath, *useGrpcProxy, *annotateBuild, workerInfoResp)
+				bp, err := instance.RunBuildProxy(ctx, p.SocketPath, p.ControlSocketPath, *useGrpcProxy, *annotateBuild, workerInfoResp)
 				if err != nil {
 					return err
 				}

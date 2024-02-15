@@ -231,7 +231,7 @@ func NewBuildCmd() *cobra.Command {
 
 		sink := tasks.SinkFrom(ctx)
 		results, err := startBuilds(ctx, contextDir, fragments, func(ctx context.Context, p specs.Platform) (*client.Client, error) {
-			bp, err := NewBuildClusterInstance(ctx, platform.FormatPlatform(p))
+			bp, err := NewBuildCluster(ctx, platform.FormatPlatform(p), "")
 			if err != nil {
 				return nil, err
 			}
