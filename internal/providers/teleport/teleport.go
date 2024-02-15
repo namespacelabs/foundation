@@ -136,6 +136,7 @@ func teleportUserKubeconfig(ctx context.Context, conf *configuration.Teleport) (
 						APIVersion: "client.authentication.k8s.io/v1beta1",
 						Command:    tshBinPath,
 						Args: []string{
+							"--add-keys-to-agent", "no",
 							"kube", "credentials", "--kube-cluster", conf.GetKubeCluster(),
 							"--teleport-cluster", profile.SiteName, "--proxy", profile.KubeProxyAddr,
 						},

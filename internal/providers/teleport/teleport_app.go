@@ -43,7 +43,7 @@ func tshAppsLogin(ctx context.Context, app, appCertPath string) error {
 	}
 
 	return tasks.Return0(ctx, tasks.Action("tsh.apps-login").Arg("app", app), func(ctx context.Context) error {
-		c := exec.CommandContext(ctx, tshBin, "apps", "login", app, "--ttl", appLoginTTLMins)
+		c := exec.CommandContext(ctx, tshBin, "--add-keys-to-agent", "no", "apps", "login", app, "--ttl", appLoginTTLMins)
 		if err := c.Run(); err != nil {
 			return err
 		}
