@@ -15,7 +15,7 @@ var (
 	metric_initialized = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "ns",
 		Subsystem: "gogrpc",
-		Name:      "server_initialized",
+		Name:      "server_initialized_info",
 	}, []string{"package_name", "revision"})
 )
 
