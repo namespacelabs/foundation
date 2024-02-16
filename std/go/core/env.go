@@ -46,11 +46,13 @@ var (
 	ZLog = zerolog.New(os.Stderr).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 )
 
-func PrepareEnv(specifiedServerName string) *ServerResources {
+func PrepareEnv(specifiedServerName string) (*ServerResources, string) {
 	d, err := loadData(specifiedServerName)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	rev := d.rtVcs.Revision
 
 	if !datamarker.CompareAndSwap(nil, &d) {
 		log.Fatal("already initialized")
@@ -58,7 +60,7 @@ func PrepareEnv(specifiedServerName string) *ServerResources {
 
 	ZLog.Info().Msg("Initializing server...")
 
-	return &ServerResources{startupTime: time.Now()}
+	return &ServerResources{startupTime: time.Now()}, rev
 }
 
 func loadData(specifiedServerName string) (data, error) {
