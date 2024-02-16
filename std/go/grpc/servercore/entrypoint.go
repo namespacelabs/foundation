@@ -6,22 +6,30 @@ package servercore
 
 import (
 	"context"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
 var (
-	metric_initialized = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+	serverInitializedInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "ns",
 		Subsystem: "gogrpc",
 		Name:      "server_initialized_info",
+	}, []string{"package_name", "revision"})
+
+	serverInitializedTimestamp = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "ns",
+		Subsystem: "gogrpc",
+		Name:      "server_initialized_timestamp_seconds",
 	}, []string{"package_name", "revision"})
 )
 
 func init() {
 	prometheus.MustRegister(
-		metric_initialized,
+		serverInitializedInfo,
+		serverInitializedTimestamp,
 	)
 }
 
@@ -47,7 +55,8 @@ func Run(ctx context.Context, opts RunOpts, listenOpts ListenOpts) {
 
 	core.InitializationDone()
 
-	metric_initialized.WithLabelValues(opts.PackageName, rev).Inc()
+	serverInitializedInfo.WithLabelValues(opts.PackageName, rev).Inc()
+	serverInitializedTimestamp.WithLabelValues(opts.PackageName, rev).Set(float64(time.Now().Unix()))
 
 	if err := Listen(ctx, listenOpts, func(srv Server) {
 		if errs := opts.WireServices(ctx, srv, depgraph); len(errs) > 0 {
