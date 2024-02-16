@@ -7,16 +7,19 @@ package ssh
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gravitational/teleport/api/client/proxy"
 	"github.com/gravitational/teleport/api/identityfile"
 	"github.com/gravitational/teleport/api/profile"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
@@ -25,6 +28,8 @@ import (
 
 var (
 	sshTransports = tcache.NewCache[*ssh.Client]()
+
+	teleportLoginMinValidityTTL = time.Minute * 10
 )
 
 type DialFunc func(context.Context, string) (net.Conn, error)
@@ -97,6 +102,15 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 				return nil, err
 			}
 
+			valid, _, err := certificates.CertFileIsValidFor(p.TLSCertPath(), teleportLoginMinValidityTTL)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to load user's certificate")
+			}
+
+			if !valid {
+				return nil, fnerrors.UsageError("Login with 'tsh login'", "Teleport credentials have expired or expire soon.")
+			}
+
 			tlscfg, err := p.TLSConfig()
 			if err != nil {
 				return nil, err
@@ -130,6 +144,14 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 			tbotIdentity, err := identityfile.ReadFile(filepath.Join(teleportProxy.TbotIdentityDir, "identity"))
 			if err != nil {
 				return nil, err
+			}
+
+			valid, _, err := certificates.CertIsValidFor(tbotIdentity.Certs.TLS, teleportLoginMinValidityTTL)
+			if err != nil {
+				return nil, fnerrors.InternalError("failed to load user's certificate")
+			}
+			if !valid {
+				return nil, errors.New("Teleport app certificate has expired or expires soon")
 			}
 
 			tlscfg, err := tbotIdentity.TLSConfig()

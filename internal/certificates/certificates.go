@@ -7,12 +7,24 @@ package certificates
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"os"
 	"time"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-func CertIsValid(bundle []byte) (bool, time.Time, error) {
+const oneMonthDuration = 30 * 24 * time.Hour
+
+func CertFileIsValidFor(certFile string, forDuration time.Duration) (bool, time.Time, error) {
+	b, err := os.ReadFile(certFile)
+	if err != nil {
+		return false, time.Time{}, err
+	}
+
+	return CertIsValidFor(b, forDuration)
+}
+
+func CertIsValidFor(bundle []byte, forDuration time.Duration) (bool, time.Time, error) {
 	now := time.Now()
 
 	// The rest is ignored, as we only care about the first pem block.
@@ -26,5 +38,9 @@ func CertIsValid(bundle []byte) (bool, time.Time, error) {
 		return false, now, fnerrors.BadInputError("invalid certificate")
 	}
 
-	return now.Add(30 * 24 * time.Hour).Before(cert.NotAfter), cert.NotAfter, nil
+	return now.Add(forDuration).Before(cert.NotAfter), cert.NotAfter, nil
+}
+
+func CertIsValid(bundle []byte) (bool, time.Time, error) {
+	return CertIsValidFor(bundle, oneMonthDuration)
 }

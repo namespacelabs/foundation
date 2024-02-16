@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/gravitational/teleport/api/profile"
+	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/teleport/configuration"
@@ -27,14 +27,13 @@ type teleportAppCreds struct {
 func tshAppsLogin(ctx context.Context, app, appCertPath string) error {
 	// First we check if there is already a valid certificate as `tbot apps login` is very slow (>3s).
 	if err := tasks.Return0(ctx, tasks.Action("teleport.validate-certificate").Arg("certificate", appCertPath), func(ctx context.Context) error {
-		cert, err := parseCertificate(ctx, appCertPath)
+		valid, _, err := certificates.CertFileIsValidFor(appCertPath, loginMinValidityTTL)
 		if err != nil {
 			return err
 		}
 
-		// If certificate is not valid after 10m then relogin.
-		if time.Until(cert.NotAfter) < loginMinValidityTTL {
-			return errors.New("certificate has expired or expires soon")
+		if !valid {
+			return errors.New("Teleport app certificate has expired or expires soon")
 		}
 
 		return nil

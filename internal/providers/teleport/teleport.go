@@ -21,6 +21,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/registry"
+	"namespacelabs.dev/foundation/internal/certificates"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes/client"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -215,16 +216,12 @@ func tshEnsureLogin(ctx context.Context, conf *configuration.Teleport) error {
 		return fnerrors.InternalError("failed to resolve teleport profile")
 	}
 
-	cert, err := parseCertificate(ctx, profile.TLSCertPath())
+	valid, _, err := certificates.CertFileIsValidFor(profile.TLSCertPath(), loginMinValidityTTL)
 	if err != nil {
 		return fnerrors.InternalError("failed to load user's certificate")
 	}
-
-	if time.Until(cert.NotAfter) < loginMinValidityTTL {
-		usage := fmt.Sprintf("Login with 'tsh login --proxy=%s --user=%s %s'",
-			profile.WebProxyAddr, profile.Username, profile.SiteName,
-		)
-		return fnerrors.UsageError(usage, "Teleport credentials have expired or expire soon.")
+	if !valid {
+		return fnerrors.UsageError("Login with 'tsh login'", "Teleport credentials have expired or expire soon.")
 	}
 
 	var appsLogin []string
