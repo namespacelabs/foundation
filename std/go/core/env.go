@@ -52,7 +52,7 @@ func PrepareEnv(specifiedServerName string) (*ServerResources, string) {
 		log.Fatal(err)
 	}
 
-	rev := d.rtVcs.Revision
+	rev := d.rtVcs.GetRevision()
 
 	if !datamarker.CompareAndSwap(nil, &d) {
 		log.Fatal("already initialized")
