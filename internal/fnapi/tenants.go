@@ -144,8 +144,9 @@ func IssueIdToken(ctx context.Context, aud string, version int) (IssueIdTokenRes
 
 	var res IssueIdTokenResponse
 	if err := (Call[IssueIdTokenRequest]{
-		Method:    "nsl.tenants.TenantsService/IssueIdToken",
-		Retryable: true,
+		Method:           "nsl.tenants.TenantsService/IssueIdToken",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return IssueIdTokenResponse{}, err
 	}
@@ -160,8 +161,9 @@ func IssueIngressAccessToken(ctx context.Context, instanceId string) (IssueIngre
 
 	var res IssueIngressAccessTokenResponse
 	if err := (Call[IssueIngressAccessTokenRequest]{
-		Method:    "nsl.tenants.TenantsService/IssueIngressAccessToken",
-		Retryable: true,
+		Method:           "nsl.tenants.TenantsService/IssueIngressAccessToken",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return IssueIngressAccessTokenResponse{}, err
 	}
@@ -183,8 +185,9 @@ func IssueDevelopmentToken(ctx context.Context) (string, error) {
 
 	var res IssueDevelopmentTokenResponse
 	if err := (Call[any]{
-		Method:    "nsl.tenants.TenantsService/IssueDevelopmentToken",
-		Retryable: true,
+		Method:           "nsl.tenants.TenantsService/IssueDevelopmentToken",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
 		return "", err
 	}
