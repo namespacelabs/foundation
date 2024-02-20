@@ -183,6 +183,9 @@ func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
 			m.Environments[e.Name] = cueEnvironment{
 				Runtime: e.Runtime,
 				Purpose: e.Purpose.String(),
+				Policy: cuePolicy{
+					RequireDeploymentReason: e.GetPolicy().GetRequireDeploymentReason(),
+				},
 			}
 		}
 	}
@@ -265,6 +268,9 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 			Name:    name,
 			Runtime: env.Runtime,
 			Purpose: schema.Environment_Purpose(purpose),
+			Policy: &schema.Environment_Policy{
+				RequireDeploymentReason: env.Policy.RequireDeploymentReason,
+			},
 		}
 
 		for k, v := range env.Labels {
@@ -426,6 +432,13 @@ func makeEnv(v *schema.Workspace_EnvironmentSpec) *ast.Field {
 		&ast.Field{
 			Label: ast.NewIdent("purpose"),
 			Value: ast.NewString(v.Purpose.String()),
+		},
+		&ast.Field{
+			Label: ast.NewIdent("policy"),
+			Value: ast.NewStruct(&ast.Field{
+				Label: ast.NewIdent("require_deployment_reason"),
+				Value: ast.NewBool(v.GetPolicy().GetRequireDeploymentReason()),
+			}),
 		},
 	}
 	if len(v.Labels) > 0 {
@@ -630,6 +643,11 @@ type cueEnvironment struct {
 	Purpose       string            `json:"purpose"`
 	Labels        map[string]string `json:"labels"`
 	Configuration []map[string]any  `json:"configuration"`
+	Policy        cuePolicy         `json:"policy"`
+}
+
+type cuePolicy struct {
+	RequireDeploymentReason bool `json:"require_deployment_reason"`
 }
 
 type cueSecretBinding struct {

@@ -26,5 +26,8 @@ environment: {
 	prod: {
 		runtime: "kubernetes"
 		purpose: "PRODUCTION"
+		policy: {
+			require_deployment_reason: true
+		}
 	}
 }

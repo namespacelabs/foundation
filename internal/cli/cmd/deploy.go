@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/artifacts/registry"
 	"namespacelabs.dev/foundation/internal/build"
 	buildr "namespacelabs.dev/foundation/internal/build/registry"
+	"namespacelabs.dev/foundation/internal/buildkite"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra/planningargs"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -71,13 +72,17 @@ func NewDeployCmd() *cobra.Command {
 			flags.StringVar(&uploadTo, "upload_plan_to", "", "If set, rather than execute on the plan, upload a serialized version of the plan.")
 			flags.BoolVar(&uploadToRegistry, "upload_to_registry", false, "If set, uploads the deploy plan to the cluster registry, instead of applying it.")
 			flags.StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
-			flags.StringVar(&deployOpts.reason, "reason", "", "Why was this deployment triggered.")
+			flags.StringVar(&deployOpts.manualReason, "reason", "", "Why was this deployment triggered.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
+			if serializePath == "" && getDeployReason(deployOpts) == "" && env.Environment().GetPolicy().GetRequireDeploymentReason() {
+				return fnerrors.New("--reason is required when deploying to environment %q", env.Environment().Name)
+			}
+
 			p, err := planning.NewPlanner(ctx, env)
 			if err != nil {
 				return err
@@ -148,9 +153,9 @@ func NewDeployCmd() *cobra.Command {
 }
 
 type deployOpts struct {
-	alsoWait   bool
-	outputPath string
-	reason     string
+	alsoWait     bool
+	outputPath   string
+	manualReason string
 }
 
 type Output struct {
@@ -164,7 +169,7 @@ type Ingress struct {
 }
 
 func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, opts deployOpts) error {
-	if err := orchestration.Deploy(ctx, env, cluster, plan, opts.alsoWait, true); err != nil {
+	if err := orchestration.Deploy(ctx, env, cluster, plan, getDeployReason(opts), opts.alsoWait, true); err != nil {
 		return err
 	}
 
@@ -287,4 +292,16 @@ func uploadPlanTo(ctx context.Context, target compute.Computable[oci.RepositoryW
 
 	fmt.Fprintf(console.Stdout(ctx), "Pushed plan to %s\n", resultImageID.RepoAndDigest())
 	return nil
+}
+
+func getDeployReason(opts deployOpts) string {
+	if opts.manualReason != "" {
+		return opts.manualReason
+	}
+
+	if buildkite.IsRunningInBuildkite() {
+		return buildkite.BuildMessage()
+	}
+
+	return ""
 }

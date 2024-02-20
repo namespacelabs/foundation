@@ -16,12 +16,17 @@ message Environment {
     bool ephemeral = 4;
 
     repeated Label labels = 5;
+    Policy         policy = 6;
 
     enum Purpose {
         PURPOSE_UNKNOWN = 0;
         DEVELOPMENT     = 1;
         TESTING         = 2;
         PRODUCTION      = 3;
+    }
+
+    message Policy {
+        bool require_deployment_reason = 1;
     }
 }
 
