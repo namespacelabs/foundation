@@ -15,11 +15,11 @@ import (
 	"namespacelabs.dev/foundation/schema"
 )
 
-func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, err error) []slack.Block {
+func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, message string, err error) []slack.Block {
 	var blocks []slack.Block
 	blocks = append(blocks, slack.NewHeaderBlock(slack.NewTextBlockObject(slack.PlainTextType, timeEmoji(end, err)+" "+deployLabel(end), true, false)))
 
-	if message := os.Getenv("BUILDKITE_MESSAGE"); message != "" {
+	if message != "" {
 		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.PlainTextType, message, false, false), nil, nil))
 	}
 

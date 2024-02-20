@@ -14,3 +14,17 @@ internalAliases: [{
 	rel_path:    "library"
 }]
 enabledFeatures: ["experimental/container/annotations"]
+environment: {
+	dev: {
+		runtime: "kubernetes"
+		purpose: "DEVELOPMENT"
+	}
+	staging: {
+		runtime: "kubernetes"
+		purpose: "PRODUCTION"
+	}
+	prod: {
+		runtime: "kubernetes"
+		purpose: "PRODUCTION"
+	}
+}

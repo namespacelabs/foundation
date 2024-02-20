@@ -71,6 +71,7 @@ func NewDeployCmd() *cobra.Command {
 			flags.StringVar(&uploadTo, "upload_plan_to", "", "If set, rather than execute on the plan, upload a serialized version of the plan.")
 			flags.BoolVar(&uploadToRegistry, "upload_to_registry", false, "If set, uploads the deploy plan to the cluster registry, instead of applying it.")
 			flags.StringVar(&deployOpts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
+			flags.StringVar(&deployOpts.reason, "reason", "", "Why was this deployment triggered.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
@@ -149,6 +150,7 @@ func NewDeployCmd() *cobra.Command {
 type deployOpts struct {
 	alsoWait   bool
 	outputPath string
+	reason     string
 }
 
 type Output struct {
