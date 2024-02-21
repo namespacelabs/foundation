@@ -26,7 +26,8 @@ message Environment {
     }
 
     message Policy {
-        bool require_deployment_reason = 1;
+        bool   require_deployment_reason   = 1;
+        string deploy_update_slack_channel = 2;
     }
 }
 

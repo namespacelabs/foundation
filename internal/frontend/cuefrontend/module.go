@@ -269,7 +269,8 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 			Runtime: env.Runtime,
 			Purpose: schema.Environment_Purpose(purpose),
 			Policy: &schema.Environment_Policy{
-				RequireDeploymentReason: env.Policy.RequireDeploymentReason,
+				RequireDeploymentReason:  env.Policy.RequireDeploymentReason,
+				DeployUpdateSlackChannel: env.Policy.DeployUpdateSlackChannel,
 			},
 		}
 
@@ -438,6 +439,9 @@ func makeEnv(v *schema.Workspace_EnvironmentSpec) *ast.Field {
 			Value: ast.NewStruct(&ast.Field{
 				Label: ast.NewIdent("require_deployment_reason"),
 				Value: ast.NewBool(v.GetPolicy().GetRequireDeploymentReason()),
+			}, &ast.Field{
+				Label: ast.NewIdent("deploy_update_slack_channel"),
+				Value: ast.NewString(v.GetPolicy().GetDeployUpdateSlackChannel()),
 			}),
 		},
 	}
@@ -647,7 +651,8 @@ type cueEnvironment struct {
 }
 
 type cuePolicy struct {
-	RequireDeploymentReason bool `json:"require_deployment_reason"`
+	RequireDeploymentReason  bool   `json:"require_deployment_reason"`
+	DeployUpdateSlackChannel string `json:"deploy_update_slack_channel"`
 }
 
 type cueSecretBinding struct {
