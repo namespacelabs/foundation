@@ -13,22 +13,20 @@ import (
 
 	"github.com/slack-go/slack"
 	"k8s.io/utils/strings/slices"
-	"namespacelabs.dev/foundation/framework/deploy"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
-
-var deploymentConfigType = cfg.DefineConfigType[*deploy.Deployment]()
 
 func getSlackTokenAndChannel(ctx context.Context, env cfg.Context) (string, string, error) {
 	if DeployUpdateSlackChannel != "" {
 		return os.ExpandEnv(SlackToken), os.ExpandEnv(DeployUpdateSlackChannel), nil
 	}
 
-	if conf, ok := deploymentConfigType.CheckGet(env.Configuration()); ok && conf.UpdateSlackChannel != "" {
+	if conf, ok := deploy.GetConfig(env.Configuration()); ok && conf.UpdateSlackChannel != "" {
 		ref, err := schema.StrictParsePackageRef(conf.SlackBotTokenSecretRef)
 		if err != nil {
 			return "", "", err

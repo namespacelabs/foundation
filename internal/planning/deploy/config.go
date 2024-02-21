@@ -18,3 +18,7 @@ func RequireReason(cfg cfg.Configuration) bool {
 
 	return false
 }
+
+func GetConfig(cfg cfg.Configuration) (*deploy.Deployment, bool) {
+	return deploymentConfigType.CheckGet(cfg)
+}
