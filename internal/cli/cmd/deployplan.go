@@ -57,7 +57,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		if getDeployReason(opts) == "" && deploy.RequireReason(config) {
+		if deploy.RequireReason(config) && deployReason(opts) == "" {
 			return fnerrors.New("--reason is required when deploying to environment %q", plan.Environment.Name)
 		}
 

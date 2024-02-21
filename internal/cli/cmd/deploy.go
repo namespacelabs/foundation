@@ -79,7 +79,7 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			if serializePath == "" && getDeployReason(deployOpts) == "" && deploy.RequireReason(env.Configuration()) {
+			if deploy.RequireReason(env.Configuration()) && serializePath == "" && deployReason(deployOpts) == "" {
 				return fnerrors.New("--reason is required when deploying to environment %q", env.Environment().Name)
 			}
 
@@ -169,7 +169,7 @@ type Ingress struct {
 }
 
 func completeDeployment(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, opts deployOpts) error {
-	if err := orchestration.Deploy(ctx, env, cluster, plan, getDeployReason(opts), opts.alsoWait, true); err != nil {
+	if err := orchestration.Deploy(ctx, env, cluster, plan, deployReason(opts), opts.alsoWait, true); err != nil {
 		return err
 	}
 
@@ -294,7 +294,7 @@ func uploadPlanTo(ctx context.Context, target compute.Computable[oci.RepositoryW
 	return nil
 }
 
-func getDeployReason(opts deployOpts) string {
+func deployReason(opts deployOpts) string {
 	if opts.manualReason != "" {
 		return opts.manualReason
 	}

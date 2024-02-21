@@ -21,7 +21,7 @@ import (
 	"namespacelabs.dev/foundation/std/cfg"
 )
 
-func getSlackTokenAndChannel(ctx context.Context, env cfg.Context) (string, string, error) {
+func resolveSlackTokenAndChannel(ctx context.Context, env cfg.Context) (string, string, error) {
 	if DeployUpdateSlackChannel != "" {
 		return os.ExpandEnv(SlackToken), os.ExpandEnv(DeployUpdateSlackChannel), nil
 	}

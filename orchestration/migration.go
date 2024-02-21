@@ -42,7 +42,8 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 		}
 
 		observeError := func(context.Context, error) {}
-		if token, channel, err := getSlackTokenAndChannel(ctx, env); err != nil {
+		if token, channel, err := resolveSlackTokenAndChannel(ctx, env); err != nil {
+			return err
 		} else if channel != "" {
 			if token == "" {
 				return fnerrors.BadInputError("a slack token is required to be able to update a channel")
