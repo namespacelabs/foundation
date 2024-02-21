@@ -630,6 +630,12 @@ type cueEnvironment struct {
 	Purpose       string            `json:"purpose"`
 	Labels        map[string]string `json:"labels"`
 	Configuration []map[string]any  `json:"configuration"`
+	Policy        cuePolicy         `json:"policy"`
+}
+
+type cuePolicy struct {
+	RequireDeploymentReason  bool   `json:"require_deployment_reason"`
+	DeployUpdateSlackChannel string `json:"deploy_update_slack_channel"`
 }
 
 type cueSecretBinding struct {

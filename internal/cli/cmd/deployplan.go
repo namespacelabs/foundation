@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -38,6 +39,7 @@ func NewDeployPlanCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.outputPath, "output_to", "", "If set, a machine-readable output is emitted after successful deployment.")
 	cmd.Flags().BoolVar(&image, "image", false, "If set to true, the argument represents an image.")
 	cmd.Flags().BoolVar(&insecure, "insecure", false, "Access to the registry is insecure.")
+	cmd.Flags().StringVar(&opts.manualReason, "reason", "", "Why was this deployment triggered.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		root, err := module.FindRoot(ctx, ".")
@@ -53,6 +55,10 @@ func NewDeployPlanCmd() *cobra.Command {
 		config, err := cfg.MakeConfigurationCompat(root, root.Workspace(), root.DevHost(), plan.Environment)
 		if err != nil {
 			return err
+		}
+
+		if deploy.RequireReason(config) && deployReason(opts) == "" {
+			return fnerrors.New("--reason is required when deploying to environment %q", plan.Environment.Name)
 		}
 
 		env := serializedContext{root, config, plan.Environment}

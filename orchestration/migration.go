@@ -7,7 +7,6 @@ package orchestration
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/slack-go/slack"
@@ -36,26 +35,28 @@ func ExecuteOpts() execution.ExecuteOpts {
 	}
 }
 
-func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, wait, outputProgress bool) error {
+func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, reason string, wait, outputProgress bool) error {
 	if !DeployWithOrchestrator {
 		if !wait {
 			return fnerrors.BadInputError("waiting is mandatory without the orchestrator")
 		}
 
 		observeError := func(context.Context, error) {}
-		if DeployUpdateSlackChannel != "" {
-			if SlackToken == "" {
+		if token, channel, err := resolveSlackTokenAndChannel(ctx, env); err != nil {
+			return err
+		} else if channel != "" {
+			if token == "" {
 				return fnerrors.BadInputError("a slack token is required to be able to update a channel")
 			}
 
 			start := time.Now()
-			slackcli := slack.New(os.ExpandEnv(SlackToken))
-			chid, ts, err := slackcli.PostMessageContext(ctx, os.ExpandEnv(DeployUpdateSlackChannel), slack.MsgOptionBlocks(renderSlackMessage(plan, start, time.Time{}, nil)...))
+			slackcli := slack.New(token)
+			chid, ts, err := slackcli.PostMessageContext(ctx, channel, slack.MsgOptionBlocks(renderSlackMessage(plan, start, time.Time{}, reason, nil)...))
 			if err != nil {
 				fmt.Fprintf(console.Warnings(ctx), "Failed to post to Slack: %v\n", err)
 			} else {
 				observeError = func(ctx context.Context, err error) {
-					if _, _, _, err := slackcli.UpdateMessageContext(ctx, chid, ts, slack.MsgOptionBlocks(renderSlackMessage(plan, start, time.Now(), err)...)); err != nil {
+					if _, _, _, err := slackcli.UpdateMessageContext(ctx, chid, ts, slack.MsgOptionBlocks(renderSlackMessage(plan, start, time.Now(), reason, err)...)); err != nil {
 						fmt.Fprintf(console.Warnings(ctx), "Failed to update Slack: %v\n", err)
 					}
 				}
