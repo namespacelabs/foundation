@@ -59,15 +59,16 @@ func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, message s
 	var blocks []slack.Block
 	blocks = append(blocks, slack.NewHeaderBlock(slack.NewTextBlockObject(slack.PlainTextType, timeEmoji(end, err)+" "+deployLabel(end), true, false)))
 
-	if message != "" {
-		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.PlainTextType, message, false, false), nil, nil))
-	}
-
 	blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.MarkdownType,
 		fmt.Sprintf("%s *%s*%s with:",
 			workingLabel(end, err),
 			plan.GetEnvironment().GetName(),
 			maybeFrom()), false, false), nil, nil))
+
+	if message != "" {
+		blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.PlainTextType, message, false, false), nil, nil))
+	}
+
 	blocks = append(blocks, slack.NewSectionBlock(slack.NewTextBlockObject(slack.MarkdownType,
 		strings.Join(servers(plan), "\n"), false, false), nil, nil))
 	if !end.IsZero() {
@@ -81,11 +82,17 @@ func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, message s
 }
 
 func deployLabel(end time.Time) string {
+	label := "Deployed"
+
 	if end.IsZero() {
-		return "Deploying"
+		label = "Deploying"
 	}
 
-	return "Deployed"
+	if manual() {
+		return label + " manually"
+	}
+
+	return label
 }
 
 func workingLabel(end time.Time, err error) string {
@@ -158,7 +165,14 @@ func maybeFrom() string {
 		return from
 	}
 
-	// TODO add actor from token
+	if manual() {
+		// TODO add actor from token
+		return " manually"
+	}
 
 	return ""
+}
+
+func manual() bool {
+	return os.Getenv("BUILDKITE_BUILD_URL") == ""
 }
