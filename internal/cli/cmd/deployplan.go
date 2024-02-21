@@ -17,6 +17,7 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -56,7 +57,7 @@ func NewDeployPlanCmd() *cobra.Command {
 			return err
 		}
 
-		if getDeployReason(opts) == "" && plan.Environment.GetPolicy().GetRequireDeploymentReason() {
+		if getDeployReason(opts) == "" && deploy.RequireReason(config) {
 			return fnerrors.New("--reason is required when deploying to environment %q", plan.Environment.Name)
 		}
 

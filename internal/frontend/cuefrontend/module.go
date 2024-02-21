@@ -183,9 +183,6 @@ func decodeWorkspace(w *schema.Workspace) (cue.Value, error) {
 			m.Environments[e.Name] = cueEnvironment{
 				Runtime: e.Runtime,
 				Purpose: e.Purpose.String(),
-				Policy: cuePolicy{
-					RequireDeploymentReason: e.GetPolicy().GetRequireDeploymentReason(),
-				},
 			}
 		}
 	}
@@ -268,10 +265,6 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 			Name:    name,
 			Runtime: env.Runtime,
 			Purpose: schema.Environment_Purpose(purpose),
-			Policy: &schema.Environment_Policy{
-				RequireDeploymentReason:  env.Policy.RequireDeploymentReason,
-				DeployUpdateSlackChannel: env.Policy.DeployUpdateSlackChannel,
-			},
 		}
 
 		for k, v := range env.Labels {
@@ -433,16 +426,6 @@ func makeEnv(v *schema.Workspace_EnvironmentSpec) *ast.Field {
 		&ast.Field{
 			Label: ast.NewIdent("purpose"),
 			Value: ast.NewString(v.Purpose.String()),
-		},
-		&ast.Field{
-			Label: ast.NewIdent("policy"),
-			Value: ast.NewStruct(&ast.Field{
-				Label: ast.NewIdent("require_deployment_reason"),
-				Value: ast.NewBool(v.GetPolicy().GetRequireDeploymentReason()),
-			}, &ast.Field{
-				Label: ast.NewIdent("deploy_update_slack_channel"),
-				Value: ast.NewString(v.GetPolicy().GetDeployUpdateSlackChannel()),
-			}),
 		},
 	}
 	if len(v.Labels) > 0 {

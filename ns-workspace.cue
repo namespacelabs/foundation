@@ -26,8 +26,9 @@ environment: {
 	prod: {
 		runtime: "kubernetes"
 		purpose: "PRODUCTION"
-		policy: {
-			require_deployment_reason: true
-		}
+		configuration: [{
+			"@type":        "type.googleapis.com/foundation.framework.deploy.Deployment"
+			require_reason: true
+		}]
 	}
 }

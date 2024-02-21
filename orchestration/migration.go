@@ -7,7 +7,6 @@ package orchestration
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/slack-go/slack"
@@ -36,19 +35,6 @@ func ExecuteOpts() execution.ExecuteOpts {
 	}
 }
 
-func getSlackTokenAndChannel(ctx context.Context, cfg cfg.Context, env *schema.Environment) (string, string, error) {
-	if DeployUpdateSlackChannel != "" {
-		return os.ExpandEnv(SlackToken), os.ExpandEnv(DeployUpdateSlackChannel), nil
-	}
-
-	if channel := env.Policy.GetDeployUpdateSlackChannel(); channel != "" {
-		// TODO
-		return "", channel, nil
-	}
-
-	return "", "", nil
-}
-
 func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespace, plan *schema.DeployPlan, reason string, wait, outputProgress bool) error {
 	if !DeployWithOrchestrator {
 		if !wait {
@@ -56,7 +42,7 @@ func Deploy(ctx context.Context, env cfg.Context, cluster runtime.ClusterNamespa
 		}
 
 		observeError := func(context.Context, error) {}
-		if token, channel, err := getSlackTokenAndChannel(ctx, env, plan.Environment); err != nil {
+		if token, channel, err := getSlackTokenAndChannel(ctx, env); err != nil {
 		} else if channel != "" {
 			if token == "" {
 				return fnerrors.BadInputError("a slack token is required to be able to update a channel")

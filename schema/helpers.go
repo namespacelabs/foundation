@@ -192,7 +192,6 @@ func SpecToEnv(spec ...*Workspace_EnvironmentSpec) []*Environment {
 			Runtime: env.Runtime,
 			Purpose: env.Purpose,
 			Labels:  env.Labels,
-			Policy:  env.Policy,
 		})
 	}
 	return envs

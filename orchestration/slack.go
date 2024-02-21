@@ -5,6 +5,7 @@
 package orchestration
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -12,8 +13,49 @@ import (
 
 	"github.com/slack-go/slack"
 	"k8s.io/utils/strings/slices"
+	"namespacelabs.dev/foundation/framework/deploy"
+	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/framework/secrets/combined"
+	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
+	"namespacelabs.dev/foundation/std/cfg"
 )
+
+var deploymentConfigType = cfg.DefineConfigType[*deploy.Deployment]()
+
+func getSlackTokenAndChannel(ctx context.Context, env cfg.Context) (string, string, error) {
+	if DeployUpdateSlackChannel != "" {
+		return os.ExpandEnv(SlackToken), os.ExpandEnv(DeployUpdateSlackChannel), nil
+	}
+
+	if conf, ok := deploymentConfigType.CheckGet(env.Configuration()); ok && conf.UpdateSlackChannel != "" {
+		ref, err := schema.StrictParsePackageRef(conf.SlackBotTokenSecretRef)
+		if err != nil {
+			return "", "", err
+		}
+
+		source, err := combined.NewCombinedSecrets(env)
+		if err != nil {
+			return "", "", err
+		}
+
+		pl := parsing.NewPackageLoader(env)
+		if _, err := pl.LoadByName(ctx, ref.AsPackageName()); err != nil {
+			return "", "", err
+		}
+
+		res, err := source.Load(ctx, pl.Seal(), &secrets.SecretLoadRequest{
+			SecretRef: ref,
+		})
+		if err != nil {
+			return "", "", err
+		}
+
+		return string(res.Value), conf.UpdateSlackChannel, nil
+	}
+
+	return "", "", nil
+}
 
 func renderSlackMessage(plan *schema.DeployPlan, start, end time.Time, message string, err error) []slack.Block {
 	var blocks []slack.Block
@@ -117,6 +159,8 @@ func maybeFrom() string {
 
 		return from
 	}
+
+	// TODO add actor from token
 
 	return ""
 }

@@ -79,7 +79,7 @@ func NewDeployCmd() *cobra.Command {
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{ReturnAllIfNoneSpecified: true}),
 			planningargs.ParseServers(&servers, &env, &locs)).
 		Do(func(ctx context.Context) error {
-			if serializePath == "" && getDeployReason(deployOpts) == "" && env.Environment().GetPolicy().GetRequireDeploymentReason() {
+			if serializePath == "" && getDeployReason(deployOpts) == "" && deploy.RequireReason(env.Configuration()) {
 				return fnerrors.New("--reason is required when deploying to environment %q", env.Environment().Name)
 			}
 
