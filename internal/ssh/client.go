@@ -28,8 +28,6 @@ import (
 
 var (
 	sshTransports = tcache.NewCache[*ssh.Client]()
-
-	teleportLoginMinValidityTTL = time.Minute * 10
 )
 
 type DialFunc func(context.Context, string) (net.Conn, error)
@@ -102,7 +100,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 				return nil, err
 			}
 
-			valid, _, err := certificates.CertFileIsValidFor(p.TLSCertPath(), teleportLoginMinValidityTTL)
+			valid, _, err := certificates.CertFileIsValidFor(p.TLSCertPath(), time.Duration(0))
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to load user's certificate")
 			}
@@ -146,7 +144,7 @@ func Establish(ctx context.Context, endpoint Endpoint) (*Deferred, error) {
 				return nil, err
 			}
 
-			valid, _, err := certificates.CertIsValidFor(tbotIdentity.Certs.TLS, teleportLoginMinValidityTTL)
+			valid, _, err := certificates.CertIsValidFor(tbotIdentity.Certs.TLS, time.Duration(0))
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to load user's certificate")
 			}

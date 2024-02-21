@@ -35,8 +35,7 @@ const (
 )
 
 var (
-	loginMinValidityTTL = time.Minute * 10
-	teleportConfigType  = cfg.DefineConfigType[*configuration.Teleport]()
+	teleportConfigType = cfg.DefineConfigType[*configuration.Teleport]()
 )
 
 func Register() {
@@ -216,7 +215,7 @@ func tshEnsureLogin(ctx context.Context, conf *configuration.Teleport) error {
 		return fnerrors.InternalError("failed to resolve teleport profile")
 	}
 
-	valid, _, err := certificates.CertFileIsValidFor(profile.TLSCertPath(), loginMinValidityTTL)
+	valid, _, err := certificates.CertFileIsValidFor(profile.TLSCertPath(), time.Duration(0))
 	if err != nil {
 		return fnerrors.InternalError("failed to load user's certificate")
 	}

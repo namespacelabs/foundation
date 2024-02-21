@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/gravitational/teleport/api/profile"
 	"namespacelabs.dev/foundation/internal/certificates"
@@ -27,7 +28,7 @@ type teleportAppCreds struct {
 func tshAppsLogin(ctx context.Context, app, appCertPath string) error {
 	// First we check if there is already a valid certificate as `tbot apps login` is very slow (>3s).
 	if err := tasks.Return0(ctx, tasks.Action("teleport.validate-certificate").Arg("certificate", appCertPath), func(ctx context.Context) error {
-		valid, _, err := certificates.CertFileIsValidFor(appCertPath, loginMinValidityTTL)
+		valid, _, err := certificates.CertFileIsValidFor(appCertPath, time.Duration(0))
 		if err != nil {
 			return err
 		}
