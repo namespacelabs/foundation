@@ -24,12 +24,19 @@ type contextKey string
 var ck contextKey = "ns.ctx.request-id"
 
 type RequestData struct {
-	Started   time.Time
-	RequestID RequestID
+	Started   time.Time `json:"started"`
+	RequestID RequestID `json:"request_id"`
 }
 
 func NewID() RequestID {
 	return RequestID(ids.NewRandomBase32ID(16))
+}
+
+func NewRequestData() RequestData {
+	return RequestData{
+		Started:   time.Now(),
+		RequestID: NewID(),
+	}
 }
 
 func RequestIDFromContext(ctx context.Context) (RequestID, bool) {
@@ -50,14 +57,15 @@ func RequestDataFromContext(ctx context.Context) (RequestData, bool) {
 }
 
 func AllocateRequestID(ctx context.Context) (context.Context, RequestData) {
-	rdata := RequestData{
-		Started:   time.Now(),
-		RequestID: NewID(),
-	}
+	rdata := NewRequestData()
 
 	trace.SpanFromContext(ctx).SetAttributes(attribute.String("ns.rid", string(rdata.RequestID)))
 
-	return context.WithValue(ctx, ck, rdata), rdata
+	return WithContext(ctx, rdata), rdata
+}
+
+func WithContext(ctx context.Context, rdata RequestData) context.Context {
+	return context.WithValue(ctx, ck, rdata)
 }
 
 func AttachRequestIDToError(err error, reqid RequestID) error {
