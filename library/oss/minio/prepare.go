@@ -6,6 +6,8 @@ package minio
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -24,11 +26,21 @@ type EnsureBucketOptions struct {
 	Endpoint        string
 	Region          string
 	Secure          bool
+	CaCert          string
 }
 
 func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 	if instance.Endpoint == "" {
 		return fnerrors.New("Endpoint must be set")
+	}
+
+	var tlsConfig *tls.Config
+	if instance.Secure && instance.CaCert != "" {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(instance.CaCert))
+		tlsConfig = &tls.Config{
+			RootCAs: caCertPool,
+		}
 	}
 
 	creds := credentials.NewStaticV4(instance.AccessKey, instance.SecretAccessKey, "")
@@ -58,6 +70,7 @@ func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 			ReadBufferSize:        32 << 10, // 32KiB moving up from 4KiB default
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
+			TLSClientConfig:       tlsConfig,
 			ExpectContinueTimeout: 10 * time.Second,
 			// Set this value so that the underlying transport round-tripper
 			// doesn't try to auto decode the body of objects with
