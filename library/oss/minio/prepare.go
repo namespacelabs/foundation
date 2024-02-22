@@ -35,11 +35,21 @@ func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 	}
 
 	var tlsConfig *tls.Config
-	if instance.Secure && instance.CaCert != "" {
-		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(instance.CaCert))
+	if instance.Secure {
 		tlsConfig = &tls.Config{
-			RootCAs: caCertPool,
+			// Can't use SSLv3 because of POODLE and BEAST
+			// Can't use TLSv1.0 because of POODLE and BEAST using CBC cipher
+			// Can't use TLSv1.1 because of RC4 cipher usage
+			MinVersion: tls.VersionTLS12,
+		}
+		if instance.CaCert != "" {
+			caCertPool, err := x509.SystemCertPool()
+			if err != nil {
+				caCertPool = x509.NewCertPool()
+			}
+
+			caCertPool.AppendCertsFromPEM([]byte(instance.CaCert))
+			tlsConfig.RootCAs = caCertPool
 		}
 	}
 
