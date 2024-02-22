@@ -23,6 +23,7 @@ type EnsureBucketOptions struct {
 	BucketName      string
 	Endpoint        string
 	Region          string
+	Secure          bool
 }
 
 func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
@@ -34,7 +35,7 @@ func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 
 	client, err := minio.New(instance.Endpoint, &minio.Options{
 		Creds:        creds,
-		Secure:       false,
+		Secure:       instance.Secure,
 		Region:       instance.Region,
 		BucketLookup: minio.BucketLookupPath,
 		Transport: &http.Transport{
