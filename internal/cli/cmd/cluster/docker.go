@@ -168,7 +168,8 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 			cfg.AuthConfigs = map[string]types.AuthConfig{}
 		}
 
-		for _, reg := range []*api.ImageRegistry{response.Registry, response.NSCR} {
+		registries := append(response.ExtraRegistry, []*api.ImageRegistry{response.Registry, response.NSCR}...)
+		for _, reg := range registries {
 			if reg != nil {
 				if *useCredentialHelper {
 					cfg.CredentialHelpers[reg.EndpointAddress] = nscBinary
@@ -271,7 +272,8 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 			return fnerrors.New("failed to get nscloud registries: %w", err)
 		}
 
-		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
+		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.Registry, resp.NSCR}...)
+		for _, reg := range registries {
 			if reg != nil && regURL == reg.EndpointAddress {
 				token, err := fnapi.IssueToken(ctx, 8*time.Hour)
 				if err != nil {
@@ -313,9 +315,9 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 			return fnerrors.New("failed to get nscloud registries: %w", err)
 		}
 
+		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.Registry, resp.NSCR}...)
 		output := map[string]string{}
-
-		for _, reg := range []*api.ImageRegistry{resp.Registry, resp.NSCR} {
+		for _, reg := range registries {
 			if reg != nil {
 				output[reg.EndpointAddress] = dockerUsername
 			}
