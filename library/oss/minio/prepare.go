@@ -15,50 +15,57 @@ import (
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"google.golang.org/grpc/codes"
 	"namespacelabs.dev/foundation/framework/resources"
+	"namespacelabs.dev/foundation/framework/rpcerrors"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-type EnsureBucketOptions struct {
+type MinioOpts struct {
 	AccessKey       string
 	SecretAccessKey string
-	BucketName      string
 	Endpoint        string
 	Region          string
 	Secure          bool
-	CaCert          string
+	CaCert          []byte
 }
 
-func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
-	if instance.Endpoint == "" {
-		return fnerrors.New("Endpoint must be set")
+type EnsureBucketOptions struct {
+	BucketName string
+	Minio      MinioOpts
+}
+
+func New(ctx context.Context, opts MinioOpts) (*minio.Client, error) {
+	if opts.Endpoint == "" {
+		return nil, rpcerrors.Errorf(codes.InvalidArgument, "Endpoint must be set")
 	}
 
 	var tlsConfig *tls.Config
-	if instance.Secure {
+	if opts.Secure {
 		tlsConfig = &tls.Config{
 			// Can't use SSLv3 because of POODLE and BEAST
 			// Can't use TLSv1.0 because of POODLE and BEAST using CBC cipher
 			// Can't use TLSv1.1 because of RC4 cipher usage
 			MinVersion: tls.VersionTLS12,
 		}
-		if instance.CaCert != "" {
+
+		if opts.CaCert != nil {
 			caCertPool, err := x509.SystemCertPool()
 			if err != nil {
 				caCertPool = x509.NewCertPool()
 			}
 
-			caCertPool.AppendCertsFromPEM([]byte(instance.CaCert))
+			caCertPool.AppendCertsFromPEM(opts.CaCert)
 			tlsConfig.RootCAs = caCertPool
 		}
 	}
 
-	creds := credentials.NewStaticV4(instance.AccessKey, instance.SecretAccessKey, "")
+	creds := credentials.NewStaticV4(opts.AccessKey, opts.SecretAccessKey, "")
 
-	client, err := minio.New(instance.Endpoint, &minio.Options{
+	return minio.New(opts.Endpoint, &minio.Options{
 		Creds:        creds,
-		Secure:       instance.Secure,
-		Region:       instance.Region,
+		Secure:       opts.Secure,
+		Region:       opts.Region,
 		BucketLookup: minio.BucketLookupPath,
 		Transport: &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
@@ -91,12 +98,16 @@ func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
 			DisableCompression: true,
 		},
 	})
+}
+
+func EnsureBucket(ctx context.Context, instance EnsureBucketOptions) error {
+	min, err := New(ctx, instance.Minio)
 	if err != nil {
 		return fnerrors.New("failed to create client: %w", err)
 	}
 
-	if err := client.MakeBucket(ctx, instance.BucketName, minio.MakeBucketOptions{
-		Region:        instance.Region,
+	if err := min.MakeBucket(ctx, instance.BucketName, minio.MakeBucketOptions{
+		Region:        instance.Minio.Region,
 		ObjectLocking: false,
 	}); err != nil {
 		if merr, ok := err.(minio.ErrorResponse); ok {

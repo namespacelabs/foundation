@@ -38,10 +38,12 @@ func main() {
 	}
 
 	if err := minio.EnsureBucket(ctx, minio.EnsureBucketOptions{
-		AccessKey:       bucket.AccessKey,
-		SecretAccessKey: bucket.SecretAccessKey,
-		BucketName:      bucket.BucketName,
-		Endpoint:        endpoint.PrivateEndpoint,
+		Minio: minio.MinioOpts{
+			AccessKey:       bucket.AccessKey,
+			SecretAccessKey: bucket.SecretAccessKey,
+			Endpoint:        endpoint.PrivateEndpoint,
+		},
+		BucketName: bucket.BucketName,
 	}); err != nil {
 		log.Fatal(err)
 	}
