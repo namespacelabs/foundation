@@ -41,7 +41,7 @@ jobs:
           CGO_ENABLED: 0
         run: go build -v -o ns ./cmd/ns
       - name: Upload ns
-        uses: actions/upload-artifact@v4
+        uses: namespace-actions/upload-artifact@v0
         with:
           name: ns-${{ runner.os }}
           path: ns
@@ -54,7 +54,7 @@ jobs:
         run: go build -v -o nsc ./cmd/nsc
 
       - name: Upload nsc
-        uses: actions/upload-artifact@v4
+        uses: namespace-actions/upload-artifact@v0
         with:
           name: nsc-${{ runner.os }}
           path: nsc
@@ -105,7 +105,7 @@ jobs:
             ${{ runner.os }}-go-fnrun-
 
       - name: Download ns
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: ns-${{ runner.os }}
 
@@ -133,7 +133,7 @@ jobs:
             internal/testdata/server/gogrpc
 
       - name: Upload action log
-        uses: actions/upload-artifact@v4
+        uses: namespace-actions/upload-artifact@v0
         with:
           name: ns-action-log-${{ github.job }}-use_prebuilts-${{ matrix.use_prebuilts }}
           path: /tmp/action_log
@@ -167,7 +167,7 @@ jobs:
             ${{ runner.os }}-go-fndev-
 
       - name: Download ns
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: ns-${{ runner.os }}
 
@@ -205,7 +205,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download ns
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: ns-${{ runner.os }}
 
@@ -231,7 +231,7 @@ jobs:
             --all
 
       - name: Upload action log
-        uses: actions/upload-artifact@v4
+        uses: namespace-actions/upload-artifact@v0
         with:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
@@ -258,7 +258,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download nsc
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: nsc-${{ runner.os }}
 
@@ -304,7 +304,7 @@ jobs:
             ${{ runner.os }}-go-deploystaging-
 
       - name: Download ns
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: ns-${{ runner.os }}
 
@@ -352,7 +352,7 @@ jobs:
             --run_codegen=false
 
       - name: Upload action log
-        uses: actions/upload-artifact@v4
+        uses: namespace-actions/upload-artifact@v0
         with:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
@@ -385,7 +385,7 @@ jobs:
           path: external-repo
 
       - name: Download ns
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: ns-${{ runner.os }}
 
@@ -416,7 +416,7 @@ jobs:
             --parallel
 
       - name: Upload action log
-        uses: actions/upload-artifact@v4
+        uses: namespace-actions/upload-artifact@v0
         with:
           name: ns-action-log-${{ github.job }}
           path: /tmp/action_log
@@ -453,7 +453,7 @@ jobs:
             ${{ runner.os }}-go-fnprepare-
 
       - name: Download ns
-        uses: actions/download-artifact@v4
+        uses: namespace-actions/download-artifact@v0
         with:
           name: ns-${{ runner.os }}
 
