@@ -27,7 +27,9 @@ func Name(name string) Collected {
 }
 
 func (c Collected) Attribute(kv ...attribute.KeyValue) Collected {
-	return Collected{name: c.name, attributes: append(c.attributes, kv...)}
+	copy := c
+	copy.attributes = append(c.attributes, kv...)
+	return copy
 }
 
 func (c Collected) NewRoot() Collected {
