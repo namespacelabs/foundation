@@ -44,6 +44,10 @@ func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 			nsgrpc.DrainFunc()
 		}
 
+		for _, f := range nsgrpc.DrainFuncsByName {
+			f()
+		}
+
 		delta := time.Since(t)
 		if delta < readinessPropagationDelay {
 			dur := readinessPropagationDelay - delta

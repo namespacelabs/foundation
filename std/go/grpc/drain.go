@@ -8,7 +8,10 @@ import (
 	"namespacelabs.dev/foundation/std/go/core"
 )
 
-var DrainFunc func()
+var (
+	DrainFunc        func()
+	DrainFuncsByName = map[string]func(){}
+)
 
 func SetDrainFunc(f func()) {
 	core.AssertNotRunning("grpc.SetDrainFunc")
@@ -18,4 +21,14 @@ func SetDrainFunc(f func()) {
 	}
 
 	DrainFunc = f
+}
+
+func SetNamedDrainFunc(name string, f func()) {
+	core.AssertNotRunning("grpc.SetDrainFunc")
+
+	if _, ok := DrainFuncsByName[name]; ok {
+		panic("drain func was already set")
+	}
+
+	DrainFuncsByName[name] = f
 }
