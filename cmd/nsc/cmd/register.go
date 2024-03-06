@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/cli/cmd/admin"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/aws"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
@@ -49,6 +50,8 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(terminal.NewTerminalCmd())  // nsc internal [hidden]
 
 	root.AddCommand(sdk.NewSdkCmd(true))
+
+	root.AddCommand(admin.NewAdminCmd(true)) // nsc admin
 
 	root.AddCommand(workspace.NewWorkspaceCmd()) // nsc workspace
 }
