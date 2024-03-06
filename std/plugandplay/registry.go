@@ -7,6 +7,7 @@ package plugandplay
 import (
 	_ "namespacelabs.dev/foundation/internal/artifacts/registry" // For type.googleapis.com/foundation.build.registry.Registry
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
+	_ "namespacelabs.dev/foundation/internal/planning/deploy" // For foundation.framework.deploy.Deployment
 	"namespacelabs.dev/foundation/internal/providers/aws/ecr"
 	"namespacelabs.dev/foundation/internal/providers/aws/eks"
 	"namespacelabs.dev/foundation/internal/providers/gcp/gke"
