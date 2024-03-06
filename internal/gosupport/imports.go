@@ -6,8 +6,11 @@ package gosupport
 
 import (
 	"fmt"
-	"regexp"
+	"path"
+	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 type GoImports struct {
@@ -45,18 +48,31 @@ func (gi *GoImports) ImportMap() []singleImport {
 	return imports
 }
 
-var reMatchVer = regexp.MustCompile("^v[0-9]+$")
+// notIdentifier reports whether ch is an invalid identifier character.
+func notIdentifier(ch rune) bool {
+	return !('a' <= ch && ch <= 'z' || 'A' <= ch && ch <= 'Z' ||
+		'0' <= ch && ch <= '9' ||
+		ch == '_' ||
+		ch >= utf8.RuneSelf && (unicode.IsLetter(ch) || unicode.IsDigit(ch)))
+}
 
-func heuristicPackageName(p string) string {
-	parts := strings.Split(p, "/")
-
-	// If the last url segment is a "version" segment, skip it for
-	// name generation purposes.
-	if reMatchVer.MatchString(parts[len(parts)-1]) {
-		parts = parts[:len(parts)-1]
+// Copy of ImportPathToAssumedName
+// https://github.com/golang/tools/blob/ff00c7bd7281c81e2b7fcf28446044157439f902/internal/imports/fix.go#L1252C6-L1252C29
+func heuristicPackageName(importPath string) string {
+	base := path.Base(importPath)
+	if strings.HasPrefix(base, "v") {
+		if _, err := strconv.Atoi(base[1:]); err == nil {
+			dir := path.Dir(importPath)
+			if dir != "." {
+				base = path.Base(dir)
+			}
+		}
 	}
-
-	return parts[len(parts)-1]
+	base = strings.TrimPrefix(base, "go-")
+	if i := strings.IndexFunc(base, notIdentifier); i >= 0 {
+		base = base[:i]
+	}
+	return base
 }
 
 func (gi *GoImports) isValidAndNew(name string) bool {
