@@ -33,12 +33,3 @@ jobs:
         run: go build -v -o ns ./cmd/ns
       - name: Check Formatting
         run: ./ns fmt --all --check
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"

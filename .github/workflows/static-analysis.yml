@@ -24,15 +24,6 @@ jobs:
           go-version-file: go.mod
       - name: Run gofmt (goimports)
         run: go run golang.org/x/tools/cmd/goimports -d --format-only .
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
 
   vet:
     runs-on: nscloud-ubuntu-22.04-amd64-2x8
@@ -45,15 +36,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Run go vet
         run: go vet ./...
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
 
   staticcheck:
     runs-on: nscloud
@@ -82,13 +64,3 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: "staticcheck ./..."
-
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"

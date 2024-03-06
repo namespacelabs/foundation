@@ -61,16 +61,6 @@ jobs:
           # We don't need to persist it for long, only for the next job to download it.
           retention-days: 1
 
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 30m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
-
   run_deploy:
     name: Test local Namespace (deploy to k3d) use_prebuilts=${{ matrix.use_prebuilts }}
     needs: build_fn
@@ -185,16 +175,6 @@ jobs:
         run: |
           ./.github/workflows/scripts/dev.sh /tmp/ns
 
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
-
   run_e2e_tests:
     name: e2e tests
     needs: build_fn
@@ -238,16 +218,6 @@ jobs:
           retention-days: 3
         if: always()
 
-      - name: Breakpoint on failure
-        if: failure()
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 30m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
-
   run_ns_cluster_tests:
     name: nsc tests
     needs: build_fn
@@ -270,16 +240,6 @@ jobs:
       - name: Test nsc cluster commands
         run: |
           ./.github/workflows/scripts/ns_cluster_tests.sh /tmp/nsc
-
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
 
   deploy_staging:
     name: Deploy staging
@@ -359,16 +319,6 @@ jobs:
           retention-days: 3
         if: always()
 
-      - name: Breakpoint on failure
-        if: failure()
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 30m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
-
   run_cross_repo_tests:
     name: cross-repo e2e tests
     needs: build_fn
@@ -422,16 +372,6 @@ jobs:
           path: /tmp/action_log
           retention-days: 3
         if: always()
-
-      - name: Breakpoint on failure
-        if: failure() && github.ref_name == 'main'
-        uses: namespacelabs/breakpoint-action@v0
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        with:
-          duration: 15m
-          authorized-users: edganiukov,hugosantos,n-g,htr,nichtverstehen,gmichelo
-          slack-announce-channel: "#ci"
 
   test_unprepare:
     name: Test unprepare
