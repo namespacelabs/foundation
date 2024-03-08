@@ -22,7 +22,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__rdnc56 = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/testdata/service/fetch",
+		PackageName:         "namespacelabs.dev/foundation/internal/testdata/service/fetch",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/grpc/deadlines"},
 	}
 
 	Provider__rdnc56 = core.Provider{

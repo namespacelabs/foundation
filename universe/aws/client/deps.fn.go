@@ -20,7 +20,8 @@ var _ _checkProvideClientFactory = ProvideClientFactory
 
 var (
 	Package__hva50k = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/aws/client",
+		PackageName:         "namespacelabs.dev/foundation/universe/aws/client",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__hva50k = core.Provider{

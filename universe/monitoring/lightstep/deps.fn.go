@@ -16,7 +16,8 @@ type ExtensionDeps struct {
 
 var (
 	Package__v8ttgu = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/monitoring/lightstep",
+		PackageName:         "namespacelabs.dev/foundation/universe/monitoring/lightstep",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__v8ttgu = core.Provider{

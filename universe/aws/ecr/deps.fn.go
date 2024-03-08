@@ -21,7 +21,8 @@ var _ _checkProvideClient = ProvideClient
 
 var (
 	Package__o6ggab = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/aws/ecr",
+		PackageName:         "namespacelabs.dev/foundation/universe/aws/ecr",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/universe/aws/client"},
 	}
 
 	Provider__o6ggab = core.Provider{

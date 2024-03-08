@@ -143,6 +143,13 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 	}
 
+	var postInitializer string
+	if post := v.LookupPath("hasPostInitializerIn"); post.Exists() {
+		if err := post.Val.Decode(&postInitializer); err != nil {
+			return err
+		}
+	}
+
 	var initializeInFrameworks []string
 	if initializers := v.LookupPath("hasInitializerIn"); initializers.Exists() {
 		if err := initializers.Val.Decode(&initializeInFrameworks); err != nil {
@@ -166,9 +173,10 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 			}
 
 			node.Initializers = append(node.Initializers, &schema.NodeInitializer{
-				Framework:        schema.Framework(v),
-				InitializeBefore: initializeBefore,
-				InitializeAfter:  initializeAfter,
+				Framework:          schema.Framework(v),
+				InitializeBefore:   initializeBefore,
+				InitializeAfter:    initializeAfter,
+				HasPostInitializer: postInitializer == fmwkStr,
 			})
 		}
 	} else {
@@ -177,6 +185,10 @@ func parseCueNode(ctx context.Context, env *schema.Environment, pl parsing.Early
 		}
 		if len(initializeAfter) > 0 {
 			return fnerrors.NewWithLocation(loc, "initializeAfter can only be set when hasInitializerIn is also set")
+		}
+
+		if postInitializer != "" {
+			return fnerrors.NewWithLocation(loc, "hasPostInitializerIn can only be set when hasInitializerIn is also set")
 		}
 	}
 

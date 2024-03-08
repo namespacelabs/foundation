@@ -29,7 +29,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__r11u7a = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/testdata/service/post",
+		PackageName:         "namespacelabs.dev/foundation/internal/testdata/service/post",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/internal/testdata/datastore", "namespacelabs.dev/foundation/std/grpc/deadlines"},
 	}
 
 	Provider__r11u7a = core.Provider{

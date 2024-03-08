@@ -22,7 +22,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__o0mf74 = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/testdata/service/list",
+		PackageName:         "namespacelabs.dev/foundation/internal/testdata/service/list",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/universe/db/postgres"},
 	}
 
 	Provider__o0mf74 = core.Provider{

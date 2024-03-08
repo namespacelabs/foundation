@@ -24,7 +24,8 @@ var _ _checkProvideFactory = ProvideFactory
 
 var (
 	Package__sfr1nt = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/db/postgres",
+		PackageName:         "namespacelabs.dev/foundation/universe/db/postgres",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__sfr1nt = core.Provider{

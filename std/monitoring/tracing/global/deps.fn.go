@@ -28,7 +28,8 @@ var _ _checkProvideTracer = ProvideTracer
 
 var (
 	Package__48n3d1 = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing/global",
+		PackageName:         "namespacelabs.dev/foundation/std/monitoring/tracing/global",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__48n3d1 = core.Provider{

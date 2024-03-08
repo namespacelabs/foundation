@@ -23,7 +23,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__e6cs8f = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/testdata/service/count",
+		PackageName:         "namespacelabs.dev/foundation/internal/testdata/service/count",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/internal/testdata/counter"},
 	}
 
 	Provider__e6cs8f = core.Provider{

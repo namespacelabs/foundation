@@ -20,7 +20,7 @@ import (
 
 const (
 	maximumInitTime = 10 * time.Millisecond
-	maxStartupTime  = 2 * time.Second
+	maxStartupTime  = 10 * time.Second
 )
 
 type Reference struct {
@@ -30,6 +30,7 @@ type Reference struct {
 
 type Package struct {
 	PackageName           string
+	PackageDependencies   []string
 	ListenerConfiguration string
 }
 
@@ -121,6 +122,7 @@ type Initializer struct {
 	Before  []string
 	After   []string
 	Do      func(context.Context, Dependencies) error
+	DoPost  func(context.Context) error
 }
 
 func (di *DependencyGraph) AddInitializers(init ...*Initializer) {
@@ -157,6 +159,44 @@ func (di *DependencyGraph) RunInitializers(ctx context.Context) error {
 		took := time.Since(start)
 		if took > maximumInitTime {
 			Log.Printf("[init] %s took %d (log thresh is %d)", init.Package.PackageName, took, maximumInitTime)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (di *DependencyGraph) RunPostInitializers(ctx context.Context) error {
+	resources := ServerResourcesFrom(ctx)
+	if resources == nil {
+		return fmt.Errorf("missing server resources")
+	}
+
+	initializationDeadline := resources.startupTime.Add(maxStartupTime)
+	ctx, cancel := context.WithDeadline(ctx, initializationDeadline)
+	defer cancel()
+
+	inits, err := enforceOrder(di.inits)
+	if err != nil {
+		return err
+	}
+
+	for _, init := range inits {
+		if init.DoPost == nil {
+			continue
+		}
+
+		if *debug {
+			Log.Printf("[init] run-post %s with %v deadline left", init.Package.PackageName, time.Until(initializationDeadline))
+		}
+
+		start := time.Now()
+		err := init.DoPost(ctx)
+		took := time.Since(start)
+		if took > maximumInitTime {
+			Log.Printf("[init] post %s took %d (log thresh is %d)", init.Package.PackageName, took, maximumInitTime)
 		}
 		if err != nil {
 			return err

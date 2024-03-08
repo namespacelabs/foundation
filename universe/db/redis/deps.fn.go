@@ -23,7 +23,8 @@ var _ _checkProvideRedis = ProvideRedis
 
 var (
 	Package__1i719d = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/db/redis",
+		PackageName:         "namespacelabs.dev/foundation/universe/db/redis",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__1i719d = core.Provider{

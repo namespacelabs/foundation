@@ -59,6 +59,7 @@ _#Node: {
 	_#Node
 
 	hasInitializerIn?: #Framework | [...#Framework]
+	hasPostInitializerIn?: #Framework
 	initializeBefore: [...inputs.#Package]
 	initializeAfter: [...inputs.#Package]
 

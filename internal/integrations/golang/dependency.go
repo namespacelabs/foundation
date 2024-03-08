@@ -32,8 +32,9 @@ type nodeLoc struct {
 
 type initializer struct {
 	nodeLoc
-	initializeBefore []string
-	initializeAfter  []string
+	initializeBefore   []string
+	initializeAfter    []string
+	hasPostInitializer bool
 }
 
 type instancedDepList struct {
@@ -89,9 +90,10 @@ func expandInstancedDeps(ctx context.Context, loader pkggraph.PackageLoader, inc
 
 		if x := referenced.InitializerFor(schema.Framework_GO); x != nil {
 			e.initializers = append(e.initializers, initializer{
-				nodeLoc:          nodeLoc{Location: pkg.Location, Node: referenced},
-				initializeBefore: x.InitializeBefore,
-				initializeAfter:  x.InitializeAfter,
+				nodeLoc:            nodeLoc{Location: pkg.Location, Node: referenced},
+				initializeBefore:   x.InitializeBefore,
+				initializeAfter:    x.InitializeAfter,
+				hasPostInitializer: x.HasPostInitializer,
 			})
 		}
 	}

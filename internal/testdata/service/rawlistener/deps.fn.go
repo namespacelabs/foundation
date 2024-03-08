@@ -22,8 +22,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__7f1eor = &core.Package{
-		PackageName:           "namespacelabs.dev/foundation/internal/testdata/service/rawlistener",
-		ListenerConfiguration: "second",
+		PackageName:         "namespacelabs.dev/foundation/internal/testdata/service/rawlistener",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/internal/testdata/counter"}, ListenerConfiguration: "second",
 	}
 
 	Provider__7f1eor = core.Provider{

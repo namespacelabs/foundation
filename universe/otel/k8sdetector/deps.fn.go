@@ -16,7 +16,8 @@ type ExtensionDeps struct {
 
 var (
 	Package__27cml6 = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/otel/k8sdetector",
+		PackageName:         "namespacelabs.dev/foundation/universe/otel/k8sdetector",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__27cml6 = core.Provider{

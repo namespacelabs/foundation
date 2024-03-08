@@ -6,9 +6,12 @@ package golang
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"text/template"
 
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/gosupport"
@@ -40,9 +43,13 @@ func generateNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggra
 	}
 
 	var providers []*nodeWithDeps
+
+	nodeDeps := map[string]struct{}{}
 	for _, n := range g.Nodes {
 		if n.PackageName == loc.PackageName {
 			providers = append(providers, n)
+		} else {
+			nodeDeps[n.PackageName.GetPackageName()] = struct{}{}
 		}
 	}
 
@@ -132,17 +139,21 @@ func generateNode(ctx context.Context, loader pkggraph.PackageLoader, loc pkggra
 		}
 	}
 
+	flatten := maps.Keys(nodeDeps)
+	slices.Sort(flatten)
+
 	return generateGoSource(ctx, fs, loc.Rel(depsFilename), imports, serviceTmpl, nodeTmplOptions{
-		Type:           typ,
-		Singleton:      single,
-		PackageName:    loc.PackageName,
-		ListenerName:   n.ListenerName,
-		Imports:        imports,
-		Provides:       provides,
-		Scoped:         scoped,
-		NeedsSingleton: len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(single.DepVars) > 0,
-		Providers:      providers,
-		Initializers:   initializers,
+		Type:                typ,
+		Singleton:           single,
+		PackageName:         loc.PackageName,
+		PackageDependencies: flatten,
+		ListenerName:        n.ListenerName,
+		Imports:             imports,
+		Provides:            provides,
+		Scoped:              scoped,
+		NeedsSingleton:      len(n.ExportService) > 0 || len(n.ExportHttp) > 0 || len(single.DepVars) > 0,
+		Providers:           providers,
+		Initializers:        initializers,
 	})
 }
 
@@ -164,14 +175,15 @@ type depsType struct {
 }
 
 type nodeTmplOptions struct {
-	Type           string
-	Singleton      *depsType
-	PackageName    schema.PackageName
-	ListenerName   string
-	Imports        *gosupport.GoImports
-	Provides       []*typeProvider
-	Scoped         []*depsType // Same indexing as `Provisioned`.
-	NeedsSingleton bool
+	Type                string
+	Singleton           *depsType
+	PackageName         schema.PackageName
+	PackageDependencies []string
+	ListenerName        string
+	Imports             *gosupport.GoImports
+	Provides            []*typeProvider
+	Scoped              []*depsType // Same indexing as `Provisioned`.
+	NeedsSingleton      bool
 
 	Providers    []*nodeWithDeps
 	Initializers []goInitializer
@@ -180,6 +192,13 @@ type nodeTmplOptions struct {
 var (
 	funcs = template.FuncMap{
 		"join": strings.Join,
+		"quoteAndJoin": func(values []string, sep string) string {
+			quoted := make([]string, len(values))
+			for k, str := range values {
+				quoted[k] = fmt.Sprintf("%q", str)
+			}
+			return strings.Join(quoted, sep)
+		},
 
 		"makeType": gosupport.MakeType,
 
@@ -247,6 +266,7 @@ var _ _check{{$v.Method}} = {{$v.Method}}
 var (
 	{{longPackageType $opts.PackageName}} = &{{$opts.Imports.Ensure "namespacelabs.dev/foundation/std/go/core"}}Package{
 		PackageName: "{{$opts.PackageName}}",
+		{{if $opts.PackageDependencies}} PackageDependencies: []string{ {{quoteAndJoin $opts.PackageDependencies ","}} },{{end -}}
 {{if $opts.ListenerName}}ListenerConfiguration: "{{$opts.ListenerName}}",{{end}}
 	}
 
@@ -276,6 +296,8 @@ var (
 			})
 		{{end -}}
 	},
+	{{if $init.HasPostInitializer}}DoPost: {{$opts.Imports.Ensure .GoImportURL}}PostPrepare,
+{{end -}}
 },
 {{end}}
 }

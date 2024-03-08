@@ -62,6 +62,10 @@ func Run(ctx context.Context, opts RunOpts, listenOpts ListenOpts) {
 		if errs := opts.WireServices(ctx, srv, depgraph); len(errs) > 0 {
 			core.ZLog.Fatal().Errs("errors", errs).Msgf("%d services failed to initialize.", len(errs))
 		}
+
+		if err := depgraph.RunPostInitializers(ctx); err != nil {
+			core.ZLog.Fatal().Err(err).Send()
+		}
 	}); err != nil {
 		core.ZLog.Fatal().Err(err).Msgf("failed to listen.")
 	}

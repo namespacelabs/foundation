@@ -23,7 +23,8 @@ var _ checkWireService = WireService
 
 var (
 	Package__akep8c = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/internal/testdata/service/localstacks3",
+		PackageName:         "namespacelabs.dev/foundation/internal/testdata/service/localstacks3",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/universe/storage/s3"},
 	}
 
 	Provider__akep8c = core.Provider{

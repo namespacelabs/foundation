@@ -16,7 +16,8 @@ type ExtensionDeps struct {
 
 var (
 	Package__33brri = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
+		PackageName:         "namespacelabs.dev/foundation/std/monitoring/tracing/jaeger",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__33brri = core.Provider{

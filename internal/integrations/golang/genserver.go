@@ -115,10 +115,11 @@ func prepareGenerate(ctx context.Context, loader pkggraph.PackageLoader, importL
 		}
 
 		i := goInitializer{
-			PackageName:      schema.PackageName(init.Node.PackageName),
-			GoImportURL:      pkg,
-			InitializeBefore: init.initializeBefore,
-			InitializeAfter:  init.initializeAfter,
+			PackageName:        schema.PackageName(init.Node.PackageName),
+			GoImportURL:        pkg,
+			InitializeBefore:   init.initializeBefore,
+			InitializeAfter:    init.initializeAfter,
+			HasPostInitializer: init.hasPostInitializer,
 		}
 
 		for _, node := range opts.Nodes {
@@ -249,11 +250,12 @@ type goPackage struct {
 }
 
 type goInitializer struct {
-	PackageName      schema.PackageName
-	GoImportURL      string
-	Deps             *Ref
-	InitializeBefore []string
-	InitializeAfter  []string
+	PackageName        schema.PackageName
+	GoImportURL        string
+	Deps               *Ref
+	InitializeBefore   []string
+	InitializeAfter    []string
+	HasPostInitializer bool
 }
 
 type Ref struct {

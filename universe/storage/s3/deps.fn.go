@@ -23,7 +23,8 @@ var _ _checkProvideBucket = ProvideBucket
 
 var (
 	Package__4pkegf = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/storage/s3",
+		PackageName:         "namespacelabs.dev/foundation/universe/storage/s3",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/universe/aws/client"},
 	}
 
 	Provider__4pkegf = core.Provider{

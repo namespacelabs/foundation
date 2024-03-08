@@ -16,7 +16,8 @@ type ExtensionDeps struct {
 
 var (
 	Package__e1uscp = &core.Package{
-		PackageName: "namespacelabs.dev/foundation/universe/monitoring/honeycomb",
+		PackageName:         "namespacelabs.dev/foundation/universe/monitoring/honeycomb",
+		PackageDependencies: []string{"namespacelabs.dev/foundation/std/monitoring/tracing"},
 	}
 
 	Provider__e1uscp = core.Provider{
