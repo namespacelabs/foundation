@@ -58,7 +58,7 @@ _#Node: {
 #Extension: {
 	_#Node
 
-	hasInitializerIn?: #Framework | [...#Framework]
+	hasInitializerIn?:     #Framework | [...#Framework]
 	hasPostInitializerIn?: #Framework
 	initializeBefore: [...inputs.#Package]
 	initializeAfter: [...inputs.#Package]
