@@ -4,6 +4,7 @@ package postgres
 #Exports: {
 	Database: {
 		resourceRef?: string
+		maxConns?:    int
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
