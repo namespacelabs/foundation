@@ -22,7 +22,7 @@ func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef s
 		return nil, err
 	}
 
-	return NewDatabaseFromConnectionUri(ctx, db, db.ConnectionUri, tp, overrides)
+	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, db.ConnectionUri, tp, overrides)
 }
 
 type ConfigOverrides struct {
@@ -30,7 +30,11 @@ type ConfigOverrides struct {
 	MaxConnIdleTime time.Duration
 }
 
-func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, overrides *ConfigOverrides) (*DB, error) {
+func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider) (*DB, error) {
+	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, connuri, tp, nil)
+}
+
+func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, overrides *ConfigOverrides) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connuri)
 	if err != nil {
 		return nil, err
