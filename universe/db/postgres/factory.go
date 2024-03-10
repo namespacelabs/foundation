@@ -31,5 +31,5 @@ func ProvideFactory(ctx context.Context, _ *FactoryArgs, deps ExtensionDeps) (Fa
 }
 
 func (f Factory) Provide(ctx context.Context, ref string) (*DB, error) {
-	return ConnectToResource(ctx, f.res, ref, f.tp)
+	return ConnectToResource(ctx, f.res, ref, f.tp, nil)
 }

@@ -7,7 +7,6 @@ package postgres
 import (
 	"context"
 
-	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
@@ -27,18 +26,7 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		return nil, err
 	}
 
-	return ConnectToResource(ctx, res, db.ResourceRef, tp)
-}
-
-func ProvideDatabaseFromResourceRef(ctx context.Context, ref string, tp trace.TracerProvider) (*DB, error) {
-	if ref == "" {
-		return nil, fnerrors.New("resourceRef is required")
-	}
-
-	res, err := resources.LoadResources()
-	if err != nil {
-		return nil, err
-	}
-
-	return ConnectToResource(ctx, res, ref, tp)
+	return ConnectToResource(ctx, res, db.ResourceRef, tp, &ConfigOverrides{
+		MaxConns: db.MaxConns,
+	})
 }

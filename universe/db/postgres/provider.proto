@@ -11,6 +11,7 @@ option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
 message DatabaseArgs {
     reserved 1, 2;
     string resource_ref = 3;
+    int32  max_conns    = 4;  // Set if > 0.
 }
 
 message FactoryArgs {}
