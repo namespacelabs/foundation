@@ -18,8 +18,8 @@ import (
 
 func newExtendDurationCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "extend-duration [cluster-id]",
-		Short: "Extends the duration of a cluster.",
+		Use:   "extend-duration [instance-id]",
+		Short: "Extends the duration of a instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 

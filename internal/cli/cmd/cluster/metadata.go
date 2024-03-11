@@ -27,7 +27,7 @@ var supportedMetadataKeys = []string{"id"}
 func NewMetadataCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "metadata",
-		Short: "Interact with Ephemeral Clusters metadata.",
+		Short: "Interact with instance metadata.",
 	}
 
 	cmd.AddCommand(newReadCmd())
@@ -45,7 +45,7 @@ func newReadCmd() *cobra.Command {
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		metadataKey := args[0]
 		if !slices.Contains(supportedMetadataKeys, metadataKey) {
-			return fnerrors.New("reading cluster metadata value for the key %q is not supported", metadataKey)
+			return fnerrors.New("reading instance metadata value for the key %q is not supported", metadataKey)
 		}
 
 		spec, err := fnapi.ResolveSpec()

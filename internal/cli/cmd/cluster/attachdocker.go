@@ -37,8 +37,8 @@ func newDockerAttachCmd() *cobra.Command {
 	name := cmd.Flags().String("name", "", "The name of the context that is created; by default it will be nsc-{id}.")
 	use := cmd.Flags().Bool("use", false, "If true, set the new context as the default.")
 	stateDir := cmd.Flags().String("state", "", "If set, stores the proxy socket in this directory.")
-	toCluster := cmd.Flags().String("to", "", "Attaches a context to the specified cluster.")
-	new := cmd.Flags().Bool("new", false, "If set, creates a new cluster.")
+	toCluster := cmd.Flags().String("to", "", "Attaches a context to the specified instance.")
+	new := cmd.Flags().Bool("new", false, "If set, creates a new instance.")
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
 	background := cmd.Flags().Bool("background", false, "If set, attach in the background.")
 

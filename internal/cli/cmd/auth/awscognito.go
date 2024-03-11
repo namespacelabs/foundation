@@ -87,12 +87,7 @@ func newExchangeAwsCognitoCmd() *cobra.Command {
 		}
 
 		if token.Tenant != nil {
-			if token.Tenant.Name != "" {
-				fmt.Fprintf(console.Stdout(ctx), "You are now logged into workspace %q, have a nice day.\n", token.Tenant.Name)
-			}
-			if token.Tenant.AppUrl != "" {
-				fmt.Fprintf(console.Stdout(ctx), "You can inspect you clusters at %s\n", token.Tenant.AppUrl)
-			}
+			printLoginInfo(ctx, token.Tenant)
 		}
 
 		return auth.StoreTenantToken(token.TenantToken)

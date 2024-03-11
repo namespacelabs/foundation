@@ -17,8 +17,8 @@ import (
 
 func newDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "destroy [cluster-id]",
-		Short: "Destroys an existing cluster.",
+		Use:   "destroy [instance-id]",
+		Short: "Destroys an existing instance.",
 		Args:  cobra.ArbitraryArgs,
 	}
 
@@ -43,7 +43,7 @@ func newDestroyCmd() *cobra.Command {
 
 		for _, cluster := range clusterIDs {
 			if !*force {
-				result, err := tui.Ask(ctx, "Do you want to remove this cluster?",
+				result, err := tui.Ask(ctx, "Do you want to remove this instance?",
 					fmt.Sprintf(`This is a destructive action.
 
 	Type %q for it to be removed.`, cluster), "")

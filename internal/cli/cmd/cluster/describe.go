@@ -37,7 +37,7 @@ var resources = append(kubernetesResources,
 func NewDescribeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "describe",
-		Short: "Outputs a description of the specified cluster.",
+		Short: "Outputs a description of the specified instance.",
 		Args:  cobra.ExactArgs(1),
 	}
 
@@ -81,7 +81,7 @@ func NewDescribeCmd() *cobra.Command {
 			}
 
 			if count > 0 {
-				fmt.Fprintf(console.Warnings(ctx), "The cluster contains Kubernetes resources which are not being output.\n")
+				fmt.Fprintf(console.Warnings(ctx), "The instance contains Kubernetes resources which are not being output.\n")
 			}
 
 			var containers, ingresses []api.Resource

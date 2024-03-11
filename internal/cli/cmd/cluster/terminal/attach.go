@@ -17,7 +17,7 @@ import (
 
 func newAttachCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "attach [cluster-id]",
+		Use:   "attach [instance-id]",
 		Short: "Attaches to a terminal source.",
 		Args:  cobra.MaximumNArgs(1),
 	}
@@ -47,7 +47,7 @@ func newAttachCmd() *cobra.Command {
 
 func newRunScriptCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run-script [cluster-id]",
+		Use:   "run-script [instance-id]",
 		Short: "Runs specified script on a terminal source.",
 		Args:  cobra.MaximumNArgs(1),
 	}

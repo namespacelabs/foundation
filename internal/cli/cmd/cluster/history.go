@@ -19,13 +19,13 @@ import (
 func NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Lists all of your clusters.",
+		Short: "Lists all of your instances.",
 		Args:  cobra.NoArgs,
 	}
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
-	all := cmd.Flags().Bool("all", false, "If true, returl all clusters, not just manually created ones.")
+	all := cmd.Flags().Bool("all", false, "If true, returl all instances, not just manually created ones.")
 
 	cmd.Flags().MarkHidden("label")
 
@@ -45,7 +45,7 @@ func NewListCmd() *cobra.Command {
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(transform(clusters.Clusters)); err != nil {
-				return fnerrors.InternalError("failed to encode cluster list as JSON output: %w", err)
+				return fnerrors.InternalError("failed to encode instance list as JSON output: %w", err)
 			}
 
 			return nil
@@ -98,14 +98,14 @@ func transformForOutput(md api.KubernetesClusterMetadata) map[string]any {
 func newHistoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history",
-		Short: "History of your previous running clusters.",
+		Short: "History of your previous running instances.",
 		Args:  cobra.NoArgs,
 	}
 
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
 	since := cmd.Flags().Duration("since", time.Hour*24*7, "Contrain list to selected duration.")
-	all := cmd.Flags().Bool("all", false, "If true, returl all clusters, not just manually created ones.")
+	all := cmd.Flags().Bool("all", false, "If true, returl all instances, not just manually created ones.")
 
 	cmd.Flags().MarkHidden("label")
 
@@ -127,7 +127,7 @@ func newHistoryCmd() *cobra.Command {
 			enc := json.NewEncoder(stdout)
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(clusters.Clusters); err != nil {
-				return fnerrors.InternalError("failed to encode cluster history as JSON output: %w", err)
+				return fnerrors.InternalError("failed to encode instance history as JSON output: %w", err)
 			}
 
 			return nil

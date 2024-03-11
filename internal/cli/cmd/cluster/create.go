@@ -25,25 +25,25 @@ import (
 func NewCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Creates a new cluster.",
+		Short: "Creates a new instance.",
 		Args:  cobra.NoArgs,
 	}
 
 	machineType := cmd.Flags().String("machine_type", "", "Specify the machine type.")
-	unusedEphemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral cluster.")
-	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
+	unusedEphemeral := cmd.Flags().Bool("ephemeral", false, "Create an ephemeral instance.")
+	features := cmd.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
 	waitKubeSystem := cmd.Flags().Bool("wait_kube_system", false, "If true, wait until kube-system resources (e.g. coredns and local-path-provisioner) are ready.")
 	bare := cmd.Flags().Bool("bare", false, "If set to true, creates an environment with the minimal set of services (e.g. no Kubernetes).")
-	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a cluster with the specified unique tag.")
+	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
 
-	legacyOutputPath := cmd.Flags().String("output_to", "", "If specified, write the cluster id to this path.")
+	legacyOutputPath := cmd.Flags().String("output_to", "", "If specified, write the instance id to this path.")
 	cmd.Flags().MarkDeprecated("output_to", "use cidfile instead")
-	cidfile := cmd.Flags().String("cidfile", "", "If specified, write the cluster id to this path.")
-	outputJsonPath := cmd.Flags().String("output_json_to", "", "If specified, write cluster metadata as JSON to this path.")
+	cidfile := cmd.Flags().String("cidfile", "", "If specified, write the instance id to this path.")
+	outputJsonPath := cmd.Flags().String("output_json_to", "", "If specified, write instance metadata as JSON to this path.")
 	outputRegistryPath := cmd.Flags().String("output_registry_to", "", "If specified, write the registry address to this path.")
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
-	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created cluster.")
+	userSshey := cmd.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
 	cmd.Flags().MarkHidden("ssh_key")
 	experimental := cmd.Flags().String("experimental", "", "JSON definition of experimental features.")
 	experimentalFrom := cmd.Flags().String("experimental_from", "", "Load experimental definitions from the specified file.")
@@ -174,7 +174,7 @@ func NewCreateCmd() *cobra.Command {
 				ClusterUrl:    cluster.Cluster.AppURL,
 				IngressDomain: cluster.Cluster.IngressDomain,
 			}); err != nil {
-				return fnerrors.InternalError("failed to encode cluster as JSON output: %w", err)
+				return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
 			}
 
 		default:

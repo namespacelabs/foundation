@@ -30,12 +30,12 @@ import (
 
 func NewSshCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ssh [cluster-id] [command]",
+		Use:   "ssh [instance-id] [command]",
 		Short: "Start an SSH session.",
 		Args:  cobra.ArbitraryArgs,
 	}
 
-	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a cluster with the specified unique tag.")
+	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
@@ -104,7 +104,7 @@ func NewTopCmd() *cobra.Command {
 func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *ssh.Client) error) error {
 	sshSvc := api.ClusterService(cluster, "ssh")
 	if sshSvc == nil || sshSvc.Endpoint == "" {
-		return fnerrors.New("cluster does not have ssh")
+		return fnerrors.New("instance does not have ssh")
 	}
 
 	if sshSvc.Status != "READY" {
@@ -210,7 +210,7 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 			g := executor.New(ctx, "ssh")
 			cancel := g.GoCancelable(func(ctx context.Context) error {
 				return api.StartRefreshing(ctx, api.Methods, cluster.ClusterId, func(err error) error {
-					fmt.Fprintf(os.Stderr, "failed to refresh cluster: %v\n", err)
+					fmt.Fprintf(os.Stderr, "failed to refresh instance: %v\n", err)
 					return nil
 				})
 			})

@@ -58,7 +58,7 @@ var (
 func NewBuildCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "build",
-		Short: "Build an image in a build cluster.",
+		Short: "Build an image in a build instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 

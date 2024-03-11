@@ -46,7 +46,7 @@ func NewRunCmd() *cobra.Command {
 	env := run.Flags().StringToStringP("env", "e", map[string]string{}, "Pass these additional environment variables to the container.")
 	devmode := run.Flags().Bool("development", false, "If true, enables a few development facilities, including making containers optional.")
 	wait := run.Flags().Bool("wait", false, "Wait for the container to start running.")
-	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the cluster.")
+	features := run.Flags().StringSlice("features", nil, "A set of features to attach to the instance.")
 	ingressRules := run.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
 	duration := run.Flags().Duration("duration", 0, "For how long to run the ephemeral environment.")
 	labels := run.Flags().StringToString("label", nil, "Create the environment with a set of labels.")

@@ -25,7 +25,7 @@ import (
 func NewKubectlCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "kubectl ...",
-		Short:              "Run kubectl on the target cluster.",
+		Short:              "Run kubectl on the target instance.",
 		Args:               cobra.MinimumNArgs(1),
 		DisableFlagParsing: true,
 	}
@@ -74,7 +74,7 @@ func NewKubeconfigCmd() *cobra.Command {
 func newWriteKubeconfigCmd(use string, hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    use,
-		Short:  "Write Kubeconfig for the target cluster.",
+		Short:  "Write Kubeconfig for the target instance.",
 		Args:   cobra.MaximumNArgs(1),
 		Hidden: hidden,
 	}
@@ -110,7 +110,7 @@ func newWriteKubeconfigCmd(use string, hidden bool) *cobra.Command {
 			}
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for cluster %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
+		fmt.Fprintf(console.Stdout(ctx), "Wrote Kubeconfig for instance %s to %s.\n", cluster.ClusterId, cfg.Kubeconfig)
 
 		style := colors.Ctx(ctx)
 		fmt.Fprintf(console.Stdout(ctx), "\nStart using it by setting:\n")

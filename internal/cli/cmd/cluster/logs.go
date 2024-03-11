@@ -25,9 +25,9 @@ import (
 
 func NewLogsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "logs [cluster-id]",
-		Short: "Prints logs for a cluster.",
-		Long:  "Prints application logs for a cluster. To print all cluster logs (including Kubernetes system logs) add --all.",
+		Use:   "logs [instance-id]",
+		Short: "Prints logs for a instance.",
+		Long:  "Prints application logs for a instance. To print all instance logs (including Kubernetes system logs) add --all.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 
@@ -105,7 +105,7 @@ func NewLogsCmd() *cobra.Command {
 
 		cluster, err := api.GetCluster(ctx, api.Methods, clusterID)
 		if err != nil {
-			return fnerrors.New("failed to get cluster information: %w", err)
+			return fnerrors.New("failed to get instance information: %w", err)
 		}
 
 		if cluster.Cluster != nil {
@@ -128,7 +128,7 @@ func NewLogsCmd() *cobra.Command {
 
 		logs, err := api.GetClusterLogs(ctx, api.Methods, logOpts)
 		if err != nil {
-			return fnerrors.New("failed to get cluster logs: %w", err)
+			return fnerrors.New("failed to get instance logs: %w", err)
 		}
 
 		// Skip hint when running in raw mode.

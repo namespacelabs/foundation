@@ -4,7 +4,14 @@
 
 package auth
 
-import "github.com/spf13/cobra"
+import (
+	"context"
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
+)
 
 func NewAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -22,4 +29,13 @@ func NewAuthCmd() *cobra.Command {
 	cmd.AddCommand(NewGenerateDevTokenCmd())
 
 	return cmd
+}
+
+func printLoginInfo(ctx context.Context, tenant *fnapi.Tenant) {
+	if tenant.Name != "" {
+		fmt.Fprintf(console.Stdout(ctx), "You are now logged into workspace %q, have a nice day.\n", tenant.Name)
+	}
+	if tenant.AppUrl != "" {
+		fmt.Fprintf(console.Stdout(ctx), "You can inspect your instances at %s\n", tenant.AppUrl)
+	}
 }

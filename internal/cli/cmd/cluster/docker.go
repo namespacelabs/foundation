@@ -59,7 +59,7 @@ func NewDockerCmd() *cobra.Command {
 func newDockerRemoteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:                "remote ...",
-		Short:              "Run docker on the target cluster.",
+		Short:              "Run docker on the target instance.",
 		Args:               cobra.MinimumNArgs(1),
 		DisableFlagParsing: true,
 	}
@@ -74,7 +74,7 @@ func newDockerRemoteCmd() *cobra.Command {
 func newDockerPassthroughCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "docker -- ...",
-		Short:  "Run docker on the target cluster.",
+		Short:  "Run docker on the target instance.",
 		Args:   cobra.MinimumNArgs(1),
 		Hidden: true,
 	}

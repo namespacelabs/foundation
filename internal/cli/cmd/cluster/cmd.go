@@ -19,13 +19,13 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-var ErrEmptyClusterList = errors.New("no clusters")
+var ErrEmptyClusterList = errors.New("no instances")
 
 // Used by `nsc` (and as the basis to `ns cluster`)
-func NewBareClusterCmd(hidden bool) *cobra.Command {
+func NewBareClusterCmd(use string, hidden bool) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "cluster",
-		Short:  "Cluster-related activities.",
+		Use:    use,
+		Short:  "Instance-related activities.",
 		Hidden: hidden,
 	}
 
@@ -56,7 +56,7 @@ func NewBareClusterCmd(hidden bool) *cobra.Command {
 
 // Used as `ns cluster`
 func NewClusterCmd(hidden bool) *cobra.Command {
-	cmd := NewBareClusterCmd(hidden)
+	cmd := NewBareClusterCmd("cluster", hidden)
 
 	cmd.AddCommand(NewCreateCmd())
 	cmd.AddCommand(NewListCmd())
@@ -129,7 +129,7 @@ func tableClusters(ctx context.Context,
 	clusters []api.KubernetesClusterMetadata, previousRuns, selectCluster bool) (*api.KubernetesClusterMetadata, error) {
 	clusterIdMap := map[string]api.KubernetesClusterMetadata{}
 	cols := []tui.Column{
-		{Key: idColKey, Title: "Cluster ID", MinWidth: 5, MaxWidth: 20},
+		{Key: idColKey, Title: "Instance ID", MinWidth: 5, MaxWidth: 20},
 		{Key: cpuColKey, Title: "CPU", MinWidth: 3, MaxWidth: 20},
 		{Key: memColKey, Title: "Memory", MinWidth: 5, MaxWidth: 20},
 		{Key: platformColKey, Title: "Arch", MinWidth: 5, MaxWidth: 10},
@@ -248,5 +248,5 @@ func PrintCreateClusterMsg(ctx context.Context) {
 		cmd = fmt.Sprintf("%s cluster create", name.CmdName)
 	}
 
-	fmt.Fprintf(stdout, "No clusters. Try creating one with `%s`.\n", cmd)
+	fmt.Fprintf(stdout, "No instances. Try creating one with `%s`.\n", cmd)
 }

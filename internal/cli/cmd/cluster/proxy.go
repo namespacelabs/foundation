@@ -112,7 +112,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 	if kind == "buildkit" {
 		buildkitSvc := api.ClusterService(cluster.Cluster, "buildkit")
 		if buildkitSvc == nil || buildkitSvc.Endpoint == "" {
-			return fnerrors.New("cluster is missing buildkit")
+			return fnerrors.New("instance is missing buildkit")
 		}
 
 		if buildkitSvc.Status != "READY" {
@@ -137,7 +137,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 
 	go func() {
 		_ = api.StartRefreshing(ctx, api.Methods, cluster.ClusterId, func(err error) error {
-			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
+			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh instance: %v\n", err)
 			return nil
 		})
 	}()

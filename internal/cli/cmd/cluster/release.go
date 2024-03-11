@@ -15,8 +15,8 @@ import (
 
 func newSuspendCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "suspend [cluster-id]",
-		Short:  "Suspends an existing cluster.",
+		Use:    "suspend [instance-id]",
+		Short:  "Suspends an existing instance.",
 		Args:   cobra.ExactArgs(1),
 		Hidden: true,
 	}
@@ -32,8 +32,8 @@ func newSuspendCmd() *cobra.Command {
 
 func newReleaseCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "release [cluster-id]",
-		Short:  "Releases an existing cluster.",
+		Use:    "release [instance-id]",
+		Short:  "Releases an existing instance.",
 		Args:   cobra.ExactArgs(1),
 		Hidden: true,
 	}
@@ -49,8 +49,8 @@ func newReleaseCmd() *cobra.Command {
 
 func newWakeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "wake [cluster-id]",
-		Short:  "Wakes up an existing cluster.",
+		Use:    "wake [instance-id]",
+		Short:  "Wakes up an existing instance.",
 		Args:   cobra.ExactArgs(1),
 		Hidden: true,
 	}

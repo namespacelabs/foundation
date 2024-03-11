@@ -22,8 +22,8 @@ import (
 
 func newPortForwardCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "port-forward [cluster-id]",
-		Short: "Opens a local port which connects to the cluster.",
+		Use:   "port-forward [instance-id]",
+		Short: "Opens a local port which connects to the instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}
 
