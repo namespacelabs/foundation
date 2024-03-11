@@ -15,7 +15,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func newDestroyCmd() *cobra.Command {
+func NewDestroyCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "destroy [instance-id]",
 		Short: "Destroys an existing instance.",

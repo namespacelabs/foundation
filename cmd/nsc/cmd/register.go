@@ -34,6 +34,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewBuildCmd())                      // nsc build
 	root.AddCommand(cluster.NewMetadataCmd())                   // nsc metadata
 	root.AddCommand(cluster.NewCreateCmd())                     // nsc create
+	root.AddCommand(cluster.NewDestroyCmd())                    // nsc destroy
 	root.AddCommand(cluster.NewListCmd())                       // nsc list
 	root.AddCommand(cluster.NewLogsCmd())                       // nsc logs
 	root.AddCommand(cluster.NewExposeCmd())                     // nsc expose
