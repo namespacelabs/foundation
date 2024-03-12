@@ -62,10 +62,10 @@ func (e *exportImage) Prepare(ctx context.Context) error {
 func (e *exportImage) Exports() []client.ExportEntry {
 	return []client.ExportEntry{{
 		Type: client.ExporterOCI,
-		Attrs: map[string]string{
+		Attrs: MaybeForceEstargz(map[string]string{
 			"buildinfo":        "false", // Remove build info to keep reproducibility.
 			KeySourceDateEpoch: "0",
-		},
+		}),
 		Output: func(_ map[string]string) (io.WriteCloser, error) {
 			return e.output, nil
 		},
@@ -110,11 +110,11 @@ func (e *exportOCILayout) Prepare(ctx context.Context) error {
 func (e *exportOCILayout) Exports() []client.ExportEntry {
 	return []client.ExportEntry{{
 		Type: client.ExporterOCI,
-		Attrs: map[string]string{
+		Attrs: MaybeForceEstargz(map[string]string{
 			"buildinfo":        "false", // Remove build info to keep reproducibility.
 			"tar":              "false",
 			KeySourceDateEpoch: "0",
-		},
+		}),
 		OutputDir: e.output,
 	}}
 }

@@ -57,14 +57,14 @@ func (e *exportRegistry) nameOpts() []name.Option {
 func (e *exportRegistry) Exports() []client.ExportEntry {
 	return []client.ExportEntry{{
 		Type: client.ExporterImage,
-		Attrs: map[string]string{
+		Attrs: MaybeForceEstargz(map[string]string{
 			"push":              "true",
 			"name":              e.target.Name,
 			"push-by-digest":    "true",
 			"registry.insecure": fmt.Sprintf("%v", e.target.Insecure),
 			"buildinfo":         "false", // Remove build info to keep reproducibility.
 			KeySourceDateEpoch:  "0",
-		},
+		}),
 	}}
 }
 

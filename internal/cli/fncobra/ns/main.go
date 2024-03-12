@@ -169,6 +169,8 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				"[development] Set to false, to skip ingress computation.")
 			rootCmd.PersistentFlags().BoolVar(&buildkit.SkipExpectedMaxWorkspaceSizeCheck, "skip_buildkit_workspace_size_check", buildkit.SkipExpectedMaxWorkspaceSizeCheck,
 				"If set to true, skips our enforcement of the maximum workspace size we're willing to push to buildkit.")
+			rootCmd.PersistentFlags().BoolVar(&buildkit.ForceEstargz, "buildkit_force_estargz", buildkit.ForceEstargz,
+				"If set to true, images are exported using estargz.")
 			rootCmd.PersistentFlags().BoolVar(&k3d.IgnoreZfsCheck, "ignore_zfs_check", k3d.IgnoreZfsCheck,
 				"If set to true, ignores checking whether the base system is ZFS based.")
 			rootCmd.PersistentFlags().BoolVar(&deploy.RunCodegen, "run_codegen", deploy.RunCodegen, "If set to false, skip codegen.")
