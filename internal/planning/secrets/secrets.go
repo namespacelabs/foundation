@@ -39,12 +39,34 @@ func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPacka
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 
+func (gs groundedSecrets) GetAll(ctx context.Context, refs []*schema.PackageRef) ([]*schema.SecretResult, error) {
+	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, refs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return gs.load(ctx, specs)
+}
+
 func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
 	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, ref)
 	if err != nil {
 		return nil, err
 	}
 
+	res, err := gs.load(ctx, specs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) != 1 {
+		return nil, fnerrors.InternalError("expected one loaded secret, got %d", len(res))
+	}
+
+	return res[0], nil
+}
+
+func (gs groundedSecrets) load(ctx context.Context, specs []*schema.SecretSpec) ([]*schema.SecretResult, error) {
 	gsec := &schema.SecretResult{
 		Ref:  ref,
 		Spec: specs[0],

@@ -29,6 +29,7 @@ type SecretLoadRequest_ServerRef struct {
 
 type GroundedSecrets interface {
 	Get(ctx context.Context, secretRef *schema.PackageRef) (*schema.SecretResult, error)
+	GetAll(ctx context.Context, secretRefs []*schema.PackageRef) ([]*schema.SecretResult, error)
 }
 
 func Load(ctx context.Context, src SecretsSource, mods pkggraph.ModuleResolver, owner schema.PackageNameLike, ref string) (*schema.SecretResult, error) {
