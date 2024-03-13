@@ -9,11 +9,9 @@ import (
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/framework/secrets"
-	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
-	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type groundedSecrets struct {
@@ -41,26 +39,6 @@ func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPacka
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 
-type cachedSecret struct {
-	groundedSecrets
-
-	ref *schema.PackageRef
-
-	compute.DoScoped[*schema.SecretResult]
-}
-
-func (cs *cachedSecret) Action() *tasks.ActionEvent {
-	return tasks.Action("read-secret").Arg("ref", cs.ref.Canonical())
-}
-
-func (cs *cachedSecret) Inputs() *compute.In {
-	return compute.Inputs().Str("ref", cs.ref.Canonical())
-}
-
-func (cs *cachedSecret) Compute(ctx context.Context, deps compute.Resolved) (*schema.SecretResult, error) {
-	return cs.source.Load(ctx, cs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: cs.ref, Server: cs.server})
-}
-
 func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
 	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, ref)
 	if err != nil {
@@ -73,8 +51,7 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 	}
 
 	if gsec.Spec.Generate == nil {
-		cs := &cachedSecret{groundedSecrets: gs, ref: ref}
-		value, err := compute.GetValue(ctx, cs)
+		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: ref, Server: gs.server})
 		if err != nil {
 			return nil, err
 		}
