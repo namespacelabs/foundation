@@ -9,9 +9,11 @@ import (
 
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
+	"namespacelabs.dev/foundation/std/tasks"
 )
 
 type groundedSecrets struct {
@@ -39,13 +41,24 @@ func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPacka
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 
-func (gs groundedSecrets) GetAll(ctx context.Context, refs []*schema.PackageRef) ([]*schema.SecretResult, error) {
-	specs, err := LoadSecretSpecs(ctx, gs.sealedCtx, refs...)
-	if err != nil {
-		return nil, err
-	}
+type cachedSecret struct {
+	groundedSecrets
 
-	return gs.load(ctx, specs)
+	ref *schema.PackageRef
+
+	compute.DoScoped[*schema.SecretResult]
+}
+
+func (cs *cachedSecret) Action() *tasks.ActionEvent {
+	return tasks.Action("read-secret").Arg("ref", cs.ref.Canonical())
+}
+
+func (cs *cachedSecret) Inputs() *compute.In {
+	return compute.Inputs().Str("ref", cs.ref.Canonical())
+}
+
+func (cs *cachedSecret) Compute(ctx context.Context, deps compute.Resolved) (*schema.SecretResult, error) {
+	return cs.source.Load(ctx, cs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: cs.ref, Server: cs.server})
 }
 
 func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*schema.SecretResult, error) {
@@ -54,26 +67,14 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 		return nil, err
 	}
 
-	res, err := gs.load(ctx, specs)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res) != 1 {
-		return nil, fnerrors.InternalError("expected one loaded secret, got %d", len(res))
-	}
-
-	return res[0], nil
-}
-
-func (gs groundedSecrets) load(ctx context.Context, specs []*schema.SecretSpec) ([]*schema.SecretResult, error) {
 	gsec := &schema.SecretResult{
 		Ref:  ref,
 		Spec: specs[0],
 	}
 
 	if gsec.Spec.Generate == nil {
-		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: ref, Server: gs.server})
+		cs := &cachedSecret{groundedSecrets: gs, ref: ref}
+		value, err := compute.GetValue(ctx, cs)
 		if err != nil {
 			return nil, err
 		}
