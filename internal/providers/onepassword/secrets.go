@@ -23,7 +23,7 @@ import (
 const cmdTimeout = time.Minute
 
 func Register() {
-	p := provider{}
+	p := &provider{}
 
 	combined.RegisterSecretsProvider(func(ctx context.Context, cfg *onepassword.Secret) ([]byte, error) {
 		if cfg.SecretReference == "" {
@@ -35,7 +35,7 @@ func Register() {
 }
 
 type provider struct {
-	once    *sync.Once
+	once    sync.Once
 	initErr error
 }
 
