@@ -31,6 +31,7 @@ type RunToolOpts struct {
 	Mounts       []*LocalMapping
 	AllocateTTY  bool
 	NoNetworking bool // XXX remove, too specific.
+	Privileged   bool
 }
 
 type IO struct {

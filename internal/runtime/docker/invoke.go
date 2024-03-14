@@ -144,6 +144,11 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		hostConfig.NetworkMode = "none"
 	}
 
+	if opts.Privileged {
+		hostConfig.Privileged = true
+		hostConfig.CapAdd = append(hostConfig.CapAdd, "SYS_ADMIN", "SYS_RESOURCE", "NET_ADMIN")
+	}
+
 	for _, m := range opts.Mounts {
 		var absPath string
 

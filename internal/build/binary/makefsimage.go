@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
@@ -19,10 +18,10 @@ import (
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
-	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
 type makeExt4Image struct {
@@ -34,10 +33,6 @@ type makeExt4Image struct {
 func validateExt4(size int64) error {
 	if size == 0 {
 		return fnerrors.BadInputError("size must be specified")
-	}
-
-	if runtime.GOOS != "linux" {
-		return fnerrors.New("mkfs.ext4 only supported in linux")
 	}
 
 	return nil
@@ -80,7 +75,7 @@ func (m makeExt4Image) PlatformIndependent() bool { return m.spec.PlatformIndepe
 
 func toExt4Image(ctx context.Context, tmpdir string, image oci.Image, target string, size int64) error {
 	tmpFile := filepath.Join(tmpdir, "image.tar")
-	if err := writeFile(ctx, tmpFile, image); err != nil {
+	if err := flattenToFile(ctx, tmpFile, image); err != nil {
 		return err
 	}
 
@@ -97,37 +92,41 @@ func toExt4Image(ctx context.Context, tmpdir string, image oci.Image, target str
 		return err
 	}
 
-	out := console.TypedOutput(ctx, "write-ext4-image", idtypes.CatOutputTool)
-	io := rtypes.IO{Stdout: out, Stderr: out}
-
-	if err := runCommandMaybeNixShell(ctx, io, "e2fsprogs", "mkfs.ext4",
-		// Most images we create are small, but then can be extended. These base
-		// images are created with the same parameters as a larger image would, so
-		// we can get by resize2fsing them later.
-		// Block size: 4k
-		"-b", "4096",
-		// Inode size: 256
-		"-I", "256",
-		// Don't defer work to first mount, do it now.
-		"-E", "lazy_itable_init=0,lazy_journal_init=0",
-		target,
-	); err != nil {
+	// nsdev build-binary internal/build/binary/imageutil --base_repository=registry.eu-services.namespace.systems --build_platforms linux/arm64,linux/amd64
+	img, err := oci.ParseImageID("registry.eu-services.namespace.systems/namespacelabs.dev/foundation/internal/build/binary/imageutil@sha256:afbded41542118d6b535735bbe692ca8d5fabd8e139edbc43014d4345dc25563")
+	if err != nil {
 		return err
 	}
 
-	mount := filepath.Join(tmpdir, "mount")
-	if err := runRawCommand(ctx, io, "mount", "-o", "loop", target, mount); err != nil {
+	v, err := oci.FetchRemoteImage(ctx, img, oci.RegistryAccess{PublicImage: true})
+	if err != nil {
 		return err
 	}
 
-	tarErr := runRawCommand(ctx, io, "tar", "xf", tmpFile, "-C", mount)
-	umountErr := runRawCommand(ctx, io, "umount", mount)
-	fsckErr := runCommandMaybeNixShell(ctx, io, "e2fsprogs", "e2fsck", "-y", "-f", target)
+	out := console.Output(ctx, "make-ext4-image")
 
-	return multierr.New(tarErr, umountErr, fsckErr)
+	var run rtypes.RunToolOpts
+	run.Privileged = true
+	run.IO.Stdout = out
+	run.IO.Stderr = out
+	run.WorkingDir = "/"
+	run.Image = v
+	run.Command = []string{"/bake", "-source", "/source", "-target", "/target"}
+	run.Mounts = append(run.Mounts,
+		&rtypes.LocalMapping{
+			HostPath:      target,
+			ContainerPath: "/target",
+		},
+		&rtypes.LocalMapping{
+			HostPath:      tmpFile,
+			ContainerPath: "/source",
+		},
+	)
+
+	return docker.Runtime().Run(ctx, run)
 }
 
-func writeFile(ctx context.Context, filepath string, image oci.Image) error {
+func flattenToFile(ctx context.Context, filepath string, image oci.Image) error {
 	return tasks.Action("binary.make-ext4-image.write-image-as-tar").Run(ctx, func(ctx context.Context) error {
 		f, err := os.Create(filepath)
 		if err != nil {

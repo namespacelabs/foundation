@@ -16,5 +16,13 @@ binary: {
 				kind:   "tar"
 			}
 		},
+		{
+			make_fs_image: {
+				from: image_id: "busybox"
+				target: "busybox.ext4"
+				kind:   "ext4"
+				size: "1g"
+			}
+		},
 	]
 }
