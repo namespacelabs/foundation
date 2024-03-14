@@ -66,6 +66,7 @@ type cueImageBuildPlan_MakeFilesystemImage struct {
 	Target string            `json:"target"`
 	Kind   string            `json:"kind"`
 	Size   string            `json:"size"`
+	Raw    bool              `json:"raw"`
 }
 
 func parseCueBinary(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggraph.Location, parent, v *fncue.CueV) (*schema.Binary, error) {
@@ -252,6 +253,7 @@ func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackag
 			From:   from,
 			Target: bp.MakeFilesystemImage.Target,
 			Kind:   bp.MakeFilesystemImage.Kind,
+			Raw:    bp.MakeFilesystemImage.Raw,
 		}
 
 		if bp.MakeFilesystemImage.Size != "" {

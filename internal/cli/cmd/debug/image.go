@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 
 	"github.com/dustin/go-humanize"
@@ -23,10 +24,11 @@ import (
 
 func newImageCmd() *cobra.Command {
 	var (
-		insecure bool
-		contents bool
-		docker   bool
-		filename string
+		insecure        bool
+		contents        bool
+		docker          bool
+		filename        string
+		uncompressedToo bool
 	)
 
 	cmd := &cobra.Command{
@@ -52,7 +54,7 @@ func newImageCmd() *cobra.Command {
 							return err
 						}
 					} else {
-						if err := printImage(ctx, img); err != nil {
+						if err := printImage(ctx, img, uncompressedToo); err != nil {
 							return err
 						}
 					}
@@ -72,7 +74,7 @@ func newImageCmd() *cobra.Command {
 							return err
 						}
 					} else {
-						if err := printRemote(ctx, d); err != nil {
+						if err := printRemote(ctx, d, uncompressedToo); err != nil {
 							return err
 						}
 					}
@@ -87,11 +89,12 @@ func newImageCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&contents, "contents", false, "Set to true to list the contents of the image.")
 	cmd.Flags().BoolVar(&docker, "docker", docker, "If true, fetch from docker instead of a registry.")
 	cmd.Flags().StringVar(&filename, "filename", "", "If set, outputs the content of the specified file to stdout.")
+	cmd.Flags().BoolVar(&uncompressedToo, "uncompressed", false, "If true, also calculate uncompressed sizes.")
 
 	return cmd
 }
 
-func printRemote(ctx context.Context, d *remote.Descriptor) error {
+func printRemote(ctx context.Context, d *remote.Descriptor, uncompressedToo bool) error {
 	fmt.Println(d.Digest.String())
 	fmt.Println(d.MediaType)
 
@@ -100,10 +103,10 @@ func printRemote(ctx context.Context, d *remote.Descriptor) error {
 		return err
 	}
 
-	return printImage(ctx, img)
+	return printImage(ctx, img, uncompressedToo)
 }
 
-func printImage(ctx context.Context, img v1.Image) error {
+func printImage(ctx context.Context, img v1.Image, uncompressedToo bool) error {
 	im, err := img.Manifest()
 	if err != nil {
 		return err
@@ -132,6 +135,22 @@ func printImage(ctx context.Context, img v1.Image) error {
 		fmt.Fprintf(out, "\n  Layer: %s\n", d)
 		fmt.Fprintf(out, "   size: %v\n", humanize.Bytes(uint64(size)))
 		fmt.Fprintf(out, "   mediaType: %v\n", mediaType)
+
+		if uncompressedToo {
+			u, err := layer.Uncompressed()
+			if err != nil {
+				return err
+			}
+
+			defer u.Close()
+
+			if size, err := io.Copy(io.Discard, u); err != nil {
+				return err
+			} else {
+				fmt.Fprintf(out, "   size (uncompressed): %v\n", humanize.Bytes(uint64(size)))
+			}
+		}
+
 		totalSize += uint64(size)
 	}
 

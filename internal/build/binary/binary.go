@@ -324,7 +324,7 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 			return makeSquashFS{inner, src.MakeFsImage.Target}, nil
 
 		case "ext4fs", "ext4":
-			return makeExt4Image{inner, src.MakeFsImage.Target, src.MakeFsImage.Size}, nil
+			return makeExt4Image{inner, src.MakeFsImage.Target, src.MakeFsImage.Size, src.MakeFsImage.Raw}, nil
 
 		case "tar", "tgz":
 			return makeTarImage{inner, src.MakeFsImage.Target, kind == "tgz"}, nil

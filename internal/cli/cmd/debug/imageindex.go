@@ -88,7 +88,7 @@ func printIndex(ctx context.Context, d *remote.Descriptor) error {
 			return err
 		}
 
-		if err := printImage(ctx, img); err != nil {
+		if err := printImage(ctx, img, false); err != nil {
 			return fnerrors.BadInputError("failed to print image: %w", err)
 		}
 	}

@@ -89,6 +89,7 @@ message ImageBuildPlan {
         string         target = 2;
         string         kind   = 3;
         int64          size   = 4;  // Bytes.
+        bool           raw    = 5;
     }
 
     message DockerBuild {

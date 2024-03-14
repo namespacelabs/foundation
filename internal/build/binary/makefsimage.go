@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
+	"github.com/klauspost/compress/zstd"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
@@ -28,6 +29,7 @@ type makeExt4Image struct {
 	spec   build.Spec
 	target string
 	size   int64
+	raw    bool
 }
 
 func validateExt4(size int64) error {
@@ -54,15 +56,56 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 			return nil, err
 		}
 
-		defer os.RemoveAll(dir)
+		compute.On(ctx).Cleanup(tasks.Action("remove tmpdir"), func(ctx context.Context) error {
+			return os.RemoveAll(dir)
+		})
 
-		out := filepath.Join(dir, "out")
-		x := filepath.Join(out, m.target)
-		if err := MakeExt4Image(ctx, img, dir, x, m.size); err != nil {
+		tmpDir := filepath.Join(dir, "out")
+		target := filepath.Join(tmpDir, m.target)
+		if err := MakeExt4Image(ctx, img, dir, target, m.size); err != nil {
 			return nil, err
 		}
 
-		layer, err := oci.LayerFromFS(ctx, os.DirFS(out))
+		if m.raw {
+			comp := target + ".zstd"
+			outf, err := os.Create(comp)
+			if err != nil {
+				return nil, err
+			}
+
+			defer outf.Close()
+
+			enc, err := zstd.NewWriter(outf)
+			if err != nil {
+				return nil, err
+			}
+
+			src, err := os.Open(target)
+			if err != nil {
+				return nil, err
+			}
+
+			if _, err := io.Copy(enc, src); err != nil {
+				return nil, err
+			}
+
+			if err := enc.Close(); err != nil {
+				return nil, err
+			}
+
+			if err := outf.Close(); err != nil {
+				return nil, err
+			}
+
+			layer, err := oci.RawZstdLayerFrom(comp, "application/x-namespace-raw-zstd-file")
+			if err != nil {
+				return nil, err
+			}
+
+			return mutate.AppendLayers(empty.Image, layer)
+		}
+
+		layer, err := oci.LayerFromFS(ctx, os.DirFS(tmpDir))
 		if err != nil {
 			return nil, err
 		}
