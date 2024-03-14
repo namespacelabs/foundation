@@ -50,6 +50,10 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		return nil, err
 	}
 
+	return MakeDisk(inner, m.target, m.size, m.raw), nil
+}
+
+func MakeDisk(inner compute.Computable[oci.Image], target string, size int64, raw bool) compute.Computable[oci.Image] {
 	return compute.Transform("binary.make-ext4-image", inner, func(ctx context.Context, img oci.Image) (oci.Image, error) {
 		dir, err := os.MkdirTemp("", "ext4")
 		if err != nil {
@@ -61,12 +65,12 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		})
 
 		tmpDir := filepath.Join(dir, "out")
-		target := filepath.Join(tmpDir, m.target)
-		if err := MakeExt4Image(ctx, img, dir, target, m.size); err != nil {
+		target := filepath.Join(tmpDir, target)
+		if err := MakeExt4Image(ctx, img, dir, target, size); err != nil {
 			return nil, err
 		}
 
-		if m.raw {
+		if raw {
 			comp := target + ".zstd"
 			outf, err := os.Create(comp)
 			if err != nil {
@@ -97,7 +101,7 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 				return nil, err
 			}
 
-			layer, err := oci.RawZstdLayerFrom(comp, "application/x-namespace-raw-zstd-file")
+			layer, err := oci.RawZstdLayerFrom(comp, "application/x-namespace-raw-zstd-ext4")
 			if err != nil {
 				return nil, err
 			}
@@ -111,7 +115,7 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 		}
 
 		return mutate.AppendLayers(empty.Image, layer)
-	}), nil
+	})
 }
 
 func (m makeExt4Image) PlatformIndependent() bool { return m.spec.PlatformIndependent() }
@@ -146,7 +150,9 @@ func toExt4Image(ctx context.Context, tmpdir string, image oci.Image, target str
 		return err
 	}
 
-	out := console.Output(ctx, "make-ext4-image")
+	h, _ := image.Digest()
+
+	out := console.Output(ctx, "make-ext4-image "+h.Hex)
 
 	var run rtypes.RunToolOpts
 	run.Privileged = true

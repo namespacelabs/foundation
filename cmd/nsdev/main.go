@@ -10,6 +10,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/debug"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
+	"namespacelabs.dev/foundation/internal/cli/cmd/image"
 	"namespacelabs.dev/foundation/internal/cli/cmd/nsbuild"
 	"namespacelabs.dev/foundation/internal/cli/cmd/source"
 	"namespacelabs.dev/foundation/internal/cli/fncobra/ns"
@@ -19,6 +20,7 @@ func main() {
 	ns.DoMain("nsdev", false, func(root *cobra.Command) {
 		cmd.RegisterCommands(root)
 		root.AddCommand(debug.NewDebugCmd())
+		root.AddCommand(image.NewImageCmd())
 		root.AddCommand(debug.NewFnServicesCmd())
 		root.AddCommand(eks.NewEksCmd())
 		root.AddCommand(cmd.NewImagesCmd())
