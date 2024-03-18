@@ -21,7 +21,7 @@ binary: {
 				from: image_id: "busybox"
 				target: "busybox.ext4"
 				kind:   "ext4"
-				size: "1g"
+				size:   "1g"
 			}
 		},
 		{
@@ -29,8 +29,8 @@ binary: {
 				from: image_id: "busybox"
 				target: "busybox.ext4"
 				kind:   "ext4"
-				size: "1g"
-				raw: true
+				size:   "1g"
+				raw:    true
 			}
 		},
 	]
