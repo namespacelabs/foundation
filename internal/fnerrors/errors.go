@@ -223,7 +223,14 @@ func (e *ReauthErr) Error() string {
 		cmd = "login"
 	}
 
-	return fmt.Sprintf("%s\n\n  please run `%s %s`", e.Why, name.CmdName, cmd)
+	switch name.CmdName {
+	case "docker-credential-nsc":
+		cmd = "nsc " + cmd
+	default:
+		cmd = fmt.Sprintf("%s %s", name.CmdName, cmd)
+	}
+
+	return fmt.Sprintf("%s\n\n  please run `%s`", e.Why, cmd)
 }
 
 func (e *ErrWithLogs) Error() string {
