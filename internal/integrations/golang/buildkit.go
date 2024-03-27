@@ -44,7 +44,7 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 		return nil, fnerrors.InternalError("go: target platform is missing")
 	}
 
-	version := golang.MatchExactVersion(bin.GoVersion)
+	version := golang.MatchLatestVersion(bin.GoVersion)
 
 	base := makeGoBuildBase(ctx, version, *conf.TargetPlatform())
 

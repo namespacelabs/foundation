@@ -27,8 +27,9 @@ type LocalSDK = host.LocalSDK
 func vv(version string) string {
 	v := v.Get()
 
-	for ver := range v.Versions {
-		if semver.Compare("v"+ver, "v"+version) > 0 {
+	for ver, minor := range v.Versions {
+		// If we store `"1.22": "1.22.2"` then "1.22.1" should also map to "1.22".
+		if semver.Compare("v"+minor, "v"+version) >= 0 {
 			version = ver
 		}
 	}
@@ -36,16 +37,17 @@ func vv(version string) string {
 	return version
 }
 
-func MatchExactVersion(version string) string {
+func MatchLatestVersion(version string) string {
+	version = vv(version)
+
 	v := v.Get()
 
-	for ver, m := range v.Versions {
-		if version == ver {
-			return m
-		}
+	actualVer, has := v.Versions[version]
+	if !has {
+		return version
 	}
 
-	return version
+	return actualVer
 }
 
 func MatchSDK(version string, platform specs.Platform) (compute.Computable[LocalSDK], error) {
