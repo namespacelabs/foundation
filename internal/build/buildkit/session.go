@@ -16,11 +16,11 @@ import (
 	"github.com/moby/buildkit/session/auth/authprovider"
 	"github.com/moby/buildkit/session/secrets/secretsprovider"
 	"github.com/moby/buildkit/session/sshforward/sshprovider"
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build/buildkit/bkkeychain"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
@@ -93,23 +93,34 @@ func prepareSession(ctx context.Context, keychain oci.Keychain, src secrets.Grou
 			return nil, fnerrors.InternalError("secrets specified, but secret source missing")
 		}
 
-		var errs []error
-		for _, sec := range secrets {
-			result, err := src.Get(ctx, sec)
-			if err != nil {
-				errs = append(errs, err)
-				continue
-			}
+		eg := executor.New(ctx, "buildkit.load-secrets")
 
-			if result.Value == nil {
-				return nil, fnerrors.New("can't use secret %q, no value available (it's generated)", sec.Canonical())
-			}
+		results := make([][]byte, len(secrets))
+		for k, sec := range secrets {
+			k := k
+			sec := sec
 
-			secretValues[sec.Canonical()] = result.Value
+			eg.Go(func(ctx context.Context) error {
+				result, err := src.Get(ctx, sec)
+				if err != nil {
+					return err
+				}
+
+				if result.Value == nil {
+					return fnerrors.New("can't use secret %q, no value available (it's generated)", sec.Canonical())
+				}
+
+				results[k] = result.Value
+				return nil
+			})
 		}
 
-		if err := multierr.New(errs...); err != nil {
+		if err := eg.Wait(); err != nil {
 			return nil, err
+		}
+
+		for k, sec := range secrets {
+			secretValues[sec.Canonical()] = results[k]
 		}
 	}
 

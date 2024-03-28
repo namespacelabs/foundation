@@ -68,7 +68,7 @@ func (s *secretCollector) allocateGenerated(ref *schema.PackageRef, spec *schema
 func (s *secretCollector) planDeployment(ns string, annotations, labels map[string]string) []definition {
 	var operations []definition
 
-	if (len(s.items.data) + len(s.items.binaryData)) > 0 {
+	if (len(s.items.BinaryData())) > 0 {
 		operations = append(operations, kubedef.Apply{
 			Description: "Server secrets",
 			Resource: applycorev1.Secret(s.secretId, ns).
@@ -77,8 +77,7 @@ func (s *secretCollector) planDeployment(ns string, annotations, labels map[stri
 				WithLabels(map[string]string{
 					kubedef.K8sKind: kubedef.K8sStaticConfigKind,
 				}).
-				WithStringData(s.items.data).
-				WithData(s.items.binaryData),
+				WithData(s.items.BinaryData()),
 		})
 	}
 

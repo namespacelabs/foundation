@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -31,6 +32,7 @@ import (
 	"namespacelabs.dev/foundation/framework/kubernetes/kubenaming"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/protos"
 	"namespacelabs.dev/foundation/internal/runtime"
@@ -629,8 +631,7 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 						WithLabels(map[string]string{
 							kubedef.K8sKind: kubedef.K8sStaticConfigKind,
 						}).
-						WithData(configs.data).
-						WithBinaryData(configs.binaryData),
+						WithBinaryData(configs.BinaryData()),
 				})
 			}
 
@@ -672,27 +673,39 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 	const projectedSecretsVolName = "ns-projected-secrets"
 
-	var secretProjections []*applycorev1.SecretProjectionApplyConfiguration
-	var injected []*kubedef.OpEnsureRuntimeConfig_InjectedResource
-	for _, res := range deployable.SecretResources {
-		alloc, err := seccol.Allocate(ctx, res.SecretRef)
-		if err != nil {
-			return err
-		}
+	eg := executor.New(ctx, "kubernetes.allocate-secrets")
 
-		serialized, err := xsecrets.Serialize(res.ResourceRef)
-		if err != nil {
-			return err
-		}
+	secretProjections := make([]*applycorev1.SecretProjectionApplyConfiguration, len(deployable.SecretResources))
+	injected := make([]*kubedef.OpEnsureRuntimeConfig_InjectedResource, len(deployable.SecretResources))
+	for k, res := range deployable.SecretResources {
+		k := k
+		res := res
 
-		secretProjections = append(secretProjections,
-			applycorev1.SecretProjection().WithName(alloc.Name).WithItems(
-				applycorev1.KeyToPath().WithKey(alloc.Key).WithPath(serialized.RelPath)))
+		eg.Go(func(ctx context.Context) error {
+			alloc, err := seccol.Allocate(ctx, res.SecretRef)
+			if err != nil {
+				return err
+			}
 
-		injected = append(injected, &kubedef.OpEnsureRuntimeConfig_InjectedResource{
-			ResourceRef:    res.ResourceRef,
-			SerializedJson: serialized.JSON,
+			serialized, err := xsecrets.Serialize(res.ResourceRef)
+			if err != nil {
+				return err
+			}
+
+			secretProjections[k] = applycorev1.SecretProjection().WithName(alloc.Name).WithItems(
+				applycorev1.KeyToPath().WithKey(alloc.Key).WithPath(serialized.RelPath))
+
+			injected[k] = &kubedef.OpEnsureRuntimeConfig_InjectedResource{
+				ResourceRef:    res.ResourceRef,
+				SerializedJson: serialized.JSON,
+			}
+
+			return nil
 		})
+	}
+
+	if err := eg.Wait(); err != nil {
+		return err
 	}
 
 	for _, dep := range deployable.PlannedResourceDeps {
@@ -1066,16 +1079,24 @@ func isOneShotLike(class schema.DeployableClass) bool {
 }
 
 type collector struct {
-	data       map[string]string
+	mu         sync.Mutex
 	binaryData map[string][]byte
 }
 
 func newDataItemCollector() *collector {
-	return &collector{data: map[string]string{}, binaryData: map[string][]byte{}}
+	return &collector{binaryData: map[string][]byte{}}
 }
 
 func (cm *collector) set(key string, rsc []byte) {
+	cm.mu.Lock()
 	cm.binaryData[key] = rsc
+	cm.mu.Unlock()
+}
+
+func (cm *collector) BinaryData() map[string][]byte {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	return cm.binaryData
 }
 
 func makeConfigEntry(hash io.Writer, entry *schema.ConfigurableVolume_Entry, rsc *schema.FileContents, cm *collector) *applycorev1.KeyToPathApplyConfiguration {

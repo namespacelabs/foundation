@@ -7,9 +7,10 @@ package runtime
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"namespacelabs.dev/foundation/framework/resources"
-	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/schema"
 	runtimepb "namespacelabs.dev/foundation/schema/runtime"
@@ -57,31 +58,65 @@ type LikeResolvable interface {
 }
 
 func ResolveResolvables[V LikeResolvable](ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, resolvables []V, out ResolvableSink) error {
-	var errs []error
-	for _, entry := range resolvables {
-		if entry.GetValue() == nil {
-			continue
-		}
+	pr := parallelResolver{out: out}
 
-		if err := resolve(ctx, rt, secrets, entry.GetName(), entry.GetValue(), out); err != nil {
-			errs = append(errs, err)
-		}
+	eg := executor.New(ctx, "runtime.resolve-resolvables")
+	for _, entry := range resolvables {
+		entry := entry
+
+		eg.Go(func(ctx context.Context) error {
+			if entry.GetValue() == nil {
+				return nil
+			}
+
+			return pr.resolve(ctx, rt, secrets, entry.GetName(), entry.GetValue())
+		})
 	}
 
-	return multierr.New(errs...)
+	return eg.Wait()
 }
 
-func resolve(ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, fieldName string, resv *schema.Resolvable, out ResolvableSink) error {
+type parallelResolver struct {
+	mu  sync.Mutex
+	out ResolvableSink
+}
+
+func (pr *parallelResolver) SetValue(key, value string) error {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	return pr.out.SetValue(key, value)
+}
+
+func (pr *parallelResolver) SetSecret(key string, secret *SecretRef) error {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	return pr.out.SetSecret(key, secret)
+}
+
+func (pr *parallelResolver) SetExperimentalFromDownwardsFieldPath(key, value string) error {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	return pr.out.SetExperimentalFromDownwardsFieldPath(key, value)
+}
+
+func (pr *parallelResolver) SetLateBoundResourceFieldSelector(key string, src runtimepb.SetContainerField_ValueSource, sel *schema.ResourceConfigFieldSelector) error {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	return pr.out.SetLateBoundResourceFieldSelector(key, src, sel)
+}
+
+func (pr *parallelResolver) resolve(ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, fieldName string, resv *schema.Resolvable) error {
 	switch {
 	case resv.FromKubernetesSecret != "":
 		parts := strings.SplitN(resv.FromKubernetesSecret, ":", 2)
 		if len(parts) < 2 {
 			return fnerrors.New("invalid from_kubernetes_secret format")
 		}
-		return out.SetSecret(fieldName, &SecretRef{parts[0], parts[1]})
+
+		return pr.SetSecret(fieldName, &SecretRef{parts[0], parts[1]})
 
 	case resv.ExperimentalFromDownwardsFieldPath != "":
-		return out.SetExperimentalFromDownwardsFieldPath(fieldName, resv.ExperimentalFromDownwardsFieldPath)
+		return pr.SetExperimentalFromDownwardsFieldPath(fieldName, resv.ExperimentalFromDownwardsFieldPath)
 
 	case resv.FromSecretRef != nil:
 		if secrets == nil {
@@ -93,24 +128,24 @@ func resolve(ctx context.Context, rt *runtimepb.RuntimeConfig, secrets Resolvabl
 			return err
 		}
 
-		return out.SetSecret(fieldName, alloc)
+		return pr.SetSecret(fieldName, alloc)
 
 	case resv.FromServiceEndpoint != nil:
 		endpoint, err := SelectServiceValue(rt, resv.FromServiceEndpoint, SelectServiceEndpoint)
 		if err != nil {
 			return err
 		}
-		return out.SetValue(fieldName, endpoint)
+		return pr.SetValue(fieldName, endpoint)
 
 	case resv.FromServiceIngress != nil:
 		url, err := SelectServiceValue(rt, resv.FromServiceIngress, SelectServiceIngress)
 		if err != nil {
 			return err
 		}
-		return out.SetValue(fieldName, url)
+		return pr.SetValue(fieldName, url)
 
 	case resv.FromResourceField != nil:
-		return out.SetLateBoundResourceFieldSelector(fieldName, runtimepb.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR, resv.FromResourceField)
+		return pr.SetLateBoundResourceFieldSelector(fieldName, runtimepb.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR, resv.FromResourceField)
 
 	case resv.FromFieldSelector != nil:
 		instance, err := SelectInstance(rt, resv.FromFieldSelector.Instance)
@@ -128,9 +163,9 @@ func resolve(ctx context.Context, rt *runtimepb.RuntimeConfig, secrets Resolvabl
 			return err
 		}
 
-		return out.SetValue(fieldName, vv)
+		return pr.SetValue(fieldName, vv)
 
 	default:
-		return out.SetValue(fieldName, resv.Value)
+		return pr.SetValue(fieldName, resv.Value)
 	}
 }
