@@ -60,7 +60,7 @@ func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
 		data = res
 
 		// XXX hack!
-		// The first read succeeds and unlocks a client.
+		// The first read succeeds and unlocks the 1Password client.
 		// Still, the second read can fail with `error initializing client: account is not signed in` if issued too quickly :(
 		time.Sleep(time.Second)
 	})
