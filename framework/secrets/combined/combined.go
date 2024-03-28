@@ -6,6 +6,7 @@ package combined
 
 import (
 	"context"
+	"sync"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -35,6 +36,9 @@ type combinedSecrets struct {
 	// canonical secret ref -> secret binding
 	bindings map[string]*schema.Workspace_SecretBinding
 	local    secrets.SecretsSource
+
+	mu    sync.RWMutex
+	cache map[string][]byte
 }
 
 func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
@@ -54,10 +58,18 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 	return &combinedSecrets{
 		bindings: bindings,
 		local:    local,
+		cache:    map[string][]byte{},
 	}, nil
 }
 
 func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleResolver, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
+	cs.mu.RLock()
+	value := cs.cache[req.SecretRef.Canonical()]
+	cs.mu.RUnlock()
+	if value != nil {
+		return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
+	}
+
 	if b, ok := cs.bindings[req.SecretRef.Canonical()]; ok {
 		p := secretProviders[b.Configuration.TypeUrl]
 		if p == nil {
@@ -68,6 +80,10 @@ func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleReso
 		if err != nil {
 			return nil, err
 		}
+
+		cs.mu.Lock()
+		cs.cache[req.SecretRef.Canonical()] = value
+		cs.mu.Unlock()
 
 		return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
 	}
