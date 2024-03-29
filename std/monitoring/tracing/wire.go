@@ -27,6 +27,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 	oteltrace "go.opentelemetry.io/otel/trace"
 	t "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
@@ -120,11 +121,15 @@ func CreateResource(ctx context.Context, serverInfo *types.ServerInfo, detectors
 	)
 }
 
-func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter, detectors []resource.Detector) (*trace.TracerProvider, error) {
+func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters []trace.SpanExporter, detectors []resource.Detector) (t.TracerProvider, core.CtxCloseable, error) {
 	if len(exporters) == 0 {
+		if os.Getenv("FOUNDATION_TRACE_TO_STDOUT") != "1" {
+			return noop.NewTracerProvider(), nil, nil
+		}
+
 		out, err := stdouttrace.New()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		exporters = append(exporters, out)
@@ -142,24 +147,26 @@ func CreateProvider(ctx context.Context, serverInfo *types.ServerInfo, exporters
 
 	resource, err := CreateResource(ctx, serverInfo, detectors)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create resource: %w", err)
+		return nil, nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
 	opts = append(opts, trace.WithResource(resource))
 
-	return trace.NewTracerProvider(opts...), nil
+	tp := trace.NewTracerProvider(opts...)
+
+	return tp, close{tp}, nil
 }
 
 func Prepare(ctx context.Context, deps ExtensionDeps) error {
-	provider, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeDetectors())
+	provider, closeable, err := CreateProvider(ctx, deps.ServerInfo, consumeExporters(), consumeDetectors())
 	if err != nil {
 		return err
 	}
 
 	serverResources := core.ServerResourcesFrom(ctx)
 
-	if serverResources != nil {
-		serverResources.Add(close{provider})
+	if serverResources != nil && closeable != nil {
+		serverResources.Add(closeable)
 	}
 
 	filter := func(*otelgrpc.InterceptorInfo) bool { return true } // By default we trace every gRPC method
