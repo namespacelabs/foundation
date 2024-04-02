@@ -28,12 +28,9 @@ To issue an actual release:
 1. Create a Github PAT with `write_packages` permissions and place it in
    `~/.config/goreleaser/github_token`. This allows GoReleaser to upload to Github releases.
 2. Pick a new version (check the existing tag list): `git tag v0.0.24`
-3. Run the release `goreleaser release --clean`.
+3. Run the release `go run github.com/goreleaser/goreleaser@nightly --clean`.
 4. After the release is complete, remember to remove the `dist` directory to keep your workspace
    size small.
-5. **Important**: this creates a _draft_ release in GitHub. Remember to publish it manually from GitHub web UI
-once every artifact is fully uploaded.
-6. **Important**: Go to [namespacelabs/homebrew-namespace](https://github.com/namespacelabs/homebrew-namespace/pulls) repo and merge the two PRs that goreleaser created.
 
 NOTE: all commits end up in an automatically generated changelog. Commits that include `docs:`,
 `test:` or `nochangelog` are excluded from the changelog.
