@@ -38,6 +38,7 @@ type PrepareSDK struct {
 func (p *PrepareSDK) Action() *tasks.ActionEvent {
 	return tasks.Action(fmt.Sprintf("%s.sdk.prepare", p.Name)).Arg("version", p.Version)
 }
+
 func (p *PrepareSDK) Inputs() *compute.In {
 	return compute.Inputs().
 		Str("version", p.Version).
@@ -60,24 +61,10 @@ func (p *PrepareSDK) Compute(ctx context.Context, _ compute.Resolved) (LocalSDK,
 		return LocalSDK{}, err
 	}
 
-	binary := filepath.Join(sdk.Files, p.Binary)
-	if !IsNixOS() {
-		return LocalSDK{
-			Path:    sdk.Files,
-			Version: p.Version,
-			Binary:  binary,
-		}, nil
-	}
-
-	patchedBin, err := EnsureNixosPatched(ctx, binary)
-	if err != nil {
-		return LocalSDK{}, err
-	}
-
 	return LocalSDK{
 		Path:    sdk.Files,
 		Version: p.Version,
-		Binary:  patchedBin,
+		Binary:  filepath.Join(sdk.Files, p.Binary),
 	}, nil
 }
 
