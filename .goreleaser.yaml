@@ -1,4 +1,4 @@
-project_name: draft-release
+project_name: foundation
 
 builds:
   - id: linux-ns
@@ -119,8 +119,6 @@ release:
   github:
     owner: namespacelabs
     name: foundation
-  draft: true
-  replace_existing_draft: true
   # extra_files:
   #   - glob: ./dist/fn_macos.dmg
   #   - glob: ./dist/fn_macos.zip
@@ -144,14 +142,6 @@ brews:
   - repository:
       owner: namespacelabs
       name: homebrew-namespace
-      branch: "goreleaser-ns-v{{.Version}}"
-      pull_request:
-        enabled: true
-        base:
-          owner: namespacelabs
-          name: homebrew-namespace
-          branch: main
-
     name: ns
     ids:
       - ns
@@ -169,14 +159,6 @@ brews:
   - repository:
       owner: namespacelabs
       name: homebrew-namespace
-      branch: "goreleaser-nsc-v{{.Version}}"
-      pull_request:
-        enabled: true
-        base:
-          owner: namespacelabs
-          name: homebrew-namespace
-          branch: main
-
     name: nsc
     ids:
       - nsc
