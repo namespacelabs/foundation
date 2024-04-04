@@ -215,6 +215,7 @@ type CreateClusterOpts struct {
 	Labels            map[string]string
 	Deadline          *timestamppb.Timestamp
 	Experimental      any
+	Volumes           []VolumeSpec
 	SecretIDs         []string
 	Interactive       bool
 
@@ -249,6 +250,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			Deadline:          opts.Deadline,
 			Experimental:      opts.Experimental,
 			Interactive:       opts.Interactive,
+			Volumes:           opts.Volumes,
 		}
 
 		labelKeys := maps.Keys(opts.Labels)

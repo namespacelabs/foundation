@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -55,6 +57,8 @@ func NewCreateCmd() *cobra.Command {
 
 	internalExtra := cmd.Flags().String("internal_extra", "", "Internal creation details.")
 	cmd.Flags().MarkHidden("internal_extra")
+
+	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *unusedEphemeral {
@@ -108,7 +112,58 @@ func NewCreateCmd() *cobra.Command {
 			if err := files.ReadJson(*experimentalFrom, &exp); err != nil {
 				return err
 			}
+
 			opts.Experimental = exp
+		}
+
+		for _, def := range *volumes {
+			parts := strings.Split(def, ":")
+			if len(parts) != 3 && len(parts) != 4 {
+				return fnerrors.New("failed to parse volume definition: ")
+			}
+
+			kind := parts[0]
+			tag := parts[1]
+			mountPoint := parts[2]
+
+			var sizeMb int64
+			if len(parts) == 4 {
+				sz, err := units.RAMInBytes(parts[3])
+				if err != nil {
+					return fnerrors.New("failed to parse size: %w", err)
+				}
+
+				sizeMb = sz / (1024 * 1024)
+			}
+
+			for _, t := range []struct {
+				key, val string
+			}{
+				{"tag", tag},
+				{"mount_point", mountPoint},
+				{"kind", kind},
+			} {
+				if t.val == "" {
+					return fnerrors.New("a volume %q is required", t.key)
+				}
+			}
+
+			spec := api.VolumeSpec{
+				Tag:        tag,
+				SizeMb:     sizeMb,
+				MountPoint: mountPoint,
+			}
+
+			switch strings.ToLower(kind) {
+			case "cache":
+				spec.PersistencyKind = api.VolumeSpec_CACHE
+			case "persistent":
+				spec.PersistencyKind = api.VolumeSpec_PERSISTENT
+			default:
+				return fnerrors.New("a volume %q of %q or %q is required", "kind", "cache", "persistent")
+			}
+
+			opts.Volumes = append(opts.Volumes, spec)
 		}
 
 		if *bare {

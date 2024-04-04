@@ -24,7 +24,24 @@ type CreateKubernetesClusterRequest struct {
 	Deadline          *timestamppb.Timestamp `json:"deadline,omitempty"`
 	Experimental      any                    `json:"experimental,omitempty"`
 	AvailableSecrets  []*SecretRef           `json:"available_secrets,omitempty"`
+	Volumes           []VolumeSpec           `json:"volume,omitempty"`
 }
+
+type VolumeSpec struct {
+	MountPoint      string                     `json:"mount_point,omitempty"`
+	Tag             string                     `json:"tag,omitempty"`
+	SizeMb          int64                      `json:"size_mb,omitempty"`
+	PersistencyKind VolumeSpec_PersistencyKind `json:"persistency_kind,omitempty"`
+	Labels          map[string]string          `json:"labels,omitempty"`
+}
+
+type VolumeSpec_PersistencyKind int32
+
+const (
+	VolumeSpec_PERSISTENCY_UNKNOWN VolumeSpec_PersistencyKind = 0
+	VolumeSpec_PERSISTENT          VolumeSpec_PersistencyKind = 1
+	VolumeSpec_CACHE               VolumeSpec_PersistencyKind = 2
+)
 
 type SecretRef struct {
 	SecretID string `json:"secret_id"`
