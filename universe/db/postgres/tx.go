@@ -78,6 +78,15 @@ func doTxFunc[T any](ctx context.Context, db *DB, txoptions pgx.TxOptions, attem
 	})
 }
 
+// Returns the error code (to be compared to pgerrcode.* constants).
+func PgErrCode(err error) string {
+	var pgerr *pgconn.PgError
+	if !errors.As(err, &pgerr) {
+		return ""
+	}
+	return pgerr.Code
+}
+
 func ErrorIsRetryable(err error) bool {
 	var pgerr *pgconn.PgError
 	if !errors.As(err, &pgerr) {
