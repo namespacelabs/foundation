@@ -31,7 +31,7 @@ extension: fn.#Extension & {
 			availableIn: {
 				go: {
 					package: "namespacelabs.dev/foundation/universe/db/postgres"
-					type:    "string"
+					type:    "ConnUri"
 				}
 			}
 		}

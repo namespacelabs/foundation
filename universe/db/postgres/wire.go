@@ -33,7 +33,10 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 	})
 }
 
-func ProvideDatabaseReference(ctx context.Context, args *DatabaseReferenceArgs, deps ExtensionDeps) (string, error) {
+// Workaround the fact that foundation doesn't know about primitive types.
+type ConnUri string
+
+func ProvideDatabaseReference(ctx context.Context, args *DatabaseReferenceArgs, deps ExtensionDeps) (ConnUri, error) {
 	if args.ClusterRef == "" {
 		return "", fnerrors.New("clusterRef is required")
 	}
@@ -52,5 +55,5 @@ func ProvideDatabaseReference(ctx context.Context, args *DatabaseReferenceArgs, 
 		return "", err
 	}
 
-	return postgres.ConnectionUri(cluster, args.Database), nil
+	return ConnUri(postgres.ConnectionUri(cluster, args.Database)), nil
 }

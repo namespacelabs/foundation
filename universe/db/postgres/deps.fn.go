@@ -18,7 +18,7 @@ type _checkProvideDatabase func(context.Context, *DatabaseArgs, ExtensionDeps) (
 
 var _ _checkProvideDatabase = ProvideDatabase
 
-type _checkProvideDatabaseReference func(context.Context, *DatabaseReferenceArgs, ExtensionDeps) (string, error)
+type _checkProvideDatabaseReference func(context.Context, *DatabaseReferenceArgs, ExtensionDeps) (ConnUri, error)
 
 var _ _checkProvideDatabaseReference = ProvideDatabaseReference
 
