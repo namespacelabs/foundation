@@ -9,6 +9,8 @@ import (
 
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
+	"namespacelabs.dev/foundation/library/oss/postgres"
 )
 
 func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) (*DB, error) {
@@ -29,4 +31,26 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 	return ConnectToResource(ctx, res, db.ResourceRef, tp, &ConfigOverrides{
 		MaxConns: db.MaxConns,
 	})
+}
+
+func ProvideDatabaseReference(ctx context.Context, args *DatabaseReferenceArgs, deps ExtensionDeps) (string, error) {
+	if args.ClusterRef == "" {
+		return "", fnerrors.New("clusterRef is required")
+	}
+
+	if args.Database == "" {
+		return "", fnerrors.New("database is required")
+	}
+
+	res, err := resources.LoadResources()
+	if err != nil {
+		return "", err
+	}
+
+	cluster := &postgrespb.ClusterInstance{}
+	if err := res.Unmarshal(args.ClusterRef, cluster); err != nil {
+		return "", err
+	}
+
+	return postgres.ConnectionUri(cluster, args.Database), nil
 }

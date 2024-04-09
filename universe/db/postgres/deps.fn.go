@@ -18,6 +18,10 @@ type _checkProvideDatabase func(context.Context, *DatabaseArgs, ExtensionDeps) (
 
 var _ _checkProvideDatabase = ProvideDatabase
 
+type _checkProvideDatabaseReference func(context.Context, *DatabaseReferenceArgs, ExtensionDeps) (string, error)
+
+var _ _checkProvideDatabaseReference = ProvideDatabaseReference
+
 type _checkProvideFactory func(context.Context, *FactoryArgs, ExtensionDeps) (Factory, error)
 
 var _ _checkProvideFactory = ProvideFactory

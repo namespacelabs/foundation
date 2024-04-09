@@ -25,6 +25,17 @@ extension: fn.#Extension & {
 			}
 		}
 
+		DatabaseReference: {
+			input: $providerProto.types.DatabaseReferenceArgs
+
+			availableIn: {
+				go: {
+					package: "namespacelabs.dev/foundation/universe/db/postgres"
+					type:    "string"
+				}
+			}
+		}
+
 		Factory: {
 			input: $providerProto.types.FactoryArgs
 

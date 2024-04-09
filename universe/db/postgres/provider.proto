@@ -14,4 +14,9 @@ message DatabaseArgs {
     int32  max_conns    = 4;  // Set if > 0.
 }
 
+message DatabaseReferenceArgs {
+    string cluster_ref = 1;
+    string database    = 2;
+}
+
 message FactoryArgs {}

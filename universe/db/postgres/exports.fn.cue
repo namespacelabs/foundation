@@ -17,6 +17,21 @@ package postgres
 			}
 		}
 	}
+	DatabaseReference: {
+		clusterRef?: string
+		database?:   string
+
+		#Definition: {
+			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
+			type:        "DatabaseReference"
+			typeDefinition: {
+				"typename": "foundation.universe.db.postgres.DatabaseReferenceArgs"
+				"source": [
+					"provider.proto",
+				]
+			}
+		}
+	}
 	Factory: {
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"

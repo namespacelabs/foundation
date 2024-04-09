@@ -61,9 +61,9 @@ func main() {
 	}
 
 	instance := &postgresclass.DatabaseInstance{
-		ConnectionUri:  connectionUri(cluster, p.Intent.Name),
+		ConnectionUri:  postgres.ConnectionUri(cluster, p.Intent.Name),
 		Name:           p.Intent.Name,
-		User:           userOrDefault(cluster.User),
+		User:           postgres.UserOrDefault(cluster.User),
 		Password:       cluster.Password,
 		ClusterAddress: cluster.Address,
 		ClusterHost:    cluster.Host,
@@ -117,7 +117,7 @@ func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, err
 }
 
 func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db string) (*pgx.Conn, error) {
-	cfg, err := pgx.ParseConfig(connectionUri(cluster, db))
+	cfg, err := pgx.ParseConfig(postgres.ConnectionUri(cluster, db))
 	if err != nil {
 		return nil, err
 	}
@@ -133,24 +133,4 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 		log.Printf("failed to connect to postgres: %v\n", err)
 		return nil, err
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
-}
-
-func connectionUri(cluster *postgresclass.ClusterInstance, db string) string {
-	uri := fmt.Sprintf("postgres://%s:%s@%s/%s", userOrDefault(cluster.User), cluster.Password, cluster.Address, db)
-
-	if cluster.SslMode != "" {
-		uri = fmt.Sprintf("%s?sslmode=%s", uri, cluster.SslMode)
-	}
-
-	return uri
-}
-
-// Ensure backwards compatibility
-func userOrDefault(user string) string {
-	if user != "" {
-		return user
-
-	}
-
-	return "postgres"
 }
