@@ -7,7 +7,6 @@ package runtime
 import (
 	"context"
 	"strings"
-	"sync"
 
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -58,54 +57,49 @@ type LikeResolvable interface {
 }
 
 func ResolveResolvables[V LikeResolvable](ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, resolvables []V, out ResolvableSink) error {
-	pr := parallelResolver{out: out}
+	allocated := make([]*SecretRef, len(resolvables))
 
-	eg := executor.New(ctx, "runtime.resolve-resolvables")
-	for _, entry := range resolvables {
+	eg := executor.New(ctx, "runtime.preallocate-secrets")
+	for k, entry := range resolvables {
+		if entry.GetValue().GetFromSecretRef() == nil {
+			continue
+		}
+
+		if secrets == nil {
+			return fnerrors.InternalError("can't use FromSecretRef in this context")
+		}
+
+		k := k
 		entry := entry
 
 		eg.Go(func(ctx context.Context) error {
-			if entry.GetValue() == nil {
-				return nil
+			alloc, err := secrets.Allocate(ctx, entry.GetValue().GetFromSecretRef())
+			if err != nil {
+				return err
 			}
 
-			return pr.resolve(ctx, rt, secrets, entry.GetName(), entry.GetValue())
+			allocated[k] = alloc
+			return nil
 		})
 	}
+	if err := eg.Wait(); err != nil {
+		return err
+	}
 
-	return eg.Wait()
+	for k, entry := range resolvables {
+		if entry.GetValue() == nil {
+			continue
+		}
+
+		if err := resolve(rt, allocated[k], entry.GetName(), entry.GetValue(), out); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-type parallelResolver struct {
-	mu  sync.Mutex
-	out ResolvableSink
-}
-
-func (pr *parallelResolver) SetValue(key, value string) error {
-	pr.mu.Lock()
-	defer pr.mu.Unlock()
-	return pr.out.SetValue(key, value)
-}
-
-func (pr *parallelResolver) SetSecret(key string, secret *SecretRef) error {
-	pr.mu.Lock()
-	defer pr.mu.Unlock()
-	return pr.out.SetSecret(key, secret)
-}
-
-func (pr *parallelResolver) SetExperimentalFromDownwardsFieldPath(key, value string) error {
-	pr.mu.Lock()
-	defer pr.mu.Unlock()
-	return pr.out.SetExperimentalFromDownwardsFieldPath(key, value)
-}
-
-func (pr *parallelResolver) SetLateBoundResourceFieldSelector(key string, src runtimepb.SetContainerField_ValueSource, sel *schema.ResourceConfigFieldSelector) error {
-	pr.mu.Lock()
-	defer pr.mu.Unlock()
-	return pr.out.SetLateBoundResourceFieldSelector(key, src, sel)
-}
-
-func (pr *parallelResolver) resolve(ctx context.Context, rt *runtimepb.RuntimeConfig, secrets ResolvableSecretSource, fieldName string, resv *schema.Resolvable) error {
+func resolve(rt *runtimepb.RuntimeConfig, alloc *SecretRef, fieldName string, resv *schema.Resolvable, out ResolvableSink) error {
 	switch {
 	case resv.FromKubernetesSecret != "":
 		parts := strings.SplitN(resv.FromKubernetesSecret, ":", 2)
@@ -113,39 +107,34 @@ func (pr *parallelResolver) resolve(ctx context.Context, rt *runtimepb.RuntimeCo
 			return fnerrors.New("invalid from_kubernetes_secret format")
 		}
 
-		return pr.SetSecret(fieldName, &SecretRef{parts[0], parts[1]})
+		return out.SetSecret(fieldName, &SecretRef{parts[0], parts[1]})
 
 	case resv.ExperimentalFromDownwardsFieldPath != "":
-		return pr.SetExperimentalFromDownwardsFieldPath(fieldName, resv.ExperimentalFromDownwardsFieldPath)
+		return out.SetExperimentalFromDownwardsFieldPath(fieldName, resv.ExperimentalFromDownwardsFieldPath)
 
 	case resv.FromSecretRef != nil:
-		if secrets == nil {
-			return fnerrors.InternalError("can't use FromSecretRef in this context")
+		if alloc == nil {
+			return fnerrors.InternalError("secret %s was not allocated", resv.FromSecretRef.Canonical())
 		}
 
-		alloc, err := secrets.Allocate(ctx, resv.FromSecretRef)
-		if err != nil {
-			return err
-		}
-
-		return pr.SetSecret(fieldName, alloc)
+		return out.SetSecret(fieldName, alloc)
 
 	case resv.FromServiceEndpoint != nil:
 		endpoint, err := SelectServiceValue(rt, resv.FromServiceEndpoint, SelectServiceEndpoint)
 		if err != nil {
 			return err
 		}
-		return pr.SetValue(fieldName, endpoint)
+		return out.SetValue(fieldName, endpoint)
 
 	case resv.FromServiceIngress != nil:
 		url, err := SelectServiceValue(rt, resv.FromServiceIngress, SelectServiceIngress)
 		if err != nil {
 			return err
 		}
-		return pr.SetValue(fieldName, url)
+		return out.SetValue(fieldName, url)
 
 	case resv.FromResourceField != nil:
-		return pr.SetLateBoundResourceFieldSelector(fieldName, runtimepb.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR, resv.FromResourceField)
+		return out.SetLateBoundResourceFieldSelector(fieldName, runtimepb.SetContainerField_RESOURCE_CONFIG_FIELD_SELECTOR, resv.FromResourceField)
 
 	case resv.FromFieldSelector != nil:
 		instance, err := SelectInstance(rt, resv.FromFieldSelector.Instance)
@@ -163,9 +152,9 @@ func (pr *parallelResolver) resolve(ctx context.Context, rt *runtimepb.RuntimeCo
 			return err
 		}
 
-		return pr.SetValue(fieldName, vv)
+		return out.SetValue(fieldName, vv)
 
 	default:
-		return pr.SetValue(fieldName, resv.Value)
+		return out.SetValue(fieldName, resv.Value)
 	}
 }
