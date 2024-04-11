@@ -18,6 +18,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
 	"namespacelabs.dev/foundation/internal/providers/onepassword"
 	"namespacelabs.dev/foundation/internal/providers/teleport"
+	"namespacelabs.dev/foundation/internal/providers/vault"
 	"namespacelabs.dev/foundation/internal/runtime"
 	"namespacelabs.dev/foundation/internal/runtime/kubernetes"
 	_ "namespacelabs.dev/foundation/internal/runtime/kubernetes"
@@ -36,6 +37,7 @@ func RegisterProviders() {
 	teleport.Register()
 	nscloud.Register()
 	onepassword.Register()
+	vault.Register()
 
 	kubernetes.Register()
 }

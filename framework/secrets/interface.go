@@ -18,10 +18,10 @@ type SecretsSource interface {
 
 type SecretLoadRequest struct {
 	SecretRef *schema.PackageRef
-	Server    *SecretLoadRequest_ServerRef
+	Server    *ServerRef
 }
 
-type SecretLoadRequest_ServerRef struct {
+type ServerRef struct {
 	PackageName schema.PackageName
 	ModuleName  string
 	RelPath     string // Relative path within the module.
