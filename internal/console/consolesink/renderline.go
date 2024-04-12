@@ -23,10 +23,10 @@ func renderTime(w io.Writer, s colors.Style, t time.Time) {
 	fmt.Fprint(w, s.Header.Apply(str), " ")
 }
 
-func renderLine(w io.Writer, s colors.Style, li Renderable) {
+func renderLine(w io.Writer, s colors.Style, outputActionID bool, li Renderable) {
 	data := li.Data
 
-	if OutputActionID {
+	if outputActionID {
 		fmt.Fprint(w, s.Header.Apply("["+trim(data.ActionID.String(), 12)+"] "))
 	}
 
@@ -93,14 +93,14 @@ func renderLine(w io.Writer, s colors.Style, li Renderable) {
 	}
 }
 
-func renderCompletedAction(raw io.Writer, s colors.Style, r Renderable) {
+func renderCompletedAction(raw io.Writer, s colors.Style, outputActionID bool, r Renderable) {
 	if r.Data.State.IsDone() {
 		renderTime(raw, s, r.Data.Completed)
 	} else {
 		renderTime(raw, s, r.Data.Started)
 	}
 
-	renderLine(raw, s, r)
+	renderLine(raw, s, outputActionID, r)
 	if !r.Data.Started.IsZero() && !r.Cached {
 		if !r.Data.Started.Equal(r.Data.Created) {
 			d := r.Data.Started.Sub(r.Data.Created)
@@ -117,12 +117,12 @@ func renderCompletedAction(raw io.Writer, s colors.Style, r Renderable) {
 	fmt.Fprintln(raw)
 }
 
-func LogAction(w io.Writer, s colors.Style, ev tasks.EventData) {
+func LogAction(w io.Writer, s colors.Style, outputActionID bool, ev tasks.EventData) {
 	item := Renderable{
 		Data: ev,
 	}
 
 	item.precompute(tasks.ResultData{})
 
-	renderCompletedAction(w, s, item)
+	renderCompletedAction(w, s, outputActionID, item)
 }

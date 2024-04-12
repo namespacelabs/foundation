@@ -62,7 +62,7 @@ func (sl *logger) Started(ra *tasks.RunningAction) {
 
 	var b bytes.Buffer
 	fmt.Fprint(&b, "↦ ")
-	consolesink.LogAction(&b, colors.NoColors, ra.Data)
+	consolesink.LogAction(&b, colors.NoColors, consolesink.OutputActionID, ra.Data)
 
 	sl.write(b.Bytes())
 }
@@ -83,7 +83,7 @@ func (sl *logger) Done(ra *tasks.RunningAction) {
 			fmt.Fprint(&b, "✘ ")
 		}
 	}
-	consolesink.LogAction(&b, colors.NoColors, ra.Data)
+	consolesink.LogAction(&b, colors.NoColors, consolesink.OutputActionID, ra.Data)
 
 	sl.write(b.Bytes())
 }
@@ -105,7 +105,7 @@ func (sl *logger) Instant(ev *tasks.EventData) {
 			fmt.Fprint(&b, "☒ ")
 		}
 	}
-	consolesink.LogAction(&b, colors.NoColors, *ev)
+	consolesink.LogAction(&b, colors.NoColors, consolesink.OutputActionID, *ev)
 
 	sl.write(b.Bytes())
 }

@@ -312,6 +312,9 @@ func SetupViper() {
 	viper.SetDefault("enable_pprof", false)
 	_ = viper.BindEnv("enable_pprof")
 
+	viper.SetDefault("console_output_action_id", false)
+	_ = viper.BindEnv("console_output_action_id")
+
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			log.Fatal(err)
@@ -345,16 +348,6 @@ func StandardConsole() (*os.File, bool) {
 
 func consoleToSink(out *os.File, isTerm, inhibitReport bool, renderer consolesink.RendererFunc) (tasks.ActionSink, colors.Style, func()) {
 	maxLogLevel := viper.GetInt("console_log_level")
-	if isTerm && !viper.GetBool("console_no_colors") {
-		consoleSink := consolesink.NewSink(out, consolesink.ConsoleSinkOpts{
-			Interactive:   true,
-			InhibitReport: inhibitReport,
-			MaxLevel:      maxLogLevel,
-			Renderer:      renderer,
-		})
-		cleanup := consoleSink.Start()
-		return consoleSink, colors.WithColors, cleanup
-	}
 
 	if filename, ok := os.LookupEnv("NS_LOG_TO_FILE"); ok {
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
@@ -365,6 +358,17 @@ func consoleToSink(out *os.File, isTerm, inhibitReport bool, renderer consolesin
 		return simplelog.NewSink(f, maxLogLevel), colors.NoColors, func() {
 			f.Close()
 		}
+	}
+
+	if isTerm && !viper.GetBool("console_no_colors") {
+		consoleSink := consolesink.NewSink(out, consolesink.ConsoleSinkOpts{
+			Interactive:   true,
+			InhibitReport: inhibitReport,
+			MaxLevel:      maxLogLevel,
+			Renderer:      renderer,
+		})
+		cleanup := consoleSink.Start()
+		return consoleSink, colors.WithColors, cleanup
 	}
 
 	return simplelog.NewSink(out, maxLogLevel), colors.NoColors, nil

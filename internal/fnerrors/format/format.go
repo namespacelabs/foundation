@@ -101,7 +101,7 @@ func Format(w io.Writer, err error, args ...FormatOption) {
 		}
 		trace := actionError.Trace()
 		for i := len(trace) - 1; i >= 0; i-- {
-			consolesink.LogAction(w, opts.style, tasks.EventDataFromProto("", trace[i]))
+			consolesink.LogAction(w, opts.style, false, tasks.EventDataFromProto("", trace[i]))
 			w = indent(w)
 		}
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/morikuni/aec"
 	"github.com/muesli/reflow/truncate"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/console/colors"
 	"namespacelabs.dev/foundation/internal/console/termios"
@@ -149,7 +150,8 @@ type ConsoleSink struct {
 
 	logSources logSources // Sources of log output (think: action IDs)
 
-	debugOut *json.Encoder
+	outputActionId bool
+	debugOut       *json.Encoder
 }
 
 type stickyContent struct {
@@ -195,6 +197,7 @@ func NewSink(out *os.File, opts ConsoleSinkOpts) *ConsoleSink {
 		ConsoleSinkOpts: opts,
 		outbuf:          bytes.NewBuffer(make([]byte, 0, 4*1024)), // Start with 4k, enough to hold 20 lines of 100 bytes. bytes.Buffer will grow as needed.
 		idling:          true,
+		outputActionId:  viper.GetBool("console_output_action_id"),
 	}
 }
 
@@ -687,7 +690,7 @@ func (c *ConsoleSink) drawFrame(raw, out io.Writer, t time.Time, width, height u
 
 		for _, r := range printableCompleted {
 			fmt.Fprint(raw, aec.EraseLine(aec.EraseModes.Tail))
-			renderCompletedAction(raw, colors.WithColors, r)
+			renderCompletedAction(raw, colors.WithColors, c.outputActionId || OutputActionID, r)
 		}
 	}
 
@@ -987,7 +990,7 @@ func (c *ConsoleSink) renderLineRec(out io.Writer, width uint, n *node, t time.T
 			} else {
 				fmt.Fprint(&lineb, renderPrefix(depth))
 
-				renderLine(&lineb, colors.WithColors, *child.item)
+				renderLine(&lineb, colors.WithColors, c.outputActionId || OutputActionID, *child.item)
 
 				if data.State == tasks.ActionRunning {
 					d := t.Sub(data.Started)
