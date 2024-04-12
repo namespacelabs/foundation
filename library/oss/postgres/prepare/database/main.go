@@ -8,15 +8,18 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
 	"namespacelabs.dev/foundation/library/oss/postgres"
+	universepg "namespacelabs.dev/foundation/universe/db/postgres"
 )
 
 const (
@@ -46,18 +49,9 @@ func main() {
 
 	}
 
-	conn, exists, err := ensureDatabase(ctx, cluster, p.Intent.Name)
+	exists, err := ensureDatabase(ctx, cluster, p.Intent.Name)
 	if err != nil {
 		log.Fatalf("unable to create database %q: %v", p.Intent.Name, err)
-	}
-	defer conn.Close(ctx)
-
-	if !exists || !p.Intent.SkipSchemaInitializationIfExists {
-		for _, schema := range p.Intent.Schema {
-			if _, err = conn.Exec(ctx, string(schema.Contents)); err != nil {
-				log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
-			}
-		}
 	}
 
 	instance := &postgresclass.DatabaseInstance{
@@ -71,20 +65,40 @@ func main() {
 		SslMode:        cluster.SslMode,
 	}
 
+	if !exists || !p.Intent.SkipSchemaInitializationIfExists {
+		db, err := universepg.NewDatabaseFromConnectionUri(ctx, instance, instance.ConnectionUri, nil)
+		if err != nil {
+			log.Fatalf("unable to open connection: %v", err)
+		}
+		defer db.Close()
+
+		for _, schema := range p.Intent.Schema {
+			if _, err := universepg.ReturnFromReadWriteTx(ctx, db, backOff{
+				interval: 100 * time.Millisecond,
+				deadline: time.Now().Add(5 * time.Second),
+				jitter:   100 * time.Millisecond,
+			}, func(ctx context.Context, tx pgx.Tx) (pgconn.CommandTag, error) {
+				return tx.Exec(ctx, string(schema.Contents))
+			}); err != nil {
+				log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
+			}
+		}
+	}
+
 	p.EmitResult(instance)
 }
 
-func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (*pgx.Conn, bool, error) {
+func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (bool, error) {
 	// Postgres needs a database to connect to so we pin one that is guaranteed to exist.
 	postgresConn, err := connect(ctx, cluster, "postgres")
 	if err != nil {
-		return nil, false, err
+		return false, err
 	}
 	defer postgresConn.Close(ctx)
 
 	exists, err := existsDatabase(ctx, postgresConn, name)
 	if err != nil {
-		return nil, false, err
+		return false, err
 	}
 
 	if !exists {
@@ -94,16 +108,15 @@ func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance,
 		// Still, let's do some basic sanity checking (whitespaces are forbidden), as we need to use Sprintf here.
 		// Valid database names are defined at https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS
 		if len(strings.Fields(name)) > 1 || strings.Contains(name, "-") {
-			return nil, false, fmt.Errorf("invalid database name: %s", name)
+			return false, fmt.Errorf("invalid database name: %s", name)
 		}
 
 		if _, err := postgresConn.Exec(ctx, fmt.Sprintf("CREATE DATABASE \"%s\";", name)); err != nil {
-			return nil, false, fmt.Errorf("failed to create database %q: %w", name, err)
+			return false, fmt.Errorf("failed to create database %q: %w", name, err)
 		}
 	}
 
-	conn, err := connect(ctx, cluster, name)
-	return conn, exists, err
+	return exists, err
 }
 
 func existsDatabase(ctx context.Context, conn *pgx.Conn, name string) (bool, error) {
@@ -133,4 +146,18 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 		log.Printf("failed to connect to postgres: %v\n", err)
 		return nil, err
 	}, backoff.WithContext(backoff.NewConstantBackOff(connBackoff), ctx))
+}
+
+type backOff struct {
+	interval time.Duration
+	deadline time.Time
+	jitter   time.Duration
+}
+
+func (b backOff) Reset() {}
+func (b backOff) NextBackOff() time.Duration {
+	if time.Now().After(b.deadline) {
+		return backoff.Stop
+	}
+	return b.interval - b.jitter/2 + time.Duration(rand.Int63n(int64(b.jitter)))
 }
