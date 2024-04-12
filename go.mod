@@ -54,7 +54,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.6.0
-	github.com/google/go-containerregistry v0.14.0
+	github.com/google/go-containerregistry v0.19.1
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/mux v1.8.0
@@ -70,7 +70,7 @@ require (
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
 	github.com/jpillora/chisel v1.9.1
 	github.com/keikoproj/aws-auth v0.4.0
-	github.com/klauspost/compress v1.16.3
+	github.com/klauspost/compress v1.16.5
 	github.com/kr/text v0.2.0
 	github.com/maruel/panicparse/v2 v2.3.0
 	github.com/mattn/go-isatty v0.0.17
@@ -332,7 +332,7 @@ require (
 	github.com/theupdateframework/notary v0.7.0 // indirect
 	github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea // indirect
 	github.com/tonistiigi/vt100 v0.0.0-20230623042737-f9a4f7ef6531 // indirect
-	github.com/vbatts/tar-split v0.11.2 // indirect
+	github.com/vbatts/tar-split v0.11.3 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
