@@ -19,16 +19,16 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-var secretProviders = map[string]func(context.Context, *secrets.ServerRef, *anypb.Any) ([]byte, error){}
+var secretProviders = map[string]func(context.Context, secrets.SecretIdentifier, *anypb.Any) ([]byte, error){}
 
-func RegisterSecretsProvider[V proto.Message](handle func(context.Context, *secrets.ServerRef, V) ([]byte, error), aliases ...string) {
-	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, srvRef *secrets.ServerRef, input *anypb.Any) ([]byte, error) {
+func RegisterSecretsProvider[V proto.Message](handle func(context.Context, secrets.SecretIdentifier, V) ([]byte, error), aliases ...string) {
+	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, secretId secrets.SecretIdentifier, input *anypb.Any) ([]byte, error) {
 		msg := protos.NewFromType[V]()
 		if err := input.UnmarshalTo(msg); err != nil {
 			return nil, err
 		}
 
-		return handle(ctx, srvRef, msg)
+		return handle(ctx, secretId, msg)
 	}
 }
 
@@ -38,8 +38,8 @@ type combinedSecrets struct {
 	local    secrets.SecretsSource
 
 	mu      sync.RWMutex
-	loaded  map[secretIdentifier][]byte         // secret ref -> value
-	loading map[secretIdentifier]*loadingSecret // secret ref -> loadingSecret
+	loaded  map[secrets.SecretIdentifier][]byte         // secret ref -> value
+	loading map[secrets.SecretIdentifier]*loadingSecret // secret ref -> loadingSecret
 }
 
 type resultPair struct {
@@ -47,17 +47,11 @@ type resultPair struct {
 	err   error
 }
 
-type secretIdentifier struct {
-	serverRef schema.PackageName
-	secretRef string
-}
-
 type loadingSecret struct {
-	ref       *schema.PackageRef
-	serverRef *secrets.ServerRef
-	load      func(context.Context, *secrets.ServerRef, *anypb.Any) ([]byte, error)
-	cfg       *anypb.Any
-	cs        *combinedSecrets
+	id   secrets.SecretIdentifier
+	load func(context.Context, secrets.SecretIdentifier, *anypb.Any) ([]byte, error)
+	cfg  *anypb.Any
+	cs   *combinedSecrets
 
 	mu      sync.Mutex
 	waiters []chan resultPair
@@ -83,14 +77,14 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 	return &combinedSecrets{
 		bindings: bindings,
 		local:    local,
-		loaded:   map[secretIdentifier][]byte{},
-		loading:  map[secretIdentifier]*loadingSecret{},
+		loaded:   map[secrets.SecretIdentifier][]byte{},
+		loading:  map[secrets.SecretIdentifier]*loadingSecret{},
 	}, nil
 }
 
 func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleResolver, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	cs.mu.RLock()
-	value := cs.loaded[secretIdentifier{req.Server.PackageName, req.SecretRef.Canonical()}]
+	value := cs.loaded[req.GetSecretIdentifier()]
 	cs.mu.RUnlock()
 	if value != nil {
 		return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
@@ -103,16 +97,15 @@ func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleReso
 		}
 
 		cs.mu.Lock()
-		loading := cs.loading[secretIdentifier{req.Server.PackageName, req.SecretRef.Canonical()}]
+		loading := cs.loading[req.GetSecretIdentifier()]
 		if loading == nil {
 			loading = &loadingSecret{
-				ref:       req.SecretRef,
-				load:      p,
-				cfg:       b.Configuration,
-				cs:        cs,
-				serverRef: req.Server,
+				id:   req.GetSecretIdentifier(),
+				load: p,
+				cfg:  b.Configuration,
+				cs:   cs,
 			}
-			cs.loading[secretIdentifier{req.Server.PackageName, req.SecretRef.Canonical()}] = loading
+			cs.loading[req.GetSecretIdentifier()] = loading
 		}
 		cs.mu.Unlock()
 
@@ -131,9 +124,9 @@ func (cs *combinedSecrets) MissingError(missing *schema.PackageRef, missingSpec 
 	return cs.local.MissingError(missing, missingSpec, missingServer)
 }
 
-func (cs *combinedSecrets) complete(srvRef schema.PackageName, ref *schema.PackageRef, res []byte) {
+func (cs *combinedSecrets) complete(id secrets.SecretIdentifier, res []byte) {
 	cs.mu.Lock()
-	cs.loaded[secretIdentifier{srvRef, ref.Canonical()}] = res
+	cs.loaded[id] = res
 	cs.mu.Unlock()
 }
 
@@ -170,14 +163,14 @@ func (l *loadingSecret) Get(ctx context.Context) ([]byte, error) {
 
 	l.mu.Unlock()
 	var res resultPair
-	res.value, res.err = l.load(ctx, l.serverRef, l.cfg)
+	res.value, res.err = l.load(ctx, l.id, l.cfg)
 	l.mu.Lock()
 
 	l.done = true
 	l.result = res
 
 	if res.err == nil {
-		l.cs.complete(l.serverRef.PackageName, l.ref, res.value)
+		l.cs.complete(l.id, res.value)
 	}
 
 	waiters := l.waiters

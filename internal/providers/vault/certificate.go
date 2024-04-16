@@ -32,7 +32,7 @@ func Register() {
 		vaultClients: make(map[vaultAuth]*vaultclient.Client),
 	}
 	combined.RegisterSecretsProvider(
-		func(ctx context.Context, srvRef *secrets.ServerRef, cfg *vault.Certificate) ([]byte, error) {
+		func(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
 			ca := cfg.GetCa()
 			if ca == nil {
 				return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing CA configuration")
@@ -41,9 +41,14 @@ func Register() {
 			vaultClient, err := p.Login(ctx, ca, vaultJwtAudience)
 			if err != nil {
 				return nil, err
+
 			}
 
-			commonName := fmt.Sprintf("%s.%s", strings.ReplaceAll(srvRef.RelPath, "/", "-"), cfg.BaseDomain)
+			if secretId.ServerRef == nil {
+				return nil, fnerrors.BadDataError("required server reference is not set")
+			}
+
+			commonName := fmt.Sprintf("%s.%s", strings.ReplaceAll(secretId.ServerRef.RelPath, "/", "-"), cfg.GetBaseDomain())
 			return p.IssueCertificate(ctx, vaultClient, ca.GetIssuer(), commonName)
 		},
 	)
@@ -54,10 +59,10 @@ type vaultAuth struct {
 	authMethod string
 }
 
-type tlsKeyPair struct {
-	PrivateKey  string   `json:"private_key"`
-	Certificate string   `json:"certificate"`
-	CaChain     []string `json:"ca_chain"`
+type TlsBundle struct {
+	PrivateKeyPem  string   `json:"private_key_pem"`
+	CertificatePem string   `json:"certificate_pem"`
+	CaChainPem     []string `json:"ca_chain_pem"`
 }
 
 type provider struct {
@@ -131,10 +136,10 @@ func (p *provider) IssueCertificate(ctx context.Context, vaultClient *vaultclien
 				return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
 			}
 
-			cert := tlsKeyPair{
-				PrivateKey:  issueResp.Data.PrivateKey,
-				Certificate: issueResp.Data.Certificate,
-				CaChain:     issueResp.Data.CaChain,
+			cert := TlsBundle{
+				PrivateKeyPem:  issueResp.Data.PrivateKey,
+				CertificatePem: issueResp.Data.Certificate,
+				CaChainPem:     issueResp.Data.CaChain,
 			}
 
 			data, err := json.Marshal(cert)

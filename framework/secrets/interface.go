@@ -21,10 +21,28 @@ type SecretLoadRequest struct {
 	Server    *ServerRef
 }
 
+func (s SecretLoadRequest) GetSecretIdentifier() SecretIdentifier {
+	if s.Server != nil {
+		return SecretIdentifier{
+			ServerRef: s.Server,
+			SecretRef: s.SecretRef.Canonical(),
+		}
+	}
+
+	return SecretIdentifier{
+		SecretRef: s.SecretRef.Canonical(),
+	}
+}
+
 type ServerRef struct {
 	PackageName schema.PackageName
 	ModuleName  string
 	RelPath     string // Relative path within the module.
+}
+
+type SecretIdentifier struct {
+	ServerRef *ServerRef
+	SecretRef string
 }
 
 type GroundedSecrets interface {

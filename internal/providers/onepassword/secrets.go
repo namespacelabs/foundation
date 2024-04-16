@@ -26,7 +26,7 @@ const cmdTimeout = time.Minute
 func Register() {
 	p := &provider{}
 
-	combined.RegisterSecretsProvider(func(ctx context.Context, srvRef *secrets.ServerRef, cfg *onepassword.Secret) ([]byte, error) {
+	combined.RegisterSecretsProvider(func(ctx context.Context, secretId secrets.SecretIdentifier, cfg *onepassword.Secret) ([]byte, error) {
 		if cfg.SecretReference == "" {
 			return nil, fnerrors.BadInputError("invalid 1Password secret configuration: missing field secret_reference")
 		}
