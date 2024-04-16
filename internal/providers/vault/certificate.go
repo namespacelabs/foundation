@@ -55,7 +55,8 @@ func Register() {
 }
 
 type vaultAuth struct {
-	addr       string
+	address    string
+	namespace  string
 	authMethod string
 }
 
@@ -71,18 +72,18 @@ type provider struct {
 }
 
 func (p *provider) Login(ctx context.Context, caCfg *vault.CertificateAuthority, audience string) (*vaultclient.Client, error) {
+	vKey := vaultAuth{address: caCfg.GetVaultAddress(), namespace: caCfg.GetVaultNamespace(), authMethod: caCfg.GetAuthMethod()}
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-
-	client, ok := p.vaultClients[vaultAuth{caCfg.GetVaultAddr(), caCfg.GetAuthMethod()}]
+	client, ok := p.vaultClients[vKey]
 	if ok {
 		return client, nil
 	}
 
-	client, err := tasks.Return(ctx, tasks.Action("vault.login").Arg("namespace", caCfg.VaultNamespace).Arg("address", caCfg.VaultAddr),
+	client, err := tasks.Return(ctx, tasks.Action("vault.login").Arg("namespace", caCfg.GetVaultNamespace()).Arg("address", caCfg.GetVaultAddress()),
 		func(ctx context.Context) (*vaultclient.Client, error) {
 			client, err := vaultclient.New(
-				vaultclient.WithAddress(caCfg.VaultAddr),
+				vaultclient.WithAddress(caCfg.GetVaultAddress()),
 				vaultclient.WithRequestTimeout(vaultRequestTimeout),
 			)
 			if err != nil {
@@ -115,7 +116,7 @@ func (p *provider) Login(ctx context.Context, caCfg *vault.CertificateAuthority,
 		return nil, err
 	}
 
-	p.vaultClients[vaultAuth{caCfg.GetVaultAddr(), caCfg.GetAuthMethod()}] = client
+	p.vaultClients[vKey] = client
 
 	return client, nil
 }
