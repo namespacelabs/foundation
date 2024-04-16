@@ -23,12 +23,14 @@ import (
 )
 
 const (
-	VaultJwtAudience    = "vault.namespace.systems"
+	vaultJwtAudience    = "vault.namespace.systems"
 	vaultRequestTimeout = 10 * time.Second
 )
 
 func Register() {
-	p := &provider{}
+	p := &provider{
+		vaultClients: make(map[vaultAuth]*vaultclient.Client),
+	}
 	combined.RegisterSecretsProvider(
 		func(ctx context.Context, srvRef *secrets.ServerRef, cfg *vault.Certificate) ([]byte, error) {
 			ca := cfg.GetCa()
@@ -36,14 +38,20 @@ func Register() {
 				return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing CA configuration")
 			}
 
-			if err := p.Login(ctx, ca, VaultJwtAudience); err != nil {
+			vaultClient, err := p.Login(ctx, ca, vaultJwtAudience)
+			if err != nil {
 				return nil, err
 			}
 
 			commonName := fmt.Sprintf("%s.%s", strings.ReplaceAll(srvRef.RelPath, "/", "-"), cfg.BaseDomain)
-			return p.IssueCertificate(ctx, ca, commonName)
+			return p.IssueCertificate(ctx, vaultClient, ca.GetIssuer(), commonName)
 		},
 	)
+}
+
+type vaultAuth struct {
+	addr       string
+	authMethod string
 }
 
 type tlsKeyPair struct {
@@ -53,62 +61,69 @@ type tlsKeyPair struct {
 }
 
 type provider struct {
-	vaultClient *vaultclient.Client
-	once        sync.Once
+	mtx          sync.Mutex
+	vaultClients map[vaultAuth]*vaultclient.Client
 }
 
-func (p *provider) Login(ctx context.Context, caCfg *vault.CertificateAuthority, audience string) error {
-	var rErr error
-	p.once.Do(func() {
-		if err := tasks.Return0(ctx, tasks.Action("vault.login").Arg("namespace", caCfg.VaultNamespace).Arg("address", caCfg.VaultAddr),
-			func(ctx context.Context) error {
-				var err error
-				p.vaultClient, err = vaultclient.New(
-					vaultclient.WithAddress(caCfg.VaultAddr),
-					vaultclient.WithRequestTimeout(vaultRequestTimeout),
-				)
-				if err != nil {
-					return fnerrors.InvocationError("vault", "failed to create vault client: %w", err)
-				}
+func (p *provider) Login(ctx context.Context, caCfg *vault.CertificateAuthority, audience string) (*vaultclient.Client, error) {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
 
-				p.vaultClient.SetNamespace(caCfg.VaultNamespace)
+	client, ok := p.vaultClients[vaultAuth{caCfg.GetVaultAddr(), caCfg.GetAuthMethod()}]
+	if ok {
+		return client, nil
+	}
 
-				idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1)
-				if err != nil {
-					return err
-				}
+	client, err := tasks.Return(ctx, tasks.Action("vault.login").Arg("namespace", caCfg.VaultNamespace).Arg("address", caCfg.VaultAddr),
+		func(ctx context.Context) (*vaultclient.Client, error) {
+			client, err := vaultclient.New(
+				vaultclient.WithAddress(caCfg.VaultAddr),
+				vaultclient.WithRequestTimeout(vaultRequestTimeout),
+			)
+			if err != nil {
+				return nil, fnerrors.InvocationError("vault", "failed to create vault client: %w", err)
+			}
 
-				loginResp, err := p.vaultClient.Auth.JwtLogin(ctx, schema.JwtLoginRequest{Jwt: idTokenResp.IdToken},
-					vaultclient.WithMountPath(caCfg.GetAuthMethod()),
-				)
-				if err != nil {
-					return fnerrors.InvocationError("vault", "failed to login to vault: %w", err)
-				}
+			client.SetNamespace(caCfg.VaultNamespace)
 
-				if loginResp.Auth == nil {
-					return fnerrors.InvocationError("vault", "missing vault login auth data: %w", err)
-				}
+			idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1)
+			if err != nil {
+				return nil, err
+			}
 
-				p.vaultClient.SetToken(loginResp.Auth.ClientToken)
-				return nil
-			},
-		); err != nil {
-			rErr = err
-		}
-	})
+			loginResp, err := client.Auth.JwtLogin(ctx, schema.JwtLoginRequest{Jwt: idTokenResp.IdToken},
+				vaultclient.WithMountPath(caCfg.GetAuthMethod()),
+			)
+			if err != nil {
+				return nil, fnerrors.InvocationError("vault", "failed to login to vault: %w", err)
+			}
 
-	return rErr
+			if loginResp.Auth == nil {
+				return nil, fnerrors.InvocationError("vault", "missing vault login auth data: %w", err)
+			}
+
+			client.SetToken(loginResp.Auth.ClientToken)
+			return client, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	p.vaultClients[vaultAuth{caCfg.GetVaultAddr(), caCfg.GetAuthMethod()}] = client
+
+	return client, nil
 }
 
-func (p *provider) IssueCertificate(ctx context.Context, ca *vault.CertificateAuthority, cn string) ([]byte, error) {
-	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", ca.GetIssuer()).Arg("common-name", cn),
+func (p *provider) IssueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer, cn string) ([]byte, error) {
+	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", issuer).Arg("common-name", cn),
 		func(ctx context.Context) ([]byte, error) {
-			pkiMount, role, ok := strings.Cut(ca.GetIssuer(), "/")
+			pkiMount, role, ok := strings.Cut(issuer, "/")
 			if !ok {
 				return nil, fnerrors.BadDataError("invalid issuer format; expected <pki-mount>/<role>")
 			}
 
-			issueResp, err := p.vaultClient.Secrets.PkiIssueWithRole(ctx, role,
+			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, role,
 				schema.PkiIssueWithRoleRequest{CommonName: cn},
 				vaultclient.WithMountPath(pkiMount),
 			)

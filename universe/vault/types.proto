@@ -10,8 +10,7 @@ option go_package = "namespacelabs.dev/foundation/universe/vault";
 
 message Certificate {
     string               base_domain = 1;
-    string               region      = 2;
-    CertificateAuthority ca          = 3;
+    CertificateAuthority ca          = 2;
 }
 
 message CertificateAuthority {

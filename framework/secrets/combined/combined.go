@@ -54,10 +54,10 @@ type secretIdentifier struct {
 
 type loadingSecret struct {
 	ref       *schema.PackageRef
+	serverRef *secrets.ServerRef
 	load      func(context.Context, *secrets.ServerRef, *anypb.Any) ([]byte, error)
 	cfg       *anypb.Any
 	cs        *combinedSecrets
-	serverRef *secrets.ServerRef
 
 	mu      sync.Mutex
 	waiters []chan resultPair
