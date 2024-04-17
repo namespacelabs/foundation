@@ -29,7 +29,7 @@ const (
 
 func Register() {
 	p := &provider{
-		vaultClients: make(map[vaultAuth]*vaultclient.Client),
+		vaultClients: make(map[string]*vaultclient.Client),
 	}
 	combined.RegisterSecretsProvider(
 		func(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
@@ -54,10 +54,14 @@ func Register() {
 	)
 }
 
-type vaultAuth struct {
+type vaultIdentifier struct {
 	address    string
 	namespace  string
 	authMethod string
+}
+
+func (v vaultIdentifier) String() string {
+	return v.address + v.namespace + v.authMethod
 }
 
 type TlsBundle struct {
@@ -68,14 +72,18 @@ type TlsBundle struct {
 
 type provider struct {
 	mtx          sync.Mutex
-	vaultClients map[vaultAuth]*vaultclient.Client
+	vaultClients map[string]*vaultclient.Client
 }
 
 func (p *provider) Login(ctx context.Context, caCfg *vault.CertificateAuthority, audience string) (*vaultclient.Client, error) {
-	vKey := vaultAuth{address: caCfg.GetVaultAddress(), namespace: caCfg.GetVaultNamespace(), authMethod: caCfg.GetAuthMethod()}
+	vKey := vaultIdentifier{
+		address:    caCfg.GetVaultAddress(),
+		namespace:  caCfg.GetVaultNamespace(),
+		authMethod: caCfg.GetAuthMethod(),
+	}
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-	client, ok := p.vaultClients[vKey]
+	client, ok := p.vaultClients[vKey.String()]
 	if ok {
 		return client, nil
 	}
@@ -116,7 +124,7 @@ func (p *provider) Login(ctx context.Context, caCfg *vault.CertificateAuthority,
 		return nil, err
 	}
 
-	p.vaultClients[vKey] = client
+	p.vaultClients[vKey.String()] = client
 
 	return client, nil
 }

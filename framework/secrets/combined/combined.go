@@ -21,6 +21,10 @@ import (
 
 var secretProviders = map[string]func(context.Context, secrets.SecretIdentifier, *anypb.Any) ([]byte, error){}
 
+type SecretProvider[V proto.Message] interface {
+	Load(context.Context, V) ([]byte, error)
+}
+
 func RegisterSecretsProvider[V proto.Message](handle func(context.Context, secrets.SecretIdentifier, V) ([]byte, error), aliases ...string) {
 	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, secretId secrets.SecretIdentifier, input *anypb.Any) ([]byte, error) {
 		msg := protos.NewFromType[V]()
@@ -38,8 +42,8 @@ type combinedSecrets struct {
 	local    secrets.SecretsSource
 
 	mu      sync.RWMutex
-	loaded  map[secrets.SecretIdentifier][]byte         // secret ref -> value
-	loading map[secrets.SecretIdentifier]*loadingSecret // secret ref -> loadingSecret
+	loaded  map[string][]byte         // secret ref -> value
+	loading map[string]*loadingSecret // secret ref -> loadingSecret
 }
 
 type resultPair struct {
@@ -77,14 +81,14 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 	return &combinedSecrets{
 		bindings: bindings,
 		local:    local,
-		loaded:   map[secrets.SecretIdentifier][]byte{},
-		loading:  map[secrets.SecretIdentifier]*loadingSecret{},
+		loaded:   map[string][]byte{},
+		loading:  map[string]*loadingSecret{},
 	}, nil
 }
 
 func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleResolver, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	cs.mu.RLock()
-	value := cs.loaded[req.GetSecretIdentifier()]
+	value := cs.loaded[req.GetSecretIdentifier().String()]
 	cs.mu.RUnlock()
 	if value != nil {
 		return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
@@ -97,7 +101,7 @@ func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleReso
 		}
 
 		cs.mu.Lock()
-		loading := cs.loading[req.GetSecretIdentifier()]
+		loading := cs.loading[req.GetSecretIdentifier().String()]
 		if loading == nil {
 			loading = &loadingSecret{
 				id:   req.GetSecretIdentifier(),
@@ -105,7 +109,7 @@ func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleReso
 				cfg:  b.Configuration,
 				cs:   cs,
 			}
-			cs.loading[req.GetSecretIdentifier()] = loading
+			cs.loading[req.GetSecretIdentifier().String()] = loading
 		}
 		cs.mu.Unlock()
 
@@ -126,7 +130,7 @@ func (cs *combinedSecrets) MissingError(missing *schema.PackageRef, missingSpec 
 
 func (cs *combinedSecrets) complete(id secrets.SecretIdentifier, res []byte) {
 	cs.mu.Lock()
-	cs.loaded[id] = res
+	cs.loaded[id.String()] = res
 	cs.mu.Unlock()
 }
 

@@ -6,6 +6,7 @@ package secrets
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -43,6 +44,14 @@ type ServerRef struct {
 type SecretIdentifier struct {
 	ServerRef *ServerRef
 	SecretRef string
+}
+
+func (s SecretIdentifier) String() string {
+	if s.ServerRef != nil {
+		return fmt.Sprintf("%s%s", s.ServerRef.PackageName, s.SecretRef)
+	}
+
+	return s.SecretRef
 }
 
 type GroundedSecrets interface {
