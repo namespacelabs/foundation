@@ -13,6 +13,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
+const defaultRegion = "eu"
+
 var (
 	rpcEndpointOverride string
 	RegionName          string
@@ -23,7 +25,7 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 	regionFlag := fmt.Sprintf("%sregion", prefix)
 
 	flags.StringVar(&rpcEndpointOverride, endpointFlag, "", "Where to dial to when reaching nscloud.")
-	flags.StringVar(&RegionName, regionFlag, "eu", "Which region to use.")
+	flags.StringVar(&RegionName, regionFlag, defaultRegion, "Which region to use.")
 
 	if hide {
 		_ = flags.MarkHidden(endpointFlag)
@@ -40,11 +42,17 @@ func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (stri
 		return rpcEndpoint, nil
 	}
 
+	if RegionName != defaultRegion {
+		return rpcEndpoint(RegionName), nil
+	}
+
 	if tok.PrimaryRegion != "" {
 		return "https://api." + tok.PrimaryRegion, nil
 	}
 
-	rpcEndpoint := fmt.Sprintf("https://api.%s.nscluster.cloud", RegionName)
+	return rpcEndpoint(RegionName), nil
+}
 
-	return rpcEndpoint, nil
+func rpcEndpoint(regionName string) string {
+	return fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
 }
