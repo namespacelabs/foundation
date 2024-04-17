@@ -6,6 +6,7 @@ package secrets
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -18,13 +19,39 @@ type SecretsSource interface {
 
 type SecretLoadRequest struct {
 	SecretRef *schema.PackageRef
-	Server    *SecretLoadRequest_ServerRef
+	Server    *ServerRef
 }
 
-type SecretLoadRequest_ServerRef struct {
+func (s SecretLoadRequest) GetSecretIdentifier() SecretIdentifier {
+	if s.Server != nil {
+		return SecretIdentifier{
+			ServerRef: s.Server,
+			SecretRef: s.SecretRef.Canonical(),
+		}
+	}
+
+	return SecretIdentifier{
+		SecretRef: s.SecretRef.Canonical(),
+	}
+}
+
+type ServerRef struct {
 	PackageName schema.PackageName
 	ModuleName  string
 	RelPath     string // Relative path within the module.
+}
+
+type SecretIdentifier struct {
+	ServerRef *ServerRef
+	SecretRef string
+}
+
+func (s SecretIdentifier) String() string {
+	if s.ServerRef != nil {
+		return fmt.Sprintf("%s%s", s.ServerRef.PackageName, s.SecretRef)
+	}
+
+	return s.SecretRef
 }
 
 type GroundedSecrets interface {

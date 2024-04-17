@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -25,7 +26,7 @@ const cmdTimeout = time.Minute
 func Register() {
 	p := &provider{}
 
-	combined.RegisterSecretsProvider(func(ctx context.Context, cfg *onepassword.Secret) ([]byte, error) {
+	combined.RegisterSecretsProvider(func(ctx context.Context, secretId secrets.SecretIdentifier, cfg *onepassword.Secret) ([]byte, error) {
 		if cfg.SecretReference == "" {
 			return nil, fnerrors.BadInputError("invalid 1Password secret configuration: missing field secret_reference")
 		}

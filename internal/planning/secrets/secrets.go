@@ -17,7 +17,7 @@ import (
 type groundedSecrets struct {
 	source    secrets.SecretsSource
 	sealedCtx pkggraph.SealedPackageLoader
-	server    *secrets.SecretLoadRequest_ServerRef
+	server    *secrets.ServerRef
 }
 
 type Server interface {
@@ -28,14 +28,14 @@ type Server interface {
 }
 
 func ScopeSecretsToServer(source secrets.SecretsSource, server Server) secrets.GroundedSecrets {
-	return ScopeSecretsTo(source, server.SealedContext(), &secrets.SecretLoadRequest_ServerRef{
+	return ScopeSecretsTo(source, server.SealedContext(), &secrets.ServerRef{
 		PackageName: server.PackageName(),
 		ModuleName:  server.Module().ModuleName(),
 		RelPath:     server.RelPath(),
 	})
 }
 
-func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPackageLoader, server *secrets.SecretLoadRequest_ServerRef) secrets.GroundedSecrets {
+func ScopeSecretsTo(source secrets.SecretsSource, sealedCtx pkggraph.SealedPackageLoader, server *secrets.ServerRef) secrets.GroundedSecrets {
 	return groundedSecrets{source: source, sealedCtx: sealedCtx, server: server}
 }
 
