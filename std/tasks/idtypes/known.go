@@ -11,6 +11,7 @@ const (
 	CatOutputTool     CatOutputType = "fn.output.tool"
 	CatOutputUs       CatOutputType = "fn.output.foundation"
 	CatOutputDebug    CatOutputType = "fn.output.debug"
+	CatOutputInfo     CatOutputType = "fn.output.info"
 	CatOutputWarnings CatOutputType = "fn.output.warnings"
 	CatOutputErrors   CatOutputType = "fn.output.errors"
 )

@@ -89,6 +89,10 @@ func NamedDebug(ctx context.Context, name string) io.Writer {
 	return typedOutput(ctx, true, name, idtypes.CatOutputDebug)
 }
 
+func Info(ctx context.Context) io.Writer {
+	return typedOutput(ctx, true, "info", idtypes.CatOutputInfo)
+}
+
 func Warnings(ctx context.Context) io.Writer {
 	return typedOutput(ctx, true, "warning", idtypes.CatOutputWarnings)
 }

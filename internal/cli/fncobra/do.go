@@ -54,7 +54,7 @@ func DeferCheckVersion(ctx context.Context, command string) {
 
 		if status.NewVersion {
 			compute.On(ctx).Cleanup(tasks.Action(command+".check-updated.notify").LogLevel(1), func(ctx context.Context) error {
-				fmt.Fprintf(console.Stdout(ctx), "\n\n  A new version of %s is available (%s).\n\n", command, status.Version)
+				fmt.Fprintf(console.Info(ctx), "\n\n  A new version of %s is available (%s).\n\n", command, status.Version)
 				return nil
 			})
 		}
