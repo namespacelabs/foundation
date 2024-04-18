@@ -5,11 +5,15 @@
 package vault_test
 
 import (
+	"embed"
 	"os"
 	"testing"
 
 	"namespacelabs.dev/foundation/universe/vault"
 )
+
+//go:embed testdata/*.json
+var lib embed.FS
 
 func TestParse(t *testing.T) {
 	if tb := testBundle(t); tb == nil {
@@ -98,8 +102,8 @@ func testBundle(t *testing.T) *vault.TlsBundle {
 }
 
 func testData(t *testing.T) []byte {
-	const path = "../../internal/testdata/vault/tls_bundle.json"
-	data, err := os.ReadFile(path)
+	const path = "testdata/tls_bundle.json"
+	data, err := lib.ReadFile(path)
 	if err != nil {
 		t.Fatalf("could not parse %q: %v", path, err)
 	}
