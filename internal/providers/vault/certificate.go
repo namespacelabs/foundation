@@ -6,7 +6,6 @@ package vault
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -138,13 +137,11 @@ func (p *provider) IssueCertificate(ctx context.Context, vaultClient *vaultclien
 				return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
 			}
 
-			cert := vault.TlsBundle{
+			data, err := vault.TlsBundle{
 				PrivateKeyPem:  issueResp.Data.PrivateKey,
 				CertificatePem: issueResp.Data.Certificate,
 				CaChainPem:     issueResp.Data.CaChain,
-			}
-
-			data, err := json.Marshal(cert)
+			}.Encode()
 			if err != nil {
 				return nil, fnerrors.BadDataError("failed to serialize certificate data: %w", err)
 			}
