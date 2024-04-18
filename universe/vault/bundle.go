@@ -57,7 +57,7 @@ func (tb TlsBundle) ServerConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func (tb TlsBundle) ClientConfid() (*tls.Config, error) {
+func (tb TlsBundle) ClientConfig() (*tls.Config, error) {
 	cert, err := tb.Certificate()
 	if err != nil {
 		return nil, err
