@@ -60,7 +60,7 @@ func TestCertificate(t *testing.T) {
 		t.Errorf("expected %T, got nil", cert.Certificate)
 	}
 	if cert.PrivateKey == nil {
-		t.Errorf("expected %T, got nil", cert.Certificate)
+		t.Errorf("expected %T, got nil", cert.PrivateKey)
 	}
 }
 
