@@ -41,7 +41,6 @@ func Register() {
 			vaultClient, err := p.Login(ctx, ca, vaultJwtAudience)
 			if err != nil {
 				return nil, err
-
 			}
 
 			if secretId.ServerRef == nil {
@@ -62,12 +61,6 @@ type vaultIdentifier struct {
 
 func (v vaultIdentifier) String() string {
 	return v.address + v.namespace + v.authMethod
-}
-
-type TlsBundle struct {
-	PrivateKeyPem  string   `json:"private_key_pem"`
-	CertificatePem string   `json:"certificate_pem"`
-	CaChainPem     []string `json:"ca_chain_pem"`
 }
 
 type provider struct {
@@ -145,7 +138,7 @@ func (p *provider) IssueCertificate(ctx context.Context, vaultClient *vaultclien
 				return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
 			}
 
-			cert := TlsBundle{
+			cert := vault.TlsBundle{
 				PrivateKeyPem:  issueResp.Data.PrivateKey,
 				CertificatePem: issueResp.Data.Certificate,
 				CaChainPem:     issueResp.Data.CaChain,
