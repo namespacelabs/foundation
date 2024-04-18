@@ -11,8 +11,6 @@ import (
 	"os"
 )
 
-const EnvKey = "TLS_BUNDLE"
-
 type TlsBundle struct {
 	PrivateKeyPem  string   `json:"private_key_pem"`
 	CertificatePem string   `json:"certificate_pem"`
@@ -24,8 +22,8 @@ func Parse(data []byte) (*TlsBundle, error) {
 	return &tb, json.Unmarshal(data, &tb)
 }
 
-func ParseFromEnv() (*TlsBundle, error) {
-	return Parse([]byte(os.Getenv(EnvKey)))
+func ParseFromEnv(key string) (*TlsBundle, error) {
+	return Parse([]byte(os.Getenv(key)))
 }
 
 func (tb TlsBundle) Encode() ([]byte, error) {

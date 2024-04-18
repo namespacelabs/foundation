@@ -18,8 +18,9 @@ func TestParse(t *testing.T) {
 }
 
 func TestParseFromEnv(t *testing.T) {
-	os.Setenv(vault.EnvKey, string(testData(t)))
-	tb, err := vault.ParseFromEnv()
+	key := "TLS_BUNDLE"
+	os.Setenv(key, string(testData(t)))
+	tb, err := vault.ParseFromEnv(key)
 	if err != nil {
 		t.Fatalf("could not parse bundle: %v", err)
 	}
