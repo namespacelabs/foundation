@@ -1,6 +1,8 @@
 package vault
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"os"
 )
@@ -14,14 +16,26 @@ type TlsBundle struct {
 }
 
 func Parse(data []byte) (*TlsBundle, error) {
-	bundle := TlsBundle{}
-	return &bundle, json.Unmarshal(data, &bundle)
+	tb := TlsBundle{}
+	return &tb, json.Unmarshal(data, &tb)
 }
 
 func ParseFromEnv() (*TlsBundle, error) {
 	return Parse([]byte(os.Getenv(EnvKey)))
 }
 
-func (b TlsBundle) Encode() ([]byte, error) {
-	return json.Marshal(b)
+func (tb TlsBundle) Encode() ([]byte, error) {
+	return json.Marshal(tb)
+}
+
+func (tb TlsBundle) CAPool() *x509.CertPool {
+	pool := x509.NewCertPool()
+	for _, cert := range tb.CaChainPem {
+		pool.AppendCertsFromPEM([]byte(cert))
+	}
+	return pool
+}
+
+func (tb TlsBundle) Certificate() (tls.Certificate, error) {
+	return tls.X509KeyPair([]byte(tb.CertificatePem), []byte(tb.PrivateKeyPem))
 }
