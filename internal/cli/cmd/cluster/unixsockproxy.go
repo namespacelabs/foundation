@@ -9,13 +9,10 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"path/filepath"
 
-	"golang.org/x/sys/unix"
 	"namespacelabs.dev/foundation/framework/netcopy"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -43,30 +40,12 @@ type unixSockProxyOpts struct {
 
 func runUnixSocketProxy(ctx context.Context, clusterId string, opts unixSockProxyOpts) (*unixSockProxy, error) {
 	socketPath := opts.SocketPath
-	var cleanup func()
+	listener, cleanup, err := crossPlatformUnixSocketProxyListen(ctx, &socketPath, clusterId, opts.Kind)
 
-	if socketPath == "" {
-		sockDir, err := dirs.CreateUserTempDir("", clusterId)
-		if err != nil {
-			return nil, err
-		}
-
-		socketPath = filepath.Join(sockDir, opts.Kind+".sock")
-		cleanup = func() {
-			os.RemoveAll(sockDir)
-		}
-	} else {
-		cleanup = func() {}
-	}
-
-	if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
-
-	var d net.ListenConfig
-	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
-		cleanup()
+		if cleanup != nil {
+			cleanup()
+		}
 		return nil, err
 	}
 

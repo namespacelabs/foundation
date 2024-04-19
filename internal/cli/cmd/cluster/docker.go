@@ -132,7 +132,7 @@ func connectToDocker(ctx context.Context, token fnapi.Token, cluster *api.Kubern
 }
 
 func runDocker(ctx context.Context, socketPath string, args ...string) error {
-	cmdLine := []string{"-H", "unix://" + socketPath}
+	cmdLine := []string{"-H", toDockerUrl(socketPath)}
 	cmdLine = append(cmdLine, args...)
 
 	docker := exec.CommandContext(ctx, "docker", cmdLine...)

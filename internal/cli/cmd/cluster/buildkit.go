@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"syscall"
 	"time"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
@@ -238,9 +237,7 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 		}
 	}
 
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setsid: true,
-	}
+	cmd.SysProcAttr = startBackgroundProxySysProcAttr
 
 	fmt.Fprintf(console.Debug(ctx), "Running background command %q\n", strings.Join(cmd.Args, " "))
 	if err := cmd.Start(); err != nil {
@@ -257,7 +254,7 @@ func startBackgroundProxy(ctx context.Context, md buildxInstanceMetadata, connec
 }
 
 func runBuildctl(ctx context.Context, buildctlBin buildctl.Buildctl, p *buildProxyWithRegistry, args ...string) error {
-	cmdLine := []string{"--addr", "unix://" + p.BuildkitAddr}
+	cmdLine := []string{"--addr", toDockerUrl(p.BuildkitAddr)}
 	cmdLine = append(cmdLine, args...)
 
 	fmt.Fprintf(console.Debug(ctx), "buildctl %s\n", strings.Join(cmdLine, " "))

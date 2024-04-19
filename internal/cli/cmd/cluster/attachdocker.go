@@ -120,7 +120,7 @@ func newDockerAttachCmd() *cobra.Command {
 			md := store.Metadata{
 				Endpoints: map[string]interface{}{
 					docker.DockerEndpoint: docker.EndpointMeta{
-						Host: "unix://" + sockPath,
+						Host: toDockerUrl(sockPath),
 					},
 				},
 				Metadata: command.DockerContext{

@@ -14,6 +14,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -140,8 +141,18 @@ func newSetupBuildxCmd() *cobra.Command {
 		}
 
 		for _, p := range available {
-			sockPath := filepath.Join(state, fmt.Sprintf("%s.sock", p))
-			controlSockPath := filepath.Join(state, fmt.Sprintf("control_%s.sock", p))
+			var sockPath string
+			var controlSockPath string
+
+			// TODO: Probably there is a better way to manage the path names.
+			// Also, sockPath might be a named pipe on windows..
+			if runtime.GOOS == "windows" {
+				sockPath = filepath.Join("\\\\.\\pipe\\", "nsc-buildx", fmt.Sprintf("%s.sock", p))
+				controlSockPath = filepath.Join("\\\\.\\pipe\\", "nsc-buildx", fmt.Sprintf("control_%s.sock", p))
+			} else {
+				sockPath = filepath.Join(state, fmt.Sprintf("%s.sock", p))
+				controlSockPath = filepath.Join(state, fmt.Sprintf("control_%s.sock", p))
+			}
 
 			instanceMD := buildxInstanceMetadata{
 				Platform:          p,
@@ -386,7 +397,7 @@ func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMe
 				platforms = []string{"linux/arm64"}
 			}
 
-			if err := ng.Update(string(p.Platform), "unix://"+p.SocketPath, platforms, true, true, nil, "", nil); err != nil {
+			if err := ng.Update(string(p.Platform), toDockerUrl(p.SocketPath), platforms, true, true, nil, "", nil); err != nil {
 				return err
 			}
 		}

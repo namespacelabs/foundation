@@ -12,7 +12,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -21,13 +20,11 @@ import (
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/types"
 	controlapi "github.com/moby/buildkit/api/services/control"
-	"golang.org/x/sys/unix"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/files"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
-	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -117,30 +114,12 @@ func (bp *RemoteBuildClusterInstance) RunBuildProxy(ctx context.Context, socketP
 }
 
 func internalRunProxy(ctx context.Context, b BuildCluster, socketPath, controlSocketPath string, useGrpcProxy, annotateBuild bool, workersInfo *controlapi.ListWorkersResponse) (*buildProxy, error) {
-	var cleanup func() error
-	if socketPath == "" {
-		sockDir, err := dirs.CreateUserTempDir("", fmt.Sprintf("buildkit.%v", b.GetPlatform()))
-		if err != nil {
-			return nil, err
-		}
+	listener, cleanup, err := internalListenProxy(ctx, &socketPath, b.GetPlatform())
 
-		socketPath = filepath.Join(sockDir, "buildkit.sock")
-		cleanup = func() error {
-			return os.RemoveAll(sockDir)
-		}
-	} else {
-		if err := unix.Unlink(socketPath); err != nil && !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-
-	var d net.ListenConfig
-	listener, err := d.Listen(ctx, "unix", socketPath)
 	if err != nil {
 		if cleanup != nil {
 			_ = cleanup()
 		}
-
 		return nil, err
 	}
 
@@ -285,11 +264,7 @@ func (bp *buildProxy) Serve(ctx context.Context) error {
 }
 
 func (bp *buildProxy) ServeStatus(ctx context.Context) error {
-	if err := unix.Unlink(bp.controlSocketPath); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-
-	l, err := net.Listen("unix", bp.controlSocketPath)
+	l, err := crossPlatformListen(bp.controlSocketPath)
 	if err != nil {
 		return err
 	}

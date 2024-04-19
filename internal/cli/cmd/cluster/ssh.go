@@ -10,9 +10,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
 	c "github.com/containerd/console"
 	"github.com/mattn/go-isatty"
@@ -221,26 +219,4 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 			return g.Wait()
 		}
 	})
-}
-
-func listenForResize(ctx context.Context, stdin c.Console, session *ssh.Session) {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGWINCH)
-
-	defer func() {
-		signal.Stop(sig)
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-sig:
-		}
-
-		w, h, err := term.GetSize(int(stdin.Fd()))
-		if err == nil {
-			session.WindowChange(h, w)
-		}
-	}
 }

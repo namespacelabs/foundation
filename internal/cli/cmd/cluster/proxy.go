@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -67,10 +66,8 @@ func NewProxyCmd() *cobra.Command {
 
 func setupBackgroundProxy(ctx context.Context, clusterId, kind, sockPath, pidFile string) error {
 	cmd := exec.Command(os.Args[0], "cluster", "proxy", "--kind", kind, "--sock_path", sockPath, "--cluster", clusterId, "--region", endpoint.RegionName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Foreground: false,
-		Setsid:     true,
-	}
+
+	cmd.SysProcAttr = setupBackgroundProxySysProcAttr
 
 	if err := cmd.Start(); err != nil {
 		return err

@@ -103,7 +103,7 @@ var constructors = map[string]func(context.Context, *api.KubernetesCluster) (inj
 
 		return injected{
 			Env: []string{
-				"DOCKER_HOST=unix://" + p.SocketAddr,
+				"DOCKER_HOST=" + toDockerUrl(p.SocketAddr),
 			},
 			Cleanup: p.Cleanup,
 		}, nil
