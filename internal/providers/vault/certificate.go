@@ -22,6 +22,11 @@ const (
 	vaultRequestTimeout = 10 * time.Second
 )
 
+type certificateRequest struct {
+	commonName string
+	sans       []string
+}
+
 func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
 	vp := cfg.GetProvider()
 	if vp == nil {
@@ -33,16 +38,24 @@ func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier,
 		return nil, err
 	}
 
-	if secretId.ServerRef == nil {
-		return nil, fnerrors.BadDataError("required server reference is not set")
+	req := certificateRequest{
+		commonName: cfg.GetCommonName(),
+		sans:       cfg.GetSans(),
 	}
 
-	commonName := fmt.Sprintf("%s.%s", strings.ReplaceAll(secretId.ServerRef.RelPath, "/", "-"), cfg.GetBaseDomain())
-	return issueCertificate(ctx, vaultClient, cfg.GetIssuer(), commonName)
+	if req.commonName == "" {
+		if secretId.ServerRef == nil {
+			return nil, fnerrors.BadDataError("required server reference is not set")
+		}
+
+		req.commonName = fmt.Sprintf("%s.%s", strings.ReplaceAll(secretId.ServerRef.RelPath, "/", "-"), cfg.GetBaseDomain())
+	}
+
+	return issueCertificate(ctx, vaultClient, cfg.GetIssuer(), req)
 }
 
-func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer, cn string) ([]byte, error) {
-	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", issuer).Arg("common-name", cn),
+func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer string, req certificateRequest) ([]byte, error) {
+	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", issuer).Arg("common-name", req.commonName),
 		func(ctx context.Context) ([]byte, error) {
 			pkiMount, role, ok := strings.Cut(issuer, "/")
 			if !ok {
@@ -50,7 +63,10 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issu
 			}
 
 			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, role,
-				schema.PkiIssueWithRoleRequest{CommonName: cn},
+				schema.PkiIssueWithRoleRequest{
+					CommonName: req.commonName,
+					AltNames:   strings.Join(req.sans, ","),
+				},
 				vaultclient.WithMountPath(pkiMount),
 			)
 			if err != nil {

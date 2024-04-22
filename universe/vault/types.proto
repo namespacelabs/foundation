@@ -15,9 +15,11 @@ message AppRole {
 }
 
 message Certificate {
-    string        base_domain = 1;
-    string        issuer      = 3;
-    VaultProvider provider    = 4;
+    string          base_domain = 1;
+    string          issuer      = 3;
+    VaultProvider   provider    = 4;
+    string          common_name = 5;
+    repeated string sans        = 6;
 
     reserved 2;
 }
