@@ -175,6 +175,8 @@ func apply(ctx context.Context, desc string, scope []fnschema.PackageName, obj k
 
 			return prepReq.Do(ctx).Into(&res)
 		}}); err != nil {
+		fmt.Fprintf(console.Debug(ctx), "failed to apply: %v\n", spec.BodyJson)
+
 		return nil, fnerrors.InvocationError("kubernetes", "%s: failed to apply: %w", desc, err)
 	}
 
