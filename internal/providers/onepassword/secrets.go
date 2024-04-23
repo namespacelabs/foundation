@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/console"
@@ -22,6 +23,15 @@ import (
 )
 
 const cmdTimeout = time.Minute
+
+var (
+	readSerially bool
+)
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.BoolVar(&readSerially, "one_password_read_serially", false, "If specified, read secrets from 1Password serially.")
+	_ = flags.MarkHidden("one_password_read_serially")
+}
 
 func Register() {
 	p := &provider{}
@@ -38,9 +48,16 @@ func Register() {
 type provider struct {
 	once    sync.Once
 	initErr error
+
+	mu sync.Mutex
 }
 
 func (p *provider) Read(ctx context.Context, ref string) ([]byte, error) {
+	if readSerially {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+	}
+
 	var data []byte
 
 	p.once.Do(func() {
