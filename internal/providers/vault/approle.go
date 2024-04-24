@@ -27,10 +27,6 @@ func (p *provider) appRoleProvider(ctx context.Context, secretId secrets.SecretI
 		return nil, err
 	}
 
-	if secretId.ServerRef == nil {
-		return nil, fnerrors.BadDataError("required server reference is not set")
-	}
-
 	return p.CreateSecretId(ctx, vaultClient, cfg)
 }
 
