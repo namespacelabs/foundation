@@ -32,14 +32,14 @@ type provider struct {
 }
 
 func (p *provider) Login(ctx context.Context, caCfg *vault.VaultProvider, audience string) (*vaultclient.Client, error) {
-	vKey := vaultIdentifier{
+	key := vaultIdentifier{
 		address:    caCfg.GetAddress(),
 		namespace:  caCfg.GetNamespace(),
 		authMethod: caCfg.GetAuthMount(),
 	}
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
-	client, ok := p.vaultClients[vKey.String()]
+	client, ok := p.vaultClients[key.String()]
 	if ok {
 		return client, nil
 	}
@@ -81,7 +81,7 @@ func (p *provider) Login(ctx context.Context, caCfg *vault.VaultProvider, audien
 		return nil, err
 	}
 
-	p.vaultClients[vKey.String()] = client
+	p.vaultClients[key.String()] = client
 
 	return client, nil
 }
