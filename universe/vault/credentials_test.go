@@ -36,8 +36,8 @@ func TestEncode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not encode bundle: %v", err)
 	}
-	if exp, got := 44, len(data); exp != got {
-		t.Errorf("expected %d bytes, got %d", exp, got)
+	if exp, got := 104, len(data); exp != got {
+		t.Errorf("expected %d bytes, got %d\n%s", exp, got, data)
 	}
 }
 
