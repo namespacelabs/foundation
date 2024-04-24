@@ -41,7 +41,7 @@ func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.
 				VaultAddress:   cfg.Provider.GetAddress(),
 				VaultNamespace: cfg.Provider.GetNamespace(),
 			}
-			wmp := vaultclient.WithMountPath(cfg.GetAuthMethod())
+			wmp := vaultclient.WithMountPath(cfg.GetAuthMount())
 
 			g := errgroup.Group{}
 			g.Go(func() error {

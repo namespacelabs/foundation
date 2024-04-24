@@ -35,7 +35,7 @@ func (p *provider) Login(ctx context.Context, caCfg *vault.VaultProvider, audien
 	vKey := vaultIdentifier{
 		address:    caCfg.GetAddress(),
 		namespace:  caCfg.GetNamespace(),
-		authMethod: caCfg.GetAuthMethod(),
+		authMethod: caCfg.GetAuthMount(),
 	}
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
@@ -63,7 +63,7 @@ func (p *provider) Login(ctx context.Context, caCfg *vault.VaultProvider, audien
 			}
 
 			loginResp, err := client.Auth.JwtLogin(ctx, schema.JwtLoginRequest{Jwt: idTokenResp.IdToken},
-				vaultclient.WithMountPath(caCfg.GetAuthMethod()),
+				vaultclient.WithMountPath(caCfg.GetAuthMount()),
 			)
 			if err != nil {
 				return nil, fnerrors.InvocationError("vault", "failed to login to vault: %w", err)

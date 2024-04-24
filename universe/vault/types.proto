@@ -10,7 +10,7 @@ option go_package = "namespacelabs.dev/foundation/universe/vault";
 
 message AppRole {
     string name = 1;
-    string auth_method = 2;
+    string auth_mount = 2;
     VaultProvider provider = 3;
 }
 
@@ -25,5 +25,5 @@ message Certificate {
 message VaultProvider {
     string address = 1;
     string namespace = 2;
-    string auth_method = 4;
+    string auth_mount = 4;
 }
