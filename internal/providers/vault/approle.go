@@ -52,7 +52,7 @@ func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.
 	})
 	ex.Go(func(ctx context.Context) error {
 		var err error
-		creds.SecretId, err = tasks.Return(ctx, tasks.Action("vault.create-secret-id"),
+		creds.SecretId, err = tasks.Return(ctx, tasks.Action("vault.create-secret-id").Arg("name", cfg.GetName()),
 			func(context.Context) (string, error) {
 				res, err := vaultClient.Auth.AppRoleWriteSecretId(ctx, cfg.GetName(), schema.AppRoleWriteSecretIdRequest{}, wmp)
 				if err != nil {
