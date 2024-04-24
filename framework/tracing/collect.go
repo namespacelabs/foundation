@@ -165,23 +165,8 @@ func loggerFromAttrs(zlb zerolog.Context, attrs []attribute.KeyValue) zerolog.Co
 
 func maybeCollectError(span trace.Span, err error) {
 	span.RecordError(err)
-	s, _ := status.FromError(err)
-	statusCode, msg := serverStatus(s)
-	span.SetStatus(statusCode, msg)
-}
-
-func serverStatus(grpcStatus *status.Status) (codes.Code, string) {
-	switch grpcStatus.Code() {
-	case grpc_codes.Unknown,
-		grpc_codes.DeadlineExceeded,
-		grpc_codes.Unimplemented,
-		grpc_codes.Internal,
-		grpc_codes.Unavailable,
-		grpc_codes.DataLoss,
-		grpc_codes.ResourceExhausted,
-		grpc_codes.FailedPrecondition:
-		return codes.Error, grpcStatus.Message()
-	default:
-		return codes.Unset, ""
+	s, ok := status.FromError(err)
+	if ok && s.Code() != grpc_codes.OK {
+		span.SetStatus(codes.Error, s.Message())
 	}
 }
