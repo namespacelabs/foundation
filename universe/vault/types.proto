@@ -9,21 +9,21 @@ package foundation.universe.vault;
 option go_package = "namespacelabs.dev/foundation/universe/vault";
 
 message AppRole {
-  string name = 1;
-  string auth_method = 2;
-  VaultProvider provider = 3;
+    string name = 1;
+    string auth_method = 2;
+    VaultProvider provider = 3;
 }
 
 message Certificate {
-  string base_domain = 1;
-  string issuer = 3;
-  VaultProvider provider = 4;
+    string base_domain = 1;
+    string issuer = 3;
+    VaultProvider provider = 4;
 
-  reserved 2;
+    reserved 2;
 }
 
 message VaultProvider {
-  string address = 1;
-  string namespace = 2;
-  string auth_method = 4;
+    string address = 1;
+    string namespace = 2;
+    string auth_method = 4;
 }
