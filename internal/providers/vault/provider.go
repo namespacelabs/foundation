@@ -49,6 +49,7 @@ func (p *provider) Login(ctx context.Context, caCfg *vault.VaultProvider, audien
 			client, err := vaultclient.New(
 				vaultclient.WithAddress(caCfg.GetAddress()),
 				vaultclient.WithRequestTimeout(vaultRequestTimeout),
+				withIssue257Workaround(),
 			)
 			if err != nil {
 				return nil, fnerrors.InvocationError("vault", "failed to create vault client: %w", err)
