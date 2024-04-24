@@ -5,25 +5,21 @@
 package vault_test
 
 import (
-	"embed"
 	"os"
 	"testing"
 
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
-//go:embed testdata/*.json
-var lib embed.FS
-
-func TestParse(t *testing.T) {
+func TestParseTlsBundle(t *testing.T) {
 	if tb := testBundle(t); tb == nil {
 		t.Errorf("expected %T, got nil", tb)
 	}
 }
 
-func TestParseFromEnv(t *testing.T) {
+func TestParseTlsBundleFromEnv(t *testing.T) {
 	key := "TLS_BUNDLE"
-	os.Setenv(key, string(testData(t)))
+	os.Setenv(key, string(testBundleData(t)))
 	tb, err := vault.ParseTlsBundleFromEnv(key)
 	if err != nil {
 		t.Fatalf("could not parse bundle: %v", err)
@@ -33,7 +29,7 @@ func TestParseFromEnv(t *testing.T) {
 	}
 }
 
-func TestEncode(t *testing.T) {
+func TestTlsBundleEncode(t *testing.T) {
 	tb := testBundle(t)
 
 	data, err := tb.Encode()
@@ -81,7 +77,7 @@ func TestServerConfig(t *testing.T) {
 	}
 }
 
-func ClientrverConfig(t *testing.T) {
+func ClientConfig(t *testing.T) {
 	tb := testBundle(t)
 
 	config, err := tb.ClientConfig()
@@ -94,14 +90,14 @@ func ClientrverConfig(t *testing.T) {
 }
 
 func testBundle(t *testing.T) *vault.TlsBundle {
-	tb, err := vault.ParseTlsBundle(testData(t))
+	tb, err := vault.ParseTlsBundle(testBundleData(t))
 	if err != nil {
 		t.Fatalf("could not parse bundle: %v", err)
 	}
 	return tb
 }
 
-func testData(t *testing.T) []byte {
+func testBundleData(t *testing.T) []byte {
 	const path = "testdata/tls_bundle.json"
 	data, err := lib.ReadFile(path)
 	if err != nil {
