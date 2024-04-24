@@ -28,27 +28,40 @@ type fix257 struct {
 }
 
 func (w fix257) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !strings.HasSuffix(req.URL.Path, "/secret-id") {
+		return w.rt.RoundTrip(req)
+	}
 	res, err := w.rt.RoundTrip(req)
-	if !strings.HasSuffix(req.URL.Path, "/secret-id") ||
-		err != nil ||
-		res == nil ||
-		res.StatusCode != http.StatusOK ||
-		strings.Split(res.Header.Get("content-type"), ";")[0] != "application/json" {
+	if err != nil {
 		return res, err
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK ||
+		strings.Split(res.Header.Get("content-type"), ";")[0] != "application/json" {
+		return res, err
+	}
+
+	contents, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	body := map[string]any{}
-	json.NewDecoder(res.Body).Decode(&body)
-
-	if data, ok := body["data"].(map[string]any); ok {
-		if ttl, ok := data["secret_id_ttl"].(float64); ok {
-			data["secret_id_ttl"] = strconv.Itoa(int(ttl))
+	// If JSON decoding fails, don't change the body.
+	if err := json.Unmarshal(contents, &body); err == nil {
+		if data, ok := body["data"].(map[string]any); ok {
+			if ttl, ok := data["secret_id_ttl"].(float64); ok {
+				// AppRoleWriteSecretIdResponse.data.secret_id_ttl is of type string.
+				data["secret_id_ttl"] = strconv.Itoa(int(ttl))
+			}
 		}
 	}
 
-	raw, _ := json.Marshal(body)
-	res.Body = io.NopCloser(bytes.NewReader(raw))
+	// If JSON re-encoding fails, also don't change the body.
+	if recoded, err := json.Marshal(body); err == nil {
+		contents = recoded
+	}
+	res.Body = io.NopCloser(bytes.NewReader(contents))
 
 	return res, err
 }
