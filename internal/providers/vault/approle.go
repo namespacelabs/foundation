@@ -16,21 +16,21 @@ import (
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
-func (p *provider) appRoleProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.AppRole) ([]byte, error) {
+func appRoleProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.AppRole) ([]byte, error) {
 	vp := cfg.GetProvider()
 	if vp == nil {
 		return nil, fnerrors.BadInputError("invalid vault app role configuration: missing provider configuration")
 	}
 
-	vaultClient, err := p.Login(ctx, vp, vaultJwtAudience)
+	vaultClient, err := login(ctx, vp, vaultJwtAudience)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.CreateSecretId(ctx, vaultClient, cfg)
+	return createSecretId(ctx, vaultClient, cfg)
 }
 
-func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.Client, cfg *vault.AppRole) ([]byte, error) {
+func createSecretId(ctx context.Context, vaultClient *vaultclient.Client, cfg *vault.AppRole) ([]byte, error) {
 	creds := vault.Credentials{
 		VaultAddress:   cfg.Provider.GetAddress(),
 		VaultNamespace: cfg.Provider.GetNamespace(),

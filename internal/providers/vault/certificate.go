@@ -23,13 +23,13 @@ const (
 	vaultRequestTimeout = 10 * time.Second
 )
 
-func (p *provider) certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
+func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
 	vp := cfg.GetProvider()
 	if vp == nil {
 		return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing provider configuration")
 	}
 
-	vaultClient, err := p.Login(ctx, vp, vaultJwtAudience)
+	vaultClient, err := login(ctx, vp, vaultJwtAudience)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (p *provider) certificateProvider(ctx context.Context, secretId secrets.Sec
 	}
 
 	commonName := fmt.Sprintf("%s.%s", strings.ReplaceAll(secretId.ServerRef.RelPath, "/", "-"), cfg.GetBaseDomain())
-	return p.IssueCertificate(ctx, vaultClient, cfg.GetIssuer(), commonName)
+	return issueCertificate(ctx, vaultClient, cfg.GetIssuer(), commonName)
 }
 
 type vaultIdentifier struct {
@@ -52,7 +52,7 @@ func (v vaultIdentifier) String() string {
 	return v.address + v.namespace + v.authMethod
 }
 
-func (p *provider) IssueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer, cn string) ([]byte, error) {
+func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer, cn string) ([]byte, error) {
 	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", issuer).Arg("common-name", cn),
 		func(ctx context.Context) ([]byte, error) {
 			pkiMount, role, ok := strings.Cut(issuer, "/")
