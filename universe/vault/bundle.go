@@ -17,13 +17,13 @@ type TlsBundle struct {
 	CaChainPem     []string `json:"ca_chain_pem"`
 }
 
-func Parse(data []byte) (*TlsBundle, error) {
+func ParseTlsBundle(data []byte) (*TlsBundle, error) {
 	tb := TlsBundle{}
 	return &tb, json.Unmarshal(data, &tb)
 }
 
-func ParseFromEnv(key string) (*TlsBundle, error) {
-	return Parse([]byte(os.Getenv(key)))
+func ParseTlsBundleFromEnv(key string) (*TlsBundle, error) {
+	return ParseTlsBundle([]byte(os.Getenv(key)))
 }
 
 func (tb TlsBundle) Encode() ([]byte, error) {
