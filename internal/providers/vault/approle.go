@@ -40,7 +40,7 @@ func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.
 	ex := executor.New(ctx, "vault.credentials")
 	ex.Go(func(ctx context.Context) error {
 		var err error
-		creds.RoleId, err = tasks.Return(ctx, tasks.Action("vault.read-role-ide").Arg("name", cfg.GetName()),
+		creds.RoleId, err = tasks.Return(ctx, tasks.Action("vault.read-role-id").Arg("name", cfg.GetName()),
 			func(ctx context.Context) (string, error) {
 				res, err := vaultClient.Auth.AppRoleReadRoleId(ctx, cfg.GetName(), wmp)
 				if err != nil {
