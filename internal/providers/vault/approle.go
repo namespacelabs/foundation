@@ -41,10 +41,11 @@ func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.
 				VaultAddress:   cfg.Provider.GetAddress(),
 				VaultNamespace: cfg.Provider.GetNamespace(),
 			}
+			wmp := vaultclient.WithMountPath(cfg.GetAuthMethod())
 
 			g := errgroup.Group{}
 			g.Go(func() error {
-				res, err := vaultClient.Auth.AppRoleReadRoleId(ctx, cfg.GetName())
+				res, err := vaultClient.Auth.AppRoleReadRoleId(ctx, cfg.GetName(), wmp)
 				if err != nil {
 					return fnerrors.InvocationError("vault", "failed to read role id: %w", err)
 				}
@@ -52,9 +53,9 @@ func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.
 				return nil
 			})
 			g.Go(func() error {
-				res, err := vaultClient.Auth.AppRoleWriteSecretId(ctx, cfg.GetName(), schema.AppRoleWriteSecretIdRequest{})
+				res, err := vaultClient.Auth.AppRoleWriteSecretId(ctx, cfg.GetName(), schema.AppRoleWriteSecretIdRequest{}, wmp)
 				if err != nil {
-					return fnerrors.InvocationError("vault", "failed to created secret id: %w", err)
+					return fnerrors.InvocationError("vault", "failed to create secret id: %w", err)
 				}
 				creds.SecretId = res.Data.SecretId
 				return nil
