@@ -9,8 +9,8 @@ import (
 
 	vaultclient "github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
-	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
@@ -31,41 +31,46 @@ func (p *provider) appRoleProvider(ctx context.Context, secretId secrets.SecretI
 }
 
 func (p *provider) CreateSecretId(ctx context.Context, vaultClient *vaultclient.Client, cfg *vault.AppRole) ([]byte, error) {
-	return tasks.Return(ctx, tasks.Action("vault.create-secret-id").Arg("name", cfg.GetName()),
-		func(ctx context.Context) ([]byte, error) {
-			creds := vault.Credentials{
-				VaultAddress:   cfg.Provider.GetAddress(),
-				VaultNamespace: cfg.Provider.GetNamespace(),
-			}
-			wmp := vaultclient.WithMountPath(cfg.GetAuthMount())
+	creds := vault.Credentials{
+		VaultAddress:   cfg.Provider.GetAddress(),
+		VaultNamespace: cfg.Provider.GetNamespace(),
+	}
+	wmp := vaultclient.WithMountPath(cfg.GetAuthMount())
 
-			g := errgroup.Group{}
-			g.Go(func() error {
+	ex := executor.New(ctx, "vault.credentials")
+	ex.Go(func(ctx context.Context) error {
+		var err error
+		creds.RoleId, err = tasks.Return(ctx, tasks.Action("vault.read-role-ide").Arg("name", cfg.GetName()),
+			func(ctx context.Context) (string, error) {
 				res, err := vaultClient.Auth.AppRoleReadRoleId(ctx, cfg.GetName(), wmp)
 				if err != nil {
-					return fnerrors.InvocationError("vault", "failed to read role id: %w", err)
+					return "", fnerrors.InvocationError("vault", "failed to read role id: %w", err)
 				}
-				creds.RoleId = res.Data.RoleId
-				return nil
+				return res.Data.RoleId, nil
 			})
-			g.Go(func() error {
+		return err
+	})
+	ex.Go(func(ctx context.Context) error {
+		var err error
+		creds.SecretId, err = tasks.Return(ctx, tasks.Action("vault.create-secret-id"),
+			func(context.Context) (string, error) {
 				res, err := vaultClient.Auth.AppRoleWriteSecretId(ctx, cfg.GetName(), schema.AppRoleWriteSecretIdRequest{}, wmp)
 				if err != nil {
-					return fnerrors.InvocationError("vault", "failed to create secret id: %w", err)
+					return "", fnerrors.InvocationError("vault", "failed to create secret id: %w", err)
 				}
-				creds.SecretId = res.Data.SecretId
-				return nil
+				return res.Data.SecretId, nil
 			})
-			if err := g.Wait(); err != nil {
-				return nil, err
-			}
+		return err
+	})
 
-			data, err := creds.Encode()
-			if err != nil {
-				return nil, fnerrors.BadDataError("failed to serialize credentials: %w", err)
-			}
+	if err := ex.Wait(); err != nil {
+		return nil, err
+	}
 
-			return data, nil
-		},
-	)
+	data, err := creds.Encode()
+	if err != nil {
+		return nil, fnerrors.BadDataError("failed to serialize credentials: %w", err)
+	}
+
+	return data, nil
 }
