@@ -8,9 +8,8 @@ import (
 	"context"
 
 	vaultclient "github.com/hashicorp/vault-client-go"
-	"namespacelabs.dev/foundation/framework/secrets/combined"
-
 	"github.com/hashicorp/vault-client-go/schema"
+	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
