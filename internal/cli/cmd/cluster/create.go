@@ -92,7 +92,11 @@ func NewCreateCmd() *cobra.Command {
 				return fnerrors.New("failed to load key: %w", err)
 			}
 
-			opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, string(keyData))
+			for _, line := range strings.Split(string(keyData), "\n") {
+				if clean := strings.TrimSpace(line); clean != "" {
+					opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, clean)
+				}
+			}
 		}
 
 		if *experimental != "" && *experimentalFrom != "" {
