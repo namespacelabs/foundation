@@ -22,7 +22,7 @@ func appRoleProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg
 		return nil, fnerrors.BadInputError("invalid vault app role configuration: missing provider configuration")
 	}
 
-	vaultClient, err := login(ctx, vp, vaultJwtAudience)
+	vaultClient, err := login(ctx, vp)
 	if err != nil {
 		return nil, err
 	}

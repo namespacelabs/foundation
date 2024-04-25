@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	vaultJwtAudience    = "vault.namespace.systems"
 	vaultRequestTimeout = 10 * time.Second
 )
 
@@ -29,7 +28,7 @@ func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier,
 		return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing provider configuration")
 	}
 
-	vaultClient, err := login(ctx, vp, vaultJwtAudience)
+	vaultClient, err := login(ctx, vp)
 	if err != nil {
 		return nil, err
 	}
