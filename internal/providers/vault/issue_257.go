@@ -32,15 +32,14 @@ func (w fix257) RoundTrip(req *http.Request) (*http.Response, error) {
 		return w.rt.RoundTrip(req)
 	}
 	res, err := w.rt.RoundTrip(req)
-	if err != nil {
-		return res, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK ||
+	if err != nil ||
+		res.StatusCode != http.StatusOK ||
 		strings.Split(res.Header.Get("content-type"), ";")[0] != "application/json" {
 		return res, err
 	}
 
+	// Only close the body if we consume & replace it here.
+	defer res.Body.Close()
 	contents, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
