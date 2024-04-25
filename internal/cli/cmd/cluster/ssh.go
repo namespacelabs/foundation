@@ -37,6 +37,9 @@ func NewSshCmd() *cobra.Command {
 
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
+	user := cmd.Flags().String("user", "", "The user to connect as.")
+
+	cmd.Flags().MarkHidden("user")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *tag != "" {
@@ -52,7 +55,7 @@ func NewSshCmd() *cobra.Command {
 				return err
 			}
 
-			return InlineSsh(ctx, cluster.Cluster, *sshAgent, args)
+			return InlineSsh(ctx, cluster.Cluster, *user, *sshAgent, args)
 		}
 
 		cluster, args, err := SelectRunningCluster(ctx, args)
@@ -68,7 +71,7 @@ func NewSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return InlineSsh(ctx, cluster, *sshAgent, args)
+		return InlineSsh(ctx, cluster, *user, *sshAgent, args)
 	})
 
 	return cmd
@@ -95,13 +98,13 @@ func NewTopCmd() *cobra.Command {
 			return nil
 		}
 
-		return InlineSsh(ctx, cluster, false, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
+		return InlineSsh(ctx, cluster, "", false, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
 	})
 
 	return cmd
 }
 
-func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(context.Context, *ssh.Client) error) error {
+func withSsh(ctx context.Context, cluster *api.KubernetesCluster, user string, callback func(context.Context, *ssh.Client) error) error {
 	sshSvc := api.ClusterService(cluster, "ssh")
 	if sshSvc == nil || sshSvc.Endpoint == "" {
 		return fnerrors.New("instance does not have ssh")
@@ -121,8 +124,12 @@ func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(
 		return err
 	}
 
+	if user == "" {
+		user = "root"
+	}
+
 	config := &ssh.ClientConfig{
-		User: "root",
+		User: user,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
@@ -140,7 +147,7 @@ func withSsh(ctx context.Context, cluster *api.KubernetesCluster, callback func(
 	return callback(ctx, client)
 }
 
-func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent bool, args []string) error {
+func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, user string, sshAgent bool, args []string) error {
 	stdin, err := c.ConsoleFromFile(os.Stdin)
 	if err != nil {
 		return err
@@ -150,7 +157,7 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, sshAgent boo
 		return fnerrors.New("stdin is not a tty")
 	}
 
-	return withSsh(ctx, cluster, func(ctx context.Context, client *ssh.Client) error {
+	return withSsh(ctx, cluster, user, func(ctx context.Context, client *ssh.Client) error {
 		session, err := client.NewSession()
 		if err != nil {
 			return err
