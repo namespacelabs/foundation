@@ -7,11 +7,13 @@ package nscloud
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/spf13/pflag"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -35,12 +37,17 @@ var (
 
 var (
 	defaultMachineType string
+	defaultDuration    time.Duration
 )
 
 func SetupFlags(flags *pflag.FlagSet, hide bool) {
 	endpoint.SetupFlags("nscloud_", flags, hide)
+
 	flags.StringVar(&defaultMachineType, "nscloud_default_machine_type", "", "If specified, overrides the default machine type new clusters are created with.")
 	_ = flags.MarkHidden("nscloud_default_machine_type")
+
+	flags.DurationVar(&defaultDuration, "nscloud_default_duration", 0, "If specified, overrides the default duration new clusters are created with.")
+	_ = flags.MarkHidden("nscloud_default_duration")
 }
 
 func Register() {
@@ -123,10 +130,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	}
 
 	ephemeral := env.Environment().Ephemeral
-	response, err := api.CreateCluster(ctx, api.Methods, api.CreateClusterOpts{
-		MachineType: defaultMachineType,
-		Purpose:     purpose,
-	})
+	response, err := createCluster(ctx, purpose, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +148,26 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
 	}
 
-	response, err := api.CreateCluster(ctx, api.Methods, api.CreateClusterOpts{Purpose: purpose, Labels: labels})
+	response, err := createCluster(ctx, purpose, labels)
 	if err != nil {
 		return nil, err
 	}
 
 	return completePlanner(ctx, env, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, env.Environment().Ephemeral)
+}
+
+func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.StartCreateKubernetesClusterResponse, error) {
+	opts := api.CreateClusterOpts{
+		MachineType: defaultMachineType,
+		Purpose:     purpose,
+		Labels:      labels,
+	}
+
+	if defaultDuration > 0 {
+		opts.Deadline = timestamppb.New(time.Now().Add(defaultDuration))
+	}
+
+	return api.CreateCluster(ctx, api.Methods, opts)
 }
 
 func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
