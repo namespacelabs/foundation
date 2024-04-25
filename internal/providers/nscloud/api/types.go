@@ -83,16 +83,17 @@ type StartCreateKubernetesClusterResponse struct {
 }
 
 type CreateContainersRequest struct {
-	MachineType     string                 `json:"machine_type,omitempty"`
-	Container       []*ContainerRequest    `json:"container,omitempty"`
-	Compose         []*ComposeRequest      `json:"compose,omitempty"`
-	Interactive     bool                   `json:"interactive,omitempty"`
-	DevelopmentMode bool                   `json:"development_mode,omitempty"`
-	Feature         []string               `json:"feature,omitempty"`
-	Label           []*LabelEntry          `json:"label,omitempty"`
-	InternalExtra   string                 `json:"internal_extra,omitempty"`
-	Deadline        *timestamppb.Timestamp `json:"deadline,omitempty"`
-	Experimental    any                    `json:"experimental,omitempty"`
+	MachineType       string                 `json:"machine_type,omitempty"`
+	Container         []*ContainerRequest    `json:"container,omitempty"`
+	Compose           []*ComposeRequest      `json:"compose,omitempty"`
+	Interactive       bool                   `json:"interactive,omitempty"`
+	DevelopmentMode   bool                   `json:"development_mode,omitempty"`
+	Feature           []string               `json:"feature,omitempty"`
+	Label             []*LabelEntry          `json:"label,omitempty"`
+	InternalExtra     string                 `json:"internal_extra,omitempty"`
+	Deadline          *timestamppb.Timestamp `json:"deadline,omitempty"`
+	Experimental      any                    `json:"experimental,omitempty"`
+	AuthorizedSshKeys []string               `json:"authorized_ssh_keys,omitempty"`
 }
 
 type StartContainersRequest struct {

@@ -14,7 +14,6 @@ import (
 	composecli "github.com/compose-spec/compose-go/cli"
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -25,7 +24,6 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/ctl"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/endpoint"
-	"namespacelabs.dev/foundation/internal/runtime/rtypes"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
@@ -57,6 +55,7 @@ func NewRunCmd() *cobra.Command {
 	network := run.Flags().String("network", "", "The network setting to start the container with.")
 	experimental := run.Flags().String("experimental", "", "A set of experimental settings to pass during creation.")
 	instanceExperimental := run.Flags().String("instance_experimental", "", "A set of experimental instance settings to pass during creation.")
+	userSshey := run.Flags().String("ssh_key", "", "Injects the specified ssh public key in the created instance.")
 
 	run.Flags().MarkHidden("label")
 	run.Flags().MarkHidden("internal_extra")
@@ -66,6 +65,7 @@ func NewRunCmd() *cobra.Command {
 	run.Flags().MarkHidden("experimental")
 	run.Flags().MarkHidden("instance_experimental")
 	run.Flags().MarkHidden("expose_nsc_bins")
+	run.Flags().MarkHidden("ssh_key")
 
 	run.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		name := *requestedName
@@ -104,6 +104,12 @@ func NewRunCmd() *cobra.Command {
 			ForwardNscState: *forwardNscState,
 			ExposeNscBins:   *exposeNscBins,
 			Network:         *network,
+		}
+
+		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
+			return err
+		} else {
+			opts.AuthorizedSshKeys = keys
 		}
 
 		if *experimental != "" {
@@ -245,6 +251,7 @@ type CreateContainerOpts struct {
 	Network              string
 	Experimental         any
 	InstanceExperimental any
+	AuthorizedSshKeys    []string
 }
 
 type exportContainerPort struct {
@@ -293,13 +300,14 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 
 		resp, err := tasks.Return(ctx, tasks.Action("nscloud.create-containers").HumanReadablef(label), func(ctx context.Context) (*api.CreateContainersResponse, error) {
 			req := api.CreateContainersRequest{
-				MachineType:     machineType,
-				Container:       []*api.ContainerRequest{container},
-				DevelopmentMode: devmode,
-				Label:           labels,
-				Feature:         opts.Features,
-				InternalExtra:   opts.InternalExtra,
-				Experimental:    opts.InstanceExperimental,
+				MachineType:       machineType,
+				Container:         []*api.ContainerRequest{container},
+				DevelopmentMode:   devmode,
+				Label:             labels,
+				Feature:           opts.Features,
+				InternalExtra:     opts.InternalExtra,
+				Experimental:      opts.InstanceExperimental,
+				AuthorizedSshKeys: opts.AuthorizedSshKeys,
 			}
 
 			if duration > 0 {
@@ -488,21 +496,6 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 	}
 
 	return resp, nil
-}
-
-func sshRun(ctx context.Context, sshcli *ssh.Client, io rtypes.IO, cmd string) error {
-	sess, err := sshcli.NewSession()
-	if err != nil {
-		return err
-	}
-
-	defer sess.Close()
-
-	sess.Stdin = io.Stdin
-	sess.Stdout = io.Stdout
-	sess.Stderr = io.Stderr
-
-	return sess.Run(cmd)
 }
 
 func generateNameFromImage(image string) string {

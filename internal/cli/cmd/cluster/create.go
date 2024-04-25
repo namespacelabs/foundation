@@ -86,17 +86,10 @@ func NewCreateCmd() *cobra.Command {
 			opts.Deadline = timestamppb.New(time.Now().Add(*duration))
 		}
 
-		if *userSshey != "" {
-			keyData, err := os.ReadFile(*userSshey)
-			if err != nil {
-				return fnerrors.New("failed to load key: %w", err)
-			}
-
-			for _, line := range strings.Split(string(keyData), "\n") {
-				if clean := strings.TrimSpace(line); clean != "" {
-					opts.AuthorizedSshKeys = append(opts.AuthorizedSshKeys, clean)
-				}
-			}
+		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {
+			return err
+		} else {
+			opts.AuthorizedSshKeys = keys
 		}
 
 		if *experimental != "" && *experimentalFrom != "" {
@@ -271,4 +264,24 @@ func NewCreateCmd() *cobra.Command {
 	})
 
 	return cmd
+}
+
+func parseAuthorizedKeys(file string) ([]string, error) {
+	if file == "" {
+		return nil, nil
+	}
+
+	keyData, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fnerrors.New("failed to load keys: %w", err)
+	}
+
+	var keys []string
+	for _, line := range strings.Split(string(keyData), "\n") {
+		if clean := strings.TrimSpace(line); clean != "" {
+			keys = append(keys, clean)
+		}
+	}
+
+	return keys, nil
 }
