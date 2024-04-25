@@ -8,9 +8,11 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
+	"github.com/rs/zerolog"
 )
 
 type Credentials struct {
@@ -62,5 +64,39 @@ func (c *Credentials) Login(ctx context.Context, options ...vault.ClientOption) 
 		return nil, err
 	}
 
+	go renew(ctx, client, resp.Auth)
+
 	return client, nil
+}
+
+func renew(ctx context.Context, client *vault.Client, auth *vault.ResponseAuth) {
+	lease := time.Duration(auth.LeaseDuration) * time.Second
+	if lease <= 0 {
+		return // token does not expire
+	}
+	if !auth.Renewable {
+		zerolog.Ctx(ctx).Warn().Msgf("vault: non-renewable token expires in %s", lease)
+		return
+	}
+
+	interval := lease - time.Minute*2
+	if interval < 0 {
+		zerolog.Ctx(ctx).Warn().Msgf("vault: not renewing token, lease too short: %s", lease)
+		return
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if _, err := client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{}); err != nil {
+				// TODO: Let the consumer know, so it could try and reconnect if needed?
+				zerolog.Ctx(ctx).Error().Msgf("vault: failed to renew token: %v", err)
+				return // TODO: retry, with backoff
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }
