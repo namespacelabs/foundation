@@ -42,16 +42,6 @@ func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier,
 	return issueCertificate(ctx, vaultClient, cfg.GetIssuer(), commonName)
 }
 
-type vaultIdentifier struct {
-	address    string
-	namespace  string
-	authMethod string
-}
-
-func (v vaultIdentifier) String() string {
-	return v.address + v.namespace + v.authMethod
-}
-
 func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer, cn string) ([]byte, error) {
 	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", issuer).Arg("common-name", cn),
 		func(ctx context.Context) ([]byte, error) {
