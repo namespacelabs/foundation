@@ -6,6 +6,7 @@ package vault
 
 import (
 	"context"
+	"os"
 
 	vaultclient "github.com/hashicorp/vault-client-go"
 	"github.com/hashicorp/vault-client-go/schema"
@@ -16,6 +17,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
 )
+
+const VaulTokenEnvKey = "VAULT_TOKEN"
 
 var clients = tcache.NewCache[*vaultclient.Client]()
 
@@ -39,6 +42,14 @@ func login(ctx context.Context, caCfg *vault.VaultProvider, audience string) (*v
 				}
 
 				client.SetNamespace(caCfg.GetNamespace())
+
+				// Vault by default always prefers a token set in VAULT_TOKEN env var. We do the same.
+				// Useful in case of VAULT_TOKEN provided by the 3rd party (e.g. by CI, etc).
+				vaultToken := os.Getenv(VaulTokenEnvKey)
+				if vaultToken != "" {
+					client.SetToken(vaultToken)
+					return client, nil
+				}
 
 				idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1)
 				if err != nil {
