@@ -159,10 +159,6 @@ func oidcLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.
 		fmt.Fprintf(console.Debug(ctx), "failed to open browser: %v\n", err)
 	}
 
-	if err != nil {
-		return "", fnerrors.InvocationError("vault", "failed to make OIDC request: %w", err)
-	}
-
 	fmt.Fprintf(console.Stdout(ctx), "Waiting for OIDC authentication to complete...\n")
 	for {
 		select {
