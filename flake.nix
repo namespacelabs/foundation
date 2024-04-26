@@ -14,7 +14,6 @@
     in {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
-          clang-tools # For clang-format.
           go_1_21
           gopls
           go-outline
@@ -36,6 +35,14 @@
           jq
           aws-iam-authenticator
           google-cloud-sdk
+
+          (writeShellScriptBin "clang-format" ''
+            ${
+              lib.getExe' clang-tools "clang-format"
+            } --style="${
+              (builtins.fromJSON (lib.readFile ./.vscode/settings.json))."clang-format.style"
+            }" $@
+          '')
         ];
       };
     });
