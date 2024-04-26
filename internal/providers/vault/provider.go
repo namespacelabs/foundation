@@ -168,7 +168,7 @@ func oidcLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.
 				vaultclient.WithMountPath(vaultCfg.GetAuthMount()),
 			)
 			if err != nil {
-				return "", fnerrors.InvocationError("vault", "failed to login using OIDC provider")
+				return "", fnerrors.InvocationError("vault", "failed to login using OIDC provider: %v", err)
 			}
 
 			return r.Auth.ClientToken, nil
