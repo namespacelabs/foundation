@@ -43,6 +43,7 @@
               (builtins.fromJSON (lib.readFile ./.vscode/settings.json))."clang-format.style"
             }" $@
           '')
+          clang-tools # everything except clang-format
         ];
       };
     });
