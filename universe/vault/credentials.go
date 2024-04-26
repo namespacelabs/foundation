@@ -16,6 +16,9 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// Force re-authentication if the token expires in less than this much time.
+const ttlBuffer = time.Second * 8
+
 type Credentials struct {
 	RoleId   string `json:"role_id"`
 	SecretId string `json:"secret_id"`
@@ -70,7 +73,8 @@ func (h *ClientHandle) Get(ctx context.Context) (*vault.Client, error) {
 	h.m.Lock()
 	defer h.m.Unlock()
 
-	if h.expired() {
+	// Re-authenticate if less than six seconds left.
+	if time.Now().Add(ttlBuffer).After(h.expires()) {
 		return h.client, h.renew(ctx)
 	}
 
@@ -125,8 +129,4 @@ func (h *ClientHandle) expires() time.Time {
 		return time.Time{}
 	}
 	return h.leased.Add(h.ttl())
-}
-
-func (h *ClientHandle) expired() bool {
-	return time.Now().After(h.expires())
 }
