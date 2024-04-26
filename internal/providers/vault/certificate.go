@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/vault-client-go/schema"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
 )
@@ -27,13 +28,13 @@ type certificateRequest struct {
 	sans       []string
 }
 
-func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
-	vp := cfg.GetProvider()
-	if vp == nil {
+func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
+	vaultConfig, ok := GetVaultConfig(conf)
+	if !ok || vaultConfig == nil {
 		return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing provider configuration")
 	}
 
-	vaultClient, err := login(ctx, vp)
+	vaultClient, err := login(ctx, vaultConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -51,18 +52,13 @@ func certificateProvider(ctx context.Context, secretId secrets.SecretIdentifier,
 		req.commonName = fmt.Sprintf("%s.%s", strings.ReplaceAll(secretId.ServerRef.RelPath, "/", "-"), cfg.GetBaseDomain())
 	}
 
-	return issueCertificate(ctx, vaultClient, cfg.GetIssuer(), req)
+	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
 }
 
-func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, issuer string, req certificateRequest) ([]byte, error) {
-	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("issuer", issuer).Arg("common-name", req.commonName),
+func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiMount, pkiRole string, req certificateRequest) ([]byte, error) {
+	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("pki-mount", pkiMount).Arg("pki-role", pkiRole).Arg("common-name", req.commonName),
 		func(ctx context.Context) ([]byte, error) {
-			pkiMount, role, ok := strings.Cut(issuer, "/")
-			if !ok {
-				return nil, fnerrors.BadDataError("invalid issuer format; expected <pki-mount>/<role>")
-			}
-
-			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, role,
+			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
 				schema.PkiIssueWithRoleRequest{
 					CommonName: req.commonName,
 					AltNames:   strings.Join(req.sans, ","),

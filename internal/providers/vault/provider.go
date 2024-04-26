@@ -20,6 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
 	"namespacelabs.dev/go-ids"
@@ -33,7 +34,15 @@ const (
 	oidcLoginTimeout = 5 * time.Minute
 )
 
-var clients = tcache.NewCache[*vaultclient.Client]()
+var (
+	vaultConfigType = cfg.DefineConfigType[*vault.VaultProvider]()
+
+	clients = tcache.NewCache[*vaultclient.Client]()
+)
+
+func GetVaultConfig(cfg cfg.Configuration) (*vault.VaultProvider, bool) {
+	return vaultConfigType.CheckGet(cfg)
+}
 
 func Register() {
 	combined.RegisterSecretsProvider(appRoleProvider)

@@ -19,24 +19,25 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-var secretProviders = map[string]func(context.Context, secrets.SecretIdentifier, *anypb.Any) ([]byte, error){}
+var secretProviders = map[string]func(context.Context, cfg.Configuration, secrets.SecretIdentifier, *anypb.Any) ([]byte, error){}
 
 type SecretProvider[V proto.Message] interface {
 	Load(context.Context, V) ([]byte, error)
 }
 
-func RegisterSecretsProvider[V proto.Message](handle func(context.Context, secrets.SecretIdentifier, V) ([]byte, error), aliases ...string) {
-	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, secretId secrets.SecretIdentifier, input *anypb.Any) ([]byte, error) {
+func RegisterSecretsProvider[V proto.Message](handle func(context.Context, cfg.Configuration, secrets.SecretIdentifier, V) ([]byte, error), aliases ...string) {
+	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, input *anypb.Any) ([]byte, error) {
 		msg := protos.NewFromType[V]()
 		if err := input.UnmarshalTo(msg); err != nil {
 			return nil, err
 		}
 
-		return handle(ctx, secretId, msg)
+		return handle(ctx, conf, secretId, msg)
 	}
 }
 
 type combinedSecrets struct {
+	envConf cfg.Configuration
 	// canonical secret ref -> secret binding
 	bindings map[string]*schema.Workspace_SecretBinding
 	local    secrets.SecretsSource
@@ -53,7 +54,7 @@ type resultPair struct {
 
 type loadingSecret struct {
 	id   secrets.SecretIdentifier
-	load func(context.Context, secrets.SecretIdentifier, *anypb.Any) ([]byte, error)
+	load func(context.Context, cfg.Configuration, secrets.SecretIdentifier, *anypb.Any) ([]byte, error)
 	cfg  *anypb.Any
 	cs   *combinedSecrets
 
@@ -79,6 +80,7 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 	}
 
 	return &combinedSecrets{
+		envConf:  env.Configuration(),
 		bindings: bindings,
 		local:    local,
 		loaded:   map[string][]byte{},
@@ -167,7 +169,7 @@ func (l *loadingSecret) Get(ctx context.Context) ([]byte, error) {
 
 	l.mu.Unlock()
 	var res resultPair
-	res.value, res.err = l.load(ctx, l.id, l.cfg)
+	res.value, res.err = l.load(ctx, l.cs.envConf, l.id, l.cfg)
 	l.mu.Lock()
 
 	l.done = true

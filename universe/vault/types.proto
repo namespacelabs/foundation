@@ -9,19 +9,20 @@ package foundation.universe.vault;
 option go_package = "namespacelabs.dev/foundation/universe/vault";
 
 message AppRole {
-    string        name       = 1;
-    string        auth_mount = 2;
-    VaultProvider provider   = 3;
+    string name  = 1;
+    string mount = 4;
+
+    reserved 2, 3;
 }
 
 message Certificate {
     string          base_domain = 1;
-    string          issuer      = 3;
-    VaultProvider   provider    = 4;
     string          common_name = 5;
     repeated string sans        = 6;
+    string          mount       = 7;
+    string          role        = 8;
 
-    reserved 2;
+    reserved 2, 3, 4;
 }
 
 message VaultProvider {
