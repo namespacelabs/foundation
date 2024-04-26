@@ -12,30 +12,31 @@ import (
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
-func appRoleProvider(ctx context.Context, secretId secrets.SecretIdentifier, cfg *vault.AppRole) ([]byte, error) {
-	vp := cfg.GetProvider()
-	if vp == nil {
+func appRoleProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.AppRole) ([]byte, error) {
+	vaultConfig, ok := GetVaultConfig(conf)
+	if !ok || vaultConfig == nil {
 		return nil, fnerrors.BadInputError("invalid vault app role configuration: missing provider configuration")
 	}
 
-	vaultClient, err := login(ctx, vp)
+	vaultClient, err := login(ctx, vaultConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return createSecretId(ctx, vaultClient, cfg)
+	return createSecretId(ctx, vaultClient, vaultConfig, cfg)
 }
 
-func createSecretId(ctx context.Context, vaultClient *vaultclient.Client, cfg *vault.AppRole) ([]byte, error) {
+func createSecretId(ctx context.Context, vaultClient *vaultclient.Client, vaultConfig *vault.VaultProvider, cfg *vault.AppRole) ([]byte, error) {
 	creds := vault.Credentials{
-		VaultAddress:   cfg.Provider.GetAddress(),
-		VaultNamespace: cfg.Provider.GetNamespace(),
+		VaultAddress:   vaultConfig.GetAddress(),
+		VaultNamespace: vaultConfig.GetNamespace(),
 	}
-	wmp := vaultclient.WithMountPath(cfg.GetAuthMount())
+	wmp := vaultclient.WithMountPath(cfg.GetMount())
 
 	ex := executor.New(ctx, "vault.credentials")
 	ex.Go(func(ctx context.Context) error {

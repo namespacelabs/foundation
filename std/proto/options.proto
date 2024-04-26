@@ -18,5 +18,5 @@ extend google.protobuf.FieldOptions {
     bool is_sensitive = 60001;
 
     // Only retain this field in provisioning, clear it from the final binary.
-    bool provision_only = 60002;
+    bool provision_only =  60002;
 }
