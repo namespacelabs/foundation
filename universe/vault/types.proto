@@ -10,9 +10,9 @@ option go_package = "namespacelabs.dev/foundation/universe/vault";
 
 message AppRole {
     string name  = 1;
-    string mount = 3;
+    string mount = 4;
 
-    reserved 2;
+    reserved 2, 3;
 }
 
 message Certificate {
