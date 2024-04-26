@@ -99,14 +99,13 @@ func (h *ClientHandle) renew(ctx context.Context) error {
 		return h.authenticate(ctx)
 	}
 
-	// The Vault client library already handles retries, so if renewing the
-	// token fails, we assume it can no longer be renewed. This can happen if
-	// the token was revoked, or if it reached its maximum TTL.
-	h.auth = nil // force re-auth on next try
-
 	res, err := h.client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{})
 	if err != nil {
-		return err
+		// The Vault client library already handles retries, so if renewing the
+		// token fails, we assume it can no longer be renewed. This can happen if
+		// the token was revoked, or if it reached its maximum TTL.
+		zerolog.Ctx(ctx).Warn().Msg("vault: token renewal failed, forcing re-auth")
+		return h.authenticate(ctx)
 	}
 	h.auth = res.Auth
 	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: token renewed")
