@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/hashicorp/vault-client-go"
@@ -23,6 +24,15 @@ type Credentials struct {
 	VaultNamespace string `json:"vault_namespace"`
 }
 
+type ClientHandle struct {
+	creds  *Credentials
+	client *vault.Client
+	auth   *vault.ResponseAuth
+	leased time.Time
+
+	m sync.Mutex
+}
+
 func ParseCredentials(data []byte) (*Credentials, error) {
 	c := Credentials{}
 	return &c, json.Unmarshal(data, &c)
@@ -36,7 +46,7 @@ func (c *Credentials) Encode() ([]byte, error) {
 	return json.Marshal(c)
 }
 
-func (c *Credentials) Login(ctx context.Context, options ...vault.ClientOption) (*vault.Client, error) {
+func (c *Credentials) ClientHandle(ctx context.Context, options ...vault.ClientOption) (*ClientHandle, error) {
 	client, err := vault.New(append([]vault.ClientOption{
 		vault.WithAddress(c.VaultAddress),
 	}, options...)...)
@@ -50,53 +60,74 @@ func (c *Credentials) Login(ctx context.Context, options ...vault.ClientOption) 
 		}
 	}
 
-	resp, err := client.Auth.AppRoleLogin(
+	return &ClientHandle{
+		creds:  c,
+		client: client,
+	}, nil
+}
+
+func (h *ClientHandle) Get(ctx context.Context) (*vault.Client, error) {
+	h.m.Lock()
+	defer h.m.Unlock()
+
+	if h.expired() {
+		return h.client, h.renew(ctx)
+	}
+
+	return h.client, nil
+}
+
+func (h *ClientHandle) authenticate(ctx context.Context) error {
+	resp, err := h.client.Auth.AppRoleLogin(
 		ctx,
 		schema.AppRoleLoginRequest{
-			RoleId:   c.RoleId,
-			SecretId: c.SecretId,
+			RoleId:   h.creds.RoleId,
+			SecretId: h.creds.SecretId,
 		},
 	)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := client.SetToken(resp.Auth.ClientToken); err != nil {
-		return nil, err
-	}
-
-	go renew(ctx, client, resp.Auth)
-
-	return client, nil
+	h.auth = resp.Auth
+	h.leased = time.Now()
+	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: authenticated")
+	return h.client.SetToken(resp.Auth.ClientToken)
 }
 
-func renew(ctx context.Context, client *vault.Client, auth *vault.ResponseAuth) {
-	lease := time.Duration(auth.LeaseDuration) * time.Second
-	if lease <= 0 {
-		return // token does not expire
-	}
-	if !auth.Renewable {
-		zerolog.Ctx(ctx).Warn().Msgf("vault: non-renewable token expires in %s", lease)
-		return
+func (h *ClientHandle) renew(ctx context.Context) error {
+	if h.auth == nil || !h.auth.Renewable {
+		return h.authenticate(ctx)
 	}
 
-	interval := lease - time.Minute*2
-	if interval < 0 {
-		zerolog.Ctx(ctx).Warn().Msgf("vault: not renewing token, lease too short: %s", lease)
-		return
-	}
+	// The Vault client library already handles retries, so if renewing the
+	// token fails, we assume it can no longer be renewed. This can happen if
+	// the token was revoked, or if it reached its maximum TTL.
+	h.auth = nil // force re-auth on next try
 
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			if _, err := client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{}); err != nil {
-				// TODO: Let the consumer know, so it could try and reconnect if needed?
-				zerolog.Ctx(ctx).Error().Msgf("vault: failed to renew token: %v", err)
-				return // TODO: retry, with backoff
-			}
-		case <-ctx.Done():
-			return
-		}
+	res, err := h.client.Auth.TokenRenewSelf(ctx, schema.TokenRenewSelfRequest{})
+	if err != nil {
+		return err
 	}
+	h.auth = res.Auth
+	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: token renewed")
+	h.leased = time.Now()
+	return nil
+}
+
+func (h *ClientHandle) ttl() time.Duration {
+	if h.auth == nil {
+		return 0
+	}
+	return time.Duration(h.auth.LeaseDuration) * time.Second
+}
+
+func (h *ClientHandle) expires() time.Time {
+	if h.auth == nil {
+		return time.Time{}
+	}
+	return h.leased.Add(h.ttl())
+}
+
+func (h *ClientHandle) expired() bool {
+	return time.Now().After(h.expires())
 }
