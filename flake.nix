@@ -5,7 +5,6 @@
   };
 
   outputs = {
-    self,
     nixpkgs,
     flake-utils,
     ...
@@ -14,31 +13,38 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       devShell = pkgs.mkShell {
-        buildInputs = with pkgs;
-          [
-            clang-tools # For clang-format.
-            go_1_21
-            gopls
-            go-outline
-            go-tools
-            upx
-            yarn
-            pre-commit
+        buildInputs = with pkgs; [
+          go_1_21
+          gopls
+          go-outline
+          go-tools
+          upx
+          yarn
+          pre-commit
 
-            goreleaser
+          goreleaser
 
-            eksctl
-            postgresql
+          eksctl
+          postgresql
 
-            git
-            nodejs
-            crane
-            kubectl
-            awscli2
-            jq
-            aws-iam-authenticator
-            google-cloud-sdk
-          ];
+          git
+          nodejs
+          crane
+          kubectl
+          awscli2
+          jq
+          aws-iam-authenticator
+          google-cloud-sdk
+
+          (writeShellScriptBin "clang-format" ''
+            ${
+              lib.getExe' clang-tools "clang-format"
+            } --style="${
+              (builtins.fromJSON (lib.readFile ./.vscode/settings.json))."clang-format.style"
+            }" $@
+          '')
+          clang-tools # everything except clang-format
+        ];
       };
     });
 }
