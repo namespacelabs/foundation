@@ -17,7 +17,7 @@ import (
 )
 
 // Force re-authentication if the token expires in less than this much time.
-const ttlBuffer = time.Second * 8
+const ttlBuffer = time.Minute
 
 type Credentials struct {
 	RoleId   string `json:"role_id"`
@@ -73,9 +73,12 @@ func (h *ClientHandle) Get(ctx context.Context) (*vault.Client, error) {
 	h.m.Lock()
 	defer h.m.Unlock()
 
-	// Re-authenticate if less than six seconds left.
-	if time.Now().Add(ttlBuffer).After(h.expires()) {
-		return h.client, h.renew(ctx)
+	if time.Until(h.expires()) > ttlBuffer {
+		return h.client, nil
+	}
+
+	if err := h.renew(ctx); err != nil {
+		return nil, err
 	}
 
 	return h.client, nil
@@ -92,6 +95,7 @@ func (h *ClientHandle) authenticate(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	h.auth = resp.Auth
 	h.leased = time.Now()
 	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: authenticated")
@@ -111,6 +115,7 @@ func (h *ClientHandle) renew(ctx context.Context) error {
 		zerolog.Ctx(ctx).Warn().Msg("vault: token renewal failed, forcing re-auth")
 		return h.authenticate(ctx)
 	}
+
 	h.auth = res.Auth
 	zerolog.Ctx(ctx).Debug().Dur("lease_duration", h.ttl()).Msg("vault: token renewed")
 	h.leased = time.Now()
@@ -121,6 +126,7 @@ func (h *ClientHandle) ttl() time.Duration {
 	if h.auth == nil {
 		return 0
 	}
+
 	return time.Duration(h.auth.LeaseDuration) * time.Second
 }
 
@@ -128,5 +134,6 @@ func (h *ClientHandle) expires() time.Time {
 	if h.auth == nil {
 		return time.Time{}
 	}
+
 	return h.leased.Add(h.ttl())
 }
