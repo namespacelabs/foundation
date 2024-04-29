@@ -20,3 +20,11 @@ extension: fn.#Extension & {
 		}
 	}
 }
+
+configure: fn.#Configure & {
+	startup: {
+		env: {
+			"VAULT_APP_ROLE": fromSecret: ":vaultAppRole"
+		}
+	}
+}
