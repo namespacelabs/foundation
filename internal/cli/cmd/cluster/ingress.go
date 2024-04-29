@@ -6,6 +6,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -30,12 +31,19 @@ func NewIngressCmd() *cobra.Command {
 	return cmd
 }
 
+type ingressOut struct {
+	Port int32  `json:"port,omitempty"`
+	Fqdn string `json:"fqdn,omitempty"`
+}
+
 func newListIngressesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Lists the registered ingresses on the specified instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}
+
+	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := SelectRunningCluster(ctx, args)
@@ -52,12 +60,31 @@ func newListIngressesCmd() *cobra.Command {
 			return err
 		}
 
-		for _, ingress := range lst.ExportedInstancePort {
-			parts := []string{fmt.Sprintf("port: %d", ingress.Port)}
-			if ingress.Description != "" {
-				parts = append(parts, ingress.Description)
+		switch *output {
+		case "plain":
+			for _, ingress := range lst.ExportedInstancePort {
+				parts := []string{fmt.Sprintf("port: %d", ingress.Port)}
+				if ingress.Description != "" {
+					parts = append(parts, ingress.Description)
+				}
+
+				fmt.Fprintf(console.Stdout(ctx), "https://%s (%s)\n", ingress.IngressFqdn, strings.Join(parts, "; "))
 			}
-			fmt.Fprintf(console.Stdout(ctx), "https://%s (%s)\n", ingress.IngressFqdn, strings.Join(parts, "; "))
+
+		case "json":
+			var res []ingressOut
+			for _, ingress := range lst.ExportedInstancePort {
+				res = append(res, ingressOut{
+					Port: ingress.Port,
+					Fqdn: ingress.IngressFqdn,
+				})
+			}
+
+			enc := json.NewEncoder(console.Stdout(ctx))
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(res); err != nil {
+				return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
+			}
 		}
 
 		return nil
