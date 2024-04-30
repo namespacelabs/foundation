@@ -6,6 +6,7 @@ package cuefrontend
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/url"
@@ -17,6 +18,7 @@ import (
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/format"
+	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -25,52 +27,79 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/workspace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-const (
-	WorkspaceFile       = "ns-workspace.cue"
-	LegacyWorkspaceFile = "fn-workspace.cue"
-)
+var workspaceFiles []string
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.StringSliceVar(&workspaceFiles, "workspace_files", nil, "Where to load the workspace from.")
+	_ = flags.MarkHidden("workspace_files")
+}
 
 var ModuleLoader moduleLoader
 
 type moduleLoader struct{}
 
 func (moduleLoader) FindModuleRoot(dir string) (string, error) {
-	return parsing.RawFindModuleRoot(dir, WorkspaceFile, LegacyWorkspaceFile)
+	return parsing.RawFindModuleRoot(dir, workspace.WorkspaceFile, workspace.LegacyWorkspaceFile)
 }
 
 func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.WorkspaceData, error) {
 	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (pkggraph.WorkspaceData, error) {
-		wfile := WorkspaceFile
-		data, err := os.ReadFile(filepath.Join(dir, WorkspaceFile))
-		if err != nil {
-			if os.IsNotExist(err) {
-				wfile = LegacyWorkspaceFile
-				data, err = os.ReadFile(filepath.Join(dir, LegacyWorkspaceFile))
+		files := workspaceFiles
+		if len(files) == 0 {
+			matched, err := filepath.Glob(filepath.Join(dir, "*.cue"))
+			if err != nil {
+				return nil, err
+			}
+
+			for _, path := range matched {
+				rel, err := filepath.Rel(dir, path)
+				if err != nil {
+					return nil, err
+				}
+
+				files = append(files, rel)
 			}
 		}
 
-		if err != nil {
-			if os.IsNotExist(err) {
-				return nil, fnerrors.New("a workspace definition (ns-workspace.cue) is missing. You can use 'ns mod init' to create a default one.")
-			}
-
-			return nil, err
+		if len(files) == 0 {
+			return nil, fnerrors.New("a workspace definition (ns-workspace.cue) is missing. You can use 'ns mod init' to create a default one.")
 		}
 
-		return moduleFrom(ctx, dir, wfile, data)
+		var loaded [][]byte
+		for _, name := range files {
+			data, err := os.ReadFile(filepath.Join(dir, name))
+			if err != nil {
+				return nil, err
+			}
+
+			loaded = append(loaded, data)
+		}
+
+		return moduleFrom(ctx, dir, files, loaded)
 	})
 }
 
-func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pkggraph.WorkspaceData, error) {
+func moduleFrom(ctx context.Context, dir string, files []string, loaded [][]byte) (pkggraph.WorkspaceData, error) {
 	var memfs memfs.FS
-	memfs.Add(workspaceFile, data)
 
-	p, err := fncue.EvalWorkspace(ctx, &memfs, dir, []string{workspaceFile})
+	// we generate new filenames to place all files in one directory when evaluating the workspace.
+	var tmpNames []string
+	var count int
+	for _, data := range loaded {
+		name := fmt.Sprintf("fn-workspace-%d.cue", count)
+		memfs.Add(name, data)
+
+		tmpNames = append(tmpNames, name)
+		count++
+	}
+
+	p, err := fncue.EvalWorkspace(ctx, &memfs, dir, tmpNames)
 	if err != nil {
 		return nil, err
 	}
@@ -81,11 +110,10 @@ func moduleFrom(ctx context.Context, dir, workspaceFile string, data []byte) (pk
 	}
 
 	wd := workspaceData{
-		absPath:        dir,
-		definitionFile: workspaceFile,
-		data:           data,
-		parsed:         parsed,
-		source:         p.Val,
+		absPath:         dir,
+		definitionFiles: files,
+		parsed:          parsed,
+		source:          p.Val,
 	}
 
 	if err := validateWorkspace(wd); err != nil {
@@ -101,11 +129,10 @@ func (moduleLoader) NewModule(ctx context.Context, dir string, w *schema.Workspa
 		return nil, err
 	}
 	wd := workspaceData{
-		absPath:        dir,
-		definitionFile: WorkspaceFile,
-		data:           nil,
-		parsed:         w,
-		source:         val,
+		absPath:         dir,
+		definitionFiles: []string{workspace.WorkspaceFile},
+		parsed:          w,
+		source:          val,
 	}
 
 	if err := validateWorkspace(wd); err != nil {
@@ -330,10 +357,10 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 }
 
 type workspaceData struct {
-	absPath, definitionFile string
-	data                    []byte
-	parsed                  *schema.Workspace
-	source                  cue.Value
+	absPath         string
+	definitionFiles []string
+	parsed          *schema.Workspace
+	source          cue.Value
 }
 
 func (r workspaceData) ErrorLocation() string    { return r.absPath }
@@ -342,15 +369,13 @@ func (r workspaceData) Proto() *schema.Workspace { return r.parsed }
 
 func (r workspaceData) AbsPath() string                { return r.absPath }
 func (r workspaceData) ReadOnlyFS(rel ...string) fs.FS { return fnfs.Local(r.absPath, rel...) }
-func (r workspaceData) DefinitionFile() string         { return r.definitionFile }
-func (r workspaceData) RawData() []byte                { return r.data }
+func (r workspaceData) DefinitionFiles() []string      { return r.definitionFiles }
 func (r workspaceData) structLit() *ast.StructLit      { return r.source.Syntax().(*ast.StructLit) }
 
 func (r workspaceData) LoadedFrom() *schema.Workspace_LoadedFrom {
 	return &schema.Workspace_LoadedFrom{
-		AbsPath:        r.absPath,
-		DefinitionFile: r.definitionFile,
-		Contents:       r.data,
+		AbsPath:         r.absPath,
+		DefinitionFiles: r.definitionFiles,
 	}
 }
 

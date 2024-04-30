@@ -50,7 +50,7 @@ func (mod *Module) ErrorLocation() string {
 }
 
 func (mod *Module) Abs() string                                                         { return mod.loadedFrom.AbsPath }
-func (mod *Module) DefinitionFile() string                                              { return mod.loadedFrom.DefinitionFile }
+func (mod *Module) DefinitionFiles() []string                                           { return mod.loadedFrom.DefinitionFiles }
 func (mod *Module) ModuleName() string                                                  { return mod.Workspace.ModuleName }
 func (mod *Module) Version() string                                                     { return mod.version }
 func (mod *Module) ChangeTrigger(rel string, excludes []string) compute.Computable[any] { return nil }

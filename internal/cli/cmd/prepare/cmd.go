@@ -7,7 +7,6 @@ package prepare
 import (
 	"context"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,7 +18,6 @@ import (
 	"namespacelabs.dev/foundation/internal/console/renderwait"
 	"namespacelabs.dev/foundation/internal/executor"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 	"namespacelabs.dev/foundation/internal/prepare"
@@ -29,6 +27,7 @@ import (
 	"namespacelabs.dev/foundation/schema/orchestration"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/module"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 var deprecatedConfigs = []string{
@@ -181,9 +180,7 @@ func updateWorkspaceEnvironment(ctx context.Context, envRef string) error {
 	}
 
 	ws := root.EditableWorkspace().WithSetEnvironment(newEnv)
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.ReadWriteFS(), ws.DefinitionFile(), func(w io.Writer) error {
-		return ws.FormatTo(w)
-	})
+	return pkggraph.WriteWorkspaceData(ctx, console.Stdout(ctx), root.ReadWriteFS(), ws)
 }
 
 func runPrepare(callback func(context.Context, cfg.Context) ([]prepare.Stage, error)) func(*cobra.Command, []string) error {

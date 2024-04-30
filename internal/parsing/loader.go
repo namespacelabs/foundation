@@ -15,6 +15,7 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/workspace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -304,7 +305,7 @@ func (pl *PackageLoader) resolveExternal(ctx context.Context, moduleName string,
 	data, err := ModuleAt(ctx, downloaded.LocalPath, ModuleAtArgs{})
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fnerrors.New("%s: is not a workspace, %q missing.", moduleName, data.DefinitionFile())
+			return nil, fnerrors.New("%s: is not a workspace, %q missing.", moduleName, workspace.WorkspaceFile)
 		}
 		return nil, err
 	}

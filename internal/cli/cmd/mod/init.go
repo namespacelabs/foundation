@@ -7,7 +7,6 @@ package mod
 import (
 	"context"
 	"fmt"
-	"io"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
@@ -15,10 +14,11 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/fnfs"
-	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/internal/workspace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
 func newInitCmd(runCommand func(context.Context, []string) error) *cobra.Command {
@@ -33,7 +33,7 @@ func newInitCmd(runCommand func(context.Context, []string) error) *cobra.Command
 				return err
 			}
 
-			if findroot.LookForFile(cuefrontend.WorkspaceFile, cuefrontend.LegacyWorkspaceFile)(dir) {
+			if findroot.LookForFile(workspace.WorkspaceFile, workspace.LegacyWorkspaceFile)(dir) {
 				return fnerrors.New("workspace file aready exists.")
 			}
 
@@ -49,9 +49,7 @@ func newInitCmd(runCommand func(context.Context, []string) error) *cobra.Command
 				return err
 			}
 
-			if err = fnfs.WriteWorkspaceFile(ctx, nil, fnfs.ReadWriteLocalFS(dir), mod.DefinitionFile(), func(w io.Writer) error {
-				return mod.FormatTo(w)
-			}); err != nil {
+			if err = pkggraph.WriteWorkspaceData(ctx, nil, fnfs.ReadWriteLocalFS(dir), mod); err != nil {
 				return err
 			}
 

@@ -6,13 +6,11 @@ package mod
 
 import (
 	"context"
-	"io"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnfs"
 	"namespacelabs.dev/foundation/internal/integrations"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
@@ -141,9 +139,7 @@ func maybeUpdateWorkspace(ctx context.Context, env cfg.Context) error {
 
 func rewriteWorkspace(ctx context.Context, root *parsing.Root, data pkggraph.WorkspaceData) error {
 	// Write an updated workspace.ns.textpb before continuing.
-	return fnfs.WriteWorkspaceFile(ctx, console.Stdout(ctx), root.ReadWriteFS(), data.DefinitionFile(), func(w io.Writer) error {
-		return data.FormatTo(w)
-	})
+	return pkggraph.WriteWorkspaceData(ctx, console.Stdout(ctx), root.ReadWriteFS(), data)
 }
 
 type moduleResolver struct {
