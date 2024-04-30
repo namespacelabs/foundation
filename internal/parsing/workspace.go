@@ -22,7 +22,7 @@ const (
 
 var ModuleLoader interface {
 	FindModuleRoot(string) (string, error)
-	ModuleAt(context.Context, string) (pkggraph.WorkspaceData, error)
+	ModuleAt(context.Context, string, ...string) (pkggraph.WorkspaceData, error)
 	NewModule(context.Context, string, *schema.Workspace) (pkggraph.WorkspaceData, error)
 }
 
@@ -33,11 +33,12 @@ func FindModuleRoot(dir string) (string, error) {
 type ModuleAtArgs struct {
 	SkipAPIRequirements      bool
 	SkipModuleNameValidation bool
+	WorkspaceFiles           []string
 }
 
 // Loads and validates a module at a given path.
 func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (pkggraph.WorkspaceData, error) {
-	ws, err := ModuleLoader.ModuleAt(ctx, path)
+	ws, err := ModuleLoader.ModuleAt(ctx, path, args.WorkspaceFiles...)
 	if err != nil {
 		return ws, err
 	}

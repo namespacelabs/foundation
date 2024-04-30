@@ -18,7 +18,6 @@ import (
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/format"
-	"github.com/spf13/pflag"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/anypb"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -33,13 +32,6 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var workspaceFiles []string
-
-func SetupFlags(flags *pflag.FlagSet) {
-	flags.StringSliceVar(&workspaceFiles, "workspace_files", nil, "Where to load the workspace from.")
-	_ = flags.MarkHidden("workspace_files")
-}
-
 var ModuleLoader moduleLoader
 
 type moduleLoader struct{}
@@ -48,9 +40,8 @@ func (moduleLoader) FindModuleRoot(dir string) (string, error) {
 	return parsing.RawFindModuleRoot(dir, workspace.WorkspaceFile, workspace.LegacyWorkspaceFile)
 }
 
-func (moduleLoader) ModuleAt(ctx context.Context, dir string) (pkggraph.WorkspaceData, error) {
+func (moduleLoader) ModuleAt(ctx context.Context, dir string, files ...string) (pkggraph.WorkspaceData, error) {
 	return tasks.Return(ctx, tasks.Action("workspace.load-workspace").Arg("dir", dir), func(ctx context.Context) (pkggraph.WorkspaceData, error) {
-		files := workspaceFiles
 		if len(files) == 0 {
 			matched, err := filepath.Glob(filepath.Join(dir, "*.cue"))
 			if err != nil {

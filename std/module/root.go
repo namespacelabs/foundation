@@ -8,13 +8,23 @@ import (
 	"context"
 	"path/filepath"
 
+	"github.com/spf13/pflag"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/parsing/devhost"
 )
 
+var workspaceFiles []string
+
+func SetupFlags(flags *pflag.FlagSet) {
+	flags.StringSliceVar(&workspaceFiles, "workspace_files", nil, "Where to load the workspace from.")
+	_ = flags.MarkHidden("workspace_files")
+}
+
 func FindRoot(ctx context.Context, dir string) (*parsing.Root, error) {
-	return FindRootWithArgs(ctx, dir, parsing.ModuleAtArgs{})
+	return FindRootWithArgs(ctx, dir, parsing.ModuleAtArgs{
+		WorkspaceFiles: workspaceFiles,
+	})
 }
 
 func FindRootWithArgs(ctx context.Context, dir string, args parsing.ModuleAtArgs) (*parsing.Root, error) {
