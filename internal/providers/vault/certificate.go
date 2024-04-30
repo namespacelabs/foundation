@@ -31,11 +31,11 @@ type certificateRequest struct {
 func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
 	vaultConfig, ok := GetVaultConfig(conf)
 	if !ok || vaultConfig == nil {
-		return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing provider configuration")
+		return nil, fnerrors.BadInputError("invalid certificate provider: missing vault configuration")
 	}
 
 	if cfg.GetCommonName() == "" {
-		return nil, fnerrors.BadDataError("required common name is not set")
+		return nil, fnerrors.BadInputError("required common name is not set")
 	}
 
 	vaultClient, err := login(ctx, vaultConfig)
