@@ -5,8 +5,12 @@
 package pkggraph
 
 import (
+	"context"
 	"io"
 
+	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/fnfs"
+	"namespacelabs.dev/foundation/internal/workspace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 )
@@ -24,8 +28,24 @@ type WorkspaceData interface {
 	cfg.Workspace
 
 	AbsPath() string
-	DefinitionFile() string
-	RawData() []byte
+	DefinitionFiles() []string
 
 	EditableWorkspaceData
+}
+
+func WriteWorkspaceData(ctx context.Context, log io.Writer, vfs fnfs.ReadWriteFS, data WorkspaceData) error {
+	switch len(data.DefinitionFiles()) {
+	case 0:
+		return fnfs.WriteWorkspaceFile(ctx, log, vfs, workspace.WorkspaceFile, func(w io.Writer) error {
+			return data.FormatTo(w)
+		})
+
+	case 1:
+		return fnfs.WriteWorkspaceFile(ctx, log, vfs, data.DefinitionFiles()[0], func(w io.Writer) error {
+			return data.FormatTo(w)
+		})
+
+	default:
+		return fnerrors.New("writing workspace data into multiple files is not supported")
+	}
 }

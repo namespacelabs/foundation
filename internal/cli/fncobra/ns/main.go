@@ -21,6 +21,7 @@ import (
 	"namespacelabs.dev/foundation/internal/environment"
 	"namespacelabs.dev/foundation/internal/filewatcher"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/frontend/cuefrontend"
 	"namespacelabs.dev/foundation/internal/frontend/cuefrontend/entity"
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	dockerfileparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/dockerfile"
@@ -151,6 +152,7 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 
 			nscloud.SetupFlags(rootCmd.PersistentFlags(), true)
 			onepassword.SetupFlags(rootCmd.PersistentFlags())
+			cuefrontend.SetupFlags(rootCmd.PersistentFlags())
 
 			rootCmd.PersistentFlags().BoolVar(&binary.UsePrebuilts, "use_prebuilts", binary.UsePrebuilts,
 				"If set to false, binaries are built from source rather than a corresponding prebuilt being used.")

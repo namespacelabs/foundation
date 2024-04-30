@@ -80,9 +80,10 @@ message Workspace {
     }
 
     message LoadedFrom {
-        string abs_path        = 1;
-        string definition_file = 2;
-        bytes  contents        = 3;
+        string          abs_path         = 1;
+        repeated string definition_files = 2;
+
+        reserved 3;
     }
 
     message Alias {

@@ -300,5 +300,5 @@ type defaultMissingModuleResolver struct {
 func (r *defaultMissingModuleResolver) Resolve(ctx context.Context, pkg schema.PackageName) (*schema.Workspace_Dependency, error) {
 	return nil, fnerrors.UsageError(
 		fmt.Sprintf("Run `%s tidy`.", name.CmdName),
-		"%s: missing entry in %s: run:\n  ns tidy", pkg, r.workspace.LoadedFrom().DefinitionFile)
+		"%s: missing dependency entry in workspace %s: run:\n  ns tidy", pkg, r.workspace.LoadedFrom().AbsPath)
 }
