@@ -46,12 +46,12 @@ type ClientHandle struct {
 
 func ProviderFromEnv(key string) (*Provider, error) {
 	if os.Getenv(key) == "" {
-		return nil, fmt.Errorf("%q env var must be set", key)
+		return nil, fmt.Errorf("vault: environment variable %q not set", key)
 	}
 
 	creds, err := ParseCredentialsFromEnv(key)
 	if err != nil {
-		return nil, fmt.Errorf("%q env var could not be parsed: %w", key, err)
+		return nil, fmt.Errorf("vault: environment variable %q could not be parsed: %w", key, err)
 	}
 
 	return &Provider{creds: creds}, nil
