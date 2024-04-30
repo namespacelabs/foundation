@@ -22,9 +22,9 @@ const ttlBuffer = time.Minute
 
 type Provider struct {
 	creds *Credentials
-	conn  *ClientHandle
 
-	m sync.Mutex
+	m    sync.Mutex
+	conn *ClientHandle
 }
 
 type Credentials struct {
