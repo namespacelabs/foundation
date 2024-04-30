@@ -35,13 +35,18 @@ const (
 )
 
 var (
-	vaultConfigType = cfg.DefineConfigType[*vault.VaultProvider]()
+	vaultConfigType       = cfg.DefineConfigType[*vault.VaultProvider]()
+	certificateConfigType = cfg.DefineConfigType[*vault.CertificateConfig]()
 
 	clients = tcache.NewCache[*vaultclient.Client]()
 )
 
 func GetVaultConfig(cfg cfg.Configuration) (*vault.VaultProvider, bool) {
 	return vaultConfigType.CheckGet(cfg)
+}
+
+func GetCertificateConfig(cfg cfg.Configuration) (*vault.CertificateConfig, bool) {
+	return certificateConfigType.CheckGet(cfg)
 }
 
 func Register() {

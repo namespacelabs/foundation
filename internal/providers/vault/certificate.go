@@ -34,6 +34,10 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 		return nil, fnerrors.BadInputError("invalid vault certificate configuration: missing provider configuration")
 	}
 
+	if cfg.GetCommonName() == "" {
+		return nil, fnerrors.BadDataError("required common name is not set")
+	}
+
 	vaultClient, err := login(ctx, vaultConfig)
 	if err != nil {
 		return nil, err
@@ -44,12 +48,8 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 		sans:       cfg.GetSans(),
 	}
 
-	if req.commonName == "" {
-		if secretId.ServerRef == nil {
-			return nil, fnerrors.BadDataError("required server reference is not set")
-		}
-
-		req.commonName = fmt.Sprintf("%s.%s", strings.ReplaceAll(secretId.ServerRef.RelPath, "/", "-"), cfg.GetBaseDomain())
+	if certConfig, ok := GetCertificateConfig(conf); ok && certConfig.GetBaseDomain() != "" {
+		req.commonName = fmt.Sprintf("%s.%s", req.commonName, certConfig.GetBaseDomain())
 	}
 
 	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
