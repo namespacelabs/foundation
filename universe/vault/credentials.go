@@ -7,6 +7,7 @@ package vault
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -18,6 +19,13 @@ import (
 
 // Force re-authentication if the token expires in less than this much time.
 const ttlBuffer = time.Minute
+
+type Provider struct {
+	creds *Credentials
+
+	m    sync.Mutex
+	conn *ClientHandle
+}
 
 type Credentials struct {
 	RoleId   string `json:"role_id"`
@@ -34,6 +42,43 @@ type ClientHandle struct {
 	leased time.Time
 
 	m sync.Mutex
+}
+
+func ProviderFromEnv(key string) (*Provider, error) {
+	if os.Getenv(key) == "" {
+		return nil, fmt.Errorf("vault: environment variable %q not set", key)
+	}
+
+	creds, err := ParseCredentialsFromEnv(key)
+	if err != nil {
+		return nil, fmt.Errorf("vault: environment variable %q could not be parsed: %w", key, err)
+	}
+
+	return &Provider{creds: creds}, nil
+}
+
+func (p *Provider) Get(ctx context.Context) (*vault.Client, error) {
+	conn, err := p.connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn.Get(ctx)
+}
+
+func (p *Provider) connect(ctx context.Context) (*ClientHandle, error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	if p.conn == nil {
+		conn, err := p.creds.ClientHandle(ctx)
+		if err != nil {
+			return nil, err
+		}
+		p.conn = conn
+	}
+
+	return p.conn, nil
 }
 
 func ParseCredentials(data []byte) (*Credentials, error) {
