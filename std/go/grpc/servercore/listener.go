@@ -7,6 +7,7 @@ package servercore
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -34,6 +35,8 @@ import (
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
+
+var tlsPort = flag.String("grpcserver_multiplex_tls", "", "Multiplex TLS connections from the default listener to this named listener.")
 
 type HTTPOptions struct {
 	HTTP1ReadTimeout       time.Duration `json:"http_read_timeout"`
@@ -100,6 +103,11 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	}
 
 	m := cmux.New(lis)
+
+	var tlsL net.Listener = nil
+	if *tlsPort != "" {
+		tlsL = m.Match(cmux.TLS())
+	}
 
 	httpL := m.Match(cmux.HTTP1())
 	anyL := m.Match(cmux.Any())
@@ -223,6 +231,10 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 			core.ZLog.Info().Msgf("Starting configuration %q listen on %v", k, grpcLis.Addr())
 
 			eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc-"+k, srv, grpcLis) })
+
+			if k == *tlsPort {
+				eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", srv, tlsL) })
+			}
 		}
 	}
 
