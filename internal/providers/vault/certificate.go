@@ -49,7 +49,7 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 	}
 
 	if certConfig, ok := GetCertificateConfig(conf); ok && certConfig.GetBaseDomain() != "" {
-		req.commonName = fmt.Sprintf("%s.%s", req.commonName, certConfig.GetBaseDomain())
+		req.commonName = fmt.Sprintf("%s/%s", certConfig.GetBaseDomain(), req.commonName)
 	}
 
 	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
