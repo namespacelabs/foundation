@@ -7,7 +7,6 @@ package servercore
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -23,6 +22,7 @@ import (
 	"golang.org/x/net/http2/h2c"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
@@ -35,8 +35,6 @@ import (
 	"namespacelabs.dev/foundation/std/go/http/middleware"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
 )
-
-var tlsPort = flag.String("grpcserver_multiplex_tls", "", "Multiplex TLS connections from the default listener to this named listener.")
 
 type HTTPOptions struct {
 	HTTP1ReadTimeout       time.Duration `json:"http_read_timeout"`
@@ -104,8 +102,13 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 	m := cmux.New(lis)
 
+	tlsConfig, err := getMtlsConfig()
+	if err != nil {
+		return err
+	}
+
 	var tlsL net.Listener = nil
-	if *tlsPort != "" {
+	if tlsConfig != nil {
 		tlsL = m.Match(cmux.TLS())
 	}
 
@@ -123,8 +126,15 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	}))
 
 	defaultServer := grpc.NewServer(grpcopts...)
-	serversByConfiguration := map[string]*grpc.Server{
-		"": defaultServer,
+	serversByConfiguration := map[string][]*grpc.Server{
+		"": {defaultServer},
+	}
+
+	var mtlsServer *grpc.Server
+	if tlsConfig != nil {
+		mtlsServer = grpc.NewServer(append(grpcopts, grpc.Creds(credentials.NewTLS(tlsConfig)))...)
+
+		serversByConfiguration[""] = append(serversByConfiguration[""], mtlsServer)
 	}
 
 	rt, err := runtime.LoadRuntimeConfig()
@@ -146,7 +156,8 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 				if creds := cgrp.TransportCredentials(cfg.Name); creds != nil {
 					x = append(x, grpc.Creds(creds))
 				}
-				serversByConfiguration[cfg.Name] = grpc.NewServer(x...)
+
+				serversByConfiguration[cfg.Name] = append(serversByConfiguration[cfg.Name], grpc.NewServer(x...))
 			} else {
 				return fnerrors.New("listener configuration for %q does not support grpc", cfg.Name)
 			}
@@ -177,9 +188,11 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	grpc_prometheus.EnableHandlingTimeHistogram()
 
 	// Export standard metrics.
-	for _, srv := range serversByConfiguration {
-		grpc_prometheus.Register(srv)
-		grpc_health_v1.RegisterHealthServer(srv, health.NewServer())
+	for _, srvs := range serversByConfiguration {
+		for _, srv := range srvs {
+			grpc_prometheus.Register(srv)
+			grpc_health_v1.RegisterHealthServer(srv, health.NewServer())
+		}
 	}
 
 	// XXX keep track of per-service health.
@@ -218,22 +231,25 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 
 	eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc", defaultServer, anyL) })
 
-	for k, srv := range serversByConfiguration {
-		k := k     // Close k.
-		srv := srv // Close srv.
+	if mtlsServer != nil {
+		eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", mtlsServer, tlsL) })
+	}
 
-		if k != "" {
-			grpcLis, err := listenerConfiguration(k).CreateListener(ctx, k, opts)
-			if err != nil {
-				return err
-			}
+	for k, srvs := range serversByConfiguration {
+		k := k // Close k.
 
-			core.ZLog.Info().Msgf("Starting configuration %q listen on %v", k, grpcLis.Addr())
+		for _, srv := range srvs {
+			srv := srv // Close srv.
 
-			eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc-"+k, srv, grpcLis) })
+			if k != "" {
+				grpcLis, err := listenerConfiguration(k).CreateListener(ctx, k, opts)
+				if err != nil {
+					return err
+				}
 
-			if k == *tlsPort {
-				eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc/tls", srv, tlsL) })
+				core.ZLog.Info().Msgf("Starting configuration %q listen on %v", k, grpcLis.Addr())
+
+				eg.Go(func() error { return ListenAndGracefullyShutdownGRPC(egCtx, "grpc-"+k, srv, grpcLis) })
 			}
 		}
 	}

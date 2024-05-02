@@ -30,7 +30,7 @@ var _ Server = &ServerImpl{}
 
 // Implements the grpc.ServiceRegistrar interface.
 type ServerImpl struct {
-	srv       map[string]*grpc.Server // Key is configuration name; "" is the default.
+	srv       map[string][]*grpc.Server // Key is configuration name; "" is the default.
 	listeners []listenerRegistration
 	httpMux   *mux.Router
 }
@@ -54,9 +54,12 @@ func (s *ServerImpl) PathPrefix(path string) *mux.Route {
 }
 
 func (s *ServerImpl) registerService(pkg, config string, desc *grpc.ServiceDesc, impl interface{}) {
-	if srv, ok := s.srv[config]; ok {
+	if srvs, ok := s.srv[config]; ok {
 		core.ZLog.Info().Str("package_name", pkg).Str("configuration", config).Msgf("Registered %v", desc.ServiceName)
-		srv.RegisterService(desc, impl)
+
+		for _, srv := range srvs {
+			srv.RegisterService(desc, impl)
+		}
 	} else {
 		core.ZLog.Fatal().Str("package_name", pkg).Msgf("servercore: no such configuration %q (registering %v)", config, desc.ServiceName)
 	}
