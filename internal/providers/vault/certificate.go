@@ -24,8 +24,9 @@ const (
 )
 
 type certificateRequest struct {
-	commonName string
-	sans       []string
+	commonName        string
+	sans              []string
+	excludeCnFromSans bool
 }
 
 func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
@@ -49,7 +50,8 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 	}
 
 	if certConfig, ok := GetCertificateConfig(conf); ok && certConfig.GetBaseDomain() != "" {
-		req.commonName = fmt.Sprintf("%s.%s", req.commonName, certConfig.GetBaseDomain())
+		req.commonName = fmt.Sprintf("%s/%s", certConfig.GetBaseDomain(), req.commonName)
+		req.excludeCnFromSans = true
 	}
 
 	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
@@ -60,8 +62,9 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 		func(ctx context.Context) ([]byte, error) {
 			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
 				schema.PkiIssueWithRoleRequest{
-					CommonName: req.commonName,
-					AltNames:   strings.Join(req.sans, ","),
+					CommonName:        req.commonName,
+					AltNames:          strings.Join(req.sans, ","),
+					ExcludeCnFromSans: req.excludeCnFromSans,
 				},
 				vaultclient.WithMountPath(pkiMount),
 			)
