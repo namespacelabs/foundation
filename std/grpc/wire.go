@@ -8,6 +8,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -36,7 +38,7 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 }
 
 func Loopback(ctx context.Context, grpcOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	endpoint := fmt.Sprintf("127.0.0.1:%d", server.ListenPort())
+	endpoint := net.JoinHostPort("127.0.0.1", strconv.Itoa(server.ListenPort()))
 	return client.Dial(ctx, endpoint, resolveDialOpts(grpcOpts)...)
 }
 
