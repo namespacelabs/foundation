@@ -34,9 +34,7 @@ func getMtlsConfig() (*tls.Config, error) {
 	}
 
 	pool := x509.NewCertPool()
-	for _, cert := range tb.CaChainPem {
-		pool.AppendCertsFromPEM([]byte(cert))
-	}
+	pool.AppendCertsFromPEM([]byte(os.Getenv("FOUNDATION_GRPCSERVER_CA_CERT")))
 
 	return &tls.Config{
 		Certificates: []tls.Certificate{cert},
