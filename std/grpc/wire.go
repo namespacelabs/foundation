@@ -8,6 +8,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
+	"strconv"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -35,9 +37,17 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 	return client.Dial(ctx, endpoint, grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
 }
 
-func Loopback(ctx context.Context) (*grpc.ClientConn, error) {
-	endpoint := fmt.Sprintf("127.0.0.1:%d", server.ListenPort())
-	return client.Dial(ctx, endpoint, grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
+func Loopback(ctx context.Context, grpcOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	endpoint := net.JoinHostPort("127.0.0.1", strconv.Itoa(server.ListenPort()))
+	return client.Dial(ctx, endpoint, resolveDialOpts(grpcOpts)...)
+}
+
+func resolveDialOpts(opts []grpc.DialOption) []grpc.DialOption {
+	if len(opts) > 0 {
+		return opts
+	}
+
+	return []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 }
 
 func connMapFromArgs() map[string]string {
