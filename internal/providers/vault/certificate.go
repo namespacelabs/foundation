@@ -26,6 +26,7 @@ const (
 type certificateRequest struct {
 	commonName        string
 	sans              []string
+	ipSans            []string
 	excludeCnFromSans bool
 }
 
@@ -47,6 +48,7 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 	req := certificateRequest{
 		commonName: cfg.GetCommonName(),
 		sans:       cfg.GetSans(),
+		ipSans:     cfg.GetIpSans(),
 	}
 
 	if certConfig, ok := GetCertificateConfig(conf); ok && certConfig.GetBaseDomain() != "" {
@@ -65,6 +67,7 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 					CommonName:        req.commonName,
 					AltNames:          strings.Join(req.sans, ","),
 					ExcludeCnFromSans: req.excludeCnFromSans,
+					IpSans:            req.ipSans,
 				},
 				vaultclient.WithMountPath(pkiMount),
 			)
