@@ -29,7 +29,7 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 	endpoint := connMapFromArgs()[key]
 	if endpoint == "" {
 		// If there's no endpoint configured, assume we're doing a loopback.
-		endpoint = fmt.Sprintf("127.0.0.1:%d", server.ListenPort())
+		return Loopback(ctx)
 	}
 
 	// XXX ServerResource wrapping is missing.
