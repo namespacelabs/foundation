@@ -1,7 +1,9 @@
 {
 	"images": {
 		"docker.io/library/golang:1.21.8": "c82d4ad02c062cf2b393bf0374df26638c6fed3dfe52cdbd3635d4a7befab86e",
+		"docker.io/library/golang:1.21.9": "758ddc9809127da6b2b2c143f2023a16a4636aa0e34db98dfc26bb4dd9e0d706",
 		"docker.io/library/golang:1.22.1": "34ce21a9696a017249614876638ea37ceca13cdd88f582caad06f87a8aa45bf3",
+		"docker.io/library/golang:1.22.2": "5370d4968adad7e969494e744c6d28a93931b89f259accf4d08a94c30446d3a3",
 		"docker.io/library/alpine:3.14": "e1c082e3d3c45cccac829840a25941e679c25d438cc8412c2fa221cf1a824e6a",
 		"docker.io/library/node:16.13-alpine": "2f50f4a428f8b5280817c9d4d896dbee03f072e93f4e0c70b90cc84bd1fcfe0d",
 		"hello-world": "aa0cc8055b82dc2509bed2e19b275c8f463506616377219d9642221ab53cf9fe"
