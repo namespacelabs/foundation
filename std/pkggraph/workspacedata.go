@@ -6,6 +6,7 @@ package pkggraph
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -46,6 +47,8 @@ func WriteWorkspaceData(ctx context.Context, log io.Writer, vfs fnfs.ReadWriteFS
 		})
 
 	default:
-		return fnerrors.New("writing workspace data into multiple files is not supported")
+		return fnerrors.UsageError(
+			fmt.Sprintf("add `--workspace_files %s` if you only want to update a single file", workspace.WorkspaceFile),
+			"writing workspace data into multiple files is not supported")
 	}
 }

@@ -22,9 +22,7 @@ func SetupFlags(flags *pflag.FlagSet) {
 }
 
 func FindRoot(ctx context.Context, dir string) (*parsing.Root, error) {
-	return FindRootWithArgs(ctx, dir, parsing.ModuleAtArgs{
-		WorkspaceFiles: workspaceFiles,
-	})
+	return FindRootWithArgs(ctx, dir, parsing.ModuleAtArgs{})
 }
 
 func FindRootWithArgs(ctx context.Context, dir string, args parsing.ModuleAtArgs) (*parsing.Root, error) {
@@ -42,7 +40,7 @@ func findWorkspaceRoot(ctx context.Context, dir string, args parsing.ModuleAtArg
 		return nil, fnerrors.New("workspace: %w", err)
 	}
 
-	data, err := parsing.ModuleAt(ctx, path, args)
+	data, err := parsing.ModuleAt(ctx, path, args, workspaceFiles...)
 	if err != nil {
 		return nil, err
 	}

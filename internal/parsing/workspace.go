@@ -33,12 +33,11 @@ func FindModuleRoot(dir string) (string, error) {
 type ModuleAtArgs struct {
 	SkipAPIRequirements      bool
 	SkipModuleNameValidation bool
-	WorkspaceFiles           []string
 }
 
 // Loads and validates a module at a given path.
-func ModuleAt(ctx context.Context, path string, args ModuleAtArgs) (pkggraph.WorkspaceData, error) {
-	ws, err := ModuleLoader.ModuleAt(ctx, path, args.WorkspaceFiles...)
+func ModuleAt(ctx context.Context, path string, args ModuleAtArgs, workspaceFiles ...string) (pkggraph.WorkspaceData, error) {
+	ws, err := ModuleLoader.ModuleAt(ctx, path, workspaceFiles...)
 	if err != nil {
 		return ws, err
 	}
