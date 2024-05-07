@@ -25,8 +25,8 @@ func (hp HttpClientProvider) Wrap(client *http.Client) *http.Client {
 	return client
 }
 
-func (hp HttpClientProvider) WrapTransport(base http.RoundTripper) http.RoundTripper {
-	return otelhttp.NewTransport(base, otelhttp.WithTracerProvider(hp.provider), otelhttp.WithPropagators(propagators))
+func (hp HttpClientProvider) WrapTransport(base http.RoundTripper, options ...otelhttp.Option) http.RoundTripper {
+	return otelhttp.NewTransport(base, append([]otelhttp.Option{otelhttp.WithTracerProvider(hp.provider), otelhttp.WithPropagators(propagators)}, options...)...)
 }
 
 func ProvideHttpClientProvider(ctx context.Context, _ *NoArgs, deps ExtensionDeps) (HttpClientProvider, error) {
