@@ -14,6 +14,7 @@ message AppRole {
 
     reserved 2, 3;
 }
+
 message Certificate {
     string          common_name = 5;
     repeated string sans        = 6;
@@ -22,6 +23,13 @@ message Certificate {
     repeated string ip_sans     = 9;
 
     reserved 1, 2, 3, 4;
+}
+
+message CertificateAuthority {
+    string mount       = 1;
+    string common_name = 2;
+    string orgnization = 3;
+    string ttl         = 4;
 }
 
 message CertificateConfig {

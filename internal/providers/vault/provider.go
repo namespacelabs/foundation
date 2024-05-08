@@ -52,6 +52,7 @@ func GetCertificateConfig(cfg cfg.Configuration) (*vault.CertificateConfig, bool
 func Register() {
 	combined.RegisterSecretsProvider(appRoleProvider)
 	combined.RegisterSecretsProvider(certificateProvider)
+	combined.RegisterSecretsProvider(certificateAuthorityProvider)
 }
 
 func login(ctx context.Context, vaultCfg *vault.VaultProvider) (*vaultclient.Client, error) {
