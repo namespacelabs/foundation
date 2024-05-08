@@ -24,12 +24,19 @@ var (
 		Subsystem: "gogrpc",
 		Name:      "server_initialized_timestamp_seconds",
 	}, []string{"package_name", "revision"})
+
+	serverCertValidity = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "ns",
+		Subsystem: "gogrpc",
+		Name:      "certificate_validity_not_after_timestamp_seconds",
+	}, []string{"common_name"})
 )
 
 func init() {
 	prometheus.MustRegister(
 		serverInitializedInfo,
 		serverInitializedTimestamp,
+		serverCertValidity,
 	)
 }
 

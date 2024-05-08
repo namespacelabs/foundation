@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"os"
 )
 
@@ -33,6 +34,10 @@ func getMtlsConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
+	if err := reportCertificateMetrics(tb.CertificatePem); err != nil {
+		return nil, err
+	}
+
 	pool := x509.NewCertPool()
 	pool.AppendCertsFromPEM([]byte(os.Getenv("FOUNDATION_GRPCSERVER_CA_CERT")))
 
@@ -41,4 +46,15 @@ func getMtlsConfig() (*tls.Config, error) {
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    pool,
 	}, nil
+}
+
+func reportCertificateMetrics(certPem string) error {
+	pemBlock, _ := pem.Decode([]byte(certPem))
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return err
+	}
+
+	serverCertValidity.WithLabelValues(cert.Subject.CommonName).Set(float64(cert.NotAfter.Unix()))
+	return nil
 }
