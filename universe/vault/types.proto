@@ -25,7 +25,8 @@ message Certificate {
 }
 
 message CertificateConfig {
-    string base_domain = 1;
+    string          base_domain  = 1;
+    repeated string sans_domains = 2;
 }
 
 message VaultProvider {

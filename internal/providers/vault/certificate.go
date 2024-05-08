@@ -51,9 +51,17 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 		ipSans:     cfg.GetIpSans(),
 	}
 
-	if certConfig, ok := GetCertificateConfig(conf); ok && certConfig.GetBaseDomain() != "" {
-		req.commonName = fmt.Sprintf("%s/%s", certConfig.GetBaseDomain(), req.commonName)
-		req.excludeCnFromSans = true
+	if certConfig, ok := GetCertificateConfig(conf); ok {
+		if base := certConfig.GetBaseDomain(); base != "" {
+			req.commonName = fmt.Sprintf("%s/%s", base, req.commonName)
+			req.excludeCnFromSans = true
+		}
+
+		for _, domain := range certConfig.GetSansDomains() {
+			for _, san := range cfg.GetSans() {
+				req.sans = append(req.sans, fmt.Sprintf("%s.%s", san, domain))
+			}
+		}
 	}
 
 	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
