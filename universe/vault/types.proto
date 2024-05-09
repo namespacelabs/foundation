@@ -26,10 +26,10 @@ message Certificate {
 }
 
 message CertificateAuthority {
-    string mount        = 1;
-    string common_name  = 2;
-    string organization = 3;
-    string ttl          = 4;
+    string          mount        = 1;
+    string          common_name  = 2;
+    repeated string organization = 3;
+    string          ttl          = 4;
 }
 
 message CertificateConfig {

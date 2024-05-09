@@ -58,7 +58,8 @@ func genCertAuthority(ctx context.Context, vaultClient *vaultclient.Client, vaul
 
 			template := x509.CertificateRequest{
 				Subject: pkix.Name{
-					CommonName: cfg.CommonName,
+					CommonName:   cfg.CommonName,
+					Organization: cfg.Organization,
 				},
 				SignatureAlgorithm: x509.ECDSAWithSHA256,
 			}
@@ -77,9 +78,10 @@ func genCertAuthority(ctx context.Context, vaultClient *vaultclient.Client, vaul
 			privKeyPem := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: privKeyDer})
 
 			intCaResp, err := vaultClient.Secrets.PkiRootSignIntermediate(ctx, schema.PkiRootSignIntermediateRequest{
-				CommonName: cfg.CommonName,
-				Csr:        string(csrPem),
-				Ttl:        cfg.Ttl,
+				CommonName:   cfg.CommonName,
+				Csr:          string(csrPem),
+				Ttl:          cfg.Ttl,
+				Organization: cfg.Organization,
 			}, vaultclient.WithMountPath(cfg.Mount))
 			if err != nil {
 				return nil, fnerrors.InvocationError("vault", "failed to sign intermediate CA: %w", err)
