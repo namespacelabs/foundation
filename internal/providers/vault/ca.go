@@ -26,7 +26,7 @@ import (
 func certificateAuthorityProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.CertificateAuthority) ([]byte, error) {
 	vaultConfig, ok := GetVaultConfig(conf)
 	if !ok || vaultConfig == nil {
-		return nil, fnerrors.BadInputError("invalid vault app role configuration: missing provider configuration")
+		return nil, fnerrors.BadInputError("invalid vault configuration: missing provider configuration")
 	}
 
 	vaultClient, err := login(ctx, vaultConfig)
@@ -42,7 +42,7 @@ func certificateAuthorityProvider(ctx context.Context, conf cfg.Configuration, s
 	}
 
 	if _, err := time.ParseDuration(cfg.Ttl); err != nil {
-		return nil, fnerrors.BadInputError("ttl is not a valid duration")
+		return nil, fnerrors.BadInputError("ttl is not a valid duration: %w", err)
 	}
 
 	return genCertAuthority(ctx, vaultClient, vaultConfig, cfg)
