@@ -12,9 +12,9 @@ import (
 )
 
 type TlsBundle struct {
-	PrivateKeyPem  string   `json:"private_key_pem"`
-	CertificatePem string   `json:"certificate_pem"`
-	CaChainPem     []string `json:"ca_chain_pem"`
+	PrivateKeyPem  string   `json:"private_key_pem,omitempty"`
+	CertificatePem string   `json:"certificate_pem,omitempty"`
+	CaChainPem     []string `json:"ca_chain_pem,omitempty"`
 }
 
 func ParseTlsBundle(data []byte) (*TlsBundle, error) {
