@@ -26,6 +26,7 @@ import (
 	"namespacelabs.dev/foundation/internal/frontend/fncue"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/protos"
+	"namespacelabs.dev/foundation/internal/versions"
 	"namespacelabs.dev/foundation/internal/workspace"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -224,6 +225,11 @@ func parseWorkspaceValue(ctx context.Context, val cue.Value) (*schema.Workspace,
 		w.Foundation = &schema.Workspace_FoundationRequirements{
 			MinimumApi:   int32(m.Foundation.MinimumAPI),
 			ToolsVersion: int32(m.Foundation.ToolsVersion),
+		}
+
+		apiVersion := int32(versions.Builtin().APIVersion)
+		if w.Foundation.GetMinimumApi() > apiVersion {
+			return nil, fnerrors.NamespaceTooOld(w.ModuleName, w.Foundation.GetMinimumApi(), apiVersion)
 		}
 	}
 
