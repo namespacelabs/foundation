@@ -380,6 +380,14 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				ps.MergedFragment.PodAntiAffinity = frag.PodAntiAffinity
 			}
 
+			if frag.UpdateStrategy != nil {
+				if ps.MergedFragment.UpdateStrategy != nil {
+					return fnerrors.New("update_strategy defined more than once")
+				}
+
+				ps.MergedFragment.UpdateStrategy = frag.UpdateStrategy
+			}
+
 			if frag.Permissions != nil {
 				if ps.MergedFragment.Permissions == nil {
 					ps.MergedFragment.Permissions = &schema.ServerPermissions{}

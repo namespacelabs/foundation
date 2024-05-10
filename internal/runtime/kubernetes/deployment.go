@@ -951,12 +951,28 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 		switch deployable.Class {
 		case schema.DeployableClass_STATELESS:
+			var strategy *appsv1.DeploymentStrategyApplyConfiguration
+			if us := deployable.UpdateStrategy; us != nil {
+				rol := appsv1.RollingUpdateDeployment()
+
+				if us.MaxSurge != "" {
+					rol = rol.WithMaxSurge(intstr.FromString(us.MaxSurge))
+				}
+
+				if us.MaxUnavailable != "" {
+					rol = rol.WithMaxUnavailable(intstr.FromString(us.MaxUnavailable))
+				}
+
+				strategy = appsv1.DeploymentStrategy().WithRollingUpdate(rol)
+			}
+
 			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server Deployment %s", deployable.Name))
 			deployment := appsv1.
 				Deployment(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DeploymentSpec().
+					WithStrategy(strategy).
 					WithReplicas(replicas).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
@@ -970,6 +986,10 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			ensure.Resource = deployment
 
 		case schema.DeployableClass_STATEFUL:
+			if deployable.UpdateStrategy != nil {
+				return fnerrors.BadInputError("don't support update strategy on stateful servers")
+			}
+
 			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server StatefulSet %s", deployable.Name))
 			statefulSet := appsv1.
 				StatefulSet(deploymentId, target.namespace).
@@ -990,12 +1010,28 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 			ensure.Resource = statefulSet
 
 		case schema.DeployableClass_DAEMONSET:
+			var updateStrategy *appsv1.DaemonSetUpdateStrategyApplyConfiguration
+			if us := deployable.UpdateStrategy; us != nil {
+				rol := appsv1.RollingUpdateDaemonSet()
+
+				if us.MaxSurge != "" {
+					rol = rol.WithMaxSurge(intstr.FromString(us.MaxSurge))
+				}
+
+				if us.MaxUnavailable != "" {
+					rol = rol.WithMaxUnavailable(intstr.FromString(us.MaxUnavailable))
+				}
+
+				updateStrategy = appsv1.DaemonSetUpdateStrategy().WithRollingUpdate(rol)
+			}
+
 			ensure.Description = firstStr(deployable.Description, fmt.Sprintf("Server DaemonSet %s", deployable.Name))
 			deployment := appsv1.
 				DaemonSet(deploymentId, target.namespace).
 				WithAnnotations(annotations).
 				WithLabels(labels).
 				WithSpec(appsv1.DaemonSetSpec().
+					WithUpdateStrategy(updateStrategy).
 					WithRevisionHistoryLimit(revisionHistoryLimit).
 					WithTemplate(tmpl).
 					WithSelector(applymetav1.LabelSelector().WithMatchLabels(kubedef.SelectById(deployable))))

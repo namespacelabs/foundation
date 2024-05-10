@@ -248,6 +248,7 @@ type DeployableSpec struct {
 	Annotations     []*schema.NamedResolvable // Annotations that apply to individual pods.
 	NodeSelector    []*schema.NodeSelectorItem
 	PodAntiAffinity *schema.PodAntiAffinity
+	UpdateStrategy  *schema.UpdateStrategy
 
 	MainContainer ContainerRunOpts
 	Sidecars      []SidecarRunOpts

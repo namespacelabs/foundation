@@ -153,6 +153,7 @@ message ServerFragment {
     repeated Listener          listener       = 14;
     int32                      replicas       = 15;
     PodAntiAffinity pod_anti_affinity = 16;
+    UpdateStrategy update_strategy = 17;
 }
 
 message Listener {
@@ -164,6 +165,11 @@ message Listener {
 message NodeSelectorItem {
     string key   = 1;
     string value = 2;
+}
+
+message UpdateStrategy {
+    string max_surge = 1;
+    string max_unavailable = 2;
 }
 
 message PodAntiAffinity {
