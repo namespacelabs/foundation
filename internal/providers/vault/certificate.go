@@ -57,8 +57,12 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 			req.excludeCnFromSans = true
 		}
 
-		for _, domain := range certConfig.GetSansDomains() {
-			for _, san := range cfg.GetSans() {
+		for _, san := range cfg.GetSans() {
+			if base := certConfig.GetBaseDomain(); base != "" {
+				req.sans = append(req.sans, fmt.Sprintf("%s.%s", san, base))
+			}
+
+			for _, domain := range certConfig.GetSansDomains() {
 				req.sans = append(req.sans, fmt.Sprintf("%s.%s", san, domain))
 			}
 		}
