@@ -36,6 +36,7 @@ const (
 
 var (
 	vaultConfigType       = cfg.DefineConfigType[*vault.VaultProvider]()
+	selfSignedConfigType  = cfg.DefineConfigType[*vault.SelfSignedProvider]()
 	certificateConfigType = cfg.DefineConfigType[*vault.CertificateConfig]()
 
 	clients = tcache.NewCache[*vaultclient.Client]()
@@ -43,6 +44,10 @@ var (
 
 func GetVaultConfig(cfg cfg.Configuration) (*vault.VaultProvider, bool) {
 	return vaultConfigType.CheckGet(cfg)
+}
+
+func GetSelfSignedConfig(cfg cfg.Configuration) (*vault.SelfSignedProvider, bool) {
+	return selfSignedConfigType.CheckGet(cfg)
 }
 
 func GetCertificateConfig(cfg cfg.Configuration) (*vault.CertificateConfig, bool) {
@@ -122,7 +127,6 @@ func jwtLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.V
 		return "", fnerrors.InvocationError("vault", "missing vault login auth data: %w", err)
 	}
 	return loginResp.Auth.ClientToken, nil
-
 }
 
 func oidcLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.VaultProvider) (string, error) {

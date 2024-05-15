@@ -43,3 +43,7 @@ message VaultProvider {
     string auth_mount  = 3;
     string auth_method = 4;
 }
+
+message SelfSignedProvider {
+    string common_name = 1;
+}

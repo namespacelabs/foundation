@@ -6,6 +6,11 @@ package vault
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"strings"
 	"time"
@@ -31,18 +36,8 @@ type certificateRequest struct {
 }
 
 func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
-	vaultConfig, ok := GetVaultConfig(conf)
-	if !ok || vaultConfig == nil {
-		return nil, fnerrors.BadInputError("invalid certificate provider: missing vault configuration")
-	}
-
 	if cfg.GetCommonName() == "" {
 		return nil, fnerrors.BadInputError("required common name is not set")
-	}
-
-	vaultClient, err := login(ctx, vaultConfig)
-	if err != nil {
-		return nil, err
 	}
 
 	req := certificateRequest{
@@ -68,10 +63,23 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 		}
 	}
 
-	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
+	if c, ok := GetVaultConfig(conf); ok {
+		client, err := login(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+
+		return issueVaultCertificate(ctx, client, cfg.GetMount(), cfg.GetRole(), req)
+	}
+
+	if c, ok := GetSelfSignedConfig(conf); ok {
+		return issueSelfSignedCertificate(ctx, c.GetCommonName(), req)
+	}
+
+	return nil, fnerrors.BadInputError("invalid certificate provider: missing vault or self-signed configuration")
 }
 
-func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiMount, pkiRole string, req certificateRequest) ([]byte, error) {
+func issueVaultCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiMount, pkiRole string, req certificateRequest) ([]byte, error) {
 	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("pki-mount", pkiMount).Arg("pki-role", pkiRole).Arg("common-name", req.commonName),
 		func(ctx context.Context) ([]byte, error) {
 			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
@@ -86,6 +94,59 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 			if err != nil {
 				return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
 			}
+
+			data, err := vault.TlsBundle{
+				PrivateKeyPem:  issueResp.Data.PrivateKey,
+				CertificatePem: issueResp.Data.Certificate,
+				CaChainPem:     issueResp.Data.CaChain,
+			}.Encode()
+			if err != nil {
+				return nil, fnerrors.BadDataError("failed to serialize certificate data: %w", err)
+			}
+
+			return data, nil
+		},
+	)
+}
+
+func issueSelfSignedCertificate(ctx context.Context, rootCaCn string, req certificateRequest) ([]byte, error) {
+	return tasks.Return(ctx, tasks.Action("selfsigned.issue-certificate").Arg("root-ca", rootCaCn).Arg("common-name", req.commonName),
+		func(ctx context.Context) ([]byte, error) {
+			privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				return nil, err
+			}
+
+			ca := x509.Certificate{
+				Subject:            pkix.Name{CommonName: rootCaCn},
+				SignatureAlgorithm: x509.ECDSAWithSHA256,
+				KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+				//ExtKeyUsage: []x509.ExtKeyUsage{
+				//	x509.ExtKeyUsageServerAuth,
+				//	x509.ExtKeyUsageClientAuth,
+				//},
+				//BasicConstraintsValid: true,
+				IsCA: true,
+			}
+
+			template := x509.CertificateRequest{
+				Subject:            pkix.Name{CommonName: rootCaCn},
+				SignatureAlgorithm: x509.ECDSAWithSHA256,
+				KeyUsage:           x509.KeyUsageDigitalSignature,
+			}
+
+			// issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
+			// 	schema.PkiIssueWithRoleRequest{
+			// 		CommonName:        req.commonName,
+			// 		AltNames:          strings.Join(req.sans, ","),
+			// 		ExcludeCnFromSans: req.excludeCnFromSans,
+			// 		IpSans:            req.ipSans,
+			// 	},
+			// 	vaultclient.WithMountPath(pkiMount),
+			// )
+			// if err != nil {
+			// 	return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
+			// }
 
 			data, err := vault.TlsBundle{
 				PrivateKeyPem:  issueResp.Data.PrivateKey,
