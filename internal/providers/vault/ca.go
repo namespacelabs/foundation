@@ -45,10 +45,6 @@ func certificateAuthorityProvider(ctx context.Context, conf cfg.Configuration, s
 		return nil, fnerrors.BadInputError("ttl is not a valid duration: %w", err)
 	}
 
-	return genCertAuthority(ctx, vaultClient, vaultConfig, cfg)
-}
-
-func genCertAuthority(ctx context.Context, vaultClient *vaultclient.Client, vaultConfig *vault.VaultProvider, cfg *vault.CertificateAuthority) ([]byte, error) {
 	return tasks.Return(ctx, tasks.Action("vault.generate-intermediate-ca").Arg("common_name", cfg.CommonName),
 		func(ctx context.Context) ([]byte, error) {
 			privKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
