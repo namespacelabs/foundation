@@ -35,8 +35,20 @@ func NewCheckCmd() *cobra.Command {
 				return err
 			}
 
+			valid := true
+			if t.IsSessionToken() {
+				// A session can be revoked, check if this one is still valid.
+				if valid, err = fnapi.Check(ctx); err != nil {
+					return err
+				}
+			}
+
 			m["session_token"] = t.IsSessionToken()
-			m["expires_at"] = claims.ExpiresAt.Time.Format(time.RFC3339)
+			if valid {
+				m["expires_at"] = claims.ExpiresAt.Format(time.RFC3339)
+			} else {
+				m["invalid"] = "session no longer valid"
+			}
 		} else {
 			var x *fnerrors.ReauthErr
 

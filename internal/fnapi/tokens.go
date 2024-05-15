@@ -6,9 +6,11 @@ package fnapi
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
+	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -102,4 +104,18 @@ func ResolveSpec() (string, error) {
 	}
 
 	return "", nil
+}
+
+func Check(ctx context.Context) (bool, error) {
+	req := emptypb.Empty{}
+	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.signin.SigninService/Check", &req, nil); err != nil {
+		var x *fnerrors.ReauthErr
+		if errors.As(err, &x) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }
