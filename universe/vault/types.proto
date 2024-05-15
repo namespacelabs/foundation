@@ -43,3 +43,8 @@ message VaultProvider {
     string auth_mount  = 3;
     string auth_method = 4;
 }
+
+message Secret {
+    // Secret reference in format - <mount>/<path>/<key>.
+    string secret_reference = 1;
+}
