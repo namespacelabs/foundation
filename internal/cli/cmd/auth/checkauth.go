@@ -38,7 +38,7 @@ func NewCheckCmd() *cobra.Command {
 			valid := true
 			if t.IsSessionToken() {
 				// A session can be revoked, check if this one is still valid.
-				if valid, err = fnapi.Check(ctx); err != nil {
+				if valid, err = fnapi.CheckSession(ctx); err != nil {
 					return err
 				}
 			}

@@ -106,9 +106,9 @@ func ResolveSpec() (string, error) {
 	return "", nil
 }
 
-func Check(ctx context.Context) (bool, error) {
+func CheckSession(ctx context.Context) (bool, error) {
 	req := emptypb.Empty{}
-	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.signin.SigninService/Check", &req, nil); err != nil {
+	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.signin.SigninService/CheckSession", &req, nil); err != nil {
 		var x *fnerrors.ReauthErr
 		if errors.As(err, &x) {
 			return false, nil
