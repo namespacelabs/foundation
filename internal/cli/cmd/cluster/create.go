@@ -39,6 +39,8 @@ func NewCreateCmd() *cobra.Command {
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	labels := cmd.Flags().StringToString("label", nil, "Key-values to attach to the new instance. Multiple key-value pairs may be specified.")
 
+	ingress := cmd.Flags().String("ingress", "", "If set, configures the ingress of this instance. Valid options: wildcard.")
+
 	legacyOutputPath := cmd.Flags().String("output_to", "", "If specified, write the instance id to this path.")
 	cmd.Flags().MarkDeprecated("output_to", "use cidfile instead")
 	cidfile := cmd.Flags().String("cidfile", "", "If specified, write the instance id to this path.")
@@ -116,7 +118,7 @@ func NewCreateCmd() *cobra.Command {
 		for _, def := range *volumes {
 			parts := strings.Split(def, ":")
 			if len(parts) != 3 && len(parts) != 4 {
-				return fnerrors.New("failed to parse volume definition: ")
+				return fnerrors.New("failed to parse volume definition")
 			}
 
 			kind := parts[0]
@@ -165,6 +167,17 @@ func NewCreateCmd() *cobra.Command {
 
 		if *bare {
 			opts.Features = append(opts.Features, "EXP_DISABLE_KUBERNETES")
+		}
+
+		switch *ingress {
+		case "":
+			// nothing to do
+
+		case "wildcard":
+			opts.Features = append(opts.Features, "EXP_REGISTER_INSTANCE_WILDCARD_CERT")
+
+		default:
+			return fnerrors.New("unknown ingress option %q", *ingress)
 		}
 
 		opts.WaitKind = "kubernetes"
