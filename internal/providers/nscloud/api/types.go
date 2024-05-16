@@ -431,6 +431,7 @@ type RegisterIngressRequest struct {
 	Name            string                         `json:"name,omitempty"`
 	BackendEndpoint *IngressBackendEndpoint        `json:"backend_endpoint,omitempty"`
 	HttpMatchRule   []*ContainerPort_HttpMatchRule `json:"http_match_rule,omitempty"`
+	Wildcard        bool                           `json:"wildcard,omitempty"`
 }
 
 type IngressBackendEndpoint struct {

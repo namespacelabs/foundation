@@ -503,6 +503,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	ingressRules := cmd.Flags().StringSlice("ingress", []string{}, "Specify ingress rules. Separate each rule with `,`.")
 	wait := cmd.Flags().Bool("wait", false, "Wait until the provided service got has a valid ingress to expose.")
+	wildcard := cmd.Flags().Bool("wildcard", false, "If set, generate a wildcard ingress for the exposed service.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		cluster, _, err := SelectRunningCluster(ctx, args)
@@ -541,6 +542,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 			Name:            *name,
 			BackendEndpoint: backend,
 			HttpMatchRule:   rules,
+			Wildcard:        *wildcard,
 		})
 		if err != nil {
 			return err
