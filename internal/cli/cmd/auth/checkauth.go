@@ -26,6 +26,7 @@ func NewCheckCmd() *cobra.Command {
 	}
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
+		var x *fnerrors.ReauthErr
 		t, err := fnapi.FetchToken(ctx)
 
 		m := map[string]any{}
@@ -35,23 +36,25 @@ func NewCheckCmd() *cobra.Command {
 				return err
 			}
 
+			m["session_token"] = t.IsSessionToken()
+
 			valid := true
 			if t.IsSessionToken() {
 				// A session can be revoked, check if this one is still valid.
-				if valid, err = fnapi.VerifySession(ctx); err != nil {
-					return err
+				if err = fnapi.VerifySession(ctx, t); err != nil {
+					if errors.As(err, &x) {
+						m["invalid"] = x.Why
+						valid = false
+					} else {
+						return err
+					}
 				}
 			}
 
-			m["session_token"] = t.IsSessionToken()
 			if valid {
 				m["expires_at"] = claims.ExpiresAt.Format(time.RFC3339)
-			} else {
-				m["invalid"] = "session no longer valid"
 			}
 		} else {
-			var x *fnerrors.ReauthErr
-
 			if errors.As(err, &x) {
 				m["invalid"] = x.Why
 			} else {

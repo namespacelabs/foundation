@@ -106,16 +106,18 @@ func ResolveSpec() (string, error) {
 	return "", nil
 }
 
-func VerifySession(ctx context.Context) (bool, error) {
-	req := emptypb.Empty{}
-	if err := AuthenticatedCall(ctx, ResolveIAMEndpoint, "nsl.signin.SigninService/VerifySession", &req, nil); err != nil {
-		var x *fnerrors.ReauthErr
-		if errors.As(err, &x) {
-			return false, nil
-		}
-
-		return false, err
+func VerifySession(ctx context.Context, t Token) error {
+	st := ""
+	if t, ok := t.(*auth.Token); ok && t.SessionToken != "" {
+		st = t.SessionToken
+	} else {
+		return errors.New("not a session token")
 	}
 
-	return true, nil
+	return (Call[*emptypb.Empty]{
+		Method: "nsl.signin.SigninService/VerifySession",
+		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
+			return ResolvedToken{BearerToken: st}, nil
+		},
+	}).Do(ctx, &emptypb.Empty{}, ResolveIAMEndpoint, nil)
 }
