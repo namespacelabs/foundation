@@ -23,7 +23,7 @@ func NewCheckLoginCmd() *cobra.Command {
 	}
 
 	var dur time.Duration
-	cmd.Flags().DurationVar(&dur, "duration", time.Minute*5, "Make sure the current session is valid for at least this much more time.")
+	cmd.Flags().DurationVar(&dur, "duration", time.Minute*5, "Fail if the current session does not last at least this much more time.")
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
 		tok, err := fnapi.FetchToken(ctx)
