@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -26,6 +28,7 @@ func NewCheckCmd() *cobra.Command {
 	}
 
 	return fncobra.Cmd(cmd).Do(func(ctx context.Context) error {
+		var x *fnerrors.ReauthErr
 		t, err := fnapi.FetchToken(ctx)
 
 		m := map[string]any{}
@@ -36,10 +39,32 @@ func NewCheckCmd() *cobra.Command {
 			}
 
 			m["session_token"] = t.IsSessionToken()
-			m["expires_at"] = claims.ExpiresAt.Time.Format(time.RFC3339)
-		} else {
-			var x *fnerrors.ReauthErr
 
+			valid := true
+			if t.IsSessionToken() {
+				// A session can be revoked, check if this one is still valid.
+				if err = fnapi.VerifySession(ctx, t); err != nil {
+					if errors.As(err, &x) {
+						err = x.Unwrap() // ReauthErr → fmt.Errorf()
+						m["invalid"] = x.Why
+						valid = false
+					}
+
+					if st, ok := status.FromError(errors.Unwrap(err)); ok && st.Code() == codes.Unauthenticated {
+						m["invalid"] = st.Message()
+						valid = false
+					}
+
+					if valid {
+						return err // no success with unwrapping
+					}
+				}
+			}
+
+			if valid {
+				m["expires_at"] = claims.ExpiresAt.Format(time.RFC3339)
+			}
+		} else {
 			if errors.As(err, &x) {
 				m["invalid"] = x.Why
 			} else {

@@ -6,9 +6,11 @@ package fnapi
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
+	"google.golang.org/protobuf/types/known/emptypb"
 	"namespacelabs.dev/foundation/internal/auth"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -102,4 +104,20 @@ func ResolveSpec() (string, error) {
 	}
 
 	return "", nil
+}
+
+func VerifySession(ctx context.Context, t Token) error {
+	st := ""
+	if t, ok := t.(*auth.Token); ok && t.SessionToken != "" {
+		st = t.SessionToken
+	} else {
+		return errors.New("not a session token")
+	}
+
+	return (Call[*emptypb.Empty]{
+		Method: "nsl.signin.SigninService/VerifySession",
+		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
+			return ResolvedToken{BearerToken: st}, nil
+		},
+	}).Do(ctx, &emptypb.Empty{}, ResolveIAMEndpoint, nil)
 }
