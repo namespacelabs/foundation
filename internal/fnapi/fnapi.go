@@ -93,7 +93,7 @@ func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, durat
 		},
 		ScrubRequest: func(req *IssueTenantTokenFromSessionRequest) {
 			if req.SessionToken != "" {
-				req.SessionToken = "scrubed"
+				req.SessionToken = "scrubbed"
 			}
 		},
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&resp)); err != nil {
@@ -207,6 +207,22 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		if err := json.Unmarshal(respBody, st); err == nil {
 			return handleGrpcStatus(url, st)
 		} else {
+			// Retry status parsing with a more forgiving type.
+			st := struct {
+				*spb.Status
+				// Code might be passed as a lower-case string.
+				Code json.RawMessage `json:"code"`
+				// Details might contain invalid Base64 values, just ignore it.
+				Details json.RawMessage `json:"details"`
+			}{}
+			if json.Unmarshal(respBody, &st) == nil {
+				var code codes.Code
+				if json.Unmarshal(bytes.ToUpper(st.Code), &code) == nil {
+					st.Status.Code = int32(code)
+					return handleGrpcStatus(url, st.Status)
+				}
+			}
+
 			fmt.Fprintf(console.Debug(ctx), "did not receive an RPC status: %v\n", err)
 		}
 

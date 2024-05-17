@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -43,10 +45,18 @@ func NewCheckCmd() *cobra.Command {
 				// A session can be revoked, check if this one is still valid.
 				if err = fnapi.VerifySession(ctx, t); err != nil {
 					if errors.As(err, &x) {
+						err = x.Unwrap() // ReauthErr → fmt.Errorf()
 						m["invalid"] = x.Why
 						valid = false
-					} else {
-						return err
+					}
+
+					if st, ok := status.FromError(errors.Unwrap(err)); ok && st.Code() == codes.Unauthenticated {
+						m["invalid"] = st.Message()
+						valid = false
+					}
+
+					if valid {
+						return err // no success with unwrapping
 					}
 				}
 			}
