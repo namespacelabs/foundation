@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -39,10 +40,10 @@ func NewCheckLoginCmd() *cobra.Command {
 		// Do an expiry check for non-session tokens only.
 		if expires := time.Until(claims.ExpiresAt.Time); expires < dur && !tok.IsSessionToken() {
 			if expires < 0 {
-				return fmt.Errorf("token expired %s ago", -expires)
+				return fmt.Errorf("token expired %s", humanize.Time(claims.ExpiresAt.Time))
 			}
 
-			return fmt.Errorf("token expires in %s", expires)
+			return fmt.Errorf("token expires %s", humanize.Time(claims.ExpiresAt.Time))
 		}
 
 		// For session tokens we need to try issuing a tenant token
