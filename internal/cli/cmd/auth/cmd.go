@@ -29,6 +29,7 @@ func NewAuthCmd() *cobra.Command {
 	cmd.AddCommand(NewGenerateDevTokenCmd())
 	cmd.AddCommand(NewGenerateTokenCmd())
 	cmd.AddCommand(NewCheckCmd())
+	cmd.AddCommand(NewCheckLoginCmd())
 
 	return cmd
 }
