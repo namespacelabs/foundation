@@ -8,10 +8,13 @@ package foundation.universe.db.postgres;
 
 option go_package = "namespacelabs.dev/foundation/universe/db/postgres";
 
+import "google/protobuf/duration.proto";
+
 message DatabaseArgs {
     reserved 1, 2;
-    string resource_ref = 3;
-    int32  max_conns    = 4;  // Set if > 0.
+    string                   resource_ref        = 3;
+    int32                    max_conns           = 4;  // Set if > 0.
+    google.protobuf.Duration max_conns_idle_time = 5;
 }
 
 message DatabaseReferenceArgs {

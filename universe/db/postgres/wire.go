@@ -28,9 +28,15 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		return nil, err
 	}
 
-	return ConnectToResource(ctx, res, db.ResourceRef, tp, &ConfigOverrides{
-		MaxConns: db.MaxConns,
-	})
+	overrides := &ConfigOverrides{
+		MaxConns: db.GetMaxConns(),
+	}
+
+	if db.GetMaxConnsIdleTime() != nil {
+		overrides.MaxConnIdleTime = db.GetMaxConnsIdleTime().AsDuration()
+	}
+
+	return ConnectToResource(ctx, res, db.ResourceRef, tp, overrides)
 }
 
 // Workaround the fact that foundation doesn't know about primitive types.

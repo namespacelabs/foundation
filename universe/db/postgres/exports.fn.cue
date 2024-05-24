@@ -5,6 +5,10 @@ package postgres
 	Database: {
 		resourceRef?: string
 		maxConns?:    int
+		maxConnsIdleTime?: {
+			seconds?: int
+			nanos?:   int
+		}
 
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
