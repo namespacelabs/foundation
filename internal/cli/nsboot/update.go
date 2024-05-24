@@ -82,7 +82,15 @@ func checkExists(command string, cached *versionCache) (NSPackage, bool) {
 	return NSPackage{}, false
 }
 
-func CheckUpdate(ctx context.Context, command string, updateInline bool, currentVersion string) (*toolVersion, NSPackage, error) {
+func UpdateIfNeeded(ctx context.Context, command string, currentVersion string) (*toolVersion, NSPackage, error) {
+	return checkAndDoUpdate(ctx, command, currentVersion, true)
+}
+
+func CheckCachedUpdate(ctx context.Context, command string, currentVersion string) (*toolVersion, NSPackage, error) {
+	return checkAndDoUpdate(ctx, command, currentVersion, false)
+}
+
+func checkAndDoUpdate(ctx context.Context, command string, currentVersion string, doUpdate bool) (*toolVersion, NSPackage, error) {
 	cached, needUpdate, err := loadCheckCachedMetadata(ctx, command, true)
 	if err != nil {
 		return nil, NSPackage{}, fnerrors.New("failed to load versions.json: %w", err)
@@ -101,7 +109,7 @@ func CheckUpdate(ctx context.Context, command string, updateInline bool, current
 		}
 	}
 
-	if !updateInline {
+	if !doUpdate {
 		return nil, NSPackage{}, nil
 	}
 
@@ -171,7 +179,7 @@ func performUpdate(ctx context.Context, command string, previous *versionCache, 
 		return nil, NSPackage{}, fnerrors.New("failed to load an update from the update service: %w", err)
 	}
 
-	// If the latest version is not new than the current, just use the current binary.
+	// If the latest version is not newer than the current, just use the current binary.
 	if currentVersion != "" && semver.Compare(currentVersion, newVersion.TagName) >= 0 {
 		return nil, NSPackage{}, nil
 	}
