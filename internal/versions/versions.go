@@ -14,10 +14,8 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-var (
-	//go:embed versions.json
-	lib embed.FS
-)
+//go:embed versions.json
+var lib embed.FS
 
 type InternalVersions struct {
 	// APIVersion represents the overall version of Namespaces's semantics, which
@@ -89,5 +87,7 @@ const IntroducedGrpcTranscodeNode = 35
 // Embedded into provisioning tools.
 const ToolAPIVersion = 4
 
-const ToolsIntroducedCompression = 3
-const ToolsIntroducedInlineInvocation = 4
+const (
+	ToolsIntroducedCompression      = 3
+	ToolsIntroducedInlineInvocation = 4
+)

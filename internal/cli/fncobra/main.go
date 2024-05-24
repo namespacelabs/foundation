@@ -98,7 +98,9 @@ func doMain(opts MainOpts) (colors.Style, error) {
 
 	// Before moving forward, we check if there's a more up-to-date ns we should fork to.
 	if opts.AutoUpdate && opts.Name == "ns" { // Applies only to ns, not nsc and docker-credential-helper
-		maybeRunLatest(rootCtx, style, flushLogs, opts.Name, true)
+		maybeRunLatest(rootCtx, style, flushLogs, opts.Name)
+	} else {
+		maybeRunLatestFromCache(rootCtx, style, flushLogs, opts.Name)
 	}
 
 	var cleanupTracer func()
@@ -207,16 +209,24 @@ func doMain(opts MainOpts) (colors.Style, error) {
 	return style, err
 }
 
-func maybeRunLatest(rootCtx context.Context, style colors.Style, flushLogs func(), command string, updateInline bool) {
-	if ver, err := version.Current(); err == nil {
-		if !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
-			cached, ns, err := nsboot.CheckUpdate(rootCtx, command, updateInline, ver.Version)
-			if err == nil && cached != nil {
-				flushLogs()
+func maybeRunLatest(rootCtx context.Context, style colors.Style, flushLogs func(), command string) {
+	if ver, err := version.Current(); err == nil && !nsboot.SpawnedFromBoot() && version.ShouldCheckUpdate(ver) {
+		if cached, ns, err := nsboot.UpdateIfNeeded(rootCtx, command, ver.Version); err == nil && cached != nil {
+			flushLogs()
 
-				ns.ExecuteAndForwardExitCode(rootCtx, style)
-				// Never gets here.
-			}
+			ns.ExecuteAndForwardExitCode(rootCtx, style)
+			// Never gets here.
+		}
+	}
+}
+
+func maybeRunLatestFromCache(rootCtx context.Context, style colors.Style, flushLogs func(), command string) {
+	if ver, err := version.Current(); err == nil && !nsboot.SpawnedFromBoot() && version.ShouldUseCachedUpdate(ver) {
+		if cached, ns, err := nsboot.CheckCachedUpdate(rootCtx, command, ver.Version); err == nil && cached != nil {
+			flushLogs()
+
+			ns.ExecuteAndForwardExitCode(rootCtx, style)
+			// Never gets here.
 		}
 	}
 }
@@ -330,8 +340,8 @@ func ensureFnConfig() {
 			return
 		}
 
-		if err := os.MkdirAll(fnDir, 0755); err == nil {
-			if f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644); err == nil {
+		if err := os.MkdirAll(fnDir, 0o755); err == nil {
+			if f, err := os.OpenFile(p, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644); err == nil {
 				// Ignore errors.
 				fmt.Fprintf(f, "{}\n")
 				f.Close()
@@ -350,7 +360,7 @@ func consoleToSink(out *os.File, isTerm, inhibitReport bool, renderer consolesin
 	maxLogLevel := viper.GetInt("console_log_level")
 
 	if filename, ok := os.LookupEnv("NS_LOG_TO_FILE"); ok {
-		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			log.Fatalf("could not open file %q: %v", filename, err)
 		}

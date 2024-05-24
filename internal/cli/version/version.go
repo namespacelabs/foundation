@@ -80,3 +80,7 @@ func ShouldCheckUpdate(ver *storage.NamespaceBinaryVersion) bool {
 	_, have := os.LookupEnv("NS_DO_NOT_UPDATE")
 	return !have
 }
+
+func ShouldUseCachedUpdate(ver *storage.NamespaceBinaryVersion) bool {
+	return !isDevelopmentBuild(ver)
+}
