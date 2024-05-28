@@ -3,8 +3,10 @@ package postgres
 
 #Exports: {
 	Database: {
-		resourceRef?: string
-		maxConns?:    int
+		client?:          string
+		resourceRef?:     string
+		maxConns?:        int
+		maxConnsFromEnv?: string
 		maxConnsIdleTime?: {
 			seconds?: int
 			nanos?:   int
@@ -37,6 +39,8 @@ package postgres
 		}
 	}
 	Factory: {
+		client?: string
+
 		#Definition: {
 			packageName: "namespacelabs.dev/foundation/universe/db/postgres"
 			type:        "Factory"

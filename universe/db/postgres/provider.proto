@@ -12,8 +12,10 @@ import "google/protobuf/duration.proto";
 
 message DatabaseArgs {
     reserved 1, 2;
+    string                   client              = 7;
     string                   resource_ref        = 3;
     int32                    max_conns           = 4;  // Set if > 0.
+    string                   max_conns_from_env  = 6;
     google.protobuf.Duration max_conns_idle_time = 5;
 }
 
@@ -22,4 +24,6 @@ message DatabaseReferenceArgs {
     string database    = 2;
 }
 
-message FactoryArgs {}
+message FactoryArgs {
+    string client = 1;
+}

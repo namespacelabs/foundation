@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	providerPkg = "namespacelabs.dev/foundation/library/oss/postgres"
-	connBackoff = 1500 * time.Millisecond
+	providerPkg     = "namespacelabs.dev/foundation/library/oss/postgres"
+	connBackoff     = 1500 * time.Millisecond
+	connIdleTimeout = 15 * time.Minute
 
 	caCertPath = "/tmp/ca.pem"
 )
@@ -66,7 +67,10 @@ func main() {
 	}
 
 	if !exists || !p.Intent.SkipSchemaInitializationIfExists {
-		db, err := universepg.NewDatabaseFromConnectionUri(ctx, instance, instance.ConnectionUri, nil)
+		client := fmt.Sprintf("provider:%s", p.Intent.Name)
+		db, err := universepg.NewDatabaseFromConnectionUriWithOverrides(ctx, instance, instance.ConnectionUri, nil, client, &universepg.ConfigOverrides{
+			MaxConnIdleTime: connIdleTimeout,
+		})
 		if err != nil {
 			log.Fatalf("unable to open connection: %v", err)
 		}

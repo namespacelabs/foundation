@@ -6,6 +6,8 @@ package postgres
 
 import (
 	"context"
+	"os"
+	"strconv"
 
 	"namespacelabs.dev/foundation/framework/resources"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -16,6 +18,10 @@ import (
 func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) (*DB, error) {
 	if db.ResourceRef == "" {
 		return nil, fnerrors.New("resourceRef is required")
+	}
+
+	if db.GetMaxConns() > 0 && db.GetMaxConnsFromEnv() != "" {
+		return nil, fnerrors.New("maxConns and maxConnsFromEnv cannot both be set")
 	}
 
 	res, err := resources.LoadResources()
@@ -32,11 +38,20 @@ func ProvideDatabase(ctx context.Context, db *DatabaseArgs, deps ExtensionDeps) 
 		MaxConns: db.GetMaxConns(),
 	}
 
+	if db.GetMaxConnsFromEnv() != "" {
+		parsed, err := strconv.ParseInt(os.Getenv(db.GetMaxConnsFromEnv()), 10, 32)
+		if err != nil {
+			return nil, fnerrors.New("%s is not a valid number: %w", db.GetMaxConnsFromEnv(), err)
+		}
+
+		overrides.MaxConns = int32(parsed)
+	}
+
 	if db.GetMaxConnsIdleTime() != nil {
 		overrides.MaxConnIdleTime = db.GetMaxConnsIdleTime().AsDuration()
 	}
 
-	return ConnectToResource(ctx, res, db.ResourceRef, tp, overrides)
+	return ConnectToResource(ctx, res, db.ResourceRef, tp, db.GetClient(), overrides)
 }
 
 // Workaround the fact that foundation doesn't know about primitive types.

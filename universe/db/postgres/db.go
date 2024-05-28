@@ -52,12 +52,12 @@ var (
 func init() {
 	cols = make([]*prometheus.GaugeVec, len(metrics))
 	for k, def := range metrics {
-		cols[k] = prometheus.NewGaugeVec(prometheus.GaugeOpts{Subsystem: "pgx_pool", Name: def.Key}, []string{"address", "database"})
+		cols[k] = prometheus.NewGaugeVec(prometheus.GaugeOpts{Subsystem: "pgx_pool", Name: def.Key}, []string{"address", "database", "client"})
 		prometheus.MustRegister(cols[k])
 	}
 }
 
-func newDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer) *DB {
+func newDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, tracer trace.Tracer, client string) *DB {
 	db := &DB{base: conn, t: tracer}
 
 	if instance != nil {
@@ -91,7 +91,7 @@ func newDatabase(instance *postgrespb.DatabaseInstance, conn *pgxpool.Pool, trac
 					stats := conn.Stat()
 
 					for k, def := range metrics {
-						cols[k].WithLabelValues(db.opts.clusterAddr, db.opts.databaseName).Set(def.Value(stats))
+						cols[k].WithLabelValues(db.opts.clusterAddr, db.opts.databaseName, client).Set(def.Value(stats))
 					}
 				}
 			}

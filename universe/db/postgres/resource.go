@@ -16,13 +16,13 @@ import (
 )
 
 // Connect to a Postgres Database resource.
-func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, tp trace.TracerProvider, overrides *ConfigOverrides) (*DB, error) {
+func ConnectToResource(ctx context.Context, res *resources.Parsed, resourceRef string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
 	db := &postgrespb.DatabaseInstance{}
 	if err := res.Unmarshal(resourceRef, db); err != nil {
 		return nil, err
 	}
 
-	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, db.ConnectionUri, tp, overrides)
+	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, db.ConnectionUri, tp, client, overrides)
 }
 
 type ConfigOverrides struct {
@@ -30,11 +30,11 @@ type ConfigOverrides struct {
 	MaxConnIdleTime time.Duration
 }
 
-func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider) (*DB, error) {
-	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, connuri, tp, nil)
+func NewDatabaseFromConnectionUri(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, client string) (*DB, error) {
+	return NewDatabaseFromConnectionUriWithOverrides(ctx, db, connuri, tp, client, nil)
 }
 
-func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, overrides *ConfigOverrides) (*DB, error) {
+func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgrespb.DatabaseInstance, connuri string, tp trace.TracerProvider, client string, overrides *ConfigOverrides) (*DB, error) {
 	config, err := pgxpool.ParseConfig(connuri)
 	if err != nil {
 		return nil, err
@@ -61,5 +61,5 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgres
 		return nil, err
 	}
 
-	return newDatabase(db, conn, t), nil
+	return newDatabase(db, conn, t, client), nil
 }

@@ -12,11 +12,12 @@ import (
 )
 
 type Factory struct {
-	res *resources.Parsed
-	tp  trace.TracerProvider
+	res    *resources.Parsed
+	tp     trace.TracerProvider
+	client string
 }
 
-func ProvideFactory(ctx context.Context, _ *FactoryArgs, deps ExtensionDeps) (Factory, error) {
+func ProvideFactory(ctx context.Context, args *FactoryArgs, deps ExtensionDeps) (Factory, error) {
 	res, err := resources.LoadResources()
 	if err != nil {
 		return Factory{}, err
@@ -27,9 +28,9 @@ func ProvideFactory(ctx context.Context, _ *FactoryArgs, deps ExtensionDeps) (Fa
 		return Factory{}, err
 	}
 
-	return Factory{res, tp}, nil
+	return Factory{res, tp, args.GetClient()}, nil
 }
 
 func (f Factory) Provide(ctx context.Context, ref string) (*DB, error) {
-	return ConnectToResource(ctx, f.res, ref, f.tp, nil)
+	return ConnectToResource(ctx, f.res, ref, f.tp, f.client, nil)
 }
