@@ -25,7 +25,7 @@ func SetupFlags(prefix string, flags *pflag.FlagSet, hide bool) {
 	regionFlag := fmt.Sprintf("%sregion", prefix)
 
 	flags.StringVar(&rpcEndpointOverride, endpointFlag, "", "Where to dial to when reaching nscloud.")
-	flags.StringVar(&RegionName, regionFlag, defaultRegion, "Which region to use.")
+	flags.StringVar(&RegionName, regionFlag, "", "Which region to use.")
 
 	if hide {
 		_ = flags.MarkHidden(endpointFlag)
@@ -38,19 +38,20 @@ func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (stri
 		return rpcEndpointOverride, nil
 	}
 
+	if RegionName != "" {
+		return rpcEndpoint(RegionName), nil
+	}
+
 	if rpcEndpoint := os.Getenv("NSC_ENDPOINT"); rpcEndpoint != "" {
 		return rpcEndpoint, nil
 	}
 
-	if RegionName != defaultRegion {
-		return rpcEndpoint(RegionName), nil
-	}
-
+	// XXX Rely on global endpoint instead.
 	if tok.PrimaryRegion != "" {
 		return "https://api." + tok.PrimaryRegion, nil
 	}
 
-	return rpcEndpoint(RegionName), nil
+	return rpcEndpoint(defaultRegion), nil
 }
 
 func rpcEndpoint(regionName string) string {
