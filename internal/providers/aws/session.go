@@ -20,7 +20,10 @@ import (
 	"namespacelabs.dev/foundation/universe/aws/configuration"
 )
 
-const identityTokenEnv = "AWS_WEB_IDENTITY_TOKEN_FILE"
+const (
+	identityTokenEnv         = "AWS_WEB_IDENTITY_TOKEN_FILE"
+	awsCliMaxNumberOfRetries = 10
+)
 
 var confConfigType = cfg.DefineConfigType[*configuration.Configuration]("foundation.providers.aws.Conf")
 
@@ -100,6 +103,7 @@ func innerSession(ctx context.Context, cfg cfg.Configuration) (func(...func(*con
 			if conf.Region != "" {
 				opts = append(opts, config.WithRegion(conf.Region))
 			}
+			opts = append(opts, config.WithRetryMaxAttempts(awsCliMaxNumberOfRetries))
 			return config.LoadDefaultConfig(ctx, opts...)
 		}, conf, nil
 	}
@@ -109,6 +113,7 @@ func innerSession(ctx context.Context, cfg cfg.Configuration) (func(...func(*con
 		if conf.Region != "" {
 			opts = append(opts, config.WithRegion(conf.Region))
 		}
+		opts = append(opts, config.WithRetryMaxAttempts(awsCliMaxNumberOfRetries))
 		return config.LoadDefaultConfig(ctx, opts...)
 	}, conf, nil
 }
