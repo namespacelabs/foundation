@@ -132,7 +132,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 	ephemeral := env.Environment().Ephemeral
 	response, err := createCluster(ctx, purpose, nil)
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.New("failed to create instance: %w", err)
 	}
 
 	return ensureCluster(ctx, config, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, ephemeral)
@@ -150,7 +150,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 
 	response, err := createCluster(ctx, purpose, labels)
 	if err != nil {
-		return nil, err
+		return nil, fnerrors.New("failed to create instance: %w", err)
 	}
 
 	return completePlanner(ctx, env, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, env.Environment().Ephemeral)
@@ -161,6 +161,7 @@ func createCluster(ctx context.Context, purpose string, labels map[string]string
 		MachineType: defaultMachineType,
 		Purpose:     purpose,
 		Labels:      labels,
+		Interactive: true,
 	}
 
 	if defaultDuration > 0 {

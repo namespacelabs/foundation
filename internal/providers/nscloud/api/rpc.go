@@ -15,6 +15,7 @@ import (
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/bcicen/jstream"
+	"github.com/cenkalti/backoff"
 	"github.com/dustin/go-humanize"
 	"go.uber.org/atomic"
 	"golang.org/x/exp/maps"
@@ -240,66 +241,96 @@ func (w WaitClusterOpts) label() string {
 
 func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*StartCreateKubernetesClusterResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.cluster-create").HumanReadablef(opts.label()), func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
-		req := CreateKubernetesClusterRequest{
-			DocumentedPurpose: opts.Purpose,
-			MachineType:       opts.MachineType,
-			Feature:           opts.Features,
-			AuthorizedSshKeys: opts.AuthorizedSshKeys,
-			UniqueTag:         opts.UniqueTag,
-			InternalExtra:     opts.InternalExtra,
-			Deadline:          opts.Deadline,
-			Experimental:      opts.Experimental,
-			Interactive:       opts.Interactive,
-			Volumes:           opts.Volumes,
-		}
-
-		labelKeys := maps.Keys(opts.Labels)
-		slices.Sort(labelKeys)
-		for _, key := range labelKeys {
-			req.Label = append(req.Label, &LabelEntry{
-				Name:  key,
-				Value: opts.Labels[key],
-			})
-		}
-
-		for _, sid := range opts.SecretIDs {
-			req.AvailableSecrets = append(req.AvailableSecrets, &SecretRef{SecretID: sid})
-		}
-
-		var response StartCreateKubernetesClusterResponse
-		if err := api.StartCreateKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
-			return nil, fnerrors.New("failed to create cluster: %w", err)
-		}
-
-		tasks.Attachments(ctx).AddResult("cluster_id", response.ClusterId)
-
-		if response.ClusterFragment != nil {
-			if shape := response.ClusterFragment.Shape; shape != nil {
-				tasks.Attachments(ctx).
-					AddResult("cluster_cpu", shape.VirtualCpu).
-					AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
+		tryOnce := func(ctx context.Context) (*StartCreateKubernetesClusterResponse, error) {
+			req := CreateKubernetesClusterRequest{
+				DocumentedPurpose: opts.Purpose,
+				MachineType:       opts.MachineType,
+				Feature:           opts.Features,
+				AuthorizedSshKeys: opts.AuthorizedSshKeys,
+				UniqueTag:         opts.UniqueTag,
+				InternalExtra:     opts.InternalExtra,
+				Deadline:          opts.Deadline,
+				Experimental:      opts.Experimental,
+				Interactive:       opts.Interactive,
+				Volumes:           opts.Volumes,
 			}
+
+			labelKeys := maps.Keys(opts.Labels)
+			slices.Sort(labelKeys)
+			for _, key := range labelKeys {
+				req.Label = append(req.Label, &LabelEntry{
+					Name:  key,
+					Value: opts.Labels[key],
+				})
+			}
+
+			for _, sid := range opts.SecretIDs {
+				req.AvailableSecrets = append(req.AvailableSecrets, &SecretRef{SecretID: sid})
+			}
+
+			var response StartCreateKubernetesClusterResponse
+			if err := api.StartCreateKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+				return nil, fnerrors.New("failed to create cluster: %w", err)
+			}
+
+			tasks.Attachments(ctx).AddResult("cluster_id", response.ClusterId)
+
+			if response.ClusterFragment != nil {
+				if shape := response.ClusterFragment.Shape; shape != nil {
+					tasks.Attachments(ctx).
+						AddResult("cluster_cpu", shape.VirtualCpu).
+						AddResult("cluster_ram", humanize.IBytes(uint64(shape.MemoryMegabytes)*humanize.MiByte))
+				}
+			}
+
+			fmt.Fprintf(console.Debug(ctx), "[nsc] created instance: %s\n", response.ClusterId)
+
+			if !opts.KeepAtExit {
+				fmt.Fprintf(console.Debug(ctx), "[nsc] instance will be removed on exit: %s\n", response.ClusterId)
+
+				compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
+					if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
+						// The cluster being gone is an acceptable state (it could have
+						// been deleted by DeleteRecursively for example).
+						if status.Code(err) == codes.NotFound {
+							return nil
+						}
+					}
+
+					return nil
+				})
+			}
+
+			return &response, nil
 		}
 
-		fmt.Fprintf(console.Debug(ctx), "[nsc] created instance: %s\n", response.ClusterId)
+		b := &backoff.ExponentialBackOff{
+			InitialInterval:     5 * time.Second,
+			RandomizationFactor: 0.5,
+			Multiplier:          1.5,
+			MaxInterval:         30 * time.Second,
+			Clock:               backoff.SystemClock,
+		}
 
-		if !opts.KeepAtExit {
-			fmt.Fprintf(console.Debug(ctx), "[nsc] instance will be removed on exit: %s\n", response.ClusterId)
-
-			compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
-				if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
-					// The cluster being gone is an acceptable state (it could have
-					// been deleted by DeleteRecursively for example).
-					if status.Code(err) == codes.NotFound {
-						return nil
-					}
+		var r *StartCreateKubernetesClusterResponse
+		if err := backoff.Retry(func() error {
+			resp, err := tryOnce(ctx)
+			if err != nil {
+				if status.Code(err) == codes.ResourceExhausted {
+					// Retry.
+					return err
 				}
 
-				return nil
-			})
+				return backoff.Permanent(err)
+			}
+
+			r = resp
+			return nil
+		}, backoff.WithContext(b, ctx)); err != nil {
+			return nil, err
 		}
 
-		return &response, nil
+		return r, nil
 	})
 }
 
