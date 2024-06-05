@@ -17,11 +17,14 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
+const defaultSessionDuration = 7 * 24 * time.Hour
+
 func NewLoginCmd() *cobra.Command {
-	var openBrowser bool
-	var session bool
+	var openBrowser, session bool
+	var duration time.Duration
 
 	cmd := &cobra.Command{
 		Use:   "login",
@@ -31,7 +34,9 @@ func NewLoginCmd() *cobra.Command {
 		RunE: fncobra.RunE(func(ctx context.Context, args []string) error {
 			var sessionDuration time.Duration
 			if session {
-				sessionDuration = 7 * 24 * time.Hour
+				sessionDuration = duration
+			} else if duration != defaultSessionDuration {
+				return fnerrors.New("--session is required when setting --duration")
 			}
 
 			res, err := fnapi.StartLogin(ctx, auth.Workspace, sessionDuration)
@@ -77,6 +82,8 @@ func NewLoginCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&openBrowser, "browser", true, "Open a browser to login.")
 	cmd.Flags().BoolVar(&session, "session", false, "If set, gets a long-lived session.")
 	cmd.Flags().MarkHidden("session")
+	cmd.Flags().DurationVar(&duration, "duration", defaultSessionDuration, "How long the session should last. Default is one week.")
+	cmd.Flags().MarkHidden("duration")
 
 	return cmd
 }
