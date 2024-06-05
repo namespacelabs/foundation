@@ -594,11 +594,6 @@ func GetImageRegistry(ctx context.Context, api API) (*GetImageRegistryResponse, 
 		if err := api.GetImageRegistry.Do(ctx, emptypb.Empty{}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
-
-		if data, err := json.MarshalIndent(response, "", " "); err == nil {
-			fmt.Fprintf(console.Debug(ctx), "Res Body: %s\n", data)
-		}
-
 		return &response, nil
 	})
 }
