@@ -168,7 +168,7 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 			cfg.AuthConfigs = map[string]types.AuthConfig{}
 		}
 
-		registries := append(response.ExtraRegistry, []*api.ImageRegistry{response.Registry, response.NSCR}...)
+		registries := append(response.ExtraRegistry, []*api.ImageRegistry{response.NSCR}...)
 		for _, reg := range registries {
 			if reg != nil {
 				if *useCredentialHelper {
@@ -193,13 +193,11 @@ func newDockerLoginCmd(hidden bool) *cobra.Command {
 		}
 
 		if *outputRegistryPath != "" {
-			// If user wants the registry in output file,
-			// give priority to the newer nscr.io registry
-			registryEp := response.Registry.EndpointAddress
-			if response.NSCR != nil {
-				registryEp = fmt.Sprintf("%s/%s", response.NSCR.EndpointAddress, response.NSCR.Repository)
+			if response.NSCR == nil {
+				return fnerrors.BadDataError("missing nscr endpoint")
 			}
 
+			registryEp := fmt.Sprintf("%s/%s", response.NSCR.EndpointAddress, response.NSCR.Repository)
 			if err := os.WriteFile(*outputRegistryPath, []byte(registryEp), 0644); err != nil {
 				return fnerrors.New("failed to write %q: %w", *outputRegistryPath, err)
 			}
@@ -272,7 +270,7 @@ func NewDockerCredHelperGetCmd(hidden bool) *cobra.Command {
 			return fnerrors.New("failed to get nscloud registries: %w", err)
 		}
 
-		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.Registry, resp.NSCR}...)
+		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.NSCR}...)
 		for _, reg := range registries {
 			if reg != nil && regURL == reg.EndpointAddress {
 				token, err := fnapi.IssueToken(ctx, 8*time.Hour)
@@ -315,7 +313,7 @@ func NewDockerCredHelperListCmd(hidden bool) *cobra.Command {
 			return fnerrors.New("failed to get nscloud registries: %w", err)
 		}
 
-		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.Registry, resp.NSCR}...)
+		registries := append(resp.ExtraRegistry, []*api.ImageRegistry{resp.NSCR}...)
 		output := map[string]string{}
 		for _, reg := range registries {
 			if reg != nil {

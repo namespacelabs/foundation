@@ -372,7 +372,7 @@ func runBuildProxyWithRegistry(ctx context.Context, platform api.BuildPlatform, 
 		return nil, err
 	}
 
-	for _, reg := range []*api.ImageRegistry{nsRegs.Registry, nsRegs.NSCR} {
+	for _, reg := range []*api.ImageRegistry{nsRegs.NSCR} {
 		if reg != nil {
 			newConfig.AuthConfigs[reg.EndpointAddress] = types.AuthConfig{
 				ServerAddress: reg.EndpointAddress,
