@@ -29,6 +29,7 @@ import (
 	t "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 	"golang.org/x/exp/slices"
+	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/core/types"
 	"namespacelabs.dev/foundation/std/go/core"
@@ -188,11 +189,30 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 		}
 	}
 
-	deps.Interceptors.ForServer(
-		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithInterceptorFilter(filter)),
-		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)))
+	uni := otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
+		otelgrpc.WithInterceptorFilter(filter))
+	stream := otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
+		otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter))
+
+	deps.Interceptors.ForServer(func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		return uni(ctx, req, info, func(ctx context.Context, req any) (any, error) {
+			span := t.SpanFromContext(ctx)
+			if t, ok := ctx.Deadline(); ok {
+				span.SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(t).Milliseconds()))
+			}
+
+			return handler(ctx, req)
+		})
+	}, func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		return stream(srv, ss, info, func(srv any, stream grpc.ServerStream) error {
+			span := t.SpanFromContext(stream.Context())
+			if t, ok := ctx.Deadline(); ok {
+				span.SetAttributes(attribute.Int64("rpc.deadline_left_ms", time.Until(t).Milliseconds()))
+			}
+
+			return handler(srv, stream)
+		})
+	})
 
 	deps.Interceptors.ForClient(
 		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
