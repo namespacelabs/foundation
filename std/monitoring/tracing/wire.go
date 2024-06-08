@@ -190,13 +190,13 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 
 	deps.Interceptors.ForServer(
 		otelgrpc.UnaryServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
+			otelgrpc.WithInterceptorFilter(filter)),
 		otelgrpc.StreamServerInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
 			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)))
 
 	deps.Interceptors.ForClient(
 		otelgrpc.UnaryClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
-			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
+			otelgrpc.WithInterceptorFilter(filter)),
 		otelgrpc.StreamClientInterceptor(otelgrpc.WithTracerProvider(provider), otelgrpc.WithPropagators(propagators),
 			otelgrpc.WithMessageEvents(), otelgrpc.WithInterceptorFilter(filter)),
 	)
