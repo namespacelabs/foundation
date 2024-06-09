@@ -85,11 +85,20 @@ func (pi *publishImage) Compute(ctx context.Context, deps compute.Resolved) (Ima
 		}
 	}
 
-	digest, err := compute.MustGetDepValue(deps, pi.image, "image").Push(ctx, target, true)
-	if err != nil {
-		return ImageID{}, err
-	}
+	image := compute.MustGetDepValue(deps, pi.image, "image")
 
-	// Use the original name, not the rewritten one, for readability purposes.
-	return ImageID{Repository: tag.Repository, Digest: digest.String()}, nil
+	// There are repositories that are not happy with concurrent updates to the
+	// same repository. This does not solve concurrent uploads across
+	// invocations, but at least we mitigate the problem within a single `ns`
+	// invocation.
+
+	return compute.WithLock(ctx, "publish-image:"+target.Repository, func(ctx context.Context) (ImageID, error) {
+		digest, err := image.Push(ctx, target, true)
+		if err != nil {
+			return ImageID{}, err
+		}
+
+		// Use the original name, not the rewritten one, for readability purposes.
+		return ImageID{Repository: tag.Repository, Digest: digest.String()}, nil
+	})
 }

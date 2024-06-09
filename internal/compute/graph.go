@@ -14,6 +14,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"namespacelabs.dev/foundation/framework/sync/ctxmutex"
 	"namespacelabs.dev/foundation/internal/compute/cache"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/executor"
@@ -51,6 +52,8 @@ type Orch struct {
 	mu       sync.Mutex
 	promises map[string]*Promise[any]
 	cleaners []cleaner
+
+	serialization map[string]*ctxmutex.Mutex
 }
 
 type cleaner struct {
@@ -502,8 +505,9 @@ func Do(parent context.Context, do func(context.Context) error) error {
 
 func DoWithCache(parent context.Context, cache cache.Cache, do func(context.Context) error) error {
 	g := &Orch{
-		cache:    cache,
-		promises: map[string]*Promise[any]{},
+		cache:         cache,
+		promises:      map[string]*Promise[any]{},
+		serialization: map[string]*ctxmutex.Mutex{},
 	}
 	ctx := AttachOrch(parent, g)
 	exec := executor.New(ctx, "compute.Do")
