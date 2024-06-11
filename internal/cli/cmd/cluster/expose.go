@@ -67,6 +67,7 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 	output := cmd.Flags().StringP("output", "o", "plain", "One of plain or json.")
 	all := cmd.Flags().Bool("all", false, "If set to true, exports one ingress for each exported port of each running container.")
 	ingressRules := cmd.Flags().StringToString("ingress", map[string]string{}, "Specify ingress rules for ports; specify * to apply rules to any port; separate each rule with ;.")
+	wildcard := cmd.Flags().Bool("wildcard", false, "If set, generate a wildcard ingress for the exposed container port. Can only be used when exposing a single port.")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *containerName == "" && !*all {
@@ -135,6 +136,10 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 			return err
 		}
 
+		if len(ports) > 1 && *wildcard {
+			return fnerrors.New("--wildcard is only supported when exposing a single port. Found %d", len(ports))
+		}
+
 		var exps []exported
 		for k, port := range ports {
 			resp, err := api.RegisterIngress(ctx, api.Methods, api.RegisterIngressRequest{
@@ -144,6 +149,7 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 					Port: port.ExportedPort,
 				},
 				HttpMatchRule: filledIn[k].HttpIngressRules,
+				Wildcard:      *wildcard,
 			})
 			if err != nil {
 				return err
