@@ -802,7 +802,7 @@ func StartRefreshing(ctx context.Context, api API, clusterId string, handle func
 func regionEndpointResolver(apiEndpoint string) func(context.Context, fnapi.ResolvedToken) (string, error) {
 	return func(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
 		if apiEndpoint != "" {
-			return apiEndpoint, nil
+			return "https://" + apiEndpoint, nil
 		}
 
 		return endpoint.ResolveRegionalEndpoint(ctx, tok)
