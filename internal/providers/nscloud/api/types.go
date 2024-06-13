@@ -136,9 +136,10 @@ type ContainerPort_HttpMatch struct {
 }
 
 type CreateContainersResponse struct {
-	ClusterId  string       `json:"cluster_id,omitempty"`
-	ClusterUrl string       `json:"cluster_url,omitempty"`
-	Container  []*Container `json:"container,omitempty"`
+	ClusterId   string       `json:"cluster_id,omitempty"`
+	ClusterUrl  string       `json:"cluster_url,omitempty"`
+	Container   []*Container `json:"container,omitempty"`
+	ApiEndpoint string       `json:"api_endpoint,omitempty"`
 }
 
 type StartContainersResponse struct {
@@ -218,6 +219,7 @@ type KubernetesCluster struct {
 	Platform               []string `json:"platform,omitempty"`
 
 	IngressDomain string `json:"ingress_domain,omitempty"`
+	ApiEndpoint   string `json:"api_endpoint,omitempty"`
 
 	Label []*LabelEntry `json:"label,omitempty"`
 

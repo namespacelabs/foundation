@@ -10,6 +10,7 @@ option go_package = "namespacelabs.dev/foundation/internal/providers/nscloud";
 
 message PrebuiltCluster {
     string cluster_id        = 1;
+    string api_endpoint      = 4;
     bytes  serialized_config = 2;  // Deprecated, always fetched now.
     bool   ephemeral         = 3;
 }
