@@ -675,7 +675,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		UseBlockLabels: true,
 		Include:        opts.Include,
 		Exclude:        opts.Exclude,
-	}, regionEndpointResolver(opts.ApiEndpoint), func(r io.Reader) error {
+	}, MaybeEndpoint(opts.ApiEndpoint), func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			var logBlock LogBlock
@@ -716,7 +716,7 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 		}
 
 		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, regionEndpointResolver(opts.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetClusterLogs.Do(ctx, req, MaybeEndpoint(opts.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
@@ -818,15 +818,5 @@ func StartRefreshing(ctx context.Context, api API, clusterId string, handle func
 			return ctx.Err()
 		case <-ticker.C:
 		}
-	}
-}
-
-func regionEndpointResolver(apiEndpoint string) func(context.Context, fnapi.ResolvedToken) (string, error) {
-	return func(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
-		if apiEndpoint != "" {
-			return apiEndpoint, nil
-		}
-
-		return endpoint.ResolveRegionalEndpoint(ctx, tok)
 	}
 }
