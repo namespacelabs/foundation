@@ -55,5 +55,5 @@ func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (stri
 }
 
 func rpcEndpoint(regionName string) string {
-	return fmt.Sprintf("https://api.%s.nscluster.cloud", regionName)
+	return fmt.Sprintf("https://%s.compute.namespaceapis.com", regionName)
 }
