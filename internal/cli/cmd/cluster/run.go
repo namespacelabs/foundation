@@ -324,7 +324,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 			return nil, err
 		}
 
-		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
+		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, resp.ApiEndpoint, api.WaitClusterOpts{
 			CreateLabel: label,
 		}); err != nil {
 			return nil, err
@@ -491,7 +491,7 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 		return nil, err
 	}
 
-	if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+	if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, resp.ApiEndpoint, api.WaitClusterOpts{}); err != nil {
 		return nil, err
 	}
 

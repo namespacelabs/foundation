@@ -80,11 +80,11 @@ func provideCluster(ctx context.Context, cfg cfg.Configuration) (client.ClusterC
 		return client.ClusterConfiguration{}, fnerrors.InternalError("missing configuration")
 	}
 
-	return provideClusterExt(ctx, conf.ClusterId, conf.Ephemeral)
+	return provideClusterExt(ctx, conf.ClusterId, conf.ApiEndpoint, conf.Ephemeral)
 }
 
-func provideClusterExt(ctx context.Context, clusterId string, ephemeral bool) (client.ClusterConfiguration, error) {
-	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, api.WaitClusterOpts{WaitKind: "kubernetes"})
+func provideClusterExt(ctx context.Context, clusterId, apiEndpoint string, ephemeral bool) (client.ClusterConfiguration, error) {
+	wres, err := api.WaitClusterReady(ctx, api.Methods, clusterId, apiEndpoint, api.WaitClusterOpts{WaitKind: "kubernetes"})
 	if err != nil {
 		return client.ClusterConfiguration{}, err
 	}
@@ -119,7 +119,7 @@ func (d runtimeClass) AttachToCluster(ctx context.Context, cfg cfg.Configuration
 		return nil, err
 	}
 
-	return ensureCluster(ctx, cfg, response.Cluster.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
+	return ensureCluster(ctx, cfg, response.Cluster.ClusterId, response.Cluster.IngressDomain, response.Cluster.ApiEndpoint, response.Registry, false)
 }
 
 func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpose string) (runtime.Cluster, error) {
@@ -135,7 +135,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 		return nil, fnerrors.New("failed to create instance: %w", err)
 	}
 
-	return ensureCluster(ctx, config, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, ephemeral)
+	return ensureCluster(ctx, config, response.ClusterId, response.ClusterFragment.IngressDomain, response.ClusterFragment.ApiEndpoint, response.Registry, ephemeral)
 }
 
 func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string, labels map[string]string) (runtime.Planner, error) {
@@ -145,7 +145,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 			return nil, err
 		}
 
-		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
+		return completePlanner(ctx, env, conf.ClusterId, response.Cluster.IngressDomain, response.Cluster.ApiEndpoint, response.Registry, false)
 	}
 
 	response, err := createCluster(ctx, purpose, labels)
@@ -153,7 +153,7 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return nil, fnerrors.New("failed to create instance: %w", err)
 	}
 
-	return completePlanner(ctx, env, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, env.Environment().Ephemeral)
+	return completePlanner(ctx, env, response.ClusterId, response.ClusterFragment.IngressDomain, response.ClusterFragment.ApiEndpoint, response.Registry, env.Environment().Ephemeral)
 }
 
 func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.StartCreateKubernetesClusterResponse, error) {
@@ -171,7 +171,7 @@ func createCluster(ctx context.Context, purpose string, labels map[string]string
 	return api.CreateCluster(ctx, api.Methods, opts)
 }
 
-func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
+func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDomain, apiEndpoint string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
 	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: registry},
 		func(ctx context.Context) (*kubedef.SystemInfo, error) {
 			return &kubedef.SystemInfo{
@@ -180,11 +180,11 @@ func completePlanner(ctx context.Context, env cfg.Context, clusterId, ingressDom
 			}, nil
 		}, nginx.IngressClass())
 
-	return planner{Planner: base, clusterId: clusterId, ingressDomain: ingressDomain, registry: registry, ephemeral: ephemeral}, nil
+	return planner{Planner: base, clusterId: clusterId, ingressDomain: ingressDomain, apiEndpoint: apiEndpoint, registry: registry, ephemeral: ephemeral}, nil
 }
 
-func ensureCluster(ctx context.Context, conf cfg.Configuration, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (*cluster, error) {
-	result, err := provideClusterExt(ctx, clusterId, ephemeral)
+func ensureCluster(ctx context.Context, conf cfg.Configuration, clusterId, ingressDomain, apiEndpoint string, registry *api.ImageRegistry, ephemeral bool) (*cluster, error) {
+	result, err := provideClusterExt(ctx, clusterId, apiEndpoint, ephemeral)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func ensureCluster(ctx context.Context, conf cfg.Configuration, clusterId, ingre
 
 	newCfg := conf.Derive(kubedef.AdminNamespace, func(previous cfg.ConfigurationSlice) cfg.ConfigurationSlice {
 		previous.Configuration = append(previous.Configuration, protos.WrapAnyOrDie(
-			&PrebuiltCluster{ClusterId: clusterId},
+			&PrebuiltCluster{ClusterId: clusterId, ApiEndpoint: apiEndpoint},
 		))
 		return previous
 	})
@@ -225,6 +225,7 @@ type cluster struct {
 	cluster       *kubernetes.Cluster
 	clusterId     string
 	ingressDomain string
+	apiEndpoint   string
 	registry      *api.ImageRegistry
 }
 
@@ -245,7 +246,7 @@ func (d *cluster) Ingress() kubedef.IngressClass {
 }
 
 func (d *cluster) Bind(ctx context.Context, env cfg.Context) (runtime.ClusterNamespace, error) {
-	planner, err := completePlanner(ctx, env, d.clusterId, d.ingressDomain, d.registry, env.Environment().Ephemeral)
+	planner, err := completePlanner(ctx, env, d.clusterId, d.ingressDomain, d.apiEndpoint, d.registry, env.Environment().Ephemeral)
 	if err != nil {
 		return nil, err
 	}
@@ -314,10 +315,10 @@ func (d ingressClass) PrepareRoute(ctx context.Context, _ *schema.Environment, _
 
 type planner struct {
 	kubernetes.Planner
-	clusterId     string
-	ingressDomain string
-	registry      *api.ImageRegistry
-	ephemeral     bool
+	clusterId                  string
+	ingressDomain, apiEndpoint string
+	registry                   *api.ImageRegistry
+	ephemeral                  bool
 }
 
 func (d planner) Ingress() runtime.IngressClass {
@@ -325,7 +326,7 @@ func (d planner) Ingress() runtime.IngressClass {
 }
 
 func (d planner) EnsureClusterNamespace(ctx context.Context) (runtime.ClusterNamespace, error) {
-	cluster, err := ensureCluster(ctx, d.Planner.Configuration, d.clusterId, d.ingressDomain, d.registry, d.ephemeral)
+	cluster, err := ensureCluster(ctx, d.Planner.Configuration, d.clusterId, d.ingressDomain, d.apiEndpoint, d.registry, d.ephemeral)
 	if err != nil {
 		return nil, err
 	}

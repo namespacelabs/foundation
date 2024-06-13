@@ -342,7 +342,7 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 		return nil, err
 	}
 
-	return WaitClusterReady(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
+	return WaitClusterReady(ctx, api, cluster.ClusterId, cluster.ClusterFragment.ApiEndpoint, opts.WaitClusterOpts)
 }
 
 func EnsureBuildCluster(ctx context.Context, platform BuildPlatform) (*builderv1beta.EnsureBuildInstanceResponse, error) {
@@ -385,7 +385,7 @@ func buildClusterFeatures(platform BuildPlatform) []string {
 	return nil
 }
 
-func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
+func WaitClusterReady(ctx context.Context, api API, clusterId string, apiEndpoint string, opts WaitClusterOpts) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 1*time.Minute) // Wait for cluster creation up to 1 minute.
 	defer done()
 
@@ -399,7 +399,7 @@ func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitC
 		tries := 0
 		for {
 			// We continue to wait for the cluster to become ready until we observe a READY.
-			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, func(body io.Reader) error {
+			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, regionEndpointResolver(apiEndpoint), func(body io.Reader) error {
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
@@ -635,12 +635,12 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 }
 
 type LogsOpts struct {
-	ClusterID     string
-	StartTs       *time.Time
-	EndTs         *time.Time
-	Include       []*LogsSelector
-	Exclude       []*LogsSelector
-	IngressDomain string
+	ClusterID   string
+	StartTs     *time.Time
+	EndTs       *time.Time
+	Include     []*LogsSelector
+	Exclude     []*LogsSelector
+	ApiEndpoint string
 }
 
 var (
@@ -653,7 +653,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		UseBlockLabels: true,
 		Include:        opts.Include,
 		Exclude:        opts.Exclude,
-	}, regionEndpointResolver(opts.IngressDomain), func(r io.Reader) error {
+	}, regionEndpointResolver(opts.ApiEndpoint), func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			var logBlock LogBlock
@@ -694,7 +694,7 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 		}
 
 		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, regionEndpointResolver(opts.IngressDomain), fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetClusterLogs.Do(ctx, req, regionEndpointResolver(opts.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
@@ -799,10 +799,10 @@ func StartRefreshing(ctx context.Context, api API, clusterId string, handle func
 	}
 }
 
-func regionEndpointResolver(ingressDomain string) func(context.Context, fnapi.ResolvedToken) (string, error) {
+func regionEndpointResolver(apiEndpoint string) func(context.Context, fnapi.ResolvedToken) (string, error) {
 	return func(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
-		if ingressDomain != "" {
-			return fmt.Sprintf("https://api.%s", ingressDomain), nil
+		if apiEndpoint != "" {
+			return apiEndpoint, nil
 		}
 
 		return endpoint.ResolveRegionalEndpoint(ctx, tok)
