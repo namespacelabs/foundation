@@ -67,7 +67,7 @@ func RegisterClusterProvider() {
 		messages := []proto.Message{
 			&client.HostEnv{Provider: "nscloud"},
 			&registry.Provider{Provider: "nscloud"},
-			&PrebuiltCluster{ClusterId: cluster.ClusterId},
+			&PrebuiltCluster{ClusterId: cluster.ClusterId, ApiEndpoint: cluster.ApiEndpoint},
 		}
 
 		return messages, nil
