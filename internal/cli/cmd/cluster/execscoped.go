@@ -44,7 +44,7 @@ func NewExecScoped() *cobra.Command {
 			return fnerrors.New("at least one --service is required")
 		}
 
-		response, err := api.EnsureCluster(ctx, api.Methods, clusterId)
+		response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterId)
 		if err != nil {
 			return err
 		}

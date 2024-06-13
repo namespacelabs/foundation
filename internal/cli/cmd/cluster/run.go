@@ -325,6 +325,7 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 		}
 
 		if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
+			ApiEndpoint: resp.ApiEndpoint,
 			CreateLabel: label,
 		}); err != nil {
 			return nil, err
@@ -491,7 +492,9 @@ func createCompose(ctx context.Context, dir string, devmode bool) (*api.CreateCo
 		return nil, err
 	}
 
-	if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{}); err != nil {
+	if _, err := api.WaitClusterReady(ctx, api.Methods, resp.ClusterId, api.WaitClusterOpts{
+		ApiEndpoint: resp.ApiEndpoint,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -515,4 +518,5 @@ type createOutput struct {
 	ClusterUrl    string           `json:"cluster_url,omitempty"`
 	Container     []*api.Container `json:"container,omitempty"`
 	IngressDomain string           `json:"ingress_domain,omitempty"`
+	ApiEndpoint   string           `json:"api_endpoint,omitempty"`
 }

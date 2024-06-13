@@ -106,7 +106,7 @@ func SelectRunningCluster(ctx context.Context, args []string) (*api.KubernetesCl
 		clusterID = selected
 	}
 
-	response, err := api.EnsureCluster(ctx, api.Methods, clusterID)
+	response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterID)
 	if err != nil {
 		return nil, nil, err
 	}

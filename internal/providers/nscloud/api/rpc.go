@@ -224,6 +224,8 @@ type CreateClusterOpts struct {
 }
 
 type WaitClusterOpts struct {
+	ApiEndpoint string // If not set, resolved from the environment.
+
 	CreateLabel string // Used as human-facing label, e.g. "Creating Environment: ..."
 
 	WaitKind string // One of kubernetes, buildcluster, or something else.
@@ -289,7 +291,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 				fmt.Fprintf(console.Debug(ctx), "[nsc] instance will be removed on exit: %s\n", response.ClusterId)
 
 				compute.On(ctx).Cleanup(tasks.Action("nscloud.cluster-cleanup"), func(ctx context.Context) error {
-					if err := DestroyCluster(ctx, api, response.ClusterId); err != nil {
+					if err := DestroyCluster(ctx, api, MaybeEndpoint(response.ClusterFragment.ApiEndpoint), response.ClusterId); err != nil {
 						// The cluster being gone is an acceptable state (it could have
 						// been deleted by DeleteRecursively for example).
 						if status.Code(err) == codes.NotFound {
@@ -342,6 +344,8 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 		return nil, err
 	}
 
+	opts.WaitClusterOpts.ApiEndpoint = cluster.ClusterFragment.ApiEndpoint
+
 	return WaitClusterReady(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
@@ -385,6 +389,16 @@ func buildClusterFeatures(platform BuildPlatform) []string {
 	return nil
 }
 
+func MaybeEndpoint(api string) fnapi.ResolveFunc {
+	return func(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
+		if api != "" {
+			return "https://" + api, nil
+		}
+
+		return endpoint.ResolveRegionalEndpoint(ctx, tok)
+	}
+}
+
 func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitClusterOpts) (*CreateClusterResult, error) {
 	ctx, done := context.WithTimeout(ctx, 1*time.Minute) // Wait for cluster creation up to 1 minute.
 	defer done()
@@ -399,7 +413,7 @@ func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitC
 		tries := 0
 		for {
 			// We continue to wait for the cluster to become ready until we observe a READY.
-			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, func(body io.Reader) error {
+			if err := api.WaitKubernetesCluster.Do(ctx, WaitKubernetesClusterRequest{ClusterId: clusterId}, MaybeEndpoint(opts.ApiEndpoint), func(body io.Reader) error {
 				decoder := jstream.NewDecoder(body, 1)
 
 				// jstream gives us the streamed array segmentation, however it
@@ -542,10 +556,14 @@ func ClusterService(cluster *KubernetesCluster, name string) *Cluster_ServiceSta
 	return nil
 }
 
-func DestroyCluster(ctx context.Context, api API, clusterId string) error {
+func DestroyCluster(ctx context.Context, api API, resolver fnapi.ResolveFunc, clusterId string) error {
+	if resolver == nil {
+		resolver = endpoint.ResolveRegionalEndpoint
+	}
+
 	return api.DestroyKubernetesCluster.Do(ctx, DestroyKubernetesClusterRequest{
 		ClusterId: clusterId,
-	}, endpoint.ResolveRegionalEndpoint, nil)
+	}, resolver, nil)
 }
 
 func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
@@ -558,10 +576,14 @@ func GetCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesC
 	})
 }
 
-func EnsureCluster(ctx context.Context, api API, clusterId string) (*GetKubernetesClusterResponse, error) {
+func EnsureCluster(ctx context.Context, api API, resolver fnapi.ResolveFunc, clusterId string) (*GetKubernetesClusterResponse, error) {
+	if resolver == nil {
+		resolver = endpoint.ResolveRegionalEndpoint
+	}
+
 	return tasks.Return(ctx, tasks.Action("nscloud.ensure").HumanReadablef("Waiting for environment").Arg("id", clusterId), func(ctx context.Context) (*GetKubernetesClusterResponse, error) {
 		var response GetKubernetesClusterResponse
-		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.EnsureKubernetesCluster.Do(ctx, EnsureKubernetesClusterRequest{ClusterId: clusterId}, resolver, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
@@ -635,12 +657,12 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 }
 
 type LogsOpts struct {
-	ClusterID     string
-	StartTs       *time.Time
-	EndTs         *time.Time
-	Include       []*LogsSelector
-	Exclude       []*LogsSelector
-	IngressDomain string
+	ClusterID   string
+	StartTs     *time.Time
+	EndTs       *time.Time
+	Include     []*LogsSelector
+	Exclude     []*LogsSelector
+	ApiEndpoint string
 }
 
 var (
@@ -653,7 +675,7 @@ func TailClusterLogs(ctx context.Context, api API, opts *LogsOpts, handle func(L
 		UseBlockLabels: true,
 		Include:        opts.Include,
 		Exclude:        opts.Exclude,
-	}, regionEndpointResolver(opts.IngressDomain), func(r io.Reader) error {
+	}, regionEndpointResolver(opts.ApiEndpoint), func(r io.Reader) error {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			var logBlock LogBlock
@@ -694,7 +716,7 @@ func GetClusterLogs(ctx context.Context, api API, opts *LogsOpts) (*GetLogsRespo
 		}
 
 		var response GetLogsResponse
-		if err := api.GetClusterLogs.Do(ctx, req, regionEndpointResolver(opts.IngressDomain), fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.GetClusterLogs.Do(ctx, req, regionEndpointResolver(opts.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 
@@ -799,10 +821,10 @@ func StartRefreshing(ctx context.Context, api API, clusterId string, handle func
 	}
 }
 
-func regionEndpointResolver(ingressDomain string) func(context.Context, fnapi.ResolvedToken) (string, error) {
+func regionEndpointResolver(apiEndpoint string) func(context.Context, fnapi.ResolvedToken) (string, error) {
 	return func(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
-		if ingressDomain != "" {
-			return fmt.Sprintf("https://api.%s", ingressDomain), nil
+		if apiEndpoint != "" {
+			return apiEndpoint, nil
 		}
 
 		return endpoint.ResolveRegionalEndpoint(ctx, tok)

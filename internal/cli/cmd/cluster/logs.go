@@ -109,7 +109,7 @@ func NewLogsCmd() *cobra.Command {
 		}
 
 		if cluster.Cluster != nil {
-			logOpts.IngressDomain = cluster.Cluster.IngressDomain
+			logOpts.ApiEndpoint = cluster.Cluster.ApiEndpoint
 		}
 
 		if *follow {

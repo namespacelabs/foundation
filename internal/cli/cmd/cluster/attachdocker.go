@@ -221,12 +221,13 @@ func updateContext(dockerCli *command.DockerCli, ctxName string, shouldUpdate fu
 	return nil
 }
 
-func ensureDockerCluster(ctx context.Context, specified, machineType string, background bool) (*api.KubernetesCluster, error) {
-	if specified != "" {
-		resp, err := api.EnsureCluster(ctx, api.Methods, specified)
+func ensureDockerCluster(ctx context.Context, instanceId, machineType string, background bool) (*api.KubernetesCluster, error) {
+	if instanceId != "" {
+		resp, err := api.EnsureCluster(ctx, api.Methods, nil, instanceId)
 		if err != nil {
 			return nil, err
 		}
+
 		return resp.Cluster, nil
 	}
 

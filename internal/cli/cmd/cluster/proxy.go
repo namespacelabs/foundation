@@ -160,7 +160,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 }
 
 func ensureCluster(ctx context.Context, clusterID string) (*api.CreateClusterResult, error) {
-	response, err := api.EnsureCluster(ctx, api.Methods, clusterID)
+	response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterID)
 	if err != nil {
 		return nil, err
 	}

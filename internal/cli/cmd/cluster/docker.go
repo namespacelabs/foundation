@@ -97,7 +97,7 @@ func runPassthrough(ctx context.Context, clusterId string, args []string) error 
 }
 
 func withDocker(ctx context.Context, clusterId string, callback func(context.Context, string) error) error {
-	response, err := api.EnsureCluster(ctx, api.Methods, clusterId)
+	response, err := api.EnsureCluster(ctx, api.Methods, nil, clusterId)
 	if err != nil {
 		return err
 	}

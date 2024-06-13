@@ -238,6 +238,7 @@ func NewCreateCmd() *cobra.Command {
 				ClusterId:     cluster.ClusterId,
 				ClusterUrl:    cluster.Cluster.AppURL,
 				IngressDomain: cluster.Cluster.IngressDomain,
+				ApiEndpoint:   cluster.Cluster.ApiEndpoint,
 			}); err != nil {
 				return fnerrors.InternalError("failed to encode instance as JSON output: %w", err)
 			}

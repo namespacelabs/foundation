@@ -131,7 +131,7 @@ func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*Gate
 		fmt.Fprintf(console.Debug(ctx), "buildkit: connecting to nscloud %s (port: %d endpoint: %s)\n", x.ClusterId, x.TargetPort, x.Endpoint)
 
 		if x.Endpoint == "" {
-			cluster, err := api.EnsureCluster(ctx, api.Methods, x.ClusterId)
+			cluster, err := api.EnsureCluster(ctx, api.Methods, nil, x.ClusterId)
 			if err != nil {
 				return nil, fnerrors.InternalError("failed to connect to buildkit in cluster: %w", err)
 			}
