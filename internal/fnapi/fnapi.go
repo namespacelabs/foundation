@@ -34,9 +34,9 @@ import (
 )
 
 var (
-	globalEndpointOverride      string
-	AdminMode                   = false
-	ExchangeGithubToTenantToken = false
+	globalEndpointOverride string
+	AdminMode              = false
+	DebugApiResponse       = false
 
 	UserAgent = "ns/unknown"
 )
@@ -119,6 +119,7 @@ func DecodeJSONResponse(resp any) func(io.Reader) error {
 func AddNamespaceHeaders(ctx context.Context, headers *http.Header) {
 	headers.Add("NS-Internal-Version", fmt.Sprintf("%d", versions.Builtin().APIVersion))
 	headers.Add("User-Agent", UserAgent)
+	headers.Add("Content-Type", "application/json")
 
 	if AdminMode {
 		headers.Add("NS-API-Mode", "admin")
@@ -193,6 +194,17 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		if response.StatusCode == http.StatusOK {
 			if handle == nil {
 				return nil
+			}
+
+			if DebugApiResponse {
+				respBody, err := io.ReadAll(response.Body)
+				if err != nil {
+					return fnerrors.InvocationError("namespace api", "reading response body: %w", err)
+				}
+
+				fmt.Fprintf(console.Debug(ctx), "[%s] Response Body: %s\n", tid, respBody)
+
+				return handle(bytes.NewReader(respBody))
 			}
 
 			return handle(response.Body)

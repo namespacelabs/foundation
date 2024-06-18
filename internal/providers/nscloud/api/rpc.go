@@ -84,7 +84,7 @@ func MakeAPI() API {
 
 		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/GetKubernetesCluster",
+			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesCluster",
 			Retryable:        true,
 		},
 
@@ -101,13 +101,13 @@ func MakeAPI() API {
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/ListKubernetesClusters",
+			Method:           "namespace.private.vm.GlobalVMService/ListKubernetesClusters",
 			Retryable:        true,
 		},
 
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/DestroyKubernetesCluster",
+			Method:           "namespace.private.vm.GlobalVMService/DestroyKubernetesCluster",
 		},
 
 		SuspendKubernetesCluster: fnapi.Call[SuspendKubernetesClusterRequest]{
@@ -132,13 +132,13 @@ func MakeAPI() API {
 
 		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/GetKubernetesClusterSummary",
+			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesClusterSummary",
 			Retryable:        true,
 		},
 
 		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/GetKubernetesConfig",
+			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesConfig",
 			Retryable:        true,
 		},
 
@@ -177,18 +177,18 @@ func MakeAPI() API {
 
 		ListVolumes: fnapi.Call[emptypb.Empty]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/ListVolumes",
+			Method:           "namespace.private.vm.GlobalVMService/ListVolumes",
 			Retryable:        true,
 		},
 
 		DestroyVolume: fnapi.Call[DestroyVolumeRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/DestroyVolume",
+			Method:           "namespace.private.vm.GlobalVMService/DestroyVolume",
 		},
 
 		DestroyVolumeByTag: fnapi.Call[DestroyVolumeByTagRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/DestroyVolumeByTag",
+			Method:           "namespace.private.vm.GlobalVMService/DestroyVolumeByTag",
 		},
 	}
 }
