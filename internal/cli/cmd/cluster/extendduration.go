@@ -46,7 +46,7 @@ func newExtendDurationCmd() *cobra.Command {
 			EnsureMinimumSecs: int32(math.Floor(ensureMinimum.Seconds())),
 		}
 
-		resp, err := api.RefreshCluster(ctx, api.Methods, req)
+		resp, err := api.RefreshCluster(ctx, api.Methods, req, cluster.ApiEndpoint)
 		if err != nil {
 			return err
 		}

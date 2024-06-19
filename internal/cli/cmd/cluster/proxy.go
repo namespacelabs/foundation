@@ -136,7 +136,7 @@ func deprecateRunProxy(ctx context.Context, clusterReq, kind, socketPath string)
 	ctx, cancel := context.WithCancel(ctx)
 
 	go func() {
-		_ = api.StartRefreshing(ctx, api.Methods, cluster.ClusterId, func(err error) error {
+		_ = api.StartRefreshing(ctx, api.Methods, cluster.Cluster, func(err error) error {
 			fmt.Fprintf(console.Warnings(ctx), "Failed to refresh instance: %v\n", err)
 			return nil
 		})

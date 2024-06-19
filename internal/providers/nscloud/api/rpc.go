@@ -82,12 +82,6 @@ func MakeAPI() API {
 			Method:           "nsl.vm.api.VMService/StartContainers",
 		},
 
-		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesCluster",
-			Retryable:        true,
-		},
-
 		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/EnsureKubernetesCluster",
@@ -97,17 +91,6 @@ func MakeAPI() API {
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/WaitKubernetesCluster",
 			Retryable:        true,
-		},
-
-		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.vm.GlobalVMService/ListKubernetesClusters",
-			Retryable:        true,
-		},
-
-		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.vm.GlobalVMService/DestroyKubernetesCluster",
 		},
 
 		SuspendKubernetesCluster: fnapi.Call[SuspendKubernetesClusterRequest]{
@@ -128,18 +111,6 @@ func MakeAPI() API {
 		RefreshKubernetesCluster: fnapi.Call[RefreshKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/RefreshKubernetesCluster",
-		},
-
-		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesClusterSummary",
-			Retryable:        true,
-		},
-
-		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesConfig",
-			Retryable:        true,
 		},
 
 		GetImageRegistry: fnapi.Call[emptypb.Empty]{
@@ -172,6 +143,36 @@ func MakeAPI() API {
 		ListIngresses: fnapi.Call[ListIngressesRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/ListIngresses",
+			Retryable:        true,
+		},
+
+		// Global APIs.
+		GetKubernetesCluster: fnapi.Call[GetKubernetesClusterRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesCluster",
+			Retryable:        true,
+		},
+
+		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/ListKubernetesClusters",
+			Retryable:        true,
+		},
+
+		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/DestroyKubernetesCluster",
+		},
+
+		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesClusterSummary",
+			Retryable:        true,
+		},
+
+		GetKubernetesConfig: fnapi.Call[GetKubernetesConfigRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesConfig",
 			Retryable:        true,
 		},
 
@@ -734,22 +735,23 @@ func GetProfile(ctx context.Context, api API) (*GetProfileResponse, error) {
 	})
 }
 
-func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest) (*RegisterIngressResponse, error) {
+func RegisterIngress(ctx context.Context, api API, req RegisterIngressRequest, endpoint string) (*RegisterIngressResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.register-ingress"), func(ctx context.Context) (*RegisterIngressResponse, error) {
 		var response RegisterIngressResponse
-		if err := api.RegisterIngress.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.RegisterIngress.Do(ctx, req, MaybeEndpoint(endpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil
 	})
 }
 
-func ListIngresses(ctx context.Context, api API, clusterID string) (*ListIngressesResponse, error) {
+func ListIngresses(ctx context.Context, api API, cluster *KubernetesCluster) (*ListIngressesResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nscloud.list-ingresses"), func(ctx context.Context) (*ListIngressesResponse, error) {
 		var response ListIngressesResponse
-		if err := api.ListIngresses.Do(ctx, ListIngressesRequest{ClusterId: clusterID}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.ListIngresses.Do(ctx, ListIngressesRequest{ClusterId: cluster.ClusterId}, MaybeEndpoint(cluster.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
+
 		return &response, nil
 	})
 }
@@ -760,25 +762,20 @@ func ListVolumes(ctx context.Context, api API) (*ListVolumesResponse, error) {
 		if err := api.ListVolumes.Do(ctx, emptypb.Empty{}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
+
 		return &response, nil
 	})
 }
 
 func DestroyVolume(ctx context.Context, api API, id string) error {
 	return tasks.Return0(ctx, tasks.Action("nscloud.destroy-single-volume"), func(ctx context.Context) error {
-		if err := api.DestroyVolume.Do(ctx, DestroyVolumeRequest{Id: id}, endpoint.ResolveRegionalEndpoint, nil); err != nil {
-			return err
-		}
-		return nil
+		return api.DestroyVolume.Do(ctx, DestroyVolumeRequest{Id: id}, endpoint.ResolveRegionalEndpoint, nil)
 	})
 }
 
 func DestroyVolumeByTag(ctx context.Context, api API, tag string) error {
 	return tasks.Return0(ctx, tasks.Action("nscloud.destroy-volumes"), func(ctx context.Context) error {
-		if err := api.DestroyVolumeByTag.Do(ctx, DestroyVolumeByTagRequest{Tag: tag}, endpoint.ResolveRegionalEndpoint, nil); err != nil {
-			return err
-		}
-		return nil
+		return api.DestroyVolumeByTag.Do(ctx, DestroyVolumeByTagRequest{Tag: tag}, endpoint.ResolveRegionalEndpoint, nil)
 	})
 }
 
@@ -789,22 +786,23 @@ type clusterCreateProgress struct {
 func (crp *clusterCreateProgress) set(status string)      { crp.status.Store(status) }
 func (crp *clusterCreateProgress) FormatProgress() string { return crp.status.Load() }
 
-func RefreshCluster(ctx context.Context, api API, req RefreshKubernetesClusterRequest) (*RefreshKubernetesClusterResponse, error) {
+func RefreshCluster(ctx context.Context, api API, req RefreshKubernetesClusterRequest, endpoint string) (*RefreshKubernetesClusterResponse, error) {
 	var response RefreshKubernetesClusterResponse
-	if err := api.RefreshKubernetesCluster.Do(ctx, req, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+	if err := api.RefreshKubernetesCluster.Do(ctx, req, MaybeEndpoint(endpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 		return nil, err
 	}
+
 	return &response, nil
 }
 
-func StartRefreshing(ctx context.Context, api API, clusterId string, handle func(error) error) error {
+func StartRefreshing(ctx context.Context, api API, cluster *KubernetesCluster, handle func(error) error) error {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
 	var lastRefresh time.Time
 	for {
 		if lastRefresh.IsZero() || time.Since(lastRefresh) > 5*time.Minute {
-			if _, err := RefreshCluster(ctx, api, RefreshKubernetesClusterRequest{ClusterId: clusterId}); err != nil {
+			if _, err := RefreshCluster(ctx, api, RefreshKubernetesClusterRequest{ClusterId: cluster.ClusterId}, cluster.ApiEndpoint); err != nil {
 				if err := handle(err); err != nil {
 					return err
 				}

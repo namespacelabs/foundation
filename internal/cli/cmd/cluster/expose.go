@@ -150,7 +150,7 @@ func newExposeContainerCmd(use string, hidden bool) *cobra.Command {
 				},
 				HttpMatchRule: filledIn[k].HttpIngressRules,
 				Wildcard:      *wildcard,
-			})
+			}, cluster.ApiEndpoint)
 			if err != nil {
 				return err
 			}
@@ -549,7 +549,7 @@ func newExposeKubernetesCmd() *cobra.Command {
 			BackendEndpoint: backend,
 			HttpMatchRule:   rules,
 			Wildcard:        *wildcard,
-		})
+		}, cluster.ApiEndpoint)
 		if err != nil {
 			return err
 		}

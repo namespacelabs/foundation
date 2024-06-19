@@ -55,7 +55,7 @@ func newListIngressesCmd() *cobra.Command {
 			return nil
 		}
 
-		lst, err := api.ListIngresses(ctx, api.Methods, cluster.ClusterId)
+		lst, err := api.ListIngresses(ctx, api.Methods, cluster)
 		if err != nil {
 			return err
 		}

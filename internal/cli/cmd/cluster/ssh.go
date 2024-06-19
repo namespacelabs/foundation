@@ -216,7 +216,7 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, user string,
 
 			g := executor.New(ctx, "ssh")
 			cancel := g.GoCancelable(func(ctx context.Context) error {
-				return api.StartRefreshing(ctx, api.Methods, cluster.ClusterId, func(err error) error {
+				return api.StartRefreshing(ctx, api.Methods, cluster, func(err error) error {
 					fmt.Fprintf(os.Stderr, "failed to refresh instance: %v\n", err)
 					return nil
 				})
