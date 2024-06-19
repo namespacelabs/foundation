@@ -6,7 +6,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,7 +16,6 @@ import (
 	"github.com/jpillora/chisel/share/cnet"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
-	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/go-ids"
 )
 
@@ -56,15 +54,7 @@ func DialHostedServiceWithToken(ctx context.Context, token fnapi.Token, cluster 
 
 type Option func(*dialOptions)
 
-type dialOptions struct {
-	refreshClusterID string
-}
-
-func WithRefresh(clusterID string) Option {
-	return func(do *dialOptions) {
-		do.refreshClusterID = clusterID
-	}
-}
+type dialOptions struct{}
 
 func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint string, opts ...Option) (net.Conn, error) {
 	tid := ids.NewRandomBase32ID(4)
@@ -96,37 +86,7 @@ func DialEndpointWithToken(ctx context.Context, token fnapi.Token, endpoint stri
 
 	fmt.Fprintf(console.Debug(ctx), "[%s] Gateway: dialing %v... took %v\n", tid, endpoint, time.Since(t))
 
-	conn := cnet.NewWebSocketConn(wsConn)
-
-	if o.refreshClusterID != "" {
-		fmt.Fprintf(console.Debug(ctx), "[%s] starting background refresh: %s\n", tid, o.refreshClusterID)
-		cancel := StartBackgroundRefreshing(ctx, o.refreshClusterID)
-
-		return forwardClose{conn, cancel}, nil
-	}
-
-	return conn, nil
-}
-
-func StartBackgroundRefreshing(ctx context.Context, clusterID string) func() {
-	sink := tasks.SinkFrom(ctx)
-	backgroundCtx := tasks.WithSink(context.Background(), sink)
-	ctx, done := context.WithCancel(backgroundCtx)
-
-	tasks.Action("endpoint.cluster.refresh").Arg("cluster_id", clusterID).LogLevel(1).LogToSink(sink)
-
-	go func() {
-		_ = StartRefreshing(ctx, Methods, clusterID, func(err error) error {
-			if !errors.Is(err, context.Canceled) {
-				fmt.Fprintf(console.Warnings(ctx), "Failed to refresh cluster: %v\n", err)
-			}
-			return nil
-		})
-
-		tasks.Action("endpoint.cluster.refresh.done").Arg("cluster_id", clusterID).LogLevel(1).LogToSink(sink)
-	}()
-
-	return done
+	return cnet.NewWebSocketConn(wsConn), nil
 }
 
 type forwardClose struct {
