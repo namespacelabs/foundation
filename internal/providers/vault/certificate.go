@@ -76,19 +76,19 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 }
 
 func certificatePemProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.CertificatePem) ([]byte, error) {
-	return extractBundleField(ctx, conf, secretId, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
+	return extractBundleField(ctx, conf, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
 		return bundle.CertificatePem
 	})
 }
 
 func privateKeyPemProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.PrivateKeyPem) ([]byte, error) {
-	return extractBundleField(ctx, conf, secretId, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
+	return extractBundleField(ctx, conf, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
 		return bundle.PrivateKeyPem
 	})
 }
 
 func caChainPemProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.CaChainPem) ([]byte, error) {
-	return extractBundleField(ctx, conf, secretId, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
+	return extractBundleField(ctx, conf, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
 		return strings.Join(bundle.CaChainPem, "\n")
 	})
 }
@@ -123,13 +123,7 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 	)
 }
 
-func extractBundleField(
-	ctx context.Context,
-	conf cfg.Configuration,
-	secretId secrets.SecretIdentifier,
-	bundleRef string,
-	fn func(*vault.TlsBundle) string,
-) ([]byte, error) {
+func extractBundleField(ctx context.Context, conf cfg.Configuration, bundleRef string, fn func(*vault.TlsBundle) string) ([]byte, error) {
 	ref, err := schema.StrictParsePackageRef(bundleRef)
 	if err != nil {
 		return nil, fnerrors.BadInputError("could not parse bundle ref %s: %w", bundleRef, err)
