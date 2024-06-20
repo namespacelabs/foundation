@@ -53,6 +53,9 @@ func Register() {
 	combined.RegisterSecretsProvider(appRoleProvider)
 	combined.RegisterSecretsProvider(certificateProvider)
 	combined.RegisterSecretsProvider(certificateAuthorityProvider)
+	combined.RegisterSecretsProvider(certificatePemProvider)
+	combined.RegisterSecretsProvider(privateKeyPemProvider)
+	combined.RegisterSecretsProvider(caChainPemProvider)
 	combined.RegisterSecretsProvider(secretProvider)
 }
 
@@ -123,7 +126,6 @@ func jwtLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.V
 		return "", fnerrors.InvocationError("vault", "missing vault login auth data: %w", err)
 	}
 	return loginResp.Auth.ClientToken, nil
-
 }
 
 func oidcLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.VaultProvider) (string, error) {

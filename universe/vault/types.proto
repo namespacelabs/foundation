@@ -37,6 +37,18 @@ message CertificateConfig {
     repeated string sans_domains = 2;
 }
 
+message CertificatePem {
+  string bundle_ref = 1;
+}
+
+message PrivateKeyPem {
+  string bundle_ref = 1;
+}
+
+message CaChainPem {
+  string bundle_ref = 1;
+}
+
 message VaultProvider {
     string address     = 1;
     string namespace   = 2;

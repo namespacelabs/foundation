@@ -11,10 +11,14 @@ import (
 	"time"
 
 	vaultclient "github.com/hashicorp/vault-client-go"
-	"github.com/hashicorp/vault-client-go/schema"
+	vaultschema "github.com/hashicorp/vault-client-go/schema"
 	"namespacelabs.dev/foundation/framework/secrets"
+	"namespacelabs.dev/foundation/framework/secrets/combined"
 	"namespacelabs.dev/foundation/internal/fnerrors"
+	"namespacelabs.dev/foundation/internal/parsing"
+	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
+	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
 )
@@ -71,11 +75,29 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId s
 	return issueCertificate(ctx, vaultClient, cfg.GetMount(), cfg.GetRole(), req)
 }
 
+func certificatePemProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.CertificatePem) ([]byte, error) {
+	return extractBundleField(ctx, conf, secretId, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
+		return bundle.CertificatePem
+	})
+}
+
+func privateKeyPemProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.PrivateKeyPem) ([]byte, error) {
+	return extractBundleField(ctx, conf, secretId, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
+		return bundle.PrivateKeyPem
+	})
+}
+
+func caChainPemProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.CaChainPem) ([]byte, error) {
+	return extractBundleField(ctx, conf, secretId, cfg.GetBundleRef(), func(bundle *vault.TlsBundle) string {
+		return strings.Join(bundle.CaChainPem, "\n")
+	})
+}
+
 func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiMount, pkiRole string, req certificateRequest) ([]byte, error) {
 	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("pki-mount", pkiMount).Arg("pki-role", pkiRole).Arg("common-name", req.commonName),
 		func(ctx context.Context) ([]byte, error) {
 			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
-				schema.PkiIssueWithRoleRequest{
+				vaultschema.PkiIssueWithRoleRequest{
 					CommonName:        req.commonName,
 					AltNames:          strings.Join(req.sans, ","),
 					ExcludeCnFromSans: req.excludeCnFromSans,
@@ -99,4 +121,51 @@ func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiM
 			return data, nil
 		},
 	)
+}
+
+func extractBundleField(
+	ctx context.Context,
+	conf cfg.Configuration,
+	secretId secrets.SecretIdentifier,
+	bundleRef string,
+	fn func(*vault.TlsBundle) string,
+) ([]byte, error) {
+	ref, err := schema.StrictParsePackageRef(bundleRef)
+	if err != nil {
+		return nil, fnerrors.BadInputError("could not parse bundle ref %s: %w", bundleRef, err)
+	}
+
+	root, err := module.FindRoot(ctx, ".")
+	if err != nil {
+		return nil, err
+	}
+
+	env, err := cfg.LoadContext(root, conf.EnvKey())
+	if err != nil {
+		return nil, err
+	}
+
+	source, err := combined.NewCombinedSecrets(env)
+	if err != nil {
+		return nil, err
+	}
+
+	pl := parsing.NewPackageLoader(env)
+	if _, err := pl.LoadByName(ctx, ref.AsPackageName()); err != nil {
+		return nil, err
+	}
+
+	res, err := source.Load(ctx, pl.Seal(), &secrets.SecretLoadRequest{
+		SecretRef: ref,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	bundle, err := vault.ParseTlsBundle(res.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(fn(bundle)), nil
 }
