@@ -155,9 +155,7 @@ func extractBundleField(
 		return nil, err
 	}
 
-	res, err := source.Load(ctx, pl.Seal(), &secrets.SecretLoadRequest{
-		SecretRef: ref,
-	})
+	res, err := source.Load(ctx, pl.Seal(), &secrets.SecretLoadRequest{SecretRef: ref})
 	if err != nil {
 		return nil, err
 	}
