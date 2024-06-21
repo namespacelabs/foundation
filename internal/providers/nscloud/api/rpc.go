@@ -572,6 +572,7 @@ type ListOpts struct {
 	NotOlderThan *time.Time
 	Labels       map[string]string
 	All          bool
+	MaxEntries   int64
 }
 
 func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesClustersResponse, error) {
@@ -580,6 +581,7 @@ func ListClusters(ctx context.Context, api API, opts ListOpts) (*ListKubernetesC
 			IncludePreviousRuns: opts.PreviousRuns,
 			NotOlderThan:        opts.NotOlderThan,
 			KindFilter:          "MANUAL_ONLY",
+			MaxEntries:          opts.MaxEntries,
 		}
 
 		if opts.All {
