@@ -106,6 +106,7 @@ func newHistoryCmd() *cobra.Command {
 	labels := cmd.Flags().StringToString("label", nil, "Constrain list to the specified labels.")
 	since := cmd.Flags().Duration("since", time.Hour*24*7, "Contrain list to selected duration.")
 	all := cmd.Flags().Bool("all", false, "If true, returl all instances, not just manually created ones.")
+	maxEntries := cmd.Flags().Int64("max_entries", 100, "Maximum number of instances to return.")
 
 	cmd.Flags().MarkHidden("label")
 
@@ -117,6 +118,7 @@ func newHistoryCmd() *cobra.Command {
 			NotOlderThan: &startTs,
 			Labels:       *labels,
 			All:          *all,
+			MaxEntries:   *maxEntries,
 		})
 		if err != nil {
 			return err
