@@ -45,7 +45,7 @@ type ClientHandle struct {
 	m sync.Mutex
 }
 
-func ProviderFromEnv(key string) (*Provider, error) {
+func ProviderFromEnv(key string, options ...vault.ClientOption) (*Provider, error) {
 	if os.Getenv(key) == "" {
 		return nil, fmt.Errorf("vault: environment variable %q not set", key)
 	}
@@ -55,7 +55,7 @@ func ProviderFromEnv(key string) (*Provider, error) {
 		return nil, fmt.Errorf("vault: environment variable %q could not be parsed: %w", key, err)
 	}
 
-	return &Provider{creds: creds}, nil
+	return &Provider{creds: creds, opts: options}, nil
 }
 
 func (p *Provider) Get(ctx context.Context) (*vault.Client, error) {
