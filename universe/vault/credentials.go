@@ -22,6 +22,7 @@ const ttlBuffer = time.Minute
 
 type Provider struct {
 	creds *Credentials
+	opts  []vault.ClientOption
 
 	m    sync.Mutex
 	conn *ClientHandle
@@ -44,7 +45,7 @@ type ClientHandle struct {
 	m sync.Mutex
 }
 
-func ProviderFromEnv(key string) (*Provider, error) {
+func ProviderFromEnv(key string, options ...vault.ClientOption) (*Provider, error) {
 	if os.Getenv(key) == "" {
 		return nil, fmt.Errorf("vault: environment variable %q not set", key)
 	}
@@ -54,7 +55,7 @@ func ProviderFromEnv(key string) (*Provider, error) {
 		return nil, fmt.Errorf("vault: environment variable %q could not be parsed: %w", key, err)
 	}
 
-	return &Provider{creds: creds}, nil
+	return &Provider{creds: creds, opts: options}, nil
 }
 
 func (p *Provider) Get(ctx context.Context) (*vault.Client, error) {
@@ -71,7 +72,7 @@ func (p *Provider) connect(ctx context.Context) (*ClientHandle, error) {
 	defer p.m.Unlock()
 
 	if p.conn == nil {
-		conn, err := p.creds.ClientHandle(ctx)
+		conn, err := p.creds.ClientHandle(ctx, p.opts...)
 		if err != nil {
 			return nil, err
 		}
