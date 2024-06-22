@@ -22,6 +22,7 @@ const ttlBuffer = time.Minute
 
 type Provider struct {
 	creds *Credentials
+	opts  []vault.ClientOption
 
 	m    sync.Mutex
 	conn *ClientHandle
@@ -71,7 +72,7 @@ func (p *Provider) connect(ctx context.Context) (*ClientHandle, error) {
 	defer p.m.Unlock()
 
 	if p.conn == nil {
-		conn, err := p.creds.ClientHandle(ctx)
+		conn, err := p.creds.ClientHandle(ctx, p.opts...)
 		if err != nil {
 			return nil, err
 		}
