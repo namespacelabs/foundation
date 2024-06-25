@@ -6,18 +6,30 @@ package runtime
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 
 	"namespacelabs.dev/foundation/schema/runtime"
 )
 
+var (
+	runtimeConfigJSON = flag.String("foundation_runtime_config_json", "", "runtime config to use instead of /namespace/config/runtime.json.")
+)
+
 type Server = runtime.Server
 
 func LoadRuntimeConfig() (*runtime.RuntimeConfig, error) {
-	configBytes, err := os.ReadFile("/namespace/config/runtime.json")
-	if err != nil {
-		return nil, fmt.Errorf("failed to unwrap runtime configuration: %w", err)
+	var configBytes []byte
+
+	if *runtimeConfigJSON != "" {
+		configBytes = []byte(*runtimeConfigJSON)
+	} else {
+		bs, err := os.ReadFile("/namespace/config/runtime.json")
+		if err != nil {
+			return nil, fmt.Errorf("failed to unwrap runtime configuration: %w", err)
+		}
+		configBytes = bs
 	}
 
 	rt := &runtime.RuntimeConfig{}
