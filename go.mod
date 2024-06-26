@@ -44,7 +44,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/exaring/otelpgx v0.5.3
+	github.com/exaring/otelpgx v0.6.2
 	github.com/fsnotify/fsevents v0.1.1
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/getsentry/sentry-go v0.16.0
@@ -376,5 +376,3 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.14.3-0.20230601165947-6ce0bf390ce3 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
-
-replace github.com/exaring/otelpgx => github.com/namespacelabs/otelpgx v0.0.0-20240626141155-53fdf2b3346a
