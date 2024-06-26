@@ -70,6 +70,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("annotate_build")
 	buildkitSockPath := cmd.Flags().String("buildkit_sock_path", "", "If set, the proxy connect to a local unix socket rather than remote builder.")
 	_ = cmd.Flags().MarkHidden("buildkit_sock_path")
+	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, load images to the Docker Engine image store if no other output is specified.")
+	_ = cmd.Flags().MarkHidden("default_load")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -244,7 +246,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			}
 		}
 
-		if err := wireBuildx(dockerCli, *name, *use, md); err != nil {
+		if err := wireBuildx(dockerCli, *name, *use, *defaultLoad, md); err != nil {
 			return multierr.New(err, eg.CancelAndWait())
 		}
 
@@ -362,7 +364,7 @@ type buildxInstanceMetadata struct {
 	ControlSocketPath string            `json:"control_socket_path"`
 }
 
-func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMetadata) error {
+func wireBuildx(dockerCli *command.DockerCli, name string, use, defaultLoad bool, md buildxMetadata) error {
 	return withStore(dockerCli, func(txn *store.Txn) error {
 		ng, err := txn.NodeGroupByName(name)
 		if err != nil {
@@ -380,13 +382,20 @@ func wireBuildx(dockerCli *command.DockerCli, name string, use bool, md buildxMe
 			}
 		}
 
+		do := map[string]string{}
+
+		if defaultLoad {
+			// Supported starting with v0.14.0
+			do["default-load"] = "true"
+		}
+
 		for _, p := range md.Instances {
 			var platforms []string
 			if p.Platform == "arm64" {
 				platforms = []string{"linux/arm64"}
 			}
 
-			if err := ng.Update(string(p.Platform), "unix://"+p.SocketPath, platforms, true, true, nil, "", nil); err != nil {
+			if err := ng.Update(string(p.Platform), "unix://"+p.SocketPath, platforms, true, true, nil, "", do); err != nil {
 				return err
 			}
 		}
@@ -496,6 +505,8 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 	name := cmd.Flags().String("name", defaultBuilder, "The name of the builder we setup.")
 	use := cmd.Flags().Bool("use", false, "If true, changes the current builder to nsc-remote.")
 	stateDir := cmd.Flags().String("state", "", "Where the proxies live.")
+	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, load images to the Docker Engine image store if no other output is specified.")
+	_ = cmd.Flags().MarkHidden("default_load")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *stateDir == "" {
@@ -516,7 +527,7 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 			return err
 		}
 
-		return wireBuildx(dockerCli, *name, *use, md)
+		return wireBuildx(dockerCli, *name, *use, *defaultLoad, md)
 	})
 
 	return cmd
