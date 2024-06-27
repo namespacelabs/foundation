@@ -10,11 +10,18 @@ import (
 	"strings"
 )
 
+var CacheDir string
+
 func Cache() (string, error) {
+	if CacheDir != "" {
+		return filepath.Join(CacheDir, "ns"), nil
+	}
+
 	dir, err := os.UserCacheDir()
 	if err != nil {
 		return dir, err
 	}
+
 	return filepath.Join(dir, "ns"), nil
 }
 

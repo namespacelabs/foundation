@@ -166,6 +166,8 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		"If set to true, we also output debug log messages for API responses.")
 	rootCmd.PersistentFlags().BoolVar(&enableErrorTracing, "error_tracing", enableErrorTracing,
 		"If set to true, prints a trace of foundation errors leading to the root cause with source info.")
+	rootCmd.PersistentFlags().StringVar(&dirs.CacheDir, "cache_dir", dirs.CacheDir,
+		"Where to place cache contents.")
 
 	storedrun.SetupFlags(rootCmd.PersistentFlags())
 
@@ -178,6 +180,7 @@ func doMain(opts MainOpts) (colors.Style, error) {
 		"debug_to_console",
 		"debug_to_file",
 		"debug_api_response",
+		"cache_dir",
 	} {
 		_ = rootCmd.PersistentFlags().MarkHidden(noisy)
 	}
