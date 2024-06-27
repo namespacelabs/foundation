@@ -10,11 +10,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/docker/go-units"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
@@ -76,16 +74,13 @@ func NewCreateCmd() *cobra.Command {
 			Labels:        *labels,
 			UniqueTag:     *tag,
 			SecretIDs:     *availableSecrets,
+			Duration:      *duration,
 		}
 
 		if len(opts.Labels) == 0 {
 			opts.Labels = map[string]string{
 				"nsc.source": "nsc",
 			}
-		}
-
-		if *duration > 0 {
-			opts.Deadline = timestamppb.New(time.Now().Add(*duration))
 		}
 
 		if keys, err := parseAuthorizedKeys(*userSshey); err != nil {

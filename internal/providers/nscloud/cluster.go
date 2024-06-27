@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"namespacelabs.dev/foundation/framework/kubernetes/kubedef"
 	"namespacelabs.dev/foundation/internal/build/registry"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -165,10 +164,7 @@ func createCluster(ctx context.Context, purpose string, labels map[string]string
 		Purpose:     purpose,
 		Labels:      labels,
 		Interactive: true,
-	}
-
-	if defaultDuration > 0 {
-		opts.Deadline = timestamppb.New(time.Now().Add(defaultDuration))
+		Duration:    defaultDuration,
 	}
 
 	return api.CreateCluster(ctx, api.Methods, opts)

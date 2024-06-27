@@ -215,7 +215,7 @@ type CreateClusterOpts struct {
 	UniqueTag         string
 	InternalExtra     string
 	Labels            map[string]string
-	Deadline          *timestamppb.Timestamp
+	Duration          time.Duration
 	Experimental      any
 	Volumes           []VolumeSpec
 	SecretIDs         []string
@@ -252,10 +252,13 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 				AuthorizedSshKeys: opts.AuthorizedSshKeys,
 				UniqueTag:         opts.UniqueTag,
 				InternalExtra:     opts.InternalExtra,
-				Deadline:          opts.Deadline,
 				Experimental:      opts.Experimental,
 				Interactive:       opts.Interactive,
 				Volumes:           opts.Volumes,
+			}
+
+			if opts.Duration > 0 {
+				req.Deadline = timestamppb.New(time.Now().Add(opts.Duration))
 			}
 
 			labelKeys := maps.Keys(opts.Labels)
@@ -320,7 +323,7 @@ func CreateCluster(ctx context.Context, api API, opts CreateClusterOpts) (*Start
 			resp, err := tryOnce(ctx)
 			if err != nil {
 				if status.Code(err) == codes.ResourceExhausted {
-					// Retry.
+					fmt.Fprintf(console.Debug(ctx), "[nsc] resource exhausted, will retry: %v\n", err)
 					return err
 				}
 
