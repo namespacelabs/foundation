@@ -48,7 +48,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(cluster.NewExecScoped())                    // nsc exec-scoped
 	root.AddCommand(cluster.NewIngressCmd())                    // nsc ingress
 	root.AddCommand(cluster.NewVolumeCmd())                     // nsc volume
-	root.AddCommand(cluster.NewGitMirrorCmd())                  // nsc git-mirror [hidden]
+	root.AddCommand(cluster.NewGitCheckoutCmd())                // nsc git-checkout [hidden]
 	root.AddCommand(private.NewInternalCmd())                   // nsc internal [hidden]
 	root.AddCommand(terminal.NewTerminalCmd())                  // nsc terminal [hidden]
 

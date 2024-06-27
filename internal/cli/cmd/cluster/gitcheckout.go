@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,13 @@ import (
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+)
+
+type contextKey string
+
+var (
+	_indentKey = contextKey("fn.nsc.git-checkout.indent")
 )
 
 type submodule struct {
@@ -27,46 +35,50 @@ type submodule struct {
 	remoteUrl string
 }
 
-func NewGitMirrorCmd() *cobra.Command {
+func NewGitCheckoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "git-mirror",
-		Short:  "Performs git actions using a Namespace git mirror.",
+		Use:    "git-checkout",
+		Short:  "Actions for git checkouts supporting Namespace Cache Volumes.",
 		Hidden: true,
 	}
-
-	repositoryPath := cmd.PersistentFlags().String("repository_path", "", "the path of the repository to work in")
-	cmd.MarkPersistentFlagRequired("repository_path")
 
 	mirrorBaseDir := cmd.PersistentFlags().String("mirror_base_path", "", "the path of the mirror base directory")
 	cmd.MarkPersistentFlagRequired("mirror_base_path")
 
-	cmd.AddCommand(newUpdateSubmodulesCmd(repositoryPath, mirrorBaseDir))
+	cmd.AddCommand(newUpdateSubmodulesCmd(mirrorBaseDir))
 
 	return cmd
 }
 
-func newUpdateSubmodulesCmd(repositoryPath *string, mirrorBaseDir *string) *cobra.Command {
+func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-submodules",
 		Short: "Updates git submodules using a Namespace git mirror.",
-		Args:  cobra.MaximumNArgs(1),
 	}
+
+	repositoryPath := cmd.Flags().String("repository_path", "", "the path of the repository to work in")
+	cmd.MarkFlagRequired("repository_path")
 
 	recurseSubmodules := cmd.Flags().Bool("recurse", false, "if true, will recursively update all submodules")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return updateSubmodules(*repositoryPath, *mirrorBaseDir, *recurseSubmodules)
+		return updateSubmodules(ctx, *repositoryPath, *mirrorBaseDir, *recurseSubmodules, 0)
 	})
 
 	return cmd
 }
 
-func updateSubmodules(repoPath string, mirrorBaseDir string, recurseSubmodules bool) error {
+func updateSubmodules(ctx context.Context, repoPath string, mirrorBaseDir string, recurseSubmodules bool, recursionDepth int) error {
+	if recursionDepth > 100 {
+		return fmt.Errorf("Reached max nesting level: %d", recursionDepth)
+	}
+	ctx = withIndent(ctx, recursionDepth)
+
 	if err := checkRepoDir(repoPath); err != nil {
 		return err
 	}
 
-	submodules, err := getSubmodules(repoPath)
+	submodules, err := getSubmodules(ctx, repoPath)
 	if err != nil {
 		return err
 	}
@@ -74,30 +86,33 @@ func updateSubmodules(repoPath string, mirrorBaseDir string, recurseSubmodules b
 	// TODO: we could parallelize this, but watch out if the same submodule remote URL is
 	// referenced multiple times.
 	for _, submod := range submodules {
-		fmt.Printf("Processing submodule %s -> %s\n", submod.relativePath, submod.remoteUrl)
-		mirrorDir, err := ensureMirror(mirrorBaseDir, submod)
+		indentedFprintf(ctx, console.Info(ctx), "Processing submodule %s -> %s\n", submod.relativePath, submod.remoteUrl)
+		mirrorDir, err := ensureMirror(ctx, mirrorBaseDir, submod)
 		if err != nil {
 			return err
 		}
 
 		// Actually get the submodule, using the mirror as reference
 		cmd := inRepoGit(repoPath, "submodule", "update", "--init", "--reference", mirrorDir, submod.relativePath)
-		err = runAndPrintIfFails(cmd)
+		err = runAndPrintIfFails(ctx, cmd)
 		if err != nil {
 			return fmt.Errorf("could not update submodule '%s': %v", submod.relativePath, err)
 		}
 
 		if recurseSubmodules {
-			fmt.Printf("Recursing into %s\n", submod.relativePath)
-			updateSubmodules(filepath.Join(repoPath, submod.relativePath), mirrorBaseDir, recurseSubmodules)
-			fmt.Printf("Left %s\n", submod.relativePath)
+			recursePath := filepath.Join(repoPath, submod.relativePath)
+			indentedFprintf(ctx, console.Debug(ctx), "Recursing into %s (%s)\n", submod.relativePath, recursePath)
+			if err := updateSubmodules(ctx, recursePath, mirrorBaseDir, recurseSubmodules, recursionDepth+1); err != nil {
+				return err
+			}
+			indentedFprintf(ctx, console.Debug(ctx), "Left %s\n", submod.relativePath)
 		}
 	}
 
 	return nil
 }
 
-func ensureMirror(mirrorBaseDir string, submod submodule) (string, error) {
+func ensureMirror(ctx context.Context, mirrorBaseDir string, submod submodule) (string, error) {
 	mirrorDir := getMirrorDir(mirrorBaseDir, submod)
 
 	if err := os.MkdirAll(mirrorDir, os.ModePerm); err != nil {
@@ -107,14 +122,14 @@ func ensureMirror(mirrorBaseDir string, submod submodule) (string, error) {
 	if isMirrorRepo(mirrorDir) {
 		// Make sure the mirror is up to date
 		cmd := inRepoGit(mirrorDir, "fetch", "--no-recurse-submodules", "origin")
-		err := runAndPrintIfFails(cmd)
+		err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
 			return "", fmt.Errorf("could not git fetch '%s' in '%s': %v", submod.remoteUrl, mirrorDir, err)
 		}
 	} else {
 		// Create new mirror
 		cmd := exec.Command("git", "clone", "--mirror", "--", submod.remoteUrl, mirrorDir)
-		err := runAndPrintIfFails(cmd)
+		err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
 			return "", fmt.Errorf("could not git clone '%s' to '%s': %v", submod.remoteUrl, mirrorDir, err)
 		}
@@ -151,16 +166,6 @@ func checkRepoDir(repoPath string) error {
 	return nil
 }
 
-// Executes "git" as if it ran in "repoPath".
-func InRepoGitOld(repoPath string, args ...string) *exec.Cmd {
-	allArgs := append(
-		[]string{"--git-dir", filepath.Join(repoPath, ".git"), "--work-tree", repoPath},
-		args...)
-	fmt.Println(strings.Join(allArgs, " "))
-
-	return exec.Command("git", allArgs...)
-}
-
 // Executes "git" as if it ran in "repoPath" in a different way :-)
 // Becuase git submodule doesn't seem to support --work-tree.
 func inRepoGit(repoPath string, args ...string) *exec.Cmd {
@@ -171,8 +176,9 @@ func inRepoGit(repoPath string, args ...string) *exec.Cmd {
 	return exec.Command("git", allArgs...)
 }
 
-func getSubmodules(repoPath string) ([]submodule, error) {
-	cmd := inRepoGit(repoPath, "config", "--file", filepath.Join(repoPath, ".gitmodules"), "--get-regexp", "submodule\\.")
+func getSubmodules(ctx context.Context, repoPath string) ([]submodule, error) {
+	cmd := inRepoGit(repoPath, "config", "--file", ".gitmodules", "--get-regexp", "submodule\\.")
+	indentedFprintf(ctx, console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -257,16 +263,30 @@ func parseSubmoduleConfigKey(key string) (bool, string, string) {
 	return true, split[1], split[2]
 }
 
-func echoCommand(cmd *exec.Cmd) {
-	fmt.Println(strings.Join(cmd.Args, " "))
-}
-
-func runAndPrintIfFails(cmd *exec.Cmd) error {
-	echoCommand(cmd)
+func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) error {
+	indentedFprintf(ctx, console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(string(output))
+		indentedFprintf(ctx, console.Errors(ctx), "failed: %s\n", strings.Join(cmd.Args, " "))
+		fmt.Fprintln(console.Errors(ctx), string(output))
 		return err
 	}
 	return nil
+}
+
+func indentedFprintf(ctx context.Context, w io.Writer, format string, a ...any) (n int, err error) {
+	indentPrefix := strings.Repeat("  ", indentFromContext(ctx))
+	return fmt.Fprintf(w, indentPrefix+format, a...)
+}
+
+func withIndent(ctx context.Context, indent int) context.Context {
+	return context.WithValue(ctx, _indentKey, indent)
+}
+
+func indentFromContext(ctx context.Context) int {
+	v := ctx.Value(_indentKey)
+	if v == nil {
+		return 0
+	}
+	return v.(int)
 }
