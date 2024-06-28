@@ -20,7 +20,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 )
 
-const defaultSessionDuration = 7 * 24 * time.Hour
+const defaultSessionDuration = 30 * 24 * time.Hour
 
 func NewLoginCmd() *cobra.Command {
 	var openBrowser, session bool
@@ -80,9 +80,9 @@ func NewLoginCmd() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&openBrowser, "browser", true, "Open a browser to login.")
-	cmd.Flags().BoolVar(&session, "session", false, "If set, gets a long-lived session.")
+	cmd.Flags().BoolVar(&session, "session", true, "If set, gets a long-lived session.")
 	cmd.Flags().MarkHidden("session")
-	cmd.Flags().DurationVar(&duration, "duration", defaultSessionDuration, "How long the session should last. Default is one week.")
+	cmd.Flags().DurationVar(&duration, "duration", defaultSessionDuration, "The default duration of a session.")
 	cmd.Flags().MarkHidden("duration")
 
 	return cmd
