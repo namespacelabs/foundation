@@ -20,13 +20,14 @@ const readinessPropagationDelay = 15 * time.Second
 
 func handleGracefulShutdown(ctx context.Context, finishShutdown func()) {
 	sigint := make(chan os.Signal, 1)
-
-	signal.Notify(sigint, os.Interrupt)
-	signal.Notify(sigint, syscall.SIGTERM)
+	signal.Notify(sigint, os.Interrupt, syscall.SIGTERM)
 
 	select {
 	case r2 := <-sigint:
 		core.ZLog.Info().Str("signal", r2.String()).Msg("got signal")
+
+		// Allow a repeated signal to terminate us ungracefully.
+		signal.Stop(sigint)
 
 		// XXX support more graceful shutdown. Although
 		// https://github.com/kubernetes/kubernetes/issues/86280#issuecomment-583173036
