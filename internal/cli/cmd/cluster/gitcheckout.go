@@ -8,14 +8,16 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 )
@@ -25,15 +27,6 @@ type contextKey string
 var (
 	_indentKey = contextKey("fn.nsc.git-checkout.indent")
 )
-
-type submodule struct {
-	// Name of the entry in .gitmodules
-	configKey string
-	// Relative path where the submodule is checked out in the repo
-	relativePath string
-	// Remote repository url
-	remoteUrl string
-}
 
 func NewGitCheckoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -60,63 +53,395 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 	cmd.MarkFlagRequired("repository_path")
 
 	recurseSubmodules := cmd.Flags().Bool("recurse", false, "if true, will recursively update all submodules")
+	dissociate := cmd.Flags().Bool("dissociate", false, "if true, will dissociate all updated submodule checkouts from the cache")
+	numWorkers := cmd.Flags().Int("workers", 4, "number of workers for submodule fetch and update operations")
+	repoBufLen := cmd.Flags().Int("repo-buf-len", 1000, "max length of the pending repos buffer")
+	cmd.Flags().MarkHidden("repo-buf-len")
+	maxRecurseDepth := cmd.Flags().Int("max-recurse-depth", 20, "max depth of recursion into subdirectories")
+	cmd.Flags().MarkHidden("max-recurse-depth")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return updateSubmodules(ctx, *repositoryPath, *mirrorBaseDir, *recurseSubmodules, 0)
+		p := &processor{
+			repoPath:          *repositoryPath,
+			mirrorBaseDir:     *mirrorBaseDir,
+			recurseSubmodules: *recurseSubmodules,
+			dissociate:        *dissociate,
+			numWorkers:        *numWorkers,
+			repoBufLen:        *repoBufLen,
+			maxRecurseDepth:   *maxRecurseDepth,
+		}
+		return p.updateSubmodules(ctx)
 	})
 
 	return cmd
 }
 
-func updateSubmodules(ctx context.Context, repoPath string, mirrorBaseDir string, recurseSubmodules bool, recursionDepth int) error {
-	if recursionDepth > 100 {
-		return fmt.Errorf("Reached max nesting level: %d", recursionDepth)
-	}
-	ctx = withIndent(ctx, recursionDepth)
+type processor struct {
+	// Path of the main repo to work on.
+	repoPath string
+	// Path of the base directory of the github mirror cache.
+	mirrorBaseDir string
+	// True if submodules of submodules should be checked out recursively.
+	recurseSubmodules bool
+	// True if the checked out submoudules should should not reference mirrorBaseDir after
+	// this tool is done, i.e. git option --dissociate should be used.
+	dissociate bool
 
-	if err := checkRepoDir(repoPath); err != nil {
+	numWorkers      int
+	repoBufLen      int
+	maxRecurseDepth int
+
+	processRepoJobQueue         chan processRepoJob
+	doProcessRepoJobQueue       chan processRepoJob
+	processRepoDoneNotification chan processRepoJob
+
+	ensureMirrorJobQueue         chan ensureMirrorJob
+	doEnsureMirrorJobQueue       chan doEnsureMirrorJob
+	ensureMirrorDoneNotification chan ensureMirrorResult
+
+	// Done when closed
+	doneSignal chan struct{}
+}
+
+type submodule struct {
+	// Name of the entry in .gitmodules
+	configKey string
+	// Relative path where the submodule is checked out in the repo
+	relativePath string
+	// Remote repository url
+	remoteUrl string
+}
+
+type processRepoJob struct {
+	repoPath       string
+	recursionDepth int
+}
+
+type ensureMirrorJob struct {
+	submod submodule
+
+	resultChan chan ensureMirrorResult
+}
+
+type doEnsureMirrorJob struct {
+	submod submodule
+
+	mirrorDir string
+}
+
+type ensureMirrorResult struct {
+	submod    submodule
+	mirrorDir string
+	err       error
+}
+
+func (p *processor) updateSubmodules(ctx context.Context) error {
+	if p.numWorkers < 1 || p.numWorkers > 8 {
+		return fmt.Errorf("needs 1..8 workers")
+	}
+	if p.repoBufLen < 1 {
+		return fmt.Errorf("needs repo-buf-len >= 1")
+	}
+
+	if p.mirrorBaseDir == "" {
+		return fmt.Errorf("nsc git-checkout update-submodules requires Git mirror to be enabled on the Namespace runner.")
+	}
+	// The processing of nested submodules requires this to be an absolute path.
+	// This is because it's using `git -C <dir>` (becuase the submodule commands don't respect --work-tree)
+	// so relative paths would change in meaning.
+	absMirrorBaseDir, err := filepath.Abs(p.mirrorBaseDir)
+	if err != nil {
+		return fmt.Errorf("could not convert '%s' to an absolute path: %v", p.mirrorBaseDir, err)
+	}
+	p.mirrorBaseDir = absMirrorBaseDir
+	if err := checkIsDir(p.mirrorBaseDir); err != nil {
+		return fmt.Errorf("Didn't find directory under '%s': %v", p.mirrorBaseDir, err)
+	}
+
+	p.processRepoJobQueue = make(chan processRepoJob)
+	p.doProcessRepoJobQueue = make(chan processRepoJob, p.repoBufLen)
+	p.processRepoDoneNotification = make(chan processRepoJob)
+
+	p.ensureMirrorJobQueue = make(chan ensureMirrorJob)
+	p.doEnsureMirrorJobQueue = make(chan doEnsureMirrorJob, p.repoBufLen)
+	p.ensureMirrorDoneNotification = make(chan ensureMirrorResult)
+
+	p.doneSignal = make(chan struct{})
+
+	if err := checkIsDir(p.repoPath); err != nil {
 		return err
 	}
 
-	submodules, err := getSubmodules(ctx, repoPath)
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		return p.processRepoCoordinator(groupCtx)
+	})
+	group.Go(func() error {
+		return p.ensureMirrorCoordinator(groupCtx)
+	})
+	for i := 0; i < p.numWorkers; i++ {
+		group.Go(func() error {
+			return p.workerForProcessRepo(groupCtx)
+		})
+		group.Go(func() error {
+			return p.workerForDoEnsureMirror(groupCtx)
+		})
+	}
+
+	p.scheduleProcessRepo(ctx, p.repoPath, 0)
+
+	return group.Wait()
+}
+
+func (p *processor) scheduleProcessRepo(ctx context.Context, repoPath string, recursionDepth int) {
+	fmt.Fprintf(console.Debug(ctx), "N%d: In %s: scheduled processing\n", recursionDepth, repoPath)
+
+	p.processRepoJobQueue <- processRepoJob{
+		repoPath:       repoPath,
+		recursionDepth: recursionDepth,
+	}
+}
+
+// - Forwards processSubmoduleJob jobs to workers
+// - Keeps track of repo paths that are being processed
+// - When that becomes an empty set (apart from the startup case), signals doneSignal
+func (p *processor) processRepoCoordinator(ctx context.Context) error {
+	activeRepoPaths := map[string]struct{}{}
+
+	for {
+		select {
+		case job := <-p.processRepoJobQueue:
+			fmt.Fprintf(console.Info(ctx), "N%d: Entering %s\n", job.recursionDepth, job.repoPath)
+			activeRepoPaths[job.repoPath] = struct{}{}
+			select {
+			case p.doProcessRepoJobQueue <- job:
+			default:
+				return fmt.Errorf("reached repo buf queue length in processRepo")
+			}
+
+		case job := <-p.processRepoDoneNotification:
+			fmt.Fprintf(console.Info(ctx), "N%d: Leaving %s\n", job.recursionDepth, job.repoPath)
+			delete(activeRepoPaths, job.repoPath)
+			if len(activeRepoPaths) == 0 {
+				close(p.doneSignal)
+				return nil
+			}
+
+		case <-ctx.Done():
+			return ctx.Err()
+
+		}
+	}
+}
+
+func (p *processor) workerForProcessRepo(ctx context.Context) error {
+	for {
+		select {
+		case work := <-p.doProcessRepoJobQueue:
+			err := p.doProcessRepo(ctx, work)
+			if err != nil {
+				return err
+			}
+
+		case <-p.doneSignal:
+			return nil
+
+		case <-ctx.Done():
+			return ctx.Err()
+
+		}
+	}
+}
+
+func (p *processor) doProcessRepo(ctx context.Context, job processRepoJob) error {
+	if job.recursionDepth > p.maxRecurseDepth {
+		return fmt.Errorf("Reached max nesting level: %d", job.recursionDepth)
+	}
+	submodules, err := getSubmodules(ctx, job.repoPath)
 	if err != nil {
 		return err
 	}
 
-	// TODO: we could parallelize this, but watch out if the same submodule remote URL is
-	// referenced multiple times.
+	mirrorReadyChan := make(chan ensureMirrorResult, len(submodules))
 	for _, submod := range submodules {
-		indentedFprintf(ctx, console.Info(ctx), "Processing submodule %s -> %s\n", submod.relativePath, submod.remoteUrl)
-		mirrorDir, err := ensureMirror(ctx, mirrorBaseDir, submod)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintf(console.Info(ctx), "N%d: In %s: Found submodule %s -> %s\n", job.recursionDepth, job.repoPath, submod.relativePath, submod.remoteUrl)
+		p.scheduleEnsureMirror(submod, mirrorReadyChan)
+	}
 
-		// Actually get the submodule, using the mirror as reference
-		cmd := inRepoGit(repoPath, "submodule", "update", "--init", "--reference", mirrorDir, submod.relativePath)
-		err = runAndPrintIfFails(ctx, cmd)
-		if err != nil {
-			return fmt.Errorf("could not update submodule '%s': %v", submod.relativePath, err)
-		}
-
-		if recurseSubmodules {
-			recursePath := filepath.Join(repoPath, submod.relativePath)
-			indentedFprintf(ctx, console.Debug(ctx), "Recursing into %s (%s)\n", submod.relativePath, recursePath)
-			if err := updateSubmodules(ctx, recursePath, mirrorBaseDir, recurseSubmodules, recursionDepth+1); err != nil {
+	// The actual "update" operations for submodules must be performed sequentially
+	for i := 0; i < len(submodules); i++ {
+		select {
+		case ensureMirrorResult := <-mirrorReadyChan:
+			if ensureMirrorResult.err != nil {
+				return ensureMirrorResult.err
+			}
+			err := p.doUpdateSubmodule(ctx, job.repoPath, job.recursionDepth, ensureMirrorResult.submod, ensureMirrorResult.mirrorDir)
+			if err != nil {
 				return err
 			}
-			indentedFprintf(ctx, console.Debug(ctx), "Left %s\n", submod.relativePath)
+		case <-ctx.Done():
+			return ctx.Err()
 		}
+	}
+
+	fmt.Fprintf(console.Debug(ctx), "N%d: In %s: done processing\n", job.recursionDepth, job.repoPath)
+	p.processRepoDoneNotification <- job
+
+	return nil
+}
+
+func (p *processor) doUpdateSubmodule(ctx context.Context, repoPath string, recursionDepth int, submod submodule, mirrorDir string) error {
+	fmt.Fprintf(console.Info(ctx), "N%d: In %s: Update %s from mirror of %s\n", recursionDepth, repoPath, submod.relativePath, submod.remoteUrl)
+
+	// Actually get the submodule, using the mirror as reference
+	submoduleUpdateArgs := []string{"submodule", "update", "--init", "--reference", mirrorDir}
+	if p.dissociate {
+		submoduleUpdateArgs = append(submoduleUpdateArgs, "--dissociate")
+	}
+	submoduleUpdateArgs = append(submoduleUpdateArgs, submod.relativePath)
+	cmd := inRepoGit(repoPath, submoduleUpdateArgs...)
+	err := runAndPrintIfFails(ctx, cmd)
+	if err != nil {
+		return fmt.Errorf("could not update submodule '%s': %v", submod.relativePath, err)
+	}
+
+	if p.recurseSubmodules {
+		recursePath := filepath.Join(repoPath, submod.relativePath)
+		p.scheduleProcessRepo(ctx, recursePath, recursionDepth+1)
 	}
 
 	return nil
 }
 
-func ensureMirror(ctx context.Context, mirrorBaseDir string, submod submodule) (string, error) {
-	mirrorDir := getMirrorDir(mirrorBaseDir, submod)
+func (p *processor) scheduleEnsureMirror(submod submodule, resultChan chan ensureMirrorResult) {
+	p.ensureMirrorJobQueue <- ensureMirrorJob{submod: submod, resultChan: resultChan}
+}
 
+func (p *processor) ensureMirrorCoordinator(ctx context.Context) error {
+	type mirrorStatus int
+
+	const (
+		MIRROR_STATUS_PENDING mirrorStatus = iota
+		MIRROR_STATUS_FETCH_SCHEDULED
+		MIRROR_STATUS_FETCH_COMPLETE
+	)
+
+	type mirrorInfo struct {
+		status mirrorStatus
+		// channels to notify when this mirror is up to date.
+		channelsToNotify []chan ensureMirrorResult
+	}
+
+	mirrors := map[string]*mirrorInfo{}
+
+	ticker := time.NewTicker(10 * time.Second)
+
+	for {
+		select {
+		case job := <-p.ensureMirrorJobQueue:
+			submod := job.submod
+			mirrorDir := getMirrorDir(p.mirrorBaseDir, submod)
+
+			mirror, ok := mirrors[submod.remoteUrl]
+			if !ok {
+				mirror = &mirrorInfo{}
+				mirrors[submod.remoteUrl] = mirror
+			}
+
+			switch mirror.status {
+			case MIRROR_STATUS_FETCH_COMPLETE:
+				fmt.Fprintf(console.Debug(ctx), "mirror for %s at %s is up to date\n", submod.remoteUrl, mirrorDir)
+				// The mirror is up to date
+				job.resultChan <- ensureMirrorResult{submod: submod, mirrorDir: mirrorDir}
+			case MIRROR_STATUS_FETCH_SCHEDULED:
+				fmt.Fprintf(console.Debug(ctx), "mirror for %s at %s has a fetch running\n", submod.remoteUrl, mirrorDir)
+				mirror.channelsToNotify = append(mirror.channelsToNotify, job.resultChan)
+			case MIRROR_STATUS_PENDING:
+				fmt.Fprintf(console.Debug(ctx), "mirror for %s at %s is pending, trigger fetch\n", submod.remoteUrl, mirrorDir)
+				mirror.channelsToNotify = append(mirror.channelsToNotify, job.resultChan)
+
+				select {
+				case p.doEnsureMirrorJobQueue <- doEnsureMirrorJob{submod: submod, mirrorDir: mirrorDir}:
+				default:
+					return fmt.Errorf("reached repo buf queue length in ensureMirror")
+				}
+				mirror.status = MIRROR_STATUS_FETCH_SCHEDULED
+			}
+
+		case result := <-p.ensureMirrorDoneNotification:
+			submod := result.submod
+			if result.err == nil {
+				fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s SUCCESS\n", submod.remoteUrl, result.mirrorDir)
+			} else {
+				fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s FAILURE: %v\n", submod.remoteUrl, result.mirrorDir, result.err)
+			}
+
+			mirror, ok := mirrors[submod.remoteUrl]
+			if !ok {
+				panic("no mirror info")
+			}
+
+			mirror.status = MIRROR_STATUS_FETCH_COMPLETE
+			for _, channel := range mirror.channelsToNotify {
+				select {
+				case channel <- result:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+			clear(mirror.channelsToNotify)
+
+		case <-ticker.C:
+			processing := []string{}
+			for remoteUrl, mirror := range mirrors {
+				if mirror.status == MIRROR_STATUS_FETCH_SCHEDULED {
+					processing = append(processing, remoteUrl)
+				}
+			}
+			if len(processing) > 0 {
+				sort.Strings(processing)
+				fmt.Fprintf(console.Debug(ctx), "still fetching %s\n", strings.Join(processing, ", "))
+			}
+
+		case <-p.doneSignal:
+			return nil
+
+		case <-ctx.Done():
+			return ctx.Err()
+
+		}
+	}
+}
+
+func (p *processor) workerForDoEnsureMirror(ctx context.Context) error {
+	for {
+		select {
+		case work := <-p.doEnsureMirrorJobQueue:
+			p.doEnsureMirror(ctx, work)
+
+		case <-p.doneSignal:
+			return nil
+
+		case <-ctx.Done():
+			return ctx.Err()
+
+		}
+	}
+}
+
+func (p *processor) doEnsureMirror(ctx context.Context, job doEnsureMirrorJob) {
+	submod := job.submod
+	mirrorDir := job.mirrorDir
+
+	fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s\n", submod.remoteUrl, mirrorDir)
+	err := ensureMirrorWork(ctx, submod, mirrorDir)
+
+	p.ensureMirrorDoneNotification <- ensureMirrorResult{submod: submod, mirrorDir: mirrorDir, err: err}
+}
+
+func ensureMirrorWork(ctx context.Context, submod submodule, mirrorDir string) error {
 	if err := os.MkdirAll(mirrorDir, os.ModePerm); err != nil {
-		return "", fmt.Errorf("can not create '%s' for '%s': %v", mirrorDir, submod.remoteUrl, err)
+		return fmt.Errorf("can not create '%s' for '%s': %v", mirrorDir, submod.remoteUrl, err)
 	}
 
 	if isMirrorRepo(mirrorDir) {
@@ -124,18 +449,17 @@ func ensureMirror(ctx context.Context, mirrorBaseDir string, submod submodule) (
 		cmd := inRepoGit(mirrorDir, "fetch", "--no-recurse-submodules", "origin")
 		err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
-			return "", fmt.Errorf("could not git fetch '%s' in '%s': %v", submod.remoteUrl, mirrorDir, err)
+			return fmt.Errorf("could not git fetch '%s' in '%s': %v", submod.remoteUrl, mirrorDir, err)
 		}
 	} else {
 		// Create new mirror
 		cmd := exec.Command("git", "clone", "--mirror", "--", submod.remoteUrl, mirrorDir)
 		err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
-			return "", fmt.Errorf("could not git clone '%s' to '%s': %v", submod.remoteUrl, mirrorDir, err)
+			return fmt.Errorf("could not git clone '%s' to '%s': %v", submod.remoteUrl, mirrorDir, err)
 		}
 	}
-
-	return mirrorDir, nil
+	return nil
 }
 
 func isMirrorRepo(mirrorDir string) bool {
@@ -151,7 +475,7 @@ func getMirrorDir(mirrorBaseDir string, mod submodule) string {
 	return filepath.Join(mirrorBaseDir, "v2", key)
 }
 
-func checkRepoDir(repoPath string) error {
+func checkIsDir(repoPath string) error {
 	stat, err := os.Stat(repoPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -178,7 +502,7 @@ func inRepoGit(repoPath string, args ...string) *exec.Cmd {
 
 func getSubmodules(ctx context.Context, repoPath string) ([]submodule, error) {
 	cmd := inRepoGit(repoPath, "config", "--file", ".gitmodules", "--get-regexp", "submodule\\.")
-	indentedFprintf(ctx, console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
+	fmt.Fprintf(console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -245,7 +569,7 @@ func parseGitConfigKeyValue(line string) (bool, string, string) {
 		return false, "", ""
 	}
 	key := line[0:separator]
-	value := line[separator+1 : len(line)]
+	value := line[separator+1:]
 
 	return true, key, value
 }
@@ -264,29 +588,12 @@ func parseSubmoduleConfigKey(key string) (bool, string, string) {
 }
 
 func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) error {
-	indentedFprintf(ctx, console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
+	fmt.Fprintf(console.Info(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		indentedFprintf(ctx, console.Errors(ctx), "failed: %s\n", strings.Join(cmd.Args, " "))
+		fmt.Fprintf(console.Errors(ctx), "failed: %s\n", strings.Join(cmd.Args, " "))
 		fmt.Fprintln(console.Errors(ctx), string(output))
 		return err
 	}
 	return nil
-}
-
-func indentedFprintf(ctx context.Context, w io.Writer, format string, a ...any) (n int, err error) {
-	indentPrefix := strings.Repeat("  ", indentFromContext(ctx))
-	return fmt.Fprintf(w, indentPrefix+format, a...)
-}
-
-func withIndent(ctx context.Context, indent int) context.Context {
-	return context.WithValue(ctx, _indentKey, indent)
-}
-
-func indentFromContext(ctx context.Context) int {
-	v := ctx.Value(_indentKey)
-	if v == nil {
-		return 0
-	}
-	return v.(int)
 }
