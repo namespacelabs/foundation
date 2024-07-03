@@ -12,6 +12,7 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/private"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster/terminal"
+	"namespacelabs.dev/foundation/internal/cli/cmd/devbox"
 	"namespacelabs.dev/foundation/internal/cli/cmd/gcp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/sdk"
 	"namespacelabs.dev/foundation/internal/cli/cmd/version"
@@ -57,4 +58,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(admin.NewAdminCmd(true)) // nsc admin
 
 	root.AddCommand(workspace.NewWorkspaceCmd()) // nsc workspace
+
+	root.AddCommand(devbox.NewDevBoxCmd()) // nsc devbox
 }
