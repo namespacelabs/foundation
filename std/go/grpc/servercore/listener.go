@@ -6,6 +6,7 @@ package servercore
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -48,6 +49,8 @@ type HTTPOptions struct {
 	HTTP2IdleTimeout                  time.Duration `json:"http2_idle_timeout"`
 	HTTP2MaxUploadBufferPerConnection int32         `json:"http2_max_upload_buffer_per_connection"`
 	HTTP2MaxUploadBufferPerStream     int32         `json:"http2_max_upload_buffer_per_stream"`
+
+	TlsConfig *tls.Config `json:"-"`
 }
 
 type ListenOpts struct {
@@ -212,18 +215,36 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 	defer cancel()
 	eg, egCtx := errgroup.WithContext(cancelCtx)
 
-	var httpServer *http.Server
 	if opts.CreateHttpListener != nil {
 		gwLis, opts, err := opts.CreateHttpListener(ctx)
 		if err != nil {
 			return err
 		}
 
-		httpServer = NewHttp2CapableServer(httpMux, opts)
+		httpServer := NewHttp2CapableServer(httpMux, opts)
+
+		var httpsServer *http.Server
+		if tlsConfig != nil {
+			opts.TlsConfig = tlsConfig
+			httpsServer = NewHttp2CapableServer(httpMux, opts)
+		}
+
+		m := cmux.New(gwLis)
+
+		var httpsLis net.Listener = nil
+		if tlsConfig != nil {
+			httpsLis = m.Match(cmux.TLS())
+		}
+
+		httpAnyL := m.Match(cmux.Any())
 
 		core.ZLog.Info().Msgf("Starting HTTP listen on %v", gwLis.Addr())
 
-		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, gwLis) })
+		eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "http", httpServer, httpAnyL) })
+
+		if tlsConfig != nil {
+			eg.Go(func() error { return ListenAndGracefullyShutdownHTTP(egCtx, "https", httpsServer, httpsLis) })
+		}
 	}
 
 	debugHTTP := &http.Server{Handler: debugMux}
@@ -293,6 +314,7 @@ func NewHttp2CapableServer(mux http.Handler, opts HTTPOptions) *http.Server {
 		WriteTimeout:      opts.HTTP1WriteTimeout,
 		IdleTimeout:       opts.HTTP1IdleTimeout,
 		MaxHeaderBytes:    opts.HTTP1MaxHeaderBytes,
+		TLSConfig:         opts.TlsConfig,
 	}
 }
 
