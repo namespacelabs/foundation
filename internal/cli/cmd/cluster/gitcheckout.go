@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,10 +24,6 @@ import (
 )
 
 type contextKey string
-
-var (
-	_indentKey = contextKey("fn.nsc.git-checkout.indent")
-)
 
 func NewGitCheckoutCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -54,6 +51,7 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 
 	recurseSubmodules := cmd.Flags().Bool("recurse", false, "if true, will recursively update all submodules")
 	dissociate := cmd.Flags().Bool("dissociate", false, "if true, will dissociate all updated submodule checkouts from the cache")
+	depth := cmd.Flags().Int("depth", 0, "trucate history to the specified number of commits")
 	numWorkers := cmd.Flags().Int("workers", 4, "number of workers for submodule fetch and update operations")
 	repoBufLen := cmd.Flags().Int("repo-buf-len", 1000, "max length of the pending repos buffer")
 	cmd.Flags().MarkHidden("repo-buf-len")
@@ -66,6 +64,7 @@ func newUpdateSubmodulesCmd(mirrorBaseDir *string) *cobra.Command {
 			mirrorBaseDir:     *mirrorBaseDir,
 			recurseSubmodules: *recurseSubmodules,
 			dissociate:        *dissociate,
+			depth:             *depth,
 			numWorkers:        *numWorkers,
 			repoBufLen:        *repoBufLen,
 			maxRecurseDepth:   *maxRecurseDepth,
@@ -84,8 +83,11 @@ type processor struct {
 	// True if submodules of submodules should be checked out recursively.
 	recurseSubmodules bool
 	// True if the checked out submoudules should should not reference mirrorBaseDir after
-	// this tool is done, i.e. git option --dissociate should be used.
+	// this tool is done, i.e. pass --dissociate to git submodule update.
 	dissociate bool
+	// Truncate git history to this number of commits, i.e. pass --depth <depth> to git submodule update.
+	// If 0, the option is omitted (all commits)
+	depth int
 
 	numWorkers      int
 	repoBufLen      int
@@ -302,6 +304,9 @@ func (p *processor) doUpdateSubmodule(ctx context.Context, repoPath string, recu
 	submoduleUpdateArgs := []string{"submodule", "update", "--init", "--reference", mirrorDir}
 	if p.dissociate {
 		submoduleUpdateArgs = append(submoduleUpdateArgs, "--dissociate")
+	}
+	if p.depth > 0 {
+		submoduleUpdateArgs = append(submoduleUpdateArgs, "--depth", strconv.Itoa(p.depth))
 	}
 	submoduleUpdateArgs = append(submoduleUpdateArgs, submod.relativePath)
 	cmd := inRepoGit(repoPath, submoduleUpdateArgs...)
