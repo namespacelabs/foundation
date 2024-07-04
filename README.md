@@ -5,26 +5,30 @@
 </p>
 
 <p>
-<b>
-Namespace is a work in progress! Our feature set and APIs are still evolving and breaking changes are still expected. Please join us on <a href="https://community.namespace.so/discord">Discord</a> or <a href="https://github.com/namespacelabs/foundation/issues">Issues</a> for feedback.
-</b>
+  <b><i>Namespace</i> is a development-optimized compute platform. It improves the performance and observability of Docker builds, GitHub Actions, and more, without requiring workflow changes. Learn more at https://namespace.so.</b>
+
+  Namespace is built on purpose-built ephemeral compute platform that is optimized for developer use-cases: high performance workloads, with high I/O requirements, where caches and incrementally are first class. Many teams use the infrastructure programmatically (via our CLI and APIs) to build custom Previews, Developer Environments, and more. Learn more about our [APIs](https://buf.build/namespace/cloud).
+</p>
+
+<p>
+  This repository includes <b>Foundation</b>, the underlying technology on which Namespace's services are built. It's a composable system that drives, build, test and deployment, from a single set of service and extension definitions in CUE. It's inspired by Boq, Google's application platform, which our team also helped build.
+</p>
+
+<p>
+  
 </p>
 
 <div>
- 🎬 <a href="https://namespace.so/docs/getting-started?utm_source=github"><b>Getting Started</b></a>
- <span>&nbsp;•&nbsp;</span>
- 🏗️ <a href="https://namespace.so/docs#examples?utm_source=github"><b>Examples</b></a>
+ 🎬 <a href="https://namespace.so/docs/getting-started/quickstart?utm_source=github"><b>Getting Started</b></a>
  <span>&nbsp;•&nbsp;</span>
  🗼 <a href="https://namespace.so/docs?utm_source=github">Documentation</a>
- <span>&nbsp;•&nbsp;</span>
- 🏛️ <a href="https://namespace.so/docs/syntax-reference?utm_source=github">Reference</a>
  <span>&nbsp;•&nbsp;</span>
  💬 <a href="https://community.namespace.so/discord">Discord</a>
 </div>
 
-### **About Namespace**
+### **About Foundation**
 
-Namespace is an application development platform that helps you manage your development, testing,
+Namespace's foundation is an application development platform that helps you manage your development, testing,
 and production workflows, in a consistent and unified way.
 
 You describe the servers in your application, how they're built, their relationship, and which
