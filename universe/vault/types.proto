@@ -45,6 +45,6 @@ message VaultProvider {
 }
 
 message Secret {
-    // Secret reference in format - <mount>/<path>/<key>.
+    // Secret reference in format - <mount>/<path>:<key>.
     string secret_reference = 1;
 }

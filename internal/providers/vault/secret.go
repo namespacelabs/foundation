@@ -22,27 +22,28 @@ func secretProvider(ctx context.Context, conf cfg.Configuration, secretId secret
 		return nil, fnerrors.BadInputError("invalid secrets provider configuration: missing vault configuration")
 	}
 
-	if cfg.GetSecretReference() == "" {
-		return nil, fnerrors.BadInputError("invalid secret configuration: missing field secret_reference")
+	secretRef := cfg.GetSecretReference()
+	if secretRef == "" {
+		secretRef = secretId.SecretRef
 	}
 
-	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("ref", cfg.GetSecretReference()),
+	return tasks.Return(ctx, tasks.Action("vault.read-secret").Arg("ref", secretRef),
 		func(ctx context.Context) ([]byte, error) {
-			secretSegs := strings.Split(cfg.GetSecretReference(), "/")
-			if len(secretSegs) < 3 {
-				return nil, fnerrors.BadInputError("invalid vault secret configuration: expects secret_refernece in format '<mount>/<path>/<key>'")
+			secretPkg, secretKey, found := strings.Cut(secretRef, ":")
+			if !found {
+				return nil, fnerrors.BadInputError("invalid vault secret reference: expects secret refernece in format '<mount>/<path>:<key>'")
 			}
 
-			mount := secretSegs[0]
-			path := strings.Join(secretSegs[1:len(secretSegs)-1], "/")
-			key := secretSegs[len(secretSegs)-1]
-
+			secretMount, secretPath, found := strings.Cut(secretPkg, "/")
+			if !found {
+				return nil, fnerrors.BadInputError("invalid vault secret package: expects secret package in format '<mount>/<path>'")
+			}
 			vaultClient, err := login(ctx, vaultConfig)
 			if err != nil {
 				return nil, err
 			}
 
-			secretResp, err := vaultClient.Secrets.KvV2Read(ctx, path, vaultclient.WithMountPath(mount))
+			secretResp, err := vaultClient.Secrets.KvV2Read(ctx, secretPath, vaultclient.WithMountPath(secretMount))
 			if err != nil {
 				return nil, fnerrors.InvocationError("vault", "failed to read a secret")
 			}
@@ -51,9 +52,9 @@ func secretProvider(ctx context.Context, conf cfg.Configuration, secretId secret
 				return nil, fnerrors.InvocationError("vault", "secret response contained no data")
 			}
 
-			secret, ok := secretResp.Data.Data[key].(string)
+			secret, ok := secretResp.Data.Data[secretKey].(string)
 			if !ok {
-				return nil, fnerrors.InvocationError("vault", "response data contained no expected secret %q", key)
+				return nil, fnerrors.InvocationError("vault", "response data contained no expected secret %q", secretKey)
 			}
 
 			return []byte(secret), nil

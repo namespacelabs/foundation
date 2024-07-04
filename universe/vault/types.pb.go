@@ -360,7 +360,7 @@ type Secret struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Secret reference in format - <mount>/<path>/<key>.
+	// Secret reference in format - <mount>/<path>:<key>.
 	SecretReference string `protobuf:"bytes,1,opt,name=secret_reference,json=secretReference,proto3" json:"secret_reference,omitempty"`
 }
 
