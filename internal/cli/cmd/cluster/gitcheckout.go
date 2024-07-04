@@ -95,9 +95,9 @@ type processor struct {
 	doProcessRepoJobQueue       chan processRepoJob
 	processRepoDoneNotification chan processRepoJob
 
-	ensureMirrorJobQueue         chan ensureMirrorJob
-	doEnsureMirrorJobQueue       chan doEnsureMirrorJob
-	ensureMirrorDoneNotification chan ensureMirrorResult
+	ensureMirrorJobQueue           chan ensureMirrorJob
+	doEnsureMirrorJobQueue         chan doEnsureMirrorJob
+	doEnsureMirrorDoneNotification chan doEnsureMirrorResult
 
 	// Done when closed
 	doneSignal chan struct{}
@@ -123,14 +123,19 @@ type ensureMirrorJob struct {
 	resultChan chan ensureMirrorResult
 }
 
-type doEnsureMirrorJob struct {
-	submod submodule
+type ensureMirrorResult struct {
+	submod    submodule
+	mirrorDir string
+	err       error
+}
 
+type doEnsureMirrorJob struct {
+	remoteUrl string
 	mirrorDir string
 }
 
-type ensureMirrorResult struct {
-	submod    submodule
+type doEnsureMirrorResult struct {
+	remoteUrl string
 	mirrorDir string
 	err       error
 }
@@ -164,7 +169,7 @@ func (p *processor) updateSubmodules(ctx context.Context) error {
 
 	p.ensureMirrorJobQueue = make(chan ensureMirrorJob)
 	p.doEnsureMirrorJobQueue = make(chan doEnsureMirrorJob, p.repoBufLen)
-	p.ensureMirrorDoneNotification = make(chan ensureMirrorResult)
+	p.doEnsureMirrorDoneNotification = make(chan doEnsureMirrorResult)
 
 	p.doneSignal = make(chan struct{})
 
@@ -326,10 +331,15 @@ func (p *processor) ensureMirrorCoordinator(ctx context.Context) error {
 		MIRROR_STATUS_FETCH_COMPLETE
 	)
 
+	type pendingNotification struct {
+		channel chan ensureMirrorResult
+		submod  submodule
+	}
+
 	type mirrorInfo struct {
 		status mirrorStatus
-		// channels to notify when this mirror is up to date.
-		channelsToNotify []chan ensureMirrorResult
+		// Notifications to be sent when this mirror is up to date.
+		pendingNotifications []pendingNotification
 	}
 
 	mirrors := map[string]*mirrorInfo{}
@@ -355,41 +365,44 @@ func (p *processor) ensureMirrorCoordinator(ctx context.Context) error {
 				job.resultChan <- ensureMirrorResult{submod: submod, mirrorDir: mirrorDir}
 			case MIRROR_STATUS_FETCH_SCHEDULED:
 				fmt.Fprintf(console.Debug(ctx), "mirror for %s at %s has a fetch running\n", submod.remoteUrl, mirrorDir)
-				mirror.channelsToNotify = append(mirror.channelsToNotify, job.resultChan)
+				mirror.pendingNotifications = append(mirror.pendingNotifications, pendingNotification{channel: job.resultChan, submod: submod})
 			case MIRROR_STATUS_PENDING:
 				fmt.Fprintf(console.Debug(ctx), "mirror for %s at %s is pending, trigger fetch\n", submod.remoteUrl, mirrorDir)
-				mirror.channelsToNotify = append(mirror.channelsToNotify, job.resultChan)
+				mirror.pendingNotifications = append(mirror.pendingNotifications, pendingNotification{channel: job.resultChan, submod: submod})
 
 				select {
-				case p.doEnsureMirrorJobQueue <- doEnsureMirrorJob{submod: submod, mirrorDir: mirrorDir}:
+				case p.doEnsureMirrorJobQueue <- doEnsureMirrorJob{remoteUrl: submod.remoteUrl, mirrorDir: mirrorDir}:
 				default:
 					return fmt.Errorf("reached repo buf queue length in ensureMirror")
 				}
 				mirror.status = MIRROR_STATUS_FETCH_SCHEDULED
 			}
 
-		case result := <-p.ensureMirrorDoneNotification:
-			submod := result.submod
+		case result := <-p.doEnsureMirrorDoneNotification:
 			if result.err == nil {
-				fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s SUCCESS\n", submod.remoteUrl, result.mirrorDir)
+				fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s SUCCESS\n", result.remoteUrl, result.mirrorDir)
 			} else {
-				fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s FAILURE: %v\n", submod.remoteUrl, result.mirrorDir, result.err)
+				fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s FAILURE: %v\n", result.remoteUrl, result.mirrorDir, result.err)
 			}
 
-			mirror, ok := mirrors[submod.remoteUrl]
+			mirror, ok := mirrors[result.remoteUrl]
 			if !ok {
 				panic("no mirror info")
 			}
 
 			mirror.status = MIRROR_STATUS_FETCH_COMPLETE
-			for _, channel := range mirror.channelsToNotify {
+			for _, notification := range mirror.pendingNotifications {
 				select {
-				case channel <- result:
+				case notification.channel <- ensureMirrorResult{
+					submod:    notification.submod,
+					mirrorDir: result.mirrorDir,
+					err:       result.err,
+				}:
 				case <-ctx.Done():
 					return ctx.Err()
 				}
 			}
-			clear(mirror.channelsToNotify)
+			clear(mirror.pendingNotifications)
 
 		case <-ticker.C:
 			processing := []string{}
@@ -430,18 +443,15 @@ func (p *processor) workerForDoEnsureMirror(ctx context.Context) error {
 }
 
 func (p *processor) doEnsureMirror(ctx context.Context, job doEnsureMirrorJob) {
-	submod := job.submod
-	mirrorDir := job.mirrorDir
+	fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s\n", job.remoteUrl, job.mirrorDir)
+	err := ensureMirrorWork(ctx, job.remoteUrl, job.mirrorDir)
 
-	fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s\n", submod.remoteUrl, mirrorDir)
-	err := ensureMirrorWork(ctx, submod, mirrorDir)
-
-	p.ensureMirrorDoneNotification <- ensureMirrorResult{submod: submod, mirrorDir: mirrorDir, err: err}
+	p.doEnsureMirrorDoneNotification <- doEnsureMirrorResult{remoteUrl: job.remoteUrl, mirrorDir: job.mirrorDir, err: err}
 }
 
-func ensureMirrorWork(ctx context.Context, submod submodule, mirrorDir string) error {
+func ensureMirrorWork(ctx context.Context, remoteUrl string, mirrorDir string) error {
 	if err := os.MkdirAll(mirrorDir, os.ModePerm); err != nil {
-		return fmt.Errorf("can not create '%s' for '%s': %v", mirrorDir, submod.remoteUrl, err)
+		return fmt.Errorf("can not create '%s' for '%s': %v", mirrorDir, remoteUrl, err)
 	}
 
 	if isMirrorRepo(mirrorDir) {
@@ -449,14 +459,14 @@ func ensureMirrorWork(ctx context.Context, submod submodule, mirrorDir string) e
 		cmd := inRepoGit(mirrorDir, "fetch", "--no-recurse-submodules", "origin")
 		err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
-			return fmt.Errorf("could not git fetch '%s' in '%s': %v", submod.remoteUrl, mirrorDir, err)
+			return fmt.Errorf("could not git fetch '%s' in '%s': %v", remoteUrl, mirrorDir, err)
 		}
 	} else {
 		// Create new mirror
-		cmd := exec.Command("git", "clone", "--mirror", "--", submod.remoteUrl, mirrorDir)
+		cmd := exec.Command("git", "clone", "--mirror", "--", remoteUrl, mirrorDir)
 		err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
-			return fmt.Errorf("could not git clone '%s' to '%s': %v", submod.remoteUrl, mirrorDir, err)
+			return fmt.Errorf("could not git clone '%s' to '%s': %v", remoteUrl, mirrorDir, err)
 		}
 	}
 	return nil
