@@ -7,7 +7,7 @@
 <p>
   <b><i>Namespace</i> is a development-optimized compute platform. It improves the performance and observability of Docker builds, GitHub Actions, and more, without requiring workflow changes. Learn more at https://namespace.so.</b>
 
-  Namespace is built on purpose-built ephemeral compute platform that is optimized for developer use-cases: high performance workloads, with high I/O requirements, where caches and incrementally are first class. Many teams use the infrastructure programmatically (via our CLI and APIs) to build custom Previews, Developer Environments, and more. Learn more about our [APIs](https://buf.build/namespace/cloud).
+  Namespace is a purpose-built ephemeral compute platform that is optimized for developer use-cases: high performance workloads, with high I/O requirements, where caches and incrementally are first class. Many teams use the infrastructure programmatically (via our CLI and APIs) to build custom Previews, Developer Environments, and more. Learn more about our [APIs](https://buf.build/namespace/cloud).
 </p>
 
 <p>
