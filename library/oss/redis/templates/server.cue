@@ -2,15 +2,8 @@ package templates
 
 #Server: {
 	spec: {
-		image:          *"redis:6.2.6-alpine@sha256:132337b9d7744ffee4fae83f51de53c3530935ad3ba528b7110f2d805f55cbf5" | string
-		dataVolumeSize: *"10GiB" | string
-		dataVolume:     *{
-			id:   "redis-server-data"
-			size: dataVolumeSize
-		} | {
-			id:   string
-			size: string
-		}
+		image:            *"redis:6.2.6-alpine@sha256:132337b9d7744ffee4fae83f51de53c3530935ad3ba528b7110f2d805f55cbf5" | string
+		dataVolumeSize:   *"10GiB" | string
 		passwordSecret:   *"namespacelabs.dev/foundation/library/oss/redis/server:password" | string
 		snapshotInterval: *"60" | string
 	}
@@ -18,8 +11,6 @@ package templates
 	name: "redis-server"
 
 	image: spec.image
-
-	class: "stateful"
 
 	services: "redis": {
 		port: 6379
@@ -44,6 +35,8 @@ package templates
 	probe: exec: ["redis-cli", "ping"]
 
 	mounts: {
-		"/data": persistent: spec.dataVolume
+		"/data": ephemeral: {
+			size: spec.dataVolumeSize
+		}
 	}
 }
