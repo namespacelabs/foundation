@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/exp/maps"
+
 	devboxv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/devbox"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
@@ -86,14 +88,13 @@ func checkAllExist(ctx context.Context, devboxClient *private.DevBoxServiceClien
 		delete(missing, found.GetDevboxSpec().GetTag())
 	}
 
-	if len(tags) == 1 {
-		return fmt.Errorf("devbox '" + tags[0] + "' not found")
-	} else if len(tags) > 1 {
-		missingSlice := make([]string, 0, len(missing))
-		for missingTag, _ := range missing {
-			missingSlice = append(missingSlice, missingTag)
-		}
-		return fmt.Errorf("devboxes with tags " + strings.Join(missingSlice, ", ") + " not found")
+	missingTags := maps.Keys(missing)
+
+	if len(missingTags) == 1 {
+		return fmt.Errorf("devbox '" + missingTags[0] + "' not found")
+	} else if len(missingTags) > 1 {
+		return fmt.Errorf("devboxes with tags " + strings.Join(missingTags, ", ") + " not found")
 	}
+
 	return nil
 }
