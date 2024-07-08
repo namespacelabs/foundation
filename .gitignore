@@ -45,3 +45,4 @@ dist/
 user.secrets
 
 .DS_Store
+.vscode/settings.json
