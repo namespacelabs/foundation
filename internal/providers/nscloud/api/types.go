@@ -423,6 +423,13 @@ type GetKubernetesConfigResponse struct {
 	Kubeconfig string `json:"kubeconfig,omitempty"`
 }
 
+type EnsureBazelCacheResponse struct {
+	CacheEndpoint string `json:"cache_endpoint,omitempty"`
+	ServerCaPem   string `json:"server_ca_pem,omitempty"`
+	ClientCertPem string `json:"client_cert_pem,omitempty"`
+	ClientKeyPem  string `json:"client_key_pem,omitempty"`
+}
+
 type GetProfileResponse struct {
 	ClusterPlatform []string `json:"cluster_platform,omitempty"`
 }
