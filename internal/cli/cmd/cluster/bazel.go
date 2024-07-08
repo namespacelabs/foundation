@@ -36,13 +36,13 @@ func NewBazelCmd() *cobra.Command {
 }
 
 func newSetupCacheCmd() *cobra.Command {
-	var outputPath string
+	var bazelRcPath string
 
 	return fncobra.Cmd(&cobra.Command{
 		Use:   "setup",
 		Short: "Set up a remote Bazel cache and generate a bazelrc to use it.",
 	}).WithFlags(func(flags *pflag.FlagSet) {
-		flags.StringVar(&outputPath, "output_to", "", "If specified, write the path of the bazelrc to this path.")
+		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 	}).Do(func(ctx context.Context) error {
 		response, err := api.EnsureBazelCache(ctx, api.Methods)
 		if err != nil {
@@ -91,22 +91,24 @@ func newSetupCacheCmd() *cobra.Command {
 			}
 		}
 
-		loc, err := writeTempFile("*.bazelrc", buffer.Bytes())
-		if err != nil {
-			return fnerrors.New("failed to create temp file: %w", err)
-		}
+		if bazelRcPath == "" {
+			loc, err := writeTempFile("*.bazelrc", buffer.Bytes())
+			if err != nil {
+				return fnerrors.New("failed to create temp file: %w", err)
+			}
 
-		if outputPath != "" {
-			if err := os.WriteFile(outputPath, []byte(loc), 0644); err != nil {
-				return fnerrors.New("failed to write %q: %w", outputPath, err)
+			bazelRcPath = loc
+		} else {
+			if err := os.WriteFile(bazelRcPath, buffer.Bytes(), 0644); err != nil {
+				return fnerrors.New("failed to write %q: %w", bazelRcPath, err)
 			}
 		}
 
-		fmt.Fprintf(console.Stdout(ctx), "Wrote bazelrc configuration for remote cache to %s.\n", loc)
+		fmt.Fprintf(console.Stdout(ctx), "Wrote bazelrc configuration for remote cache to %s.\n", bazelRcPath)
 
 		style := colors.Ctx(ctx)
 		fmt.Fprintf(console.Stdout(ctx), "\nStart using it by adding:\n")
-		fmt.Fprintf(console.Stdout(ctx), "  %s", style.Highlight.Apply(fmt.Sprintf("--bazelrc=%s\n", loc)))
+		fmt.Fprintf(console.Stdout(ctx), "  %s", style.Highlight.Apply(fmt.Sprintf("--bazelrc=%s\n", bazelRcPath)))
 
 		return nil
 	})
