@@ -20,15 +20,17 @@ func newCreateCommand() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 	}
 
-	machineType := cmd.Flags().String("machine_type", "", "the path of the repository to work in")
+	machineType := cmd.Flags().String("machine_type", "", "The machine type and shape of the devbox.")
+	continent := cmd.Flags().String("continent", "eu", "The continent where the devbox is created.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return createDevbox(ctx, args[0], *machineType)
+		return createDevbox(ctx, args[0], *machineType, *continent)
 	})
 
 	return cmd
 }
 
-func createDevbox(ctx context.Context, tag string, machineType string) error {
+func createDevbox(ctx context.Context, tag string, machineType, continent string) error {
 	devboxClient, err := getDevBoxClient(ctx)
 	if err != nil {
 		return err
@@ -36,6 +38,7 @@ func createDevbox(ctx context.Context, tag string, machineType string) error {
 	devboxSpec := &devboxv1beta.DevBoxSpec{
 		Tag:         tag,
 		MachineType: machineType,
+		Continent:   continent,
 	}
 	resp, err := devboxClient.CreateDevBox(ctx, &devboxv1beta.CreateDevBoxRequest{
 		DevboxSpec: devboxSpec,
