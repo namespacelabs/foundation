@@ -149,7 +149,7 @@ func MakeAPI() API {
 
 		EnsureBazelCache: fnapi.Call[emptypb.Empty]{
 			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.builds.BuildsService/EnsureBazelCache",
+			Method:           "namespace.private.bazel.BazelService/EnsureBazelCache",
 		},
 
 		// Global APIs.
