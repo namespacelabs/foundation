@@ -472,7 +472,6 @@ func WaitClusterReady(ctx context.Context, api API, clusterId string, opts WaitC
 
 					if resp.Cluster != nil && resp.Cluster.DestroyedAt != "" {
 						// Cluster was destroyed
-						cr = &resp
 						return fnerrors.InvocationError("nscloud", "cluster is destroyed (cluster id: %s)", clusterId)
 					}
 				}
