@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
 func newDescribeCommand() *cobra.Command {
@@ -41,6 +42,9 @@ func describeDevbox(ctx context.Context, tag string) error {
 	devbox, err := getSingleDevbox(ctx, devboxClient, tag)
 	if err != nil {
 		return err
+	}
+	if fnapi.DebugApiResponse {
+		fmt.Fprintf(console.Debug(ctx), "Response Body: %v\n", devbox)
 	}
 
 	stdout := console.Stdout(ctx)

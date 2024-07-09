@@ -6,12 +6,15 @@ package devbox
 
 import (
 	"context"
+	"fmt"
 
 	devboxv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/devbox"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/tui"
+	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
 func newListCommand() *cobra.Command {
@@ -37,6 +40,9 @@ func listDevboxes(ctx context.Context, tagFilter []string) error {
 	})
 	if err != nil {
 		return err
+	}
+	if fnapi.DebugApiResponse {
+		fmt.Fprintf(console.Debug(ctx), "Response Body: %v\n", resp)
 	}
 
 	if err := tableDevboxes(ctx, resp.GetDevBoxes()); err != nil {

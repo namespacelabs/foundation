@@ -19,6 +19,7 @@ func NewDevBoxCmd() *cobra.Command {
 	cmd.AddCommand(newDestroyCommand())
 	cmd.AddCommand(newListCommand())
 	cmd.AddCommand(newDescribeCommand())
+	cmd.AddCommand(newEnsureCommand())
 	cmd.AddCommand(newSshCommand())
 	cmd.AddCommand(newVscodeCommand())
 

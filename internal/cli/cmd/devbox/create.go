@@ -11,6 +11,8 @@ import (
 	devboxv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/devbox"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
+	"namespacelabs.dev/foundation/internal/console"
+	"namespacelabs.dev/foundation/internal/fnapi"
 )
 
 func newCreateCommand() *cobra.Command {
@@ -46,6 +48,10 @@ func createDevbox(ctx context.Context, tag string, machineType, continent string
 	if err != nil {
 		return err
 	}
-	fmt.Println(resp.GetDevbox().DevboxStatus)
+	if fnapi.DebugApiResponse {
+		fmt.Fprintf(console.Debug(ctx), "Response Body: %v\n", resp)
+	}
+	describeToWriter(console.Stdout(ctx), resp.GetDevbox())
+
 	return nil
 }

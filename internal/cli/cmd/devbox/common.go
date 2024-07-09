@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	devboxv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/devbox"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
 )
@@ -29,10 +30,15 @@ func getSingleDevbox(ctx context.Context, devboxClient *private.DevBoxServiceCli
 	if err != nil {
 		return nil, err
 	}
+	if fnapi.DebugApiResponse {
+		fmt.Fprintf(console.Debug(ctx), "Response Body: %v\n", resp)
+	}
+
 	devbox := findDevboxByTag(resp.DevBoxes, tag)
 	if devbox == nil {
 		return nil, fmt.Errorf("devbox '" + tag + "' not found")
 	}
+
 	return devbox, nil
 }
 
@@ -44,4 +50,24 @@ func findDevboxByTag(devboxes []*devboxv1beta.DevBox, tag string) *devboxv1beta.
 	}
 
 	return nil
+}
+
+type devboxInstance struct {
+	regionalInstanceId  string
+	regionalSshEndpoint string
+}
+
+func doEnsureDevbox(ctx context.Context, devboxClient *private.DevBoxServiceClient, tag string) (devboxInstance, error) {
+	resp, err := devboxClient.EnsureDevBox(ctx, &devboxv1beta.EnsureDevBoxRequest{DevboxTag: tag})
+	if err != nil {
+		return devboxInstance{}, err
+	}
+	if fnapi.DebugApiResponse {
+		fmt.Fprintf(console.Debug(ctx), "Response Body: %v\n", resp)
+	}
+
+	return devboxInstance{
+		regionalInstanceId:  resp.RegionalInstanceId,
+		regionalSshEndpoint: resp.RegionalSshEndpoint,
+	}, nil
 }
