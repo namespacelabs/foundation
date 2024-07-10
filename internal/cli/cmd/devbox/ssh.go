@@ -6,11 +6,11 @@ package devbox
 
 import (
 	"context"
-	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
 )
 
 func newSshCommand() *cobra.Command {
@@ -33,12 +33,14 @@ func sshDevbox(ctx context.Context, tag string) error {
 		return err
 	}
 
-	devbox, err := getSingleDevbox(ctx, devboxClient, tag)
+	instance, err := doEnsureDevbox(ctx, devboxClient, tag)
 	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(console.Stdout(ctx), "TODO: actually ssh %s!\n", devbox.GetDevboxStatus().GetSshEndpoint())
-
-	return nil
+	cmd := exec.Command("ssh", instance.regionalSshEndpoint)
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }

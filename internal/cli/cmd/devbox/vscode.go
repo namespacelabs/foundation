@@ -7,50 +7,55 @@ package devbox
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
-	"namespacelabs.dev/foundation/internal/console"
 )
 
 func newVscodeCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "code tag",
-		Short: "Initiate a vscode session using a devbox.",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "code tag [path]",
+		Short: "Initiate a vscode session on the devbox 'tag'.",
+		Long:  "Initiate a vscode session on the devbox 'tag'. If 'path' is given, vscode remote is opened in that path. Otherwise the home directory of the devbox is used as the path.",
+		Args:  cobra.RangeArgs(1, 2),
 	}
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
-		return vscodeDevbox(ctx, args[0])
+		pathOnRemote := "."
+		if len(args) >= 2 {
+			pathOnRemote = args[1]
+		}
+		return vscodeDevbox(ctx, args[0], pathOnRemote)
 	})
 
 	return cmd
 }
 
-func vscodeDevbox(ctx context.Context, tag string) error {
+func vscodeDevbox(ctx context.Context, tag string, pathOnRemote string) error {
 	_, err := exec.LookPath("code")
 	if err != nil {
 		return fmt.Errorf("Could not find 'code' - please install vscode first.")
 	}
-
-	// TODO: Maybe use --list-extension
-	// and --install-extension <ext>
-	// To ensure that the SSH remote extension is installed.
 
 	devboxClient, err := getDevBoxClient(ctx)
 	if err != nil {
 		return err
 	}
 
-	devbox, err := getSingleDevbox(ctx, devboxClient, tag)
+	instance, err := doEnsureDevbox(ctx, devboxClient, tag)
 	if err != nil {
 		return err
 	}
 
-	// Probably run something like code --remote ssh-remote+<host> <folder>
-	// The folder could be passed as an argument and default to "~"
-	fmt.Fprintf(console.Stdout(ctx), "TODO: actually code %s!\n", devbox.GetDevboxStatus().GetSshEndpoint())
+	// https://code.visualstudio.com/docs/remote/troubleshooting#_connect-to-a-remote-host-from-the-terminal
+	// Note that vscode will offer to install the necessary extension if it's not installed yet.
+	vscodeRemoteSpec := "ssh-remote+" + instance.regionalSshEndpoint
 
-	return nil
+	cmd := exec.Command("code", "--remote", vscodeRemoteSpec, pathOnRemote)
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
