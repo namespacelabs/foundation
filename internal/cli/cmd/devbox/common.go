@@ -7,8 +7,10 @@ package devbox
 import (
 	"context"
 	"fmt"
+	"io"
 
 	devboxv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/devbox"
+	"github.com/kr/text"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api/private"
@@ -70,4 +72,8 @@ func doEnsureDevbox(ctx context.Context, devboxClient *private.DevBoxServiceClie
 		regionalInstanceId:  resp.RegionalInstanceId,
 		regionalSshEndpoint: resp.RegionalSshEndpoint,
 	}, nil
+}
+
+func indent(w io.Writer) io.Writer {
+	return text.NewIndentWriter(w, []byte("    "))
 }

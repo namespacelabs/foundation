@@ -22,6 +22,7 @@ func NewDevBoxCmd() *cobra.Command {
 	cmd.AddCommand(newEnsureCommand())
 	cmd.AddCommand(newSshCommand())
 	cmd.AddCommand(newVscodeCommand())
+	cmd.AddCommand(newSetupSshAgentForwardingCommand())
 
 	return cmd
 }

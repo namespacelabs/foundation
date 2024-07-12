@@ -56,6 +56,10 @@ func vscodeDevbox(ctx context.Context, tag string, pathOnRemote string) error {
 		return err
 	}
 
+	if err := offerSetupSshAgentForwarding(ctx); err != nil {
+		return err
+	}
+
 	// https://code.visualstudio.com/docs/remote/troubleshooting#_connect-to-a-remote-host-from-the-terminal
 	// Note that vscode will offer to install the necessary extension if it's not installed yet.
 	vscodeRemoteSpec := "ssh-remote+" + instance.regionalSshEndpoint

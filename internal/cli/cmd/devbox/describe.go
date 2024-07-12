@@ -12,7 +12,6 @@ import (
 
 	devboxv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/private/devbox"
 	"github.com/dustin/go-humanize"
-	"github.com/kr/text"
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
@@ -69,8 +68,4 @@ func describeToWriter(out io.Writer, devbox *devboxv1beta.DevBox) {
 	fmt.Fprintln(bodyWriter, "Region:\t", devbox.GetDevboxSpec().GetRegion())
 	fmt.Fprintln(bodyWriter, "Base image:\t", devbox.GetDevboxSpec().GetBaseImageRef())
 	fmt.Fprintln(bodyWriter, "SSH endpoint:\t", devbox.GetDevboxStatus().GetSshEndpoint())
-}
-
-func indent(w io.Writer) io.Writer {
-	return text.NewIndentWriter(w, []byte("    "))
 }

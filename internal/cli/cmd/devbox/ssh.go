@@ -38,6 +38,10 @@ func sshDevbox(ctx context.Context, tag string) error {
 		return err
 	}
 
+	if err := offerSetupSshAgentForwarding(ctx); err != nil {
+		return err
+	}
+
 	cmd := exec.Command("ssh", instance.regionalSshEndpoint)
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
