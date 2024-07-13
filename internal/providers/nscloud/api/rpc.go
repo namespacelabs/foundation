@@ -83,11 +83,6 @@ func MakeAPI() API {
 			Method:           "nsl.vm.api.VMService/StartContainers",
 		},
 
-		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/EnsureKubernetesCluster",
-		},
-
 		WaitKubernetesCluster: fnapi.Call[WaitKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/WaitKubernetesCluster",
@@ -157,6 +152,11 @@ func MakeAPI() API {
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.vm.GlobalVMService/GetKubernetesCluster",
 			Retryable:        true,
+		},
+
+		EnsureKubernetesCluster: fnapi.Call[EnsureKubernetesClusterRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/EnsureKubernetesCluster",
 		},
 
 		ListKubernetesClusters: fnapi.Call[ListKubernetesClustersRequest]{
