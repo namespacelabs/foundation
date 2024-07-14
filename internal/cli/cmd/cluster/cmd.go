@@ -38,7 +38,7 @@ func NewBareClusterCmd(use string, hidden bool) *cobra.Command {
 	cmd.AddCommand(NewProxyCmd())
 	cmd.AddCommand(newDockerLoginCmd(true)) // Adding hidden command under `cluster` to support old action versions.
 	cmd.AddCommand(NewMetadataCmd())
-	cmd.AddCommand(newExtendDurationCmd())
+	cmd.AddCommand(NewExtendDurationCmd("extend-duration"))
 
 	h := &cobra.Command{
 		Use:    "internal",

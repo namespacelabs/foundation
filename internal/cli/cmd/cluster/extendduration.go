@@ -16,9 +16,9 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func newExtendDurationCmd() *cobra.Command {
+func NewExtendDurationCmd(name string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "extend-duration [instance-id]",
+		Use:   name + " [instance-id]",
 		Short: "Extends the duration of a instance.",
 		Args:  cobra.MaximumNArgs(1),
 	}

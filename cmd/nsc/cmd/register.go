@@ -29,6 +29,7 @@ func RegisterCommands(root *cobra.Command) {
 
 	root.AddCommand(cluster.NewBareClusterCmd("instance", false))
 	root.AddCommand(cluster.NewBareClusterCmd("cluster", true)) // backwards compatibility
+	root.AddCommand(cluster.NewExtendDurationCmd("extend"))     // nsc extend
 	root.AddCommand(cluster.NewKubectlCmd())                    // nsc kubectl
 	root.AddCommand(cluster.NewKubeconfigCmd())                 // nsc kubeconfig write
 	root.AddCommand(cluster.NewBuildkitCmd())                   // nsc buildkit
