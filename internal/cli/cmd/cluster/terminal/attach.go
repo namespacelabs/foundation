@@ -39,7 +39,8 @@ func newAttachCmd() *cobra.Command {
 			return nil
 		}
 
-		return cluster.InlineSsh(ctx, c, "", *sshAgent, []string{"nsc", "internal", "attach", "/bin/bash"})
+		sshOpts := cluster.InlineSshOpts{ForwardSshAgent: *sshAgent}
+		return cluster.InlineSsh(ctx, c, sshOpts, []string{"nsc", "internal", "attach", "/bin/bash"})
 	})
 
 	return cmd
@@ -79,7 +80,8 @@ func newRunScriptCmd() *cobra.Command {
 			return nil
 		}
 
-		return cluster.InlineSsh(ctx, c, "", *sshAgent, []string{"nsc", "internal", "attach", "--", "/bin/bash", "-c", string(contents)})
+		sshOpts := cluster.InlineSshOpts{ForwardSshAgent: *sshAgent}
+		return cluster.InlineSsh(ctx, c, sshOpts, []string{"nsc", "internal", "attach", "--", "/bin/bash", "-c", string(contents)})
 	})
 
 	return cmd

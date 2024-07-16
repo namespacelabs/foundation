@@ -38,10 +38,21 @@ func NewSshCmd() *cobra.Command {
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 	user := cmd.Flags().String("user", "", "The user to connect as.")
+	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
+	disablePty := cmd.Flags().BoolP("disable-pty", "T", false, "Disable pseudo-terminal allocation.")
 
 	cmd.Flags().MarkHidden("user")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
+		if *forcePty && *disablePty {
+			return errors.New("Can not use -t and -T")
+		}
+		sshOpts := InlineSshOpts{
+			User:            *user,
+			ForwardSshAgent: *sshAgent,
+			ForcePty:        *forcePty,
+			DisablePty:      *disablePty,
+		}
 		if *tag != "" {
 			opts := api.CreateClusterOpts{
 				KeepAtExit:      true,
@@ -55,7 +66,7 @@ func NewSshCmd() *cobra.Command {
 				return err
 			}
 
-			return InlineSsh(ctx, cluster.Cluster, *user, *sshAgent, args)
+			return InlineSsh(ctx, cluster.Cluster, sshOpts, args)
 		}
 
 		cluster, args, err := SelectRunningCluster(ctx, args)
@@ -71,7 +82,7 @@ func NewSshCmd() *cobra.Command {
 			return nil
 		}
 
-		return InlineSsh(ctx, cluster, *user, *sshAgent, args)
+		return InlineSsh(ctx, cluster, sshOpts, args)
 	})
 
 	return cmd
@@ -98,7 +109,7 @@ func NewTopCmd() *cobra.Command {
 			return nil
 		}
 
-		return InlineSsh(ctx, cluster, "", false, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
+		return InlineSsh(ctx, cluster, InlineSshOpts{}, []string{"/bin/sh", "-c", "command -v htop > /dev/null && htop || top"})
 	})
 
 	return cmd
@@ -147,23 +158,40 @@ func withSsh(ctx context.Context, cluster *api.KubernetesCluster, user string, c
 	return callback(ctx, client)
 }
 
-func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, user string, sshAgent bool, args []string) error {
-	stdin, err := c.ConsoleFromFile(os.Stdin)
-	if err != nil {
-		return err
+type InlineSshOpts struct {
+	User            string
+	ForwardSshAgent bool
+	ForcePty        bool
+	DisablePty      bool
+}
+
+func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, opts InlineSshOpts, args []string) error {
+	wantPty := !opts.DisablePty && ((len(args) == 0) || opts.ForcePty)
+
+	hasLocalPty := false
+	var localPty c.Console
+
+	if wantPty && !isatty.IsTerminal(os.Stdin.Fd()) {
+		fmt.Fprintln(console.Debug(ctx), "Pseudo-terminal will not be allocated because stdin is not a terminal.")
 	}
 
-	if !isatty.IsTerminal(stdin.Fd()) {
-		return fnerrors.New("stdin is not a tty")
+	if wantPty {
+		var err error
+		localPty, err = c.ConsoleFromFile(os.Stdin)
+		if err != nil {
+			fmt.Printf("Could not get console from stdin: %v", err)
+		} else {
+			hasLocalPty = true
+		}
 	}
 
-	return withSsh(ctx, cluster, user, func(ctx context.Context, client *ssh.Client) error {
+	return withSsh(ctx, cluster, opts.User, func(ctx context.Context, client *ssh.Client) error {
 		session, err := client.NewSession()
 		if err != nil {
 			return err
 		}
 
-		if sshAgent {
+		if opts.ForwardSshAgent {
 			if authSock := os.Getenv("SSH_AUTH_SOCK"); authSock != "" {
 				if err := agent.ForwardToRemote(client, authSock); err != nil {
 					return err
@@ -177,30 +205,32 @@ func InlineSsh(ctx context.Context, cluster *api.KubernetesCluster, user string,
 			}
 		}
 
-		session.Stdin = stdin
+		session.Stdin = os.Stdin
 		session.Stdout = os.Stdout
 		session.Stderr = os.Stderr
 
 		defer session.Close()
 
-		done := con.EnterInputMode(ctx)
-		defer done()
+		if hasLocalPty {
+			done := con.EnterInputMode(ctx)
+			defer done()
 
-		if err := stdin.SetRaw(); err != nil {
-			return err
-		}
+			if err := localPty.SetRaw(); err != nil {
+				return err
+			}
 
-		defer stdin.Reset()
+			defer localPty.Reset()
 
-		w, h, err := term.GetSize(int(stdin.Fd()))
-		if err != nil {
-			return err
-		}
+			w, h, err := term.GetSize(int(localPty.Fd()))
+			if err != nil {
+				return err
+			}
 
-		go listenForResize(ctx, stdin, session)
+			go listenForResize(ctx, localPty, session)
 
-		if err := session.RequestPty("xterm", h, w, nil); err != nil {
-			return err
+			if err := session.RequestPty("xterm", h, w, nil); err != nil {
+				return err
+			}
 		}
 
 		if len(args) > 0 {
