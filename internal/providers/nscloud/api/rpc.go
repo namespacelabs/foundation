@@ -94,11 +94,6 @@ func MakeAPI() API {
 			Method:           "nsl.vm.api.VMService/SuspendKubernetesCluster",
 		},
 
-		ReleaseKubernetesCluster: fnapi.Call[ReleaseKubernetesClusterRequest]{
-			IssueBearerToken: fnapi.IssueBearerToken,
-			Method:           "nsl.vm.api.VMService/ReleaseKubernetesCluster",
-		},
-
 		WakeKubernetesCluster: fnapi.Call[WakeKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "nsl.vm.api.VMService/WakeKubernetesCluster",
@@ -168,6 +163,11 @@ func MakeAPI() API {
 		DestroyKubernetesCluster: fnapi.Call[DestroyKubernetesClusterRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.vm.GlobalVMService/DestroyKubernetesCluster",
+		},
+
+		ReleaseKubernetesCluster: fnapi.Call[ReleaseKubernetesClusterRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.private.vm.GlobalVMService/ReleaseKubernetesCluster",
 		},
 
 		GetKubernetesClusterSummary: fnapi.Call[GetKubernetesClusterSummaryRequest]{
