@@ -42,7 +42,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 			WithAnnotations(annotations).
 			WithSpec(applycorev1.PersistentVolumeClaimSpec().
 				WithAccessModes(corev1.ReadWriteOnce).
-				WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
+				WithResources(applycorev1.VolumeResourceRequirements().WithRequests(corev1.ResourceList{
 					corev1.ResourceStorage: *quantity,
 				}))), nil
 	} else {
@@ -57,7 +57,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 			WithAnnotations(annotations).
 			WithSpec(applycorev1.PersistentVolumeClaimSpec().
 				WithAccessModes(corev1.ReadWriteOnce).
-				WithResources(applycorev1.ResourceRequirements().WithRequests(corev1.ResourceList{
+				WithResources(applycorev1.VolumeResourceRequirements().WithRequests(corev1.ResourceList{
 					corev1.ResourceStorage: *quantity,
 				})))
 
