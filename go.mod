@@ -40,7 +40,7 @@ require (
 	github.com/creack/pty v1.1.18
 	github.com/docker/buildx v0.11.2
 	github.com/docker/cli v24.0.6+incompatible
-	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.5.0
 	github.com/dustin/go-humanize v1.0.1
