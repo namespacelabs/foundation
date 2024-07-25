@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/docker/go-units"
@@ -20,8 +21,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/tarball"
 	"github.com/spf13/cobra"
-	"k8s.io/utils/pointer"
-	"k8s.io/utils/strings/slices"
+	"k8s.io/utils/ptr"
 	"namespacelabs.dev/foundation/internal/artifacts"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
@@ -272,7 +272,7 @@ func matchAny(files []string, path string) bool {
 }
 
 func imageFromArgs(cmd *cobra.Command) *oci.Image {
-	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	env := fncobra.EnvFromValue(cmd, ptr.To("dev"))
 
 	targetImage := new(oci.Image)
 	cmd.Flags().Var(build.BuildPlatformsVar{}, "build_platforms", "Which platforms to build the binary for.")

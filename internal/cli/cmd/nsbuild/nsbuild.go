@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/integrations/golang"
@@ -38,7 +38,7 @@ func newInstall() *cobra.Command {
 		Short: "Run `go install ns`.",
 	}
 
-	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	env := fncobra.EnvFromValue(cmd, ptr.To("dev"))
 
 	return fncobra.With(cmd, func(ctx context.Context) error {
 		return run(ctx, *env, "install", "./cmd/ns")
@@ -51,7 +51,7 @@ func newInstallDev() *cobra.Command {
 		Short: "Run `go install nsdev`.",
 	}
 
-	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	env := fncobra.EnvFromValue(cmd, ptr.To("dev"))
 
 	return fncobra.With(cmd, func(ctx context.Context) error {
 		return run(ctx, *env, "install", "./cmd/nsdev")

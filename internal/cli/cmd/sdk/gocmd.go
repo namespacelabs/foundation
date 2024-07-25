@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
@@ -27,7 +27,7 @@ func newGoCmd(goVersion string) *cobra.Command {
 		DisableFlagParsing: true,
 	}
 
-	env := fncobra.EnvFromValue(cmd, pointer.String("dev"))
+	env := fncobra.EnvFromValue(cmd, ptr.To("dev"))
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		pl := parsing.NewPackageLoader(*env)
 		loc, err := pl.Resolve(ctx, schema.MakePackageName((*env).Workspace().ModuleName()))

@@ -12,7 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 	"google.golang.org/protobuf/types/known/anypb"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 	"namespacelabs.dev/foundation/internal/build"
 	"namespacelabs.dev/foundation/internal/build/assets"
 	source "namespacelabs.dev/foundation/internal/codegen"
@@ -108,7 +108,7 @@ func (impl) PrepareRun(ctx context.Context, t planning.PlannedServer, run *runti
 	run.Command = []string{"/" + serverName(t)}
 	run.ReadOnlyFilesystem = true
 	// XXX lift this as this is done by loose contract.
-	run.RunAs = production.NonRootRunAsWithID(65532, pointer.Int(65532))
+	run.RunAs = production.NonRootRunAsWithID(65532, ptr.To(65532))
 	return nil
 }
 
