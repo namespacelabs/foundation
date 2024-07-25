@@ -71,14 +71,14 @@ require (
 	github.com/jhump/protoreflect v1.12.1-0.20220417024638-438db461d753
 	github.com/jpillora/chisel v1.9.1
 	github.com/keikoproj/aws-auth v0.4.0
-	github.com/klauspost/compress v1.16.5
+	github.com/klauspost/compress v1.17.2
 	github.com/kr/text v0.2.0
 	github.com/maruel/panicparse/v2 v2.3.0
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/go-zglob v0.0.3
 	github.com/miekg/dns v1.1.50
 	github.com/minio/minio-go/v7 v7.0.47
-	github.com/moby/buildkit v0.12.3
+	github.com/moby/buildkit v0.12.5
 	github.com/moby/patternmatcher v0.5.0
 	github.com/morikuni/aec v1.0.0
 	github.com/muesli/cancelreader v0.2.2
