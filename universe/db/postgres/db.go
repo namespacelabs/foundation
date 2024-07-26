@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
-	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
 )
@@ -110,7 +110,7 @@ func (db DB) traceAttributes() []attribute.KeyValue {
 	}
 
 	if db.opts.databaseName != "" {
-		keyvalues = append(keyvalues, semconv.DBName(db.opts.databaseName))
+		keyvalues = append(keyvalues, semconv.DBNamespace(db.opts.databaseName))
 	}
 
 	return keyvalues
