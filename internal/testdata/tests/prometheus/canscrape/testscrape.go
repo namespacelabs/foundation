@@ -16,9 +16,9 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"namespacelabs.dev/foundation/framework/testing"
+	"namespacelabs.dev/foundation/internal/testdata/service/proto"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/schema/schemahelper"
-	"namespacelabs.dev/foundation/internal/testdata/service/proto"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 			return errors.New("prometheus metrics endpoint missing")
 		}
 
-		conn, err := t.Connect(ctx, endpoint)
+		conn, err := t.NewClient(endpoint)
 		if err != nil {
 			return err
 		}

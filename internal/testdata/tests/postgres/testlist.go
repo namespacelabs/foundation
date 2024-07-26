@@ -18,7 +18,7 @@ func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
 		endpoint := t.MustEndpoint("namespacelabs.dev/foundation/internal/testdata/service/list", "list")
 
-		conn, err := t.Connect(ctx, endpoint)
+		conn, err := t.NewClient(endpoint)
 		if err != nil {
 			return err
 		}

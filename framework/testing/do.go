@@ -27,9 +27,8 @@ type Test struct {
 	testboot.TestData
 }
 
-func (t Test) Connect(ctx context.Context, endpoint *schema.Endpoint) (*grpc.ClientConn, error) {
-	return grpc.DialContext(ctx, endpoint.Address(),
-		grpc.WithBlock(),
+func (t Test) NewClient(endpoint *schema.Endpoint) (*grpc.ClientConn, error) {
+	return grpc.NewClient(endpoint.Address(),
 		grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
 }
 

@@ -52,7 +52,7 @@ import (
 
 func main() {
 	testing.Do(func(ctx context.Context, t testing.Test) error {
-		conn, err := t.Connect(ctx, t.MustEndpoint("{{.ServicePkg}}", "{{.ServiceImportAlias}}"))
+		conn, err := t.NewClient(t.MustEndpoint("{{.ServicePkg}}", "{{.ServiceImportAlias}}"))
 		if err != nil {
 			return err
 		}
