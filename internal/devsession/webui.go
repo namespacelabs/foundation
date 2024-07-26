@@ -15,10 +15,11 @@ import (
 )
 
 const (
+	// ns build-binary --base_repository=registry.eu-services.namespace.systems internal/webui/devui --env prod
 	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devui"
 
-	baseRepository = "us-docker.pkg.dev/foundation-344819/prebuilts"
-	prebuilt       = "sha256:448baeb723f3beab132f0917292d9687297ed94e5e75a75d041d842d539d1c14"
+	baseRepository = "registry.eu-services.namespace.systems"
+	prebuilt       = "sha256:c2dd09514559903b54bc4f79cf018e21bc8e697bcdd50194bc60a633a17abf95"
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {

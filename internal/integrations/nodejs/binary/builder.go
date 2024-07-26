@@ -13,6 +13,7 @@ import (
 	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
+	"namespacelabs.dev/foundation/internal/runtime/docker"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -54,6 +55,11 @@ func (bnj buildNodeJS) BuildImage(ctx context.Context, env pkggraph.SealedContex
 	state, local, err := n.LLB(ctx, env.Configuration(), bnj, conf)
 	if err != nil {
 		return nil, err
+	}
+
+	if bnj.PlatformIndependent() && conf.TargetPlatform() == nil {
+		host := docker.HostPlatform()
+		conf = build.CopyConfiguration(conf).WithTarget(&host)
 	}
 
 	return buildkit.BuildImage(ctx, buildkit.DeferClient(env.Configuration(), conf.TargetPlatform()), conf, state, local...)

@@ -70,6 +70,11 @@ func (d *buildConfiguration) WithSourceLabel(format string, args ...any) *buildC
 	return d
 }
 
+func (d *buildConfiguration) WithTarget(target *specs.Platform) *buildConfiguration {
+	d.buildTarget.target = target
+	return d
+}
+
 func CopyConfiguration(b Configuration) *buildConfiguration {
 	t := NewBuildTarget(b.TargetPlatform())
 	if x := b.PublishName(); x != nil {
