@@ -112,10 +112,10 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.28.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.42.0
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.19.0
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.28.0
 	go.opentelemetry.io/otel/metric v1.28.0
 	go.opentelemetry.io/otel/sdk v1.28.0
-	go.opentelemetry.io/otel/sdk/metric v1.19.0
+	go.opentelemetry.io/otel/sdk/metric v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.5.1
