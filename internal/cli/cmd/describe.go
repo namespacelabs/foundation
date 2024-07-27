@@ -12,6 +12,7 @@ import (
 
 	"github.com/kr/text"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -21,6 +22,7 @@ import (
 	"namespacelabs.dev/foundation/internal/codegen/protos/resolver"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/console/colors"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -31,6 +33,7 @@ func NewDescribeCmd() *cobra.Command {
 	var (
 		env  cfg.Context
 		locs fncobra.Locations
+		json bool
 	)
 
 	return fncobra.Cmd(
@@ -38,8 +41,11 @@ func NewDescribeCmd() *cobra.Command {
 			Use:  "describe <path/to/package | path/to/package:target>",
 			Args: cobra.ExactArgs(1),
 		}).
+		WithFlags(func(flags *pflag.FlagSet) {
+			flags.BoolVar(&json, "json", false, "Print JSON.")
+		}).
 		With(
-			fncobra.HardcodeEnv(&env, "dev"),
+			fncobra.ParseEnv(&env),
 			fncobra.ParseLocations(&locs, &env, fncobra.ParseLocationsOpts{SupportPackageRef: true, RequireSingle: true})).
 		DoWithArgs(func(ctx context.Context, args []string) error {
 			style := colors.Ctx(ctx)
@@ -57,13 +63,15 @@ func NewDescribeCmd() *cobra.Command {
 				return err
 			}
 
+			if json && !(ref.Name == "" && pkg.Server != nil) {
+				return fnerrors.BadInputError("json output only supported for servers")
+			}
+
 			bodyWriter := indent(stdout)
 			if ref.Name == "" {
 
 				if pkg.Server != nil {
-					fmt.Fprintln(stdout, style.Comment.Apply("Server"))
-					formatProto(bodyWriter, rs, style, pkg.Server)
-					fmt.Fprintln(bodyWriter)
+					formatServer(stdout, style, rs, pkg.Server, json)
 				}
 
 				for _, binary := range pkg.Binaries {
@@ -146,6 +154,21 @@ func NewDescribeCmd() *cobra.Command {
 		})
 }
 
+func formatServer(w io.Writer, style colors.Style, rs Resolver, server *schema.Server, json bool) {
+	if json {
+		fmt.Fprint(w, `{
+  "server":`)
+		formatProto(indent(w), rs, style, server)
+		fmt.Fprintln(w, `
+}`)
+		return
+	}
+
+	fmt.Fprintln(w, style.Comment.Apply("Server"))
+	formatProto(indent(w), rs, style, server)
+	fmt.Fprintln(w)
+}
+
 func formatResourceClass(w io.Writer, style colors.Style, resClass *pkggraph.ResourceClass) {
 	fmt.Fprintf(w, "%s %s\n", style.Comment.Apply("ResourceClass"), formatPkgRef(style, resClass.Ref))
 	resout := indent(w)
@@ -178,7 +201,7 @@ func formatResourceInstance(w io.Writer, style colors.Style, rs Resolver, res *p
 	} else {
 		fmt.Fprintln(resout)
 		for _, inp := range res.Spec.ResourceInputs {
-			fmt.Fprintf(resout, "    %s\n", inp.ResourceID)
+			fmt.Fprintf(resout, "  %s\n", inp.ResourceID)
 		}
 	}
 }
@@ -326,7 +349,7 @@ func formatProto(w io.Writer, rs Resolver, style colors.Style, msg protoreflect.
 
 	body, err := (protojson.MarshalOptions{
 		UseProtoNames: true,
-		Indent:        "    ",
+		Indent:        "  ",
 		Resolver:      rs,
 	}).Marshal(msg)
 	if err != nil {
@@ -336,7 +359,7 @@ func formatProto(w io.Writer, rs Resolver, style colors.Style, msg protoreflect.
 }
 
 func indent(w io.Writer) io.Writer {
-	return text.NewIndentWriter(w, []byte("    "))
+	return text.NewIndentWriter(w, []byte("  "))
 }
 
 type Resolver interface {
