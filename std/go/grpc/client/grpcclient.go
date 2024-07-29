@@ -5,14 +5,12 @@
 package client
 
 import (
-	"context"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"google.golang.org/grpc"
 	"namespacelabs.dev/foundation/std/go/grpc/interceptors"
 )
 
-func Dial(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func NewClient(target string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	unary, streaming := interceptors.ClientInterceptors()
 
 	opts = append(opts,
@@ -20,5 +18,5 @@ func Dial(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.Cl
 		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(unary...)),
 	)
 
-	return grpc.DialContext(ctx, target, opts...)
+	return grpc.NewClient(target, opts...)
 }

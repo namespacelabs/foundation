@@ -38,7 +38,7 @@ func MakeDevBoxClient(ctx context.Context, token fnapi.ResolvedToken) (*DevBoxSe
 
 	fmt.Fprintf(console.Debug(ctx), "RPC: connecting to devbox service (endpoint: %s)\n", endpoint)
 
-	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})), public.WithBearerPerRPC(token.BearerToken))
+	conn, err := grpc.NewClient(endpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})), public.WithBearerPerRPC(token.BearerToken))
 	if err != nil {
 		return nil, err
 	}

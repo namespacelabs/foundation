@@ -32,7 +32,7 @@ func MakeInstanceClient(ctx context.Context) (*InstanceServiceClient, error) {
 		return nil, err
 	}
 
-	conn, err := grpc.DialContext(ctx, md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	conn, err := grpc.NewClient(md.InstanceEndpoint, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	if err != nil {
 		return nil, err
 	}

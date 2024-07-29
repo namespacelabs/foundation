@@ -35,7 +35,7 @@ func NewBuilderServiceClient(ctx context.Context, tid string, token fnapi.Resolv
 
 	fmt.Fprintf(console.Debug(ctx), "[%s] RPC: connecting to builder service (endpoint: %s)\n", tid, endpoint)
 
-	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})), WithBearerPerRPC(token.BearerToken))
+	conn, err := grpc.NewClient(endpoint, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})), WithBearerPerRPC(token.BearerToken))
 	if err != nil {
 		return nil, nil, err
 	}
