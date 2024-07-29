@@ -29,7 +29,7 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 	endpoint := connMapFromArgs()[key]
 	if endpoint == "" {
 		// If there's no endpoint configured, assume we're doing a loopback.
-		return Loopback(ctx)
+		return Loopback()
 	}
 
 	// XXX ServerResource wrapping is missing.
@@ -37,7 +37,7 @@ func ProvideConn(ctx context.Context, req *Backend) (*grpc.ClientConn, error) {
 	return client.NewClient(endpoint, grpc.WithTransportCredentials(insecure.NewCredentials())) ///  XXX mTLS etc.
 }
 
-func Loopback(ctx context.Context, grpcOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func Loopback(grpcOpts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	endpoint := net.JoinHostPort("127.0.0.1", strconv.Itoa(server.ListenPort()))
 	return client.NewClient(endpoint, resolveDialOpts(grpcOpts)...)
 }
