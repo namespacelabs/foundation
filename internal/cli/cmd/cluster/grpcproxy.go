@@ -94,7 +94,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.Clie
 		g.backendClient = nil
 	}
 
-	client, err := grpc.DialContext(ctx, "",
+	client, err := grpc.NewClient("passthrough:///",
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			// gRPC server default minimum is 5m, more frequent keepalives can cause "too_many_pings" error
 			Time:    time.Minute * 5,

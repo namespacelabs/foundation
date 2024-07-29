@@ -57,8 +57,7 @@ func (c *remoteOrchestrator) Connect(ctx context.Context) (*grpc.ClientConn, err
 	orch := compute.On(ctx)
 	sink := tasks.SinkFrom(ctx)
 
-	return grpc.DialContext(ctx, "orchestrator",
-		grpc.WithBlock(),
+	return grpc.NewClient("passthrough:///orchestrator",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			patchedContext := compute.AttachOrch(tasks.WithSink(ctx, sink), orch)

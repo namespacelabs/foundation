@@ -92,16 +92,7 @@ func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 	orch := compute.On(ctx)
 	sink := tasks.SinkFrom(ctx)
 
-	// A background context is used here as the connection we create will be
-	// long-lived. The parent orchestrator and sink are then patched in when an
-	// actual connection attempt is made.
-	ctxWithTimeout, done := context.WithTimeout(context.Background(), 15*time.Second)
-	defer done()
-
-	t := time.Now()
-
-	conn, err := grpc.DialContext(ctxWithTimeout, "filesync-"+do.server.GetName(),
-		grpc.WithBlock(),
+	conn, err := grpc.NewClient("passthrough:///filesync-"+do.server.GetName(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			patchedContext := compute.AttachOrch(tasks.WithSink(ctx, sink), orch)
@@ -117,8 +108,6 @@ func (do *FileSyncDevObserver) OnDeployment(ctx context.Context) {
 	}
 
 	do.conn = conn
-
-	fmt.Fprintf(do.log, " Connected to FileSync (for hot reload), took %v.\n\n", time.Since(t))
 }
 
 func (do *FileSyncDevObserver) Deposit(ctx context.Context, s *wsremote.Signature, events []*wscontents.FileEvent) (bool, error) {

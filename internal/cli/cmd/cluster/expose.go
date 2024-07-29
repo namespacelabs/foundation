@@ -379,8 +379,7 @@ func withContainerd(ctx context.Context, cluster *api.KubernetesCluster, callbac
 		return err
 	}
 
-	conn, err := grpc.DialContext(ctx, fmt.Sprintf("%s-containerd", cluster.ClusterId),
-		grpc.WithBlock(),
+	conn, err := grpc.NewClient(fmt.Sprintf("passthrough:///%s-containerd", cluster.ClusterId),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			vars := url.Values{}
 			vars.Set("name", "containerd-socket")
