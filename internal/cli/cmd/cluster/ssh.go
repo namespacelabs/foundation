@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	c "github.com/containerd/console"
 	"github.com/mattn/go-isatty"
@@ -36,6 +37,7 @@ func NewSshCmd() *cobra.Command {
 	}
 
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
+	tmp := cmd.Flags().Bool("tmp", false, "If specified, a temporary instance will be created and destroyed upon disconnection.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 	user := cmd.Flags().String("user", "", "The user to connect as.")
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
@@ -68,6 +70,21 @@ func NewSshCmd() *cobra.Command {
 
 			return InlineSsh(ctx, cluster.Cluster, sshOpts, args)
 		}
+		if *tmp {
+			opts := api.CreateClusterOpts{
+				KeepAtExit:      false,
+				Purpose:         fmt.Sprintf("Temporary instance for SSH"),
+				WaitClusterOpts: api.WaitClusterOpts{WaitForService: "ssh", WaitKind: "kubernetes"},
+				Duration:        time.Minute,
+			}
+
+			cluster, err := api.CreateAndWaitCluster(ctx, api.Methods, opts)
+			if err != nil {
+				return err
+			}
+
+			return InlineSsh(ctx, cluster.Cluster, sshOpts, args)
+		}
 
 		cluster, args, err := SelectRunningCluster(ctx, args)
 		if err != nil {
@@ -84,6 +101,7 @@ func NewSshCmd() *cobra.Command {
 
 		return InlineSsh(ctx, cluster, sshOpts, args)
 	})
+	cmd.Flags().MarkHidden("tmp")
 
 	return cmd
 }
