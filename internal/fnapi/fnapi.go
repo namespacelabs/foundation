@@ -257,7 +257,7 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 		grpcStatus := response.Header[http.CanonicalHeaderKey("grpc-status")]
 
 		if len(grpcMessage) > 0 && len(grpcStatus) > 0 {
-			intVar, err := strconv.Atoi(grpcStatus[0])
+			intVar, err := strconv.ParseInt(grpcStatus[0], 10, 32)
 			if err == nil {
 				st.Code = int32(intVar)
 				st.Message = grpcMessage[0]
