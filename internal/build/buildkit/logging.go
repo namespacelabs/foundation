@@ -22,6 +22,8 @@ import (
 	"namespacelabs.dev/foundation/std/tasks/idtypes"
 )
 
+const maxJsonEventLength = 64 * 1024 * 1024
+
 var TaskOutputBuildkitJsonLog = tasks.Output("buildkit.json", "application/json+fn.buildkit")
 
 var UsePlaintextLogging = false
@@ -244,6 +246,11 @@ func pushJsonEvent(w io.Writer, ev jsonEvent) error {
 	if err != nil {
 		return err
 	}
+
+	if len(p) > maxJsonEventLength {
+		return fmt.Errorf("json event too large")
+	}
+
 	// Make a space for a newline, easier to parse.
 	pline := make([]byte, len(p)+1)
 	copy(pline, p)
