@@ -85,7 +85,7 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@v2
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -147,7 +147,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -254,7 +254,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -383,7 +383,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
