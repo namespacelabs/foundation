@@ -101,7 +101,8 @@ type processor struct {
 	doEnsureMirrorJobQueue         chan doEnsureMirrorJob
 	doEnsureMirrorDoneNotification chan doEnsureMirrorResult
 
-	// Done when closed
+	// Overall done signal: done when closed.
+	// Multiple "worker" goroutines can use this as a signal to exit when no more work can arrive.
 	doneSignal chan struct{}
 }
 
@@ -292,9 +293,12 @@ func (p *processor) doProcessRepo(ctx context.Context, job processRepoJob) error
 	}
 
 	fmt.Fprintf(console.Debug(ctx), "N%d: In %s: done processing\n", job.recursionDepth, job.repoPath)
-	p.processRepoDoneNotification <- job
-
-	return nil
+	select {
+	case p.processRepoDoneNotification <- job:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (p *processor) doUpdateSubmodule(ctx context.Context, repoPath string, recursionDepth int, submod submodule, mirrorDir string) error {
@@ -377,6 +381,8 @@ func (p *processor) ensureMirrorCoordinator(ctx context.Context) error {
 
 				select {
 				case p.doEnsureMirrorJobQueue <- doEnsureMirrorJob{remoteUrl: submod.remoteUrl, mirrorDir: mirrorDir}:
+				case <-ctx.Done():
+					return ctx.Err()
 				default:
 					return fmt.Errorf("reached repo buf queue length in ensureMirror")
 				}
@@ -435,7 +441,7 @@ func (p *processor) workerForDoEnsureMirror(ctx context.Context) error {
 	for {
 		select {
 		case work := <-p.doEnsureMirrorJobQueue:
-			p.doEnsureMirror(ctx, work)
+			return p.doEnsureMirror(ctx, work)
 
 		case <-p.doneSignal:
 			return nil
@@ -447,11 +453,16 @@ func (p *processor) workerForDoEnsureMirror(ctx context.Context) error {
 	}
 }
 
-func (p *processor) doEnsureMirror(ctx context.Context, job doEnsureMirrorJob) {
+func (p *processor) doEnsureMirror(ctx context.Context, job doEnsureMirrorJob) error {
 	fmt.Fprintf(console.Info(ctx), "fetching or cloning mirror for %s at %s\n", job.remoteUrl, job.mirrorDir)
 	err := ensureMirrorWork(ctx, job.remoteUrl, job.mirrorDir)
 
-	p.doEnsureMirrorDoneNotification <- doEnsureMirrorResult{remoteUrl: job.remoteUrl, mirrorDir: job.mirrorDir, err: err}
+	select {
+	case p.doEnsureMirrorDoneNotification <- doEnsureMirrorResult{remoteUrl: job.remoteUrl, mirrorDir: job.mirrorDir, err: err}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func ensureMirrorWork(ctx context.Context, remoteUrl string, mirrorDir string) error {
