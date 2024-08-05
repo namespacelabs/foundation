@@ -37,7 +37,7 @@ func NewSshCmd() *cobra.Command {
 	}
 
 	tag := cmd.Flags().String("unique_tag", "", "If specified, creates a instance with the specified unique tag.")
-	tmp := cmd.Flags().Bool("tmp", false, "If specified, a temporary instance will be created and destroyed upon disconnection.")
+	oneshot := cmd.Flags().Bool("oneshot", false, "If specified, a temporary instance will be created and destroyed upon disconnection.")
 	sshAgent := cmd.Flags().BoolP("ssh_agent", "A", false, "If specified, forwards the local SSH agent.")
 	user := cmd.Flags().String("user", "", "The user to connect as.")
 	forcePty := cmd.Flags().BoolP("force-pty", "t", false, "Force pseudo-terminal allocation.")
@@ -70,7 +70,7 @@ func NewSshCmd() *cobra.Command {
 
 			return InlineSsh(ctx, cluster.Cluster, sshOpts, args)
 		}
-		if *tmp {
+		if *oneshot {
 			opts := api.CreateClusterOpts{
 				KeepAtExit:      false,
 				Purpose:         fmt.Sprintf("Temporary instance for SSH"),
