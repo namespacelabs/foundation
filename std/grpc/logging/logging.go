@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 	"namespacelabs.dev/foundation/std/go/core"
 	nsgrpc "namespacelabs.dev/foundation/std/grpc"
 	"namespacelabs.dev/foundation/std/grpc/requestid"
@@ -69,7 +70,15 @@ func (interceptor) unary(ctx context.Context, req interface{}, info *grpc.UnaryS
 		if err == nil {
 			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Str("response_body", SerializeMessage(resp)).Send()
 		} else {
-			logger.Info().Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").Err(err).Send()
+			st, ok := status.FromError(err)
+
+			var detailTypes []string
+			for _, det := range st.Proto().GetDetails() {
+				detailTypes = append(detailTypes, det.TypeUrl)
+			}
+
+			logger.Err(err).Str("kind", "grpclog").Dur("took", time.Since(rdata.Started)).Str("what", "response").
+				Bool("status_ok", ok).Strs("error_detail_types", detailTypes).Send()
 		}
 	}
 	return resp, err
