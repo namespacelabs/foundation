@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 	"namespacelabs.dev/foundation/internal/cli/cmd/auth"
 	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
-	"namespacelabs.dev/foundation/internal/cli/cmd/create"
 	"namespacelabs.dev/foundation/internal/cli/cmd/eks"
 	"namespacelabs.dev/foundation/internal/cli/cmd/lsp"
 	"namespacelabs.dev/foundation/internal/cli/cmd/mod"
@@ -56,7 +55,6 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(tools.NewToolsCmd())
 	root.AddCommand(tools.NewKubeCtlCmd(true))
 	root.AddCommand(tools.NewWriteKubeConfigCmd())
-	root.AddCommand(create.NewCreateCmd(RunCommand))
 	root.AddCommand(NewUpdateNSCmd())
 	root.AddCommand(NewGenerateCmd())
 	root.AddCommand(NewConfigCmd())
