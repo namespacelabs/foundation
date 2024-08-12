@@ -19,7 +19,6 @@ import (
 	"github.com/moby/patternmatcher"
 	"github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
-	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/secrets"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -226,9 +225,6 @@ func (l *baseRequest[V]) solve(ctx context.Context, c *GatewayClient, deps compu
 
 	var solveRes *client.SolveResponse
 	eg.Go(func(ctx context.Context) error {
-		// XXX Span data coming out from buildkit is not really working.
-		ctx = trace.ContextWithSpan(ctx, nil)
-
 		var err error
 		solveRes, err = c.Solve(ctx, req.Def, solveOpt, ch)
 		return err
