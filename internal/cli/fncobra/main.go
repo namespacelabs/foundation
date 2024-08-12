@@ -105,7 +105,16 @@ func doMain(opts MainOpts) (colors.Style, error) {
 
 	var cleanupTracer func()
 	if tracerEndpoint := viper.GetString("jaeger_endpoint"); tracerEndpoint != "" && viper.GetBool("enable_tracing") {
-		rootCtx, cleanupTracer = actiontracing.SetupTracing(rootCtx, tracerEndpoint)
+		rootCtx, cleanupTracer = actiontracing.SetupJaegerTracing(rootCtx, tracerEndpoint)
+	}
+
+	if key := os.Getenv("FOUNDATION_TRACING_HONEYCOMB_TEAM"); key != "" {
+		exp, err := actiontracing.CreateHoneycombExporter(rootCtx, key)
+		if err != nil {
+			return style, err
+		}
+
+		rootCtx, cleanupTracer = actiontracing.SetupTracing(rootCtx, actiontracing.CreateTracerForExporter(exp))
 	}
 
 	// Some of our builds can go fairly wide on parallelism, requiring opening
