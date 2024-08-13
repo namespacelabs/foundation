@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/system"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/tlsconfig"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -31,12 +32,12 @@ import (
 // It also performs Namespace-specific error handling
 type Client interface {
 	ServerVersion(ctx context.Context) (types.Version, error)
-	Info(ctx context.Context) (types.Info, error)
+	Info(ctx context.Context) (system.Info, error)
 	ContainerCreate(context.Context, *container.Config, *container.HostConfig, *network.NetworkingConfig, *specs.Platform, string) (container.CreateResponse, error)
-	ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error)
+	ContainerAttach(ctx context.Context, container string, options container.AttachOptions) (types.HijackedResponse, error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
-	ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error
-	ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error
+	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
+	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
 	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
 	ImageInspectWithRaw(ctx context.Context, imageID string) (types.ImageInspect, []byte, error)
 	ImageLoad(ctx context.Context, input io.Reader, quiet bool) (types.ImageLoadResponse, error)
@@ -137,7 +138,7 @@ func (w wrappedClient) ServerVersion(ctx context.Context) (types.Version, error)
 	return v, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) Info(ctx context.Context) (types.Info, error) {
+func (w wrappedClient) Info(ctx context.Context) (system.Info, error) {
 	v, err := w.cli.Info(ctx)
 	return v, maybeReplaceErr(err)
 }
@@ -147,7 +148,7 @@ func (w wrappedClient) ContainerCreate(ctx context.Context, config *container.Co
 	return v, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ContainerAttach(ctx context.Context, container string, options types.ContainerAttachOptions) (types.HijackedResponse, error) {
+func (w wrappedClient) ContainerAttach(ctx context.Context, container string, options container.AttachOptions) (types.HijackedResponse, error) {
 	v, err := w.cli.ContainerAttach(ctx, container, options)
 	return v, maybeReplaceErr(err)
 }
@@ -157,11 +158,11 @@ func (w wrappedClient) ContainerInspect(ctx context.Context, containerID string)
 	return v, maybeReplaceErr(err)
 }
 
-func (w wrappedClient) ContainerStart(ctx context.Context, containerID string, options types.ContainerStartOptions) error {
+func (w wrappedClient) ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error {
 	return maybeReplaceErr(w.cli.ContainerStart(ctx, containerID, options))
 }
 
-func (w wrappedClient) ContainerRemove(ctx context.Context, containerID string, options types.ContainerRemoveOptions) error {
+func (w wrappedClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
 	return maybeReplaceErr(w.cli.ContainerRemove(ctx, containerID, options))
 }
 

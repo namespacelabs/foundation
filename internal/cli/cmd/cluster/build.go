@@ -412,7 +412,7 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 			Context:     ctx,
 			ErrorLogger: io.Discard,
 			Keychain:    keychain{},
-			Fallback:    authprovider.NewDockerAuthProvider(dockerConfig).(auth.AuthServer),
+			Fallback:    authprovider.NewDockerAuthProvider(dockerConfig, nil).(auth.AuthServer),
 		})
 
 		solveOpt := client.SolveOpt{

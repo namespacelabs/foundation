@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	buildkit "github.com/moby/buildkit/client"
@@ -66,7 +66,7 @@ func RemoveBuildkitd(ctx context.Context) error {
 	}
 
 	// Remove container
-	opts := types.ContainerRemoveOptions{Force: true}
+	opts := container.RemoveOptions{Force: true}
 	if err := dockerclient.ContainerRemove(ctx, ctr.Name, opts); err != nil {
 		return fnerrors.InternalError("failed to remove the buildkitd container: %w", err)
 	}

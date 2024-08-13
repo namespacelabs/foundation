@@ -13,6 +13,7 @@ import (
 	"time"
 
 	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/system"
 	"github.com/kr/text"
 	"github.com/moby/buildkit/client/llb"
 	"github.com/spf13/cobra"
@@ -61,7 +62,7 @@ type DoctorResults struct {
 
 type DoctorResults_DockerInfo struct {
 	dockertypes.Version
-	dockertypes.Info
+	system.Info
 }
 
 type DoctorResults_DockerRun struct {
