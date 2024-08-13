@@ -20,6 +20,7 @@ import (
 	"github.com/containerd/nerdctl/pkg/labels"
 	"github.com/containerd/nerdctl/pkg/portutil"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
@@ -304,7 +305,7 @@ func selectDockerPorts(ctx context.Context, cluster *api.KubernetesCluster, filt
 
 func dockerFilterToContainers(ctx context.Context, docker *client.Client, filter containerFilter) ([]types.ContainerJSON, error) {
 	if filter.all {
-		list, err := docker.ContainerList(ctx, types.ContainerListOptions{})
+		list, err := docker.ContainerList(ctx, container.ListOptions{})
 		if err != nil {
 			return nil, err
 		}

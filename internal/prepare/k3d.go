@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"namespacelabs.dev/foundation/framework/rpcerrors/multierr"
@@ -140,7 +141,7 @@ func (p *k3dPrepare) createOrRestartRegistry(ctx context.Context, registryName s
 	}
 
 	if !registryCtr.State.Running {
-		if err := p.dockerclient.ContainerStart(ctx, registryName, types.ContainerStartOptions{}); err != nil {
+		if err := p.dockerclient.ContainerStart(ctx, registryName, container.StartOptions{}); err != nil {
 			return "", fnerrors.InternalError("failed to restart registry %q: %w", registryName, err)
 		}
 

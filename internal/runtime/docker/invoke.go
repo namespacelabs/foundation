@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/api/types/strslice"
@@ -214,7 +213,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		created.ID, containerConfig.Image, containerConfig.Cmd)
 
 	compute.On(ctx).Cleanup(tasks.Action("docker.container.remove"), func(ctx context.Context) error {
-		if err := cli.ContainerRemove(ctx, created.ID, types.ContainerRemoveOptions{}); err != nil {
+		if err := cli.ContainerRemove(ctx, created.ID, container.RemoveOptions{}); err != nil {
 			// If the docker daemon is already removing the container, because
 			// e.g. it has returned from execution, then we may observe a
 			// conflict with `removal of container XYZ is already in progress`.
@@ -226,7 +225,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		return nil
 	})
 
-	resp, err := cli.ContainerAttach(ctx, created.ID, types.ContainerAttachOptions{
+	resp, err := cli.ContainerAttach(ctx, created.ID, container.AttachOptions{
 		Stream: true,
 		Stdin:  containerConfig.AttachStdin,
 		Stdout: containerConfig.AttachStdout,
@@ -236,7 +235,7 @@ func runImpl(ctx context.Context, opts rtypes.RunToolOpts, onStart func()) error
 		return fnerrors.New("failed to attach to container: %w", err)
 	}
 
-	if err := cli.ContainerStart(ctx, created.ID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, created.ID, container.StartOptions{}); err != nil {
 		return fnerrors.New("failed to start container: %w", err)
 	}
 

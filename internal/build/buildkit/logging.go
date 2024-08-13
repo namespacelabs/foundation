@@ -76,14 +76,17 @@ func setupOutput(ctx context.Context, logid, sid string, eg executor.ExecutorLik
 	for k := range writers {
 		k := k // Capture k
 		eg.Go(func(ctx context.Context) error {
+			d, err := progressui.NewDisplay(&timestampPrefixWriter{writers[k], time.Now, true}, progressui.AutoMode)
+			if err != nil {
+				return fnerrors.InternalError("buildkit progress ui failed: %w", err)
+			}
 			// Don't propagate context cancelation, rather let the channel management above
 			// decide when we should bail out. Without this, DisplaySolveStatus may decide to
 			// return because it observed a cancellation. But it's channel is not closed. Which
 			// leads to writes above blocking, as there's no consumer. If those writes block,
 			// then buildkit's Solve can't return, as it's waiting to push a status update. And
 			// that will lead to it never returning from a cancelation (8h+ were spent on this issue).
-			_, err := progressui.DisplaySolveStatus(context.Background(), nil,
-				&timestampPrefixWriter{writers[k], time.Now, true}, chs[k])
+			_, err = d.UpdateFrom(context.TODO(), chs[k])
 			if err != nil {
 				return fnerrors.InternalError("buildkit progress ui failed: %w", err)
 			}

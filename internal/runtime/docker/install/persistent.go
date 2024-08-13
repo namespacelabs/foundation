@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
@@ -75,7 +74,7 @@ func (p PersistentSpec) Ensure(ctx context.Context, progress io.Writer) error {
 func (p PersistentSpec) start(ctx context.Context, cli docker.Client) error {
 	fmt.Fprintf(console.Debug(ctx), "Starting %s version %s\n", p.Name, p.Version)
 
-	if err := cli.ContainerStart(ctx, p.ContainerName, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, p.ContainerName, container.StartOptions{}); err != nil {
 		return err
 	}
 
@@ -144,7 +143,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 	}
 
 	if err := tasks.Action("docker.container.start").Arg("name", p.ContainerName).Arg("id", created.ID).Run(ctx, func(ctx context.Context) error {
-		return cli.ContainerStart(ctx, created.ID, types.ContainerStartOptions{})
+		return cli.ContainerStart(ctx, created.ID, container.StartOptions{})
 	}); err != nil {
 		return err
 	}
@@ -157,7 +156,7 @@ func (p PersistentSpec) install(ctx context.Context, cli docker.Client, progress
 }
 
 func (p PersistentSpec) remove(ctx context.Context, cli docker.Client) error {
-	err := cli.ContainerRemove(ctx, p.ContainerName, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true})
+	err := cli.ContainerRemove(ctx, p.ContainerName, container.RemoveOptions{RemoveVolumes: true, Force: true})
 	if client.IsErrNotFound(err) {
 		return nil
 	}

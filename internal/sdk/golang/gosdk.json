@@ -1,9 +1,16 @@
 {
 	"versions": {
+		"1.22.4": "1.22.4",
 		"1.22": "1.22.2",
 		"1.21": "1.21.9"
 	},
 	"artifacts": {
+		"1.22.4": {
+			"linux/amd64": "ba79d4526102575196273416239cca418a651e049c2b099f3159db85e7bade7d",
+			"linux/arm64": "a8e177c354d2e4a1b61020aca3562e27ea3e8f8247eca3170e3fa1e0c2f9e771",
+			"darwin/amd64": "c95967f50aa4ace34af0c236cbdb49a9a3e80ee2ad09d85775cb4462a5c19ed3",
+			"darwin/arm64": "242b78dc4c8f3d5435d28a0d2cec9b4c1aa999b601fb8aa59fb4e5a1364bf827"
+		},
 		"1.22.2": {
 			"linux/amd64": "5901c52b7a78002aeff14a21f93e0f064f74ce1360fce51c6ee68cd471216a17",
 			"linux/arm64": "36e720b2d564980c162a48c7e97da2e407dfcc4239e1e58d98082dfa2486a0c1",
