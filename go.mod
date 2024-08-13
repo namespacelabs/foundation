@@ -136,7 +136,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
 	helm.sh/helm/v3 v3.14.3
-	honnef.co/go/tools v0.4.2
+	honnef.co/go/tools v0.4.7
 	inet.af/tcpproxy v0.0.0-20231102063150-2862066fc2a9
 	k8s.io/api v0.29.2
 	k8s.io/apiextensions-apiserver v0.29.0
