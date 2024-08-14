@@ -26,6 +26,7 @@ const (
 	providerPkg     = "namespacelabs.dev/foundation/library/oss/postgres"
 	connBackoff     = 1500 * time.Millisecond
 	connIdleTimeout = 15 * time.Minute
+	connTimeout     = 5 * time.Minute
 
 	caCertPath = "/tmp/ca.pem"
 )
@@ -139,6 +140,9 @@ func connect(ctx context.Context, cluster *postgresclass.ClusterInstance, db str
 		return nil, err
 	}
 	cfg.ConnectTimeout = connBackoff
+
+	ctx, cancel := context.WithTimeout(ctx, connTimeout)
+	defer cancel()
 
 	// Retry until backend is ready.
 	return backoff.RetryWithData(func() (*pgx.Conn, error) {
