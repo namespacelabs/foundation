@@ -616,6 +616,10 @@ func getSubmodules(ctx context.Context, repoPath string) ([]submodule, error) {
 		return []submodule{}, scanner.Err()
 	}
 
+	if err := filterSubmodules(ctx, repoPath, submoduleMap); err != nil {
+		return []submodule{}, err
+	}
+
 	res := make([]submodule, 0, len(submoduleMap))
 	for _, submodule := range submoduleMap {
 		res = append(res, *submodule)
@@ -660,4 +664,82 @@ func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) (string, error) {
 		return string(output), err
 	}
 	return string(output), nil
+}
+
+// Filters submoduleMap: Only retains entries that point to a "commit" git object.
+// submoduleMap is modified in place.
+func filterSubmodules(ctx context.Context, repoPath string, submoduleMap map[string]*submodule) error {
+	// .gitmodules can contain entries which are ignored by regular git submodule commands
+	// Specifically if there is no corresponding "commit" object.
+	// git ls-tree -d  HEAD submodule1/ nscloud-checkout-action/
+	//
+
+	args := []string{
+		"ls-tree",
+		// Don't recurse (in case this finds a tree object)
+		"-d",
+		// Configure output format in a way where parseGitConfigKeyValue can be used.
+		"--format=%(objecttype) %(path)",
+		"HEAD"}
+	for _, submodule := range submoduleMap {
+		args = append(args, submodule.relativePath)
+	}
+
+	cmd := inRepoGit(repoPath, args...)
+	fmt.Fprintf(console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	scanner := bufio.NewScanner(stdout)
+	err = cmd.Start()
+	if err != nil {
+		return err
+	}
+
+	goodSubmodules := map[string]struct{}{}
+	for scanner.Scan() {
+		// Only accept "commit" object types.
+		line := scanner.Text()
+		// We configured --format specifically so this can be used
+		ok, objectType, path := parseGitConfigKeyValue(line)
+		if !ok {
+			return fmt.Errorf("could not parse git ls-tree output line '%s'", line)
+		}
+
+		if objectType != "commit" {
+			fmt.Fprintf(console.Warnings(ctx), "Found non-commit object: %s (type %s)\n", line, objectType)
+			continue
+		}
+
+		// .gitmodules path can not contain a trailing slash or .. so
+		// matching on path as a string is valid.
+		goodSubmodules[path] = struct{}{}
+	}
+
+	if scanner.Err() != nil {
+		cmd.Process.Kill()
+		cmd.Wait()
+		return scanner.Err()
+	}
+	if err := cmd.Wait(); err != nil {
+		return scanner.Err()
+	}
+
+	for key, submod := range submoduleMap {
+		_, ok := goodSubmodules[submod.relativePath]
+		if !ok {
+			fmt.Fprintf(console.Warnings(ctx), "Submodule in %s did not point to a git object\n", submod.relativePath)
+			delete(submoduleMap, key)
+			continue
+		}
+		delete(goodSubmodules, submod.relativePath)
+	}
+
+	for unexpected, _ := range goodSubmodules {
+		return fmt.Errorf("Got unexpected info about obj %s\n", unexpected)
+	}
+
+	return nil
 }
