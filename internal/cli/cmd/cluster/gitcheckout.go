@@ -265,7 +265,19 @@ func (p *processor) doProcessRepo(ctx context.Context, job processRepoJob) error
 	if job.recursionDepth > p.maxRecurseDepth {
 		return fmt.Errorf("Reached max nesting level: %d", job.recursionDepth)
 	}
+
 	submodules, err := getSubmodules(ctx, job.repoPath)
+	if err != nil {
+		return err
+	}
+
+	// NSL-3898: get origin repository to be able to resolve potential relative submodule URL
+	origin, err := getRepoRemoteOrigin(ctx)
+	if err != nil {
+		return err
+	}
+
+	submodules, err = resolveRelativeRemoteUrls(submodules, origin)
 	if err != nil {
 		return err
 	}
@@ -524,6 +536,33 @@ func inRepoGit(repoPath string, args ...string) *exec.Cmd {
 		args...)
 
 	return exec.Command("git", allArgs...)
+}
+
+func getRepoRemoteOrigin(ctx context.Context) (string, error) {
+	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
+	fmt.Fprintf(console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.Trim(string(output), string([]rune{'\n', ' '})), nil
+}
+
+func resolveRelativeRemoteUrls(submodules []submodule, originRemoteUrl string) ([]submodule, error) {
+	for i, sub := range submodules {
+		if isRelativeUrl(sub.remoteUrl) {
+			resolvedUrl, err := resolveRelativeRemoteUrl(sub.remoteUrl, originRemoteUrl)
+			if err != nil {
+				return nil, err
+			}
+
+			sub.remoteUrl = resolvedUrl.URL()
+			submodules[i] = sub
+		}
+	}
+
+	return submodules, nil
 }
 
 func getSubmodules(ctx context.Context, repoPath string) ([]submodule, error) {
