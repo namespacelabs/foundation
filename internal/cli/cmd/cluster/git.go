@@ -37,8 +37,8 @@ func parseGitUrl(url string) (giturl, error) {
 		urlSegments := strings.Split(url, "/")
 		return giturl{
 			scheme:     HTTPS,
-			hostname:   urlSegments[1],
-			owner:      path.Join(urlSegments[2 : len(urlSegments)-1]...),
+			hostname:   urlSegments[2],
+			owner:      path.Join(urlSegments[3 : len(urlSegments)-1]...),
 			repository: strings.TrimSuffix(urlSegments[len(urlSegments)-1], ".git"),
 		}, nil
 	case strings.HasPrefix(url, "git@"):

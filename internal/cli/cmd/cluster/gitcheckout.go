@@ -272,7 +272,7 @@ func (p *processor) doProcessRepo(ctx context.Context, job processRepoJob) error
 	}
 
 	// NSL-3898: get origin repository to be able to resolve potential relative submodule URL
-	origin, err := getRepoRemoteOrigin(ctx)
+	origin, err := getRepoRemoteOrigin(ctx, job.repoPath)
 	if err != nil {
 		return err
 	}
@@ -326,7 +326,7 @@ func (p *processor) doUpdateSubmodule(ctx context.Context, repoPath string, recu
 	}
 	submoduleUpdateArgs = append(submoduleUpdateArgs, submod.relativePath)
 	cmd := inRepoGit(repoPath, submoduleUpdateArgs...)
-	err := runAndPrintIfFails(ctx, cmd)
+	_, err := runAndPrintIfFails(ctx, cmd)
 	if err != nil {
 		return fmt.Errorf("could not update submodule '%s': %v", submod.relativePath, err)
 	}
@@ -485,14 +485,14 @@ func ensureMirrorWork(ctx context.Context, remoteUrl string, mirrorDir string) e
 	if isMirrorRepo(mirrorDir) {
 		// Make sure the mirror is up to date
 		cmd := inRepoGit(mirrorDir, "fetch", "--no-recurse-submodules", "origin")
-		err := runAndPrintIfFails(ctx, cmd)
+		_, err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
 			return fmt.Errorf("could not git fetch '%s' in '%s': %v", remoteUrl, mirrorDir, err)
 		}
 	} else {
 		// Create new mirror
 		cmd := exec.Command("git", "clone", "--mirror", "--", remoteUrl, mirrorDir)
-		err := runAndPrintIfFails(ctx, cmd)
+		_, err := runAndPrintIfFails(ctx, cmd)
 		if err != nil {
 			return fmt.Errorf("could not git clone '%s' to '%s': %v", remoteUrl, mirrorDir, err)
 		}
@@ -538,10 +538,9 @@ func inRepoGit(repoPath string, args ...string) *exec.Cmd {
 	return exec.Command("git", allArgs...)
 }
 
-func getRepoRemoteOrigin(ctx context.Context) (string, error) {
-	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
-	fmt.Fprintf(console.Debug(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
-	output, err := cmd.CombinedOutput()
+func getRepoRemoteOrigin(ctx context.Context, repoPath string) (string, error) {
+	cmd := inRepoGit(repoPath, "config", "--get", "remote.origin.url")
+	output, err := runAndPrintIfFails(ctx, cmd)
 	if err != nil {
 		return "", err
 	}
@@ -652,13 +651,13 @@ func parseSubmoduleConfigKey(key string) (bool, string, string) {
 	return true, split[1], split[2]
 }
 
-func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) error {
+func runAndPrintIfFails(ctx context.Context, cmd *exec.Cmd) (string, error) {
 	fmt.Fprintf(console.Info(ctx), "exec: %s\n", strings.Join(cmd.Args, " "))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Fprintf(console.Errors(ctx), "failed: %s\n", strings.Join(cmd.Args, " "))
 		fmt.Fprintln(console.Errors(ctx), string(output))
-		return err
+		return string(output), err
 	}
-	return nil
+	return string(output), nil
 }
