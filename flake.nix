@@ -23,6 +23,7 @@
           pre-commit
 
           goreleaser
+          gh
 
           eksctl
           postgresql

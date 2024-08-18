@@ -19,11 +19,10 @@ type buildTarget struct {
 }
 
 type buildConfiguration struct {
-	buildTarget     *buildTarget
-	source          schema.PackageName
-	label           string
-	workspace       Workspace
-	prefersBuildkit bool
+	buildTarget *buildTarget
+	source      schema.PackageName
+	label       string
+	workspace   Workspace
 }
 
 func NewBuildTarget(target *specs.Platform) *buildTarget {
@@ -48,11 +47,6 @@ func (c *buildTarget) WithSourceLabel(format string, args ...any) *buildConfigur
 func (c *buildTarget) WithWorkspace(w Workspace) *buildConfiguration {
 	d := buildConfiguration{buildTarget: c}
 	return d.WithWorkspace(w)
-}
-
-func (d *buildConfiguration) WithPrefersBuildkit(prefers bool) *buildConfiguration {
-	d.prefersBuildkit = prefers
-	return d
 }
 
 func (d *buildConfiguration) WithWorkspace(w Workspace) *buildConfiguration {
@@ -83,7 +77,6 @@ func CopyConfiguration(b Configuration) *buildConfiguration {
 
 	return t.WithSourcePackage(b.SourcePackage()).
 		WithSourceLabel(b.SourceLabel()).
-		WithPrefersBuildkit(b.PrefersBuildkit()).
 		WithWorkspace(b.Workspace())
 }
 
@@ -96,5 +89,4 @@ func (d *buildConfiguration) PublishName() compute.Computable[oci.RepositoryWith
 }
 func (d *buildConfiguration) SourcePackage() schema.PackageName { return d.source }
 func (d *buildConfiguration) SourceLabel() string               { return d.label }
-func (d *buildConfiguration) PrefersBuildkit() bool             { return d.prefersBuildkit }
 func (d *buildConfiguration) Workspace() Workspace              { return d.workspace }

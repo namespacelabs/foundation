@@ -38,6 +38,7 @@ func PrepareEnv(ctx context.Context, sourceEnv cfg.Context, ephemeral bool) (cfg
 		if err != nil {
 			return nil, err
 		}
+
 		messages = append(messages, protos.WrapAnyOrDie(msg))
 	}
 
