@@ -5,8 +5,8 @@
 package oci
 
 import (
-	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -16,7 +16,9 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/klauspost/compress/zstd"
 	"namespacelabs.dev/foundation/internal/compute"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnfs/maketarfs"
+	"namespacelabs.dev/foundation/internal/workspace/dirs"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
@@ -29,14 +31,27 @@ func LayerFromFS(ctx context.Context, vfs fs.FS) (Layer, error) {
 		return asL.AsLayer()
 	}
 
-	var buf bytes.Buffer
+	f, err := dirs.CreateUserTemp("oci", "layer")
+	if err != nil {
+		return nil, err
+	}
 
-	if err := maketarfs.TarFS(ctx, &buf, vfs, nil, nil); err != nil {
+	fmt.Fprintf(console.Debug(ctx), "oci.make-layer: staging=%q\n", f.Name())
+
+	compute.On(ctx).Cleanup(tasks.Action("oci.make-layer.cleanup").Arg("name", f.Name()), func(ctx context.Context) error {
+		return os.Remove(f.Name())
+	})
+
+	if err := maketarfs.TarFS(ctx, f, vfs, nil, nil); err != nil {
+		return nil, err
+	}
+
+	if err := f.Close(); err != nil {
 		return nil, err
 	}
 
 	return tarball.LayerFromOpener(func() (io.ReadCloser, error) {
-		return io.NopCloser(bytes.NewReader(buf.Bytes())), nil
+		return os.Open(f.Name())
 	}, tarball.WithCompressedCaching)
 }
 
