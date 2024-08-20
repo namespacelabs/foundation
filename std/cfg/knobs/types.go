@@ -39,3 +39,27 @@ func (b *boolv) decode(any *anypb.Any) (any, error) {
 func (b *boolv) setupFlags(flags *pflag.FlagSet, name, description string) {
 	flags.BoolVar(&b.value, name, b.value, description)
 }
+
+func StringValue[V string](defaultValue string) Value {
+	return &stringv{value: defaultValue}
+}
+
+type stringv struct {
+	value string
+}
+
+func (b *stringv) get() any {
+	return b.value
+}
+
+func (b *stringv) decode(any *anypb.Any) (any, error) {
+	bv := &wrapperspb.StringValue{}
+	if err := any.UnmarshalTo(bv); err != nil {
+		return nil, err
+	}
+	return bv.Value, nil
+}
+
+func (b *stringv) setupFlags(flags *pflag.FlagSet, name, description string) {
+	flags.StringVar(&b.value, name, b.value, description)
+}

@@ -30,6 +30,10 @@ func Bool(name, description string, value bool) Knob[bool] {
 	return Define[bool](name, description, BoolValue(value))
 }
 
+func String(name, description string, value string) Knob[string] {
+	return Define[string](name, description, StringValue(value))
+}
+
 func Define[V any](name, description string, value Value) Knob[V] {
 	knob := Knob[V]{name, description, value}
 	knobs = append(knobs, knob)
@@ -59,7 +63,7 @@ func (knob Knob[V]) Get(src cfg.Configuration) V {
 func (knob Knob[V]) setupFlags(flags *pflag.FlagSet) {
 	var v V
 	switch reflect.TypeOf(v).Kind() {
-	case reflect.Bool:
+	case reflect.Bool, reflect.String:
 		knob.value.setupFlags(flags, knob.name, knob.description)
 
 	default:

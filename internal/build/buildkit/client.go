@@ -42,6 +42,7 @@ var (
 var (
 	BuildOnNamespaceCloud           = knobs.Bool("build_in_nscloud", "If set to true, builds are triggered remotely.", false)
 	BuildOnNamespaceCloudUnlessHost = knobs.Bool("build_in_nscloud_unless_host", "If set to true, builds that match the host platform run locally. All other builds are triggered remotely.", false)
+	BuildOnExistingBuildkit         = knobs.String("buildkit_addr", "The address of an existing buildkitd to use.", "")
 )
 
 const SSHAgentProviderID = "default"
@@ -118,6 +119,17 @@ func (c *clientInstance) Inputs() *compute.In {
 }
 
 func (c *clientInstance) Compute(ctx context.Context, _ compute.Resolved) (*GatewayClient, error) {
+	if addr := BuildOnExistingBuildkit.Get(c.conf); addr != "" {
+		fmt.Fprintf(console.Debug(ctx), "buildkit: using existing buildkit: %q\n", addr)
+
+		cli, err := client.New(ctx, addr)
+		if err != nil {
+			return nil, err
+		}
+
+		return newClient(ctx, cli, false)
+	}
+
 	if c.overrides.BuildkitAddr != "" {
 		cli, err := client.New(ctx, c.overrides.BuildkitAddr)
 		if err != nil {
