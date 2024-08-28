@@ -23,17 +23,11 @@ import (
 	"github.com/pkg/errors"
 	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
+	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
 
 func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform) error {
-	// Generate private and public keys
-	privKeyPem, pubKeyPem, err := genPrivAndPublicKeysPEM()
-	if err != nil {
-		return err
-	}
-
-	// Ask IAM server to exchange our tenant token with a certificate using this public key
-	cliCert, err := fnapi.ExchangeTenantTokenForClientCert(ctx, string(pubKeyPem))
+	privKeyPem, cliCertPem, err := makeClientCertificate(ctx)
 	if err != nil {
 		return err
 	}
@@ -61,7 +55,7 @@ func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName strin
 	}
 
 	clientCertPath := path.Join(state, "client_cert.pem")
-	if err := writeFileToPath([]byte(cliCert.ClientCertificatePem), clientCertPath); err != nil {
+	if err := writeFileToPath(cliCertPem, clientCertPath); err != nil {
 		return err
 	}
 
@@ -84,6 +78,41 @@ func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName strin
 	}
 
 	return nil
+}
+
+func makeClientCertificate(ctx context.Context) ([]byte, []byte, error) {
+	// Two options: (1) we are running in Namespace instance or (2) we are not.
+	md, err := metadata.InstanceMetadataFromFile()
+	if err == nil {
+		// Option 1: use instance certificates
+		privKeyPem, err := os.ReadFile(md.Certs.PrivateKeyPath)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		cliCert, err := os.ReadFile(md.Certs.PublicPemPath)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return privKeyPem, cliCert, nil
+	} else {
+		// Option 2: we generate public and private key and ask IAM service to sign
+
+		// Generate private and public keys
+		privKeyPem, pubKeyPem, err := genPrivAndPublicKeysPEM()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Ask IAM server to exchange our tenant token with a certificate using this public key
+		cliCert, err := fnapi.ExchangeTenantTokenForClientCert(ctx, string(pubKeyPem))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return privKeyPem, []byte(cliCert.ClientCertificatePem), nil
+	}
 }
 
 type builderConfig struct {

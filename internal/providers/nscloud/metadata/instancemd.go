@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	wellKnownMetadataPath = "/var/run/nsc/metadata.json"
+	defaultMetadataPath = "/var/run/nsc/metadata.json"
 )
 
 type InstanceMetadata struct {
@@ -26,8 +26,14 @@ type InstanceMetadata struct {
 }
 
 func InstanceMetadataFromFile() (InstanceMetadata, error) {
+	metadataPath := defaultMetadataPath
+
+	if specified := os.Getenv("NSC_METADATA_FILE"); specified != "" {
+		metadataPath = specified
+	}
+
 	var md InstanceMetadata
-	data, err := os.ReadFile(wellKnownMetadataPath)
+	data, err := os.ReadFile(metadataPath)
 	if err != nil {
 		return md, err
 	}
