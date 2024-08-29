@@ -359,6 +359,38 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitClusterReady(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
+func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform) (*builderv1beta.GetBuilderConfigurationResponse, error) {
+	token, err := fnapi.IssueBearerToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return tasks.Return(ctx, tasks.Action("nsc.get-builder-configuration").HumanReadablef(fmt.Sprintf("Fetching Builder config for platform: %s", platform)),
+		func(ctx context.Context) (*builderv1beta.GetBuilderConfigurationResponse, error) {
+			tid := ids.NewRandomBase32ID(4)
+
+			cli, conn, err := public.NewBuilderServiceClient(ctx, tid, token)
+			if err != nil {
+				return nil, err
+			}
+
+			defer conn.Close()
+
+			t := time.Now()
+			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: calling EnsureBuildInstance {platform: %v}\n", tid, platform)
+			response, err := cli.GetBuilderConfiguration(ctx, &builderv1beta.GetBuilderConfigurationRequest{
+				Platform: string(platform),
+			})
+			if err != nil {
+				return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
+			}
+
+			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: got buildkit_endpoint=%s server_ca_pem=%s shape=%s (took %v)\n",
+				tid, response.GetBuildkitEndpoint(), response.GetServerCaPem(), response.GetShape(), time.Since(t))
+			return response, nil
+		})
+}
+
 func EnsureBuildCluster(ctx context.Context, platform BuildPlatform) (*builderv1beta.EnsureBuildInstanceResponse, error) {
 	token, err := fnapi.IssueBearerToken(ctx)
 	if err != nil {

@@ -41,6 +41,14 @@ type ExchangeOIDCTokenRequest struct {
 	OidcToken string `json:"oidc_token,omitempty"`
 }
 
+type ExchangeTenantTokenForClientCertRequest struct {
+	PublicKeyPem string `json:"public_key_pem,omitempty"`
+}
+
+type ExchangeTenantTokenForClientCertResponse struct {
+	ClientCertificatePem string `json:"client_certificate_pem,omitempty"`
+}
+
 type ExchangeTokenResponse struct {
 	TenantToken string  `json:"tenant_token,omitempty"`
 	Tenant      *Tenant `json:"tenant,omitempty"`
@@ -218,6 +226,23 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 			return IssueBearerTokenFromToken(ctx, token)
 		},
 	}.Do(ctx, req, ResolveIAMEndpoint, nil)
+}
+
+func ExchangeTenantTokenForClientCert(ctx context.Context, publicKey string) (ExchangeTenantTokenForClientCertResponse, error) {
+	var res ExchangeTenantTokenForClientCertResponse
+	req := ExchangeTenantTokenForClientCertRequest{
+		PublicKeyPem: publicKey,
+	}
+
+	if err := (Call[ExchangeTenantTokenForClientCertRequest]{
+		Method:           "nsl.tenants.TenantsService/ExchangeTenantTokenForClientCert",
+		IssueBearerToken: IssueBearerToken,
+		Retryable:        true,
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
+		return res, err
+	}
+
+	return res, nil
 }
 
 type GetTenantResponse struct {

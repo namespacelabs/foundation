@@ -41,7 +41,7 @@ import (
 
 const (
 	metadataFile      = "metadata.json"
-	defaultBuilder    = "nsc-remote"
+	defaultBuilder    = "namespace"
 	proxyDir          = "proxy"
 	buildkitProxyPath = "buildkit/" + proxyDir
 )
@@ -72,6 +72,8 @@ func newSetupBuildxCmd() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("buildkit_sock_path")
 	defaultLoad := cmd.Flags().Bool("default_load", false, "If true, load images to the Docker Engine image store if no other output is specified.")
 	_ = cmd.Flags().MarkHidden("default_load")
+	useServerSideProxy := cmd.Flags().Bool("use_server_side_proxy", false, "If set, buildx is setup to use transparent server-side proxy powered by Namespace")
+	_ = cmd.Flags().MarkHidden("use_server_side_proxy")
 
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *debugDir != "" && !*background {
@@ -99,8 +101,6 @@ func newSetupBuildxCmd() *cobra.Command {
 			return err
 		}
 
-		eg := executor.New(ctx, "proxies")
-
 		available, err := determineAvailable(ctx)
 		if err != nil {
 			return err
@@ -113,6 +113,12 @@ func newSetupBuildxCmd() *cobra.Command {
 		state, err := ensureStateDir(*stateDir, buildkitProxyPath)
 		if err != nil {
 			return err
+		}
+
+		// NSL-3935 use remote-side buildx proxy
+		// This will be soon the default
+		if *useServerSideProxy {
+			return setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available)
 		}
 
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
@@ -169,6 +175,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			md.Instances = append(md.Instances, instanceMD)
 		}
 
+		eg := executor.New(ctx, "proxies")
 		var instances []BuildCluster
 		for i, p := range md.Instances {
 			// Always create one, in case it's needed below. This instance has a zero-ish cost if we never call NewConn.
