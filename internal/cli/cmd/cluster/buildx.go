@@ -41,7 +41,7 @@ import (
 
 const (
 	metadataFile      = "metadata.json"
-	defaultBuilder    = "namespace"
+	defaultBuilder    = "nsc-remote"
 	proxyDir          = "proxy"
 	buildkitProxyPath = "buildkit/" + proxyDir
 )
