@@ -131,6 +131,7 @@ func runChecks(rw http.ResponseWriter, r *http.Request, names []string, checkers
 	if errCount > 0 {
 		rw.WriteHeader(500)
 		fmt.Fprintf(rw, "%d failures in %d checks\n\n", errCount, len(errs))
+		ZLog.Error().Interface("errs", errs).Msgf("readiness: %d failures in %d checks\n\n", errCount, len(errs))
 	} else {
 		rw.WriteHeader(200)
 		fmt.Fprintf(rw, "All OK\n\n")
