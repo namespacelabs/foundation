@@ -1,0 +1,45 @@
+name: PRs requirements
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - review_requested
+      - review_request_removed
+      - auto_merge_enabled
+
+jobs:
+  require-reviewer:
+    runs-on: nscloud
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Check for reviewers or reviews
+        run: |
+          # Ensure jq is installed
+          sudo apt-get install jq
+
+          jq -r ".pull_request.requested_reviewers" "$GITHUB_EVENT_PATH" | tee reviewers.json
+          REVIEWER_COUNT=$(cat reviewers.json | jq length)
+          if [ $REVIEWER_COUNT -ne 0 ]; then
+            exit 0
+          fi
+
+          jq -r ".pull_request.number" "$GITHUB_EVENT_PATH" | tee number.json
+          ISSUE_NUMBER=$(cat number.json | tr -d '\n')
+
+          curl \
+            --url https://api.github.com/repos/${{ github.repository }}/pulls/$ISSUE_NUMBER/reviews \
+            --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+            --header 'content-type: application/json' | tee reviews.json
+
+          REVIEW_COUNT=$(cat reviews.json | jq length)
+          if [ $REVIEW_COUNT -ne 0 ]; then
+            exit 0
+          fi
+
+          echo "No reviewer and no review found."
+          exit 1
