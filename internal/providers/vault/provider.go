@@ -6,32 +6,15 @@ package vault
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"time"
 
 	vaultclient "github.com/hashicorp/vault-client-go"
-	"github.com/hashicorp/vault-client-go/schema"
-	"github.com/pkg/browser"
 	"namespacelabs.dev/foundation/framework/secrets/combined"
-	"namespacelabs.dev/foundation/internal/console"
-	"namespacelabs.dev/foundation/internal/fnapi"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
 	"namespacelabs.dev/foundation/universe/vault"
-	"namespacelabs.dev/go-ids"
-)
-
-const (
-	vaulTokenEnvKey  = "VAULT_TOKEN"
-	vaultJwtAudience = "vault.namespace.systems"
-
-	oidcCallbackPort = 8250
-	oidcLoginTimeout = 5 * time.Minute
 )
 
 var (
@@ -74,122 +57,34 @@ func login(ctx context.Context, vaultCfg *vault.VaultProvider) (*vaultclient.Cli
 
 				// Vault by default always prefers a token set in VAULT_TOKEN env var. We do the same.
 				// Useful in case of VAULT_TOKEN provided by the 3rd party (e.g. by CI, etc).
-				if token := os.Getenv(vaulTokenEnvKey); token != "" {
+				if token := os.Getenv("VAULT_TOKEN"); token != "" {
 					client.SetToken(token)
 					return client, nil
 				}
 
-				var vaultToken string
+				var authResp *vaultclient.ResponseAuth
 				switch vaultCfg.GetAuthMethod() {
 				case "jwt":
-					token, err := jwtLogin(ctx, client, vaultCfg, vaultJwtAudience)
+					resp, err := vault.JwtLogin(ctx, client, vaultCfg.GetAuthMount(), vault.VaultJwtAudience)
 					if err != nil {
-						return nil, err
+						return nil, fnerrors.InvocationError("vault", "failed to login with JWT method: %w", err)
 					}
 
-					vaultToken = token
+					authResp = resp
 				case "oidc":
-					token, err := oidcLogin(ctx, client, vaultCfg)
+					resp, err := vault.OidcLogin(ctx, client, vaultCfg.GetAuthMount())
 					if err != nil {
-						return nil, err
+						return nil, fnerrors.InvocationError("vault", "failed to login with OIDC method: %w", err)
 					}
 
-					vaultToken = token
+					authResp = resp
 				default:
 					return nil, fnerrors.BadDataError("unknown authentication method %q; valid methods: jwt, oidc", vaultCfg.AuthMethod)
 				}
 
-				client.SetToken(vaultToken)
+				client.SetToken(authResp.ClientToken)
 				return client, nil
 			},
 		)
 	})
-}
-
-func jwtLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.VaultProvider, audience string) (string, error) {
-	idTokenResp, err := fnapi.IssueIdToken(ctx, audience, 1)
-	if err != nil {
-		return "", err
-	}
-
-	loginResp, err := client.Auth.JwtLogin(ctx, schema.JwtLoginRequest{Jwt: idTokenResp.IdToken},
-		vaultclient.WithMountPath(vaultCfg.GetAuthMount()),
-	)
-	if err != nil {
-		return "", fnerrors.InvocationError("vault", "failed to login to vault: %w", err)
-	}
-
-	if loginResp.Auth == nil {
-		return "", fnerrors.InvocationError("vault", "missing vault login auth data: %w", err)
-	}
-	return loginResp.Auth.ClientToken, nil
-
-}
-
-func oidcLogin(ctx context.Context, client *vaultclient.Client, vaultCfg *vault.VaultProvider) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, oidcLoginTimeout)
-	defer cancel()
-
-	type callbackResponse struct {
-		code, state string
-	}
-
-	callbackCh := make(chan callbackResponse, 1)
-	callbackServer := &http.Server{
-		Addr: fmt.Sprintf("127.0.0.1:%d", oidcCallbackPort),
-	}
-	http.HandleFunc("/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, "Login is sucessful! This page can be closed now.")
-		callbackCh <- callbackResponse{
-			code:  r.URL.Query().Get("code"),
-			state: r.URL.Query().Get("state"),
-		}
-	})
-	go func() {
-		if err := callbackServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			fmt.Fprintf(console.Debug(ctx), "failed to start OIDC callback server: %v", err)
-		}
-	}()
-	defer callbackServer.Shutdown(ctx)
-
-	clientNonce := ids.NewRandomBase32ID(20)
-	r, err := client.Auth.JwtOidcRequestAuthorizationUrl(ctx,
-		schema.JwtOidcRequestAuthorizationUrlRequest{
-			ClientNonce: clientNonce,
-			RedirectUri: fmt.Sprintf("http://localhost:%d/oidc/callback", oidcCallbackPort),
-		},
-		vaultclient.WithMountPath(vaultCfg.GetAuthMount()),
-	)
-	if err != nil {
-		return "", fnerrors.InvocationError("vault", "failed to request OIDC authorization URL: %v", err)
-	}
-
-	authUrl, ok := r.Data["auth_url"].(string)
-	if !ok || authUrl == "" {
-		return "", fnerrors.InvocationError("vault", "returned invalid OIDC authorization URL")
-	}
-
-	fmt.Fprintf(console.Stdout(ctx), "Complete the login via your OIDC provider. Launching browser to:\n\n")
-	fmt.Fprintf(console.Stdout(ctx), "\t%s\n\n", authUrl)
-	if err := browser.OpenURL(authUrl); err != nil {
-		fmt.Fprintf(console.Debug(ctx), "failed to open browser: %v\n", err)
-	}
-
-	fmt.Fprintf(console.Stdout(ctx), "Waiting for OIDC authentication to complete...\n")
-	for {
-		select {
-		case resp := <-callbackCh:
-			r, err = client.Auth.JwtOidcCallback(ctx, clientNonce,
-				resp.code, resp.state,
-				vaultclient.WithMountPath(vaultCfg.GetAuthMount()),
-			)
-			if err != nil {
-				return "", fnerrors.InvocationError("vault", "failed to login using OIDC provider: %v", err)
-			}
-
-			return r.Auth.ClientToken, nil
-		case <-ctx.Done():
-			return "", fnerrors.InvocationError("vault", "OIDC login did not complete on time: %v", ctx.Err())
-		}
-	}
 }
