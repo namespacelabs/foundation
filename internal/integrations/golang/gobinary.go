@@ -28,7 +28,7 @@ type GoBinary struct {
 	GoWorkspacePath string `json:"workspacePath"`
 	GoModule        string `json:"module"` // Go module name.
 	GoVersion       string `json:"goVersion"`
-	SourcePath      string `json:"sourcePath"` // Relative to ns workspace root.
+	SourcePath      string `json:"sourcePath"` // Relative to GoModule.
 	BinaryName      string `json:"binaryName"`
 
 	BinaryOnly      bool
@@ -59,6 +59,11 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 		return nil, err
 	}
 
+	pkgInsideMod, err := filepath.Rel(filepath.Dir(modFile), absSrc)
+	if err != nil {
+		return nil, err
+	}
+
 	gowork, _ := findroot.Find("go work", filepath.Dir(modFile), findroot.LookForFile("go.work"))
 	if gowork == "" {
 		gowork = filepath.Dir(modFile)
@@ -73,7 +78,7 @@ func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 		PackageName:     loc.PackageName,
 		GoWorkspacePath: relMod,
 		GoModule:        mod.Module.Mod.Path,
-		SourcePath:      loc.Rel(pkgName),
+		SourcePath:      pkgInsideMod,
 		GoVersion:       mod.Go.Version,
 	}, nil
 }

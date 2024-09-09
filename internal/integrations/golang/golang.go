@@ -93,7 +93,7 @@ func (impl) PrepareBuild(ctx context.Context, _ assets.AvailableBuildAssets, ser
 		GoWorkspacePath: ext.GoWorkspacePath,
 		GoModule:        ext.GoModule,
 		GoVersion:       ext.GoVersion,
-		SourcePath:      server.Location.Rel(),
+		SourcePath:      ext.RelPackage,
 		BinaryName:      serverName(server),
 	}
 
@@ -222,6 +222,7 @@ func (impl) PreParseServer(ctx context.Context, loc pkggraph.Location, ext *pars
 		GoVersion:       bin.GoVersion,
 		GoModule:        bin.GoModule,
 		GoWorkspacePath: bin.GoWorkspacePath,
+		RelPackage:      bin.SourcePath,
 	})
 	if err != nil {
 		return err
