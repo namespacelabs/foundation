@@ -7,6 +7,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/moby/buildkit/client/llb"
@@ -73,12 +74,9 @@ func buildUsingBuildkit(ctx context.Context, env pkggraph.SealedContext, bin GoB
 	goBuild = append(goBuild, quoteArgs(goBuildArgs(version, bin.StripBinary))...)
 	goBuild = append(goBuild, fmt.Sprintf("-o=/out/%s", bin.BinaryName))
 
-	relPath, err := makePkg(bin.GoWorkspacePath, bin.SourcePath)
-	if err != nil {
-		return nil, err
-	}
+	pkg := path.Join(bin.GoModule, bin.SourcePath)
 
-	goBuild = append(goBuild, relPath)
+	goBuild = append(goBuild, pkg)
 
 	state := (llbutil.RunGo{
 		Base:       prepareGoMod(base, src, conf.TargetPlatform()).Root(),

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
@@ -100,10 +101,7 @@ func compile(ctx context.Context, sdk golang.LocalSDK, absWorkspace string, targ
 
 	modulePath := filepath.Join(absWorkspace, bin.GoWorkspacePath)
 	out := filepath.Join(targetDir, bin.BinaryName)
-	pkg, err := makePkg(bin.GoWorkspacePath, bin.SourcePath)
-	if err != nil {
-		return err
-	}
+	pkg := path.Join(bin.GoModule, bin.SourcePath)
 
 	var cmd localexec.Command
 	cmd.Label = "go build"

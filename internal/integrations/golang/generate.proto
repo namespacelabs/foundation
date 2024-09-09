@@ -20,4 +20,7 @@ message FrameworkExt {
 
     // Relative path to go.work, or to go.mod.
     string go_workspace_path = 4;
+
+    // Path to the Go package within the module.
+    string rel_package = 5;
 }
