@@ -57,4 +57,8 @@ func (DefaultConfiguration) CreateListener(ctx context.Context, name string, opt
 	return opts.CreateNamedListener(ctx, name)
 }
 
+func (DefaultConfigurationWithSharedMtls) CreateListener(ctx context.Context, name string, opts ListenOpts) (net.Listener, error) {
+	return opts.CreateNamedListener(ctx, name)
+}
+
 func (DefaultConfigurationWithSharedMtls) UseFoundationMTLSConfiguration() {}
