@@ -91,6 +91,36 @@ builds:
       - amd64
       - arm64
 
+  - id: linux-bazel-credential-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/bazel-credential-nsc
+    binary: bazel-credential-nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+  - id: macos-bazel-credential-nsc
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/bazel-credential-nsc
+    binary: bazel-credential-nsc
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X namespacelabs.dev/foundation/internal/cli/version.Tag=v{{.Version}}
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
 archives:
   - id: ns
     builds:
@@ -102,8 +132,10 @@ archives:
     builds:
       - linux-nsc
       - linux-docker-credential-nsc
+      - linux-bazel-credential-nsc
       - macos-nsc
       - macos-docker-credential-nsc
+      - macos-bazel-credential-nsc
     name_template: "nsc_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 # signs:
@@ -168,3 +200,4 @@ brews:
     install: |
       bin.install "nsc"
       bin.install "docker-credential-nsc"
+      bin.install "bazel-credential-nsc"
