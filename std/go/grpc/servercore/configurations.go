@@ -16,6 +16,7 @@ import (
 var configConfigs = map[string]ListenerConfiguration{}
 
 type DefaultConfiguration struct{}
+type DefaultConfigurationWithSharedMtls struct{}
 
 type ListenerConfiguration interface {
 	CreateListener(context.Context, string, ListenOpts) (net.Listener, error)
@@ -24,6 +25,13 @@ type ListenerConfiguration interface {
 type GrpcListenerConfiguration interface {
 	ListenerConfiguration
 	TransportCredentials(string) credentials.TransportCredentials
+	ServerOpts(string) []grpc.ServerOption
+}
+
+type SharedMtlsGrpcListenerConfiguration interface {
+	ListenerConfiguration
+
+	UseFoundationMTLSConfiguration()
 	ServerOpts(string) []grpc.ServerOption
 }
 
@@ -48,3 +56,5 @@ func listenerConfiguration(name string) ListenerConfiguration {
 func (DefaultConfiguration) CreateListener(ctx context.Context, name string, opts ListenOpts) (net.Listener, error) {
 	return opts.CreateNamedListener(ctx, name)
 }
+
+func (DefaultConfigurationWithSharedMtls) UseFoundationMTLSConfiguration() {}
