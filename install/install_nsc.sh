@@ -7,7 +7,6 @@ set -eu
 
 tool_name="nsc"
 docker_cred_helper_name="docker-credential-nsc"
-bazel_cred_helper_name="bazel-credential-nsc"
 
 is_wsl() {
 	case "$(uname -r)" in
@@ -119,11 +118,9 @@ do_install() {
 
   $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${tool_name}"
   $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${docker_cred_helper_name}"
-  $sh_c "tar -xzf ${temp_tar} -C ${bin_dir} ${bazel_cred_helper_name}"
 
   $sh_c "chmod +x ${bin_dir}/${tool_name}"
   $sh_c "chmod +x ${bin_dir}/${docker_cred_helper_name}"
-  $sh_c "chmod +x ${bin_dir}/${bazel_cred_helper_name}"
 
   $sh_c "rm ${temp_tar}"
 
