@@ -7,6 +7,7 @@ package cluster
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/url"
 	"os"
 	"time"
@@ -37,18 +38,16 @@ func NewBazelCredHelperGetCmd() *cobra.Command {
 // Input JSON for "get".
 // See https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md#proposal
 // and https://github.com/EngFlow/credential-helper-spec/blob/main/schemas/get-credentials-request.schema.json
-type getInput struct {
+type credentialsReq struct {
 	Uri string `json:"uri"`
 }
 
-// Header name to (potentially multiple) values
-type headers map[string][]string
-
 // Output JSON for "get".
 // See https://github.com/EngFlow/credential-helper-spec/blob/main/schemas/get-credentials-response.schema.json
-type getOutput struct {
-	Expires string  `json:"expires,omitempty"` // Should be RFC 3339 according to spec, but bazel doesn't like nanoseconds.
-	Headers headers `json:"headers"`
+type credentialsResp struct {
+	Expires string `json:"expires,omitempty"` // Should be RFC 3339 according to spec, but bazel doesn't like nanoseconds.
+	// http.Header matches the specified JSON structure and semantically makes sense too.
+	Headers http.Header `json:"headers"`
 }
 
 func bazelCredGet(ctx context.Context) error {
@@ -60,7 +59,7 @@ func bazelCredGet(ctx context.Context) error {
 		return fnerrors.New("failed to read from stdin: %w", err)
 	}
 
-	var req getInput
+	var req credentialsReq
 	if err := json.Unmarshal(input, &req); err != nil {
 		return fnerrors.New("failed to parse JSON from stdin: %w", err)
 	}
@@ -75,7 +74,7 @@ func bazelCredGet(ctx context.Context) error {
 		return err
 	}
 
-	resp := getOutput{
+	resp := credentialsResp{
 		Expires: maybeFormatTime(expires),
 		Headers: hdrs,
 	}
@@ -98,7 +97,7 @@ func bazelCredGet(ctx context.Context) error {
 // Returns:
 // - auth headers to set
 // - until when bazel is allowed to cache those
-func fetchHeaders(ctx context.Context, url *url.URL) (headers, *time.Time, error) {
+func fetchHeaders(ctx context.Context, url *url.URL) (http.Header, *time.Time, error) {
 	if url.Scheme != "https" {
 		return nil, nil, fnerrors.New("nsc bazel credential helper configured for non-https endpoint")
 	}
@@ -126,7 +125,7 @@ func fetchHeaders(ctx context.Context, url *url.URL) (headers, *time.Time, error
 	// Ask a bit more often than token expiration to limit the impact in case the instance has an issue.
 	expires := time.Now().Add(15 * time.Minute)
 
-	return headers{
+	return http.Header{
 		"Authorization": []string{"Bearer " + token},
 	}, &expires, nil
 }
