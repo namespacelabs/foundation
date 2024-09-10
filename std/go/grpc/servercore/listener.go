@@ -158,6 +158,13 @@ func Listen(ctx context.Context, opts ListenOpts, registerServices func(Server))
 				}
 
 				serversByConfiguration[cfg.Name] = append(serversByConfiguration[cfg.Name], grpc.NewServer(x...))
+			} else if cgrp, ok := c.(SharedMtlsGrpcListenerConfiguration); ok {
+				x := append(slices.Clone(grpcopts), cgrp.ServerOpts(cfg.Name)...)
+				if tlsConfig != nil {
+					x = append(x, grpc.Creds(credentials.NewTLS(tlsConfig)))
+				}
+
+				serversByConfiguration[cfg.Name] = append(serversByConfiguration[cfg.Name], grpc.NewServer(x...))
 			} else {
 				return fnerrors.New("listener configuration for %q does not support grpc", cfg.Name)
 			}
