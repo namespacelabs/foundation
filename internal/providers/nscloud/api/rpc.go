@@ -50,7 +50,7 @@ type API struct {
 	RefreshKubernetesCluster     fnapi.Call[RefreshKubernetesClusterRequest]
 	GetKubernetesClusterSummary  fnapi.Call[GetKubernetesClusterSummaryRequest]
 	GetKubernetesConfig          fnapi.Call[GetKubernetesConfigRequest]
-	EnsureBazelCache             fnapi.Call[emptypb.Empty]
+	EnsureBazelCache             fnapi.Call[EnsureBazelCacheRequest]
 	GetImageRegistry             fnapi.Call[emptypb.Empty]
 	TailClusterLogs              fnapi.Call[TailLogsRequest]
 	GetClusterLogs               fnapi.Call[GetLogsRequest]
@@ -137,7 +137,7 @@ func MakeAPI() API {
 			Retryable:        true,
 		},
 
-		EnsureBazelCache: fnapi.Call[emptypb.Empty]{
+		EnsureBazelCache: fnapi.Call[EnsureBazelCacheRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.bazel.BazelService/EnsureBazelCache",
 		},
@@ -423,10 +423,10 @@ func EnsureBuildCluster(ctx context.Context, platform BuildPlatform) (*builderv1
 		})
 }
 
-func EnsureBazelCache(ctx context.Context, api API) (*EnsureBazelCacheResponse, error) {
+func EnsureBazelCache(ctx context.Context, api API, key string) (*EnsureBazelCacheResponse, error) {
 	return tasks.Return(ctx, tasks.Action("nsc.ensure-bazel-cache"), func(ctx context.Context) (*EnsureBazelCacheResponse, error) {
 		var response EnsureBazelCacheResponse
-		if err := api.EnsureBazelCache.Do(ctx, emptypb.Empty{}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+		if err := api.EnsureBazelCache.Do(ctx, EnsureBazelCacheRequest{Key: key}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
 			return nil, err
 		}
 		return &response, nil

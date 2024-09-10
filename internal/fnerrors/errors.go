@@ -226,6 +226,8 @@ func (e *ReauthErr) Error() string {
 	switch name.CmdName {
 	case "docker-credential-nsc":
 		cmd = "nsc " + cmd
+	case "bazel-credential-nsc":
+		cmd = "nsc " + cmd
 	default:
 		cmd = fmt.Sprintf("%s %s", name.CmdName, cmd)
 	}

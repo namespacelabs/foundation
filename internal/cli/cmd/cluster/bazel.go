@@ -44,7 +44,7 @@ func newSetupCacheCmd() *cobra.Command {
 	}).WithFlags(func(flags *pflag.FlagSet) {
 		flags.StringVar(&bazelRcPath, "bazelrc", "", "If specified, write the bazelrc to this path.")
 	}).Do(func(ctx context.Context) error {
-		response, err := api.EnsureBazelCache(ctx, api.Methods)
+		response, err := api.EnsureBazelCache(ctx, api.Methods, "")
 		if err != nil {
 			return err
 		}
