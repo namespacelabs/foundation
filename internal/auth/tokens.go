@@ -153,8 +153,8 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShort
 		}
 
 		dur := 2 * minDur
-		if dur > time.Hour {
-			dur = time.Hour
+		if dur > 8*time.Hour {
+			dur = 8 * time.Hour
 		}
 
 		newToken, err := issueShortTerm(ctx, t.SessionToken, dur)
