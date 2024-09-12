@@ -219,15 +219,15 @@ func (e *ReauthErr) Error() string {
 	switch {
 	case ghenv.IsRunningInActions():
 		cmd = "auth exchange-github-token"
+
 	default:
 		cmd = "login"
 	}
 
 	switch name.CmdName {
-	case "docker-credential-nsc":
+	case "docker-credential-nsc", "bazel-credential-nsc":
 		cmd = "nsc " + cmd
-	case "bazel-credential-nsc":
-		cmd = "nsc " + cmd
+
 	default:
 		cmd = fmt.Sprintf("%s %s", name.CmdName, cmd)
 	}

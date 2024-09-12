@@ -20,6 +20,11 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
+const (
+	bazelBearerTokenDuration    = time.Hour
+	bazelBearerRefetchFrequency = 15 * time.Minute // Ask a bit more often than token expiration to limit the impact in case the instance has an issue.
+)
+
 func NewBazelCredHelperGetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "get",
@@ -117,13 +122,12 @@ func fetchHeaders(ctx context.Context, url *url.URL) (http.Header, *time.Time, e
 		return nil, nil, fnerrors.New("Please re-configure --remote-cache=%s", cacheUrl.Host)
 	}
 
-	token, err := fnapi.IssueToken(ctx, 1*time.Hour)
+	token, err := fnapi.IssueToken(ctx, bazelBearerTokenDuration)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Ask a bit more often than token expiration to limit the impact in case the instance has an issue.
-	expires := time.Now().Add(15 * time.Minute)
+	expires := time.Now().Add(bazelBearerRefetchFrequency)
 
 	return http.Header{
 		"Authorization": []string{"Bearer " + token},
