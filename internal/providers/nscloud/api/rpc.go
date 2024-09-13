@@ -379,7 +379,8 @@ func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform) (*buil
 			t := time.Now()
 			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: calling EnsureBuildInstance {platform: %v}\n", tid, platform)
 			response, err := cli.GetBuilderConfiguration(ctx, &builderv1beta.GetBuilderConfigurationRequest{
-				Platform: string(platform),
+				Platform:            string(platform),
+				SkipBuilderPreSpawn: true,
 			})
 			if err != nil {
 				return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)
