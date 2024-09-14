@@ -106,7 +106,7 @@ func Collect2[T any, R any](ctx context.Context, tracer trace.Tracer, name Colle
 }
 
 func CollectAndLog0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
-	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+	zlb := LoggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
 
 	zlb.Info().Msgf("%s", name.name)
 	err := Collect0(zlb.WithContext(ctx), tracer, name, callback, opts...)
@@ -117,10 +117,10 @@ func CollectAndLog0(ctx context.Context, tracer trace.Tracer, name Collected, ca
 }
 
 func CollectAndLog1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
-	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+	zlb := LoggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
 
 	zlb.Info().Msgf("%s", name.name)
-	v, err := Collect1[T](zlb.WithContext(ctx), tracer, name, callback, opts...)
+	v, err := Collect1(zlb.WithContext(ctx), tracer, name, callback, opts...)
 	if err != nil {
 		zlb.Err(err).Msgf("%s (failed)", name.name)
 	}
@@ -128,7 +128,7 @@ func CollectAndLog1[T any](ctx context.Context, tracer trace.Tracer, name Collec
 }
 
 func CollectAndLogDuration0(ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
-	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+	zlb := LoggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
 
 	t := time.Now()
 	zlb.Info().Msgf("%s (started)", name.name)
@@ -142,7 +142,7 @@ func CollectAndLogDuration0(ctx context.Context, tracer trace.Tracer, name Colle
 }
 
 func CollectAndLogDuration1[T any](ctx context.Context, tracer trace.Tracer, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
-	zlb := loggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
+	zlb := LoggerFromAttrs(zerolog.Ctx(ctx).With(), name.attributes).Logger()
 
 	t := time.Now()
 	zlb.Info().Msgf("%s (started)", name.name)
@@ -155,7 +155,7 @@ func CollectAndLogDuration1[T any](ctx context.Context, tracer trace.Tracer, nam
 	return v, err
 }
 
-func loggerFromAttrs(zlb zerolog.Context, attrs []attribute.KeyValue) zerolog.Context {
+func LoggerFromAttrs(zlb zerolog.Context, attrs []attribute.KeyValue) zerolog.Context {
 	for _, attr := range attrs {
 		zlb = zlb.Interface(string(attr.Key), attr.Value.AsInterface())
 	}
