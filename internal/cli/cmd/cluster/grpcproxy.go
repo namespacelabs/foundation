@@ -84,7 +84,7 @@ func (g *grpcProxy) newBackendClient(ctx context.Context, id string) (*grpc.Clie
 
 	if g.backendClient != nil {
 		connState := g.backendClient.GetState()
-		if connState == connectivity.Ready || connState == connectivity.Connecting {
+		if connState != connectivity.Shutdown {
 			console.DebugWithTimestamp(ctx, "[%s] reused grpc connection: %v\n", id, connState)
 			return g.backendClient, nil
 		}
