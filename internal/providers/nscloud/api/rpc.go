@@ -359,7 +359,7 @@ func CreateAndWaitCluster(ctx context.Context, api API, opts CreateClusterOpts) 
 	return WaitClusterReady(ctx, api, cluster.ClusterId, opts.WaitClusterOpts)
 }
 
-func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform) (*builderv1beta.GetBuilderConfigurationResponse, error) {
+func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform, createAtStartup bool) (*builderv1beta.GetBuilderConfigurationResponse, error) {
 	token, err := fnapi.IssueBearerToken(ctx)
 	if err != nil {
 		return nil, err
@@ -380,7 +380,7 @@ func GetBuilderConfiguration(ctx context.Context, platform BuildPlatform) (*buil
 			fmt.Fprintf(console.Debug(ctx), "[%s] RPC: calling EnsureBuildInstance {platform: %v}\n", tid, platform)
 			response, err := cli.GetBuilderConfiguration(ctx, &builderv1beta.GetBuilderConfigurationRequest{
 				Platform:            string(platform),
-				SkipBuilderPreSpawn: true,
+				SkipBuilderPreSpawn: !createAtStartup,
 			})
 			if err != nil {
 				return nil, fnerrors.New("failed while creating %v build cluster: %w", platform, err)

@@ -118,7 +118,7 @@ func newSetupBuildxCmd() *cobra.Command {
 		// NSL-3935 use remote-side buildx proxy
 		// This will be soon the default
 		if *useServerSideProxy {
-			return setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available)
+			return setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup)
 		}
 
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
