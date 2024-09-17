@@ -60,7 +60,7 @@ func (p *PodObserver) start(ctx context.Context) {
 	go func() {
 		defer p.cond.Broadcast() // On exit, wake up all waiters.
 
-		debug := text.NewIndentWriter(console.Info(ctx), []byte(fmt.Sprintf("kube/podresolver: %s: ", kubeobj.SerializeSelector(p.labels))))
+		debug := text.NewIndentWriter(console.Debug(ctx), []byte(fmt.Sprintf("kube/podresolver: %s: ", kubeobj.SerializeSelector(p.labels))))
 
 		for {
 			retry, err := p.runWatcher(ctx, debug)
