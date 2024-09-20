@@ -19,7 +19,7 @@ const (
 	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devui"
 
 	baseRepository = "registry.eu-services.namespace.systems"
-	prebuilt       = "sha256:c2dd09514559903b54bc4f79cf018e21bc8e697bcdd50194bc60a633a17abf95"
+	prebuilt       = "sha256:05a9096e9a9820d4e323519185b9115e0a9d7f0ae45096338e6d99d24acecc99"
 )
 
 func PrebuiltWebUI(ctx context.Context) (*mux.Router, error) {
