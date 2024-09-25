@@ -453,7 +453,9 @@ func (p *processor) workerForDoEnsureMirror(ctx context.Context) error {
 	for {
 		select {
 		case work := <-p.doEnsureMirrorJobQueue:
-			return p.doEnsureMirror(ctx, work)
+			if err := p.doEnsureMirror(ctx, work); err != nil {
+				return err
+			}
 
 		case <-p.doneSignal:
 			return nil
