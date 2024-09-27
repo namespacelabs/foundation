@@ -6,10 +6,12 @@ package vault
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	vaultclient "github.com/hashicorp/vault-client-go"
 	"namespacelabs.dev/foundation/framework/secrets/combined"
+	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/tcache"
 	"namespacelabs.dev/foundation/std/cfg"
@@ -58,6 +60,7 @@ func login(ctx context.Context, vaultCfg *vault.VaultProvider) (*vaultclient.Cli
 				// Vault by default always prefers a token set in VAULT_TOKEN env var. We do the same.
 				// Useful in case of VAULT_TOKEN provided by the 3rd party (e.g. by CI, etc).
 				if token := os.Getenv("VAULT_TOKEN"); token != "" {
+					fmt.Fprintf(console.Debug(ctx), "skipping login as envroment variable VAULT_TOKEN is set\n")
 					client.SetToken(token)
 					return client, nil
 				}
