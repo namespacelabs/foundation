@@ -60,7 +60,7 @@ func login(ctx context.Context, vaultCfg *vault.VaultProvider) (*vaultclient.Cli
 				// Vault by default always prefers a token set in VAULT_TOKEN env var. We do the same.
 				// Useful in case of VAULT_TOKEN provided by the 3rd party (e.g. by CI, etc).
 				if token := os.Getenv("VAULT_TOKEN"); token != "" {
-					fmt.Fprintf(console.Debug(ctx), "skipping login as envroment variable VAULT_TOKEN is set\n")
+					fmt.Fprintf(console.Debug(ctx), "skipping login as environment variable VAULT_TOKEN is set\n")
 					client.SetToken(token)
 					return client, nil
 				}
