@@ -222,7 +222,17 @@ func Prepare(ctx context.Context, deps ExtensionDeps) error {
 	)
 
 	deps.Middleware.Add(func(h http.Handler) http.Handler {
-		return otelhttp.NewHandler(h, "",
+		return otelhttp.NewHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// add referer
+			span := t.SpanFromContext(r.Context())
+			if span.IsRecording() {
+				if referer := r.Header.Get("Referer"); referer != "" {
+					span.SetAttributes(attribute.String("http.request.header.referer", referer))
+				}
+			}
+
+			h.ServeHTTP(w, r)
+		}), "",
 			otelhttp.WithTracerProvider(provider),
 			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
 				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
