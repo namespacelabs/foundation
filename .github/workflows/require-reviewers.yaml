@@ -5,6 +5,7 @@ on:
       - opened
       - synchronize
       - reopened
+      - ready_for_review
       - review_requested
       - review_request_removed
       - auto_merge_enabled
