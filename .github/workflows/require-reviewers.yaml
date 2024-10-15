@@ -9,6 +9,9 @@ on:
       - review_request_removed
       - auto_merge_enabled
 
+  merge_group:
+    types: [checks_requested]
+
   # Allow calling sharing this workflow with other repositories.
   workflow_call:
 

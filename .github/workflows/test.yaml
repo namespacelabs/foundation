@@ -2,9 +2,13 @@ on:
   push:
     branches:
       - main
+
   pull_request:
     branches:
       - "*"
+
+  merge_group:
+    types: [checks_requested]
 
 name: Test
 jobs:
@@ -33,7 +37,9 @@ jobs:
 
       - name: Test
         run: go test ./...
+
       - name: Check Go Formatting
         run: go fmt ./... && git diff --exit-code
+
       - name: Check Go Mod Tidyness
         run: go mod tidy && git diff --exit-code
