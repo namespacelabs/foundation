@@ -184,6 +184,11 @@ func (c Call[RequestT]) Do(ctx context.Context, request RequestT, resolveEndpoin
 
 		response, err := client.Do(httpReq)
 		if err != nil {
+			// https://cs.opensource.google/go/go/+/master:src/net/net.go;l=628;drc=869932d700cf161c19eec65d66b9fe55482698db
+			if errors.Is(err, context.DeadlineExceeded) {
+				return fnerrors.InvocationError("namespace api", "unable to contact %v: %w", endpoint, err)
+			}
+
 			return fnerrors.InvocationError("namespace api", "http call failed: %w", err)
 		}
 
