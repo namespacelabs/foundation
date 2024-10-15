@@ -34,6 +34,11 @@ jobs:
           jq -r ".pull_request.number" "$GITHUB_EVENT_PATH" | tee number.json
           ISSUE_NUMBER=$(cat number.json | tr -d '\n')
 
+          if [ "$ISSUE_NUMBER" == "null" ]; then
+            echo "Not a PR - do not reqire reviewers"
+            exit 0
+          fi
+
           curl \
             --url https://api.github.com/repos/${{ github.repository }}/pulls/$ISSUE_NUMBER/reviews \
             --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
