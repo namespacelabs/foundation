@@ -29,7 +29,6 @@ import (
 	"namespacelabs.dev/foundation/internal/logs/logtail"
 	"namespacelabs.dev/foundation/internal/parsing"
 	"namespacelabs.dev/foundation/internal/planning/deploy/view"
-	"namespacelabs.dev/foundation/internal/reverseproxy"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
@@ -37,11 +36,10 @@ import (
 
 func NewDevCmd() *cobra.Command {
 	var (
-		servingAddr  string
-		devWebServer = false
-		env          cfg.Context
-		locs         fncobra.Locations
-		servers      planningargs.Servers
+		servingAddr string
+		env         cfg.Context
+		locs        fncobra.Locations
+		servers     planningargs.Servers
 	)
 
 	return fncobra.
@@ -52,7 +50,6 @@ func NewDevCmd() *cobra.Command {
 		}).
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.StringVarP(&servingAddr, "listen", "H", "", "Listen on the specified address.")
-			flags.BoolVar(&devWebServer, "devweb", devWebServer, "Whether to start a development web frontend.")
 		}).
 		With(
 			fncobra.ParseEnv(&env),
@@ -111,22 +108,12 @@ func NewDevCmd() *cobra.Command {
 						fncobra.RegisterPprof(r)
 						devsession.RegisterEndpoints(sesh, r)
 
-						if devWebServer {
-							localPort := lis.Addr().(*net.TCPAddr).Port
-							webPort := localPort + 1
-							proxyTarget, err := startDevServer(ctx, env, devsession.WebPackage, localPort, webPort)
-							if err != nil {
-								return err
-							}
-							r.PathPrefix("/").Handler(reverseproxy.Make(proxyTarget, reverseproxy.DefaultLocalProxy()))
-						} else {
-							mux, err := devsession.PrebuiltWebUI(ctx)
-							if err != nil {
-								return err
-							}
-
-							r.PathPrefix("/").Handler(mux)
+						mux, err := devsession.PrebuiltWebUI(ctx)
+						if err != nil {
+							return err
 						}
+
+						r.PathPrefix("/").Handler(mux)
 
 						srv := &http.Server{
 							Handler:      r,

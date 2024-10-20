@@ -25,22 +25,16 @@ import (
 	integrationparsing "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/api"
 	dockerfileparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/dockerfile"
 	goparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/golang"
-	nodejsparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/nodejs"
 	shellparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/shellscript"
-	webparser "namespacelabs.dev/foundation/internal/frontend/cuefrontend/integration/web"
 	"namespacelabs.dev/foundation/internal/git"
 	"namespacelabs.dev/foundation/internal/integrations/golang"
-	nodebinary "namespacelabs.dev/foundation/internal/integrations/nodejs/binary"
-	nodeopaqueintegration "namespacelabs.dev/foundation/internal/integrations/nodejs/opaqueintegration"
 	"namespacelabs.dev/foundation/internal/integrations/opaque"
 	"namespacelabs.dev/foundation/internal/llbutil"
 	"namespacelabs.dev/foundation/internal/networking/ingress"
 	"namespacelabs.dev/foundation/internal/networking/ingress/nginx"
 	dockerfileapplier "namespacelabs.dev/foundation/internal/parsing/integration/dockerfile"
 	goapplier "namespacelabs.dev/foundation/internal/parsing/integration/golang"
-	nodejsapplier "namespacelabs.dev/foundation/internal/parsing/integration/nodejs"
 	shellapplier "namespacelabs.dev/foundation/internal/parsing/integration/shellscript"
-	webapplier "namespacelabs.dev/foundation/internal/parsing/integration/web"
 	"namespacelabs.dev/foundation/internal/planning/deploy"
 	"namespacelabs.dev/foundation/internal/planning/tool"
 	"namespacelabs.dev/foundation/internal/providers/nscloud"
@@ -79,7 +73,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				binary.BuildLLBGen = genbinary.LLBBinary
 				binary.BuildAlpine = genbinary.BuildAlpine
 				binary.BuildNix = genbinary.NixImageBuilder
-				binary.BuildNodejs = nodebinary.NodejsBuilder
 				binary.BuildStaticFilesServer = genbinary.StaticFilesServerBuilder
 
 				// Runtime
@@ -99,15 +92,12 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				// Languages.
 				golang.Register()
 				opaque.Register()
-				nodeopaqueintegration.Register()
 
 				// Opaque integrations: parsing
 				integrationparsing.IntegrationParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
 					&dockerfileparser.Parser{},
 					shellparser.NewParser(),
 					goparser.NewParser(),
-					&nodejsparser.Parser{},
-					&webparser.Parser{},
 				})
 				integrationparsing.BuildParser = entity.NewDispatchingEntityParser("kind", []entity.EntityParser{
 					// Same syntax as docker integration so we can reuse the parser.
@@ -120,8 +110,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				// Opaque integrations: applying
 				dockerfileapplier.Register()
 				goapplier.Register()
-				nodejsapplier.Register()
-				webapplier.Register()
 				shellapplier.Register()
 
 				// Codegen
@@ -237,7 +225,6 @@ func DoMain(name string, autoUpdate bool, registerCommands func(*cobra.Command))
 				"fnapi_naming_force_stored",
 				"kubernetes_deploy_as_pods_in_tests",
 				"compute_explain_indent_values",
-				"nodejs_use_native_node",
 				"lowlevel_tools_protocol_version",
 				"tools_invocation_can_use_buildkit",
 				"deploy_push_prebuilts_to_registry",

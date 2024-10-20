@@ -2,9 +2,6 @@ import (
 	"path"
 	"namespacelabs.dev/foundation/std/fn:inputs"
 	"namespacelabs.dev/foundation/std/go/grpc"
-)
-
-import (
 	"namespacelabs.dev/foundation/std/fn"
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )

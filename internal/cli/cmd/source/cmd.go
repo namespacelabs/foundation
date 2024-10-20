@@ -16,7 +16,6 @@ func NewSourceCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newBufGenerateCmd())
-	cmd.AddCommand(newNodejsCmd())
 	cmd.AddCommand(newNewIdCmd())
 
 	return cmd
