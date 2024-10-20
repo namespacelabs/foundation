@@ -101,7 +101,7 @@ _#Node: {
 	protocol?: string
 }
 
-#Framework: "GO" | "GO_GRPC" | "WEB"
+#Framework: "GO" | "GO_GRPC"
 
 #Server: {
 	_#Base

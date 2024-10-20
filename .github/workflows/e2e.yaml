@@ -310,7 +310,6 @@ jobs:
             internal/testdata/server/gogrpc \
             internal/testdata/integrations/dockerfile/complex \
             internal/testdata/integrations/golang \
-            internal/testdata/integrations/nodejs/yarn \
             --use_prebuilts=true \
             --golang_use_buildkit=true \
             --build_in_nscloud \
@@ -357,10 +356,6 @@ jobs:
         run: |
           cd external-repo; \
           /tmp/ns test \
-            nextjs/01-simple/server \
-            multitier/01-simple/frontend \
-            multitier/01-simple/apibackend \
-            multitier/02-withsecrets/apibackend \
             golang/01-simple/server \
             golang/02-withsecrets/server \
             --use_prebuilts=true \

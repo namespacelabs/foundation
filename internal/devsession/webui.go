@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// ns build-binary --base_repository=registry.eu-services.namespace.systems internal/webui/devui --env prod
+	// Rebuilding the internal devui is no longer possible from head. Check out the git repo history.
 	WebPackage schema.PackageName = "namespacelabs.dev/foundation/internal/webui/devui"
 
 	baseRepository = "registry.eu-services.namespace.systems"

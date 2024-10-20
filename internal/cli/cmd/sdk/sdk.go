@@ -28,16 +28,14 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
-	"namespacelabs.dev/foundation/internal/sdk/nodejs"
 	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewSdkCmd(hidden bool) *cobra.Command {
-	sdks := []string{"go", "nodejs", "k3d", "kubectl", "grpcurl", "deno", "buildctl"}
+	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "deno", "buildctl"}
 
 	goSdkVersion := "1.22"
-	nodejsVersion := "18"
 
 	cmd := &cobra.Command{
 		Use:    "sdk",
@@ -46,11 +44,10 @@ func NewSdkCmd(hidden bool) *cobra.Command {
 	}
 
 	selectedSdkList := func() []sdk {
-		return sdkList(sdks, goSdkVersion, nodejsVersion)
+		return sdkList(sdks, goSdkVersion)
 	}
 
 	cmd.PersistentFlags().StringVar(&goSdkVersion, "go_version", goSdkVersion, "Go version.")
-	cmd.PersistentFlags().StringVar(&nodejsVersion, "nodejs_version", nodejsVersion, "NodeJS version.")
 	cmd.PersistentFlags().StringArrayVar(&sdks, "sdks", sdks, "The SDKs we download.")
 
 	cmd.AddCommand(newSdkShellCmd(selectedSdkList))
@@ -68,7 +65,7 @@ type sdk struct {
 	makePath func(compute.Resolved, string) (string, error)
 }
 
-func sdkList(sdks []string, goVersion, nodejsVersion string) []sdk {
+func sdkList(sdks []string, goVersion string) []sdk {
 	var available = []sdk{
 		{
 			name: "go",
@@ -81,20 +78,6 @@ func sdkList(sdks []string, goVersion, nodejsVersion string) []sdk {
 			},
 			makePath: func(deps compute.Resolved, key string) (string, error) {
 				sdk, _ := compute.GetDepWithType[golang.LocalSDK](deps, key)
-				return filepath.Dir(sdk.Value.Binary), nil
-			},
-		},
-		{
-			name: "nodejs",
-			make: func(ctx context.Context, key string, in *compute.In, p specs.Platform) (*compute.In, error) {
-				sdk, err := nodejs.SDK(nodejsVersion, p)
-				if err != nil {
-					return nil, err
-				}
-				return in.Computable(key, sdk), nil
-			},
-			makePath: func(deps compute.Resolved, key string) (string, error) {
-				sdk, _ := compute.GetDepWithType[nodejs.LocalSDK](deps, key)
 				return filepath.Dir(sdk.Value.Binary), nil
 			},
 		},

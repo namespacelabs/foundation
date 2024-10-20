@@ -35,7 +35,6 @@ var BuildGo func(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.Lo
 var BuildLLBGen func(schema.PackageName, *pkggraph.Module, build.Spec) build.Spec
 var BuildAlpine func(pkggraph.Location, *schema.ImageBuildPlan_AlpineBuild) build.Spec
 var BuildNix func(context.Context, pkggraph.PackageLoader, schema.PackageName, *pkggraph.Module, fs.FS) (build.Spec, error)
-var BuildNodejs func(cfg.Context, pkggraph.Location, *schema.NodejsBuild, assets.AvailableBuildAssets) (build.Spec, error)
 var BuildStaticFilesServer func(*schema.ImageBuildPlan_StaticFilesServer) build.Spec
 
 var prebuiltsConfType = cfg.DefineConfigType[*Prebuilts]()
@@ -241,10 +240,6 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 
 	if src.GoBuild != nil {
 		return BuildGo(ctx, pl, loc, src.GoBuild, false)
-	}
-
-	if src.NodejsBuild != nil {
-		return BuildNodejs(env, loc, src.NodejsBuild, assets)
 	}
 
 	if llb := src.LlbPlan; llb != nil {
