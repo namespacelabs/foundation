@@ -354,6 +354,27 @@ func ensureStateDir(specified, dir string) (string, error) {
 	return dirs.Ensure(filepath.Join(s, proxyDir), nil)
 }
 
+// Returns the default state directory for nsc buildkit state.
+// Otherwise returns "".
+func getDefaultStateDirIfExists(dir string) (string, error) {
+	// Mimic the logic of ensureStateDir but don't create directories.
+	oldStateDirPath, err := dirs.Subdir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	if proxyAlreadyExists(oldStateDirPath) {
+		return oldStateDirPath, nil
+	}
+
+	newStateDirPath, err := dirs.ConfigSubdir(dir)
+	if err != nil {
+		return "", err
+	}
+
+	return newStateDirPath, nil
+}
+
 func ensureLogDir(dir string) (string, error) {
 	return dirs.Ensure(dirs.Logs(dir))
 }

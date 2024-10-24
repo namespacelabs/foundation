@@ -37,6 +37,14 @@ type IssueTenantTokenFromSessionResponse struct {
 	TenantToken string `json:"tenant_token,omitempty"`
 }
 
+type IssueSessionClientCertFromSessionRequest struct {
+	PublicKeyPem string `json:"public_key_pem,omitempty"`
+}
+
+type IssueSessionClientCertFromSessionResponse struct {
+	ClientCertificatePem string `json:"client_certificate_pem,omitempty"`
+}
+
 // Returns the URL which the user should open.
 func StartLogin(ctx context.Context, tenantId string, sessionDuration time.Duration) (*StartLoginResponse, error) {
 	req := StartLoginRequest{

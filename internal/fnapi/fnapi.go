@@ -103,6 +103,25 @@ func IssueTenantTokenFromSession(ctx context.Context, sessionToken string, durat
 	return resp.TenantToken, nil
 }
 
+func IssueSessionClientCertFromSession(ctx context.Context, sessionToken string, publicKeyPem string) (string, error) {
+	req := IssueSessionClientCertFromSessionRequest{
+		PublicKeyPem: publicKeyPem,
+	}
+
+	var resp IssueSessionClientCertFromSessionResponse
+
+	if err := (Call[IssueSessionClientCertFromSessionRequest]{
+		Method: "nsl.signin.SigninService/IssueSessionClientCertFromSession",
+		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
+			return ResolvedToken{BearerToken: sessionToken}, nil
+		},
+	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&resp)); err != nil {
+		return "", err
+	}
+
+	return resp.ClientCertificatePem, nil
+}
+
 type Call[RequestT any] struct {
 	Method           string
 	IssueBearerToken func(context.Context) (ResolvedToken, error)

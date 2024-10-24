@@ -21,6 +21,9 @@ type Token interface {
 	Claims(context.Context) (*auth.TokenClaims, error)
 	PrimaryRegion(context.Context) (string, error)
 	IssueToken(context.Context, time.Duration, func(context.Context, string, time.Duration) (string, error), bool) (string, error)
+
+	// This fails if it is not a session token.
+	ExchangeForSessionClientCert(ctx context.Context, publicKeyPem string, issueFromSession auth.IssueCertFunc) (string, error)
 }
 
 func BearerToken(ctx context.Context, t Token, skipCache bool) (string, error) {

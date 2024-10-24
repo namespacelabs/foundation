@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"namespacelabs.dev/foundation/internal/auth"
+	"namespacelabs.dev/foundation/internal/cli/cmd/cluster"
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnapi"
@@ -67,6 +68,16 @@ func NewLoginCmd() *cobra.Command {
 				if err := auth.StoreTenantToken(c.TenantToken); err != nil {
 					return err
 				}
+			}
+
+			// Buildx with the server-side proxy could be authenticating using a session client certificate.
+			// Trigger a refresh of that certificate too.
+			refreshed, err := cluster.RefreshSessionClientCert(ctx)
+			if err != nil {
+				fmt.Fprintf(stdout, "\nRefreshing session client cert for buildx failed: %v.\n", err)
+			}
+			if refreshed {
+				fmt.Fprintf(stdout, "\nSuccessfully refreshed session client cert for buildx.\n")
 			}
 
 			if c.TenantName != "" {

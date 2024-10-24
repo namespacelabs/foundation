@@ -15,18 +15,22 @@ import (
 	"maps"
 	"os"
 	"path"
+	"strings"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/util/dockerutil"
 	"github.com/docker/cli/cli/command"
+	"github.com/natefinch/atomic"
 	"github.com/pkg/errors"
+	"golang.org/x/exp/slices"
 	"namespacelabs.dev/foundation/internal/fnapi"
+	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 	"namespacelabs.dev/foundation/internal/providers/nscloud/metadata"
 )
 
-func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool) error {
+func setupServerSideBuildxProxy(ctx context.Context, state, builderName string, use, defaultLoad bool, dockerCli *command.DockerCli, platforms []api.BuildPlatform, createAtStartup bool) error {
 	privKeyPem, cliCertPem, err := makeClientCertificate(ctx)
 	if err != nil {
 		return err
@@ -44,11 +48,6 @@ func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName strin
 	}
 
 	// Write key files in ns state directory
-	state, err := ensureStateDir(stateDir, buildkitProxyPath)
-	if err != nil {
-		return err
-	}
-
 	privKeyPath := path.Join(state, "private_key.pem")
 	if err := writeFileToPath(privKeyPem, privKeyPath); err != nil {
 		return err
@@ -80,11 +79,83 @@ func setupServerSideBuildxProxy(ctx context.Context, stateDir, builderName strin
 	return nil
 }
 
+func RefreshSessionClientCert(ctx context.Context) (bool, error) {
+	clientCertPath, publicKey, err := getCertPathToRefresh()
+	if err != nil {
+		return false, errors.Errorf("refresh session client cert: failed to check existing cert: %v", err)
+	}
+
+	if clientCertPath == "" {
+		// No client cert to refresh
+		return false, nil
+	}
+
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		return false, errors.Errorf("refresh session client cert: can not marshal public key: %v", err)
+	}
+
+	pubKeyPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyBytes,
+	})
+
+	newCertPem, err := fetchClientCert(ctx, string(pubKeyPem))
+
+	if err != nil {
+		return false, fnerrors.New("refresh session client cert: could not issue client cert: %w", err)
+	}
+
+	if err := atomic.WriteFile(clientCertPath, strings.NewReader(newCertPem)); err != nil {
+		return false, fnerrors.New("refresh session client cert: can not write new cert: %w", err)
+	}
+
+	return true, nil
+}
+
+func getCertPathToRefresh() (string, any, error) {
+	state, err := getDefaultStateDirIfExists(buildkitProxyPath)
+	if err != nil {
+		return "", nil, err
+	}
+
+	clientCertPath := path.Join(state, "client_cert.pem")
+
+	b, err := os.ReadFile(clientCertPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil, nil
+
+		}
+		return "", nil, errors.Errorf("could not check if %s is a client cert: %v", clientCertPath, err)
+	}
+
+	certData, _ := pem.Decode(b)
+	if certData == nil {
+		return "", nil, errors.Errorf("%s does not contain a PEM encoded certificate", clientCertPath)
+	}
+
+	if certData.Type != "CERTIFICATE" {
+		return "", nil, errors.Errorf("%s does not contains a %s instead of a CERTIFICATE", clientCertPath, certData.Type)
+	}
+
+	cert, err := x509.ParseCertificate(certData.Bytes)
+	if err != nil {
+		return "", nil, errors.Errorf("can not parse %s as X.059 certificate: %v", clientCertPath, err)
+	}
+
+	if !slices.Contains(cert.Subject.OrganizationalUnit, "sessioncert") {
+		return "", nil, nil
+	}
+
+	return clientCertPath, cert.PublicKey, nil
+}
+
 func makeClientCertificate(ctx context.Context) ([]byte, []byte, error) {
-	// Two options: (1) we are running in Namespace instance or (2) we are not.
 	md, err := metadata.InstanceMetadataFromFile()
 	if err == nil {
-		// Option 1: use instance certificates
+		// This is running in a Namespace instance.
+		// -> use prepared instance client certificate
 		privKeyPem, err := os.ReadFile(md.Certs.PrivateKeyPath)
 		if err != nil {
 			return nil, nil, err
@@ -96,22 +167,35 @@ func makeClientCertificate(ctx context.Context) ([]byte, []byte, error) {
 		}
 
 		return privKeyPem, cliCert, nil
+	}
+
+	// Not running in a Namespae instance.
+	// We generate public and private key and ask IAM service to issue a client certificate.
+
+	privKeyPem, pubKeyPem, err := genPrivAndPublicKeysPEM()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	certPem, err := fetchClientCert(ctx, string(pubKeyPem))
+
+	if err != nil {
+		return nil, nil, fnerrors.New("could not issue client cert: %w", err)
+	}
+
+	return privKeyPem, []byte(certPem), nil
+}
+
+func fetchClientCert(ctx context.Context, pubKeyPem string) (string, error) {
+	tok, err := fnapi.FetchToken(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if tok.IsSessionToken() {
+		return tok.ExchangeForSessionClientCert(ctx, string(pubKeyPem), fnapi.IssueSessionClientCertFromSession)
 	} else {
-		// Option 2: we generate public and private key and ask IAM service to sign
-
-		// Generate private and public keys
-		privKeyPem, pubKeyPem, err := genPrivAndPublicKeysPEM()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		// Ask IAM server to exchange our tenant token with a certificate using this public key
-		cliCert, err := fnapi.ExchangeTenantTokenForClientCert(ctx, string(pubKeyPem))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		return privKeyPem, []byte(cliCert.ClientCertificatePem), nil
+		return fnapi.IssueTenantClientCertFromToken(ctx, tok, string(pubKeyPem))
 	}
 }
 
