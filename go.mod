@@ -36,7 +36,7 @@ require (
 	github.com/containerd/containerd v1.7.20
 	github.com/containerd/nerdctl v1.2.1
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1
-	github.com/creack/pty v1.1.21
+	github.com/creack/pty v1.1.23
 	github.com/docker/buildx v0.16.2
 	github.com/docker/cli v27.1.0+incompatible
 	github.com/docker/docker v27.1.2+incompatible
