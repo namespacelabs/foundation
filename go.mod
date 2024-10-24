@@ -126,7 +126,7 @@ require (
 	golang.org/x/oauth2 v0.21.0
 	golang.org/x/sync v0.8.0
 	golang.org/x/sys v0.25.0
-	golang.org/x/term v0.23.0
+	golang.org/x/term v0.24.0
 	google.golang.org/api v0.169.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240701130421-f6361c86f094
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
