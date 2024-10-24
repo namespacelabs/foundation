@@ -194,7 +194,7 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 			doCopy := maps.Clone(driverOpts)
 			doCopy["cacert"] = bc.serverCAPath
 
-			if err := ng.Update(bc.serverConfig.GetShape().GetMachineArch(), "tcp://"+bc.serverConfig.GetBuildkitEndpoint()+":443", platforms, true, true, nil, "", doCopy); err != nil {
+			if err := ng.Update(bc.serverConfig.GetShape().GetMachineArch(), getEndpoint(bc.serverConfig), platforms, true, true, nil, "", doCopy); err != nil {
 				return err
 			}
 		}
@@ -216,4 +216,12 @@ func wireRemoteBuildxProxy(dockerCli *command.DockerCli, name string, use, defau
 
 		return nil
 	})
+}
+
+func getEndpoint(builderConfig *builderv1beta.GetBuilderConfigurationResponse) string {
+	if builderConfig.GetFullBuildkitEndpoint() != "" {
+		return builderConfig.GetFullBuildkitEndpoint()
+	}
+
+	return "tcp://" + builderConfig.GetBuildkitEndpoint() + ":443"
 }

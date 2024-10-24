@@ -5,8 +5,8 @@ go 1.22.4
 toolchain go1.22.6
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.4.0-20240913063847-c2eef2142e48.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.34.2-20240913063847-c2eef2142e48.2
+	buf.build/gen/go/namespace/cloud/grpc/go v1.4.0-20241024100053-9328c9dbe3c7.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.34.2-20241024100053-9328c9dbe3c7.2
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.4.3
