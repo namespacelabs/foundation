@@ -170,3 +170,35 @@ func maybeCollectError(span trace.Span, err error) {
 		span.SetStatus(codes.Error, s.Message())
 	}
 }
+
+func tracer(ctx context.Context) trace.Tracer {
+	return trace.SpanFromContext(ctx).TracerProvider().Tracer("namespacelabs.dev/foundation/framework/tracing")
+}
+
+func Collect0C(ctx context.Context, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
+	return Collect0(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func Collect1C[T any](ctx context.Context, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
+	return Collect1(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func Collect2C[T any, R any](ctx context.Context, name Collected, callback func(context.Context) (T, R, error), opts ...trace.SpanStartOption) (T, R, error) {
+	return Collect2(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func CollectAndLog0C(ctx context.Context, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
+	return CollectAndLog0(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func CollectAndLog1C[T any](ctx context.Context, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
+	return CollectAndLog1(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func CollectAndLogDuration0C(ctx context.Context, name Collected, callback func(context.Context) error, opts ...trace.SpanStartOption) error {
+	return CollectAndLogDuration0(ctx, tracer(ctx), name, callback, opts...)
+}
+
+func CollectAndLogDuration1C[T any](ctx context.Context, name Collected, callback func(context.Context) (T, error), opts ...trace.SpanStartOption) (T, error) {
+	return CollectAndLogDuration1(ctx, tracer(ctx), name, callback, opts...)
+}
