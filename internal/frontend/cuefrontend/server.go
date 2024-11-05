@@ -66,6 +66,7 @@ type cueServiceSpec struct {
 	Metadata                       cueServiceSpecMetadata   `json:"metadata"`
 	Internal                       bool                     `json:"internal"`
 	ExperimentalAdditionalMetadata []cueServiceSpecMetadata `json:"experimentalAdditionalMetadata"` // To consolidate with Metadata.
+	Headless                       bool                     `json:"headless"`                       // Kubernertes headless service, e.g. clusterIP=None.
 }
 
 type cueServiceSpecMetadata struct {
@@ -277,6 +278,7 @@ func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) 
 			Protocol: svc.Metadata.Protocol,
 		}},
 		Internal: svc.Internal,
+		Headless: svc.Headless,
 	}
 
 	for _, add := range svc.ExperimentalAdditionalMetadata {

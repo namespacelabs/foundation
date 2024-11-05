@@ -1180,6 +1180,10 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 		serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)
 	}
 
+	if endpoint.Headless {
+		serviceSpec.WithClusterIP("None")
+	}
+
 	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
 	if err != nil {
 		return err

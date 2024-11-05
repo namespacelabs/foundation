@@ -227,6 +227,7 @@ func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *sc
 		ServiceLabel:       spec.GetLabel(),
 		ServiceMetadata:    spec.Metadata,
 		IngressProvider:    spec.IngressProvider,
+		Headless:           spec.Headless,
 	}
 
 	ingressSpec := &schema.Endpoint_IngressSpec{}
