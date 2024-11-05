@@ -534,17 +534,15 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
 			}
 
-			if pv.Template {
-				if deployable.Class != schema.DeployableClass_STATEFUL {
-					return fnerrors.InternalError("volume %q is a template, but the server is not stateful", volume.Name)
-				}
+			if pv.Template && deployable.Class != schema.DeployableClass_STATEFUL {
+				return fnerrors.InternalError("volume %q is a template, but the server is not stateful", volume.Name)
 			}
 
 			if pv.Id == "" {
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, annotations)
+			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, pv.StorageClass, annotations)
 			if err != nil {
 				return err
 			}

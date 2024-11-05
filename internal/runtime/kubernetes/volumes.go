@@ -22,7 +22,7 @@ type volumeDef struct {
 	isWorkspaceSync bool
 }
 
-func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, template bool, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, *applycorev1.PersistentVolumeClaimApplyConfiguration, error) {
+func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Location, owner, name, persistentId string, sizeBytes uint64, template bool, storageClass string, annotations map[string]string) (*applycorev1.VolumeApplyConfiguration, *applycorev1.PersistentVolumeClaimApplyConfiguration, error) {
 	if sizeBytes >= math.MaxInt64 {
 		return nil, nil, fnerrors.NewWithLocation(loc, "requiredstorage value too high (maximum is %d)", math.MaxInt64)
 	}
@@ -37,14 +37,20 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 			WithEmptyDir(applycorev1.EmptyDirVolumeSource().
 				WithSizeLimit(*quantity)), nil, nil
 	} else if template {
-		return nil, applycorev1.PersistentVolumeClaim(name, ns).
+		pvc := applycorev1.PersistentVolumeClaim(name, ns).
 			WithLabels(kubedef.ManagedByUs()).
 			WithAnnotations(annotations).
 			WithSpec(applycorev1.PersistentVolumeClaimSpec().
 				WithAccessModes(corev1.ReadWriteOnce).
 				WithResources(applycorev1.VolumeResourceRequirements().WithRequests(corev1.ResourceList{
 					corev1.ResourceStorage: *quantity,
-				}))), nil
+				})))
+
+		if storageClass != "" {
+			pvc.Spec.WithStorageClassName(storageClass)
+		}
+
+		return nil, pvc, nil
 	} else {
 		v := applycorev1.Volume().
 			WithName(name).
@@ -59,7 +65,11 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 				WithAccessModes(corev1.ReadWriteOnce).
 				WithResources(applycorev1.VolumeResourceRequirements().WithRequests(corev1.ResourceList{
 					corev1.ResourceStorage: *quantity,
-				})))
+				})),
+			)
+		if storageClass != "" {
+			pvc.Spec.WithStorageClassName(storageClass)
+		}
 
 		return v, pvc, nil
 	}
