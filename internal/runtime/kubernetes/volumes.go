@@ -47,7 +47,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 				})))
 
 		if storageClass != "" {
-			pvc.Spec.WithStorageClassName(storageClass)
+			pvc.Spec = pvc.Spec.WithStorageClassName(storageClass)
 		}
 
 		return nil, pvc, nil
@@ -68,7 +68,7 @@ func makePersistentVolume(ns string, env *schema.Environment, loc fnerrors.Locat
 				})),
 			)
 		if storageClass != "" {
-			pvc.Spec.WithStorageClassName(storageClass)
+			pvc.Spec = pvc.Spec.WithStorageClassName(storageClass)
 		}
 
 		return v, pvc, nil

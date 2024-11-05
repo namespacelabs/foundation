@@ -1005,6 +1005,13 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				})
 			}
 
+			for _, ep := range deployable.Endpoints {
+				if ep.Headless {
+					statefulSet.Spec = statefulSet.Spec.WithServiceName(ep.AllocatedName)
+					break
+				}
+			}
+
 			ensure.Resource = statefulSet
 
 		case schema.DeployableClass_DAEMONSET:
