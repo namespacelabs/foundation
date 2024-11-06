@@ -228,21 +228,24 @@ func TrustAWSCognitoJWT(ctx context.Context, tenantID, identityPool, identityPro
 	}.Do(ctx, req, ResolveIAMEndpoint, nil)
 }
 
-func ExchangeTenantTokenForClientCert(ctx context.Context, publicKey string) (ExchangeTenantTokenForClientCertResponse, error) {
+func IssueTenantClientCertFromToken(ctx context.Context, token Token, publicKey string) (string, error) {
 	var res ExchangeTenantTokenForClientCertResponse
 	req := ExchangeTenantTokenForClientCertRequest{
 		PublicKeyPem: publicKey,
 	}
 
 	if err := (Call[ExchangeTenantTokenForClientCertRequest]{
-		Method:           "nsl.tenants.TenantsService/ExchangeTenantTokenForClientCert",
-		IssueBearerToken: IssueBearerToken,
-		Retryable:        true,
+		Method: "nsl.tenants.TenantsService/ExchangeTenantTokenForClientCert",
+		IssueBearerToken: func(ctx context.Context) (ResolvedToken, error) {
+			return IssueBearerTokenFromToken(ctx, token)
+		},
+
+		Retryable: true,
 	}).Do(ctx, req, ResolveIAMEndpoint, DecodeJSONResponse(&res)); err != nil {
-		return res, err
+		return "", err
 	}
 
-	return res, nil
+	return res.ClientCertificatePem, nil
 }
 
 type GetTenantResponse struct {

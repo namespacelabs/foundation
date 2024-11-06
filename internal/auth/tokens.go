@@ -171,6 +171,16 @@ func (t *Token) IssueToken(ctx context.Context, minDur time.Duration, issueShort
 	return t.BearerToken, nil
 }
 
+type IssueCertFunc func(context.Context, string, string) (string, error)
+
+func (t *Token) ExchangeForSessionClientCert(ctx context.Context, publicKeyPem string, issueFromSession IssueCertFunc) (string, error) {
+	if t.SessionToken == "" {
+		return "", fnerrors.New("ExchangeForSessionClientCert called on a token which is not a session token")
+	}
+
+	return issueFromSession(ctx, t.SessionToken, publicKeyPem)
+}
+
 func StoreTenantToken(token string) error {
 	return StoreToken(Token{BearerToken: token})
 }
