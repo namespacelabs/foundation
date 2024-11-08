@@ -101,7 +101,7 @@ func newSetupBuildxCmd() *cobra.Command {
 			return err
 		}
 
-		available, err := determineAvailable(ctx)
+		available, serverSideProxyDefault, err := determineAvailable(ctx)
 		if err != nil {
 			return err
 		}
@@ -117,8 +117,14 @@ func newSetupBuildxCmd() *cobra.Command {
 
 		// NSL-3935 use remote-side buildx proxy
 		// This will be soon the default
-		if *useServerSideProxy {
-			return setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup)
+		if serverSideProxyDefault || *useServerSideProxy {
+			if err := setupServerSideBuildxProxy(ctx, state, *name, *use, *defaultLoad, dockerCli, available, *createAtStartup); err != nil {
+				return err
+			}
+
+			// Print info message.
+			console.SetStickyContent(ctx, "build", banner(ctx, *name, *use, available, true, true))
+			return nil
 		}
 
 		fmt.Fprintf(console.Debug(ctx), "Using state path %q\n", state)
@@ -258,7 +264,7 @@ func newSetupBuildxCmd() *cobra.Command {
 		}
 
 		// Print info message even if proxy goes in background
-		console.SetStickyContent(ctx, "build", banner(ctx, *name, *use, available, *background))
+		console.SetStickyContent(ctx, "build", banner(ctx, *name, *use, available, *background, false))
 
 		if *background {
 			return nil
@@ -561,10 +567,10 @@ func newWireBuildxCommand(hidden bool) *cobra.Command {
 	return cmd
 }
 
-func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
+func determineAvailable(ctx context.Context) ([]api.BuildPlatform, bool, error) {
 	profile, err := api.GetProfile(ctx, api.Methods)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	avail := make([]api.BuildPlatform, len(profile.ClusterPlatform))
@@ -572,10 +578,10 @@ func determineAvailable(ctx context.Context) ([]api.BuildPlatform, error) {
 		avail[k] = api.BuildPlatform(x)
 	}
 
-	return avail, nil
+	return avail, profile.BuildxServerSideProxyDefaultHint, nil
 }
 
-func banner(ctx context.Context, name string, use bool, native []api.BuildPlatform, background bool) string {
+func banner(ctx context.Context, name string, use bool, native []api.BuildPlatform, background, serverSideProxy bool) string {
 	w := wordwrap.NewWriter(80)
 	style := colors.Ctx(ctx)
 
@@ -600,8 +606,13 @@ func banner(ctx context.Context, name string, use bool, native []api.BuildPlatfo
 		fmt.Fprintf(w, "\nStart building:\n")
 		fmt.Fprintf(w, "\n  docker buildx build ...\n")
 
-		fmt.Fprintf(w, "\nYour remote builder context is running in the background. You can always clean it up with:\n")
-		fmt.Fprintf(w, "\n  nsc docker buildx cleanup \n")
+		if serverSideProxy {
+			fmt.Fprintf(w, "\nYou can remove the configuration with:\n")
+			fmt.Fprintf(w, "\n  nsc docker buildx cleanup \n")
+		} else {
+			fmt.Fprintf(w, "\nYour remote builder context is running in the background. You can always clean it up with:\n")
+			fmt.Fprintf(w, "\n  nsc docker buildx cleanup \n")
+		}
 	}
 
 	_ = w.Close()
