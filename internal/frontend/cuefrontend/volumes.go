@@ -71,9 +71,10 @@ type cueEphemeralVolume struct {
 }
 
 type cuePersistentVolume struct {
-	Id       string `json:"id"`
-	Size     string `json:"size"`
-	Template bool   `json:"template"`
+	Id           string `json:"id"`
+	Size         string `json:"size"`
+	Template     bool   `json:"template"`
+	StorageClass string `json:"storage_class"`
 }
 
 type cueWorkspaceSyncVolume struct {
@@ -149,9 +150,10 @@ func parseVolume(ctx context.Context, pl parsing.EarlyPackageLoader, loc pkggrap
 			return nil, fnerrors.NewWithLocation(loc, "failed to parse value: %w", err)
 		}
 		definition = &schema.PersistentVolume{
-			Id:        bits.Id,
-			SizeBytes: uint64(sizeBytes),
-			Template:  bits.Template,
+			Id:           bits.Id,
+			SizeBytes:    uint64(sizeBytes),
+			Template:     bits.Template,
+			StorageClass: bits.StorageClass,
 		}
 
 	case constants.VolumeKindHostPath:

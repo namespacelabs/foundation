@@ -13,7 +13,7 @@ import "google/protobuf/descriptor.proto";
 import "schema/domain.proto";
 import "schema/package.proto";
 
-// Next ID: 16
+// Next ID: 17
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
@@ -32,6 +32,7 @@ message Endpoint {
     Port             deprecated_port          = 5;
     int32            deprecated_exported_port = 13;
     repeated PortMap ports                    = 15;
+    bool             headless                 = 16;
 
     string                   allocated_name       = 6;
     string                   fully_qualified_name = 14;

@@ -20,8 +20,8 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-// Needs to be consistent with JSON names of cueResourceClass fields.
-var serviceFields = []string{"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol"}
+// Needs to be consistent with JSON names of cueService fields.
+var serviceFields = []string{"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol", "headless"}
 
 type cueService struct {
 	Kind         string           `json:"kind"`
@@ -31,6 +31,7 @@ type cueService struct {
 	Protocol     string           `json:"protocol"`
 	Ports        []cueServicePort `json:"ports,omitempty"`
 	Ingress      cueIngress       `json:"ingress"`
+	Headless     bool             `json:"headless"` // Kubernertes headless service, e.g. clusterIP=None.
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -177,6 +178,7 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 	parsed := &schema.Server_ServiceSpec{
 		Name:         name,
 		EndpointType: endpointType,
+		Headless:     svc.Headless,
 	}
 
 	for k, p := range svc.Ports {

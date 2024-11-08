@@ -534,17 +534,15 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				return fnerrors.InternalError("%s: failed to unmarshal persistent volume definition: %w", volume.Name, err)
 			}
 
-			if pv.Template {
-				if deployable.Class != schema.DeployableClass_STATEFUL {
-					return fnerrors.InternalError("volume %q is a template, but the server is not stateful", volume.Name)
-				}
+			if pv.Template && deployable.Class != schema.DeployableClass_STATEFUL {
+				return fnerrors.InternalError("volume %q is a template, but the server is not stateful", volume.Name)
 			}
 
 			if pv.Id == "" {
 				return fnerrors.BadInputError("%s: persistent ID is missing", volume.Name)
 			}
 
-			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, annotations)
+			v, pvc, err := makePersistentVolume(target.namespace, target.env, deployable.ErrorLocation, volume.Owner, name, pv.Id, pv.SizeBytes, pv.Template, pv.StorageClass, annotations)
 			if err != nil {
 				return err
 			}
@@ -1007,6 +1005,13 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 				})
 			}
 
+			for _, ep := range deployable.Endpoints {
+				if ep.Headless {
+					statefulSet.Spec = statefulSet.Spec.WithServiceName(ep.AllocatedName)
+					break
+				}
+			}
+
 			ensure.Resource = statefulSet
 
 		case schema.DeployableClass_DAEMONSET:
@@ -1180,6 +1185,10 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 
 	if endpoint.Type == schema.Endpoint_LOAD_BALANCER {
 		serviceSpec = serviceSpec.WithType(corev1.ServiceTypeLoadBalancer)
+	}
+
+	if endpoint.Headless {
+		serviceSpec.WithClusterIP("None")
 	}
 
 	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
