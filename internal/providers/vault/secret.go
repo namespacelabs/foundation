@@ -45,7 +45,7 @@ func secretProvider(ctx context.Context, conf cfg.Configuration, secretId secret
 
 			secretResp, err := vaultClient.Secrets.KvV2Read(ctx, secretPath, vaultclient.WithMountPath(secretMount))
 			if err != nil {
-				return nil, fnerrors.InvocationError("vault", "failed to read a secret")
+				return nil, fnerrors.InvocationError("vault", "failed to read a secret: %w", err)
 			}
 
 			if secretResp.Data.Data == nil {
