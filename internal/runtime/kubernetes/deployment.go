@@ -1191,6 +1191,13 @@ func deployEndpoint(ctx context.Context, r BoundNamespace, deployable runtime.De
 		serviceSpec.WithClusterIP("None")
 	}
 
+	switch endpoint.ExternalTrafficPolicy {
+	case schema.Endpoint_LOCAL:
+		serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyLocal)
+	case schema.Endpoint_CLUSTER:
+		serviceSpec.WithExternalTrafficPolicy(corev1.ServiceExternalTrafficPolicyCluster)
+	}
+
 	serviceAnnotations, err := kubedef.MakeServiceAnnotations(endpoint)
 	if err != nil {
 		return err

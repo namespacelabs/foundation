@@ -67,6 +67,7 @@ type cueServiceSpec struct {
 	Internal                       bool                     `json:"internal"`
 	ExperimentalAdditionalMetadata []cueServiceSpecMetadata `json:"experimentalAdditionalMetadata"` // To consolidate with Metadata.
 	Headless                       bool                     `json:"headless"`                       // Kubernertes headless service, e.g. clusterIP=None.
+	ExternalTrafficPolicy          string                   `json:"externalTrafficPolicy"`
 }
 
 type cueServiceSpecMetadata struct {
@@ -279,6 +280,16 @@ func parseService(loc pkggraph.Location, kind, name string, svc cueServiceSpec) 
 		}},
 		Internal: svc.Internal,
 		Headless: svc.Headless,
+	}
+	if svc.ExternalTrafficPolicy != "" {
+		switch svc.ExternalTrafficPolicy {
+		case "local":
+			parsed.ExternalTrafficPolicy = schema.Endpoint_LOCAL
+		case "cluster":
+			parsed.ExternalTrafficPolicy = schema.Endpoint_CLUSTER
+		default:
+			return nil, fnerrors.New("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
+		}
 	}
 
 	for _, add := range svc.ExperimentalAdditionalMetadata {

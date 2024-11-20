@@ -218,16 +218,17 @@ func ServiceSpecToEndpoint(planner runtime.Planner, srv *schema.Server, spec *sc
 	short, fqdn := planner.MakeServiceName(fmt.Sprintf("%s-%s", spec.GetName(), srv.Id))
 
 	endpoint := &schema.Endpoint{
-		ServiceName:        spec.GetName(),
-		ServerOwner:        srv.GetPackageName(),
-		EndpointOwner:      srv.GetPackageName(),
-		Type:               t,
-		AllocatedName:      short,
-		FullyQualifiedName: fqdn,
-		ServiceLabel:       spec.GetLabel(),
-		ServiceMetadata:    spec.Metadata,
-		IngressProvider:    spec.IngressProvider,
-		Headless:           spec.Headless,
+		ServiceName:           spec.GetName(),
+		ServerOwner:           srv.GetPackageName(),
+		EndpointOwner:         srv.GetPackageName(),
+		Type:                  t,
+		AllocatedName:         short,
+		FullyQualifiedName:    fqdn,
+		ServiceLabel:          spec.GetLabel(),
+		ServiceMetadata:       spec.Metadata,
+		IngressProvider:       spec.IngressProvider,
+		Headless:              spec.GetHeadless(),
+		ExternalTrafficPolicy: spec.GetExternalTrafficPolicy(),
 	}
 
 	ingressSpec := &schema.Endpoint_IngressSpec{}

@@ -101,6 +101,8 @@ message Server {
         repeated DomainSpec       ingress_domain      = 10;  // Only has a meaning if this is an ingress.
         ServiceAnnotations        ingress_annotations = 11;
         bool                      headless            = 13;
+
+        Endpoint.ServiceTrafficPolicy external_traffic_policy = 14;
     }
 
     message URLMapEntry {
