@@ -13,13 +13,18 @@ import "google/protobuf/descriptor.proto";
 import "schema/domain.proto";
 import "schema/package.proto";
 
-// Next ID: 17
+// Next ID: 18
 message Endpoint {
     enum Type {
         INGRESS_UNSPECIFIED = 0;  // Defaults to PRIVATE in services.
         PRIVATE             = 1;
         INTERNET_FACING     = 2;  // With an ingress frontend.
         LOAD_BALANCER       = 3;  // Public facing load-balancer.
+    }
+    enum ServiceTrafficPolicy {
+        UNSPECIFIED = 0;
+        LOCAL       = 1;
+        CLUSTER     = 2;
     }
 
     Type type = 1;
@@ -29,12 +34,13 @@ message Endpoint {
     string service_name   = 3;
     string endpoint_owner = 4;  // Package name.
 
-    Port             deprecated_port          = 5;
-    int32            deprecated_exported_port = 13;
-    repeated PortMap ports                    = 15;
-    bool             headless                 = 16;
+    Port                 deprecated_port          = 5;
+    int32                deprecated_exported_port = 13;
+    repeated PortMap     ports                    = 15;
+    bool                 headless                 = 16;
+    ServiceTrafficPolicy external_traffic_policy  = 17;
+    string               allocated_name           = 6;
 
-    string                   allocated_name       = 6;
     string                   fully_qualified_name = 14;
     string                   server_owner         = 7;  // Package name.
     repeated ServiceMetadata service_metadata     = 8;

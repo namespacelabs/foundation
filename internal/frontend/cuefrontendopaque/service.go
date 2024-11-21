@@ -21,17 +21,21 @@ import (
 )
 
 // Needs to be consistent with JSON names of cueService fields.
-var serviceFields = []string{"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol", "headless"}
+var serviceFields = []string{
+	"kind", "port", "ports", "exportedPort", "hostPort", "ingress", "annotations", "probe", "probes", "protocol",
+	"headless", "externalTrafficPolicy",
+}
 
 type cueService struct {
-	Kind         string           `json:"kind"`
-	Port         int32            `json:"port"`
-	ExportedPort int32            `json:"exportedPort"`
-	HostPort     int32            `json:"hostPort"`
-	Protocol     string           `json:"protocol"`
-	Ports        []cueServicePort `json:"ports,omitempty"`
-	Ingress      cueIngress       `json:"ingress"`
-	Headless     bool             `json:"headless"` // Kubernertes headless service, e.g. clusterIP=None.
+	Kind                  string           `json:"kind"`
+	Port                  int32            `json:"port"`
+	ExportedPort          int32            `json:"exportedPort"`
+	HostPort              int32            `json:"hostPort"`
+	Protocol              string           `json:"protocol"`
+	Ports                 []cueServicePort `json:"ports,omitempty"`
+	Ingress               cueIngress       `json:"ingress"`
+	Headless              bool             `json:"headless"` // Kubernertes headless service, e.g. clusterIP=None.
+	ExternalTrafficPolicy string           `json:"externalTrafficPolicy"`
 
 	Annotations map[string]string `json:"annotations,omitempty"`
 
@@ -179,6 +183,17 @@ func parseService(ctx context.Context, pl pkggraph.PackageLoader, loc pkggraph.L
 		Name:         name,
 		EndpointType: endpointType,
 		Headless:     svc.Headless,
+	}
+
+	if svc.ExternalTrafficPolicy != "" {
+		switch svc.ExternalTrafficPolicy {
+		case "local":
+			parsed.ExternalTrafficPolicy = schema.Endpoint_LOCAL
+		case "cluster":
+			parsed.ExternalTrafficPolicy = schema.Endpoint_CLUSTER
+		default:
+			return nil, nil, fnerrors.New("unsupported external traffic policy %q", svc.ExternalTrafficPolicy)
+		}
 	}
 
 	for k, p := range svc.Ports {
