@@ -30,7 +30,7 @@ type certificateRequest struct {
 	excludeCnFromSans bool
 }
 
-func certificateProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.Certificate) ([]byte, error) {
+func certificateProvider(ctx context.Context, conf cfg.Configuration, _ *secrets.SecretLoadRequest, cfg *vault.Certificate) ([]byte, error) {
 	vaultConfig, ok := GetVaultConfig(conf)
 	if !ok || vaultConfig == nil {
 		return nil, fnerrors.BadInputError("invalid certificate provider: missing vault configuration")

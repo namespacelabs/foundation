@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
-func appRoleProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.AppRole) ([]byte, error) {
+func appRoleProvider(ctx context.Context, conf cfg.Configuration, _ *secrets.SecretLoadRequest, cfg *vault.AppRole) ([]byte, error) {
 	vaultConfig, ok := GetVaultConfig(conf)
 	if !ok || vaultConfig == nil {
 		return nil, fnerrors.BadInputError("invalid vault app role configuration: missing provider configuration")

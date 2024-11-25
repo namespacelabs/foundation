@@ -37,7 +37,7 @@ func SetupFlags(flags *pflag.FlagSet) {
 func Register() {
 	p := &provider{}
 
-	combined.RegisterSecretsProvider(func(ctx context.Context, _ cfg.Configuration, _ secrets.SecretIdentifier, cfg *onepassword.Secret) ([]byte, error) {
+	combined.RegisterSecretsProvider(func(ctx context.Context, _ cfg.Configuration, _ *secrets.SecretLoadRequest, cfg *onepassword.Secret) ([]byte, error) {
 		if cfg.SecretReference == "" {
 			return nil, fnerrors.BadInputError("invalid 1Password secret configuration: missing field secret_reference")
 		}

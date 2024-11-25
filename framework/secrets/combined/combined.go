@@ -19,20 +19,20 @@ import (
 	"namespacelabs.dev/foundation/std/pkggraph"
 )
 
-var secretProviders = map[string]func(context.Context, cfg.Configuration, secrets.SecretIdentifier, *anypb.Any) ([]byte, error){}
+var secretProviders = map[string]func(context.Context, cfg.Configuration, *secrets.SecretLoadRequest, *anypb.Any) ([]byte, error){}
 
 type SecretProvider[V proto.Message] interface {
 	Load(context.Context, V) ([]byte, error)
 }
 
-func RegisterSecretsProvider[V proto.Message](handle func(context.Context, cfg.Configuration, secrets.SecretIdentifier, V) ([]byte, error), aliases ...string) {
-	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, input *anypb.Any) ([]byte, error) {
+func RegisterSecretsProvider[V proto.Message](handle func(context.Context, cfg.Configuration, *secrets.SecretLoadRequest, V) ([]byte, error), aliases ...string) {
+	secretProviders[protos.TypeUrl[V]()] = func(ctx context.Context, conf cfg.Configuration, req *secrets.SecretLoadRequest, input *anypb.Any) ([]byte, error) {
 		msg := protos.NewFromType[V]()
 		if err := input.UnmarshalTo(msg); err != nil {
 			return nil, err
 		}
 
-		return handle(ctx, conf, secretId, msg)
+		return handle(ctx, conf, req, msg)
 	}
 }
 
@@ -53,8 +53,8 @@ type resultPair struct {
 }
 
 type loadingSecret struct {
-	id   secrets.SecretIdentifier
-	load func(context.Context, cfg.Configuration, secrets.SecretIdentifier, *anypb.Any) ([]byte, error)
+	req  *secrets.SecretLoadRequest
+	load func(context.Context, cfg.Configuration, *secrets.SecretLoadRequest, *anypb.Any) ([]byte, error)
 	cfg  *anypb.Any
 	cs   *combinedSecrets
 
@@ -90,7 +90,7 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 
 func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleResolver, req *secrets.SecretLoadRequest) (*schema.SecretResult, error) {
 	cs.mu.RLock()
-	value := cs.loaded[req.GetSecretIdentifier().String()]
+	value := cs.loaded[req.String()]
 	cs.mu.RUnlock()
 	if value != nil {
 		return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
@@ -103,21 +103,25 @@ func (cs *combinedSecrets) Load(ctx context.Context, modules pkggraph.ModuleReso
 		}
 
 		cs.mu.Lock()
-		loading := cs.loading[req.GetSecretIdentifier().String()]
+		loading := cs.loading[req.String()]
 		if loading == nil {
 			loading = &loadingSecret{
-				id:   req.GetSecretIdentifier(),
+				req:  req,
 				load: p,
 				cfg:  b.Configuration,
 				cs:   cs,
 			}
-			cs.loading[req.GetSecretIdentifier().String()] = loading
+			cs.loading[req.String()] = loading
 		}
 		cs.mu.Unlock()
 
 		value, err := loading.Get(ctx)
 		if err != nil {
 			return nil, err
+		}
+
+		if value == nil {
+			return nil, nil
 		}
 
 		return &schema.SecretResult{Value: value, FileContents: &schema.FileContents{Contents: value}}, nil
@@ -130,7 +134,7 @@ func (cs *combinedSecrets) MissingError(missing *schema.PackageRef, missingSpec 
 	return cs.local.MissingError(missing, missingSpec, missingServer)
 }
 
-func (cs *combinedSecrets) complete(id secrets.SecretIdentifier, res []byte) {
+func (cs *combinedSecrets) complete(id *secrets.SecretLoadRequest, res []byte) {
 	cs.mu.Lock()
 	cs.loaded[id.String()] = res
 	cs.mu.Unlock()
@@ -169,14 +173,14 @@ func (l *loadingSecret) Get(ctx context.Context) ([]byte, error) {
 
 	l.mu.Unlock()
 	var res resultPair
-	res.value, res.err = l.load(ctx, l.cs.envConf, l.id, l.cfg)
+	res.value, res.err = l.load(ctx, l.cs.envConf, l.req, l.cfg)
 	l.mu.Lock()
 
 	l.done = true
 	l.result = res
 
 	if res.err == nil {
-		l.cs.complete(l.id, res.value)
+		l.cs.complete(l.req, res.value)
 	}
 
 	waiters := l.waiters
