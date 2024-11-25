@@ -72,11 +72,19 @@ func NewCombinedSecrets(env cfg.Context) (secrets.SecretsSource, error) {
 	}
 
 	bindings := map[string]*schema.Workspace_SecretBinding{}
-
+	overwrites := map[string]*schema.Workspace_SecretBinding{}
 	for _, sb := range env.Workspace().Proto().SecretBinding {
-		if sb.Environment == "" || sb.Environment == env.Environment().Name {
+		if sb.Environment == "" {
 			bindings[sb.PackageRef.Canonical()] = sb
 		}
+
+		if sb.Environment == env.Environment().Name {
+			overwrites[sb.PackageRef.Canonical()] = sb
+		}
+	}
+
+	for key, val := range overwrites {
+		bindings[key] = val
 	}
 
 	return &combinedSecrets{
