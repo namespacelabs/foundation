@@ -20,38 +20,21 @@ type SecretsSource interface {
 type SecretLoadRequest struct {
 	SecretRef *schema.PackageRef
 	Server    *ServerRef
+	Optional  bool
 }
 
-func (s SecretLoadRequest) GetSecretIdentifier() SecretIdentifier {
+func (s SecretLoadRequest) String() string {
 	if s.Server != nil {
-		return SecretIdentifier{
-			ServerRef: s.Server,
-			SecretRef: s.SecretRef.Canonical(),
-		}
+		return fmt.Sprintf("%s:%s:%v", s.Server.PackageName, s.SecretRef.Canonical(), s.Optional)
 	}
 
-	return SecretIdentifier{
-		SecretRef: s.SecretRef.Canonical(),
-	}
+	return fmt.Sprintf("%s:%v", s.SecretRef.Canonical(), s.Optional)
 }
 
 type ServerRef struct {
 	PackageName schema.PackageName
 	ModuleName  string
 	RelPath     string // Relative path within the module.
-}
-
-type SecretIdentifier struct {
-	ServerRef *ServerRef
-	SecretRef string
-}
-
-func (s SecretIdentifier) String() string {
-	if s.ServerRef != nil {
-		return fmt.Sprintf("%s%s", s.ServerRef.PackageName, s.SecretRef)
-	}
-
-	return s.SecretRef
 }
 
 type GroundedSecrets interface {

@@ -51,7 +51,11 @@ func (gs groundedSecrets) Get(ctx context.Context, ref *schema.PackageRef) (*sch
 	}
 
 	if gsec.Spec.Generate == nil {
-		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{SecretRef: ref, Server: gs.server})
+		value, err := gs.source.Load(ctx, gs.sealedCtx, &secrets.SecretLoadRequest{
+			SecretRef: ref,
+			Server:    gs.server,
+			Optional:  gsec.Spec.DefaultValue != nil,
+		})
 		if err != nil {
 			return nil, err
 		}

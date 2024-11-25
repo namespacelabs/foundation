@@ -23,7 +23,7 @@ import (
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
-func certificateAuthorityProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.CertificateAuthority) ([]byte, error) {
+func certificateAuthorityProvider(ctx context.Context, conf cfg.Configuration, _ *secrets.SecretLoadRequest, cfg *vault.CertificateAuthority) ([]byte, error) {
 	vaultConfig, ok := GetVaultConfig(conf)
 	if !ok || vaultConfig == nil {
 		return nil, fnerrors.BadInputError("invalid vault configuration: missing provider configuration")

@@ -16,15 +16,19 @@ import (
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
-func secretProvider(ctx context.Context, conf cfg.Configuration, secretId secrets.SecretIdentifier, cfg *vault.Secret) ([]byte, error) {
+func secretProvider(ctx context.Context, conf cfg.Configuration, req *secrets.SecretLoadRequest, cfg *vault.Secret) ([]byte, error) {
 	vaultConfig, ok := GetVaultConfig(conf)
 	if !ok || vaultConfig == nil {
+		if req.Optional {
+			return nil, nil
+		}
+
 		return nil, fnerrors.BadInputError("invalid secrets provider configuration: missing vault configuration")
 	}
 
 	secretRef := cfg.GetSecretReference()
 	if secretRef == "" {
-		secretRef = secretId.SecretRef
+		secretRef = req.SecretRef.Canonical()
 	}
 
 	return tasks.Return(ctx, tasks.Action("vault.read-secret").Arg("ref", secretRef),
