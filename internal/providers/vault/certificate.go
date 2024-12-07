@@ -16,6 +16,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tryhard"
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
@@ -74,29 +75,31 @@ func certificateProvider(ctx context.Context, conf cfg.Configuration, _ *secrets
 func issueCertificate(ctx context.Context, vaultClient *vaultclient.Client, pkiMount, pkiRole string, req certificateRequest) ([]byte, error) {
 	return tasks.Return(ctx, tasks.Action("vault.issue-certificate").Arg("pki-mount", pkiMount).Arg("pki-role", pkiRole).Arg("common-name", req.commonName),
 		func(ctx context.Context) ([]byte, error) {
-			issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
-				schema.PkiIssueWithRoleRequest{
-					CommonName:        req.commonName,
-					AltNames:          strings.Join(req.sans, ","),
-					ExcludeCnFromSans: req.excludeCnFromSans,
-					IpSans:            req.ipSans,
-				},
-				vaultclient.WithMountPath(pkiMount),
-			)
-			if err != nil {
-				return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
-			}
+			return tryhard.CallSideEffectFree1(ctx, true, func(ctx context.Context) ([]byte, error) {
+				issueResp, err := vaultClient.Secrets.PkiIssueWithRole(ctx, pkiRole,
+					schema.PkiIssueWithRoleRequest{
+						CommonName:        req.commonName,
+						AltNames:          strings.Join(req.sans, ","),
+						ExcludeCnFromSans: req.excludeCnFromSans,
+						IpSans:            req.ipSans,
+					},
+					vaultclient.WithMountPath(pkiMount),
+				)
+				if err != nil {
+					return nil, fnerrors.InvocationError("vault", "failed to issue a certificate: %w", err)
+				}
 
-			data, err := vault.TlsBundle{
-				PrivateKeyPem:  issueResp.Data.PrivateKey,
-				CertificatePem: issueResp.Data.Certificate,
-				CaChainPem:     issueResp.Data.CaChain,
-			}.Encode()
-			if err != nil {
-				return nil, fnerrors.BadDataError("failed to serialize certificate data: %w", err)
-			}
+				data, err := vault.TlsBundle{
+					PrivateKeyPem:  issueResp.Data.PrivateKey,
+					CertificatePem: issueResp.Data.Certificate,
+					CaChainPem:     issueResp.Data.CaChain,
+				}.Encode()
+				if err != nil {
+					return nil, fnerrors.BadDataError("failed to serialize certificate data: %w", err)
+				}
 
-			return data, nil
+				return data, nil
+			})
 		},
 	)
 }
