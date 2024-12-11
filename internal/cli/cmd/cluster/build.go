@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	controllerapi "github.com/docker/buildx/controller/pb"
+	"github.com/docker/buildx/util/buildflags"
 	"github.com/docker/cli/cli/config"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -69,6 +71,7 @@ func NewBuildCmd() *cobra.Command {
 	platforms := cmd.Flags().StringSlice("platform", []string{}, "Set target platform for build.")
 	buildArg := cmd.Flags().StringSlice("build-arg", nil, "Pass build arguments to the build.")
 	names := cmd.Flags().StringSliceP("name", "n", nil, "Provide a list of name tags for the image in nscr.io Workspace registry")
+	secrets := cmd.Flags().StringArray("secret", nil, `Secret to expose to the build (format: "id=mysecret[,src=/local/secret]")`)
 
 	outputLocal := cmd.Flags().String("output-local", "", "If set, outputs the build results to the specified directory.")
 
@@ -110,6 +113,15 @@ func NewBuildCmd() *cobra.Command {
 			} else {
 				*platforms = []string{"linux/amd64"}
 			}
+		}
+
+		var parsedSecrets []*controllerapi.Secret
+		if len(*secrets) > 0 {
+			parsed, err := buildflags.ParseSecretSpecs(*secrets)
+			if err != nil {
+				return err
+			}
+			parsedSecrets = parsed
 		}
 
 		contextDir := "."
@@ -174,6 +186,7 @@ func NewBuildCmd() *cobra.Command {
 				ContextDir: contextDir,
 				Platform:   platformSpec,
 				BuildArgs:  buildArgs,
+				Secrets:    parsedSecrets,
 			}
 
 			if *dockerFile != "" {
@@ -339,6 +352,7 @@ type buildFragment struct {
 	BuildArgs  map[string]string
 	Platform   specs.Platform
 	Exports    []client.ExportEntry
+	Secrets    []*controllerapi.Secret
 }
 
 func startBuilds(ctx context.Context, contextDir string, fragments []buildFragment, makeClient func(context.Context, specs.Platform) (*client.Client, error)) ([]*client.SolveResponse, error) {
@@ -380,7 +394,8 @@ func startBuilds(ctx context.Context, contextDir string, fragments []buildFragme
 
 	results := make([]*client.SolveResponse, len(fragments))
 	for k, bf := range fragments {
-		k := k // Close k
+		k := k   // Close k
+		bf := bf // Close bf
 
 		startSingleBuild(eg, clients[k], mw, bf, func(sr *client.SolveResponse) error {
 			results[k] = sr
@@ -388,9 +403,14 @@ func startBuilds(ctx context.Context, contextDir string, fragments []buildFragme
 		})
 	}
 
-	eg.Go(func(_ context.Context) error {
-		<-pw.Done()
-		return pw.Err()
+	eg.Go(func(ctx context.Context) error {
+		select {
+		case <-pw.Done():
+			return pw.Err()
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	})
 
 	if err := eg.Wait(); err != nil {
@@ -414,6 +434,14 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 			Keychain:    keychain{},
 			Fallback:    authprovider.NewDockerAuthProvider(dockerConfig, nil).(auth.AuthServer),
 		})
+
+		if len(bf.Secrets) > 0 {
+			secrets, err := controllerapi.CreateSecrets(bf.Secrets)
+			if err != nil {
+				return err
+			}
+			attachable = append(attachable, secrets)
+		}
 
 		solveOpt := client.SolveOpt{
 			Exports: bf.Exports,
