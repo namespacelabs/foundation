@@ -13,7 +13,7 @@ require (
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.4.3
-	filippo.io/age v1.0.0
+	filippo.io/age v1.2.1
 	github.com/agext/levenshtein v1.2.3
 	github.com/andybalholm/brotli v1.0.4
 	github.com/aws/aws-sdk-go-v2 v1.30.3
@@ -124,7 +124,7 @@ require (
 	go.uber.org/zap v1.25.0
 	golang.org/x/crypto v0.31.0
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
-	golang.org/x/mod v0.17.0
+	golang.org/x/mod v0.18.0
 	golang.org/x/net v0.29.0
 	golang.org/x/oauth2 v0.23.0
 	golang.org/x/sync v0.10.0
@@ -355,7 +355,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
+	golang.org/x/tools v0.22.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
