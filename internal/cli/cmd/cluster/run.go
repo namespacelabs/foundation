@@ -334,13 +334,18 @@ func CreateContainerInstance(ctx context.Context, machineType string, duration t
 		return resp, nil
 	}
 
+	res, err := api.EnsureCluster(ctx, api.Methods, nil, target)
+	if err != nil {
+		return nil, err
+	}
+
 	return tasks.Return(ctx, tasks.Action("nscloud.start-containers").HumanReadablef("Starting containers"),
 		func(ctx context.Context) (*api.CreateContainersResponse, error) {
 			var response api.StartContainersResponse
 			if err := api.Methods.StartContainers.Do(ctx, api.StartContainersRequest{
 				Id:        target,
 				Container: []*api.ContainerRequest{container},
-			}, endpoint.ResolveRegionalEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			}, api.MaybeEndpoint(res.Cluster.ApiEndpoint), fnapi.DecodeJSONResponse(&response)); err != nil {
 				return nil, err
 			}
 
