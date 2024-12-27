@@ -4,9 +4,6 @@ go 1.22.4
 
 toolchain go1.22.6
 
-// Promote containerd locking fix https://github.com/containerd/containerd/pull/10867 ahead of release.
-replace github.com/containerd/containerd => github.com/namespacelabs/containerd v0.0.0-20241025155345-4caf2f9be1be
-
 require (
 	buf.build/gen/go/namespace/cloud/grpc/go v1.4.0-20241024100053-9328c9dbe3c7.2
 	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.34.2-20241024100053-9328c9dbe3c7.2
@@ -36,7 +33,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.6.0
 	github.com/compose-spec/compose-go v1.20.2
 	github.com/containerd/console v1.0.4
-	github.com/containerd/containerd v1.7.20
+	github.com/containerd/containerd v1.7.24
 	github.com/containerd/nerdctl v1.2.1
 	github.com/containerd/stargz-snapshotter/estargz v0.15.1
 	github.com/creack/pty v1.1.21
