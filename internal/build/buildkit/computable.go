@@ -27,7 +27,7 @@ const (
 var SkipExpectedMaxWorkspaceSizeCheck = false
 
 // XXX make this a flag instead. The assumption here is that in CI the filesystem is readonly.
-var PreDigestLocalInputs = environment.IsRunningInCI()
+var PreDigestLocalInputs = environment.IsRunningInCI() || !environment.DigestLocalInputs()
 
 type LocalContents struct {
 	Module build.Workspace
