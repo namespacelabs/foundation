@@ -9,3 +9,7 @@ import "os"
 func IsRunningInCI() bool {
 	return os.Getenv("CI") != ""
 }
+
+func DigestLocalInputs() bool {
+	return os.Getenv("DIGEST_LOCAL_INPUTS") == "true"
+}

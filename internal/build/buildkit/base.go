@@ -54,7 +54,7 @@ func (l *baseRequest[V]) Inputs() *compute.In {
 		for k, local := range l.localDirs {
 			in = in.
 				Computable(fmt.Sprintf("local%d:contents", k), memfs.DeferSnapshot(local.Module.ReadOnlyFS(local.Path), memfs.SnapshotOpts{
-					ExcludePatterns: local.ExcludePatterns,
+					ExcludePatterns: MakeLocalExcludes(local),
 				})).
 				Str(fmt.Sprintf("local%d:path", k), local.Path)
 		}
