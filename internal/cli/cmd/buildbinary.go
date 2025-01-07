@@ -38,7 +38,7 @@ import (
 
 func NewBuildBinaryCmd() *cobra.Command {
 	var (
-		baseRepository string
+		baseRepository []string
 		userTag        string
 		buildOpts      buildOpts
 		env            cfg.Context
@@ -54,7 +54,7 @@ func NewBuildBinaryCmd() *cobra.Command {
 		WithFlags(func(flags *pflag.FlagSet) {
 			flags.Var(build.BuildPlatformsVar{}, "build_platforms", "Allows the runtime to be instructed to build for a different set of platforms; by default we only build for the development host.")
 			flags.BoolVar(&buildOpts.publishToDocker, "docker", false, "If set to true, don't push to registries, but to local docker.")
-			flags.StringVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
+			flags.StringSliceVar(&baseRepository, "base_repository", baseRepository, "If set, overrides the registry we'll upload the images to.")
 			flags.BoolVar(&buildOpts.outputPrebuilts, "output_prebuilts", false, "If true, also outputs a prebuilt configuration which can be embedded in your workspace configuration.")
 			flags.StringVar(&buildOpts.outputPath, "output_to", "", "If set, a list of all binaries is emitted to the specified file.")
 			flags.StringVar(&userTag, "tag", "", "Which tag to attach to each of the built images.")
@@ -80,7 +80,11 @@ type buildOpts struct {
 
 const orchTool = "namespacelabs.dev/foundation/orchestration/server/tool"
 
-func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, userTag string, locs fncobra.Locations, baseRepository string, opts buildOpts) error {
+func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, userTag string, locs fncobra.Locations, baseRepository []string, opts buildOpts) error {
+	if opts.outputPrebuilts && len(baseRepository) == 0 {
+		return fnerrors.New("at least one repository has to be set when updating prebuilts")
+	}
+
 	pl := parsing.NewPackageLoader(env)
 
 	var pkglist schema.PackageList
@@ -142,14 +146,16 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 		}
 
 		for _, image := range resolvables {
-			var repository compute.Computable[oci.RepositoryWithParent]
-			for _, bp := range strings.Split(baseRepository, ",") {
-				if bp != "" {
-					repository = registry.StaticRepository(nil, filepath.Join(bp, pkg.PackageName().String()), oci.RegistryAccess{})
-				} else {
-					repository = reg.AllocateName(pkg.PackageName().String(), userTag)
-				}
+			var repositories []compute.Computable[oci.RepositoryWithParent]
+			for _, bp := range baseRepository {
+				repositories = append(repositories, registry.StaticRepository(nil, filepath.Join(bp, pkg.PackageName().String()), oci.RegistryAccess{}))
+			}
 
+			if len(repositories) == 0 {
+				repositories = append(repositories, reg.AllocateName(pkg.PackageName().String(), userTag))
+			}
+
+			for _, repository := range repositories {
 				var img compute.Computable[oci.ImageID]
 				if opts.publishToDocker {
 					img = docker.PublishImage(repository, image)
@@ -202,7 +208,7 @@ func buildLocations(ctx context.Context, env cfg.Context, reg registry.Manager, 
 				Value: ast.NewStruct(digestFields...),
 			}, &ast.Field{
 				Label: ast.NewIdent("baseRepository"),
-				Value: ast.NewString(baseRepository),
+				Value: ast.NewString(baseRepository[0]),
 			}),
 		})
 
