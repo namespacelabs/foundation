@@ -15,7 +15,6 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"namespacelabs.dev/foundation/framework/resources/provider"
 	postgresclass "namespacelabs.dev/foundation/library/database/postgres"
 	"namespacelabs.dev/foundation/library/oss/postgres"
@@ -78,12 +77,13 @@ func main() {
 		defer db.Close()
 
 		for _, schema := range p.Intent.Schema {
-			if _, err := universepg.ReturnFromReadWriteTx(ctx, db, backOff{
+			if err := backoff.Retry(func() error {
+				_, err := db.Exec(ctx, string(schema.Contents))
+				return err
+			}, backOff{
 				interval: 100 * time.Millisecond,
 				deadline: time.Now().Add(5 * time.Second),
 				jitter:   100 * time.Millisecond,
-			}, func(ctx context.Context, tx pgx.Tx) (pgconn.CommandTag, error) {
-				return tx.Exec(ctx, string(schema.Contents))
 			}); err != nil {
 				log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
 			}
