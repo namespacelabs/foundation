@@ -27,7 +27,7 @@ jobs:
     name: Build ns from head
     runs-on:
       - nscloud-ubuntu-22.04-amd64-8x16-with-cache
-      - nscloud-cache-size-10gb
+      - nscloud-cache-size-20gb
       - nscloud-cache-tag-foundation-golang
     steps:
       - name: Check out
@@ -72,7 +72,10 @@ jobs:
     strategy:
       matrix:
         use_prebuilts: [false, true]
-    runs-on: nscloud
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
     timeout-minutes: 15
     steps:
       - name: Check out
@@ -90,14 +93,9 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@v3
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v4
+        uses: namespacelabs/nscloud-cache-action@v1
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnrun-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnrun-
+          cache: go
 
       - name: Download ns
         uses: namespace-actions/download-artifact@v0
@@ -138,7 +136,10 @@ jobs:
   run_dev:
     name: Test local Namespace dev session
     needs: build_fn
-    runs-on: nscloud
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
     timeout-minutes: 15
     steps:
       - name: Check out
@@ -152,14 +153,9 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v4
+        uses: namespacelabs/nscloud-cache-action@v1
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fndev-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fndev-
+          cache: go
 
       - name: Download ns
         uses: namespace-actions/download-artifact@v0
@@ -252,21 +248,19 @@ jobs:
       - build_fn
       - run_e2e_tests
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: nscloud
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
     timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@v4
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v4
+        uses: namespacelabs/nscloud-cache-action@v1
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-deploystaging-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-deploystaging-
+          cache: go
 
       - name: Download ns
         uses: namespace-actions/download-artifact@v0
@@ -376,21 +370,19 @@ jobs:
   test_unprepare:
     name: Test unprepare
     needs: build_fn
-    runs-on: nscloud
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-8x16-with-cache
+      - nscloud-cache-size-20gb
+      - nscloud-cache-tag-foundation-golang
     timeout-minutes: 15
     steps:
       - name: Check out
         uses: actions/checkout@v4
 
       - name: Setup cross-invocation caching (Go)
-        uses: actions/cache@v4
+        uses: namespacelabs/nscloud-cache-action@v1
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-fnprepare-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-go-fnprepare-
+          cache: go
 
       - name: Download ns
         uses: namespace-actions/download-artifact@v0
