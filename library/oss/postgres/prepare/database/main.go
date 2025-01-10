@@ -6,7 +6,9 @@ package main
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"math/rand"
 	"os"
@@ -27,7 +29,13 @@ const (
 	connIdleTimeout = 15 * time.Minute
 	connTimeout     = 5 * time.Minute
 
-	caCertPath = "/tmp/ca.pem"
+	caCertPath          = "/tmp/ca.pem"
+	helperFunctionsPath = "functions.sql"
+)
+
+var (
+	//go:embed *.sql
+	data embed.FS
 )
 
 func main() {
@@ -85,6 +93,17 @@ func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) er
 				log.Printf("unable to close database connection: %v", err)
 			}
 		}()
+
+		if p.Intent.ProvisionHelperFunctions {
+			content, err := fs.ReadFile(data, helperFunctionsPath)
+			if err != nil {
+				return fmt.Errorf("failed to read %s: %w", helperFunctionsPath, err)
+			}
+
+			if err := applyWithRetry(ctx, db, string(content)); err != nil {
+				return fmt.Errorf("unable to apply helper functions: %w", err)
+			}
+		}
 
 		for _, schema := range p.Intent.Schema {
 			if err := applyWithRetry(ctx, db, string(schema.Contents)); err != nil {
