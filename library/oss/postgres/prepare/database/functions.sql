@@ -8,7 +8,8 @@
 -- The functions below provide ensure semantics while only acquiring exclusive locks on mutations.
 
 -- fn_ensure_table is a lock-friendly replacement for `CREATE TABLE IF NOT EXISTS`.
--- WARNING: This function does not support uppercase names.
+-- WARNING: This function translates all names into lowercase (as plain postgres would).
+-- If you want to use lowercase characters, (e.g. through quotation) do not use this funtion.
 --
 -- Example usage:
 --
@@ -31,7 +32,8 @@ END
 $func$;
 
 -- fn_ensure_column is a lock-friendly replacement for `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`.
--- WARNING: This function does not support uppercase names.
+-- WARNING: This function translates all names into lowercase (as plain postgres would).
+-- If you want to use lowercase characters, (e.g. through quotation) do not use this funtion.
 --
 -- Example usage:
 --
