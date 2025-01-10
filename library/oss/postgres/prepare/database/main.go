@@ -33,26 +33,32 @@ const (
 func main() {
 	ctx, p := provider.MustPrepare[*postgres.DatabaseIntent]()
 
+	if err := run(ctx, p); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run(ctx context.Context, p *provider.Provider[*postgres.DatabaseIntent]) error {
 	cluster := &postgresclass.ClusterInstance{}
 	if err := p.Resources.Unmarshal(fmt.Sprintf("%s:cluster", providerPkg), cluster); err != nil {
-		log.Fatalf("unable to read required resource \"cluster\": %v", err)
+		return fmt.Errorf("unable to read required resource \"cluster\": %w", err)
 	}
 
 	// TODO inject file as secret ref and propagate secret ref to server, too.
 	if cluster.CaCert != "" {
 		if err := os.WriteFile(caCertPath, []byte(cluster.CaCert), 0644); err != nil {
-			log.Fatalf("failed to write %q: %v", caCertPath, err)
+			return fmt.Errorf("failed to write %q: %w", caCertPath, err)
 		}
 
 		if err := os.Setenv("PGSSLROOTCERT", caCertPath); err != nil {
-			log.Fatalf("failed to set PGSSLROOTCERT: %v", err)
+			return fmt.Errorf("failed to set PGSSLROOTCERT: %w", err)
 		}
 
 	}
 
 	exists, err := ensureDatabase(ctx, cluster, p.Intent.Name)
 	if err != nil {
-		log.Fatalf("unable to create database %q: %v", p.Intent.Name, err)
+		return fmt.Errorf("unable to create database %q: %w", p.Intent.Name, err)
 	}
 
 	instance := &postgresclass.DatabaseInstance{
@@ -72,7 +78,7 @@ func main() {
 			MaxConnIdleTime: connIdleTimeout,
 		})
 		if err != nil {
-			log.Fatalf("unable to open connection: %v", err)
+			return fmt.Errorf("unable to open connection: %w", err)
 		}
 		defer func() {
 			if err := db.Close(); err != nil {
@@ -81,20 +87,30 @@ func main() {
 		}()
 
 		for _, schema := range p.Intent.Schema {
-			if err := backoff.Retry(func() error {
-				_, err := db.Exec(ctx, string(schema.Contents))
-				return err
-			}, backOff{
-				interval: 100 * time.Millisecond,
-				deadline: time.Now().Add(15 * time.Second),
-				jitter:   100 * time.Millisecond,
-			}); err != nil {
-				log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
+			if err := applyWithRetry(ctx, db, string(schema.Contents)); err != nil {
+				return fmt.Errorf("unable to apply schema %q: %w", schema.Path, err)
 			}
 		}
 	}
 
 	p.EmitResult(instance)
+	return nil
+}
+
+func applyWithRetry(ctx context.Context, db *universepg.DB, sql string) error {
+	return backoff.Retry(func() error {
+		_, err := db.Exec(ctx, sql)
+
+		if !universepg.ErrorIsRetryable(err) {
+			return backoff.Permanent(err)
+		}
+
+		return err
+	}, backOff{
+		interval: 100 * time.Millisecond,
+		deadline: time.Now().Add(15 * time.Second),
+		jitter:   100 * time.Millisecond,
+	})
 }
 
 func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance, name string) (bool, error) {
