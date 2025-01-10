@@ -82,7 +82,7 @@ func main() {
 				return err
 			}, backOff{
 				interval: 100 * time.Millisecond,
-				deadline: time.Now().Add(5 * time.Second),
+				deadline: time.Now().Add(15 * time.Second),
 				jitter:   100 * time.Millisecond,
 			}); err != nil {
 				log.Fatalf("unable to apply schema %q: %v", schema.Path, err)
