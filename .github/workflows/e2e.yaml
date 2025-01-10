@@ -35,7 +35,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.21.x
+          go-version: 1.22.x
           cache: false
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
@@ -92,6 +92,11 @@ jobs:
       - name: Expose GitHub Runtime
         uses: crazy-max/ghaction-github-runtime@v3
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache: false
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
         with:
@@ -151,6 +156,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache: false
 
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
@@ -256,6 +267,12 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache: false
 
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
@@ -378,6 +395,12 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.22.x
+          cache: false
 
       - name: Setup cross-invocation caching (Go)
         uses: namespacelabs/nscloud-cache-action@v1
