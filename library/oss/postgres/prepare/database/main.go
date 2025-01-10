@@ -75,7 +75,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("unable to open connection: %v", err)
 		}
-		defer db.Close()
+		defer func() {
+			if err := db.Close(); err != nil {
+				log.Printf("unable to close database connection: %v", err)
+			}
+		}()
 
 		for _, schema := range p.Intent.Schema {
 			if _, err := universepg.ReturnFromReadWriteTx(ctx, db, backOff{
@@ -99,7 +103,11 @@ func ensureDatabase(ctx context.Context, cluster *postgresclass.ClusterInstance,
 	if err != nil {
 		return false, err
 	}
-	defer postgresConn.Close(ctx)
+	defer func() {
+		if err := postgresConn.Close(ctx); err != nil {
+			log.Printf("unable to close database connection: %v", err)
+		}
+	}()
 
 	exists, err := existsDatabase(ctx, postgresConn, name)
 	if err != nil {
