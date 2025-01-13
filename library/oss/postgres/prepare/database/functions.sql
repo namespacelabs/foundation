@@ -72,3 +72,28 @@ BEGIN
   END IF;
 END
 $func$;
+
+-- fn_ensure_replica_identity is a lock-friendly replacement for `ALTER TABLE ... REPLICA IDENTITY ...`.
+-- WARNING: This function translates all names into lowercase (as plain postgres would).
+-- If you want to use lowercase characters, (e.g. through quotation) do not use this funtion.
+-- Does not support index identities.
+--
+-- Example usage:
+--
+-- SELECT fn_ensure_replica_identity('testtable', 'FULL');
+CREATE OR REPLACE FUNCTION fn_ensure_replica_identity(tname TEXT, replident TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE oid = tname::regclass AND CASE relreplident
+          WHEN 'd' THEN 'default'
+          WHEN 'n' THEN 'nothing'
+          WHEN 'f' THEN 'full'
+       END = LOWER(replident)
+  ) THEN
+    EXECUTE 'ALTER TABLE ' || tname || ' REPLICA IDENTITY ' || replident || ';';
+  END IF;
+END
+$func$;
