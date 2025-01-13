@@ -47,7 +47,28 @@ BEGIN
     SELECT 1 FROM information_schema.columns
     WHERE table_name = LOWER(tname) AND column_name = LOWER(cname)
   ) THEN
-    EXECUTE 'ALTER TABLE ' || tname || ' ADD COLUMN IF NOT EXISTS ' || cname || ' ' || def;
+    EXECUTE 'ALTER TABLE ' || tname || ' ADD COLUMN IF NOT EXISTS ' || cname || ' ' || def || ';';
+  END IF;
+END
+$func$;
+
+-- fn_ensure_column_not_null is a lock-friendly replacement for `ALTER TABLE ... ALTER COLUMN ... SET NOT NULL`.
+-- WARNING: This function translates all names into lowercase (as plain postgres would).
+-- If you want to use lowercase characters, (e.g. through quotation) do not use this funtion.
+--
+-- Example usage:
+--
+-- SELECT fn_ensure_column_not_null('testtable', 'Role');
+CREATE OR REPLACE FUNCTION fn_ensure_column_not_null(tname TEXT, cname TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = LOWER(tname) AND column_name = LOWER(cname) AND NOT is_nullable
+  ) THEN
+    EXECUTE 'ALTER TABLE ' || tname || ' ALTER COLUMN ' || cname || ' SET NOT NULL;';
   END IF;
 END
 $func$;
