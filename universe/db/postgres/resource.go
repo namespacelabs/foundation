@@ -10,6 +10,7 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
 	"namespacelabs.dev/foundation/framework/resources"
 	postgrespb "namespacelabs.dev/foundation/library/database/postgres"
@@ -42,7 +43,8 @@ func NewDatabaseFromConnectionUriWithOverrides(ctx context.Context, db *postgres
 
 	var t trace.Tracer
 	if tp != nil {
-		config.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTracerProvider(tp))
+		config.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTracerProvider(tp),
+			otelpgx.WithAttributes(semconv.DBNamespace(config.ConnConfig.Database)))
 		t = tp.Tracer("namespacelabs.dev/foundation/universe/db/postgres")
 	}
 
