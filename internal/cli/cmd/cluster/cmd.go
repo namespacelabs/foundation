@@ -61,6 +61,7 @@ func NewClusterCmd(hidden bool) *cobra.Command {
 	cmd.AddCommand(NewCreateCmd())
 	cmd.AddCommand(NewListCmd())
 	cmd.AddCommand(NewSshCmd())
+	cmd.AddCommand(NewVncCmd())
 	cmd.AddCommand(NewKubectlCmd())
 	cmd.AddCommand(NewBuildCmd())
 	cmd.AddCommand(NewLogsCmd())
