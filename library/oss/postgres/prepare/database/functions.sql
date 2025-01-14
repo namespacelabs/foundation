@@ -66,7 +66,7 @@ $func$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
-    WHERE table_name = LOWER(tname) AND column_name = LOWER(cname) AND NOT is_nullable
+    WHERE table_name = LOWER(tname) AND column_name = LOWER(cname) AND is_nullable = 'NO'
   ) THEN
     EXECUTE 'ALTER TABLE ' || tname || ' ALTER COLUMN ' || cname || ' SET NOT NULL;';
   END IF;
