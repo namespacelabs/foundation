@@ -88,7 +88,7 @@ func NewTestCmd() *cobra.Command {
 		// This PackageLoader instance is only used to resolve package references from the command line arguments.
 		packageRefPl := parsing.NewPackageLoader(*env)
 
-		testRefs := []*schema.PackageRef{}
+		var testRefs []*schema.PackageRef
 		for _, l := range locs.Locations {
 			pp, err := packageRefPl.LoadByName(ctx, l.AsPackageName())
 			if err != nil {
@@ -101,7 +101,7 @@ func NewTestCmd() *cobra.Command {
 				}
 			}
 		}
-		// add package refernces
+		// add package references
 		testRefs = append(testRefs, locs.Refs...)
 
 		if len(testRefs) == 0 {
