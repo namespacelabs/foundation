@@ -20,6 +20,8 @@ import (
 	"namespacelabs.dev/foundation/internal/workspace/dirs"
 )
 
+const bazelCachePathBase = "bazelcache"
+
 func NewBazelCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:    "bazel",
@@ -59,7 +61,7 @@ func newSetupCacheCmd() *cobra.Command {
 		}
 
 		if len(response.ServerCaPem) > 0 {
-			loc, err := writeTempFile("*.cert", []byte(response.ServerCaPem))
+			loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ServerCaPem))
 			if err != nil {
 				return fnerrors.New("failed to create temp file: %w", err)
 			}
@@ -70,7 +72,7 @@ func newSetupCacheCmd() *cobra.Command {
 		}
 
 		if len(response.ClientCertPem) > 0 {
-			loc, err := writeTempFile("*.cert", []byte(response.ClientCertPem))
+			loc, err := writeTempFile(bazelCachePathBase, "*.cert", []byte(response.ClientCertPem))
 			if err != nil {
 				return fnerrors.New("failed to create temp file: %w", err)
 			}
@@ -81,7 +83,7 @@ func newSetupCacheCmd() *cobra.Command {
 		}
 
 		if len(response.ClientKeyPem) > 0 {
-			loc, err := writeTempFile("*.key", []byte(response.ClientKeyPem))
+			loc, err := writeTempFile(bazelCachePathBase, "*.key", []byte(response.ClientKeyPem))
 			if err != nil {
 				return fnerrors.New("failed to create temp file: %w", err)
 			}
@@ -92,7 +94,7 @@ func newSetupCacheCmd() *cobra.Command {
 		}
 
 		if bazelRcPath == "" {
-			loc, err := writeTempFile("*.bazelrc", buffer.Bytes())
+			loc, err := writeTempFile(bazelCachePathBase, "*.bazelrc", buffer.Bytes())
 			if err != nil {
 				return fnerrors.New("failed to create temp file: %w", err)
 			}
@@ -114,8 +116,8 @@ func newSetupCacheCmd() *cobra.Command {
 	})
 }
 
-func writeTempFile(pattern string, content []byte) (string, error) {
-	f, err := dirs.CreateUserTemp("bazelcache", pattern)
+func writeTempFile(base, pattern string, content []byte) (string, error) {
+	f, err := dirs.CreateUserTemp(base, pattern)
 	if err != nil {
 		return "", fnerrors.New("failed to create temp file: %w", err)
 	}

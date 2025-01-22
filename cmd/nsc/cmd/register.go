@@ -54,6 +54,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(private.NewInternalCmd())                   // nsc internal [hidden]
 	root.AddCommand(terminal.NewTerminalCmd())                  // nsc terminal [hidden]
 	root.AddCommand(cluster.NewBazelCmd())
+	root.AddCommand(cluster.NewPantsCmd())
 
 	root.AddCommand(sdk.NewSdkCmd(true))
 
