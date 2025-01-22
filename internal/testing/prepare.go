@@ -42,19 +42,18 @@ type testDriver struct {
 	compute.LocalScoped[deploy.PreparedDeployable]
 }
 
-func (test *testDriver) Inputs() *compute.In {
+func (driver *testDriver) Inputs() *compute.In {
 	return compute.Inputs().
-		Str("testName", test.TestRef.Name).
-		Stringer("testPkg", test.TestRef.AsPackageName()).
-		Stringer("loc", test.Location).
-		Proto("def", test.Definition).
-		Proto("stack", test.Stack.Proto()).
-		Proto("workspace", test.SealedContext.Workspace().Proto()).
-		Proto("env", test.SealedContext.Environment()).
-		Indigestible("planner", test.Planner).
-		Indigestible("resources", test.Resources).
-		Bool("debug", test.Debug)
-
+		Str("testName", driver.TestRef.Name).
+		Stringer("testPkg", driver.TestRef.AsPackageName()).
+		Stringer("loc", driver.Location).
+		Proto("def", driver.Definition).
+		Proto("stack", driver.Stack.Proto()).
+		Proto("workspace", driver.SealedContext.Workspace().Proto()).
+		Proto("env", driver.SealedContext.Environment()).
+		Indigestible("planner", driver.Planner).
+		Indigestible("resources", driver.Resources).
+		Bool("debug", driver.Debug)
 }
 
 func (driver *testDriver) Action() *tasks.ActionEvent {
