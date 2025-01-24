@@ -497,7 +497,7 @@ func startSingleBuild(eg *executor.Executor, c *client.Client, mw *progresswrite
 type keychain struct{}
 
 func (dk keychain) Resolve(ctx context.Context, r authn.Resource) (authn.Authenticator, error) {
-	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || r.RegistryStr() == "nscr.io" {
+	if strings.HasSuffix(r.RegistryStr(), ".nscluster.cloud") || strings.HasSuffix(r.RegistryStr(), ".namespace.systems") || r.RegistryStr() == "nscr.io" {
 		return api.RegistryCreds(ctx)
 	}
 
