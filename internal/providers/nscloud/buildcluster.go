@@ -11,7 +11,7 @@ import (
 	"namespacelabs.dev/foundation/internal/providers/nscloud/api"
 )
 
-func EnsureBuildCluster(ctx context.Context, x api.API) (*buildkit.Overrides, error) {
+func EnsureBuildCluster(ctx context.Context, _ api.API) (*buildkit.Overrides, error) {
 	cfg, err := api.EnsureBuildCluster(ctx, "amd64")
 	if err != nil {
 		return nil, err

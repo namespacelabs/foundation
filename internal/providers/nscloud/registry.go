@@ -17,7 +17,7 @@ import (
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
-var DefaultKeychain oci.Keychain = api.DefaultKeychain
+var DefaultKeychain = api.DefaultKeychain
 
 type nscloudRegistry struct {
 	registry *api.ImageRegistry
