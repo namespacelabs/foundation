@@ -15,7 +15,7 @@ service: fn.#Service & {
 
 	instantiate: {
 		main: datastore.#Exports.Database & {
-			name:       "main"
+			name: "main"
 			schemaFile: inputs.#FromFile & {
 				path: "schema.txt"
 			}

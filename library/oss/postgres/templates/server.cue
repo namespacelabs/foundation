@@ -4,7 +4,7 @@ package templates
 	spec: {
 		image:          *"postgres:14.0@sha256:db927beee892dd02fbe963559f29a7867708747934812a80f83bff406a0d54fd" | string
 		dataVolumeSize: *"10GiB" | string
-		dataVolume:     *{
+		dataVolume: *{
 			id:   "postgres-server-data"
 			size: dataVolumeSize
 		} | {

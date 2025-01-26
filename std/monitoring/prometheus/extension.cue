@@ -3,8 +3,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn:inputs"
 )
 
-extension: fn.#Extension & {
-}
+extension: fn.#Extension & {}
 
 $promServer: inputs.#Server & {
 	packageName: "namespacelabs.dev/foundation/std/monitoring/prometheus/server"

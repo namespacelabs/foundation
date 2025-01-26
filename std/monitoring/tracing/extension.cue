@@ -55,7 +55,7 @@ extension: fn.#Extension & {
 	}
 
 	instantiate: {
-		serverInfo:     info.#Exports.ServerInfo
+		serverInfo: info.#Exports.ServerInfo
 		"interceptors": interceptors.#Exports.InterceptorRegistration & {
 			name: "otel-tracing"
 		}

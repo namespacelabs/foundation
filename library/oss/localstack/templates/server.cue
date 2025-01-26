@@ -5,7 +5,7 @@ package templates
 		image:          *"localstack/localstack@sha256:4ebb75b927bcfc9a79c77075734e51ce6031054b776eed2defcb3c0dfa4cf699" | string
 		ingress:        *false | bool
 		dataVolumeSize: *"10GiB" | string
-		dataVolume:     *{
+		dataVolume: *{
 			id:   "localstack-server-data"
 			size: dataVolumeSize
 		} | {

@@ -2,8 +2,7 @@ import (
 	"namespacelabs.dev/foundation/std/fn"
 )
 
-extension: fn.#Extension & {
-}
+extension: fn.#Extension & {}
 
 configure: fn.#Configure & {
 	sidecar: tailscaled: {
