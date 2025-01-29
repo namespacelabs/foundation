@@ -52,6 +52,27 @@ BEGIN
 END
 $func$;
 
+-- fn_ensure_column_not_exists is a lock-friendly replacement for `ALTER TABLE ... DROP COLUMN IF EXISTS`.
+-- WARNING: This function translates all names into lowercase (as plain postgres would).
+-- If you want to use lowercase characters, (e.g. through quotation) do not use this funtion.
+--
+-- Example usage:
+--
+-- SELECT fn_ensure_column_not_exists('testtable', 'CreatedAt');
+CREATE OR REPLACE FUNCTION fn_ensure_column_not_exists(tname TEXT, cname TEXT)
+  RETURNS void
+  LANGUAGE plpgsql AS
+$func$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = LOWER(tname) AND column_name = LOWER(cname)
+  ) THEN
+    EXECUTE 'ALTER TABLE ' || tname || ' DROP COLUMN IF EXISTS ' || cname || ';';
+END IF;
+END
+$func$;
+
 -- fn_ensure_column_not_null is a lock-friendly replacement for `ALTER TABLE ... ALTER COLUMN ... SET NOT NULL`.
 -- WARNING: This function translates all names into lowercase (as plain postgres would).
 -- If you want to use lowercase characters, (e.g. through quotation) do not use this funtion.
