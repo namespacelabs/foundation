@@ -380,6 +380,14 @@ func (cs *computeState) computeServerContents(ctx context.Context, rp *resourceP
 				ps.MergedFragment.PodAntiAffinity = frag.PodAntiAffinity
 			}
 
+			if frag.SpreadConstraints != nil {
+				if ps.MergedFragment.SpreadConstraints != nil {
+					return fnerrors.New("spread_constraints defined more than once")
+				}
+
+				ps.MergedFragment.SpreadConstraints = frag.SpreadConstraints
+			}
+
 			if frag.UpdateStrategy != nil {
 				if ps.MergedFragment.UpdateStrategy != nil {
 					return fnerrors.New("update_strategy defined more than once")

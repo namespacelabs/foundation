@@ -139,23 +139,24 @@ message Server {
 }
 
 message ServerFragment {
-    Container main_container                     = 1;
-    repeated Server.ServiceSpec service          = 2;
-    repeated Server.ServiceSpec ingress          = 3;
-    repeated Probe              probe            = 4;
-    repeated Volume             volume           = 5;
-    ResourcePack                resource_pack    = 6;
-    ServerPermissions           permissions      = 7;
-    repeated Server.Toleration toleration        = 8;
-    repeated string            extension         = 9;  // Package name.
-    repeated Container         sidecar           = 10;
-    repeated Container         init_container    = 11;
-    repeated NamedResolvable   annotation        = 12;
-    repeated NodeSelectorItem  node_selector     = 13;
-    repeated Listener          listener          = 14;
-    int32                      replicas          = 15;
-    PodAntiAffinity            pod_anti_affinity = 16;
-    UpdateStrategy             update_strategy   = 17;
+    Container main_container                      = 1;
+    repeated Server.ServiceSpec service           = 2;
+    repeated Server.ServiceSpec ingress           = 3;
+    repeated Probe              probe             = 4;
+    repeated Volume             volume            = 5;
+    ResourcePack                resource_pack     = 6;
+    ServerPermissions           permissions       = 7;
+    repeated Server.Toleration toleration         = 8;
+    repeated string            extension          = 9;  // Package name.
+    repeated Container         sidecar            = 10;
+    repeated Container         init_container     = 11;
+    repeated NamedResolvable   annotation         = 12;
+    repeated NodeSelectorItem  node_selector      = 13;
+    repeated Listener          listener           = 14;
+    int32                      replicas           = 15;
+    PodAntiAffinity            pod_anti_affinity  = 16;
+    UpdateStrategy             update_strategy    = 17;
+    SpreadConstraints          spread_constraints = 18;
 }
 
 message Listener {
@@ -176,6 +177,16 @@ message UpdateStrategy {
 
 message PodAntiAffinity {
     string topology_key = 1;
+}
+
+message SpreadConstraints {
+    int32  max_skew     = 1;
+    int32  min_domains  = 2;
+    string topology_key = 3;
+
+    map<string, string> label_selector = 4;
+
+    bool when_unsatisfiable_schedule_anyway = 5;
 }
 
 // Allocations for a tree of instanced values.
