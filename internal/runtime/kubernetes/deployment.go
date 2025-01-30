@@ -225,6 +225,20 @@ func prepareDeployment(ctx context.Context, target BoundNamespace, deployable ru
 
 	spec = spec.WithAffinity(aff)
 
+	if req := deployable.SpreadConstraints; req != nil {
+		out := applycorev1.TopologySpreadConstraint().
+			WithMaxSkew(req.GetMaxSkew()).
+			WithTopologyKey(req.GetTopologyKey()).
+			WithLabelSelector(applymetav1.LabelSelector().WithMatchLabels(req.GetLabelSelector()))
+		if req.GetMinDomains() != 0 {
+			out = out.WithMinDomains(req.GetMinDomains())
+		}
+		if req.GetWhenUnsatisfiableScheduleAnyway() {
+			out = out.WithWhenUnsatisfiable(corev1.ScheduleAnyway)
+		}
+		spec = spec.WithTopologySpreadConstraints(out)
+	}
+
 	labels := kubedef.MakeLabels(target.env, deployable)
 	annotations := kubedef.MakeAnnotations(target.env)
 	deploymentId := kubedef.MakeDeploymentId(deployable)

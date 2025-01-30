@@ -27,6 +27,7 @@ var (
 		"sidecars", "mounts", "resources", "requires", "tolerations", "annotations",
 		"resourceLimits", "resourceRequests", "terminationGracePeriodSeconds",
 		"extensions", "nodeSelector", "replicas", "pod_anti_affinity", "update_strategy",
+		"spread_constraints",
 		// This is needed for the "spec" in server templates. This can't be a private field, otherwise it can't be overridden.
 		"spec"}
 
@@ -63,9 +64,10 @@ type cueServerExtension struct {
 
 	TerminationGracePeriodSeconds int64 `json:"terminationGracePeriodSeconds,omitempty"`
 
-	Replicas        int32                   `json:"replicas"`
-	PodAntiAffinity *schema.PodAntiAffinity `json:"pod_anti_affinity,omitempty"`
-	UpdateStrategy  *schema.UpdateStrategy  `json:"update_strategy,omitempty"`
+	Replicas          int32                     `json:"replicas"`
+	PodAntiAffinity   *schema.PodAntiAffinity   `json:"pod_anti_affinity,omitempty"`
+	UpdateStrategy    *schema.UpdateStrategy    `json:"update_strategy,omitempty"`
+	SpreadConstraints *schema.SpreadConstraints `json:"spread_constraints,omitempty"`
 
 	Extensions []string `json:"extensions,omitempty"`
 }
@@ -386,9 +388,16 @@ func parseServerExtension(ctx context.Context, env *schema.Environment, pl parsi
 		})
 	}
 
+	if sc := bits.SpreadConstraints; sc != nil {
+		if sc.GetMaxSkew() == 0 || sc.GetTopologyKey() == "" || sc.GetLabelSelector() == nil {
+			return nil, fnerrors.NewWithLocation(loc, "max_skew, topology_key and label_selector are required in spread_constraints")
+		}
+	}
+
 	out.Replicas = bits.Replicas
 	out.PodAntiAffinity = bits.PodAntiAffinity
 	out.UpdateStrategy = bits.UpdateStrategy
+	out.SpreadConstraints = bits.SpreadConstraints
 
 	for _, ext := range bits.Extensions {
 		pkg := schema.PackageName(ext)
