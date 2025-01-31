@@ -147,7 +147,12 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 			return nil, err
 		}
 
-		return completePlanner(ctx, env, conf.ApiEndpoint, conf.ClusterId, response.Cluster.IngressDomain, response.Registry, false)
+		reg := response.Registry
+		if response.NsRegistry != nil {
+			reg = response.NsRegistry
+		}
+
+		return completePlanner(ctx, env, conf.ApiEndpoint, conf.ClusterId, response.Cluster.IngressDomain, reg, false)
 	}
 
 	response, err := createCluster(ctx, purpose, labels)
@@ -155,7 +160,12 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		return nil, fnerrors.New("failed to create instance: %w", err)
 	}
 
-	return completePlanner(ctx, env, response.ClusterFragment.ApiEndpoint, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, env.Environment().Ephemeral)
+	reg := response.Registry
+	if response.NsRegistry != nil {
+		reg = response.NsRegistry
+	}
+
+	return completePlanner(ctx, env, response.ClusterFragment.ApiEndpoint, response.ClusterId, response.ClusterFragment.IngressDomain, reg, env.Environment().Ephemeral)
 }
 
 func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.StartCreateKubernetesClusterResponse, error) {
@@ -170,7 +180,7 @@ func createCluster(ctx context.Context, purpose string, labels map[string]string
 	return api.CreateCluster(ctx, api.Methods, opts)
 }
 
-func completePlanner(ctx context.Context, env cfg.Context, apiEndpoint, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
+func completePlanner(_ context.Context, env cfg.Context, apiEndpoint, clusterId, ingressDomain string, registry *api.ImageRegistry, ephemeral bool) (planner, error) {
 	base := kubernetes.NewPlannerWithRegistry(env, nscloudRegistry{registry: registry},
 		func(ctx context.Context) (*kubedef.SystemInfo, error) {
 			return &kubedef.SystemInfo{
