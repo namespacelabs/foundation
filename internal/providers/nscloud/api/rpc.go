@@ -14,6 +14,7 @@ import (
 	"time"
 
 	builderv1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/builder/v1beta"
+	storagev1beta "buf.build/gen/go/namespace/cloud/protocolbuffers/go/proto/namespace/cloud/storage/v1beta"
 	"github.com/bcicen/jstream"
 	"github.com/cenkalti/backoff"
 	"github.com/dustin/go-humanize"
@@ -60,6 +61,7 @@ type API struct {
 	ListVolumes                  fnapi.Call[emptypb.Empty]
 	DestroyVolume                fnapi.Call[DestroyVolumeRequest]
 	DestroyVolumeByTag           fnapi.Call[DestroyVolumeByTagRequest]
+	CreateArtifact               fnapi.Call[*storagev1beta.CreateArtifactRequest]
 }
 
 var (
@@ -196,6 +198,11 @@ func MakeAPI() API {
 		DestroyVolumeByTag: fnapi.Call[DestroyVolumeByTagRequest]{
 			IssueBearerToken: fnapi.IssueBearerToken,
 			Method:           "namespace.private.vm.GlobalVMService/DestroyVolumeByTag",
+		},
+
+		CreateArtifact: fnapi.Call[*storagev1beta.CreateArtifactRequest]{
+			IssueBearerToken: fnapi.IssueBearerToken,
+			Method:           "namespace.cloud.storage.v1beta.ArtifactService/CreateArtifact",
 		},
 	}
 }
@@ -829,6 +836,17 @@ func DestroyVolume(ctx context.Context, api API, id string) error {
 func DestroyVolumeByTag(ctx context.Context, api API, tag string) error {
 	return tasks.Return0(ctx, tasks.Action("nscloud.destroy-volumes"), func(ctx context.Context) error {
 		return api.DestroyVolumeByTag.Do(ctx, DestroyVolumeByTagRequest{Tag: tag}, endpoint.ResolveRegionalEndpoint, nil)
+	})
+}
+
+func CreateArtifact(ctx context.Context, api API, path, namespace string, expiresAt time.Time) (*storagev1beta.CreateArtifactResponse, error) {
+	return tasks.Return(ctx, tasks.Action("nscloud.create-artifact"), func(ctx context.Context) (*storagev1beta.CreateArtifactResponse, error) {
+		response := &storagev1beta.CreateArtifactResponse{}
+		if err := api.CreateArtifact.Do(ctx, &storagev1beta.CreateArtifactRequest{Path: path, Namespace: namespace, ExpiresAt: timestamppb.New(expiresAt)}, endpoint.ResolveRegionalStorageEndpoint, fnapi.DecodeJSONResponse(&response)); err != nil {
+			return nil, err
+		}
+
+		return response, nil
 	})
 }
 

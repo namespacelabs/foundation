@@ -6,7 +6,7 @@ toolchain go1.22.6
 
 require (
 	buf.build/gen/go/namespace/cloud/grpc/go v1.4.0-20241024100053-9328c9dbe3c7.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.34.2-20241024100053-9328c9dbe3c7.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250131161032-8a8578523eb0.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.10.0
@@ -132,7 +132,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
 	google.golang.org/grpc v1.68.1
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.36.4
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible

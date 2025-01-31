@@ -57,3 +57,15 @@ func ResolveRegionalEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (stri
 func rpcEndpoint(regionName string) string {
 	return fmt.Sprintf("https://%s.compute.namespaceapis.com", regionName)
 }
+
+func ResolveRegionalStorageEndpoint(ctx context.Context, tok fnapi.ResolvedToken) (string, error) {
+	if RegionName != "" {
+		return storageRpcEndpoint(RegionName), nil
+	}
+
+	return rpcEndpoint(defaultRegion), nil
+}
+
+func storageRpcEndpoint(regionName string) string {
+	return fmt.Sprintf("https://%s.storage.namespaceapis.com", regionName)
+}
