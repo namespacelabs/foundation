@@ -71,6 +71,7 @@ type CreateKubernetesClusterResponse struct {
 type GetKubernetesClusterResponse struct {
 	Cluster      *KubernetesCluster `json:"cluster,omitempty"`
 	Registry     *ImageRegistry     `json:"registry,omitempty"`
+	NsRegistry   *ImageRegistry     `json:"ns_registry,omitempty"`
 	BuildCluster *BuildCluster      `json:"build_cluster,omitempty"`
 	Deadline     string             `json:"deadline,omitempty"`
 }
@@ -79,6 +80,7 @@ type StartCreateKubernetesClusterResponse struct {
 	ClusterId       string             `json:"cluster_id,omitempty"`
 	ClusterFragment *KubernetesCluster `json:"cluster_fragment,omitempty"`
 	Registry        *ImageRegistry     `json:"registry,omitempty"`
+	NsRegistry      *ImageRegistry     `json:"ns_registry,omitempty"`
 	Deadline        string             `json:"deadline,omitempty"`
 }
 
