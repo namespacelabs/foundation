@@ -38,6 +38,7 @@ message RuntimeConfig {
 }
 
 message Server {
+    string server_id = 7;
     string package_name = 1;
     string module_name  = 2;
 

@@ -88,6 +88,7 @@ func makeServerConfig(stack *planning.StackWithIngress, srv planning.PlannedServ
 	server := srv.MergedFragment
 
 	current := &runtime.Server{
+		ServerId:    srv.Proto().GetId(),
 		PackageName: srv.PackageName().String(),
 		ModuleName:  srv.Module().ModuleName(),
 	}
