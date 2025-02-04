@@ -5,8 +5,8 @@ go 1.22.4
 toolchain go1.22.6
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.4.0-20241024100053-9328c9dbe3c7.2
-	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.34.2-20241024100053-9328c9dbe3c7.2
+	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250131161032-8a8578523eb0.2
+	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250204141930-c4c13c4d9b38.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
 	cuelang.org/go v0.10.0
@@ -132,7 +132,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
 	google.golang.org/grpc v1.68.1
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.36.4
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools v2.2.0+incompatible
@@ -146,7 +146,7 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
-	namespacelabs.dev/integrations v0.0.0-20240204232225-854c7fa4534a
+	namespacelabs.dev/integrations v0.0.0-20250204142845-5bb8f6bdb69c
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/yaml v1.3.0
 )

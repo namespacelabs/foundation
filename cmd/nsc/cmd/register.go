@@ -55,6 +55,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(terminal.NewTerminalCmd())                  // nsc terminal [hidden]
 	root.AddCommand(cluster.NewBazelCmd())
 	root.AddCommand(cluster.NewPantsCmd())
+	root.AddCommand(cluster.NewArtifactCmd()) // nsc artifact
 
 	root.AddCommand(sdk.NewSdkCmd(true))
 
