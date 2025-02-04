@@ -1,5 +1,5 @@
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250131161032-8a8578523eb0.2 h1:RuzVJUbmKwiyBjtkwt9XWPaMKlm8R8w5IciBoY0U2k8=
-buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250131161032-8a8578523eb0.2/go.mod h1:uUnjmdc3oRetP5Bh3ijnjV/3TOlRPPlKaPz685Hfkr8=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250204161447-a582c42d9b87.2 h1:xZaUuoPBVmP9ddl+8lXgyHzlTvzt/1XNloJnVQVNT4g=
+buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250204161447-a582c42d9b87.2/go.mod h1:pzKw+Wc2QandmD7Psy1MT7r0A7Un3zhDIMh6fQYfHRI=
 buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250204141930-c4c13c4d9b38.1 h1:lm/V8iZi88FcR+rXMrHhDmZuspdoVxzORRBAwStFQiM=
 buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250204141930-c4c13c4d9b38.1/go.mod h1:BmQXCuQwK4ILUpXnT0ib8261AdDd/OBhxcelMpJb5Bo=
 c2sp.org/CCTV/age v0.0.0-20240306222714-3ec4d716e805 h1:u2qwJeEvnypw+OCPUHmoZE3IqwfuN5kgDfo5MLzpNM0=
@@ -1626,8 +1626,8 @@ namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa h1:jj2kjs0Hvu
 namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa/go.mod h1:e8NJRaInXRRm1+KPA6EkGEzdLJAgEvVSIKiLzpP97nI=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7 h1:8NlnfPlzDSJr8TYV/qarIWwhjLd1gOXf3Jme0M/oGBM=
 namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7/go.mod h1:J+Sd+ngeffnCsaO/M7zgs2bR8Klq/ZBhS0+bbnDEH2M=
-namespacelabs.dev/integrations v0.0.0-20250204142845-5bb8f6bdb69c h1:JLjYoA2ijm21tPyvlqgEcnm7jNmGKw5/do8wso127c0=
-namespacelabs.dev/integrations v0.0.0-20250204142845-5bb8f6bdb69c/go.mod h1:8Q64hHYJkTX03yUiG9BD0kzr+NA12a+Bca7AnnKQ5Gw=
+namespacelabs.dev/integrations v0.0.0-20250204162145-bf23e51e3a44 h1:3I6V424BbgE2abTCFpnIy29YYFSOwICL0Lgu8aV5gaU=
+namespacelabs.dev/integrations v0.0.0-20250204162145-bf23e51e3a44/go.mod h1:EKagMwZRHyVu1pfGGzR/2C9j9exM7/aTnsx6wJ5Chs0=
 oras.land/oras-go v1.2.5 h1:XpYuAwAb0DfQsunIyMfeET92emK8km3W4yEzZvUbsTo=
 oras.land/oras-go v1.2.5/go.mod h1:PuAwRShRZCsZb7g8Ar3jKKQR/2A/qN+pkYxIOd/FAoo=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=

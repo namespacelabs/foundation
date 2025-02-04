@@ -15,8 +15,8 @@ import (
 	"namespacelabs.dev/foundation/internal/cli/fncobra"
 	"namespacelabs.dev/foundation/internal/console"
 	"namespacelabs.dev/foundation/internal/fnerrors"
-	"namespacelabs.dev/integrations/nsc/auth"
-	"namespacelabs.dev/integrations/nsc/storage"
+	"namespacelabs.dev/integrations/api/storage"
+	"namespacelabs.dev/integrations/auth"
 )
 
 func NewArtifactCmd() *cobra.Command {
@@ -65,7 +65,7 @@ func newArtifactUploadCmd() *cobra.Command {
 		}
 		defer cli.Close()
 
-		if err := cli.UploadArtifact(ctx, dest, namespace, uploadFile); err != nil {
+		if err := storage.UploadArtifact(ctx, cli, namespace, dest, uploadFile); err != nil {
 			return err
 		}
 
@@ -102,7 +102,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		}
 		defer cli.Close()
 
-		reader, err := cli.DownloadArtifact(ctx, src, namespace)
+		reader, err := storage.ResolveArtifactStream(ctx, cli, namespace, src)
 		if err != nil {
 			return err
 		}
