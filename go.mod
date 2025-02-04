@@ -5,7 +5,7 @@ go 1.22.4
 toolchain go1.22.6
 
 require (
-	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250131161032-8a8578523eb0.2
+	buf.build/gen/go/namespace/cloud/grpc/go v1.5.1-20250204161447-a582c42d9b87.2
 	buf.build/gen/go/namespace/cloud/protocolbuffers/go v1.36.4-20250204141930-c4c13c4d9b38.1
 	cloud.google.com/go/artifactregistry v1.14.7
 	cloud.google.com/go/container v1.31.0
@@ -146,7 +146,7 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 	namespacelabs.dev/go-filenotify v0.0.0-20220511192020-53ea11be7eaa
 	namespacelabs.dev/go-ids v0.0.0-20221124082625-9fc72ee06af7
-	namespacelabs.dev/integrations v0.0.0-20250204142845-5bb8f6bdb69c
+	namespacelabs.dev/integrations v0.0.0-20250204162145-bf23e51e3a44
 	sigs.k8s.io/controller-runtime v0.16.3
 	sigs.k8s.io/yaml v1.3.0
 )
