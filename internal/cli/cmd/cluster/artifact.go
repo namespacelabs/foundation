@@ -106,6 +106,7 @@ func newArtifactDownloadCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
+		defer reader.Close()
 
 		w, err := os.Create(dest)
 		if err != nil {
