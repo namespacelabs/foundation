@@ -6,6 +6,7 @@ package binary
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -50,3 +51,7 @@ func (m filesFrom) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 }
 
 func (m filesFrom) PlatformIndependent() bool { return m.spec.PlatformIndependent() }
+
+func (m filesFrom) Description() string {
+	return fmt.Sprintf("filesFrom(%s, ...)", m.spec.Description())
+}

@@ -235,3 +235,7 @@ func (b buildAndAttachDataLayer) BuildImage(ctx context.Context, env pkggraph.Se
 func (b buildAndAttachDataLayer) PlatformIndependent() bool {
 	return b.spec.PlatformIndependent()
 }
+
+func (b buildAndAttachDataLayer) Description() string {
+	return fmt.Sprintf("attachData(%s, ...)", b.spec.Description())
+}

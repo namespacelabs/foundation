@@ -6,6 +6,7 @@ package binary
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/google/go-containerregistry/pkg/v1/empty"
@@ -54,3 +55,5 @@ func (m snapshotFiles) BuildImage(ctx context.Context, env pkggraph.SealedContex
 }
 
 func (m snapshotFiles) PlatformIndependent() bool { return true }
+
+func (m snapshotFiles) Description() string { return fmt.Sprintf("snapshot(%s, ...)", m.rel) }

@@ -57,3 +57,5 @@ func (i nginxImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 }
 
 func (nginxImage) PlatformIndependent() bool { return false }
+
+func (nginxImage) Description() string { return "staticFileServer" }

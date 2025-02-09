@@ -67,3 +67,5 @@ func (debugShellBuild) BuildImage(ctx context.Context, env pkggraph.SealedContex
 }
 
 func (debugShellBuild) PlatformIndependent() bool { return false }
+
+func (debugShellBuild) Description() string { return "debugShell" }

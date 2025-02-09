@@ -6,6 +6,8 @@ package binary
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
@@ -38,3 +40,12 @@ func (m MergeSpecs) BuildImage(ctx context.Context, env pkggraph.SealedContext, 
 }
 
 func (m MergeSpecs) PlatformIndependent() bool { return m.platformIndependent }
+
+func (m MergeSpecs) Description() string {
+	mm := make([]string, len(m.Specs))
+	for k, s := range m.Specs {
+		mm[k] = s.Description()
+	}
+
+	return fmt.Sprintf("Merge(%s)", strings.Join(mm, ", "))
+}

@@ -90,3 +90,5 @@ func (l llbBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 }
 
 func (l llbBinary) PlatformIndependent() bool { return false }
+
+func (l llbBinary) Description() string { return fmt.Sprintf("llbBinary(%s)", l.bin.Description()) }

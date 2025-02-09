@@ -63,6 +63,10 @@ func (m makeSquashFS) BuildImage(ctx context.Context, env pkggraph.SealedContext
 
 func (m makeSquashFS) PlatformIndependent() bool { return m.spec.PlatformIndependent() }
 
+func (m makeSquashFS) Description() string {
+	return fmt.Sprintf("makeSquash(%s)", m.spec.Description())
+}
+
 func runCommandMaybeNixShell(ctx context.Context, io rtypes.IO, pkg, command string, args ...string) error {
 	if _, err := exec.LookPath("nix-shell"); err == nil {
 		return runNixShell(ctx, io, pkg, command, args)

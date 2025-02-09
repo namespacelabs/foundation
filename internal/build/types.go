@@ -27,6 +27,7 @@ var (
 type Spec interface {
 	BuildImage(context.Context, pkggraph.SealedContext, Configuration) (compute.Computable[oci.Image], error)
 	PlatformIndependent() bool
+	Description() string
 }
 
 type Plan struct {

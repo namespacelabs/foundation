@@ -206,7 +206,7 @@ func buildLayeredSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Co
 		}
 
 		if plan.Description == "" {
-			descriptions[k] = fmt.Sprintf("plan#%d", k)
+			descriptions[k] = specs[k].Description()
 		} else {
 			descriptions[k] = plan.Description
 		}
