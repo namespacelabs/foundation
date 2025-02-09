@@ -329,6 +329,10 @@ func buildSpec(ctx context.Context, pl pkggraph.PackageLoader, env cfg.Context, 
 		}
 	}
 
+	if src.MelangeBuild != nil {
+		return melangeBuild{loc.Rel(), src.MelangeBuild.Files, src.MelangeBuild.Platforms}, nil
+	}
+
 	return nil, fnerrors.NewWithLocation(loc, "don't know how to build binary image: `from` statement does not yield a build unit")
 }
 

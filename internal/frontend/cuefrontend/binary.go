@@ -48,6 +48,7 @@ type cueImageBuildPlan struct {
 	FilesFrom                *cueImageBuildPlan_FilesFrom           `json:"files_from,omitempty"`
 	MakeFilesystemImage      *cueImageBuildPlan_MakeFilesystemImage `json:"make_fs_image,omitempty"`
 	ImageID                  string                                 `json:"image_id,omitempty"`
+	MelangeBuild             *schema.ImageBuildPlan_MelangeBuild    `json:"melange_build,omitempty"`
 }
 
 type cueImageBuildPlan_LLBPlan struct {
@@ -279,6 +280,11 @@ func (bp cueImageBuildPlan) ToSchema(ctx context.Context, pl parsing.EarlyPackag
 	if bp.ImageID != "" {
 		plan.ImageId = bp.ImageID
 		set = append(set, "image_id")
+	}
+
+	if bp.MelangeBuild != nil {
+		plan.MelangeBuild = bp.MelangeBuild
+		set = append(set, "melange_build")
 	}
 
 	if len(set) == 0 {
