@@ -6,6 +6,7 @@ package build
 
 import (
 	"context"
+	"fmt"
 
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/compute"
@@ -43,6 +44,8 @@ func (p prebuilt) BuildImage(ctx context.Context, _ pkggraph.SealedContext, conf
 }
 
 func (p prebuilt) PlatformIndependent() bool { return p.platformIndependent }
+
+func (p prebuilt) Description() string { return fmt.Sprintf("prebuilt(%s)", p.imgid) }
 
 func Prebuilt(imgid oci.ImageID) compute.Computable[oci.ImageID] {
 	return &prebuiltImage{imgid: imgid}

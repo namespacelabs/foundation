@@ -6,6 +6,7 @@ package genbinary
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 
 	"github.com/moby/buildkit/client/llb"
@@ -42,6 +43,8 @@ func (l nixImage) BuildImage(ctx context.Context, env pkggraph.SealedContext, co
 }
 
 func (l nixImage) PlatformIndependent() bool { return false }
+
+func (l nixImage) Description() string { return fmt.Sprintf("makeNix(%s)", l.packageName) }
 
 func makeNixImage(ctx context.Context, env pkggraph.SealedContext, target build.BuildTarget, sources fs.FS) (compute.Computable[oci.Image], error) {
 	if target.TargetPlatform() == nil {

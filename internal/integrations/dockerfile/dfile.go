@@ -90,6 +90,10 @@ func (df dockerfileBuild) BuildImage(ctx context.Context, env pkggraph.SealedCon
 
 func (df dockerfileBuild) PlatformIndependent() bool { return false }
 
+func (df dockerfileBuild) Description() string {
+	return fmt.Sprintf("fromDockerfile(%s)", filepath.Join(df.contextRel, df.plan.Dockerfile))
+}
+
 type generateRequest struct {
 	contextRel, dockerfile string
 	conf                   build.Configuration

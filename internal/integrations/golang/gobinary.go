@@ -6,16 +6,15 @@ package golang
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 
 	"namespacelabs.dev/foundation/framework/findroot"
 	"namespacelabs.dev/foundation/internal/artifacts/oci"
 	"namespacelabs.dev/foundation/internal/build"
-	"namespacelabs.dev/foundation/internal/build/buildkit"
 	"namespacelabs.dev/foundation/internal/compute"
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/internal/gosupport"
-	"namespacelabs.dev/foundation/internal/testing"
 	"namespacelabs.dev/foundation/schema"
 	"namespacelabs.dev/foundation/std/cfg/knobs"
 	"namespacelabs.dev/foundation/std/pkggraph"
@@ -39,9 +38,9 @@ type GoBinary struct {
 var UseBuildKitForBuilding = knobs.Bool("golang_use_buildkit", "If set to true, buildkit is used for building, instead of a ko-style builder.", false)
 
 func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, conf build.Configuration) (compute.Computable[oci.Image], error) {
-	if testing.UseNamespaceBuildCluster || buildkit.BuildOnNamespaceCloud.Get(env.Configuration()) || UseBuildKitForBuilding.Get(env.Configuration()) {
-		return buildUsingBuildkit(ctx, env, gb, conf)
-	}
+	// if testing.UseNamespaceBuildCluster || buildkit.BuildOnNamespaceCloud.Get(env.Configuration()) || UseBuildKitForBuilding.Get(env.Configuration()) {
+	// 	return buildUsingBuildkit(ctx, env, gb, conf)
+	// }
 
 	if conf.Workspace() == nil {
 		panic(conf)
@@ -51,6 +50,8 @@ func (gb GoBinary) BuildImage(ctx context.Context, env pkggraph.SealedContext, c
 }
 
 func (gb GoBinary) PlatformIndependent() bool { return false }
+
+func (gb GoBinary) Description() string { return fmt.Sprintf("goBinary(%s)", gb.PackageName) }
 
 func FromLocation(loc pkggraph.Location, pkgName string) (*GoBinary, error) {
 	absSrc := loc.Abs(pkgName)

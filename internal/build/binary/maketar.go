@@ -7,6 +7,7 @@ package binary
 import (
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -88,3 +89,7 @@ func (m makeTarImage) BuildImage(ctx context.Context, env pkggraph.SealedContext
 }
 
 func (m makeTarImage) PlatformIndependent() bool { return m.spec.PlatformIndependent() }
+
+func (m makeTarImage) Description() string {
+	return fmt.Sprintf("makeTar(%s)", m.spec.Description())
+}

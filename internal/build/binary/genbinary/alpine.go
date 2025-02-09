@@ -61,3 +61,5 @@ func (b *buildAlpine) BuildImage(ctx context.Context, env pkggraph.SealedContext
 }
 
 func (b *buildAlpine) PlatformIndependent() bool { return false }
+
+func (b *buildAlpine) Description() string { return "makeAlpine" }

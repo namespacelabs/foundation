@@ -6,6 +6,7 @@ package binary
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -52,6 +53,8 @@ func (m makeExt4Image) BuildImage(ctx context.Context, env pkggraph.SealedContex
 
 	return MakeDisk(inner, m.target, m.size, m.raw), nil
 }
+
+func (m makeExt4Image) Description() string { return fmt.Sprintf("makeExt4(%s)", m.spec.Description()) }
 
 func MakeDisk(inner compute.Computable[oci.Image], target string, size int64, raw bool) compute.Computable[oci.Image] {
 	return compute.Transform("binary.make-ext4-image", inner, func(ctx context.Context, img oci.Image) (oci.Image, error) {
