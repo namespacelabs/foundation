@@ -48,6 +48,7 @@ message ImageBuildPlan {
     AlpineBuild         alpine_build        = 13;  // Build an alpine image that installs required packages.
     FilesFrom           files_from          = 15;
     MakeFilesystemImage make_fs_image       = 17;
+    MelangeBuild melange_build = 19;
 
     message LLBPlan {
         Binary output_of = 1;
@@ -101,6 +102,11 @@ message ImageBuildPlan {
             string              platform = 1;
             map<string, string> attrs    = 2;
         }
+    }
+
+    message MelangeBuild {
+        repeated string files = 1;
+        repeated string platforms = 2;
     }
 }
 

@@ -28,12 +28,13 @@ import (
 	"namespacelabs.dev/foundation/internal/sdk/host"
 	"namespacelabs.dev/foundation/internal/sdk/k3d"
 	"namespacelabs.dev/foundation/internal/sdk/kubectl"
+	"namespacelabs.dev/foundation/internal/sdk/melange"
 	"namespacelabs.dev/foundation/std/module"
 	"namespacelabs.dev/foundation/std/tasks"
 )
 
 func NewSdkCmd(hidden bool) *cobra.Command {
-	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "deno", "buildctl"}
+	sdks := []string{"go", "k3d", "kubectl", "grpcurl", "deno", "buildctl", "melange"}
 
 	goSdkVersion := "1.22"
 
@@ -85,6 +86,7 @@ func sdkList(sdks []string, goVersion string) []sdk {
 		simpleFileSDK("kubectl", kubectl.SDK),
 		simpleFileSDK("grpcurl", grpcurl.SDK),
 		simpleFileSDK("buildctl", buildctl.SDK),
+		simpleFileSDK("melange", melange.SDK),
 	}
 
 	var ret []sdk
