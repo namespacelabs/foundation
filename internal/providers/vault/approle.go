@@ -14,6 +14,7 @@ import (
 	"namespacelabs.dev/foundation/internal/fnerrors"
 	"namespacelabs.dev/foundation/std/cfg"
 	"namespacelabs.dev/foundation/std/tasks"
+	"namespacelabs.dev/foundation/std/tryhard"
 	"namespacelabs.dev/foundation/universe/vault"
 )
 
@@ -43,11 +44,13 @@ func createSecretId(ctx context.Context, vaultClient *vaultclient.Client, vaultC
 		var err error
 		creds.RoleId, err = tasks.Return(ctx, tasks.Action("vault.read-role-id").Arg("name", cfg.GetName()),
 			func(ctx context.Context) (string, error) {
-				res, err := vaultClient.Auth.AppRoleReadRoleId(ctx, cfg.GetName(), wmp)
-				if err != nil {
-					return "", fnerrors.InvocationError("vault", "failed to read role id: %w", err)
-				}
-				return res.Data.RoleId, nil
+				return tryhard.CallSideEffectFree1(ctx, true, func(ctx context.Context) (string, error) {
+					res, err := vaultClient.Auth.AppRoleReadRoleId(ctx, cfg.GetName(), wmp)
+					if err != nil {
+						return "", fnerrors.InvocationError("vault", "failed to read role id: %w", err)
+					}
+					return res.Data.RoleId, nil
+				})
 			})
 		return err
 	})
