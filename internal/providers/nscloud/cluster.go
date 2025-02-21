@@ -137,7 +137,7 @@ func (d runtimeClass) EnsureCluster(ctx context.Context, env cfg.Context, purpos
 		return nil, fnerrors.New("failed to create instance: %w", err)
 	}
 
-	return ensureCluster(ctx, config, response.ClusterFragment.ApiEndpoint, response.ClusterId, response.ClusterFragment.IngressDomain, response.Registry, ephemeral)
+	return ensureCluster(ctx, config, response.ApiEndpoint, response.InstanceId, response.Region, response.Registry, ephemeral)
 }
 
 func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose string, labels map[string]string) (runtime.Planner, error) {
@@ -165,15 +165,14 @@ func (d runtimeClass) Planner(ctx context.Context, env cfg.Context, purpose stri
 		reg = response.NsRegistry
 	}
 
-	return completePlanner(ctx, env, response.ClusterFragment.ApiEndpoint, response.ClusterId, response.ClusterFragment.IngressDomain, reg, env.Environment().Ephemeral)
+	return completePlanner(ctx, env, response.ApiEndpoint, response.InstanceId, response.Region, reg, env.Environment().Ephemeral)
 }
 
-func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.StartCreateKubernetesClusterResponse, error) {
+func createCluster(ctx context.Context, purpose string, labels map[string]string) (*api.InstanceResponse, error) {
 	opts := api.CreateClusterOpts{
 		MachineType: defaultMachineType,
 		Purpose:     purpose,
 		Labels:      labels,
-		Interactive: true,
 		Duration:    defaultDuration,
 	}
 
