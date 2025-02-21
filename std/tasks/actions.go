@@ -117,6 +117,11 @@ func (ev *ActionEvent) HumanReadablef(label string, args ...interface{}) *Action
 	return ev
 }
 
+func (ev *ActionEvent) HumanReadable(label string) *ActionEvent {
+	ev.data.HumanReadable = label
+	return ev
+}
+
 func (ev *ActionEvent) OnDone(f OnDoneFunc) *ActionEvent {
 	ev.onDone = f
 	return ev

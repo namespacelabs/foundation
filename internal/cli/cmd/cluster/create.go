@@ -60,6 +60,8 @@ func NewCreateCmd() *cobra.Command {
 
 	volumes := cmd.Flags().StringSlice("volume", nil, "Attach a volume to the instance, {cache|persistent}:{tag}:{mountpoint}:{size}")
 
+	computeAPI := cmd.Flags().Bool("compute_api", false, "Whether to use the Compute API.")
+
 	cmd.RunE = fncobra.RunE(func(ctx context.Context, args []string) error {
 		if *unusedEphemeral {
 			fmt.Fprintf(console.Warnings(ctx), "--ephemeral has been removed and does impact the creation request (try --machine_type instead)")
@@ -75,6 +77,7 @@ func NewCreateCmd() *cobra.Command {
 			UniqueTag:     *tag,
 			SecretIDs:     *availableSecrets,
 			Duration:      *duration,
+			UseComputeAPI: *computeAPI,
 		}
 
 		if len(opts.Labels) == 0 {

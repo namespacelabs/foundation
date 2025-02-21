@@ -27,6 +27,38 @@ type CreateKubernetesClusterRequest struct {
 	Volumes           []VolumeSpec           `json:"volume,omitempty"`
 }
 
+type CreateInstanceRequest struct {
+	RegionSelection   *CreateInstanceRequest_RegionSelection `json:"region_selection,omitempty"`
+	UniqueTag         string                                 `json:"unique_tag,omitempty"`
+	MachineType       string                                 `json:"machine_type,omitempty"`
+	DocumentedPurpose string                                 `json:"documented_purpose,omitempty"`
+	Label             []*LabelEntry                          `json:"label,omitempty"`
+	Feature           []string                               `json:"feature,omitempty"`
+	Deadline          *timestamppb.Timestamp                 `json:"deadline,omitempty"`
+	AvailableSecrets  []*SecretRef                           `json:"available_secrets,omitempty"`
+	Experimental      any                                    `json:"experimental,omitempty"`
+}
+
+type CreateInstanceRequest_RegionSelection struct {
+	Preference CreateInstanceRequest_RegionSelection_Preference `json:"preference,omitempty"`
+	Continent  string                                           `json:"continent,omitempty"`
+	Site       string                                           `json:"site,omitempty"`
+}
+
+type CreateInstanceRequest_RegionSelection_Preference int32
+
+const (
+	CreateInstanceRequest_RegionSelection_PREFERENCE_UNKNOWN  CreateInstanceRequest_RegionSelection_Preference = 0
+	CreateInstanceRequest_RegionSelection_PREFER_LOCAL        CreateInstanceRequest_RegionSelection_Preference = 1
+	CreateInstanceRequest_RegionSelection_PREFER_CONTINENT    CreateInstanceRequest_RegionSelection_Preference = 2 // Uses `continent`
+	CreateInstanceRequest_RegionSelection_EXCLUSIVE_LOCAL     CreateInstanceRequest_RegionSelection_Preference = 3
+	CreateInstanceRequest_RegionSelection_EXCLUSIVE_CONTINENT CreateInstanceRequest_RegionSelection_Preference = 4 // Use `continent`
+	CreateInstanceRequest_RegionSelection_PREFER_SITE         CreateInstanceRequest_RegionSelection_Preference = 5
+	CreateInstanceRequest_RegionSelection_EXCLUSIVE_SITE      CreateInstanceRequest_RegionSelection_Preference = 6 // Use `site.`
+	CreateInstanceRequest_RegionSelection_PREFER_SAME_SITE    CreateInstanceRequest_RegionSelection_Preference = 7
+	CreateInstanceRequest_RegionSelection_EXCLUSIVE_SAME_SITE CreateInstanceRequest_RegionSelection_Preference = 8
+)
+
 type VolumeSpec struct {
 	MountPoint      string                     `json:"mount_point,omitempty"`
 	Tag             string                     `json:"tag,omitempty"`
@@ -82,6 +114,13 @@ type StartCreateKubernetesClusterResponse struct {
 	Registry        *ImageRegistry     `json:"registry,omitempty"`
 	NsRegistry      *ImageRegistry     `json:"ns_registry,omitempty"`
 	Deadline        string             `json:"deadline,omitempty"`
+}
+
+type CreateInstanceResponse struct {
+	InstanceId  string `json:"instanceId,omitempty"`
+	InstanceUrl string `json:"instanceUrl,omitempty"`
+	Region      string `json:"region,omitempty"`
+	ApiEndpoint string `json:"apiEndpoint,omitempty"`
 }
 
 type CreateContainersRequest struct {
