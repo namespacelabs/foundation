@@ -99,13 +99,6 @@ func NewAttachCmd() *cobra.Command {
 					fncobra.RegisterPprof(r)
 					devsession.RegisterSomeEndpoints(attachSessionLike{cluster, res.Stack, event}, r)
 
-					mux, err := devsession.PrebuiltWebUI(ctx)
-					if err != nil {
-						return err
-					}
-
-					r.PathPrefix("/").Handler(mux)
-
 					srv := &http.Server{
 						Handler:      r,
 						Addr:         servingAddr,
